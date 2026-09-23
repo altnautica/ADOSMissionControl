@@ -43,11 +43,26 @@ function buildInSpec(proto: NetProto, v: NetEndpointValue): string {
     : `udp:${v.host}:${v.port}`;
 }
 
-/** Pull the WS port out of a bridge URL, defaulting to 14551. */
+/** Pull the WS port out of a bridge URL (which may carry `?token=`), defaulting to 14551. */
 function wsPortOf(url: string): number {
-  const m = url.trim().match(/:(\d+)\s*$/);
-  const n = m ? Number.parseInt(m[1], 10) : NaN;
+  let n = NaN;
+  try {
+    n = Number.parseInt(new URL(url.trim()).port, 10);
+  } catch {
+    // not a URL yet (the operator is still typing)
+  }
   return Number.isInteger(n) && n > 0 ? n : 14551;
+}
+
+/**
+ * The bridge accepts pages served from localhost only unless told otherwise,
+ * so a GCS served from anywhere else names its own origin in the command.
+ */
+function allowOriginArg(): string {
+  if (typeof window === "undefined") return "";
+  const { origin, hostname } = window.location;
+  const loopback = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  return loopback ? "" : ` --allow-origin ${origin}`;
 }
 
 export function NetEndpointPanel({
@@ -78,7 +93,7 @@ export function NetEndpointPanel({
   const attachLinkToDrone = useDroneManager((s) => s.attachLinkToDrone);
 
   const native = isElectron();
-  const command = `npx @altnautica/mavlink-bridge --in ${buildInSpec(proto, value)} --ws ${wsPortOf(bridgeUrl)}`;
+  const command = `npx @altnautica/mavlink-bridge --in ${buildInSpec(proto, value)} --ws ${wsPortOf(bridgeUrl)}${allowOriginArg()}`;
 
   const presets =
     proto === "udp"
@@ -312,7 +327,7 @@ export function NetEndpointPanel({
                   onBridgeUrlChange(e.target.value);
                   setReach("idle");
                 }}
-                placeholder={DEFAULT_BRIDGE_URL}
+                placeholder="ws://127.0.0.1:14551/?token=…"
               />
             </div>
             <Button variant="secondary" size="sm" onClick={checkBridge}>

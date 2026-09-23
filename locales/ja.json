@@ -1004,12 +1004,12 @@
     "udpModeListen": "リッスン",
     "udpModeTarget": "ターゲット",
     "nativeSocketReady": "ネイティブソケットの準備完了(デスクトップアプリ)。",
-    "bridgeNeeded": "ブラウザは生のソケットを開けません。ローカルブリッジを起動してから接続してください:",
+    "bridgeNeeded": "ブラウザは生のソケットを開けません。下のローカルブリッジを起動してください。起動時に ws://…/?token=… の URL が表示されるので、その URL 全体をブリッジ URL に貼り付けてください。",
     "bridgeUrlLabel": "ブリッジ URL",
     "checkBridge": "確認",
     "checking": "確認中...",
     "bridgeReachable": "ブリッジに到達できます。",
-    "bridgeUnreachable": "ブリッジに到達できません。実行されていますか?",
+    "bridgeUnreachable": "ブリッジに到達できません。実行中で、URL に表示された ?token= が含まれていますか?",
     "copy": "コピー",
     "copied": "コピーしました",
     "connectionFailed": "接続に失敗しました",
@@ -2658,6 +2658,10 @@
     "release": "リリース",
     "grab": "グラブ",
     "winchNum": "ウインチ番号",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "長さ",
     "fence": "フェンス",
     "disable": "無効化",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "このノードをペアリングして飛行リンクを開く",
+      "body": "コンパニオンコンピューターには到達できますが、ペアリングされていません。未ペアリングのノードは、自身のホットスポット、USB、または本体上の接続にのみフライトコントローラーのリンクを開きます。ここから飛行させるにはペアリングしてください。",
+      "cta": "このノードをペアリング"
     }
   },
   "blackbox": {

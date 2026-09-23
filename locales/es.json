@@ -1004,12 +1004,12 @@
     "udpModeListen": "Escuchar",
     "udpModeTarget": "Destino",
     "nativeSocketReady": "Socket nativo listo (aplicación de escritorio).",
-    "bridgeNeeded": "Un navegador no puede abrir un socket sin procesar. Ejecuta el puente local y luego conéctate a él:",
+    "bridgeNeeded": "Un navegador no puede abrir un socket sin procesar. Ejecuta el puente local de abajo. Al iniciarse muestra una URL ws://…/?token=…; pega esa URL completa en URL del puente.",
     "bridgeUrlLabel": "URL del puente",
     "checkBridge": "Comprobar",
     "checking": "Comprobando...",
     "bridgeReachable": "Puente accesible.",
-    "bridgeUnreachable": "Puente inaccesible. ¿Está en ejecución?",
+    "bridgeUnreachable": "Puente inaccesible. ¿Está en ejecución y la URL incluye el ?token= que mostró?",
     "copy": "Copiar",
     "copied": "Copiado",
     "connectionFailed": "Error de conexión",
@@ -2658,6 +2658,10 @@
     "release": "Soltar",
     "grab": "Agarrar",
     "winchNum": "Número de cabrestante",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "Longitud",
     "fence": "Cerca",
     "disable": "Desactivar",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "Empareja este nodo para abrir su enlace de vuelo",
+      "body": "El ordenador de a bordo es accesible pero no está emparejado. Un nodo sin emparejar solo abre el enlace de su controlador de vuelo a su propio punto de acceso, USB o conexión local. Emparéjalo para volarlo desde aquí.",
+      "cta": "Emparejar este nodo"
     }
   },
   "blackbox": {

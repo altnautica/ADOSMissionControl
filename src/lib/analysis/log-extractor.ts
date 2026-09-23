@@ -60,6 +60,8 @@ const PID_PARAM_PREFIXES = [
   "ATC_ANG_RLL_",
   "ATC_ANG_PIT_",
   "ATC_ANG_YAW_",
+  "RLL_RATE_",
+  "PTCH_RATE_",
   "RLL2SRV_",
   "PTCH2SRV_",
   "YAW2SRV_",

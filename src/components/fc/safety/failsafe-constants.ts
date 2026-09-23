@@ -15,29 +15,6 @@ export const BF_FS_PROCEDURE_OPTIONS = [
   { value: "2", label: "2 — GPS Rescue" },
 ];
 
-export const RC_OPTION_VALUES = [
-  { value: "0", label: "0 — Do Nothing", description: "No action assigned to this channel" },
-  { value: "2", label: "2 — Flip", description: "Trigger a flip maneuver" },
-  { value: "3", label: "3 — Simple Mode", description: "Earth-frame heading control" },
-  { value: "4", label: "4 — RTL", description: "Return to launch point and land" },
-  { value: "7", label: "7 — Save WP", description: "Save current position as waypoint" },
-  { value: "9", label: "9 — Camera Trigger", description: "Trigger camera shutter" },
-  { value: "10", label: "10 — RangeFinder", description: "Enable/disable rangefinder" },
-  { value: "11", label: "11 — Fence", description: "Enable/disable geofence" },
-  { value: "16", label: "16 — Auto", description: "Switch to auto mission mode" },
-  { value: "17", label: "17 — AutoTune", description: "Start automatic PID tuning" },
-  { value: "18", label: "18 — Land", description: "Land at current position" },
-  { value: "21", label: "21 — Parachute Enable", description: "Arm the parachute release mechanism" },
-  { value: "22", label: "22 — Parachute Release", description: "Deploy parachute immediately" },
-  { value: "28", label: "28 — Relay1 On/Off", description: "Toggle relay output 1" },
-  { value: "39", label: "39 — Motor Emergency Stop", description: "Kill all motors immediately" },
-  { value: "40", label: "40 — Motor Interlock", description: "Motors only spin when switch is active" },
-  { value: "41", label: "41 — Brake", description: "Rapid stop and hold position" },
-  { value: "55", label: "55 — Guided", description: "Switch to GCS-guided flight" },
-  { value: "56", label: "56 — Loiter", description: "Hold GPS position and altitude" },
-  { value: "57", label: "57 — Follow", description: "Follow another vehicle or GCS" },
-];
-
 /** ArduCopter FS_OPTIONS bitmask bits */
 export const FS_OPTION_BITS = [
   { mask: 1 << 0, label: "Bit 0 — Continue if in auto mode on RC failsafe" },
@@ -48,23 +25,38 @@ export const FS_OPTION_BITS = [
   { mask: 1 << 5, label: "Bit 5 — Release gripper" },
 ];
 
-// Vehicle-specific failsafe params
+// ── Per-vehicle param sets ───────────────────────────────────
+// Each firmware/vehicle loads only its own failsafe params, so a Copter never
+// requests Plane-only names (and vice versa).
+
+/** ArduCopter (and the Copter-shaped Rover/Sub failsafe surface). */
 export const COPTER_FS_PARAMS = [
-  "FS_SHORT_ACTN", "FS_SHORT_TIMEOUT", "FS_LONG_ACTN", "FS_LONG_TIMEOUT", "FS_GCS_ENABL",
-  "TERRAIN_ENABLE", "FS_OPTIONS", "FS_THR_VALUE",
+  "FS_THR_ENABLE", "FS_THR_VALUE", "FS_GCS_ENABLE", "FS_GCS_TIMEOUT",
+  "FS_EKF_ACTION", "FS_CRASH_CHECK", "FS_OPTIONS", "TERRAIN_ENABLE",
 ];
 
+/** ArduPlane. */
 export const PLANE_FS_PARAMS = [
-  "THR_FAILSAFE", "THR_FS_VALUE",
+  "FS_SHORT_ACTN", "FS_LONG_ACTN", "FS_LONG_TIMEOUT", "FS_GCS_ENABL",
+  "THR_FAILSAFE", "THR_FS_VALUE", "TERRAIN_ENABLE",
 ];
 
-export const SHARED_FS_PARAMS = [
+/** Plane params that newer firmware no longer carries. */
+export const PLANE_FS_OPTIONAL_PARAMS = ["FS_SHORT_TIMEOUT"];
+
+/** ArduPilot params common to every vehicle. */
+export const AP_SHARED_FS_PARAMS = [
   "BATT_FS_VOLTSRC", "BATT_FS_LOW_VOLT", "BATT_FS_LOW_ACT",
   "FENCE_ENABLE", "FENCE_ACTION", "FENCE_ALT_MAX", "FENCE_RADIUS", "FENCE_ALT_MIN",
   ...Array.from({ length: RC_CHANNEL_COUNT }, (_, i) => `RC${i + 1}_OPTION`),
 ];
 
-// ── Failsafe Card Component ─────────────────────────────────
-
-// Re-exported from parent file — not a separate component file
-// because the Card pattern is identical across all panels
+/**
+ * PX4, by the canonical names the PX4 handler maps (BATT_FS_LOW_ACT is
+ * COM_LOW_BAT_ACT, FENCE_ENABLE is GF_ACTION) plus the PX4-native EKF limits.
+ */
+export const PX4_FS_PARAMS = [
+  "BATT_FS_LOW_VOLT", "BATT_FS_LOW_ACT",
+  "FENCE_ENABLE", "FENCE_ALT_MAX", "FENCE_RADIUS",
+  "COM_POS_FS_DELAY", "COM_POS_FS_EPH", "COM_POS_FS_EPV", "COM_VEL_FS_EVH",
+];

@@ -10,11 +10,11 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { Select } from "@/components/ui/select";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { Shield, HardDrive, Save, MapPin, ArrowUp, Circle, Download, Upload, Plus, Trash2, ToggleLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { Card, FenceTypeChip, ParamInput, AltitudeBandViz } from "./geofence-components";
 
 // ── Constants ────────────────────────────────────────────────
@@ -30,15 +30,6 @@ const FENCE_TYPE_BITS = {
   POLYGON: 1 << 2,
 } as const;
 
-const FENCE_ACTION_OPTIONS = [
-  { value: "0", label: "0 — Report Only" },
-  { value: "1", label: "1 — RTL or Land" },
-  { value: "2", label: "2 — Always Land" },
-  { value: "3", label: "3 — Brake (Auto)" },
-  { value: "4", label: "4 — SmartRTL or RTL" },
-  { value: "5", label: "5 — SmartRTL or Land" },
-];
-
 // ── Component ────────────────────────────────────────────────
 
 export function GeofencePanel() {
@@ -46,6 +37,10 @@ export function GeofencePanel() {
   const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
   const paramMeta = useParamMetadataMap();
+  // FENCE_ACTION is vehicle-specific (Copter 4 = Brake or Land, Plane has
+  // 0/1/6/7/8); the options come from the vehicle's metadata, shared with the
+  // Failsafe panel through the same resolver.
+  const { enumValues } = useParamEnums(paramMeta);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={paramMeta} />;
 
   const {
@@ -202,7 +197,7 @@ export function GeofencePanel() {
           </Card>
 
           <Card icon={<Shield size={14} />} title="Breach Action" description="Action taken when fence is breached">
-            <Select label={lbl("FENCE_ACTION")} options={FENCE_ACTION_OPTIONS} value={String(fenceAction)} onChange={(v) => setLocalValue("FENCE_ACTION", Number(v))} />
+            <ParamEnumSelect label={lbl("FENCE_ACTION")} values={enumValues("FENCE_ACTION")} value={fenceAction} onChange={(v) => setLocalValue("FENCE_ACTION", v)} />
           </Card>
 
           {breachStatus > 0 && (

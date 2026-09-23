@@ -5,6 +5,8 @@ import { EventEmitter } from 'node:events';
 import dgram from 'node:dgram';
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Bridge, BridgeEvents, PeerEvent } from './types.js';
+import { UdpPeerTracker } from './udp-peer.js';
+import { wsVerifyClient, type WsGuardOptions } from './ws-guard.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -22,13 +24,15 @@ const BACKOFF_FACTOR = 2;
 
 export type UdpMode = 'listen' | 'target';
 
-export interface UdpWsBridgeConfig {
+export interface UdpWsBridgeConfig extends WsGuardOptions {
   /** WebSocket port the GCS connects to. */
   wsPort: number;
+  /** WebSocket bind address (loopback unless the operator opts in). */
+  wsHost: string;
   /**
-   * `listen` (udpin): bind to host:port and learn the remote peer from the
-   * first inbound datagram (MAVProxy semantics, e.g. `--out=udp:HOST:PORT`).
-   * `target` (udpout): send to a fixed host:port from the start.
+   * `listen` (udpin): bind to host:port and learn the remote peer once, from
+   * the first local-source MAVLink datagram (MAVProxy semantics, e.g.
+   * `--out=udp:HOST:PORT`). `target` (udpout): send to a fixed host:port.
    */
   mode: UdpMode;
   host: string;
@@ -37,11 +41,6 @@ export interface UdpWsBridgeConfig {
 
 interface UdpBridgeEvents extends BridgeEvents {
   'peer-learned': [PeerEvent];
-}
-
-interface Peer {
-  address: string;
-  port: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +52,8 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
   private readonly family: dgram.SocketType;
   private wss: WebSocketServer | null = null;
   private socket: dgram.Socket | null = null;
-  private peer: Peer | null = null;
+  /** Lives as long as the bridge: a socket rebind never re-opens learning. */
+  private readonly peers: UdpPeerTracker;
   private rebindMs = INITIAL_REBIND_MS;
   private rebindTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
@@ -63,6 +63,14 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
     this.config = config;
     // IPv6 host literals contain a colon; everything else is treated as IPv4.
     this.family = config.host.includes(':') ? 'udp6' : 'udp4';
+    this.peers = new UdpPeerTracker(
+      config.mode === 'target' ? { host: config.host, port: config.port } : null,
+    );
+  }
+
+  /** Where GCS-to-vehicle bytes go, or null before a peer is known. */
+  get peer(): PeerEvent | null {
+    return this.peers.peer;
   }
 
   /** Number of currently connected WebSocket clients. */
@@ -72,7 +80,11 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
 
   /** Start the WebSocket server and bind the UDP socket. */
   start(): void {
-    const wss = new WebSocketServer({ port: this.config.wsPort });
+    const wss = new WebSocketServer({
+      port: this.config.wsPort,
+      host: this.config.wsHost,
+      verifyClient: wsVerifyClient(this.config),
+    });
     this.wss = wss;
 
     wss.on('connection', (ws, req) => {
@@ -132,16 +144,10 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
     this.socket = socket;
 
     socket.on('message', (msg: Buffer, rinfo: dgram.RemoteInfo) => {
-      if (this.config.mode === 'listen') {
-        // Learn (or update) the remote peer from inbound traffic.
-        if (
-          !this.peer ||
-          this.peer.address !== rinfo.address ||
-          this.peer.port !== rinfo.port
-        ) {
-          this.peer = { address: rinfo.address, port: rinfo.port };
-          this.emit('peer-learned', { host: rinfo.address, port: rinfo.port });
-        }
+      const verdict = this.peers.observe(rinfo.address, rinfo.port, msg);
+      if (verdict === 'drop') return;
+      if (verdict === 'learned') {
+        this.emit('peer-learned', { host: rinfo.address, port: rinfo.port });
       }
       // drone → GCS: broadcast to every WS client.
       this.broadcastToWs(msg);
@@ -164,7 +170,6 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
     } else {
       // target (udpout): the peer is fixed; bind an ephemeral local port so the
       // peer's replies are received on the same socket.
-      this.peer = { address: this.config.host, port: this.config.port };
       socket.bind();
     }
   }
@@ -196,10 +201,10 @@ export class UdpWsBridge extends EventEmitter<UdpBridgeEvents> implements Bridge
 
   private sendToPeer(msg: Buffer): void {
     const socket = this.socket;
-    const peer = this.peer;
-    // No peer learned yet (listen mode before first datagram) → drop silently.
+    const peer = this.peers.peer;
+    // No peer learned yet (listen mode before the vehicle's first frame) → drop.
     if (!socket || !peer) return;
-    socket.send(msg, peer.port, peer.address, (err) => {
+    socket.send(msg, peer.port, peer.host, (err) => {
       if (err) this.emit('error', err);
     });
   }

@@ -1004,12 +1004,12 @@
     "udpModeListen": "监听",
     "udpModeTarget": "目标",
     "nativeSocketReady": "原生套接字就绪(桌面应用)。",
-    "bridgeNeeded": "浏览器无法打开原始套接字。请运行本地桥接,然后连接到它:",
+    "bridgeNeeded": "浏览器无法打开原始套接字。请运行下方的本地桥接。它启动时会输出一个 ws://…/?token=… URL,请将完整 URL 粘贴到桥接 URL 中。",
     "bridgeUrlLabel": "桥接 URL",
     "checkBridge": "检查",
     "checking": "检查中...",
     "bridgeReachable": "桥接可达。",
-    "bridgeUnreachable": "桥接不可达。它在运行吗?",
+    "bridgeUnreachable": "桥接不可达。它是否在运行,URL 是否包含它输出的 ?token=?",
     "copy": "复制",
     "copied": "已复制",
     "connectionFailed": "连接失败",
@@ -2658,6 +2658,10 @@
     "release": "释放",
     "grab": "抓取",
     "winchNum": "绞盘编号",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "长度",
     "fence": "围栏",
     "disable": "禁用",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "配对此节点以打开其飞行链路",
+      "body": "伴随计算机可以访问，但尚未配对。未配对的节点只会向其自身的热点、USB 或本机连接开放飞控链路。配对后即可在此处飞行。",
+      "cta": "配对此节点"
     }
   },
   "blackbox": {

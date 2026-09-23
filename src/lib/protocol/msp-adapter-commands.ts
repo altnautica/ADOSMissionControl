@@ -113,74 +113,113 @@ export function mspSendManualControl(ctx: MspCommandContext, roll: number, pitch
  * Per-link motor-test stop timers.
  *
  * MSP has no server-side motor-test timeout: `MSP_SET_MOTOR` is a level, not
- * a pulse, so the motor holds whatever was last written. The `duration`
- * argument used to be accepted and dropped, which left a motor spinning until
- * something else happened to write the outputs. The stop frame is therefore
- * scheduled here, keyed by the link's own queue so two adapters cannot
- * cancel each other's test.
+ * a pulse, and the FC holds whatever was last written for as long as it stays
+ * disarmed. Every non-idle frame therefore carries a duration, and the idle
+ * frame is scheduled here, keyed by the link's own queue so two adapters
+ * cannot cancel each other's test. A caller that wants a longer test re-sends
+ * its frame before the duration runs out.
  */
 const motorTestStops = new WeakMap<MspSerialQueue, ReturnType<typeof setTimeout>>()
+
+/** Outputs carried by one MSP_SET_MOTOR frame. */
+export const MSP_MOTOR_OUTPUTS = 8
 
 function clearMotorTestStop(queue: MspSerialQueue): void {
   const timer = motorTestStops.get(queue)
   if (timer !== undefined) { clearTimeout(timer); motorTestStops.delete(queue) }
 }
 
-function allMotorsIdle(): Uint8Array {
-  const payload = new Uint8Array(16)
-  for (let i = 0; i < 8; i++) writeU16(payload, i * 2, 1000)
+function motorFrame(throttlesPct: readonly number[]): Uint8Array {
+  const payload = new Uint8Array(MSP_MOTOR_OUTPUTS * 2)
+  for (let i = 0; i < MSP_MOTOR_OUTPUTS; i++) {
+    const pct = Math.min(100, Math.max(0, throttlesPct[i] ?? 0))
+    writeU16(payload, i * 2, Math.round(1000 + pct * 10))
+  }
   return payload
 }
 
 /**
- * Spin one motor at `throttle` percent for `durationSeconds`, then idle every
- * output. Refused while armed: a bench motor test on an armed airframe is the
- * one case where a wrong output is an injury.
+ * Drive every motor output in one MSP_SET_MOTOR frame, `throttlesPct[i]` in
+ * percent for output i (missing entries idle), and idle them all once
+ * `durationSeconds` elapses.
+ *
+ * An all-idle vector is the stop: it is always sent, armed or not, because
+ * the FC keeps the last test value and would apply it again after the next
+ * disarm. Any other vector is refused while armed, and refused without a
+ * positive duration so the stop is always scheduled.
  */
+export async function mspSetMotorOutputs(
+  ctx: MspCommandContext,
+  throttlesPct: readonly number[],
+  durationSeconds: number,
+): Promise<CommandResult> {
+  if (!ctx.queue) return NOT_CONNECTED
+  if (throttlesPct.length > MSP_MOTOR_OUTPUTS) {
+    return { success: false, resultCode: -1, message: `Motor test covers at most ${MSP_MOTOR_OUTPUTS} outputs` }
+  }
+  const idle = throttlesPct.every((v) => v <= 0)
+  if (!idle && ctx.isArmed?.()) {
+    return { success: false, resultCode: -1, message: 'Motor test refused: vehicle is armed' }
+  }
+  if (!idle && !(durationSeconds > 0)) {
+    return { success: false, resultCode: -1, message: 'Motor test refused: a test needs a duration so it stops on its own' }
+  }
+  const queue = ctx.queue
+  try {
+    clearMotorTestStop(queue)
+    await queue.send(MSP.MSP_SET_MOTOR, motorFrame(throttlesPct))
+    if (!idle) {
+      motorTestStops.set(queue, setTimeout(() => {
+        motorTestStops.delete(queue)
+        void queue.send(MSP.MSP_SET_MOTOR, motorFrame([])).catch(() => {
+          // The link went away; there is no channel left to send the stop on.
+        })
+      }, durationSeconds * 1000))
+    }
+    return {
+      success: true, resultCode: 0,
+      message: idle ? 'Motors idled' : `Motor outputs set for ${durationSeconds}s`,
+    }
+  } catch (err) {
+    return { success: false, resultCode: -1, message: `Motor test failed: ${formatErrorMessage(err)}` }
+  }
+}
+
+/** Spin one motor at `throttle` percent for `durationSeconds` with every other output idle. */
 export async function mspMotorTest(
   ctx: MspCommandContext,
   motor: number,
   throttle: number,
   durationSeconds: number,
 ): Promise<CommandResult> {
-  if (!ctx.queue) return NOT_CONNECTED
-  if (ctx.isArmed?.()) {
-    return { success: false, resultCode: -1, message: 'Motor test refused: vehicle is armed' }
+  if (!Number.isInteger(motor) || motor < 0 || motor >= MSP_MOTOR_OUTPUTS) {
+    return { success: false, resultCode: -1, message: `Motor ${motor} is not an MSP motor output` }
   }
-  const queue = ctx.queue
-  try {
-    clearMotorTestStop(queue)
-    const payload = new Uint8Array(16)
-    for (let i = 0; i < 8; i++) {
-      const value = i === motor ? Math.round(1000 + (throttle / 100) * 1000) : 1000
-      writeU16(payload, i * 2, value)
-    }
-    await queue.send(MSP.MSP_SET_MOTOR, payload)
-    if (durationSeconds > 0) {
-      motorTestStops.set(queue, setTimeout(() => {
-        motorTestStops.delete(queue)
-        void queue.send(MSP.MSP_SET_MOTOR, allMotorsIdle()).catch(() => {
-          // The link went away, which stops the motor at the FC's own RC-loss
-          // failsafe. Nothing further to do from here.
-        })
-      }, durationSeconds * 1000))
-    }
-    return { success: true, resultCode: 0, message: `Motor ${motor} set to ${throttle}% for ${durationSeconds}s` }
-  } catch (err) {
-    return { success: false, resultCode: -1, message: `Motor test failed: ${formatErrorMessage(err)}` }
-  }
+  const throttles = Array.from({ length: MSP_MOTOR_OUTPUTS }, (_, i) => (i === motor ? throttle : 0))
+  return mspSetMotorOutputs(ctx, throttles, durationSeconds)
 }
 
 /**
- * Cancel a scheduled motor-test stop. Called on disconnect, where the queue is
- * about to be destroyed, so the timer is dropped rather than fired.
+ * End a live motor test on disconnect. The FC would otherwise hold the test
+ * value after the link closes, so the idle frame goes out fire-and-forget
+ * before the queue is destroyed, and the pending stop timer is dropped.
  */
 export function mspCancelMotorTest(queue: MspSerialQueue): void {
+  if (!motorTestStops.has(queue)) return
   clearMotorTestStop(queue)
+  queue.sendNoReply(MSP.MSP_SET_MOTOR, motorFrame([]))
 }
 
+/**
+ * Refused while armed. Released Betaflight acts on MSP_SET_REBOOT in flight,
+ * so a reboot sent to a flying quad stops the motors in the air; the GCS has
+ * to be the one that says no.
+ */
 export async function mspReboot(ctx: MspCommandContext): Promise<CommandResult> {
   if (!ctx.queue) return NOT_CONNECTED
+  if (ctx.isArmed?.()) {
+    return { success: false, resultCode: -1, message: 'Reboot refused: vehicle is armed' }
+  }
   try {
     const payload = new Uint8Array(1)
     payload[0] = 0
@@ -193,6 +232,9 @@ export async function mspReboot(ctx: MspCommandContext): Promise<CommandResult> 
 
 export async function mspRebootToBootloader(ctx: MspCommandContext): Promise<CommandResult> {
   if (!ctx.queue) return NOT_CONNECTED
+  if (ctx.isArmed?.()) {
+    return { success: false, resultCode: -1, message: 'Bootloader reboot refused: vehicle is armed' }
+  }
   try {
     const payload = new Uint8Array(1)
     payload[0] = 1

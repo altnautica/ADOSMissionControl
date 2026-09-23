@@ -17,6 +17,7 @@ import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useForgetNode } from "@/hooks/use-forget-node";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import {
   useAgentCapabilitiesStore,
@@ -164,7 +165,29 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     setActiveTab(useUiPrefsStore.getState().getLastTab(droneId) ?? "overview");
   }
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [rebootOpen, setRebootOpen] = useState(false);
   const { toast } = useToast();
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+
+  // A reboot the FC refuses (armed, busy, unsupported) must not read as one
+  // that happened, so the answer is always shown.
+  const handleReboot = async () => {
+    setRebootOpen(false);
+    const protocol = useDroneManager.getState().getSelectedProtocol();
+    if (!protocol) {
+      toast("No flight controller connected", "error");
+      return;
+    }
+    try {
+      const result = await protocol.reboot();
+      toast(
+        result.message || (result.success ? "Reboot command sent" : "The FC refused the reboot command"),
+        result.success ? "success" : "error",
+      );
+    } catch {
+      toast("Reboot command failed", "error");
+    }
+  };
 
   // The shared forget action, with the Convex cloud-row delete already wired
   // so a removed cloud drone cannot re-feed from the reactive listMyDrones
@@ -774,10 +797,9 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
                 variant="danger"
                 size="sm"
                 icon={<RotateCcw size={12} />}
-                onClick={() => {
-                  const protocol = useDroneManager.getState().getSelectedProtocol();
-                  if (protocol) protocol.reboot();
-                }}
+                disabled={isHardBlocked}
+                title={hardBlockMessage || undefined}
+                onClick={() => setRebootOpen(true)}
               >
                 {t("rebootFc")}
               </Button>
@@ -848,6 +870,16 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
           message={t("deleteConfirm", { name: displayName })}
           confirmLabel={t("delete")}
           variant="danger"
+        />
+        <ConfirmDialog
+          open={rebootOpen}
+          onConfirm={() => void handleReboot()}
+          onCancel={() => setRebootOpen(false)}
+          title={t("rebootFc")}
+          message={t("rebootConfirm")}
+          confirmLabel={t("reboot")}
+          variant="danger"
+          confirmDisabled={isHardBlocked}
         />
       </div>
     </PluginHostProvider>

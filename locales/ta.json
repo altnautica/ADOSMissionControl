@@ -1004,12 +1004,12 @@
     "udpModeListen": "கேளுங்கள்",
     "udpModeTarget": "இலக்கு",
     "nativeSocketReady": "நேட்டிவ் சாக்கெட் தயார் (டெஸ்க்டாப் ஆப்).",
-    "bridgeNeeded": "உலாவியால் ரா சாக்கெட்டைத் திறக்க முடியாது. லோக்கல் பிரிட்ஜை இயக்கி, பின் அதனுடன் இணைக்கவும்:",
+    "bridgeNeeded": "உலாவியால் ரா சாக்கெட்டைத் திறக்க முடியாது. கீழே உள்ள லோக்கல் பிரிட்ஜை இயக்கவும். தொடங்கும்போது அது ws://…/?token=… URL-ஐக் காட்டும்; அந்த முழு URL-ஐ பிரிட்ஜ் URL-இல் ஒட்டவும்.",
     "bridgeUrlLabel": "பிரிட்ஜ் URL",
     "checkBridge": "சரிபார்க்கவும்",
     "checking": "சரிபார்க்கிறது...",
     "bridgeReachable": "பிரிட்ஜை அணுக முடியும்.",
-    "bridgeUnreachable": "பிரிட்ஜை அணுக முடியவில்லை. அது இயங்குகிறதா?",
+    "bridgeUnreachable": "பிரிட்ஜை அணுக முடியவில்லை. அது இயங்குகிறதா, URL-இல் அது காட்டிய ?token= உள்ளதா?",
     "copy": "நகலெடு",
     "copied": "நகலெடுக்கப்பட்டது",
     "connectionFailed": "இணைப்பு தோல்வியடைந்தது",
@@ -2658,11 +2658,15 @@
     "release": "Release",
     "grab": "Grab",
     "winchNum": "Winch Number",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "நீளம்",
     "fence": "Fence",
     "disable": "முடக்கு",
     "enable": "இயக்கு",
-    "maxDescent": "Max Descent Rate",
+    "maxDescent": "Max Descent",
     "distance": "தூரம்",
     "functionNum": "Function Number",
     "switch": "Switch",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "விமான இணைப்பைத் திறக்க இந்த முனையை இணைக்கவும்",
+      "body": "துணைக் கணினியை அடைய முடிகிறது, ஆனால் அது இணைக்கப்படவில்லை. இணைக்கப்படாத முனை தனது விமானக் கட்டுப்பாட்டு இணைப்பை தனது சொந்த ஹாட்ஸ்பாட், USB அல்லது உள் இணைப்புக்கு மட்டுமே திறக்கும். இங்கிருந்து பறக்கவிட அதை இணைக்கவும்.",
+      "cta": "இந்த முனையை இணைக்கவும்"
     }
   },
   "blackbox": {

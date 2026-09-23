@@ -1,13 +1,12 @@
 /**
- * The UDP listen socket learns its send peer ONCE.
+ * The desktop UDP listen socket learns its send peer ONCE, from the first
+ * local MAVLink frame, and client-side route changes never tear the native
+ * sockets down.
  *
- * The guard used to be `handle.peer === null || spec.mode !== "target"`, whose
- * second clause is always true in listen mode — so the peer was overwritten by
- * the source address of the most recent datagram. The shipped default is
- * `{host: "0.0.0.0", port: 14550, mode: "listen"}`, which binds every
- * interface, so ONE spoofed datagram from anywhere on the operator's network
- * silently redirected every subsequent GCS→vehicle byte, arm and disarm
- * included.
+ * The shipped default is `{host: "0.0.0.0", port: 14550, mode: "listen"}`,
+ * which binds every interface, so a peer that could be (re)learned from any
+ * datagram let one spoofed packet redirect every GCS→vehicle byte, arm and
+ * disarm included.
  *
  * Driven through the real IPC handlers against real `dgram` sockets. A mocked
  * socket would only prove that the test's own fake echoes what the test put
@@ -20,10 +19,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import dgram from "node:dgram";
 import { once } from "node:events";
 
-const { ipcHandlers, inbound } = vi.hoisted(() => ({
+const { ipcHandlers, inbound, closes, navListeners } = vi.hoisted(() => ({
   ipcHandlers: new Map<string, (...args: unknown[]) => unknown>(),
   /** Every `net:data` push the module made to the renderer. */
   inbound: [] as unknown[],
+  /** Every `net:close` push the module made to the renderer. */
+  closes: [] as unknown[],
+  /** `did-start-navigation` listeners the module registered. */
+  navListeners: [] as ((...args: unknown[]) => void)[],
 }));
 
 vi.mock("electron", () => ({
@@ -41,17 +44,38 @@ import { setupNetSockets, closeAllSockets } from "../../../electron/net-sockets"
 /** The main-process window stand-in; the module only ever calls `send`. */
 const fakeWindow = {
   isDestroyed: () => false,
-  // `on` is here because the module now registers reload/teardown listeners:
-  // every F5 used to leave the previous sockets bound and pushing `net:data`
-  // into a renderer that discarded it by id, forever, once per reload.
   on: () => {},
   webContents: {
-    on: () => {},
+    on: (event: string, listener: (...args: unknown[]) => void) => {
+      if (event === "did-start-navigation") navListeners.push(listener);
+    },
     send: (channel: string, payload: unknown) => {
       if (channel === "net:data") inbound.push(payload);
+      if (channel === "net:close") closes.push(payload);
     },
   },
 };
+
+/**
+ * Emit `did-start-navigation` the way Electron does: the details object
+ * first, then the deprecated positional url / isInPlace / isMainFrame.
+ */
+function navigate(isSameDocument: boolean): void {
+  const details = { url: "http://localhost:4000/plan", isSameDocument, isMainFrame: true };
+  for (const listener of navListeners) {
+    listener(details, details.url, isSameDocument, true, 0, 0);
+  }
+}
+
+/** A structurally complete MAVLink v2 HEARTBEAT (9-byte payload). */
+function mavlinkFrame(sysid: number): Buffer {
+  const frame = Buffer.alloc(21);
+  frame[0] = 0xfd;
+  frame[1] = 9;
+  frame[5] = sysid;
+  frame[6] = 1;
+  return frame;
+}
 
 async function boundSocket(): Promise<{ socket: dgram.Socket; port: number }> {
   const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
@@ -75,11 +99,9 @@ async function freePort(): Promise<number> {
   return port;
 }
 
-function sendTo(socket: dgram.Socket, port: number, byte: number): Promise<void> {
+function sendTo(socket: dgram.Socket, port: number, payload: Buffer): Promise<void> {
   const { promise, resolve, reject } = Promise.withResolvers<void>();
-  socket.send(Buffer.from([0xfd, byte]), port, "127.0.0.1", (err) =>
-    err ? reject(err) : resolve(),
-  );
+  socket.send(payload, port, "127.0.0.1", (err) => (err ? reject(err) : resolve()));
   return promise;
 }
 
@@ -122,19 +144,32 @@ function awaitInbound(count: number): Promise<void> {
   return promise;
 }
 
+/** Which of two sockets receives the next datagram first. */
+function firstReceiver(
+  a: dgram.Socket,
+  b: dgram.Socket,
+): Promise<"first" | "second"> {
+  return Promise.race([
+    once(a, "message").then(() => "first" as const),
+    once(b, "message").then(() => "second" as const),
+  ]);
+}
+
 describe("UDP listen-mode peer learning", () => {
   const opened: dgram.Socket[] = [];
 
   beforeEach(() => {
     ipcHandlers.clear();
     inbound.length = 0;
+    closes.length = 0;
+    navListeners.length = 0;
     setupNetSockets(
       fakeWindow as unknown as Parameters<typeof setupNetSockets>[0],
     );
   });
 
   afterEach(async () => {
-    closeAllSockets();
+    closeAllSockets("test teardown");
     for (const s of opened) {
       s.close();
       await once(s, "close").catch(() => undefined);
@@ -142,36 +177,42 @@ describe("UDP listen-mode peer learning", () => {
     opened.length = 0;
   });
 
-  it("keeps the FIRST sender as the peer when a second sender appears", async () => {
-    const listenPort = await freePort();
-    const id = await openSocket({
-      proto: "udp",
-      host: "127.0.0.1",
-      port: listenPort,
-      mode: "listen",
-    });
+  async function listen(): Promise<{ id: string; port: number }> {
+    const port = await freePort();
+    const id = await openSocket({ proto: "udp", host: "127.0.0.1", port, mode: "listen" });
+    return { id, port };
+  }
 
+  it("keeps the FIRST sender as the peer when a second sender appears", async () => {
+    const { id, port } = await listen();
     const vehicle = await boundSocket();
     const attacker = await boundSocket();
     opened.push(vehicle.socket, attacker.socket);
 
     // The real vehicle speaks first; an attacker on the same network speaks
     // second. Both are observed before anything is sent back.
-    await sendTo(vehicle.socket, listenPort, 0x01);
-    await sendTo(attacker.socket, listenPort, 0x02);
+    await sendTo(vehicle.socket, port, mavlinkFrame(1));
+    await sendTo(attacker.socket, port, mavlinkFrame(1));
     await awaitInbound(2);
 
-    const atVehicle = once(vehicle.socket, "message");
-    const atAttacker = once(attacker.socket, "message");
-
+    const winner = firstReceiver(vehicle.socket, attacker.socket);
     await handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xaa]));
+    expect(await winner).toBe("first");
+  });
 
-    // The reply must reach the vehicle, not whoever spoke most recently.
-    const winner = await Promise.race([
-      atVehicle.then(() => "vehicle" as const),
-      atAttacker.then(() => "attacker" as const),
-    ]);
-    expect(winner).toBe("vehicle");
+  it("does not learn the peer from a datagram that is not a MAVLink frame", async () => {
+    const { id, port } = await listen();
+    const noise = await boundSocket();
+    const vehicle = await boundSocket();
+    opened.push(noise.socket, vehicle.socket);
+
+    await sendTo(noise.socket, port, Buffer.from([0x01, 0x02, 0x03]));
+    await sendTo(vehicle.socket, port, mavlinkFrame(1));
+    await awaitInbound(2);
+
+    const winner = firstReceiver(noise.socket, vehicle.socket);
+    await handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xaa]));
+    expect(await winner).toBe("second");
   });
 
   it("holds a target-mode peer fixed no matter who writes to it", async () => {
@@ -193,5 +234,58 @@ describe("UDP listen-mode peer learning", () => {
     await atTarget;
 
     expect(inbound.length).toBe(0);
+  });
+});
+
+describe("socket lifetime across navigation", () => {
+  const opened: dgram.Socket[] = [];
+
+  beforeEach(() => {
+    ipcHandlers.clear();
+    closes.length = 0;
+    navListeners.length = 0;
+    setupNetSockets(
+      fakeWindow as unknown as Parameters<typeof setupNetSockets>[0],
+    );
+  });
+
+  afterEach(async () => {
+    closeAllSockets("test teardown");
+    for (const s of opened) {
+      s.close();
+      await once(s, "close").catch(() => undefined);
+    }
+    opened.length = 0;
+  });
+
+  async function openTarget(): Promise<{ id: string; target: dgram.Socket }> {
+    const target = await boundSocket();
+    opened.push(target.socket);
+    const id = await openSocket({
+      proto: "udp",
+      host: "127.0.0.1",
+      port: target.port,
+      mode: "target",
+    });
+    return { id, target: target.socket };
+  }
+
+  it("keeps the socket open across a client-side route change", async () => {
+    const { id, target } = await openTarget();
+
+    navigate(true);
+
+    expect(closes).toEqual([]);
+    const arrived = once(target, "message");
+    await handler("net:send")(mainWindowEvent, id, new Uint8Array([0xfd, 0xcc]));
+    await arrived;
+  });
+
+  it("closes the socket and tells the renderer on a full page navigation", async () => {
+    const { id } = await openTarget();
+
+    navigate(false);
+
+    expect(closes).toEqual([{ id, reason: "page navigated away" }]);
   });
 });

@@ -5,6 +5,7 @@
 import { UdpWsBridge, type UdpMode } from './udp-ws.js';
 import { TcpWsBridge } from './tcp-ws.js';
 import type { Bridge } from './types.js';
+import { DEFAULT_WS_HOST, bridgeUrl, createBridgeToken, isLoopbackOrigin } from './ws-guard.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -27,11 +28,18 @@ interface InputSpec {
 interface CliArgs {
   input?: string;
   wsPort: number;
+  wsHost: string;
+  allowedOrigins: string[];
   help: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { wsPort: DEFAULT_WS_PORT, help: false };
+  const args: CliArgs = {
+    wsPort: DEFAULT_WS_PORT,
+    wsHost: DEFAULT_WS_HOST,
+    allowedOrigins: [],
+    help: false,
+  };
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -46,6 +54,14 @@ function parseArgs(argv: string[]): CliArgs {
       case '--ws':
       case '--ws-port':
         args.wsPort = parseInt(next, 10);
+        i++;
+        break;
+      case '--ws-host':
+        args.wsHost = next;
+        i++;
+        break;
+      case '--allow-origin':
+        args.allowedOrigins.push(next);
         i++;
         break;
       case '--help':
@@ -112,24 +128,35 @@ TCP endpoint as a WebSocket the browser ground control station can dial. It
 relays raw bytes both ways and does no MAVLink parsing.
 
 Usage:
-  mavlink-bridge --in <spec> [--ws <port>]
+  mavlink-bridge --in <spec> [--ws <port>] [--ws-host <addr>] [--allow-origin <origin>]
 
 Options:
-  --in <spec>     Input endpoint to bridge. One of:
-                    udp:HOST:PORT     listen on HOST:PORT and learn the peer
-                                      from the first datagram (MAVProxy
-                                      --out=udp:HOST:PORT)
-                    udpin:HOST:PORT   same as udp: (explicit listen)
-                    udpout:HOST:PORT  send to a fixed HOST:PORT from the start
-                    tcp:HOST:PORT     connect out to a TCP server
-  --ws <port>     WebSocket listen port for the GCS (default: ${DEFAULT_WS_PORT})
-  -h, --help      Show this help
+  --in <spec>             Input endpoint to bridge. One of:
+                            udp:HOST:PORT     listen on HOST:PORT and learn the
+                                              peer once, from the first MAVLink
+                                              datagram sent from a local address
+                                              (MAVProxy --out=udp:HOST:PORT)
+                            udpin:HOST:PORT   same as udp: (explicit listen)
+                            udpout:HOST:PORT  send to a fixed HOST:PORT from the start
+                            tcp:HOST:PORT     connect out to a TCP server
+  --ws <port>             WebSocket listen port for the GCS (default: ${DEFAULT_WS_PORT})
+  --ws-host <addr>        WebSocket bind address (default: ${DEFAULT_WS_HOST}, this
+                          machine only). Use 0.0.0.0 to accept other hosts.
+  --allow-origin <origin> Also accept a GCS page served from this exact origin,
+                          e.g. https://gcs.example.com (repeatable). Pages
+                          served from localhost / 127.0.0.1 are always accepted.
+  -h, --help              Show this help
+
+Every run prints a random token. The GCS must connect with it:
+  ws://127.0.0.1:${DEFAULT_WS_PORT}/?token=<token>
+Connections without the token, or from a web page on any other origin, are
+refused.
 
 Examples:
   # Listen for ArduPilot/MAVProxy UDP output, serve it to the GCS
   mavlink-bridge --in udp:0.0.0.0:14550 --ws 14551
   #   mavproxy.py --master=/dev/ttyUSB0 --out=udp:127.0.0.1:14550
-  #   then point the GCS at ws://localhost:14551
+  #   then point the GCS at the printed ws://127.0.0.1:14551/?token=... URL
 
   # Bridge a TCP MAVLink server (e.g. a SITL instance on 5760)
   mavlink-bridge --in tcp:127.0.0.1:5760 --ws 14551
@@ -169,6 +196,29 @@ function main(): void {
     process.exit(1);
   }
 
+  if (!cli.wsHost) {
+    console.error('Error: --ws-host needs an address.');
+    process.exit(1);
+  }
+
+  for (const origin of cli.allowedOrigins) {
+    let parsed: URL | null = null;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      // reported below
+    }
+    if (!parsed || parsed.origin !== origin) {
+      console.error(
+        `Error: --allow-origin "${origin}" is not an origin (scheme://host[:port], no path).`,
+      );
+      process.exit(1);
+    }
+  }
+
+  const guard = { token: createBridgeToken(), allowedOrigins: cli.allowedOrigins };
+  const ws = { wsPort: cli.wsPort, wsHost: cli.wsHost, ...guard };
+
   let spec: InputSpec;
   try {
     spec = parseInputSpec(cli.input);
@@ -185,7 +235,7 @@ function main(): void {
   let bridge: Bridge;
 
   if (spec.proto === 'tcp') {
-    const tcp = new TcpWsBridge({ wsPort: cli.wsPort, host: spec.host, port: spec.port });
+    const tcp = new TcpWsBridge({ ...ws, host: spec.host, port: spec.port });
     tcp.on('connected', ({ host, port }) => log(`TCP connected to ${host}:${port}`));
     tcp.on('disconnected', ({ host, port }) =>
       log(`TCP disconnected from ${host}:${port}, reconnecting...`),
@@ -200,7 +250,7 @@ function main(): void {
     bridge = tcp;
   } else {
     const mode: UdpMode = spec.proto === 'udp-target' ? 'target' : 'listen';
-    const udp = new UdpWsBridge({ wsPort: cli.wsPort, mode, host: spec.host, port: spec.port });
+    const udp = new UdpWsBridge({ ...ws, mode, host: spec.host, port: spec.port });
     udp.on('connected', ({ host, port }) =>
       log(
         mode === 'listen'
@@ -225,20 +275,26 @@ function main(): void {
   bridge.start();
 
   // Startup banner
+  const url = bridgeUrl(cli.wsHost, cli.wsPort, guard.token);
   log('');
   log('=== MAVLink Bridge Ready ===');
   switch (spec.proto) {
     case 'udp-listen':
-      log(`Bridging UDP (listen) ${spec.host}:${spec.port}  ->  ws://localhost:${cli.wsPort}`);
+      log(`Bridging UDP (listen) ${spec.host}:${spec.port}  ->  WebSocket ${cli.wsHost}:${cli.wsPort}`);
       break;
     case 'udp-target':
-      log(`Bridging UDP (target) ${spec.host}:${spec.port}  ->  ws://localhost:${cli.wsPort}`);
+      log(`Bridging UDP (target) ${spec.host}:${spec.port}  ->  WebSocket ${cli.wsHost}:${cli.wsPort}`);
       break;
     case 'tcp':
-      log(`Bridging TCP ${spec.host}:${spec.port}  ->  ws://localhost:${cli.wsPort}`);
+      log(`Bridging TCP ${spec.host}:${spec.port}  ->  WebSocket ${cli.wsHost}:${cli.wsPort}`);
       break;
   }
-  log(`Point the GCS at:  ws://localhost:${cli.wsPort}`);
+  log(`Point the GCS at:  ${url}`);
+  const extra = cli.allowedOrigins.filter((o) => !isLoopbackOrigin(o));
+  log(`Accepted GCS pages: localhost${extra.length ? `, ${extra.join(', ')}` : ''}`);
+  if (cli.wsHost !== DEFAULT_WS_HOST && cli.wsHost !== '::1' && cli.wsHost !== 'localhost') {
+    log(`WARNING: the WebSocket is reachable from other hosts on ${cli.wsHost}; keep the token private.`);
+  }
   log('');
 
   // --- Signal handling (clean shutdown) -----------------------------------

@@ -2,7 +2,8 @@
  * PID parameter safety validation.
  *
  * Defines safe ranges for copter and plane PID parameters, filter
- * parameters, and maximum allowed deltas per suggestion.
+ * parameters, and maximum allowed deltas per suggestion. A parameter with
+ * no explicit range here is never written from a tuning suggestion.
  *
  * @license GPL-3.0-only
  */
@@ -39,25 +40,32 @@ const COPTER_RANGES: Record<string, ParamSafetyRange> = {
   ATC_RAT_YAW_FLTD: { min: 0, max: 100, maxDelta: 10 },
 };
 
-/** Plane PID safe ranges. */
+/** Plane PID safe ranges, keyed on the rate-controller names the PID panel edits. */
 const PLANE_RANGES: Record<string, ParamSafetyRange> = {
-  // Roll
-  RLL2SRV_P: { min: 0.01, max: 5.0, maxDelta: 0.5 },
-  RLL2SRV_I: { min: 0.01, max: 5.0, maxDelta: 0.5 },
-  RLL2SRV_D: { min: 0.0, max: 5.0, maxDelta: 0.5 },
-  RLL2SRV_IMAX: { min: 0, max: 4500, maxDelta: 500 },
-  RLL2SRV_FF: { min: 0.0, max: 5.0, maxDelta: 0.5 },
-  // Pitch
-  PTCH2SRV_P: { min: 0.01, max: 5.0, maxDelta: 0.5 },
-  PTCH2SRV_I: { min: 0.01, max: 5.0, maxDelta: 0.5 },
-  PTCH2SRV_D: { min: 0.0, max: 5.0, maxDelta: 0.5 },
-  PTCH2SRV_IMAX: { min: 0, max: 4500, maxDelta: 500 },
-  PTCH2SRV_FF: { min: 0.0, max: 5.0, maxDelta: 0.5 },
-  // Yaw
-  YAW2SRV_RLL: { min: 0.01, max: 5.0, maxDelta: 0.5 },
-  YAW2SRV_INT: { min: 0.01, max: 5.0, maxDelta: 0.5 },
-  YAW2SRV_DAMP: { min: 0.0, max: 5.0, maxDelta: 0.5 },
-  YAW2SRV_IMAX: { min: 0, max: 4500, maxDelta: 500 },
+  // Roll rate controller
+  RLL_RATE_P: { min: 0.01, max: 0.5, maxDelta: 0.05 },
+  RLL_RATE_I: { min: 0.01, max: 1.0, maxDelta: 0.05 },
+  RLL_RATE_D: { min: 0.0, max: 0.05, maxDelta: 0.005 },
+  RLL_RATE_IMAX: { min: 0, max: 1, maxDelta: 0.1 },
+  RLL_RATE_FF: { min: 0.0, max: 3.0, maxDelta: 0.1 },
+  // Pitch rate controller
+  PTCH_RATE_P: { min: 0.01, max: 0.5, maxDelta: 0.05 },
+  PTCH_RATE_I: { min: 0.01, max: 1.0, maxDelta: 0.05 },
+  PTCH_RATE_D: { min: 0.0, max: 0.05, maxDelta: 0.005 },
+  PTCH_RATE_IMAX: { min: 0, max: 1, maxDelta: 0.1 },
+  PTCH_RATE_FF: { min: 0.0, max: 3.0, maxDelta: 0.1 },
+  // Yaw (sideslip / damping / coordination)
+  YAW2SRV_SLIP: { min: 0, max: 4, maxDelta: 0.25 },
+  YAW2SRV_INT: { min: 0, max: 2, maxDelta: 0.25 },
+  YAW2SRV_DAMP: { min: 0, max: 2, maxDelta: 0.25 },
+  YAW2SRV_RLL: { min: 0.8, max: 1.2, maxDelta: 0.05 },
+};
+
+/** Vehicle-specific ranges. Rover has none, so rover suggestions are never applied. */
+const VEHICLE_RANGES: Record<VehicleType, Record<string, ParamSafetyRange>> = {
+  copter: COPTER_RANGES,
+  plane: PLANE_RANGES,
+  rover: {},
 };
 
 /** Filter parameter safe ranges (shared across vehicle types). */
@@ -70,6 +78,9 @@ const FILTER_RANGES: Record<string, ParamSafetyRange> = {
   INS_HNTC2_BW: { min: 5, max: 200, maxDelta: 25 },
 };
 
+/** Tolerance for floating-point comparisons of parameter values. */
+const EPSILON = 1e-9;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -78,71 +89,76 @@ const FILTER_RANGES: Record<string, ParamSafetyRange> = {
  * Get the safety range for a PID or filter parameter.
  *
  * @param param       Parameter name (e.g., "ATC_RAT_RLL_P")
- * @param vehicleType "copter" or "plane"
- * @returns Safety range, or a permissive default if the param is unknown
+ * @param vehicleType Vehicle the parameter belongs to
+ * @returns Safety range, or null when the parameter has no explicit range
  */
 export function getSafetyRange(
   param: string,
   vehicleType: VehicleType,
-): ParamSafetyRange {
-  // Check filter ranges first (vehicle-agnostic)
-  const filterRange = FILTER_RANGES[param];
-  if (filterRange) return filterRange;
-
-  // Check vehicle-specific ranges
-  const vehicleRanges = vehicleType === "copter" ? COPTER_RANGES : PLANE_RANGES;
-  const range = vehicleRanges[param];
-  if (range) return range;
-
-  // Default: permissive range for unknown params
-  return { min: 0, max: 10000, maxDelta: 1000 };
+): ParamSafetyRange | null {
+  if (Object.hasOwn(FILTER_RANGES, param)) return FILTER_RANGES[param];
+  const vehicleRanges = VEHICLE_RANGES[vehicleType];
+  if (vehicleRanges && Object.hasOwn(vehicleRanges, param)) return vehicleRanges[param];
+  return null;
 }
+
+/** Outcome of checking one suggested parameter change. */
+export type SuggestionCheck =
+  /** The suggestion is applied as given. */
+  | { status: "ok"; value: number }
+  /** The suggestion is applied at a limited value. */
+  | { status: "clamped"; value: number; warning: string }
+  /** The suggestion is not applied. */
+  | { status: "rejected"; reason: string };
 
 /**
  * Validate a parameter suggestion against safety constraints.
  *
- * Checks:
- *   1. Suggested value is within safe range
- *   2. Delta from current value doesn't exceed max delta
+ * `currentValue` must be the flight controller's live value; a suggestion
+ * for a parameter that is not loaded is rejected, as is any parameter
+ * without an explicit safety range.
  *
- * @returns Object with validation result, clamped value, and optional warning
+ * The suggestion is first clamped into the safe range, then the step from
+ * the current value is limited to the range's maxDelta. A current value that
+ * already sits outside the range therefore moves toward it by at most
+ * maxDelta per suggestion rather than snapping to the boundary.
  */
 export function validateSuggestion(
   param: string,
-  currentValue: number,
+  currentValue: number | undefined,
   suggestedValue: number,
   vehicleType: VehicleType,
-): { valid: boolean; clampedValue: number; warning?: string } {
+): SuggestionCheck {
   const range = getSafetyRange(param, vehicleType);
-
-  let clamped = suggestedValue;
-  let warning: string | undefined;
-  let valid = true;
-
-  // Clamp to safe range
-  if (clamped < range.min) {
-    warning = `${param}: ${suggestedValue} below minimum ${range.min}, clamped`;
-    clamped = range.min;
-    valid = false;
-  } else if (clamped > range.max) {
-    warning = `${param}: ${suggestedValue} above maximum ${range.max}, clamped`;
-    clamped = range.max;
-    valid = false;
+  if (!range) {
+    return { status: "rejected", reason: `${param}: no safe range defined for ${vehicleType}` };
+  }
+  if (currentValue === undefined || !Number.isFinite(currentValue)) {
+    return { status: "rejected", reason: `${param}: no confirmed flight controller value` };
+  }
+  if (!Number.isFinite(suggestedValue)) {
+    return { status: "rejected", reason: `${param}: suggested value is not a number` };
   }
 
-  // Check delta constraint
-  const delta = Math.abs(clamped - currentValue);
-  if (delta > range.maxDelta) {
-    const direction = clamped > currentValue ? 1 : -1;
-    clamped = currentValue + direction * range.maxDelta;
+  const warnings: string[] = [];
 
-    // Re-clamp to range after delta adjustment
-    clamped = Math.max(range.min, Math.min(range.max, clamped));
-
-    const deltaWarning = `${param}: change of ${delta.toFixed(4)} exceeds max delta ${range.maxDelta}, limited`;
-    warning = warning ? `${warning}; ${deltaWarning}` : deltaWarning;
-    valid = false;
+  let target = suggestedValue;
+  if (target < range.min) {
+    warnings.push(`${suggestedValue} below minimum ${range.min}`);
+    target = range.min;
+  } else if (target > range.max) {
+    warnings.push(`${suggestedValue} above maximum ${range.max}`);
+    target = range.max;
   }
 
-  return { valid, clampedValue: clamped, warning };
+  let value = target;
+  const step = target - currentValue;
+  if (Math.abs(step) > range.maxDelta + EPSILON) {
+    // Round away binary noise from the addition; the FC stores float32 anyway.
+    value = Math.round((currentValue + Math.sign(step) * range.maxDelta) * 1e6) / 1e6;
+    warnings.push(`change of ${Math.abs(step).toFixed(4)} exceeds max step ${range.maxDelta}`);
+  }
+
+  if (warnings.length === 0) return { status: "ok", value };
+  return { status: "clamped", value, warning: `${param}: ${warnings.join("; ")}, limited to ${value}` };
 }

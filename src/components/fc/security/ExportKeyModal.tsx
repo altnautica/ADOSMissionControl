@@ -17,10 +17,8 @@
  *     cannot OCR the key.
  *   - Clipboard auto-cleared after 60 seconds.
  *   - Typed-phrase "EXPORT" confirm so a casual click cannot rotate a key.
- *   - Every export is a rotation, so every export gets audit-logged on
- *     the agent side (enroll-fc already logs the new key_id).
- *
- * Addresses audit finding M7.
+ *   - Every export is a rotation, so every export is logged on the agent
+ *     side (enroll-fc already logs the new key_id).
  *
  * @license GPL-3.0-only
  */

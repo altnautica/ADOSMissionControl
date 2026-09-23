@@ -9,16 +9,19 @@
  * connect paths never called registry.attachFc, so the registry stayed empty
  * and the dashboard showed "No Drones Connected" while the connection was live.
  *
- * The fix centralizes the registry lifecycle in drone-manager: a drone that
- * owns its fleet row (ownsFleetRow defaults true for a direct FC) attaches to
- * the registry on addDrone and detaches on removeDrone. An agent-attached FC
- * (ownsFleetRow=false) is left to AgentMavlinkBridge, which owns its presence
- * row. These tests lock that contract through the public addDrone/removeDrone.
+ * The fix centralizes the registry lifecycle in drone-manager: every managed
+ * session is keyed by its node id, so addDrone attaches the FC to the registry
+ * (creating the row for a direct FC, joining the presence row for an agent or
+ * relayed FC) and removeDrone detaches it. No bridge has to remember to. These
+ * tests lock that contract through the public addDrone/removeDrone, plus the
+ * link-loss path: a silent FC reads arm state "unknown" and link lost, never
+ * disarmed and never a confident armed / in-mission.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
 
 import { useDroneManager } from "../drone-manager";
+import { useDroneStore } from "../drone-store";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { selectFleetDrones } from "@/stores/node-registry/select-fleet-drones";
 import { MockProtocol } from "@/mock/mock-protocol";
@@ -97,23 +100,112 @@ describe("drone-manager <-> node-registry lifecycle", () => {
     expect(projectedRows()).toHaveLength(0);
   });
 
-  it("an agent-attached FC (ownsFleetRow=false) is NOT registered by drone-manager", async () => {
+  it("a relayed FC session (ownsFleetRow=false) attaches onto its presence row and projects arm state", async () => {
     const { protocol, transport, vehicleInfo } = await makeDrone();
+    const registry = useNodeRegistryStore.getState();
+    registry.upsertPresence(
+      "node:relayed-1",
+      { deviceId: "relayed-1", name: "Relayed", lastHeartbeat: Date.now() },
+      "relayed",
+    );
 
-    // AgentMavlinkBridge owns the presence row + its own attachFc for this path;
-    // drone-manager must not write a registry row when it does not own it.
     useDroneManager
       .getState()
       .addDrone(
-        "node:dev-agent",
-        "Agent Drone",
+        "node:relayed-1",
+        "Relayed",
         protocol,
         transport,
         vehicleInfo,
-        { type: "websocket" },
+        { type: "websocket", url: "ws://192.168.1.50:8765/" },
         { ownsFleetRow: false },
       );
 
-    expect(useNodeRegistryStore.getState().nodes["node:dev-agent"]).toBeUndefined();
+    const entry = useNodeRegistryStore.getState().getEntry("node:relayed-1");
+    expect(entry?.fc.managedId).toBe("node:relayed-1");
+    expect(entry?.connection.fcConnected).toBe(true);
+    expect(entry?.connection.transport).toBe("websocket");
+
+    protocol.emitHeartbeat(true, "AUTO");
+    const [row] = projectedRows();
+    expect(row.fcAttached).toBe(true);
+    expect(row.armState).toBe("armed");
+    expect(row.connectionState).toBe("armed");
+    expect(row.status).toBe("in_mission");
+  });
+
+  it("link loss makes the arm state unknown and the fleet row link lost, not disarmed", async () => {
+    const { protocol, transport, vehicleInfo } = await makeDrone();
+    let fireLinkLost: (() => void) | undefined;
+    const subscribe = protocol.onLinkLost;
+    protocol.onLinkLost = (cb) => {
+      fireLinkLost = cb;
+      return subscribe(cb);
+    };
+    useNodeRegistryStore
+      .getState()
+      .upsertPresence(
+        "node:lost-1",
+        { deviceId: "lost-1", name: "Lost", lastHeartbeat: Date.now() },
+        "local",
+      );
+    const manager = useDroneManager.getState();
+    manager.addDrone(
+      "node:lost-1",
+      "Lost",
+      protocol,
+      transport,
+      vehicleInfo,
+      { type: "websocket" },
+      { ownsFleetRow: false },
+    );
+    // First managed drone: auto-selected, so the single-slot store follows it.
+    expect(useDroneManager.getState().selectedDroneId).toBe("node:lost-1");
+    protocol.emitHeartbeat(true, "AUTO");
+    expect(projectedRows()[0].armState).toBe("armed");
+
+    fireLinkLost?.();
+
+    expect(useNodeRegistryStore.getState().getEntry("node:lost-1")?.fc.armState).toBe("unknown");
+    expect(useDroneStore.getState().armState).toBe("unknown");
+    const [row] = projectedRows();
+    expect(row.fcLinkLost).toBe(true);
+    expect(row.armState).toBe("unknown");
+    expect(row.connectionState).not.toBe("armed");
+    expect(row.status).not.toBe("in_mission");
+  });
+
+  it("removeDrone detaches an agent-attached FC and keeps the presence-owned row", async () => {
+    const { protocol, transport, vehicleInfo } = await makeDrone();
+    useNodeRegistryStore
+      .getState()
+      .upsertPresence(
+        "node:dev-agent",
+        { deviceId: "dev-agent", name: "Agent Drone", lastHeartbeat: Date.now() },
+        "local",
+      );
+    const manager = useDroneManager.getState();
+    manager.addDrone(
+      "node:dev-agent",
+      "Agent Drone",
+      protocol,
+      transport,
+      vehicleInfo,
+      { type: "websocket" },
+      { ownsFleetRow: false },
+    );
+    protocol.emitHeartbeat(true, "AUTO");
+
+    manager.removeDrone("node:dev-agent");
+
+    const entry = useNodeRegistryStore.getState().getEntry("node:dev-agent");
+    expect(entry).toBeDefined();
+    expect(entry?.fc.managedId).toBeNull();
+    expect(entry?.fc.armState).toBeUndefined();
+    expect(entry?.connection.fcConnected).toBe(false);
+    const [row] = projectedRows();
+    expect(row.fcAttached).toBe(false);
+    expect(row.armState).toBe("unknown");
+    expect(row.status).toBe("online");
   });
 });

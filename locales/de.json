@@ -1004,12 +1004,12 @@
     "udpModeListen": "Lauschen",
     "udpModeTarget": "Ziel",
     "nativeSocketReady": "Nativer Socket bereit (Desktop-App).",
-    "bridgeNeeded": "Ein Browser kann keinen Raw-Socket öffnen. Starte die lokale Bridge und verbinde dich dann damit:",
+    "bridgeNeeded": "Ein Browser kann keinen Raw-Socket öffnen. Starte die lokale Bridge unten. Sie gibt beim Start eine ws://…/?token=…-URL aus; füge diese vollständige URL unter Bridge-URL ein.",
     "bridgeUrlLabel": "Bridge-URL",
     "checkBridge": "Prüfen",
     "checking": "Prüft...",
     "bridgeReachable": "Bridge erreichbar.",
-    "bridgeUnreachable": "Bridge nicht erreichbar. Läuft sie?",
+    "bridgeUnreachable": "Bridge nicht erreichbar. Läuft sie, und enthält die URL das ausgegebene ?token=?",
     "copy": "Kopieren",
     "copied": "Kopiert",
     "connectionFailed": "Verbindung fehlgeschlagen",
@@ -2658,6 +2658,10 @@
     "release": "Loslassen",
     "grab": "Greifen",
     "winchNum": "Winden-Nummer",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "Länge",
     "fence": "Zaun",
     "disable": "Deaktivieren",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "Diesen Knoten koppeln, um die Flugverbindung zu öffnen",
+      "body": "Der Begleitcomputer ist erreichbar, aber nicht gekoppelt. Ein ungekoppelter Knoten öffnet seine Flugcontroller-Verbindung nur über seinen eigenen Hotspot, USB oder direkt am Gerät. Koppeln Sie ihn, um ihn von hier aus zu fliegen.",
+      "cta": "Diesen Knoten koppeln"
     }
   },
   "blackbox": {

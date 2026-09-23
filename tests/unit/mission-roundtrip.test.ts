@@ -91,7 +91,10 @@ function canonical(wps: readonly Waypoint[]) {
     p1: w.param1 ?? 0,
     p2: w.param2 ?? 0,
     p3: w.param3 ?? 0,
-    actions: (w.actions ?? []).map((a) => ({
+    actions: (w.actions ?? []).map((a) => {
+      if (a.command === "RAW") throw new Error("unexpected raw passthrough action");
+      return a;
+    }).map((a) => ({
       command: a.command,
       p1: a.param1 ?? 0,
       p2: a.param2 ?? 0,
@@ -221,7 +224,7 @@ describe("mission round-trip — plan -> .waypoints -> plan", () => {
   it("preserves every nav command, action, param4, frame and DO_JUMP target", () => {
     const original = fullMission();
     const text = captureExport(() => exportWaypointsFormat(original, "roundtrip"));
-    const back = parseWaypointsFile(text);
+    const back = parseWaypointsFile(text).waypoints;
     expect(canonical(back)).toEqual(canonical(original));
   });
 
@@ -250,7 +253,7 @@ describe("mission round-trip — plan -> .waypoints -> plan", () => {
       { id: "b", lat: 12.91, lon: 77.51, alt: 30, command: "WAYPOINT", frame: "relative", holdTime: 5, param1: 0, param2: 7, param3: 0 },
     ];
     const text = captureExport(() => exportWaypointsFormat(zeros, "zeros"));
-    const back = parseWaypointsFile(text);
+    const back = parseWaypointsFile(text).waypoints;
     expect(canonical(back)).toEqual(canonical(zeros));
     expect(back[1].holdTime).toBe(5);
     expect(back[1].param2).toBe(7);

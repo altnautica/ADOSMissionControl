@@ -154,4 +154,17 @@ describe("cockpit flight clock", () => {
     useDroneStore.getState().setArmState("armed");
     expect(useDroneStore.getState().armedAt).toBe(armedAt);
   });
+
+  it("keeps the flight clock through a lost link that comes back armed", () => {
+    useDroneStore.setState({ armState: "armed", armedAt: Date.now() - 95_000 });
+    const armedAt = useDroneStore.getState().armedAt;
+
+    useDroneStore.getState().setArmState("unknown");
+    expect(useDroneStore.getState().armedAt).toBe(armedAt);
+
+    useDroneStore.getState().setArmState("armed");
+    expect(useDroneStore.getState().armedAt).toBe(armedAt);
+    renderBand();
+    expect(screen.getByText("1:35")).toBeTruthy();
+  });
 });

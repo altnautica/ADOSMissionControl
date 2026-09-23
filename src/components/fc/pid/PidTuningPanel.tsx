@@ -24,6 +24,7 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { ParamTooltip } from "../parameters/ParamTooltip";
 import { PidAnalysisSection } from "./PidAnalysisSection";
+import type { SuggestionTarget } from "@/stores/pid-analysis-store";
 import { AutotuneSection, LivePidResponseGraph, PidSnapshotComparison, Px4GainMultipliers } from "./PidComparisonSection";
 
 export function PidTuningPanel() {
@@ -82,6 +83,14 @@ export function PidTuningPanel() {
 
   const connected = !!getSelectedProtocol();
   const hasDirty = dirtyParams.size > 0;
+
+  // AI suggestions are validated against FC-confirmed values only: a param
+  // with a pending local edit has no confirmed value until it is saved.
+  const suggestionTarget: SuggestionTarget = useMemo(() => ({
+    vehicleType,
+    fcParams: new Map([...params].filter(([name]) => !dirtyParams.has(name))),
+    setLocalValue,
+  }), [vehicleType, params, dirtyParams, setLocalValue]);
 
   async function handleSave() {
     setSaving(true);
@@ -255,7 +264,7 @@ export function PidTuningPanel() {
 
         {!isBetaflight && <AutotuneSection connected={connected} vehicleType={vehicleType} />}
 
-        <PidAnalysisSection vehicleType={vehicleType} params={params} setLocalValue={setLocalValue} connected={connected} />
+        <PidAnalysisSection target={suggestionTarget} connected={connected} />
 
         <LivePidResponseGraph connected={connected} />
 

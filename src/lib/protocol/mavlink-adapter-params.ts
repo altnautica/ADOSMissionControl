@@ -9,6 +9,7 @@
 
 import type { Transport, ParameterValue, CommandResult, FirmwareHandler, ParameterCallback } from './types'
 import { encodeParamRequestList, encodeParamRequestRead, encodeParamSet } from './mavlink-encoder'
+import { MAV_PARAM_TYPE_REAL32, usesBytewiseParamValues } from './param-value-codec'
 
 /**
  * A cached parameter read. Stores the full MAV_PARAM shape so a cache-served
@@ -258,19 +259,34 @@ export async function getParameter(ctx: ParamContext, name: string): Promise<Par
 const PARAM_SET_ATTEMPTS = 3
 const PARAM_SET_ATTEMPT_MS = 1000
 
-export async function setParameter(ctx: ParamContext, name: string, value: number, type = 9): Promise<CommandResult> {
+/**
+ * Write one parameter. The MAV_PARAM_TYPE sent, and on PX4 how the value is
+ * packed, come from the vehicle's last PARAM_VALUE for this name: a PX4
+ * integer param must travel as its integer bytes, so on PX4 a param whose type
+ * has not been read yet is refused rather than guessed. ArduPilot casts every
+ * value to float, so there an unread param is sent as REAL32.
+ */
+export async function setParameter(ctx: ParamContext, name: string, value: number): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
   const firmwareName = ctx.firmwareHandler?.mapParameterName(name) ?? name
-  ctx.paramCache.delete(name)
-
-  // PX4 integer params need byte-wise encoding
-  let encodedValue = value
-  if (ctx.firmwareHandler?.firmwareType === 'px4' && type !== 9) {
-    const tmp = new DataView(new ArrayBuffer(4))
-    tmp.setInt32(0, Math.round(value), true)
-    encodedValue = tmp.getFloat32(0, true)
+  // PARAM_VALUE frames are cached and reported under the canonical name, so
+  // the type lookup and the echo match use it (a caller may pass either the
+  // canonical name or the vehicle's own).
+  const canonicalName = ctx.firmwareHandler?.reverseMapParameterName(firmwareName) ?? firmwareName
+  const bytewise = usesBytewiseParamValues(ctx.firmwareHandler?.firmwareType)
+  const cached = ctx.paramCache.get(canonicalName)
+  if (bytewise && !cached) {
+    return {
+      success: false,
+      resultCode: -1,
+      message: `Parameter ${name} has not been read from the vehicle, so its type is unknown; refresh parameters and retry`,
+    }
   }
+  const type = cached?.type ?? MAV_PARAM_TYPE_REAL32
+  // Expire the cached value so no read serves the pre-write value, but keep
+  // the entry: its type is what a retry or a later write encodes with.
+  if (cached) ctx.paramCache.set(canonicalName, { ...cached, timestamp: 0 })
 
   return new Promise<CommandResult>((resolve) => {
     let attempt = 0
@@ -282,10 +298,10 @@ export async function setParameter(ctx: ParamContext, name: string, value: numbe
     // one leaked subscriber per failed write, and a bulk panel save on a lossy
     // link leaks one per parameter.
     const unsub = ctx.onParameter((param) => {
-      if (param.name !== firmwareName) return
+      if (param.name !== canonicalName) return
       clearTimeout(timer)
       unsub()
-      ctx.paramCache.set(name, { value: param.value, timestamp: Date.now(), type: param.type, index: param.index, count: param.count })
+      ctx.paramCache.set(canonicalName, { value: param.value, timestamp: Date.now(), type: param.type, index: param.index, count: param.count })
       resolve({
         success: Math.abs(param.value - value) < 0.001,
         resultCode: 0,
@@ -296,7 +312,7 @@ export async function setParameter(ctx: ParamContext, name: string, value: numbe
     const attemptWrite = () => {
       attempt += 1
       try {
-        ctx.transport!.send(encodeParamSet(ctx.targetSysId, ctx.targetCompId, firmwareName, encodedValue, type, ctx.sysId, ctx.compId))
+        ctx.transport!.send(encodeParamSet(ctx.targetSysId, ctx.targetCompId, firmwareName, value, type, ctx.sysId, ctx.compId, bytewise))
       } catch (err) {
         unsub()
         resolve({

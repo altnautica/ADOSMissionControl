@@ -1,7 +1,8 @@
 /**
  * @module geozone-store
  * @description Zustand store for iNav geozone state.
- * Manages up to 15 geozones with polygon and circular shapes, each with vertices.
+ * Manages up to 15 geozones. A polygon zone has one vertex per corner; a
+ * circular zone has a single centre vertex that carries the radius.
  * @license GPL-3.0-only
  */
 
@@ -19,6 +20,8 @@ export const GEOZONE_VERTEX_MAX = 10
 export const GEOZONE_TYPE = { EXCLUSIVE: 0, INCLUSIVE: 1 } as const
 /** Zone shape values. */
 export const GEOZONE_SHAPE = { CIRCULAR: 0, POLYGON: 1 } as const
+/** Vertex slots a circular zone occupies on the FC: its centre and its radius. */
+const CIRCLE_VERTEX_SLOTS = 2
 
 interface GeozoneStoreState {
   zones: INavGeozone[]
@@ -36,6 +39,8 @@ interface GeozoneStoreState {
 
   // Vertex CRUD
   addVertex: (geozoneId: number, vertex: Omit<INavGeozoneVertex, 'geozoneId' | 'vertexIdx'>) => void
+  /** Set a circular zone's centre (degrees) and radius (cm). */
+  setCircle: (geozoneId: number, lat: number, lon: number, radiusCm: number) => void
   removeVertex: (geozoneId: number, vertexIdx: number) => void
   updateVertex: (geozoneId: number, vertexIdx: number, lat: number, lon: number) => void
   replaceVertices: (geozoneId: number, newVertices: INavGeozoneVertex[]) => void
@@ -74,7 +79,6 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
       fenceAction: 1, // AVOID
       vertexCount: 0,
       isSeaLevelRef: false,
-      enabled: true,
       ...partial,
       number: id, // always use generated id, ignore any number in partial
     }
@@ -93,9 +97,20 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
   },
 
   updateZone(id, partial) {
+    const current = get().zones.find((z) => z.number === id)
+    if (!current) return
+    // Polygon corners and a circle centre are not interchangeable: a shape
+    // change starts the zone's geometry over.
+    const shapeChanged = partial.shape !== undefined && partial.shape !== current.shape
     const zones = get().zones.map((z) =>
-      z.number === id ? { ...z, ...partial } : z,
+      z.number === id ? { ...z, ...partial, ...(shapeChanged ? { vertexCount: 0 } : {}) } : z,
     )
+    if (shapeChanged) {
+      const vertices = new Map(get().vertices)
+      vertices.delete(id)
+      set({ zones, vertices, dirty: true })
+      return
+    }
     set({ zones, dirty: true })
   },
 
@@ -121,6 +136,15 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
     // Sync vertexCount on the zone
     const zones = get().zones.map((z) =>
       z.number === geozoneId ? { ...z, vertexCount: updated.length } : z,
+    )
+    set({ vertices, zones, dirty: true })
+  },
+
+  setCircle(geozoneId, lat, lon, radiusCm) {
+    const vertices = new Map(get().vertices)
+    vertices.set(geozoneId, [{ geozoneId, vertexIdx: 0, lat, lon, radius: radiusCm }])
+    const zones = get().zones.map((z) =>
+      z.number === geozoneId ? { ...z, vertexCount: CIRCLE_VERTEX_SLOTS } : z,
     )
     set({ vertices, zones, dirty: true })
   },
@@ -194,21 +218,25 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
     }
     const { zones, vertices: vertexMap } = get()
 
-    // Validate polygon zones: each must have at least 3 vertices
-    const invalidIndices: number[] = []
+    // Polygon zones need at least 3 corners; circular zones need a centre and a radius.
+    const invalidPolygons: number[] = []
+    const invalidCircles: number[] = []
     for (const zone of zones) {
-      if (zone.shape === GEOZONE_SHAPE.POLYGON) {
-        const verts = vertexMap.get(zone.number) ?? []
-        if (verts.length < 3) {
-          invalidIndices.push(zone.number)
-        }
+      const verts = vertexMap.get(zone.number) ?? []
+      if (zone.shape === GEOZONE_SHAPE.POLYGON && verts.length < 3) {
+        invalidPolygons.push(zone.number)
+      } else if (zone.shape === GEOZONE_SHAPE.CIRCULAR && !((verts[0]?.radius ?? 0) > 0)) {
+        invalidCircles.push(zone.number)
       }
     }
-    if (invalidIndices.length > 0) {
-      set({ error: `Polygon zones ${invalidIndices.join(', ')} need at least 3 vertices before upload` })
+    if (invalidPolygons.length > 0) {
+      set({ error: `Polygon zones ${invalidPolygons.join(', ')} need at least 3 vertices before upload` })
       return
     }
-
+    if (invalidCircles.length > 0) {
+      set({ error: `Circular zones ${invalidCircles.join(', ')} need a centre and a radius before upload` })
+      return
+    }
     set({ loading: true, error: null })
     try {
       const allVertices: INavGeozoneVertex[] = []

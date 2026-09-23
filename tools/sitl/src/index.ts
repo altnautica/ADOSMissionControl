@@ -4,6 +4,7 @@
 import { SitlLauncher, type SitlConfig } from './launcher/sitl.js';
 import { GazeboSitlLauncher } from './launcher/gazebo-sitl.js';
 import { TcpWsBridge } from './bridge/tcp-ws.js';
+import { bridgeUrl, createBridgeToken } from './bridge/ws-guard.js';
 import {
   Dashboard,
   parseHeartbeat,
@@ -20,6 +21,8 @@ import { getScenario, listScenarios } from './presets/scenarios.js';
 interface CliArgs {
   drones: number;
   wsPort: number;
+  wsHost: string;
+  allowedOrigins: string[];
   lat: number;
   lon: number;
   speedup: number;
@@ -40,6 +43,9 @@ function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     drones: 1,
     wsPort: 5760,
+    // IPv6 loopback: see BridgeConfig.wsHost for why not 127.0.0.1.
+    wsHost: '::1',
+    allowedOrigins: [],
     lat: 12.9716,
     lon: 77.5946,
     speedup: 1,
@@ -63,6 +69,14 @@ function parseArgs(argv: string[]): CliArgs {
         break;
       case '--ws-port':
         args.wsPort = parseInt(next, 10);
+        i++;
+        break;
+      case '--ws-host':
+        args.wsHost = next;
+        i++;
+        break;
+      case '--allow-origin':
+        args.allowedOrigins.push(next);
         i++;
         break;
       case '--lat':
@@ -143,6 +157,9 @@ Usage:
 Options:
   --drones <N>        Number of ArduCopter instances (default: 1)
   --ws-port <port>    WebSocket port for GCS connection (default: 5760)
+  --ws-host <addr>    WebSocket bind address (default: ::1, this machine only)
+  --allow-origin <o>  Also accept a GCS page served from this exact origin
+                      (repeatable); localhost pages are always accepted
   --lat <degrees>     Home latitude (default: 12.9716)
   --lon <degrees>     Home longitude (default: 77.5946)
   --speedup <N>       Simulation speed multiplier (default: 1)
@@ -155,6 +172,9 @@ Options:
   --list-scenarios    List all available test scenarios and exit
   --no-dashboard      Disable terminal dashboard (log to stdout instead)
   -h, --help          Show this help
+
+Every run prints a random token. The GCS must connect with the printed
+ws://[::1]:<port>/?token=<token> URL; other connections are refused.
 
 Examples:
   npx tsx src/index.ts                                # Single drone, default origin
@@ -278,11 +298,14 @@ async function main(): Promise<void> {
     }
   }
 
+  // Every WebSocket client must present this per-run token as ?token=.
+  const token = createBridgeToken();
+
   // --- Dashboard (optional) -----------------------------------------------
   const dashboard = cli.noDashboard
     ? null
     : new Dashboard({
-        wsPort: cli.wsPort,
+        wsUrl: bridgeUrl(cli.wsHost, cli.wsPort, token),
         vehicle: cli.vehicle,
         speedup: cli.speedup,
         presetName,
@@ -358,6 +381,9 @@ async function main(): Promise<void> {
   // --- TCP→WS Bridge ------------------------------------------------------
   const bridge = new TcpWsBridge({
     wsPort: cli.wsPort,
+    wsHost: cli.wsHost,
+    token,
+    allowedOrigins: cli.allowedOrigins,
     tcpInstances: instances.map((inst) => ({
       host: '127.0.0.1',
       port: inst.tcpPort,
@@ -418,7 +444,7 @@ async function main(): Promise<void> {
   log('');
   log('MAVLink connections:');
   for (const inst of instances) {
-    log(`  Drone #${inst.sysId}:  ws://localhost:${inst.tcpPort}`);
+    log(`  Drone #${inst.sysId}:  ${bridgeUrl(cli.wsHost, inst.tcpPort, token)}`);
   }
   if (cli.withGazebo) {
     log('');

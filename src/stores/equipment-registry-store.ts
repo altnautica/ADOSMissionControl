@@ -13,12 +13,12 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { EquipmentItem, EquipmentType } from "@/lib/types/operator";
+import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_KEY = "altcmd:equipment-registry";
 
 interface State {
   items: Record<string, EquipmentItem>;
-  _loadedFromIdb: boolean;
 }
 
 interface Actions {
@@ -43,7 +43,9 @@ interface Actions {
   markInspected: (id: string, isoDate?: string) => void;
   /** Mark retired with the given ISO date (defaults to today). */
   retire: (id: string, isoDate?: string) => void;
-  loadFromIDB: () => Promise<void>;
+  /** Async: read the persisted items once and merge them into memory. Idempotent. */
+  ensureLoaded: () => Promise<void>;
+  /** Async: write current items to IndexedDB, after the load completes. */
   persistToIDB: () => Promise<void>;
 }
 
@@ -54,7 +56,6 @@ function compareItems(a: EquipmentItem, b: EquipmentItem): number {
 
 export const useEquipmentRegistryStore = create<State & Actions>((set, getState) => ({
   items: {},
-  _loadedFromIdb: false,
 
   upsert: (item) => {
     set((s) => ({ items: { ...s.items, [item.id]: item } }));
@@ -139,26 +140,14 @@ export const useEquipmentRegistryStore = create<State & Actions>((set, getState)
     void getState().persistToIDB();
   },
 
-  loadFromIDB: async () => {
-    if (getState()._loadedFromIdb) return;
-    try {
-      const stored = (await idbGet(IDB_KEY)) as Record<string, EquipmentItem> | undefined;
-      if (stored && typeof stored === "object") {
-        set({ items: stored, _loadedFromIdb: true });
-      } else {
-        set({ _loadedFromIdb: true });
-      }
-    } catch (err) {
-      console.warn("[equipment-registry-store] loadFromIDB failed", err);
-      set({ _loadedFromIdb: true });
-    }
-  },
+  ensureLoaded: () => idb.ensureLoaded(),
 
-  persistToIDB: async () => {
-    try {
-      await idbSet(IDB_KEY, getState().items);
-    } catch (err) {
-      console.warn("[equipment-registry-store] persistToIDB failed", err);
-    }
-  },
+  persistToIDB: () => idb.persist(() => idbSet(IDB_KEY, getState().items)),
 }));
+
+const idb = createIdbStoreLoader("equipment-registry-store", async () => {
+  const stored = (await idbGet(IDB_KEY)) as Record<string, EquipmentItem> | undefined;
+  if (stored && typeof stored === "object") {
+    useEquipmentRegistryStore.setState((s) => ({ items: { ...s.items, ...stored } }));
+  }
+});

@@ -159,6 +159,7 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
         if (plan) applyPlanToWorkspace(plan);
         onPlanLoaded?.({ name, droneId: result.metadata?.droneId });
         toast(t("importedPlan", { name, count: result.waypoints.length }), "success");
+        for (const warning of result.warnings ?? []) toast(warning, "warning");
       } catch {
         toast(t("importFailed"), "error");
       }

@@ -16,6 +16,7 @@ interface MockState {
   stalePairing: unknown;
   connected: boolean;
   cloudMode: boolean;
+  mavlinkPairRequired: boolean;
 }
 
 let mockState: MockState;
@@ -27,7 +28,12 @@ vi.mock("@/stores/agent-connection-store", () => ({
 import { FcDisconnectedPlaceholder } from "@/components/fc/shared/FcDisconnectedPlaceholder";
 
 beforeEach(() => {
-  mockState = { stalePairing: null, connected: false, cloudMode: false };
+  mockState = {
+    stalePairing: null,
+    connected: false,
+    cloudMode: false,
+    mavlinkPairRequired: false,
+  };
 });
 
 describe("FcDisconnectedPlaceholder", () => {
@@ -63,5 +69,16 @@ describe("FcDisconnectedPlaceholder", () => {
     expect(
       screen.getByRole("button", { name: /connect flight controller/i }),
     ).toBeTruthy();
+  });
+
+  it("reachable but unpaired agent → pair this node, not a link failure", () => {
+    mockState.connected = true;
+    mockState.mavlinkPairRequired = true;
+    renderWithIntl(<FcDisconnectedPlaceholder droneName="Rig" />);
+    expect(screen.getByText(/pair this node to open its flight link/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^pair this node$/i })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /connect flight controller/i }),
+    ).toBeNull();
   });
 });

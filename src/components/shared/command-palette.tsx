@@ -11,7 +11,9 @@ import { useUiStore } from "@/stores/ui-store";
 import { useToast } from "@/components/ui/toast";
 import { getRegisteredCommands } from "@/lib/command-palette-registry";
 import { cn } from "@/lib/utils";
-import { activeFleetDrones, describeFleetOutcome, returnFleetToLaunch } from "@/lib/fleet-commands";
+import { activate, buildSkillContext } from "@/lib/skills";
+import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
+import { RthAllConfirmDialog } from "./rth-all-confirm-dialog";
 
 
 interface CommandAction {
@@ -31,6 +33,10 @@ export function CommandPalette() {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+  const [rthConfirmOpen, setRthConfirmOpen] = useState(false);
+  // Arm goes through the skill dispatcher, which reports its refusals (already
+  // armed, no link, the FC's own pre-arm answer) through this bridge.
+  useSkillToastBridge();
 
   // `/analytics` and `/wizard` had entries here and neither route exists under
   // `src/app`, so two localised palette items navigated straight to a 404 from
@@ -46,32 +52,20 @@ export function CommandPalette() {
       action: () => useConnectDialogStore.getState().openDialog(),
     },
     {
+      // Recalling every drone is one keypress from the palette, so it asks
+      // with the same dialog the dashboard's RTH All button uses.
       id: "cmd-rth", label: t("returnToHomeAll"), category: t("commands"), icon: <Home size={14} />,
-      action: () => {
-        if (activeFleetDrones().length === 0) { toast("No active drones to recall"); return; }
-        void (async () => {
-          const outcome = await returnFleetToLaunch();
-          const { message, variant } = describeFleetOutcome(outcome, "RTH");
-          toast(message, variant);
-        })();
-      },
+      action: () => setRthConfirmOpen(true),
     },
     {
+      // The arm skill owns the typed ARM confirmation, the pre-flight
+      // checklist gate and the already-armed / no-link refusals; calling the
+      // protocol from here skipped all of them.
       id: "cmd-arm", label: t("armVehicle"), category: t("commands"), icon: <Zap size={14} />,
       action: () => {
-        const protocol = useDroneManager.getState().getSelectedProtocol();
-        if (!protocol) { toast("No drone selected", "error"); return; }
-        void (async () => {
-          try {
-            // Arm state has exactly one writer — the HEARTBEAT handler in
-            // drone-manager-bridge. Never write it here: a fabricated "armed"
-            // hard-blocks every FC panel on a vehicle that never armed.
-            const result = await protocol.arm();
-            toast(result.success ? "Arm acknowledged by vehicle" : `Arm failed: ${result.message}`, result.success ? "success" : "error");
-          } catch (err) {
-            toast(`Arm failed: ${err instanceof Error ? err.message : String(err)}`, "error");
-          }
-        })();
+        const droneId = useDroneManager.getState().selectedDroneId;
+        if (!droneId) { toast("No drone selected", "error"); return; }
+        void activate("arm", buildSkillContext(droneId));
       },
     },
     {
@@ -164,11 +158,17 @@ export function CommandPalette() {
     setSelectedIndex(0);
   }, [query]);
 
-  if (!open) return null;
+  const rthConfirm = (
+    <RthAllConfirmDialog open={rthConfirmOpen} onClose={() => setRthConfirmOpen(false)} />
+  );
+
+  if (!open) return rthConfirm;
 
   const categories = [...new Set(filtered.map((a) => a.category))];
 
   return (
+    <>
+    {rthConfirm}
     <div
       className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh] bg-black/60"
       onClick={() => setOpen(false)}
@@ -239,5 +239,6 @@ export function CommandPalette() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -370,6 +370,10 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "RC16_DZ", value: 0, type: 9 },
 
   // ── RC Per-Channel Aux Option ──────────────────────────────
+  { name: "RC1_OPTION", value: 0, type: 9 },
+  { name: "RC2_OPTION", value: 0, type: 9 },
+  { name: "RC3_OPTION", value: 0, type: 9 },
+  { name: "RC4_OPTION", value: 0, type: 9 },
   { name: "RC5_OPTION", value: 0, type: 9 },
   { name: "RC6_OPTION", value: 7, type: 9 },   // Save WP
   { name: "RC7_OPTION", value: 4, type: 9 },   // RTL
@@ -484,23 +488,19 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "BATT_LOW_VOLT", value: 10.5, type: 9 },
   { name: "BATT_CRT_VOLT", value: 9.6, type: 9 },
 
-  // ── Failsafes ────────────────────────────────────────
-  { name: "FS_SHORT_ACTN", value: 1, type: 9 },
-  { name: "FS_SHORT_TIMEOUT", value: 1.5, type: 9 },
-  { name: "FS_LONG_ACTN", value: 1, type: 9 },
-  { name: "FS_LONG_TIMEOUT", value: 5.0, type: 9 },
-  { name: "FS_GCS_ENABL", value: 1, type: 9 },
+  // ── Failsafes (ArduCopter) ───────────────────────────
   { name: "BATT_FS_VOLTSRC", value: 0, type: 9 },
   { name: "BATT_FS_LOW_VOLT", value: 10.5, type: 9 },
-  { name: "BATT_FS_LOW_ACT", value: 2, type: 9 },
-  { name: "THR_FAILSAFE", value: 1, type: 9 },
-  { name: "THR_FS_VALUE", value: 950, type: 9 },
+  { name: "BATT_FS_LOW_ACT", value: 2, type: 9 },   // RTL
+  { name: "BATT_FS_CRT_VOLT", value: 9.9, type: 9 },
+  { name: "BATT_FS_CRT_ACT", value: 1, type: 9 },   // Land
   { name: "FS_BATT_ENABLE", value: 1, type: 9 },
   { name: "FS_BATT_VOLTAGE", value: 10.5, type: 9 },
   { name: "FS_BATT_MAH", value: 0, type: 9 },
   { name: "FS_THR_ENABLE", value: 1, type: 9 },
   { name: "FS_THR_VALUE", value: 975, type: 9 },
   { name: "FS_GCS_ENABLE", value: 1, type: 9 },
+  { name: "FS_GCS_TIMEOUT", value: 5, type: 9 },
   { name: "FS_EKF_ACTION", value: 1, type: 9 },
   { name: "FS_EKF_THRESH", value: 0.8, type: 9 },
   { name: "FS_CRASH_CHECK", value: 1, type: 9 },
@@ -938,11 +938,32 @@ export const HELI_MOCK_PARAMS: MockParam[] = [
   { name: "AROT_BAIL_TIME", value: 2, type: 9 },
 ];
 
+// ArduPlane: the shared base set with the ArduCopter-only failsafe params
+// swapped for Plane's own short/long/GCS/throttle failsafe params and Plane's
+// battery-action enum (1 = RTL, 2 = Land). Used by the `ardupilot-plane` mock
+// variant and as the base of every QuadPlane variant.
+const COPTER_ONLY_FAILSAFE: Record<string, true> = {
+  FS_THR_ENABLE: true, FS_THR_VALUE: true, FS_GCS_ENABLE: true, FS_GCS_TIMEOUT: true,
+  FS_EKF_ACTION: true, FS_CRASH_CHECK: true, FS_OPTIONS: true,
+};
+
+export const ARDUPLANE_MOCK_PARAMS: MockParam[] = [
+  ...MOCK_PARAMS.filter((p) => !COPTER_ONLY_FAILSAFE[p.name]),
+  { name: "FS_SHORT_ACTN", value: 0, type: 9 },   // CIRCLE / no change
+  { name: "FS_LONG_ACTN", value: 1, type: 9 },    // ReturnToLaunch
+  { name: "FS_LONG_TIMEOUT", value: 5, type: 9 },
+  { name: "FS_GCS_ENABL", value: 1, type: 9 },    // Heartbeat
+  { name: "THR_FAILSAFE", value: 1, type: 9 },    // Enabled
+  { name: "THR_FS_VALUE", value: 950, type: 9 },
+  { name: "BATT_FS_LOW_ACT", value: 1, type: 9 }, // RTL
+  { name: "BATT_FS_CRT_ACT", value: 2, type: 9 }, // Land
+];
+
 // QuadPlane VTOL: the ArduPlane base set plus the Q_* quadplane lift group.
 // Q_ENABLE=1 with a quad lift geometry makes the VTOL + Frame panels render
 // populated. Used by the `ardupilot-plane-vtol` mock variant.
 export const QUADPLANE_MOCK_PARAMS: MockParam[] = [
-  ...MOCK_PARAMS,
+  ...ARDUPLANE_MOCK_PARAMS,
   { name: "Q_ENABLE", value: 1, type: 9 },
   { name: "Q_FRAME_CLASS", value: 1, type: 9 },   // 1 = Quad
   { name: "Q_FRAME_TYPE", value: 1, type: 9 },     // 1 = X

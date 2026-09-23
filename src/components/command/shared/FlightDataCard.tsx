@@ -154,15 +154,18 @@ export function FlightDataCard({ className }: FlightDataCardProps) {
   const { hz, stale: hbStale } = useHeartbeatRate();
   const fcConnected = connectionState !== "disconnected";
   const armed = armState === "armed";
-  const prearmBlocked = !armed && prearmLines.length > 0;
-  const armLevel: StatusLevel = !fcConnected
+  // No heartbeat backs an arm state yet (or the link was lost): show no
+  // reading rather than a disarmed claim.
+  const armKnown = fcConnected && armState !== "unknown";
+  const prearmBlocked = armState === "disarmed" && prearmLines.length > 0;
+  const armLevel: StatusLevel = !armKnown
     ? "offline"
     : armed
       ? "good"
       : prearmBlocked
         ? "warning"
         : "idle";
-  const armLabel = !fcConnected
+  const armLabel = !armKnown
     ? "—"
     : armed
       ? t("arm.armed")

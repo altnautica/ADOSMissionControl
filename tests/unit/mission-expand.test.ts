@@ -1,14 +1,18 @@
 import { describe, it, expect } from "vitest";
-import {
-  expandToItems,
-  collapseFromItems,
-  flattenForSerialization,
-  foldLegacyWaypoints,
-} from "@/lib/mission/mission-expand";
+import { expandToItems, collapseFromItems } from "@/lib/mission/mission-expand";
+import { flattenForSerialization, foldLegacyWaypoints } from "@/lib/mission/flat-rows";
 import { cmdMap, frameToMav } from "@/lib/mission-io-formats";
 import { encodeMissionItemInt } from "@/lib/protocol/encoders/mission";
 import type { MissionItem } from "@/lib/protocol/types/mission";
-import type { AltitudeFrame, Waypoint } from "@/lib/types/mission";
+import type {
+  AltitudeFrame, CommandMissionAction, MissionAction, Waypoint,
+} from "@/lib/types/mission";
+
+/** A modelled action (never a raw passthrough), for reading its typed fields. */
+function known(a: MissionAction | undefined): CommandMissionAction | undefined {
+  if (a?.command === "RAW") throw new Error("unexpected raw passthrough action");
+  return a;
+}
 
 const OPTS = { defaultFrame: "relative" as AltitudeFrame };
 
@@ -33,7 +37,7 @@ function normWaypoints(wps: readonly Waypoint[]) {
     p1: z(w.param1),
     p2: z(w.param2),
     p3: z(w.param3),
-    actions: (w.actions ?? []).map((a) => ({
+    actions: (w.actions ?? []).map((raw) => known(raw)!).map((a) => ({
       command: a.command,
       p1: z(a.param1),
       p2: z(a.param2),
@@ -158,7 +162,7 @@ describe("expand / collapse round-trips", () => {
     const x = goldenWaypoints();
     const collapsed = collapseFromItems(expandToItems(x, OPTS));
     const jumpWp = collapsed[3];
-    const jumpAction = jumpWp.actions?.[0];
+    const jumpAction = known(jumpWp.actions?.[0]);
     expect(jumpAction?.command).toBe("DO_JUMP");
     // The resolved target id is the collapsed waypoint that sits at index 1.
     expect(jumpAction?.jumpTargetId).toBe(collapsed[1].id);
@@ -194,7 +198,7 @@ describe("DO_JUMP — collapse clamps a target inside an action block to the own
     ];
     const wps = collapseFromItems(items);
     // seq 1 is owned by the NAV at seq 0 → first collapsed waypoint.
-    const jumpAction = wps[1].actions?.[0];
+    const jumpAction = known(wps[1].actions?.[0]);
     expect(jumpAction?.command).toBe("DO_JUMP");
     expect(jumpAction?.jumpTargetId).toBe(wps[0].id);
   });
@@ -270,7 +274,7 @@ describe("positional actions carry lat/lon/alt", () => {
     expect(roi.y).toBe(Math.round(21.5 * 1e7));
     expect(roi.z).toBe(5);
     const back = collapseFromItems(items);
-    const roiAct = back[0].actions?.[0];
+    const roiAct = known(back[0].actions?.[0]);
     expect(roiAct?.command).toBe("ROI");
     expect(roiAct?.lat).toBeCloseTo(11.5, 6);
     expect(roiAct?.lon).toBeCloseTo(21.5, 6);

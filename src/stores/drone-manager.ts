@@ -65,7 +65,8 @@ export interface ManagedDrone {
    * and removes it on disconnect. An FC attached through an already-paired
    * agent does NOT own the row — the presence bridge (Local/Cloud) owns it —
    * so detaching the FC leaves the card in place, reverting to "flight
-   * controller not connected" instead of vanishing.
+   * controller not connected" instead of vanishing. Either way the session
+   * attaches its FC to the registry row on add and detaches it on remove.
    */
   ownsFleetRow: boolean;
   /** Why the drone was disconnected. `null` while connected. */
@@ -131,25 +132,35 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
 
   addDrone: (id, name, protocol, transport, vehicleInfo, connectionMeta, options) => {
     // Idempotency guard: a re-add under an existing id replaces the prior
-    // entry rather than stacking a second managed drone. removeDrone honors
-    // ownsFleetRow (so a presence-bridge card survives) and self-guards
-    // against re-entry, so this never double-tears-down.
+    // entry rather than stacking a second managed drone. removeDrone detaches
+    // the FC (a presence-anchored card survives, and is re-attached below) and
+    // self-guards against re-entry, so this never double-tears-down.
     if (get().drones.get(id)) {
       get().removeDrone(id);
     }
 
     const ownsFleetRow = options?.ownsFleetRow ?? true;
 
-    // A drone we own the fleet row for (a direct USB/serial/BLE FC, with no
-    // companion-agent presence bridge to register it) attaches itself to the
-    // node registry here so it projects into the dashboard fleet list. Attach
-    // BEFORE bridgeTelemetry so the row exists when the first telemetry mirror
-    // (updateFcTelemetry, which no-ops on a missing row) lands. An agent-attached
-    // FC (ownsFleetRow=false) is registered by AgentMavlinkBridge against its
-    // presence row instead; removeDrone detaches the owned row symmetrically.
-    if (ownsFleetRow) {
-      useNodeRegistryStore.getState().attachFc(id, id);
-    }
+    // Every managed session is keyed by its node id, so the drone manager is
+    // the one place that attaches the FC to the node registry and binds the
+    // connection; no bridge has to remember to. A session that owns its row
+    // (a direct USB/serial/BLE FC) creates the row here; a session behind a
+    // paired or relayed agent attaches onto the presence row. Attach BEFORE
+    // bridgeTelemetry so the row exists when the first telemetry mirror
+    // (updateFcTelemetry, which no-ops on a missing row) lands.
+    const registry = useNodeRegistryStore.getState();
+    registry.attachFc(id, id);
+    const metaType = connectionMeta?.type;
+    registry.updateConnection(id, {
+      ...(metaType === "websocket" || metaType === "mqtt-mavlink"
+        ? { transport: metaType, mavlinkUrl: connectionMeta?.url }
+        : {}),
+      fcConnected: true,
+      // Recorded from the transport rather than assumed from the fact that a
+      // connection was established: on the relay the FC can be attached and
+      // talking while the send lane is refused.
+      canCommand: transport.canCommand,
+    });
 
     const unsubscribers = bridgeTelemetry(id, name, protocol);
 
@@ -190,11 +201,9 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     useDiagnosticsStore.getState().logConnection("connect", name + " connected");
 
     // The node registry is the single fleet-identity write target;
-    // FleetProjectionBridge projects it into the fleet store. A drone we own the
-    // row for was attached to the registry above (attachFc); an agent-attached
-    // FC is attached by AgentMavlinkBridge against its presence row instead. No
-    // bare fleet-store row is written here — that was the source of the FC
-    // bare-row race that locked the agent tabs.
+    // FleetProjectionBridge projects it into the fleet store. The FC was
+    // attached to the registry above; no bare fleet-store row is written here —
+    // that was the source of the FC bare-row race that locked the agent tabs.
 
     // Background bulk param download — seeds paramCache for instant panel reads
     protocol.getAllParameters().catch(() => {});
@@ -214,7 +223,6 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
 
   removeDrone: (id) => {
     const drone = get().drones.get(id);
-    const ownsFleetRow = drone ? drone.ownsFleetRow : true;
     if (drone) {
       useDiagnosticsStore.getState().logConnection("disconnect", drone.name + " disconnected");
       // Disconnect the transport BEFORE tearing down the close-handler
@@ -237,16 +245,14 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       stopRecordingFor(id).catch(() => {});
     }
 
-    // Detach the FC from the node registry for a drone we own the row for (a
-    // direct USB/serial/BLE FC). With no presence anchor the registry GCs the
-    // row and the projected fleet card disappears. An agent-attached FC
-    // (ownsFleetRow=false) leaves its presence row in place so it reverts to
-    // "flight controller not connected" — AgentMavlinkBridge detaches that FC
-    // on the agent's FC-disconnect transition. detachFc is idempotent (guards a
-    // missing row), so it is safe if the registry row is already gone.
-    if (ownsFleetRow) {
-      useNodeRegistryStore.getState().detachFc(id);
-    }
+    // Detach the FC from the node registry for every session. A row with no
+    // presence anchor (a direct USB/serial/BLE FC) is then GC'd and its fleet
+    // card disappears; a presence-anchored row stays and reverts to "flight
+    // controller not connected". detachFc and updateConnection guard a missing
+    // row, so this is safe if the registry row is already gone.
+    const registry = useNodeRegistryStore.getState();
+    registry.updateConnection(id, { fcConnected: false });
+    registry.detachFc(id);
 
     // The singleton telemetry ring only ever holds the SELECTED drone's
     // history (the bridge gates pushes on selection), so only wipe it when
@@ -424,12 +430,16 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
 
   clear: () => {
     const { drones } = get();
+    const registry = useNodeRegistryStore.getState();
     drones.forEach((drone) => {
       drone._disconnectReason = "intentional";
       drone.unsubscribers.forEach((unsub) => unsub());
       if (drone.protocol.isConnected) {
         drone.protocol.disconnect();
       }
+      // Same registry contract as removeDrone: no session, no attached FC.
+      registry.updateConnection(drone.id, { fcConnected: false });
+      registry.detachFc(drone.id);
     });
     set({ drones: new Map(), selectedDroneId: null });
     useDroneStore.getState().setConnectionState("disconnected");

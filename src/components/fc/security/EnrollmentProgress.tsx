@@ -11,8 +11,6 @@
  * copy at 3s, 10s, and 30s boundaries so operators understand the
  * enrollment is still in progress and when to give up.
  *
- * Addresses audit finding M5.
- *
  * @license GPL-3.0-only
  */
 

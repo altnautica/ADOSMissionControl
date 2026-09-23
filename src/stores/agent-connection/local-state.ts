@@ -27,6 +27,7 @@ export const localStateSlice: AgentConnectionSliceCreator<LocalStateSlice> = (
   mavlinkUrl: null,
   nodeDeviceId: null,
   stalePairing: null,
+  mavlinkPairRequired: false,
   controlRttMs: null,
   relay: false,
 
@@ -36,6 +37,10 @@ export const localStateSlice: AgentConnectionSliceCreator<LocalStateSlice> = (
 
   setMavlinkUrl(url) {
     set({ mavlinkUrl: url });
+  },
+
+  setMavlinkPairRequired(required) {
+    if (get().mavlinkPairRequired !== required) set({ mavlinkPairRequired: required });
   },
 
   setControlRttMs(rttMs) {

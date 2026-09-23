@@ -10,7 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -60,11 +60,6 @@ export function EquipmentRegistryEditor() {
   const remove = useEquipmentRegistryStore((s) => s.remove);
   const retire = useEquipmentRegistryStore((s) => s.retire);
   const markInspected = useEquipmentRegistryStore((s) => s.markInspected);
-  const loadFromIDB = useEquipmentRegistryStore((s) => s.loadFromIDB);
-
-  useEffect(() => {
-    void loadFromIDB();
-  }, [loadFromIDB]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showRetired, setShowRetired] = useState(false);

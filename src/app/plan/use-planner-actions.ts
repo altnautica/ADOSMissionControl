@@ -19,7 +19,7 @@ import { useRallyStore } from "@/stores/rally-store";
 import { recordHistory } from "@/lib/planner-history";
 import { clampLat, clampLon, clampAlt } from "./use-planner-state";
 import type { ContextMenuState } from "./use-planner-state";
-import type { MissionAction, Waypoint } from "@/lib/types";
+import type { ActionCommand, CommandMissionAction, Waypoint } from "@/lib/types";
 import { isActionCommand } from "@/lib/mission/command-classes";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
 import type { DrawingFor } from "@/lib/planner-mode";
@@ -458,9 +458,9 @@ export function usePlannerActions(deps: ActionsDeps) {
       const command = (pw.command ?? "WAYPOINT") as Waypoint["command"];
       if (isActionCommand(command) && newWaypoints.length > 0) {
         const parent = newWaypoints[newWaypoints.length - 1];
-        const action: MissionAction = {
+        const action: CommandMissionAction = {
           id: randomId(),
-          command: command as MissionAction["command"],
+          command: command as ActionCommand,
           param1: pw.param1,
           param2: pw.param2,
           // Position-bearing actions (ROI, DO_SET_HOME) keep their coordinates;

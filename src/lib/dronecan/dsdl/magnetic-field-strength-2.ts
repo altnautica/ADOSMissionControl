@@ -3,7 +3,7 @@
  * @description Codec for `uavcan.equipment.ahrs.MagneticFieldStrength2`
  * (data type id 1002).
  *
- * Wire layout (bit stream, little-endian byte order, LSB-first):
+ * Wire layout (byte aligned; each float16 is its two little-endian bytes):
  *   uint8        sensor_id
  *   float16[3]   magnetic_field_ga
  *   float16[<=9] magnetic_field_covariance   (tail array, no length prefix)

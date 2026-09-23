@@ -106,7 +106,7 @@ async function waitForPortReappear(): Promise<SerialPort> {
 async function rollback(protocol: DroneProtocol, reason: string): Promise<never> {
   try {
     if (protocol.isConnected) {
-      await protocol.setParameter("CAN_SLCAN_CPORT", 0, 9).catch(() => {});
+      await protocol.setParameter("CAN_SLCAN_CPORT", 0).catch(() => {});
     }
   } catch {
     // Swallow — rollback is best-effort.
@@ -143,10 +143,10 @@ export async function enterSlcanMode(
 
   // 1. Program the four SLCAN params.
   try {
-    await protocol.setParameter("CAN_SLCAN_CPORT", bus, 9);
-    await protocol.setParameter("CAN_SLCAN_SERNUM", 0, 9);
-    await protocol.setParameter("CAN_SLCAN_TIMOUT", timeoutSec, 9);
-    await protocol.setParameter("CAN_SLCAN_OVRIDE", 1, 9);
+    await protocol.setParameter("CAN_SLCAN_CPORT", bus);
+    await protocol.setParameter("CAN_SLCAN_SERNUM", 0);
+    await protocol.setParameter("CAN_SLCAN_TIMOUT", timeoutSec);
+    await protocol.setParameter("CAN_SLCAN_OVRIDE", 1);
   } catch (err) {
     return rollback(
       protocol,
@@ -328,7 +328,7 @@ async function exitSlcanMode(opts: ExitOpts): Promise<void> {
     // Also clear the SLCAN port param so a subsequent reboot doesn't
     // accidentally enter SLCAN mode again.
     try {
-      await protocol.setParameter("CAN_SLCAN_CPORT", 0, 9);
+      await protocol.setParameter("CAN_SLCAN_CPORT", 0);
     } catch {
       // ignore
     }

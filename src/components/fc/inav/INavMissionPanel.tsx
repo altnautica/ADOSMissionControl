@@ -16,20 +16,26 @@ import { useMissionStore } from "@/stores/mission-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Route, ArrowRight } from "lucide-react";
-import { INAV_WP_ACTION } from "@/lib/protocol/msp/msp-decoders-inav";
 
 // ── Action label map ──────────────────────────────────────────
 
-const ACTION_LABELS: Record<number, string> = {
-  [INAV_WP_ACTION.WAYPOINT]: "Waypoint",
-  [INAV_WP_ACTION.POSHOLD_UNLIM]: "Position hold (unlimited)",
-  [INAV_WP_ACTION.POSHOLD_TIME]: "Position hold (timed)",
-  [INAV_WP_ACTION.RTH]: "Return to home",
-  [INAV_WP_ACTION.SET_POI]: "Set point of interest",
-  [INAV_WP_ACTION.JUMP]: "Jump",
-  [INAV_WP_ACTION.SET_HEAD]: "Set heading",
-  [INAV_WP_ACTION.LAND]: "Land",
+/** iNav waypoint action for each mission command that has one. */
+const ACTION_LABELS: Record<string, string> = {
+  WAYPOINT: "Waypoint",
+  TAKEOFF: "Waypoint",
+  LOITER: "Position hold (unlimited)",
+  LOITER_TIME: "Position hold (timed)",
+  RTL: "Return to home",
+  LAND: "Land",
+  ROI: "Set point of interest",
+  DO_JUMP: "Jump",
+  CONDITION_YAW: "Set heading",
 };
+
+/** Summary label: the iNav action, or a note that the command cannot upload. */
+function actionLabel(command: string): string {
+  return ACTION_LABELS[command] ?? `No iNav equivalent (${command})`;
+}
 
 // ── Component ─────────────────────────────────────────────────
 
@@ -37,56 +43,45 @@ export function INavMissionPanel() {
   const router = useRouter();
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const waypoints = useMissionStore((s) => s.waypoints);
-  const setWaypoints = useMissionStore((s) => s.setWaypoints);
+  const downloadMission = useMissionStore((s) => s.downloadMission);
   const connected = !!getSelectedProtocol();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasRead, setHasRead] = useState(false);
 
-  const summary = useMemo(() => {
-    const counts: Record<number, number> = {};
+  // Every navigation waypoint and every attached action is one iNav waypoint.
+  const { counts, itemCount } = useMemo(() => {
+    const tally: Record<string, number> = {};
+    let total = 0;
+    const add = (label: string) => {
+      tally[label] = (tally[label] ?? 0) + 1;
+      total += 1;
+    };
     for (const wp of waypoints) {
-      const action = (wp as { inavAction?: number }).inavAction ?? INAV_WP_ACTION.WAYPOINT;
-      counts[action] = (counts[action] ?? 0) + 1;
+      add(actionLabel(wp.command ?? "WAYPOINT"));
+      for (const act of wp.actions ?? []) {
+        add(actionLabel(act.command === "RAW" ? `MAV_CMD ${act.rawCommand}` : act.command));
+      }
     }
-    return counts;
+    return { counts: tally, itemCount: total };
   }, [waypoints]);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
-    if (!protocol) {
+    if (!getSelectedProtocol()) {
       setError("No drone connected");
       return;
     }
     setLoading(true);
     setError(null);
-    try {
-      const items = await protocol.downloadMission();
-      // downloadMission returns MAVLink MissionItem shape; mission-store expects Waypoint shape.
-      // Translate to Waypoint-compatible objects for display purposes only.
-      const waypointRecords = items.map((it, i) => ({
-        id: `fc-${i}`,
-        seq: i,
-        lat: it.x / 1e7,
-        lon: it.y / 1e7,
-        alt: it.z,
-        command: it.command,
-        param1: it.param1,
-        param2: it.param2,
-        param3: it.param3,
-        param4: it.param4,
-        frame: it.frame,
-        autocontinue: it.autocontinue === 1,
-      }));
-      setWaypoints(waypointRecords as unknown as Parameters<typeof setWaypoints>[0]);
+    await downloadMission();
+    if (useMissionStore.getState().downloadState === "error") {
+      setError("Mission download failed");
+    } else {
       setHasRead(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
     }
-  }, [getSelectedProtocol, setWaypoints]);
+    setLoading(false);
+  }, [getSelectedProtocol, downloadMission]);
 
   const handleOpenPlanner = useCallback(() => {
     router.push("/plan");
@@ -114,7 +109,7 @@ export function INavMissionPanel() {
         <div className="border border-border-default rounded p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-text-secondary">Total waypoints</span>
-            <span className="text-[14px] font-mono text-text-primary">{waypoints.length} / 60</span>
+            <span className="text-[14px] font-mono text-text-primary">{itemCount} / 60</span>
           </div>
 
           {waypoints.length === 0 ? (
@@ -124,11 +119,9 @@ export function INavMissionPanel() {
           ) : (
             <div className="space-y-1">
               <span className="text-[10px] text-text-tertiary font-mono">Breakdown by action</span>
-              {Object.entries(summary).map(([actionId, count]) => (
-                <div key={actionId} className="flex items-center justify-between text-[11px]">
-                  <span className="text-text-secondary">
-                    {ACTION_LABELS[parseInt(actionId)] ?? `Action ${actionId}`}
-                  </span>
+              {Object.entries(counts).map(([label, count]) => (
+                <div key={label} className="flex items-center justify-between text-[11px]">
+                  <span className="text-text-secondary">{label}</span>
                   <span className="font-mono text-text-primary">{count}</span>
                 </div>
               ))}
@@ -150,8 +143,9 @@ export function INavMissionPanel() {
         <div className="border border-border-default rounded p-4 space-y-2">
           <span className="text-[10px] text-text-tertiary font-mono">iNav waypoint actions</span>
           <p className="text-[11px] text-text-secondary">
-            iNav supports eight waypoint action types. Use the action dropdown in the Plan tab
-            to pick non-default actions (Jump, Set heading, Set POI, Poshold timed, Land).
+            iNav supports eight waypoint action types. In the Plan tab, pick Waypoint, Poshold
+            (unlimited or timed), RTH or Land as the waypoint action, and attach Set POI, Jump or
+            Set heading from the waypoint&apos;s action list.
           </p>
         </div>
       </div>

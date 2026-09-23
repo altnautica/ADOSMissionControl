@@ -4,6 +4,7 @@ import { CommandShell } from "@/components/layout/CommandShell";
 import { ToastProvider } from "@/components/ui/toast";
 import { LocaleProvider } from "@/components/layout/LocaleProvider";
 import { Analytics } from "@/components/analytics/Analytics";
+import { LocalStoreHydrator } from "@/components/history/LocalStoreHydrator";
 
 import ConvexClientProvider from "./ConvexClientProvider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
@@ -43,6 +44,7 @@ export default function RootLayout({
         <ConvexClientProvider>
           {content}
         </ConvexClientProvider>
+        <LocalStoreHydrator />
         <Analytics />
       </body>
     </html>

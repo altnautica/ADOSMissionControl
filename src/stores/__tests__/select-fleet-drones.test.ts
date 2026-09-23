@@ -11,12 +11,14 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  createFleetDronesProjector,
   selectFleetDrones,
   nodeEntryToFleetDrone,
 } from "../node-registry/select-fleet-drones";
 import type { NodeEntry } from "../node-registry/types";
 import type { CommandCloudStatus } from "../command-fleet-store";
 import { STALE_THRESHOLD_MS, OFFLINE_THRESHOLD_MS } from "@/lib/agent/freshness";
+import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 
 const NOW = 1_000_000_000_000;
 
@@ -45,8 +47,9 @@ describe("nodeEntryToFleetDrone — FC gating (no fabricated telemetry)", () => 
     expect(row.battery).toBeUndefined();
     expect(row.gps).toBeUndefined();
     expect(row.position).toBeUndefined();
-    // armState defaults to disarmed but the card hides it via fcAttached.
-    expect(row.armState).toBe("disarmed");
+    // Nothing measured an arm state, so none is claimed.
+    expect(row.armState).toBe("unknown");
+    expect(row.fcLinkLost).toBe(false);
     expect(row.status).toBe("online");
   });
 
@@ -76,6 +79,57 @@ describe("nodeEntryToFleetDrone — FC gating (no fabricated telemetry)", () => 
     expect(row.flightMode).toBe("LOITER");
     expect(row.status).toBe("in_mission");
     expect(row.battery?.remaining).toBe(73);
+  });
+});
+
+describe("nodeEntryToFleetDrone — FC link loss", () => {
+  const armedFc = {
+    managedId: "node:dev",
+    armState: "armed" as const,
+    flightMode: "AUTO",
+    status: "in_mission",
+    lastHeartbeat: NOW,
+  };
+
+  it("an adapter-reported link loss clears ARM / In-Mission to link lost", () => {
+    const row = nodeEntryToFleetDrone(
+      entry({ fc: { ...armedFc, armState: "unknown", status: "offline" } }),
+      undefined,
+      NOW,
+    );
+    expect(row.fcLinkLost).toBe(true);
+    expect(row.armState).toBe("unknown");
+    expect(row.connectionState).toBe("connected");
+    expect(row.status).toBe("online");
+  });
+
+  it("an armed FC whose heartbeat aged past the staleness window reads link lost", () => {
+    const fresh = nodeEntryToFleetDrone(
+      entry({ fc: armedFc }),
+      undefined,
+      NOW + TELEMETRY_STALE_MS - 1,
+    );
+    expect(fresh.armState).toBe("armed");
+    expect(fresh.fcLinkLost).toBe(false);
+
+    const stale = nodeEntryToFleetDrone(
+      entry({ fc: armedFc }),
+      undefined,
+      NOW + TELEMETRY_STALE_MS,
+    );
+    expect(stale.fcLinkLost).toBe(true);
+    expect(stale.armState).toBe("unknown");
+    expect(stale.status).not.toBe("in_mission");
+  });
+
+  it("the memoizing projector re-projects a row the moment its FC heartbeat goes stale", () => {
+    const project = createFleetDronesProjector();
+    const nodes = { "node:dev": entry({ fc: armedFc }) };
+    const [live] = project({ nodes, cloudStatuses: {}, now: NOW });
+    expect(live.armState).toBe("armed");
+    const [lost] = project({ nodes, cloudStatuses: {}, now: NOW + TELEMETRY_STALE_MS });
+    expect(lost.fcLinkLost).toBe(true);
+    expect(lost.armState).toBe("unknown");
   });
 });
 

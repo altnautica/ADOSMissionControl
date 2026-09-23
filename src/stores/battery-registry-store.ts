@@ -12,6 +12,7 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { BatteryPack } from "@/lib/types/operator";
+import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_KEY = "altcmd:battery-registry";
 
@@ -25,7 +26,6 @@ const HEALTH_LOSS_PER_CYCLE_PCT = 0.05;
 
 interface State {
   packs: Record<string, BatteryPack>;
-  _loadedFromIdb: boolean;
 }
 
 interface Actions {
@@ -48,13 +48,14 @@ interface Actions {
   recordCycle: (id: string) => void;
   /** Mark a pack retired with the given ISO date (defaults to today). */
   retire: (id: string, isoDate?: string) => void;
-  loadFromIDB: () => Promise<void>;
+  /** Async: read the persisted packs once and merge them into memory. Idempotent. */
+  ensureLoaded: () => Promise<void>;
+  /** Async: write current packs to IndexedDB, after the load completes. */
   persistToIDB: () => Promise<void>;
 }
 
 export const useBatteryRegistryStore = create<State & Actions>((set, getState) => ({
   packs: {},
-  _loadedFromIdb: false,
 
   upsert: (pack) => {
     set((s) => ({ packs: { ...s.packs, [pack.id]: pack } }));
@@ -116,26 +117,14 @@ export const useBatteryRegistryStore = create<State & Actions>((set, getState) =
     void getState().persistToIDB();
   },
 
-  loadFromIDB: async () => {
-    if (getState()._loadedFromIdb) return;
-    try {
-      const stored = (await idbGet(IDB_KEY)) as Record<string, BatteryPack> | undefined;
-      if (stored && typeof stored === "object") {
-        set({ packs: stored, _loadedFromIdb: true });
-      } else {
-        set({ _loadedFromIdb: true });
-      }
-    } catch (err) {
-      console.warn("[battery-registry-store] loadFromIDB failed", err);
-      set({ _loadedFromIdb: true });
-    }
-  },
+  ensureLoaded: () => idb.ensureLoaded(),
 
-  persistToIDB: async () => {
-    try {
-      await idbSet(IDB_KEY, getState().packs);
-    } catch (err) {
-      console.warn("[battery-registry-store] persistToIDB failed", err);
-    }
-  },
+  persistToIDB: () => idb.persist(() => idbSet(IDB_KEY, getState().packs)),
 }));
+
+const idb = createIdbStoreLoader("battery-registry-store", async () => {
+  const stored = (await idbGet(IDB_KEY)) as Record<string, BatteryPack> | undefined;
+  if (stored && typeof stored === "object") {
+    useBatteryRegistryStore.setState((s) => ({ packs: { ...s.packs, ...stored } }));
+  }
+});

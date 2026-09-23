@@ -76,7 +76,7 @@ describe("parseWaypointsFile", () => {
 
   it("parses a valid mission and skips the home row (seq 0)", () => {
     const text = [header, row(0, 16, "12.9", "77.5"), row(1, 16, "12.91", "77.51"), row(2, 21, "12.92", "77.52")].join("\n");
-    const wps = parseWaypointsFile(text);
+    const wps = parseWaypointsFile(text).waypoints;
     expect(wps).toHaveLength(2);
     expect(wps[0].command).toBe("WAYPOINT");
     expect(wps[1].command).toBe("LAND");
@@ -84,7 +84,7 @@ describe("parseWaypointsFile", () => {
 
   it("skips a malformed row instead of emitting a NaN waypoint", () => {
     const text = [header, row(1, 16, "not-a-number", "77.5"), row(2, 16, "12.91", "77.51")].join("\n");
-    const wps = parseWaypointsFile(text);
+    const wps = parseWaypointsFile(text).waypoints;
     expect(wps).toHaveLength(1);
     expect(Number.isFinite(wps[0].lat)).toBe(true);
     expect(Number.isFinite(wps[0].lon)).toBe(true);
@@ -92,7 +92,7 @@ describe("parseWaypointsFile", () => {
 
   it("defaults a non-numeric altitude to 0 rather than NaN", () => {
     const text = [header, row(1, 16, "12.9", "77.5", "bad-alt")].join("\n");
-    const wps = parseWaypointsFile(text);
+    const wps = parseWaypointsFile(text).waypoints;
     expect(wps).toHaveLength(1);
     expect(wps[0].alt).toBe(0);
   });
@@ -153,7 +153,7 @@ describe("altitude frame round-trip", () => {
 
   it(".waypoints round-trip keeps an absolute waypoint absolute and a relative one relative", () => {
     const text = captureExport(() => exportWaypointsFormat(mission, "frame-test"));
-    const reimported = parseWaypointsFile(text);
+    const reimported = parseWaypointsFile(text).waypoints;
     // parse skips only the synthetic seq-0 home row, so all three survive.
     expect(reimported).toHaveLength(3);
     expect(reimported[0].frame).toBe("relative"); // home
@@ -187,7 +187,7 @@ describe("altitude frame round-trip", () => {
     const text = captureExport(() => exportWaypointsFormat(noFrame, "no-frame"));
     const rows = text.trim().split("\n").slice(1);
     expect(rows[1].split("\t")[2]).toBe("3"); // defaults to relative
-    const reimported = parseWaypointsFile(text);
+    const reimported = parseWaypointsFile(text).waypoints;
     expect(reimported[0].frame).toBe("relative");
   });
 });
@@ -353,12 +353,12 @@ describe("nested actions round-trip through the flat formats", () => {
 
   it(".waypoints export\u2192import keeps actions nested and DO_JUMP retargeted", () => {
     const text = captureExport(() => exportWaypointsFormat(nestedMission(), "actions"));
-    const re = parseWaypointsFile(text);
+    const re = parseWaypointsFile(text).waypoints;
     expect(re.map((w) => w.command)).toEqual(["TAKEOFF", "WAYPOINT", "LAND"]);
     expect(re[1].actions?.map((a) => a.command)).toEqual(["DO_SET_SPEED", "CONDITION_YAW"]);
     const jump = re[2].actions?.[0];
     expect(jump?.command).toBe("DO_JUMP");
-    expect(jump?.jumpTargetId).toBe(re[1].id);
+    expect(jump?.command === "DO_JUMP" ? jump.jumpTargetId : undefined).toBe(re[1].id);
   });
 
   it(".plan export\u2192import keeps actions nested and DO_JUMP retargeted", () => {
@@ -368,6 +368,6 @@ describe("nested actions round-trip through the flat formats", () => {
     expect(re[1].actions?.map((a) => a.command)).toEqual(["DO_SET_SPEED", "CONDITION_YAW"]);
     const jump = re[2].actions?.[0];
     expect(jump?.command).toBe("DO_JUMP");
-    expect(jump?.jumpTargetId).toBe(re[1].id);
+    expect(jump?.command === "DO_JUMP" ? jump.jumpTargetId : undefined).toBe(re[1].id);
   });
 });

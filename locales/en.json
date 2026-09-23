@@ -1004,12 +1004,12 @@
     "udpModeListen": "Listen",
     "udpModeTarget": "Target",
     "nativeSocketReady": "Native socket ready (desktop app).",
-    "bridgeNeeded": "A browser can't open a raw socket. Run the local bridge, then connect to it:",
+    "bridgeNeeded": "A browser can't open a raw socket. Run the local bridge below. It prints a ws://…/?token=… URL on startup; paste that whole URL into Bridge URL.",
     "bridgeUrlLabel": "Bridge URL",
     "checkBridge": "Check",
     "checking": "Checking...",
     "bridgeReachable": "Bridge reachable.",
-    "bridgeUnreachable": "Bridge not reachable. Is it running?",
+    "bridgeUnreachable": "Bridge not reachable. Is it running, and does the URL include the ?token= it printed?",
     "copy": "Copy",
     "copied": "Copied",
     "connectionFailed": "Connection failed",
@@ -2658,11 +2658,15 @@
     "release": "Release",
     "grab": "Grab",
     "winchNum": "Winch Number",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "Length",
     "fence": "Fence",
     "disable": "Disable",
     "enable": "Enable",
-    "maxDescent": "Max Descent Rate",
+    "maxDescent": "Max Descent",
     "distance": "Distance",
     "functionNum": "Function Number",
     "switch": "Switch",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "Pair this node to open its flight link",
+      "body": "The companion computer is reachable but not paired. An unpaired node opens its flight-controller link only to its own hotspot, USB or on-board connection. Pair it to fly it from here.",
+      "cta": "Pair this node"
     }
   },
   "blackbox": {

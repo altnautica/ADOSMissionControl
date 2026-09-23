@@ -6,7 +6,8 @@
 // ---------------------------------------------------------------------------
 
 export interface DashboardConfig {
-  wsPort: number;
+  /** URL (with token) the GCS dials for drone #1. */
+  wsUrl: string;
   vehicle: string;
   speedup: number;
   presetName?: string;
@@ -240,12 +241,10 @@ export class Dashboard {
 
     // Header
     lines.push(topBorder());
-    const wsUrl = `ws://localhost:${this.config.wsPort}`;
     lines.push(
-      row(
-        `${BOLD}${CYAN}ALTNAUTICA SITL${RESET}  ${VERSION}    ${wsUrl}  Clients: ${this.clientCount}`,
-      ),
+      row(`${BOLD}${CYAN}ALTNAUTICA SITL${RESET}  ${VERSION}    Clients: ${this.clientCount}`),
     );
+    lines.push(row(`GCS: ${this.config.wsUrl}`));
     const vehicleStr = this.config.presetName
       ? `${this.config.vehicle}  |  ${BOLD}${this.config.presetName}${RESET}  |  Speed: ${this.config.speedup.toFixed(1)}x`
       : `${this.config.vehicle}  |  Physics: SITL  |  Speed: ${this.config.speedup.toFixed(1)}x`;

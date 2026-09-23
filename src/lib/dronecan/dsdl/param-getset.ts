@@ -2,48 +2,44 @@
  * @module param-getset
  * @description Codec for `uavcan.protocol.param.GetSet` (service type id 11).
  *
- * This is a BIT-PACKED structure, not a byte-aligned one, and it was previously
- * encoded and decoded one byte off:
+ * This is a bit-packed structure in the DroneCAN scalar layout described in
+ * `bit-buffer.ts`.
  *
- *  - The request's `index` is `uint13`, not `uint16`, and the `Value` union tag
- *    is **3 bits**, not a whole byte. 13 + 3 = 16, so the union payload starts
- *    at byte 2 — but only if the tag occupies the top three bits of byte 1.
- *    Writing the index as a full 16 bits and the tag as a byte at offset 2 made
- *    a receiver read `tag = (byte1 >> 5) & 7 = 0` (Empty) and take the rest as
- *    the TAO `name` tail-array, so `paramGet(node, i)` sent a non-empty name
- *    `"\0"` — and DSDL says name is "always preferred over index if nonempty",
- *    so the node answered with an empty response for every index.
- *  - `max_value` and `min_value` are `NumericValue`, a THREE-member union whose
- *    tag is **2 bits**. Decoding them with the 3-bit `Value` tag (previously a
- *    whole byte) desynchronises the rest of the response.
- *
- * Request layout (bit stream, LSB-first within each byte per DroneCAN):
+ * Request layout:
  *   uint13         index
  *   Value          value        (3-bit tag + payload)
- *   uint8[<=92]    name         (tail-array, no length prefix — last field)
+ *   uint8[<=92]    name         (tail array, no length prefix — last field)
  *
  * Response layout:
+ *   void5
  *   Value          value              (3-bit tag)
+ *   void5
  *   Value          default_value      (3-bit tag)
+ *   void6
  *   NumericValue   max_value          (2-bit tag)
+ *   void6
  *   NumericValue   min_value          (2-bit tag)
- *   uint8[<=92]    name               (tail-array)
+ *   uint8[<=92]    name               (tail array)
+ *
+ * The void padding puts every union tag of the response in the low bits of
+ * its own byte, so an integer response for `CAN_NODE = 10` starts `01 0A 00`.
  *
  * `Value` union (5 members → 3-bit tag):
  *   0 Empty      (0 bits)
  *   1 Integer    int64
  *   2 Real       float32
  *   3 Boolean    uint8
- *   4 String     uint8[<=128]  (tail-array within the enclosing structure)
+ *   4 String     uint8[<=128]  (uint8 length prefix: `Value` is never the
+ *                               last field of GetSet, so the tail-array
+ *                               optimization never applies to it)
  *
  * `NumericValue` union (3 members → 2-bit tag):
  *   0 Empty      (0 bits)
  *   1 Integer    int64
  *   2 Real       float32
  *
- * Bit packing goes through the repo's shared {@link BitWriter}/{@link BitReader},
- * the same helpers every other bit-packed DSDL codec here uses, so the bit order
- * convention is stated in exactly one place.
+ * An index past the node's last parameter answers with an all-Empty response
+ * and an empty name: four zero bytes.
  * @license GPL-3.0-only
  */
 
@@ -66,9 +62,16 @@ const VALUE_TAG_BITS = 3;
  */
 const NUMERIC_VALUE_TAG_BITS = 2;
 
+/** Response padding ahead of each `Value` and each `NumericValue`. */
+const VALUE_PAD_BITS = 5;
+const NUMERIC_VALUE_PAD_BITS = 6;
+
 /** DSDL caps `GetSet.name` at 92 bytes and `Value.string_value` at 128. */
 const NAME_MAX_BYTES = 92;
 const STRING_VALUE_MAX_BYTES = 128;
+
+/** Width of the `string_value` length prefix: ceil(log2(128 + 1)) = 8 bits. */
+const STRING_LENGTH_BITS = 8;
 
 export type Value =
   | { tag: ValueTag.Empty }
@@ -127,8 +130,7 @@ function writeValue(w: BitWriter, value: Value, tagBits: number): void {
           `Value.String must be <= ${STRING_VALUE_MAX_BYTES} bytes`,
         );
       }
-      // Tail-array optimised: no length prefix, and it consumes the rest of
-      // the structure. Written bit-wise because the stream may be unaligned.
+      w.write(bytes.length, STRING_LENGTH_BITS);
       for (const b of bytes) w.write(b, 8);
       return;
     }
@@ -144,6 +146,8 @@ function writeValue(w: BitWriter, value: Value, tagBits: number): void {
 function readValue(r: BitReader, tagBits: number): Value | null {
   if (r.remaining() < tagBits) return null;
   const tag = r.read(tagBits) as ValueTag;
+  // NumericValue has three members, so its 2-bit tag value 3 is malformed.
+  if (tagBits === NUMERIC_VALUE_TAG_BITS && tag > ValueTag.Real) return null;
   switch (tag) {
     case ValueTag.Empty:
       return { tag: ValueTag.Empty };
@@ -157,8 +161,12 @@ function readValue(r: BitReader, tagBits: number): Value | null {
       if (r.remaining() < 8) return null;
       return { tag: ValueTag.Boolean, value: r.read(8) !== 0 };
     case ValueTag.String: {
-      // Tail array: consumes every remaining whole byte.
-      return { tag: ValueTag.String, value: readTailString(r) };
+      if (r.remaining() < STRING_LENGTH_BITS) return null;
+      const length = r.read(STRING_LENGTH_BITS);
+      if (length > STRING_VALUE_MAX_BYTES || r.remaining() < length * 8) {
+        return null;
+      }
+      return { tag: ValueTag.String, value: readString(r, length) };
     }
     default:
       // A tag outside the union is a malformed frame, not an Empty value.
@@ -166,12 +174,19 @@ function readValue(r: BitReader, tagBits: number): Value | null {
   }
 }
 
-/** Read the remaining whole bytes of the stream as a UTF-8 string. */
-function readTailString(r: BitReader): string {
-  const count = Math.floor(r.remaining() / 8);
+/** Read `count` bytes from the stream (at any bit offset) as UTF-8. */
+function readString(r: BitReader, count: number): string {
   const out = new Uint8Array(count);
   for (let i = 0; i < count; i++) out[i] = r.read(8);
   return new TextDecoder().decode(out);
+}
+
+/** Skip the response's void padding, reporting a stream that ends inside it. */
+function skipPad(r: BitReader, bits: number, field: string): void {
+  if (r.remaining() < bits) {
+    throw new Error(`ParamGetSetResponse: truncated before ${field}`);
+  }
+  r.skip(bits);
 }
 
 export function encodeParamGetSetRequest(req: ParamGetSetRequest): Uint8Array {
@@ -190,8 +205,6 @@ export function encodeParamGetSetRequest(req: ParamGetSetRequest): Uint8Array {
   const w = new BitWriter();
   w.write(req.index, 13);
   writeValue(w, req.value, VALUE_TAG_BITS);
-  // 13 + 3 = 16 bits, and every Value payload is a whole number of bytes, so
-  // the name tail-array always starts byte aligned on the request side.
   for (const b of nameBytes) w.write(b, 8);
   return w.toUint8Array();
 }
@@ -206,8 +219,7 @@ export function decodeParamGetSetRequest(buf: Uint8Array): ParamGetSetRequest {
   if (value === null) {
     throw new Error("ParamGetSetRequest: truncated Value field");
   }
-  const name =
-    value.tag === ValueTag.String ? "" : readTailString(r);
+  const name = readString(r, Math.floor(r.remaining() / 8));
   return { index, value, name };
 }
 
@@ -221,9 +233,13 @@ export function encodeParamGetSetResponse(
     );
   }
   const w = new BitWriter();
+  w.write(0, VALUE_PAD_BITS);
   writeValue(w, res.value, VALUE_TAG_BITS);
+  w.write(0, VALUE_PAD_BITS);
   writeValue(w, res.default_value, VALUE_TAG_BITS);
+  w.write(0, NUMERIC_VALUE_PAD_BITS);
   writeValue(w, res.max_value, NUMERIC_VALUE_TAG_BITS);
+  w.write(0, NUMERIC_VALUE_PAD_BITS);
   writeValue(w, res.min_value, NUMERIC_VALUE_TAG_BITS);
   for (const b of nameBytes) w.write(b, 8);
   return w.toUint8Array();
@@ -233,38 +249,22 @@ export function decodeParamGetSetResponse(
   buf: Uint8Array,
 ): ParamGetSetResponse {
   const r = new BitReader(buf);
-  const empty: Value = { tag: ValueTag.Empty };
 
+  skipPad(r, VALUE_PAD_BITS, "value");
   const value = readValue(r, VALUE_TAG_BITS);
   if (value === null) {
     throw new Error("ParamGetSetResponse: truncated value field");
   }
-  // A String value is tail-array optimised and consumes the rest of the
-  // structure, so nothing follows it.
-  if (value.tag === ValueTag.String) {
-    return {
-      value,
-      default_value: empty,
-      max_value: empty,
-      min_value: empty,
-      name: "",
-    };
+  skipPad(r, VALUE_PAD_BITS, "default_value");
+  const defaultValue = readValue(r, VALUE_TAG_BITS);
+  skipPad(r, NUMERIC_VALUE_PAD_BITS, "max_value");
+  const maxValue = readValue(r, NUMERIC_VALUE_TAG_BITS);
+  skipPad(r, NUMERIC_VALUE_PAD_BITS, "min_value");
+  const minValue = readValue(r, NUMERIC_VALUE_TAG_BITS);
+  if (defaultValue === null || maxValue === null || minValue === null) {
+    throw new Error("ParamGetSetResponse: truncated or malformed value field");
   }
-
-  const defaultValue = readValue(r, VALUE_TAG_BITS) ?? empty;
-  if (defaultValue.tag === ValueTag.String) {
-    return {
-      value,
-      default_value: defaultValue,
-      max_value: empty,
-      min_value: empty,
-      name: "",
-    };
-  }
-
-  const maxValue = readValue(r, NUMERIC_VALUE_TAG_BITS) ?? empty;
-  const minValue = readValue(r, NUMERIC_VALUE_TAG_BITS) ?? empty;
-  const name = readTailString(r);
+  const name = readString(r, Math.floor(r.remaining() / 8));
 
   return {
     value,

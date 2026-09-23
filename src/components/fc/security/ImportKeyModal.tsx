@@ -18,8 +18,8 @@
  * succeed (confirming the paste was correct) or fail silently (FC was
  * on a different key, key_missing banner returns on drone select).
  *
- * Addresses audit finding B4 secondary UX and the "bring your own key"
- * flow noted in §5.2 of the plan.
+ * This is the "bring your own key" path for an operator whose key already
+ * lives on the FC from another browser.
  *
  * @license GPL-3.0-only
  */

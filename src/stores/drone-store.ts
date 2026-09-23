@@ -28,6 +28,8 @@ interface DroneStoreState {
   armState: ArmState;
   /**
    * When the vehicle last transitioned into `armed`, or null while disarmed.
+   * Held across an `unknown` stretch (a lost link): the flight did not end
+   * because the GCS stopped hearing it.
    *
    * Flight time has to be measured from here rather than from a component
    * effect: the cockpit clock used to start at `Date.now()` inside its own
@@ -69,8 +71,14 @@ export const useDroneStore = create<DroneStoreState>((set) => ({
     set((s) => {
       if (armState === s.armState) return { armState };
       // Stamped on the transition into armed, and cleared on the way out, so a
-      // re-arm starts a fresh clock instead of continuing the previous one.
-      return { armState, armedAt: armState === "armed" ? Date.now() : null };
+      // re-arm starts a fresh clock instead of continuing the previous one. A
+      // link loss keeps the clock, and a link that comes back armed resumes it.
+      if (armState === "unknown") return { armState };
+      if (armState === "disarmed") return { armState, armedAt: null };
+      return {
+        armState,
+        armedAt: s.armState === "unknown" && s.armedAt !== null ? s.armedAt : Date.now(),
+      };
     }),
   heartbeat: () => set({ lastHeartbeat: Date.now() }),
   setFirmwareInfo: (firmwareVersion, frameType) => set({ firmwareVersion, frameType }),

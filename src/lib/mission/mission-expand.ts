@@ -13,9 +13,15 @@
  * and resolved to the flattened target `seq` here (a two-pass process), so the
  * jump survives editing that shifts sequence numbers.
  *
- * NAV byte-mapping is deliberately identical to the legacy one-slot-shift upload
- * (holdTime → param1, param1 → param2, param2 → param3, param3 → param4) so this
- * change does not alter a single byte of an existing action-free mission.
+ * ArduPilot keeps the home position in mission slot 0 and starts execution at
+ * slot 1. With `reserveHomeSlot` the expander writes that home item at seq 0
+ * and every mission item (and every DO_JUMP target) starts at seq 1. PX4 and
+ * iNav missions start at seq 0.
+ *
+ * NAV byte-mapping is the one-slot shift (holdTime → param1, param1 → param2,
+ * param2 → param3, param3 → param4); the per-command editors write the model
+ * slot that lands in the right MAVLink slot (LOITER_TURNS turns and
+ * PAYLOAD_PLACE max descent live in `holdTime`, the loiter radius in `param2`).
  *
  * @module mission/mission-expand
  * @license GPL-3.0-only
@@ -25,40 +31,38 @@ import type { MissionItem } from "@/lib/protocol/types/mission";
 import type {
   ActionCommand,
   AltitudeFrame,
+  CommandMissionAction,
   MissionAction,
+  RawMissionAction,
   Waypoint,
+  WaypointCommand,
 } from "@/lib/types/mission";
 import { cmdMap, reverseCmd } from "@/lib/mission-io-formats";
-import { frameToMav, mavToFrame } from "@/lib/mission/altitude-frame";
-import { isActionCommand, isNavCommand } from "./command-classes";
+import { frameToMav, mavToFrame, MAV_FRAME_GLOBAL } from "@/lib/mission/altitude-frame";
+import { isNavCommand, POSITION_BEARING_ACTIONS } from "./command-classes";
 
 // `cmdMap.DO_JUMP` (177) is read inside functions rather than captured at module
 // load, so this module never touches an imported binding at load time — that
 // keeps the mission-expand ⇄ mission-io-formats import cycle safe from TDZ.
 // The frame mapping comes from `mission/altitude-frame`, which has no cycle.
 
-/** Commands whose position (lat/lon/alt) is meaningful as an action item. */
-const POSITION_BEARING_ACTIONS: ReadonlySet<ActionCommand> = new Set<ActionCommand>([
-  "ROI",
-  "DO_SET_HOME",
-]);
-
-/**
- * One row of the legacy FLAT waypoint model, where an action rides as its own
- * top-level row rather than nested under a navigation waypoint. Identical to a
- * `Waypoint` plus the action's fourth parameter, which has no navigation
- * counterpart (a nav waypoint's fourth wire slot is `param3`) and was
- * previously dropped on every flatten.
- */
-export interface FlatWaypointRow extends Waypoint {
-  /** Only meaningful on a flattened ACTION row: the action's `param4`. */
-  param4?: number;
+/** A home position written into ArduPilot's reserved mission slot 0. */
+export interface HomeSlot {
+  lat: number;
+  lon: number;
+  /** Home altitude, metres AMSL (the slot is written in MAV_FRAME_GLOBAL). */
+  alt: number;
 }
 
 /** Options for {@link expandToItems}. */
 export interface ExpandOptions {
   /** Mission default altitude frame, applied to any waypoint with no explicit frame. */
   defaultFrame: AltitudeFrame;
+  /**
+   * Write this home position at seq 0 and start the mission at seq 1 (the
+   * ArduPilot mission layout). Every DO_JUMP target shifts with the items.
+   */
+  reserveHomeSlot?: HomeSlot;
 }
 
 /** One planned wire slot before sequence numbers are assigned. */
@@ -69,9 +73,11 @@ type Slot =
 /**
  * Expand a waypoint list into a flat, contiguously-sequenced `MissionItem[]`.
  *
- * - Each navigation waypoint becomes one item using the legacy byte mapping.
+ * - With `reserveHomeSlot`, seq 0 is the home item and the mission starts at 1.
+ * - Each navigation waypoint becomes one item using the one-slot-shift mapping.
  * - Each attached action becomes its own item sequenced right after its parent,
- *   using correct MAVLink parameter slots.
+ *   using correct MAVLink parameter slots; a raw passthrough action re-emits
+ *   the item it was collapsed from.
  * - `DO_JUMP` actions resolve their `jumpTargetId` to the target's flattened
  *   `seq`; an unresolved / missing target drops that `DO_JUMP` item and the
  *   remaining items re-tighten so `seq` stays contiguous.
@@ -92,7 +98,7 @@ export function expandToItems(
     const parentFrame = frameToMav(wp.frame ?? opts.defaultFrame);
     slots.push({ kind: "nav", wp });
     for (const act of wp.actions ?? []) {
-      if (cmdMap[act.command] === cmdMap.DO_JUMP) {
+      if (act.command === "DO_JUMP") {
         const target = act.jumpTargetId;
         if (target === undefined || !navIds.has(target)) continue; // drop + re-tighten
       }
@@ -100,20 +106,27 @@ export function expandToItems(
     }
   }
 
-  // Assign seq = index and record NAV id → seq for jump resolution.
+  // The first mission seq: 1 when slot 0 holds the home position.
+  const base = opts.reserveHomeSlot ? 1 : 0;
+
+  // Assign seq = base + index and record NAV id → seq for jump resolution.
   const seqById = new Map<string, number>();
-  slots.forEach((slot, seq) => {
-    if (slot.kind === "nav") seqById.set(slot.wp.id, seq);
+  slots.forEach((slot, i) => {
+    if (slot.kind === "nav") seqById.set(slot.wp.id, base + i);
   });
 
   // Pass 2: emit items.
-  const items: MissionItem[] = slots.map((slot, seq) =>
-    slot.kind === "nav"
-      ? navItem(slot.wp, seq, opts.defaultFrame)
-      : actionItem(slot.act, seq, slot.parentFrame, seqById),
-  );
+  const items: MissionItem[] = opts.reserveHomeSlot ? [homeItem(opts.reserveHomeSlot)] : [];
+  slots.forEach((slot, i) => {
+    const seq = base + i;
+    items.push(
+      slot.kind === "nav"
+        ? navItem(slot.wp, seq, seq === base, opts.defaultFrame)
+        : actionItem(slot.act, seq, slot.parentFrame, seqById),
+    );
+  });
 
-  // FLIGHT-SAFETY invariant: contiguous zero-based sequence.
+  // FLIGHT-SAFETY invariant: contiguous sequence from 0 (home slot included).
   for (let i = 0; i < items.length; i++) {
     if (items[i].seq !== i) {
       throw new Error(
@@ -125,13 +138,36 @@ export function expandToItems(
   return items;
 }
 
-/** Encode one navigation waypoint (legacy one-slot-shift byte mapping). */
-function navItem(wp: Waypoint, seq: number, defaultFrame: AltitudeFrame): MissionItem {
+/** The ArduPilot home item written into mission slot 0. */
+function homeItem(home: HomeSlot): MissionItem {
+  return {
+    seq: 0,
+    frame: MAV_FRAME_GLOBAL,
+    command: cmdMap.WAYPOINT,
+    current: 0,
+    autocontinue: 1,
+    param1: 0,
+    param2: 0,
+    param3: 0,
+    param4: 0,
+    x: Math.round(home.lat * 1e7),
+    y: Math.round(home.lon * 1e7),
+    z: home.alt,
+  };
+}
+
+/** Encode one navigation waypoint (one-slot-shift byte mapping). */
+function navItem(
+  wp: Waypoint,
+  seq: number,
+  first: boolean,
+  defaultFrame: AltitudeFrame,
+): MissionItem {
   return {
     seq,
     frame: frameToMav(wp.frame ?? defaultFrame),
     command: cmdMap[wp.command ?? "WAYPOINT"] ?? cmdMap.WAYPOINT,
-    current: seq === 0 ? 1 : 0,
+    current: first ? 1 : 0,
     autocontinue: 1,
     param1: wp.holdTime ?? 0,
     param2: wp.param1 ?? 0,
@@ -150,29 +186,46 @@ function actionItem(
   parentFrame: number,
   seqById: Map<string, number>,
 ): MissionItem {
-  const command = cmdMap[act.command];
+  if (act.command === "RAW") {
+    return {
+      seq,
+      frame: act.frame,
+      command: act.rawCommand,
+      current: 0,
+      autocontinue: 1,
+      param1: act.param1,
+      param2: act.param2,
+      param3: act.param3,
+      param4: act.param4,
+      x: act.x,
+      y: act.y,
+      z: act.z,
+    };
+  }
+
   const positional = POSITION_BEARING_ACTIONS.has(act.command);
 
   // DO_JUMP overrides param1 with the flattened target seq (guaranteed resolved
   // in pass 1) and carries the repeat count in param2.
-  const isJump = command === cmdMap.DO_JUMP;
-  const param1 = isJump
+  const param1 = act.command === "DO_JUMP"
     ? (seqById.get(act.jumpTargetId as string) as number)
     : act.param1 ?? 0;
 
   return {
     seq,
     frame: parentFrame,
-    command,
+    command: cmdMap[act.command],
     current: 0,
     autocontinue: 1,
     param1,
     param2: act.param2 ?? 0,
     param3: act.param3 ?? 0,
     param4: act.param4 ?? 0,
-    x: positional ? Math.round((act.lat ?? 0) * 1e7) : 0,
-    y: positional ? Math.round((act.lon ?? 0) * 1e7) : 0,
-    z: positional ? act.alt ?? 0 : 0,
+    // A positional action carries its location in x/y/z; every other action
+    // carries MAVLink param5..7 there unscaled (DO_DIGICAM's shoot command).
+    x: positional ? Math.round((act.lat ?? 0) * 1e7) : act.param5 ?? 0,
+    y: positional ? Math.round((act.lon ?? 0) * 1e7) : act.param6 ?? 0,
+    z: positional ? act.alt ?? 0 : act.param7 ?? 0,
   };
 }
 
@@ -182,29 +235,35 @@ function actionItem(
  * Each navigation item starts a fresh `Waypoint`; each action item folds into
  * the current waypoint's `actions[]`. A `DO_JUMP` item's raw `param1` (target
  * seq) resolves to the `id` of the navigation waypoint that owns that seq (the
- * greatest NAV seq ≤ the target). A leading action item (before any navigation
- * item) is dropped.
+ * greatest NAV seq ≤ the target), so jump targets resolve by absolute seq and a
+ * list that starts at seq 1 (ArduPilot, home slot removed) needs no rebasing.
+ *
+ * A command this GCS does not model is never turned into a navigation
+ * waypoint: it rides the current waypoint as a `RAW` passthrough action and
+ * re-expands byte-for-byte. Any item before the first navigation item (a known
+ * action or an unmodelled command) has no waypoint to ride; it is dropped and
+ * reported through `onDropped` so the caller can warn the operator.
  *
  * Each navigation waypoint's altitude FRAME is restored from the item's
- * `MAV_FRAME`. Dropping it (the previous behaviour) made every download and
- * every file import re-label MSL altitudes as relative-to-home, so a
- * download-then-reupload silently changed the mission's vertical datum.
- * `0` parameter slots collapse to `undefined` (the model treats absent and zero
- * as the same value, and `expandToItems` re-emits `0` for both).
+ * `MAV_FRAME`. `0` parameter slots collapse to `undefined` (the model treats
+ * absent and zero as the same value, and `expandToItems` re-emits `0` for both).
  */
-export function collapseFromItems(items: readonly MissionItem[]): Waypoint[] {
+export function collapseFromItems(
+  items: readonly MissionItem[],
+  onDropped?: (item: MissionItem) => void,
+): Waypoint[] {
   const waypoints: Waypoint[] = [];
   /** NAV items in wire order, for jump-target resolution. */
   const navSeqToId: Array<{ seq: number; id: string }> = [];
   /** DO_JUMP actions awaiting a second-pass target-id resolution. */
-  const pendingJumps: Array<{ act: MissionAction; targetSeq: number }> = [];
+  const pendingJumps: Array<{ act: CommandMissionAction; targetSeq: number }> = [];
 
   let current: Waypoint | undefined;
 
   for (const item of items) {
-    const command = reverseCmd[item.command] ?? "WAYPOINT";
+    const command: WaypointCommand | undefined = reverseCmd[item.command];
 
-    if (isNavCommand(command)) {
+    if (command !== undefined && isNavCommand(command)) {
       const wp: Waypoint = {
         id: freshId(),
         lat: item.x / 1e7,
@@ -224,31 +283,52 @@ export function collapseFromItems(items: readonly MissionItem[]): Waypoint[] {
       continue;
     }
 
-    if (isActionCommand(command)) {
-      if (!current) continue; // leading orphan action → drop
-      const actionCommand = command as ActionCommand;
-      const positional = POSITION_BEARING_ACTIONS.has(actionCommand);
-      const isJump = item.command === cmdMap.DO_JUMP;
-
-      const action: MissionAction = {
-        id: freshId(),
-        command: actionCommand,
-        // DO_JUMP's param1 is the target seq (→ jumpTargetId), not a user param.
-        param1: isJump ? undefined : item.param1 || undefined,
-        param2: item.param2 || undefined,
-        param3: item.param3 || undefined,
-        param4: item.param4 || undefined,
-        lat: positional ? item.x / 1e7 : undefined,
-        lon: positional ? item.y / 1e7 : undefined,
-        alt: positional ? item.z : undefined,
-      };
-      current.actions = current.actions ?? [];
-      current.actions.push(action);
-      if (isJump) pendingJumps.push({ act: action, targetSeq: item.param1 });
+    if (!current) {
+      onDropped?.(item); // nothing to attach a leading non-nav item to
       continue;
     }
 
-    // Unknown / unclassified command: skip.
+    current.actions = current.actions ?? [];
+
+    if (command === undefined) {
+      const raw: RawMissionAction = {
+        id: freshId(),
+        command: "RAW",
+        rawCommand: item.command,
+        param1: item.param1,
+        param2: item.param2,
+        param3: item.param3,
+        param4: item.param4,
+        x: item.x,
+        y: item.y,
+        z: item.z,
+        frame: item.frame,
+      };
+      current.actions.push(raw);
+      continue;
+    }
+
+    const actionCommand = command as ActionCommand;
+    const positional = POSITION_BEARING_ACTIONS.has(actionCommand);
+    const isJump = actionCommand === "DO_JUMP";
+
+    const action: CommandMissionAction = {
+      id: freshId(),
+      command: actionCommand,
+      // DO_JUMP's param1 is the target seq (→ jumpTargetId), not a user param.
+      param1: isJump ? undefined : item.param1 || undefined,
+      param2: item.param2 || undefined,
+      param3: item.param3 || undefined,
+      param4: item.param4 || undefined,
+      param5: positional ? undefined : item.x || undefined,
+      param6: positional ? undefined : item.y || undefined,
+      param7: positional ? undefined : item.z || undefined,
+      lat: positional ? item.x / 1e7 : undefined,
+      lon: positional ? item.y / 1e7 : undefined,
+      alt: positional ? item.z : undefined,
+    };
+    current.actions.push(action);
+    if (isJump) pendingJumps.push({ act: action, targetSeq: item.param1 });
   }
 
   // Second pass: resolve DO_JUMP target seq → owning NAV waypoint id.
@@ -258,6 +338,24 @@ export function collapseFromItems(items: readonly MissionItem[]): Waypoint[] {
   }
 
   return waypoints;
+}
+
+/** A short operator-facing name for a MAV_CMD id ("DO_JUMP", or "MAV_CMD 181"). */
+export function missionCommandName(command: number): string {
+  const known: WaypointCommand | undefined = reverseCmd[command];
+  return known ?? `MAV_CMD ${command}`;
+}
+
+/**
+ * True when an item's x/y carry a latitude/longitude (degrees × 1e7 on the
+ * wire, plain degrees in a text file). A modelled non-positional action carries
+ * MAVLink param5/param6 there instead, unscaled. An unmodelled command keeps
+ * the location scaling so a file round trip reproduces it.
+ */
+export function itemCarriesLocation(command: number): boolean {
+  const known: WaypointCommand | undefined = reverseCmd[command];
+  if (known === undefined || isNavCommand(known)) return true;
+  return POSITION_BEARING_ACTIONS.has(known as ActionCommand);
 }
 
 /** Find the id of the NAV waypoint with the greatest seq ≤ `targetSeq`. */
@@ -270,158 +368,6 @@ function ownerNavId(
     if (nav.seq <= targetSeq && (best === undefined || nav.seq > best.seq)) best = nav;
   }
   return best?.id;
-}
-
-/**
- * Fold a legacy flat waypoint list (where action commands were their own
- * top-level rows) into the nested per-waypoint action model.
- *
- * A navigation waypoint becomes a nav waypoint with its (preserved) actions; a
- * top-level action-command row is converted to a `MissionAction` and pushed into
- * the current navigation waypoint's `actions[]`. Legacy `DO_JUMP` targets are
- * pre-resolved from their old 1-based flat `param1` index to the target
- * element's `id` (or, if that element is itself an action row, the nearest
- * preceding navigation row's `id`). A leading action row (before any navigation
- * waypoint) is dropped with a warning.
- *
- * Idempotent: a list with no top-level action rows (already nested, or pure
- * navigation) passes through with its waypoints and attached actions preserved.
- */
-export function foldLegacyWaypoints(flat: readonly FlatWaypointRow[]): Waypoint[] {
-  // Pre-resolve each legacy DO_JUMP's 1-based flat target index → an id.
-  const jumpTargetIds = new Map<number, string | undefined>();
-  flat.forEach((wp, idx) => {
-    if ((wp.command ?? "WAYPOINT") !== "DO_JUMP") return;
-    const oneBased = wp.param1; // legacy convention: 1-based flat index
-    if (oneBased === undefined || !Number.isFinite(oneBased)) {
-      jumpTargetIds.set(idx, undefined);
-      return;
-    }
-    const targetIdx = Math.trunc(oneBased) - 1;
-    jumpTargetIds.set(idx, resolveLegacyJumpTarget(flat, targetIdx));
-  });
-
-  const out: FlatWaypointRow[] = [];
-  let current: Waypoint | undefined;
-
-  flat.forEach((wp, idx) => {
-    const command = wp.command ?? "WAYPOINT";
-
-    if (isNavCommand(command)) {
-      const nav: FlatWaypointRow = { ...wp, actions: wp.actions ? [...wp.actions] : [] };
-      delete nav.param4; // an action-only slot; never meaningful on a nav row
-      out.push(nav);
-      current = nav;
-      return;
-    }
-
-    // Action-command top-level row.
-    if (!current) {
-      console.warn(
-        `foldLegacyWaypoints: dropping leading action "${command}" that precedes any navigation waypoint`,
-      );
-      return;
-    }
-
-    const actionCommand = command as ActionCommand;
-    const positional = POSITION_BEARING_ACTIONS.has(actionCommand);
-    const isJump = command === "DO_JUMP";
-
-    const action: MissionAction = {
-      id: wp.id,
-      command: actionCommand,
-      // DO_JUMP: target-param role cleared; repeat kept in param2.
-      param1: isJump ? undefined : wp.param1,
-      param2: wp.param2,
-      param3: wp.param3,
-      param4: wp.param4,
-      lat: positional ? wp.lat : undefined,
-      lon: positional ? wp.lon : undefined,
-      alt: positional ? wp.alt : undefined,
-    };
-    if (isJump) {
-      const target = jumpTargetIds.get(idx);
-      if (target !== undefined) action.jumpTargetId = target;
-    }
-    current.actions = current.actions ?? [];
-    current.actions.push(action);
-  });
-
-  return out;
-}
-
-/**
- * Flatten the nested per-waypoint action model into a flat waypoint list where
- * each attached action becomes its own top-level action-command row right after
- * its navigation waypoint. This is the exact inverse of {@link foldLegacyWaypoints}
- * and the shape the human-readable CSV interop format serializes. (The MAVLink
- * flat formats — `.waypoints`, `.plan` — go through {@link expandToItems}
- * instead, so they carry raw wire parameter slots.)
- *
- * A `DO_JUMP` action's target is written back as a legacy 1-based flat index in
- * `param1` (the convention every flat format + {@link foldLegacyWaypoints} read),
- * so exporting a nested mission then re-importing it preserves the jump. A
- * position-bearing action (`ROI` / `DO_SET_HOME`) keeps its own coordinates; any
- * other action inherits its parent waypoint's position + frame so the flat row
- * is well-formed. An action's `param4` rides in the row's own `param4`, which
- * has no navigation counterpart — dropping it was a silent data loss on every
- * flatten.
- */
-export function flattenForSerialization(waypoints: readonly Waypoint[]): FlatWaypointRow[] {
-  const flat: FlatWaypointRow[] = [];
-  /** Navigation-waypoint id → its 1-based row index in the flat list. */
-  const navFlatIndex = new Map<string, number>();
-  /** DO_JUMP rows awaiting their target's 1-based index in `param1`. */
-  const jumpRows: Array<{ row: FlatWaypointRow; targetId: string | undefined }> = [];
-
-  for (const wp of waypoints) {
-    const navRow: FlatWaypointRow = { ...wp };
-    delete navRow.actions; // the NAV row carries no nested actions in flat form
-    flat.push(navRow);
-    navFlatIndex.set(wp.id, flat.length); // 1-based position of the row just pushed
-
-    for (const act of wp.actions ?? []) {
-      const positional = POSITION_BEARING_ACTIONS.has(act.command);
-      const isJump = act.command === "DO_JUMP";
-      const row: FlatWaypointRow = {
-        id: act.id,
-        lat: positional ? act.lat ?? wp.lat : wp.lat,
-        lon: positional ? act.lon ?? wp.lon : wp.lon,
-        alt: positional ? act.alt ?? wp.alt : wp.alt,
-        command: act.command,
-        frame: wp.frame,
-        // DO_JUMP's param1 is filled with the target's flat index in a second
-        // pass; every other action keeps its own parameter values.
-        param1: isJump ? undefined : act.param1,
-        param2: act.param2,
-        param3: act.param3,
-        param4: act.param4,
-      };
-      flat.push(row);
-      if (isJump) jumpRows.push({ row, targetId: act.jumpTargetId });
-    }
-  }
-
-  for (const { row, targetId } of jumpRows) {
-    row.param1 = targetId !== undefined ? navFlatIndex.get(targetId) : undefined;
-  }
-
-  return flat;
-}
-
-/**
- * Resolve a legacy DO_JUMP target: the element at `targetIdx` if it is a
- * navigation waypoint, otherwise the nearest preceding navigation waypoint's id.
- */
-function resolveLegacyJumpTarget(
-  flat: readonly FlatWaypointRow[],
-  targetIdx: number,
-): string | undefined {
-  if (targetIdx < 0 || targetIdx >= flat.length) return undefined;
-  for (let i = targetIdx; i >= 0; i--) {
-    if (isNavCommand(flat[i].command ?? "WAYPOINT")) return flat[i].id;
-  }
-  return undefined;
 }
 
 /** Generate a fresh short waypoint / action id (matches existing download ids). */

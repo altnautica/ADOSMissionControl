@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { foldLegacyWaypoints } from "@/lib/mission/mission-expand";
-import type { Waypoint } from "@/lib/types/mission";
+import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
+import type { CommandMissionAction, Waypoint } from "@/lib/types/mission";
 
 describe("foldLegacyWaypoints — nesting top-level action rows", () => {
   it("folds consecutive DO/CONDITION rows into the preceding NAV waypoint", () => {
@@ -28,7 +28,7 @@ describe("foldLegacyWaypoints — nesting top-level action rows", () => {
     ];
     const out = foldLegacyWaypoints(flat);
     // The jump folds into the current NAV (w2) and targets flat[1] = w1 (1-based 2).
-    const jump = out[2].actions?.[0];
+    const jump = out[2].actions?.[0] as CommandMissionAction | undefined;
     expect(jump?.command).toBe("DO_JUMP");
     expect(jump?.jumpTargetId).toBe("w1");
     expect(jump?.param2).toBe(4); // repeat preserved
@@ -44,7 +44,7 @@ describe("foldLegacyWaypoints — nesting top-level action rows", () => {
     ];
     const out = foldLegacyWaypoints(flat);
     // 1-based index 2 → flat[1] = the DO_SET_SPEED action → nearest preceding NAV = w0.
-    const jump = out[1].actions?.find((a) => a.command === "DO_JUMP");
+    const jump = out[1].actions?.find((a) => a.command === "DO_JUMP") as CommandMissionAction | undefined;
     expect(jump?.jumpTargetId).toBe("w0");
   });
 
@@ -67,7 +67,7 @@ describe("foldLegacyWaypoints — nesting top-level action rows", () => {
       { id: "roi", lat: 11.25, lon: 22.5, alt: 3, command: "ROI" },
     ];
     const out = foldLegacyWaypoints(flat);
-    const roi = out[0].actions?.[0];
+    const roi = out[0].actions?.[0] as CommandMissionAction | undefined;
     expect(roi?.command).toBe("ROI");
     expect(roi?.lat).toBe(11.25);
     expect(roi?.lon).toBe(22.5);

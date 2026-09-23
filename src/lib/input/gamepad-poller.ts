@@ -187,6 +187,9 @@ export function startGamepadPolling(): void {
 
     // Store raw axes for calibration wizard display
     inputStore.setRawAxes([rawRoll, rawPitch, rawThrottle, rawYaw]);
+    // The physical right stick, independent of the TX-mode mapping, for
+    // on-screen aiming. Y is inverted so up is positive.
+    inputStore.setRightStick([gp.axes[2] ?? 0, -(gp.axes[3] ?? 0)]);
 
     // Apply calibration offsets if available
     if (calibration) {
@@ -290,7 +293,16 @@ export function manualControlTick(): number {
   const period = manualControlPeriodMs(protocol.getCapabilities().manualControlHz);
   if (period === null) return GATE_RECHECK_MS;
 
-  const [roll, pitch, throttleAxis, yaw] = axes;
+  // While an on-screen control has the sticks (the skill radial is open), the
+  // stick deflection is aiming, not flying: roll and pitch go out centred and
+  // throttle holds where it was when the capture began. In TX mode 1 the right
+  // stick carries throttle, so passing it through would climb or sink the
+  // aircraft while the operator picks a wedge.
+  const [liveRoll, livePitch, liveThrottle, yaw] = axes;
+  const captured = input.sticksCaptured;
+  const roll = captured ? 0 : liveRoll;
+  const pitch = captured ? 0 : livePitch;
+  const throttleAxis = captured ? input.capturedThrottle : liveThrottle;
 
   // Convert boolean[] to bitmask
   let bitmask = 0;

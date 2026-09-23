@@ -8,6 +8,7 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet, del as idbDel, keys as idbKeys } from "idb-keyval";
 import type { FlightRecord } from "@/lib/types";
+import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_HISTORY_KEY = "altcmd:flight-history";
 const IDB_RECORDINGS_PREFIX = "altcmd:recording:";
@@ -40,7 +41,6 @@ interface HistoryState {
   isLoadingLogList: boolean;
   isDownloadingLog: boolean;
   _seeded: boolean;
-  _loadedFromIdb: boolean;
 
   // Cloud sync bookkeeping. The Convex client is injected from the React
   // layer (CloudSyncBridge); the store stays Zustand-only.
@@ -66,9 +66,12 @@ interface HistoryActions {
   permanentlyDelete: (id: string) => void;
   /** Permanently delete all trashed records. */
   emptyTrash: () => void;
-  /** Async: load persisted records from IndexedDB. Idempotent. */
-  loadFromIDB: () => Promise<void>;
-  /** Async: write current records to IndexedDB. */
+  /**
+   * Async: read persisted records once and merge them into memory (stored
+   * records win on id conflict). Idempotent; concurrent callers share one read.
+   */
+  ensureLoaded: () => Promise<void>;
+  /** Async: write current records to IndexedDB, after the load completes. */
   persistToIDB: () => Promise<void>;
   /**
    * Merge a list of cloud records into the local store. Last-write-wins on
@@ -106,7 +109,6 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   isLoadingLogList: false,
   isDownloadingLog: false,
   _seeded: false,
-  _loadedFromIdb: false,
   syncStatus: "idle",
   lastSyncAt: null,
   lastSyncError: null,
@@ -204,38 +206,15 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
     });
   },
 
-  loadFromIDB: async () => {
-    if (get()._loadedFromIdb) return;
-    try {
-      const stored = (await idbGet(IDB_HISTORY_KEY)) as FlightRecord[] | undefined;
-      if (stored && Array.isArray(stored)) {
-        // Merge with anything already in memory (e.g. demo seed that ran first).
-        const existing = new Map(get().records.map((r) => [r.id, r] as const));
-        for (const r of stored) existing.set(r.id, r); // IDB wins on conflict
-        const merged = Array.from(existing.values()).sort(
-          (a, b) => (b.startTime ?? b.date) - (a.startTime ?? a.date),
-        );
-        set({ records: merged.slice(0, MAX_RECORDS), _loadedFromIdb: true });
-      } else {
-        set({ _loadedFromIdb: true });
-      }
-    } catch (err) {
-      console.warn("[history-store] loadFromIDB failed", err);
-      set({ _loadedFromIdb: true });
-    }
-  },
+  ensureLoaded: () => idb.ensureLoaded(),
 
-  persistToIDB: async () => {
-    try {
-      // Demo seed records (id prefix "demo-") are reseeded on every demo
-      // mode load and must never pollute IDB. Real imports, dataflash logs,
-      // and live-hardware flights use other id schemes and persist normally.
-      const clean = get().records.filter((r) => !r.id.startsWith("demo-"));
-      await idbSet(IDB_HISTORY_KEY, clean);
-    } catch (err) {
-      console.warn("[history-store] persistToIDB failed", err);
-    }
-  },
+  // Demo seed records (id prefix "demo-") are reseeded on every demo mode
+  // load and must never pollute IDB. Real imports, dataflash logs, and
+  // live-hardware flights use other id schemes and persist normally.
+  persistToIDB: () =>
+    idb.persist(() =>
+      idbSet(IDB_HISTORY_KEY, get().records.filter((r) => !r.id.startsWith("demo-"))),
+    ),
 
   mergeCloudRecords: (cloudRecords) => {
     let updatedCount = 0;
@@ -294,6 +273,9 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   },
 
   resetDemoData: async () => {
+    // Finish the stored-history read first so it cannot land after the wipe
+    // and bring the deleted records back into memory.
+    await idb.ensureLoaded();
     try {
       await idbDel(IDB_HISTORY_KEY);
       // Drop demo telemetry recordings (id prefix "demo-rec-").
@@ -309,7 +291,7 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
     } catch (err) {
       console.warn("[history-store] resetDemoData failed", err);
     }
-    set({ records: [], _seeded: false, _loadedFromIdb: false });
+    set({ records: [], _seeded: false });
   },
 
   setLogEntries: (droneId, entries) => {
@@ -351,3 +333,18 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
     set({ logDownload: null, isDownloadingLog: false });
   },
 }));
+
+const idb = createIdbStoreLoader("history-store", async () => {
+  const stored = (await idbGet(IDB_HISTORY_KEY)) as FlightRecord[] | undefined;
+  if (!stored || !Array.isArray(stored)) return;
+  useHistoryStore.setState((s) => {
+    // Merge with anything already in memory (a demo seed or a flight armed
+    // before the read finished). Stored records win on id conflict.
+    const existing = new Map(s.records.map((r) => [r.id, r] as const));
+    for (const r of stored) existing.set(r.id, r);
+    const merged = Array.from(existing.values()).sort(
+      (a, b) => (b.startTime ?? b.date) - (a.startTime ?? a.date),
+    );
+    return { records: merged.slice(0, MAX_RECORDS) };
+  });
+});

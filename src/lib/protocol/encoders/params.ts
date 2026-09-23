@@ -4,6 +4,7 @@
  */
 
 import { buildFrame } from "./frame";
+import { writeParamWireValue } from "../param-value-codec";
 
 // ── PARAM_REQUEST_LIST (ID 21) ──────────────────────────────
 
@@ -63,9 +64,11 @@ export function encodeParamRequestRead(
 /**
  * Set a single parameter on the flight controller.
  *
- * @param paramId - Parameter name (max 16 chars, null-padded)
- * @param value   - New value
- * @param type    - MAV_PARAM_TYPE (default 9 = REAL32)
+ * @param paramId  - Parameter name (max 16 chars, null-padded)
+ * @param value    - New value
+ * @param type     - MAV_PARAM_TYPE (default 9 = REAL32)
+ * @param bytewise - Pack an integer `type` bytewise instead of casting it to
+ *                   float (see `param-value-codec`)
  */
 export function encodeParamSet(
   targetSys: number,
@@ -75,12 +78,13 @@ export function encodeParamSet(
   type = 9,
   sysId = 255,
   compId = 190,
+  bytewise = false,
 ): Uint8Array {
   const payload = new Uint8Array(23);
   const dv = new DataView(payload.buffer);
 
-  // param_value (float32) at offset 0
-  dv.setFloat32(0, value, true);
+  // param_value (4-byte float field) at offset 0
+  writeParamWireValue(dv, 0, value, type, bytewise);
 
   // target_system at offset 4
   payload[4] = targetSys;

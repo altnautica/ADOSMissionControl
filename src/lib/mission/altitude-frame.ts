@@ -39,6 +39,12 @@ export const MAV_FRAME_GLOBAL = 0;
 export const MAV_FRAME_GLOBAL_RELATIVE_ALT = 3;
 /** `MAV_FRAME_GLOBAL_TERRAIN_ALT` — altitude is above the terrain below the point. */
 export const MAV_FRAME_GLOBAL_TERRAIN_ALT = 10;
+/** `MAV_FRAME_GLOBAL_INT` — AMSL, the MISSION_ITEM_INT spelling PX4 reports. */
+export const MAV_FRAME_GLOBAL_INT = 5;
+/** `MAV_FRAME_GLOBAL_RELATIVE_ALT_INT` — above home, MISSION_ITEM_INT spelling. */
+export const MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6;
+/** `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT` — above terrain, MISSION_ITEM_INT spelling. */
+export const MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11;
 
 /** Mission default frame applied when a waypoint carries no explicit frame. */
 export const DEFAULT_ALTITUDE_FRAME: AltitudeFrame = "relative";
@@ -56,14 +62,21 @@ export function frameToMav(frame: AltitudeFrame | undefined): number {
   }
 }
 
-/** Map a MAV_FRAME number back to an altitude reference frame. */
+/**
+ * Map a MAV_FRAME number back to an altitude reference frame. The `_INT`
+ * spellings (5, 6, 11) carry the same datum as their float twins (0, 3, 10);
+ * an absent frame is the mission default.
+ */
 export function mavToFrame(mav: number | undefined): AltitudeFrame {
   switch (mav) {
     case MAV_FRAME_GLOBAL:
+    case MAV_FRAME_GLOBAL_INT:
       return "absolute";
     case MAV_FRAME_GLOBAL_TERRAIN_ALT:
+    case MAV_FRAME_GLOBAL_TERRAIN_ALT_INT:
       return "terrain";
     case MAV_FRAME_GLOBAL_RELATIVE_ALT:
+    case MAV_FRAME_GLOBAL_RELATIVE_ALT_INT:
     default:
       return "relative";
   }

@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { usePidAnalysisStore } from "@/stores/pid-analysis-store";
+import { usePidAnalysisStore, type SuggestionTarget } from "@/stores/pid-analysis-store";
 import { PidLogUploader } from "./PidLogUploader";
 import { PidFFTChart } from "./PidFFTChart";
 import { PidStepResponseChart } from "./PidStepResponseChart";
@@ -16,17 +16,15 @@ import { ChevronLeft, ChevronRight, AlertTriangle, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AiSuggestionsGate } from "../shared/AiSuggestionsGate";
 import { STEPS, ANALYSIS_TABS, StepIndicator, type AnalysisTab } from "./pid-wizard-steps";
-import type { VehicleType } from "./pid-constants";
 import type { StepResponseEvent } from "@/lib/analysis/types";
 
 interface Props {
-  vehicleType: VehicleType;
-  params: Map<string, number>;
-  setLocalValue: (name: string, value: number) => void;
+  /** FC-confirmed values, vehicle type and writer that AI suggestions are checked and applied against. */
+  target: SuggestionTarget;
   connected: boolean;
 }
 
-export function PidAnalysisWizard({ vehicleType, params, setLocalValue, connected }: Props) {
+export function PidAnalysisWizard({ target, connected }: Props) {
   const wizardStep = usePidAnalysisStore((s) => s.wizardStep);
   const setWizardStep = usePidAnalysisStore((s) => s.setWizardStep);
   const analysisResult = usePidAnalysisStore((s) => s.analysisResult);
@@ -39,8 +37,6 @@ export function PidAnalysisWizard({ vehicleType, params, setLocalValue, connecte
   const startAnalysis = usePidAnalysisStore((s) => s.startAnalysis);
   const loadMockAnalysis = usePidAnalysisStore((s) => s.loadMockAnalysis);
   const requestAiAnalysis = usePidAnalysisStore((s) => s.requestAiAnalysis);
-  const applyRecommendation = usePidAnalysisStore((s) => s.applyRecommendation);
-  const applyAllRecommended = usePidAnalysisStore((s) => s.applyAllRecommended);
   const saveAsComparison = usePidAnalysisStore((s) => s.saveAsComparison);
 
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>("summary");
@@ -70,10 +66,8 @@ export function PidAnalysisWizard({ vehicleType, params, setLocalValue, connecte
   }, [stepIndex, setWizardStep]);
 
   const handleRequestAi = useCallback(() => {
-    const currentParams: Record<string, number> = {};
-    params.forEach((v, k) => { currentParams[k] = v; });
-    requestAiAnalysis(vehicleType, currentParams);
-  }, [params, vehicleType, requestAiAnalysis]);
+    requestAiAnalysis(target.vehicleType, Object.fromEntries(target.fcParams));
+  }, [target, requestAiAnalysis]);
 
   // Get step response events for selected axis
   const stepEvents: StepResponseEvent[] = useMemo(() => {
@@ -194,8 +188,7 @@ export function PidAnalysisWizard({ vehicleType, params, setLocalValue, connecte
           )}
           <PidAiRecommendations
             recommendations={aiRecommendations}
-            onApply={(id) => applyRecommendation(id, setLocalValue)}
-            onApplyAll={() => applyAllRecommended(setLocalValue)}
+            target={target}
             aiLoading={aiLoading}
           />
         </div>

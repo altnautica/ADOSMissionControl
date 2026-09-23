@@ -1004,12 +1004,12 @@
     "udpModeListen": "ਸੁਣੋ",
     "udpModeTarget": "ਟੀਚਾ",
     "nativeSocketReady": "ਨੇਟਿਵ ਸਾਕੇਟ ਤਿਆਰ (ਡੈਸਕਟਾਪ ਐਪ)।",
-    "bridgeNeeded": "ਬ੍ਰਾਊਜ਼ਰ ਰਾਅ ਸਾਕੇਟ ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਦਾ। ਲੋਕਲ ਬ੍ਰਿਜ ਚਲਾਓ, ਫਿਰ ਇਸ ਨਾਲ ਜੁੜੋ:",
+    "bridgeNeeded": "ਬ੍ਰਾਊਜ਼ਰ ਰਾਅ ਸਾਕੇਟ ਨਹੀਂ ਖੋਲ੍ਹ ਸਕਦਾ। ਹੇਠਾਂ ਦਿੱਤਾ ਲੋਕਲ ਬ੍ਰਿਜ ਚਲਾਓ। ਸ਼ੁਰੂ ਹੋਣ 'ਤੇ ਇਹ ws://…/?token=… URL ਦਿਖਾਉਂਦਾ ਹੈ; ਉਹ ਪੂਰਾ URL ਬ੍ਰਿਜ URL ਵਿੱਚ ਪੇਸਟ ਕਰੋ।",
     "bridgeUrlLabel": "ਬ੍ਰਿਜ URL",
     "checkBridge": "ਜਾਂਚੋ",
     "checking": "ਜਾਂਚ ਹੋ ਰਹੀ ਹੈ...",
     "bridgeReachable": "ਬ੍ਰਿਜ ਪਹੁੰਚਯੋਗ ਹੈ।",
-    "bridgeUnreachable": "ਬ੍ਰਿਜ ਪਹੁੰਚਯੋਗ ਨਹੀਂ। ਕੀ ਇਹ ਚੱਲ ਰਿਹਾ ਹੈ?",
+    "bridgeUnreachable": "ਬ੍ਰਿਜ ਪਹੁੰਚਯੋਗ ਨਹੀਂ। ਕੀ ਇਹ ਚੱਲ ਰਿਹਾ ਹੈ, ਅਤੇ ਕੀ URL ਵਿੱਚ ਇਸਦਾ ਦਿਖਾਇਆ ?token= ਹੈ?",
     "copy": "ਕਾਪੀ ਕਰੋ",
     "copied": "ਕਾਪੀ ਹੋ ਗਿਆ",
     "connectionFailed": "ਕਨੈਕਸ਼ਨ ਅਸਫਲ",
@@ -2658,11 +2658,15 @@
     "release": "Release",
     "grab": "Grab",
     "winchNum": "Winch Number",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "Length",
     "fence": "Fence",
     "disable": "ਬੰਦ ਕਰੋ",
     "enable": "Enable",
-    "maxDescent": "Max Descent Rate",
+    "maxDescent": "Max Descent",
     "distance": "ਦੂਰੀ",
     "functionNum": "Function Number",
     "switch": "Switch",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "ਉਡਾਣ ਲਿੰਕ ਖੋਲ੍ਹਣ ਲਈ ਇਸ ਨੋਡ ਨੂੰ ਪੇਅਰ ਕਰੋ",
+      "body": "ਕੰਪੈਨੀਅਨ ਕੰਪਿਊਟਰ ਪਹੁੰਚ ਵਿੱਚ ਹੈ ਪਰ ਪੇਅਰ ਨਹੀਂ ਹੈ। ਬਿਨਾਂ ਪੇਅਰ ਕੀਤਾ ਨੋਡ ਆਪਣਾ ਫਲਾਈਟ-ਕੰਟਰੋਲਰ ਲਿੰਕ ਸਿਰਫ਼ ਆਪਣੇ ਹੌਟਸਪੌਟ, USB ਜਾਂ ਆਨ-ਬੋਰਡ ਕਨੈਕਸ਼ਨ ਲਈ ਖੋਲ੍ਹਦਾ ਹੈ। ਇੱਥੋਂ ਉਡਾਉਣ ਲਈ ਇਸਨੂੰ ਪੇਅਰ ਕਰੋ।",
+      "cta": "ਇਸ ਨੋਡ ਨੂੰ ਪੇਅਰ ਕਰੋ"
     }
   },
   "blackbox": {

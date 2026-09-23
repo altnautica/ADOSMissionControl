@@ -98,9 +98,16 @@ export const useMixerStore = create<MixerState>((set, get) => ({
       set({ error: 'Mixer tables not supported by this firmware' })
       return
     }
+    const { motorRules, servoRules } = get()
+    // The FC counts motors up to the first rule with throttle 0, so such a rule
+    // would silently drop itself and every motor after it.
+    const unusedAt = motorRules.findIndex((r) => r.throttle === 0)
+    if (unusedAt >= 0) {
+      set({ error: `Motor rule ${unusedAt} has throttle 0, which the flight controller reads as the end of the motor table` })
+      return
+    }
     set({ loading: true, error: null })
     try {
-      const { motorRules, servoRules } = get()
       await protocol.uploadMotorMixer(motorRules)
       await protocol.uploadServoMixer(servoRules)
       set({ loading: false, dirty: false })

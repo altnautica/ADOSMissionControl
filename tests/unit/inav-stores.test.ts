@@ -50,7 +50,6 @@ function fakeZone(number: number): INavGeozone {
     fenceAction: 1,
     vertexCount: 0,
     isSeaLevelRef: false,
-    enabled: true,
   };
 }
 
@@ -286,6 +285,31 @@ describe("useGeozoneStore", () => {
     );
     await useGeozoneStore.getState().uploadToFc(proto as DroneProtocol);
     expect(useGeozoneStore.getState().error).toBe("Upload failed");
+  });
+
+  it("uploads a circle as its centre vertex with radius and two FC vertex slots", async () => {
+    useGeozoneStore.getState().addZone({ shape: GEOZONE_SHAPE.CIRCULAR });
+    const id = useGeozoneStore.getState().zones[0].number;
+    const proto = makeFakeGeozoneProtocol();
+
+    await useGeozoneStore.getState().uploadToFc(proto as DroneProtocol);
+    expect(proto.uploadGeozones).not.toHaveBeenCalled();
+    expect(useGeozoneStore.getState().error).toMatch(/radius/);
+
+    useGeozoneStore.getState().setCircle(id, 12.5, 77.5, 15000);
+    await useGeozoneStore.getState().uploadToFc(proto as DroneProtocol);
+    const [zones, verts] = (proto.uploadGeozones as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(zones[0].vertexCount).toBe(2);
+    expect(verts).toEqual([{ geozoneId: id, vertexIdx: 0, lat: 12.5, lon: 77.5, radius: 15000 }]);
+  });
+
+  it("changing a zone's shape discards geometry of the other shape", () => {
+    useGeozoneStore.getState().addZone();
+    const id = useGeozoneStore.getState().zones[0].number;
+    for (let i = 0; i < 3; i++) useGeozoneStore.getState().addVertex(id, { lat: i, lon: i });
+    useGeozoneStore.getState().updateZone(id, { shape: GEOZONE_SHAPE.CIRCULAR });
+    expect(useGeozoneStore.getState().vertices.get(id)).toBeUndefined();
+    expect(useGeozoneStore.getState().zones[0].vertexCount).toBe(0);
   });
 
   it("clear resets state to defaults", () => {

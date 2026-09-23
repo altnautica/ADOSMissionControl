@@ -347,4 +347,17 @@ describe("built-in arm adapter", () => {
     expect(state.kind).toBe("disabled");
     expect(state.reason).toBe("skills.reason.alreadyArmed");
   });
+
+  it("never arms when the arm state is unknown, and says the link is missing", async () => {
+    useSkillRegistry.getState().register(armSkill);
+    const arm = vi.fn(async () => ({ success: true }));
+    const protocol = { arm } as unknown as SkillContext["protocol"];
+    const ctx = makeCtx({ protocol, armState: "unknown" });
+
+    expect(armSkill.getState(ctx)).toEqual({ kind: "disabled", reason: "skills.reason.noFcLink" });
+    await activate("arm", ctx);
+    expect(ctx.confirm).not.toHaveBeenCalled();
+    expect(arm).not.toHaveBeenCalled();
+    expect(ctx.notify).toHaveBeenCalledWith("skills.reason.noFcLink", "warning");
+  });
 });

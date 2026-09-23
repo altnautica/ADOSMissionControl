@@ -9,40 +9,18 @@ import { LogFilter, useLogFilter } from "@/components/flight-logs/LogFilter";
 import { LogTable, useListLayout } from "@/components/flight-logs/LogTable";
 import { LogDetail, LogReplayView, useReplay } from "@/components/flight-logs/LogDetail";
 import { useHistoryStore } from "@/stores/history-store";
-import { useOperatorProfileStore } from "@/stores/operator-profile-store";
-import { useAircraftRegistryStore } from "@/stores/aircraft-registry-store";
-import { useBatteryRegistryStore } from "@/stores/battery-registry-store";
-import { useEquipmentRegistryStore } from "@/stores/equipment-registry-store";
-import { useLoadoutStore } from "@/stores/loadout-store";
 import { isDemoMode } from "@/lib/utils";
 import type { FlightRecord } from "@/lib/types";
 
 export default function FlightHistoryPage() {
-  // Load any persisted history + operator profile + aircraft registry from
-  // IndexedDB on first mount. All three are idempotent.
-  const loadFromIDB = useHistoryStore((s) => s.loadFromIDB);
-  const loadOperator = useOperatorProfileStore((s) => s.loadFromIDB);
-  const loadAircraft = useAircraftRegistryStore((s) => s.loadFromIDB);
-  const loadBatteries = useBatteryRegistryStore((s) => s.loadFromIDB);
-  const loadEquipment = useEquipmentRegistryStore((s) => s.loadFromIDB);
-  const loadLoadouts = useLoadoutStore((s) => s.loadFromIDB);
+  // Stored history is loaded by the root LocalStoreHydrator. In demo mode,
+  // wipe persisted history and re-seed from the curated dataset. Demo
+  // records are filtered out of persistToIDB so they never reach IDB.
   const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);
   const resetDemoData = useHistoryStore((s) => s.resetDemoData);
 
   useEffect(() => {
-    void loadOperator();
-    void loadAircraft();
-    void loadBatteries();
-    void loadEquipment();
-    void loadLoadouts();
-
-    // In demo mode: always wipe persisted history and re-seed from the
-    // curated dataset. Demo records are filtered out of persistToIDB so
-    // a clean reset never destroys real imports or live-hardware flights.
-    if (!isDemoMode()) {
-      void loadFromIDB();
-      return;
-    }
+    if (!isDemoMode()) return;
 
     let cancelled = false;
     void (async () => {
@@ -61,7 +39,7 @@ export default function FlightHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [loadFromIDB, loadOperator, loadAircraft, loadBatteries, loadEquipment, loadLoadouts, initWithSeedData, resetDemoData]);
+  }, [initWithSeedData, resetDemoData]);
 
   const allRecords = useHistoryStore((s) => s.records);
   const filter = useLogFilter(allRecords);

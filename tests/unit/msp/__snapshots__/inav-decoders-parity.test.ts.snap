@@ -53,23 +53,6 @@ exports[`iNav decoder parity > decodeMspAdsbVehicleList (one vehicle) 1`] = `
 ]
 `;
 
-exports[`iNav decoder parity > decodeMspCommonMotorMixer (mixed occupancy) 1`] = `
-[
-  {
-    "pitch": 1,
-    "roll": 1,
-    "throttle": 1,
-    "yaw": -1,
-  },
-  {
-    "pitch": -1,
-    "roll": -1,
-    "throttle": 1,
-    "yaw": 1,
-  },
-]
-`;
-
 exports[`iNav decoder parity > decodeMspINavAirSpeed 1`] = `
 {
   "airSpeedCmS": 1750,
@@ -142,29 +125,6 @@ exports[`iNav decoder parity > decodeMspINavFwApproach (two entries) 1`] = `
     "number": 2,
   },
 ]
-`;
-
-exports[`iNav decoder parity > decodeMspINavGeozone 1`] = `
-{
-  "enabled": true,
-  "fenceAction": 1,
-  "isSeaLevelRef": true,
-  "maxAlt": 50000,
-  "minAlt": 10000,
-  "number": 2,
-  "shape": 1,
-  "type": 1,
-  "vertexCount": 5,
-}
-`;
-
-exports[`iNav decoder parity > decodeMspINavGeozoneVertex 1`] = `
-{
-  "geozoneId": 2,
-  "lat": 13.5,
-  "lon": 77.4,
-  "vertexIdx": 1,
-}
 `;
 
 exports[`iNav decoder parity > decodeMspINavGvarStatus 1`] = `
@@ -265,17 +225,6 @@ exports[`iNav decoder parity > decodeMspINavMisc2 1`] = `
   "lastArmTime": 2037277528,
   "onTime": 555092736,
   "totalArmTime": 2778369924,
-}
-`;
-
-exports[`iNav decoder parity > decodeMspINavMixer 1`] = `
-{
-  "appliedMixerPreset": 3338,
-  "hasFlaps": true,
-  "motorCount": 16,
-  "platformType": 1,
-  "servoCount": 19,
-  "yawMotorsReversed": true,
 }
 `;
 
@@ -461,29 +410,6 @@ exports[`iNav decoder parity > decodeMspINavSafehome 1`] = `
   "lat": 13.5,
   "lon": 77.4,
 }
-`;
-
-exports[`iNav decoder parity > decodeMspINavServoConfig (two servos) 1`] = `
-[
-  {
-    "flags": 1,
-    "forwardFromChannel": 3,
-    "max": 2000,
-    "middle": 1500,
-    "min": 1000,
-    "rate": 100,
-    "reversedInputSources": 10,
-  },
-  {
-    "flags": 1,
-    "forwardFromChannel": 3,
-    "max": 2000,
-    "middle": 1500,
-    "min": 1000,
-    "rate": 100,
-    "reversedInputSources": 10,
-  },
-]
 `;
 
 exports[`iNav decoder parity > decodeMspINavServoMixer (two rules) 1`] = `

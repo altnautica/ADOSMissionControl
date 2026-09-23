@@ -202,21 +202,26 @@ const BATTERY_PROFILE_SEED: readonly INavBatteryConfig[] = [
   },
 ];
 
+/** Motor slots the FC reports as MAX_SUPPORTED_MOTORS. */
+const MOTOR_SLOT_COUNT = 12;
+
 /**
- * Two mixer profiles for the same airframe. Profile 1 reverses the yaw motors,
- * which is the real reason a non-VTOL build carries a second mixer profile.
+ * Two mixer profiles for the same airframe. Profile 1 inverts the motor
+ * direction (reversing yaw), which is the real reason a non-VTOL build
+ * carries a second mixer profile.
  */
 function seedMixerProfiles(vehicleClass: "copter" | "plane"): INavMixer[] {
   const plane = vehicleClass === "plane";
   const profile: INavMixer = {
+    motorDirectionInverted: false,
+    motorstopOnLow: false,
     platformType: plane ? 1 : 0,
-    yawMotorsReversed: false,
     hasFlaps: plane,
     appliedMixerPreset: plane ? MIXER_PRESET_AIRPLANE : MIXER_PRESET_QUADX,
-    motorCount: plane ? 1 : 4,
-    servoCount: plane ? 5 : 0,
+    maxSupportedMotors: MOTOR_SLOT_COUNT,
+    maxSupportedServos: SERVO_SLOT_COUNT,
   };
-  return [profile, { ...profile, yawMotorsReversed: true }];
+  return [profile, { ...profile, motorDirectionInverted: true }];
 }
 
 /** Timer output usage flags: 1 = motor, 2 = servo, 4 = LED, 8 = serial. */
@@ -250,10 +255,9 @@ const TIMER_OUTPUT_MODE_SEED: readonly INavTimerOutputModeEntry[] = [
 /** Servo slots iNav reports regardless of how many the mixer actually drives. */
 const SERVO_SLOT_COUNT = 8;
 
-/** Unassigned servo slot: 1000-2000 us travel, iNav's no-forward sentinel 255. */
+/** Unassigned servo slot: 1000-2000 us travel, 100% rate. */
 const SERVO_CONFIG_DEFAULT: Readonly<INavServoConfig> = {
-  rate: 100, min: 1000, max: 2000, middle: 1500,
-  forwardFromChannel: 255, reversedInputSources: 0, flags: 0,
+  min: 1000, max: 2000, middle: 1500, rate: 100,
 };
 
 /** iNav tempSensorType_e: 0 = none, 1 = LM75, 2 = DS18B20. Alarms in 0.1 C. */
@@ -810,10 +814,7 @@ export class INavMockProtocol implements DroneProtocol {
       };
     }
     this.activeMixerProfile = idx;
-    const mixer = this.mixerProfiles[idx];
-    this.settingStore.set("platform_type", { type: SettingType.UINT8, value: mixer.platformType });
-    this.settingStore.set("motor_count", { type: SettingType.UINT8, value: mixer.motorCount });
-    this.settingStore.set("servo_count", { type: SettingType.UINT8, value: mixer.servoCount });
+    this.settingStore.set("platform_type", { type: SettingType.UINT8, value: this.mixerProfiles[idx].platformType });
     return ok(`Mixer profile ${idx} selected`);
   }
 
@@ -1067,7 +1068,7 @@ export class INavMockProtocol implements DroneProtocol {
    *  ArduPilot-shaped panel render fabricated zeros against an iNav demo
    *  vehicle, and left the `param_absent` UI branch unreachable in demo. */
   async getParameter(name: string): Promise<ParameterValue> { throw new ParamAbsentError(name); }
-  async setParameter(name: string, value: number, type = 9): Promise<CommandResult> { void type; return ok(`${name} = ${value}`); }
+  async setParameter(name: string, value: number): Promise<CommandResult> { return ok(`${name} = ${value}`); }
   async resetParametersToDefault(): Promise<CommandResult> { return ok("Parameters reset"); }
 
   // ── Calibration ─────────────────────────────────────────────
@@ -1094,6 +1095,11 @@ export class INavMockProtocol implements DroneProtocol {
   async motorTest(motor: number, throttle: number, duration: number): Promise<CommandResult> {
     this._emit("statusText", 6, `Motor ${motor} test: ${throttle}% for ${duration}s`);
     return ok(`Motor ${motor} tested`);
+  }
+  /** The demo aircraft is always armed and flying, so only the stop is accepted, as on a real FC. */
+  async setMotorTestOutputs(throttlesPct: readonly number[], _durationSeconds: number): Promise<CommandResult> {
+    if (throttlesPct.every((v) => v <= 0)) return ok("Motors idled");
+    return { success: false, resultCode: -1, message: "Motor test refused: vehicle is armed" };
   }
   async rebootToBootloader(): Promise<CommandResult> { return ok("Reboot to bootloader (mock)"); }
   async reboot(): Promise<CommandResult> { this._emit("statusText", 5, "Rebooting..."); return ok("Reboot (mock)"); }

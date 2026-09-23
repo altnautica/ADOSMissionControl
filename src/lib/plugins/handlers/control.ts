@@ -259,18 +259,22 @@ export function buildControlHandlers(
     // Per-drone arm state, from this plugin's own node registry entry.
     // `useDroneStore` holds the OPERATOR'S selection, so a plugin bound to a
     // different aircraft escalated (or failed to escalate) the confirmation
-    // dialog against the wrong vehicle's arm state.
-    const armed =
-      (deviceId
-        ? useNodeRegistryStore.getState().getEntry(deviceId)?.fc.armState
-        : undefined) === "armed";
+    // dialog against the wrong vehicle's arm state. A lost link leaves the arm
+    // state unknown, which escalates like armed: the aircraft may be flying.
+    const armState = deviceId
+      ? useNodeRegistryStore.getState().getEntry(deviceId)?.fc.armState
+      : undefined;
     const ok = await requestPluginConfirm({
       pluginId,
       title: "Plugin command",
       body:
         `${pluginId} wants to send "${command}"` +
-        (armed ? " while the vehicle is ARMED" : ""),
-      severity: armed ? "critical" : "warning",
+        (armState === "armed"
+          ? " while the vehicle is ARMED"
+          : armState === "unknown"
+            ? " while the vehicle's arm state is UNKNOWN (link lost)"
+            : ""),
+      severity: armState === "armed" || armState === "unknown" ? "critical" : "warning",
     });
     if (!ok) return { ok: false, error: "operator denied" };
 
@@ -312,6 +316,9 @@ export function buildControlHandlers(
       : undefined;
     if (fcState?.armState === "armed") {
       return { ok: false, error: "cannot write mission while armed" };
+    }
+    if (fcState?.armState === "unknown") {
+      return { ok: false, error: "cannot write mission while the arm state is unknown" };
     }
 
     const result = validateMission(waypoints);

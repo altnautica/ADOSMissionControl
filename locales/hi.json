@@ -1004,12 +1004,12 @@
     "udpModeListen": "सुनें",
     "udpModeTarget": "लक्ष्य",
     "nativeSocketReady": "नेटिव सॉकेट तैयार (डेस्कटॉप ऐप).",
-    "bridgeNeeded": "ब्राउज़र रॉ सॉकेट नहीं खोल सकता. लोकल ब्रिज चलाएँ, फिर उससे जुड़ें:",
+    "bridgeNeeded": "ब्राउज़र रॉ सॉकेट नहीं खोल सकता. नीचे दिया लोकल ब्रिज चलाएँ. शुरू होने पर यह एक ws://…/?token=… URL दिखाता है; वह पूरा URL ब्रिज URL में पेस्ट करें.",
     "bridgeUrlLabel": "ब्रिज URL",
     "checkBridge": "जाँचें",
     "checking": "जाँच हो रही है...",
     "bridgeReachable": "ब्रिज पहुँच योग्य है.",
-    "bridgeUnreachable": "ब्रिज पहुँच योग्य नहीं है. क्या यह चल रहा है?",
+    "bridgeUnreachable": "ब्रिज पहुँच योग्य नहीं है. क्या यह चल रहा है, और क्या URL में इसका दिखाया ?token= है?",
     "copy": "कॉपी करें",
     "copied": "कॉपी किया गया",
     "connectionFailed": "कनेक्शन विफल",
@@ -2658,11 +2658,15 @@
     "release": "Release",
     "grab": "Grab",
     "winchNum": "Winch Number",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "लंबाई",
     "fence": "Fence",
     "disable": "बंद करें",
     "enable": "चालू करें",
-    "maxDescent": "Max Descent Rate",
+    "maxDescent": "Max Descent",
     "distance": "दूरी",
     "functionNum": "Function Number",
     "switch": "Switch",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "उड़ान लिंक खोलने के लिए इस नोड को पेयर करें",
+      "body": "कंपैनियन कंप्यूटर पहुँच में है, पर पेयर नहीं है। बिना पेयर किया नोड अपना फ़्लाइट-कंट्रोलर लिंक केवल अपने हॉटस्पॉट, USB या ऑन-बोर्ड कनेक्शन के लिए खोलता है। यहाँ से उड़ाने के लिए इसे पेयर करें।",
+      "cta": "इस नोड को पेयर करें"
     }
   },
   "blackbox": {

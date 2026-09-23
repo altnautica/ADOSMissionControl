@@ -1,17 +1,12 @@
 /**
  * @license GPL-3.0-only
  *
- * `uavcan.protocol.param.GetSet` is bit-packed, and the codec was one byte off
- * in both directions. These tests assert the WIRE BYTES against the DSDL
- * definition (`dronecan/DSDL uavcan/protocol/param/11.GetSet.uavcan`) rather
- * than round-tripping the codec against itself, because a symmetric encoder and
- * decoder agree perfectly while both disagree with the flight controller.
- *
- * The concrete defect: `index` is `uint13` and the `Value` union tag is 3 bits,
- * so they share the first two bytes. Writing `index` as a full uint16 and the
- * tag as a whole byte at offset 2 made a real node read tag 0 (Empty) and take
- * the remainder as the tail-array `name` — a non-empty `"\0"` — and DSDL says a
- * non-empty name wins over the index, so every index walk came back empty.
+ * `uavcan.protocol.param.GetSet` is bit-packed: the request's uint13 index
+ * shares two bytes with the 3-bit Value tag, the response pads each union tag
+ * with void5/void6 so every tag sits in the low bits of its own byte, and a
+ * string value carries a uint8 length prefix because Value is never the last
+ * field. Expected bytes are reference DroneCAN encodings, checked in both
+ * directions.
  */
 
 import { describe, expect, it } from "vitest";
@@ -22,143 +17,140 @@ import {
   decodeParamGetSetResponse,
   encodeParamGetSetRequest,
   encodeParamGetSetResponse,
+  type ParamGetSetRequest,
+  type ParamGetSetResponse,
 } from "@/lib/dronecan/dsdl/param-getset";
 
-describe("param.GetSet request wire format", () => {
-  it("packs uint13 index and the 3-bit Empty tag into exactly two bytes", () => {
-    const bytes = encodeParamGetSetRequest({
-      index: 0,
-      value: { tag: ValueTag.Empty },
-      name: "",
-    });
-    // 13 bits of index + 3 bits of tag = 16 bits, and Empty has no payload.
-    expect(Array.from(bytes)).toEqual([0x00, 0x00]);
-  });
+const EMPTY = { tag: ValueTag.Empty } as const;
 
-  it("keeps the index inside its 13 bits and the tag above them", () => {
-    // index 0x1234 & 0x1fff = 0x1234; tag Real = 2 sits in bits 13..15.
-    const bytes = encodeParamGetSetRequest({
-      index: 0x1234,
-      value: { tag: ValueTag.Real, value: 0 },
-      name: "",
-    });
-    expect(bytes[0]).toBe(0x34);
-    // Low 5 bits of byte 1 are index bits 8..12; top 3 bits are the tag.
-    expect(bytes[1] & 0x1f).toBe(0x12);
-    expect((bytes[1] >> 5) & 0x07).toBe(ValueTag.Real);
-    // float32 payload follows, then nothing: 2 + 4 bytes.
-    expect(bytes.length).toBe(6);
-  });
+const REQUESTS: Array<{ name: string; req: ParamGetSetRequest; bytes: number[] }> = [
+  {
+    name: "a bare index walk",
+    req: { index: 7, value: EMPTY, name: "" },
+    bytes: [0x07, 0x00],
+  },
+  {
+    name: "a uint13 index sharing byte 1 with the Real tag",
+    req: { index: 0x1234, value: { tag: ValueTag.Real, value: 0 }, name: "" },
+    bytes: [0x34, 0x92, 0x00, 0x00, 0x00, 0x00],
+  },
+  {
+    name: "a named integer set",
+    req: { index: 0, value: { tag: ValueTag.Integer, value: BigInt(-42) }, name: "UAVCAN_NODE_ID" },
+    bytes: [
+      0x00, 0x01, 0xd6, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0x55, 0x41, 0x56, 0x43, 0x41, 0x4e, 0x5f, 0x4e, 0x4f, 0x44, 0x45, 0x5f, 0x49, 0x44,
+    ],
+  },
+  {
+    name: "a named string set with its length prefix",
+    req: { index: 0, value: { tag: ValueTag.String, value: "ab" }, name: "X" },
+    bytes: [0x00, 0x04, 0x02, 0x61, 0x62, 0x58],
+  },
+];
 
-  it("emits a bare index walk with NO name, so the node uses the index", () => {
-    const bytes = encodeParamGetSetRequest({
-      index: 7,
-      value: { tag: ValueTag.Empty },
-      name: "",
-    });
-    // Two bytes only. Any third byte would be a one-character name, and DSDL
-    // prefers a non-empty name over the index.
-    expect(bytes.length).toBe(2);
-    const decoded = decodeParamGetSetRequest(bytes);
-    expect(decoded.index).toBe(7);
-    expect(decoded.name).toBe("");
-    expect(decoded.value.tag).toBe(ValueTag.Empty);
-  });
-
-  it("rejects an index outside uint13 instead of silently truncating it", () => {
-    expect(() =>
-      encodeParamGetSetRequest({
-        index: 0x2000,
-        value: { tag: ValueTag.Empty },
-        name: "",
-      }),
-    ).toThrow(/uint13/);
-  });
-
-  it("round-trips a named integer set request", () => {
-    const bytes = encodeParamGetSetRequest({
-      index: 0,
-      value: { tag: ValueTag.Integer, value: BigInt(-42) },
-      name: "UAVCAN_NODE_ID",
-    });
-    // 2 + 8 (int64) + 14 (name) bytes.
-    expect(bytes.length).toBe(2 + 8 + 14);
-    const decoded = decodeParamGetSetRequest(bytes);
-    expect(decoded.name).toBe("UAVCAN_NODE_ID");
-    expect(decoded.value).toEqual({
-      tag: ValueTag.Integer,
-      value: BigInt(-42),
-    });
-  });
-});
-
-describe("param.GetSet response wire format", () => {
-  it("uses a 2-bit tag for the NumericValue min/max fields", () => {
-    // value Empty (3 bits) + default Empty (3 bits) + max Empty (2 bits)
-    // + min Empty (2 bits) = 10 bits, then the name tail-array.
-    const bytes = encodeParamGetSetResponse({
-      value: { tag: ValueTag.Empty },
-      default_value: { tag: ValueTag.Empty },
-      max_value: { tag: ValueTag.Empty },
-      min_value: { tag: ValueTag.Empty },
-      name: "",
-    });
-    // 10 bits rounds up to two bytes. A byte-per-tag encoding would emit four.
-    expect(bytes.length).toBe(2);
-  });
-
-  it("decodes every field of a fully-populated response", () => {
-    const encoded = encodeParamGetSetResponse({
-      value: { tag: ValueTag.Integer, value: BigInt(5) },
-      default_value: { tag: ValueTag.Integer, value: BigInt(3) },
+const RESPONSES: Array<{ name: string; res: ParamGetSetResponse; bytes: number[] }> = [
+  {
+    name: "an integer parameter with limits",
+    res: {
+      value: { tag: ValueTag.Integer, value: BigInt(10) },
+      default_value: { tag: ValueTag.Integer, value: BigInt(0) },
       max_value: { tag: ValueTag.Integer, value: BigInt(127) },
       min_value: { tag: ValueTag.Integer, value: BigInt(0) },
-      name: "ESC_INDEX",
-    });
-    const decoded = decodeParamGetSetResponse(encoded);
-    expect(decoded.value).toEqual({ tag: ValueTag.Integer, value: BigInt(5) });
-    expect(decoded.default_value).toEqual({
-      tag: ValueTag.Integer,
-      value: BigInt(3),
-    });
-    expect(decoded.max_value).toEqual({
-      tag: ValueTag.Integer,
-      value: BigInt(127),
-    });
-    expect(decoded.min_value).toEqual({
-      tag: ValueTag.Integer,
-      value: BigInt(0),
-    });
-    expect(decoded.name).toBe("ESC_INDEX");
-  });
-
-  it("decodes a real-valued response with unaligned following fields", () => {
-    // value Real: 3-bit tag + 32 bits = 35 bits, so default_value's tag starts
-    // mid-byte. A byte-aligned codec cannot read this at all.
-    const encoded = encodeParamGetSetResponse({
+      name: "CAN_NODE",
+    },
+    bytes: [
+      0x01, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x01, 0x7f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x43, 0x41, 0x4e, 0x5f, 0x4e, 0x4f, 0x44, 0x45,
+    ],
+  },
+  {
+    name: "a real parameter with limits",
+    res: {
       value: { tag: ValueTag.Real, value: 1.5 },
       default_value: { tag: ValueTag.Real, value: 0.25 },
       max_value: { tag: ValueTag.Real, value: 10 },
       min_value: { tag: ValueTag.Real, value: -10 },
       name: "MOT_PWM_MAX",
+    },
+    bytes: [
+      0x02, 0x00, 0x00, 0xc0, 0x3f, 0x02, 0x00, 0x00, 0x80, 0x3e,
+      0x02, 0x00, 0x00, 0x20, 0x41, 0x02, 0x00, 0x00, 0x20, 0xc1,
+      0x4d, 0x4f, 0x54, 0x5f, 0x50, 0x57, 0x4d, 0x5f, 0x4d, 0x41, 0x58,
+    ],
+  },
+  {
+    name: "a string parameter followed by empty limits and the name",
+    res: {
+      value: { tag: ValueTag.String, value: "abc" },
+      default_value: { tag: ValueTag.String, value: "x" },
+      max_value: EMPTY,
+      min_value: EMPTY,
+      name: "NAME",
+    },
+    bytes: [0x04, 0x03, 0x61, 0x62, 0x63, 0x04, 0x01, 0x78, 0x00, 0x00, 0x4e, 0x41, 0x4d, 0x45],
+  },
+  {
+    name: "a boolean parameter",
+    res: {
+      value: { tag: ValueTag.Boolean, value: true },
+      default_value: EMPTY,
+      max_value: EMPTY,
+      min_value: EMPTY,
+      name: "B",
+    },
+    bytes: [0x03, 0x01, 0x00, 0x00, 0x00, 0x42],
+  },
+  {
+    name: "the end-of-list answer (all Empty, no name)",
+    res: { value: EMPTY, default_value: EMPTY, max_value: EMPTY, min_value: EMPTY, name: "" },
+    bytes: [0x00, 0x00, 0x00, 0x00],
+  },
+];
+
+describe("param.GetSet request", () => {
+  for (const v of REQUESTS) {
+    it(`encodes ${v.name}`, () => {
+      expect(Array.from(encodeParamGetSetRequest(v.req))).toEqual(v.bytes);
     });
-    const decoded = decodeParamGetSetResponse(encoded);
-    expect(decoded.value).toEqual({ tag: ValueTag.Real, value: 1.5 });
-    expect(decoded.default_value).toEqual({ tag: ValueTag.Real, value: 0.25 });
-    expect(decoded.max_value).toEqual({ tag: ValueTag.Real, value: 10 });
-    expect(decoded.min_value).toEqual({ tag: ValueTag.Real, value: -10 });
-    expect(decoded.name).toBe("MOT_PWM_MAX");
+    it(`decodes ${v.name}`, () => {
+      expect(decodeParamGetSetRequest(new Uint8Array(v.bytes))).toEqual(v.req);
+    });
+  }
+
+  it("rejects an index outside uint13 instead of silently truncating it", () => {
+    expect(() =>
+      encodeParamGetSetRequest({ index: 0x2000, value: EMPTY, name: "" }),
+    ).toThrow(/uint13/);
   });
+});
+
+describe("param.GetSet response", () => {
+  for (const v of RESPONSES) {
+    it(`encodes ${v.name}`, () => {
+      expect(Array.from(encodeParamGetSetResponse(v.res))).toEqual(v.bytes);
+    });
+    it(`decodes ${v.name}`, () => {
+      expect(decodeParamGetSetResponse(new Uint8Array(v.bytes))).toEqual(v.res);
+    });
+  }
 
   it("refuses to encode a Boolean into a NumericValue slot", () => {
     expect(() =>
       encodeParamGetSetResponse({
-        value: { tag: ValueTag.Empty },
-        default_value: { tag: ValueTag.Empty },
+        value: EMPTY,
+        default_value: EMPTY,
         max_value: { tag: ValueTag.Boolean, value: true },
-        min_value: { tag: ValueTag.Empty },
+        min_value: EMPTY,
         name: "",
       }),
     ).toThrow(/NumericValue/);
+  });
+
+  it("rejects a response that ends inside the padded value fields", () => {
+    expect(() => decodeParamGetSetResponse(new Uint8Array([0x00, 0x00]))).toThrow(/truncated/);
   });
 });

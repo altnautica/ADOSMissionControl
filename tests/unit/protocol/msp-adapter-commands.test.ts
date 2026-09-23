@@ -16,6 +16,8 @@ import {
   mspDisarm,
   mspSetFlightMode,
   mspMotorTest,
+  mspSetMotorOutputs,
+  mspCancelMotorTest,
   mspKillSwitch,
   mspReboot,
   mspRebootToBootloader,
@@ -196,7 +198,7 @@ describe('mspArm / mspDisarm with an arm ModeRange (AUX channel path)', () => {
 describe('mspMotorTest', () => {
   it('sends MSP_SET_MOTOR scaling only the selected motor, others at 1000', async () => {
     const { ctx, frames } = ctxWith([]);
-    const result = await mspMotorTest(ctx, 2, 50, 0);
+    const result = await mspMotorTest(ctx, 2, 50, 2);
     expect(result.success).toBe(true);
     expect(frames).toHaveLength(1);
 
@@ -220,13 +222,13 @@ describe('mspMotorTest', () => {
 
   it('100% throttle on motor 0 maps to the full 2000 PWM', async () => {
     const { ctx, frames } = ctxWith([]);
-    await mspMotorTest(ctx, 0, 100, 0);
+    await mspMotorTest(ctx, 0, 100, 2);
     expect(readU16(frames[0].payload, 0)).toBe(2000);
   });
 
   it('0% throttle leaves the selected motor at the 1000 stop value', async () => {
     const { ctx, frames } = ctxWith([]);
-    await mspMotorTest(ctx, 5, 0, 0);
+    await mspMotorTest(ctx, 5, 0, 2);
     expect(readU16(frames[0].payload, 5 * 2)).toBe(1000);
   });
 
@@ -276,6 +278,50 @@ describe('mspMotorTest', () => {
       await vi.advanceTimersByTimeAsync(2_600);
       expect(frames).toHaveLength(3);
       expect(readU16(frames[2].payload, 1 * 2)).toBe(1000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('mspSetMotorOutputs', () => {
+  it('drives every output from one frame, so raising one motor keeps the others', async () => {
+    const { ctx, frames } = ctxWith([]);
+    expect((await mspSetMotorOutputs(ctx, [20, 20, 20, 20], 2)).success).toBe(true);
+    expect((await mspSetMotorOutputs(ctx, [20, 35, 20, 20], 2)).success).toBe(true);
+    expect(frames).toHaveLength(2);
+    expect([0, 1, 2, 3, 4].map((i) => readU16(frames[1].payload, i * 2))).toEqual([1200, 1350, 1200, 1200, 1000]);
+  });
+
+  it('refuses a spinning frame without a duration, so the stop is always scheduled', async () => {
+    const { ctx, frames } = ctxWith([]);
+    const result = await mspSetMotorOutputs(ctx, [30, 0, 0, 0], 0);
+    expect(result.success).toBe(false);
+    expect(frames).toHaveLength(0);
+  });
+
+  it('sends the all-idle stop even while armed', async () => {
+    const { ctx, frames } = ctxWith([]);
+    const armed = { ...ctx, isArmed: () => true };
+    expect((await mspSetMotorOutputs(armed, [10, 0, 0, 0], 2)).success).toBe(false);
+    expect((await mspSetMotorOutputs(armed, [0, 0, 0, 0], 2)).success).toBe(true);
+    expect(frames).toHaveLength(1);
+    for (let i = 0; i < 8; i++) expect(readU16(frames[0].payload, i * 2)).toBe(1000);
+  });
+
+  it('idles a live test on disconnect before the queue goes away', async () => {
+    vi.useFakeTimers();
+    try {
+      const { ctx, frames } = ctxWith([]);
+      await mspSetMotorOutputs(ctx, [40, 40, 40, 40], 2);
+      mspCancelMotorTest(ctx.queue as MspSerialQueue);
+      expect(frames).toHaveLength(2);
+      expect(frames[1].awaited).toBe(false);
+      for (let i = 0; i < 8; i++) expect(readU16(frames[1].payload, i * 2)).toBe(1000);
+
+      // The scheduled stop was dropped with the queue.
+      await vi.advanceTimersByTimeAsync(3_000);
+      expect(frames).toHaveLength(2);
     } finally {
       vi.useRealTimers();
     }
@@ -430,6 +476,16 @@ describe('mspReboot / mspRebootToBootloader', () => {
     expect(result.success).toBe(true);
     expect(frames[0].command).toBe(MSP.MSP_SET_REBOOT);
     expect(frames[0].payload[0]).toBe(1);
+  });
+
+  it('refuses both reboots while armed and sends nothing', async () => {
+    const { ctx, frames } = ctxWith([]);
+    const armed = { ...ctx, isArmed: () => true };
+    for (const result of [await mspReboot(armed), await mspRebootToBootloader(armed)]) {
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('armed');
+    }
+    expect(frames).toHaveLength(0);
   });
 });
 

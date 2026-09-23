@@ -8,6 +8,8 @@
  * truthful instead of always offering a USB "connect a flight controller"
  * prompt:
  *   - the card is stale (the box was re-flashed or unpaired) → re-pair / remove
+ *   - the agent is up but unpaired, so it refuses this GCS its flight link →
+ *     pair the node
  *   - the agent link is down (offline / unreachable card) → reconnect / re-pair
  *   - the agent is up but reports no autopilot → the original connect prompt
  * @license GPL-3.0-only
@@ -36,6 +38,7 @@ export function FcDisconnectedPlaceholder({
   const stalePairing = useAgentConnectionStore((s) => s.stalePairing);
   const connected = useAgentConnectionStore((s) => s.connected);
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
+  const mavlinkPairRequired = useAgentConnectionStore((s) => s.mavlinkPairRequired);
 
   // The box at this card's host is reachable but no longer the paired agent
   // (re-flashed → new device id, or unpaired). Offer re-pair + remove.
@@ -48,6 +51,13 @@ export function FcDisconnectedPlaceholder({
         onSecondary={removeFocusedLocalNode}
       />
     );
+  }
+
+  // The agent answers but reports itself unpaired, and an unpaired agent only
+  // opens its flight-controller link to its own box or lifeline links. No
+  // retry can open it from here: pairing is the way forward.
+  if (connected && mavlinkPairRequired) {
+    return <LinkUpPlaceholder variant="pair-required" droneName={droneName} />;
   }
 
   // The agent link itself is down for this LAN node — there is no flight

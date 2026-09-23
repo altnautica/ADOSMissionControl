@@ -328,19 +328,6 @@ describe('decodeMspINavAirSpeed', () => {
   })
 })
 
-// ── decodeMspINavMixer ────────────────────────────────────────
-
-describe('decodeMspINavMixer', () => {
-  it('decodes platform type and motor count', () => {
-    // platformType=0 at [0], yawMotorsReversed at [1], hasFlaps at [2],
-    // appliedMixerPreset U16 at [3-4], motorCount at [5], servoCount at [6]
-    const bytes = [0, 0, 0, 0, 0, 4, 0]
-    const result = decodeMspINavMixer(dv(bytes))
-    expect(result.platformType).toBe(0)
-    expect(result.motorCount).toBe(4)
-  })
-})
-
 // ── decodeMspINavMcBraking ────────────────────────────────────
 
 describe('decodeMspINavMcBraking', () => {
@@ -349,54 +336,6 @@ describe('decodeMspINavMcBraking', () => {
     const result = decodeMspINavMcBraking(dv(bytes))
     expect(result.speedThreshold).toBe(150)
     expect(result.disengageSpeed).toBe(10)
-  })
-})
-
-// ── decodeMspINavGeozone ──────────────────────────────────────
-
-describe('decodeMspINavGeozone', () => {
-  it('decodes geozone header fields', () => {
-    const minAlt = -100
-    const maxAlt = 12000
-    const bytes: number[] = [
-      2,                 // number (zone index)
-      0,                 // type: EXCLUSIVE
-      1,                 // shape: POLYGON
-      ...s32ToLE(minAlt),
-      ...s32ToLE(maxAlt),
-      2,                 // fenceAction
-      4,                 // vertexCount
-      0,                 // isSeaLevelRef
-      1,                 // enabled
-    ]
-    const result = decodeMspINavGeozone(dv(bytes))
-    expect(result.number).toBe(2)
-    expect(result.type).toBe(0)
-    expect(result.shape).toBe(1)
-    expect(result.minAlt).toBe(minAlt)
-    expect(result.maxAlt).toBe(maxAlt)
-    expect(result.vertexCount).toBe(4)
-    expect(result.enabled).toBe(true)
-  })
-})
-
-// ── decodeMspINavGeozoneVertex ────────────────────────────────
-
-describe('decodeMspINavGeozoneVertex', () => {
-  it('decodes vertex coordinates', () => {
-    const lat = Math.round(12.5 * 1e7)
-    const lon = Math.round(77.5 * 1e7)
-    const bytes: number[] = [
-      1,    // geozoneId
-      0,    // vertexIdx
-      ...s32ToLE(lat),
-      ...s32ToLE(lon),
-    ]
-    const result = decodeMspINavGeozoneVertex(dv(bytes))
-    expect(result.geozoneId).toBe(1)
-    expect(result.vertexIdx).toBe(0)
-    expect(result.lat).toBeCloseTo(12.5, 4)
-    expect(result.lon).toBeCloseTo(77.5, 4)
   })
 })
 

@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import net from 'node:net';
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Bridge, BridgeEvents } from './types.js';
+import { wsVerifyClient, type WsGuardOptions } from './ws-guard.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -18,9 +19,11 @@ const BACKOFF_FACTOR = 2;
 // Types
 // ---------------------------------------------------------------------------
 
-export interface TcpWsBridgeConfig {
+export interface TcpWsBridgeConfig extends WsGuardOptions {
   /** WebSocket port the GCS connects to. */
   wsPort: number;
+  /** WebSocket bind address (loopback unless the operator opts in). */
+  wsHost: string;
   host: string;
   port: number;
 }
@@ -49,7 +52,11 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> implements Bridge {
 
   /** Start the WebSocket server and connect out to the TCP endpoint. */
   start(): void {
-    const wss = new WebSocketServer({ port: this.config.wsPort });
+    const wss = new WebSocketServer({
+      port: this.config.wsPort,
+      host: this.config.wsHost,
+      verifyClient: wsVerifyClient(this.config),
+    });
     this.wss = wss;
 
     wss.on('connection', (ws, req) => {

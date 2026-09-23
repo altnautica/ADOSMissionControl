@@ -1004,12 +1004,12 @@
     "udpModeListen": "Dengarkan",
     "udpModeTarget": "Target",
     "nativeSocketReady": "Socket native siap (aplikasi desktop).",
-    "bridgeNeeded": "Browser tidak bisa membuka raw socket. Jalankan bridge lokal, lalu hubungkan ke sana:",
+    "bridgeNeeded": "Browser tidak bisa membuka raw socket. Jalankan bridge lokal di bawah. Saat mulai, bridge mencetak URL ws://…/?token=…; tempel seluruh URL itu ke URL Bridge.",
     "bridgeUrlLabel": "URL Bridge",
     "checkBridge": "Periksa",
     "checking": "Memeriksa...",
     "bridgeReachable": "Bridge dapat dijangkau.",
-    "bridgeUnreachable": "Bridge tidak dapat dijangkau. Apakah sedang berjalan?",
+    "bridgeUnreachable": "Bridge tidak dapat dijangkau. Apakah sedang berjalan, dan apakah URL memuat ?token= yang dicetaknya?",
     "copy": "Salin",
     "copied": "Tersalin",
     "connectionFailed": "Koneksi gagal",
@@ -2658,6 +2658,10 @@
     "release": "Lepas",
     "grab": "Ambil",
     "winchNum": "Nomor Winch",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "Panjang",
     "fence": "Pagar",
     "disable": "Nonaktifkan",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "Pasangkan node ini untuk membuka tautan penerbangannya",
+      "body": "Komputer pendamping dapat dijangkau tetapi belum dipasangkan. Node yang belum dipasangkan hanya membuka tautan flight controller ke hotspot, USB, atau koneksi lokalnya sendiri. Pasangkan untuk menerbangkannya dari sini.",
+      "cta": "Pasangkan node ini"
     }
   },
   "blackbox": {

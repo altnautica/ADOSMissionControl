@@ -14,13 +14,15 @@ import { BuildPresetPicker } from "./BuildPresetPicker";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { cmdDroneStatusApi } from "@/lib/community-api-drones";
 
+/**
+ * WebSocket ports the SITL tool serves drones #1-#5 on (each drone's SITL TCP
+ * port, base 5760, +10 per drone). The tool binds them on the IPv6 loopback.
+ */
+const SITL_PORTS = [5760, 5770, 5780, 5790, 5800];
+
 const QUICK_PRESETS = [
   { label: "mavlink-router", url: "ws://localhost:14550" },
-  { label: "SITL #1", url: "ws://localhost:5760" },
-  { label: "SITL #2", url: "ws://localhost:5770" },
-  { label: "SITL #3", url: "ws://localhost:5780" },
-  { label: "SITL #4", url: "ws://localhost:5790" },
-  { label: "SITL #5", url: "ws://localhost:5800" },
+  ...SITL_PORTS.map((port, i) => ({ label: `SITL #${i + 1}`, url: `ws://[::1]:${port}` })),
 ];
 
 /** Cloud-status row shape projected for the discovered-rigs section. */
@@ -30,9 +32,21 @@ type DiscoveredRig = {
   mavlinkWs: string;
 };
 
-/** Detect SITL-like URLs (ws://localhost:576*). */
-function isSitlUrl(url: string): boolean {
-  return /^wss?:\/\/(localhost|127\.0\.0\.1):576\d/.test(url);
+/**
+ * Classify a URL that points at a local SITL bridge port. The bridge refuses
+ * any connection without the `?token=` it prints at startup, so a SITL URL
+ * without one cannot connect. Null when the URL is not a SITL bridge URL.
+ */
+function sitlTarget(url: string): { tokened: boolean } | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    return null;
+  }
+  const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
+  if (!loopback || !SITL_PORTS.includes(Number(parsed.port))) return null;
+  return { tokened: Boolean(parsed.searchParams.get("token")) };
 }
 
 export function WebSocketPanel({
@@ -91,7 +105,8 @@ export function WebSocketPanel({
     onUrlChange?.(next);
   };
 
-  const showPresetPicker = useMemo(() => isSitlUrl(effectiveUrl), [effectiveUrl]);
+  const sitl = useMemo(() => sitlTarget(effectiveUrl), [effectiveUrl]);
+  const needsSitlToken = sitl !== null && !sitl.tokened;
 
   async function handleConnect() {
     setError(null);
@@ -224,16 +239,24 @@ export function WebSocketPanel({
       </div>
 
       {/* Build preset picker — shown when SITL URL detected */}
-      {showPresetPicker && (
+      {sitl && (
         <BuildPresetPicker
           selectedPresetId={selectedPresetId}
           onSelect={setSelectedPresetId}
         />
       )}
 
+      {needsSitlToken && (
+        <p className="text-[10px] text-status-warning">
+          The SITL bridge prints a URL with a token when it starts (for example
+          ws://[::1]:5760/?token=…). Paste that whole URL above to connect.
+        </p>
+      )}
+
       <Button
         onClick={handleConnect}
         loading={connecting}
+        disabled={needsSitlToken}
         icon={<Plug size={14} />}
       >
         {connecting ? "Connecting..." : "Connect"}

@@ -74,9 +74,10 @@ export interface NodeRegistryActions {
   attachFc: (nodeId: string, managedId: string) => void;
 
   /**
-   * Detach the flight controller from `nodeId` (clear managedId). Presence and
-   * connection are left intact; if the node then has no presence sources it is
-   * garbage-collected.
+   * Detach the flight controller from `nodeId`: clear managedId and every
+   * mirrored FC reading, so a later session never inherits the previous one's
+   * arm state, mode or position. Presence and connection are left intact; if
+   * the node then has no presence sources it is garbage-collected.
    */
   detachFc: (nodeId: string) => void;
 
@@ -182,7 +183,7 @@ export const useNodeRegistryStore = create<NodeRegistryStore>((set, get) => ({
       return {
         nodes: applyToEntry(state.nodes, nodeId, (entry) => ({
           ...entry,
-          fc: { ...entry.fc, managedId: null },
+          fc: { managedId: null },
         })),
         lastUpdate: Date.now(),
       };

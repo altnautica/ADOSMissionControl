@@ -45,6 +45,7 @@ export const communityApi = {
   },
   profiles: {
     getMyProfile: api.profiles.getMyProfile,
+    getMyUserId: api.profiles.getMyUserId,
     updateRole: api.profiles.updateRole,
   },
   clientConfig: {

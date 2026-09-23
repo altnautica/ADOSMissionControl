@@ -1004,12 +1004,12 @@
     "udpModeListen": "수신",
     "udpModeTarget": "대상",
     "nativeSocketReady": "네이티브 소켓 준비됨 (데스크톱 앱).",
-    "bridgeNeeded": "브라우저는 원시 소켓을 열 수 없습니다. 로컬 브리지를 실행한 다음 연결하세요:",
+    "bridgeNeeded": "브라우저는 원시 소켓을 열 수 없습니다. 아래 로컬 브리지를 실행하세요. 시작할 때 ws://…/?token=… URL을 출력하니, 그 URL 전체를 브리지 URL에 붙여 넣으세요.",
     "bridgeUrlLabel": "브리지 URL",
     "checkBridge": "확인",
     "checking": "확인 중...",
     "bridgeReachable": "브리지에 연결할 수 있습니다.",
-    "bridgeUnreachable": "브리지에 연결할 수 없습니다. 실행 중인가요?",
+    "bridgeUnreachable": "브리지에 연결할 수 없습니다. 실행 중이며 URL에 출력된 ?token=이 포함되어 있나요?",
     "copy": "복사",
     "copied": "복사됨",
     "connectionFailed": "연결 실패",
@@ -2658,6 +2658,10 @@
     "release": "놓기",
     "grab": "잡기",
     "winchNum": "윈치 번호",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "길이",
     "fence": "펜스",
     "disable": "비활성화",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "비행 링크를 열려면 이 노드를 페어링하세요",
+      "body": "컴패니언 컴퓨터에 연결할 수 있지만 페어링되지 않았습니다. 페어링되지 않은 노드는 자체 핫스팟, USB 또는 기기 내 연결에만 비행 컨트롤러 링크를 엽니다. 여기에서 비행하려면 페어링하세요.",
+      "cta": "이 노드 페어링"
     }
   },
   "blackbox": {

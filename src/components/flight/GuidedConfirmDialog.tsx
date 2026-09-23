@@ -12,16 +12,22 @@ import { useGuidedStore } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { haversineDistance } from "@/lib/telemetry-utils";
+import { superviseGuidedTarget } from "@/lib/skills/guided-target";
+import { useToast } from "@/components/ui/toast";
 import { X, Navigation } from "lucide-react";
 
 const HOLD_DURATION_MS = 1500;
 const DEFAULT_ALT_M = 10;
 
 export function GuidedConfirmDialog() {
-  const confirmPending = useGuidedStore((s) => s.confirmPending);
+  const storedPending = useGuidedStore((s) => s.confirmPending);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  // A confirmation belongs to the drone it was raised for; it never re-opens
+  // for another one after the selection changes.
+  const confirmPending = storedPending?.droneId === selectedDroneId ? storedPending : null;
   const dismissConfirm = useGuidedStore((s) => s.dismissConfirm);
-  const setTarget = useGuidedStore((s) => s.setTarget);
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const { toast } = useToast();
 
   // Get current drone position for distance/ETA calc
   const posBuffer = useTelemetryStore((s) => s.position);
@@ -74,17 +80,24 @@ export function GuidedConfirmDialog() {
         return;
       }
 
-      // Set active target for map overlay
-      setTarget({
-        lat: confirmPending.lat,
-        lon: confirmPending.lon,
-        alt: altitude,
-        timestamp: Date.now(),
-      });
+      // The overlay shows the target until the vehicle arrives or leaves the
+      // reposition mode; the supervisor owns both.
+      superviseGuidedTarget(
+        {
+          droneId: confirmPending.droneId,
+          lat: confirmPending.lat,
+          lon: confirmPending.lon,
+          alt: altitude,
+          timestamp: Date.now(),
+          purpose: "goto",
+        },
+        protocol,
+        toast,
+      );
     } catch {
       setError("Failed to send command");
     }
-  }, [confirmPending, altitude, getSelectedProtocol, setTarget]);
+  }, [confirmPending, altitude, getSelectedProtocol, toast]);
 
   const startHold = useCallback(() => {
     setError(null);

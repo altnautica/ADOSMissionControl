@@ -128,14 +128,22 @@ export interface INavAirSpeed {
   airSpeedCmS: number;
 }
 
+/**
+ * MSP2_INAV_MIXER. The last two bytes are the firmware's slot ceilings
+ * (MAX_SUPPORTED_MOTORS / MAX_SUPPORTED_SERVOS), not the model's configured
+ * motor and servo counts.
+ */
 export interface INavMixer {
+  /** mixer_motor_direction_inverted (reverses yaw on multirotors). */
+  motorDirectionInverted: boolean;
+  /** motorstop_on_low. */
+  motorstopOnLow: boolean;
   /** Platform type: 0=MULTIROTOR, 1=AIRPLANE, 2=TRICOPTER, 3=ROVER, 4=BOAT, 5=HELICOPTER. */
   platformType: number;
-  yawMotorsReversed: boolean;
   hasFlaps: boolean;
   appliedMixerPreset: number;
-  motorCount: number;
-  servoCount: number;
+  maxSupportedMotors: number;
+  maxSupportedServos: number;
 }
 
 export interface INavOsdLayoutsHeader {
@@ -292,14 +300,14 @@ export interface INavEzTune {
   snappiness: number;
 }
 
+/** One servo slot of MSP2_INAV_SERVO_CONFIG. */
 export interface INavServoConfig {
-  rate: number;
+  /** Pulse width limits and centre, microseconds. */
   min: number;
   max: number;
   middle: number;
-  forwardFromChannel: number;
-  reversedInputSources: number;
-  flags: number;
+  /** Servo rate in percent, signed (-125..125). */
+  rate: number;
 }
 
 export interface INavGeozone {
@@ -310,10 +318,14 @@ export interface INavGeozone {
   shape: number;
   minAlt: number;
   maxAlt: number;
-  fenceAction: number;
-  vertexCount: number;
   isSeaLevelRef: boolean;
-  enabled: boolean;
+  fenceAction: number;
+  /**
+   * Vertex slots the zone occupies on the FC. A polygon uses one per corner;
+   * a circle always uses two (its centre, and a slot that stores the radius).
+   * Zero marks an unused zone slot.
+   */
+  vertexCount: number;
 }
 
 export interface INavGeozoneVertex {
@@ -321,6 +333,8 @@ export interface INavGeozoneVertex {
   vertexIdx: number;
   lat: number;
   lon: number;
+  /** Circle radius in cm. Present only on the centre vertex of a circular zone. */
+  radius?: number;
 }
 
 export interface INavAdsbVehicle {
@@ -369,8 +383,8 @@ export interface INavPgList {
 }
 
 /**
- * One rule in the common motor mixer table.
- * Each multiplier is a float in [-2.0, 2.0] transmitted as int16 x1000.
+ * One rule in the common motor mixer table. Each weight is a float in
+ * [-2.0, 2.0]; the wire carries it as u16 (weight + 2.0) x 1000.
  */
 export interface MotorMixerRule {
   throttle: number;

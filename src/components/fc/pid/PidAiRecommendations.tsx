@@ -1,15 +1,29 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Sparkles, AlertTriangle, Info, Zap } from "lucide-react";
-import type { AiRecommendation } from "@/lib/analysis/types";
+import type { AiRecommendation, ParameterSuggestion } from "@/lib/analysis/types";
+import { validateSuggestion } from "@/lib/analysis/pid-safety";
+import {
+  usePidAnalysisStore,
+  type ApplySummary,
+  type SuggestionTarget,
+} from "@/stores/pid-analysis-store";
 
 interface PidAiRecommendationsProps {
   recommendations: AiRecommendation[];
-  onApply: (id: string) => void;
-  onApplyAll: () => void;
+  /** Validation context and writer for applied suggestions. */
+  target: SuggestionTarget;
   aiLoading: boolean;
+}
+
+function formatApplySummary({ applied, clamped, rejected }: ApplySummary): string {
+  const parts = [`${applied + clamped} applied`];
+  if (clamped > 0) parts.push(`${clamped} limited`);
+  if (rejected > 0) parts.push(`${rejected} rejected`);
+  return `${parts.join(", ")} (save to write to the flight controller)`;
 }
 
 const PRIORITY_CONFIG = {
@@ -62,12 +76,99 @@ function SkeletonCard() {
   );
 }
 
+/** Suggested changes against the FC's confirmed values, with what Apply would write. */
+function SuggestionTable({
+  parameters,
+  target,
+}: {
+  parameters: ParameterSuggestion[];
+  target: SuggestionTarget;
+}) {
+  const rows = parameters.map((p) => {
+    const current = target.fcParams.get(p.param);
+    const check = validateSuggestion(p.param, current, p.suggestedValue, target.vehicleType);
+    const delta = check.status !== "rejected" && current !== undefined ? check.value - current : null;
+    const note = check.status === "rejected" ? check.reason : check.status === "clamped" ? check.warning : null;
+    return { p, current, check, delta, note };
+  });
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[10px] font-mono">
+        <thead>
+          <tr className="border-b border-border-default text-text-tertiary">
+            <th className="text-left py-1 pr-2">Param</th>
+            <th className="text-right py-1 px-2">Current</th>
+            <th className="text-right py-1 px-2">Suggested</th>
+            <th className="text-right py-1 px-2">Applies</th>
+            <th className="text-right py-1 pl-2">Delta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ p, current, check, delta }) => (
+            <tr key={p.param} className="border-b border-border-default/50">
+              <td className="py-0.5 pr-2 text-text-secondary">{p.param}</td>
+              <td className="py-0.5 px-2 text-right text-text-tertiary">
+                {current !== undefined ? current.toFixed(4) : "—"}
+              </td>
+              <td className="py-0.5 px-2 text-right text-text-secondary">{p.suggestedValue.toFixed(4)}</td>
+              <td
+                className={cn(
+                  "py-0.5 px-2 text-right",
+                  check.status === "rejected"
+                    ? "text-status-error"
+                    : check.status === "clamped"
+                      ? "text-status-warning"
+                      : "text-text-primary",
+                )}
+              >
+                {check.status === "rejected" ? "rejected" : check.value.toFixed(4)}
+              </td>
+              <td
+                className={cn(
+                  "py-0.5 pl-2 text-right",
+                  delta !== null && delta > 0
+                    ? "text-status-success"
+                    : delta !== null && delta < 0
+                      ? "text-status-error"
+                      : "text-text-tertiary",
+                )}
+              >
+                {delta === null ? "—" : `${delta > 0 ? "+" : ""}${delta.toFixed(4)}`}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.map(({ p, check, note }) =>
+        note === null ? null : (
+          <p
+            key={`note-${p.param}`}
+            className={cn("text-[9px] mt-1", check.status === "rejected" ? "text-status-error" : "text-status-warning")}
+          >
+            {note}
+          </p>
+        ),
+      )}
+    </div>
+  );
+}
+
 export function PidAiRecommendations({
   recommendations,
-  onApply,
-  onApplyAll,
+  target,
   aiLoading,
 }: PidAiRecommendationsProps) {
+  const applyRecommendation = usePidAnalysisStore((s) => s.applyRecommendation);
+  const applyAllRecommended = usePidAnalysisStore((s) => s.applyAllRecommended);
+  const { toast } = useToast();
+
+  const reportApply = (summary: ApplySummary) =>
+    toast(
+      formatApplySummary(summary),
+      summary.rejected > 0 || summary.clamped > 0 ? "warning" : "success",
+    );
+
   // Loading state
   if (aiLoading) {
     return (
@@ -112,7 +213,7 @@ export function PidAiRecommendations({
           variant="primary"
           size="sm"
           icon={<Sparkles size={12} />}
-          onClick={onApplyAll}
+          onClick={() => reportApply(applyAllRecommended(target))}
         >
           Apply All Recommended ({highConfidenceCount})
         </Button>
@@ -158,51 +259,14 @@ export function PidAiRecommendations({
 
                 {/* Parameter table */}
                 {rec.parameters.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-[10px] font-mono">
-                      <thead>
-                        <tr className="border-b border-border-default text-text-tertiary">
-                          <th className="text-left py-1 pr-2">Param</th>
-                          <th className="text-right py-1 px-2">Current</th>
-                          <th className="text-right py-1 px-2">Suggested</th>
-                          <th className="text-right py-1 pl-2">Delta</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rec.parameters.map((p) => (
-                          <tr key={p.param} className="border-b border-border-default/50">
-                            <td className="py-0.5 pr-2 text-text-secondary">{p.param}</td>
-                            <td className="py-0.5 px-2 text-right text-text-tertiary">
-                              {p.currentValue.toFixed(4)}
-                            </td>
-                            <td className="py-0.5 px-2 text-right text-text-primary">
-                              {p.suggestedValue.toFixed(4)}
-                            </td>
-                            <td
-                              className={cn(
-                                "py-0.5 pl-2 text-right",
-                                p.delta > 0
-                                  ? "text-status-success"
-                                  : p.delta < 0
-                                    ? "text-status-error"
-                                    : "text-text-tertiary",
-                              )}
-                            >
-                              {p.delta > 0 ? "+" : ""}
-                              {p.delta.toFixed(4)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <SuggestionTable parameters={rec.parameters} target={target} />
                 )}
 
                 {/* Apply button */}
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => onApply(rec.id)}
+                  onClick={() => reportApply(applyRecommendation(rec.id, target))}
                 >
                   Apply
                 </Button>

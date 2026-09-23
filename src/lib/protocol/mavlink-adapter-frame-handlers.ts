@@ -16,6 +16,7 @@ import {
   decodeMissionCount, decodeMissionItemInt as decodeMissionItemIntMsg,
   decodeComponentMetadata,
 } from './mavlink-messages'
+import { usesBytewiseParamValues } from './param-value-codec'
 import {
   encodeMissionItemInt, encodeMissionRequestInt, encodeMissionAck,
   encodeRequestDataStream, encodeCommandLong,
@@ -218,7 +219,7 @@ export function checkLinkState(s: FrameHandlerState): void {
 }
 
 function handleParamValueFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {
-  const pv = decodeParamValue(frame.payload)
+  const pv = decodeParamValue(frame.payload, usesBytewiseParamValues(s.firmwareHandler?.firmwareType))
   const canonicalName = s.firmwareHandler?.reverseMapParameterName(pv.paramId) ?? pv.paramId
   const param: ParameterValue = {
     name: canonicalName, value: pv.paramValue, type: pv.paramType,

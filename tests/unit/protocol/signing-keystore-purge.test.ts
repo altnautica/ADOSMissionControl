@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 /**
- * User-switch purge test (audit finding B3).
+ * User-switch purge test.
  *
  * We mock idb-keyval with an in-memory Map so the test stays hermetic and
  * does not require a real IndexedDB runtime. The keystore module only

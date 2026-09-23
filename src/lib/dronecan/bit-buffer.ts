@@ -2,28 +2,33 @@
  * @module bit-buffer
  * @description Bit-stream reader and writer for DroneCAN DSDL payloads.
  *
- * DroneCAN serializes fields into a contiguous bit stream with little-endian
- * byte ordering and LSB-first packing within each byte. A multi-byte value
- * fills the current byte starting at the lowest unused bit, then continues
- * into the next byte. Signed integers use two's complement: when the most
- * significant bit (bit N-1) of an N-bit signed value is set, the value is
- * interpreted as `value - 2^N`.
+ * A DroneCAN payload is one bit stream in which stream bit 0 is the most
+ * significant bit of byte 0. Fields are packed back to back with no
+ * alignment. An N-bit scalar is laid out as the DroneCAN wire format
+ * specifies:
+ *
+ *   1. take the value's little-endian byte image (two's complement for
+ *      signed values),
+ *   2. keep every whole low byte, and of the final partial byte only its low
+ *      N % 8 bits,
+ *   3. copy those chunks into the stream in order, each one most significant
+ *      bit first.
+ *
+ * So a byte-aligned uint16 appears as its two little-endian bytes, a uint3
+ * followed by a uint5 share one byte top-down (the uint3 in bits 7..5), and an
+ * int14 holding 1229 (0x04CD) emits the eight bits of 0xCD followed by the six
+ * bits 000100. Decoding reverses the copy and, for signed fields,
+ * sign-extends from bit N-1.
  *
  * `float16` is IEEE 754 half precision: 1 sign bit, 5 exponent bits, 10
  * mantissa bits. The encoder/decoder handles ±0, ±Inf, NaN, denormals, and
  * the normal range.
  *
- * The `read` and `write` entry points cap at 32 bits per call to keep the
- * arithmetic inside JavaScript's safe integer range. For wider fields use
- * `readBig` / `writeBig` which operate on `bigint`.
+ * `read` and `write` cap at 32 bits per call so the arithmetic stays in plain
+ * numbers. Wider fields use `readBig` / `writeBig`, which operate on `bigint`.
  *
  * @license GPL-3.0-only
  */
-
-const BIG_ZERO = BigInt(0);
-const BIG_ONE = BigInt(1);
-const BIG_EIGHT = BigInt(8);
-const BIG_FF = BigInt(0xff);
 
 /**
  * Sequential reader over a `Uint8Array`. Tracks a bit offset and pulls
@@ -63,38 +68,43 @@ export class BitReader {
       throw new RangeError("read: bits must be 0..32; use readBig for >32");
     }
     if (bits === 0) return 0;
-    const big = this.readBitsAsBigInt(bits);
-    if (!signed) return Number(big);
-    const topBit = BIG_ONE << BigInt(bits - 1);
-    if ((big & topBit) !== BIG_ZERO) {
-      return Number(big - (BIG_ONE << BigInt(bits)));
+    if (this.bitOffset + bits > this.totalBits) {
+      throw new RangeError("read: past end of buffer");
     }
-    return Number(big);
+    let value = 0;
+    let scale = 1;
+    for (let left = bits; left > 0; left -= 8) {
+      value += this.readChunk(left < 8 ? left : 8) * scale;
+      scale *= 256;
+    }
+    if (signed && value >= 2 ** (bits - 1)) value -= 2 ** bits;
+    return value;
   }
 
   /** Read an arbitrary-width field as a `bigint`. */
   readBig(bits: number, signed = false): bigint {
     if (bits < 0) throw new RangeError("readBig: bits must be non-negative");
-    if (bits === 0) return BIG_ZERO;
-    const big = this.readBitsAsBigInt(bits);
-    if (!signed) return big;
-    const topBit = BIG_ONE << BigInt(bits - 1);
-    if ((big & topBit) !== BIG_ZERO) {
-      return big - (BIG_ONE << BigInt(bits));
+    if (bits === 0) return 0n;
+    if (this.bitOffset + bits > this.totalBits) {
+      throw new RangeError("readBig: past end of buffer");
     }
-    return big;
+    let value = 0n;
+    let shift = 0n;
+    for (let left = bits; left > 0; left -= 8) {
+      value |= BigInt(this.readChunk(left < 8 ? left : 8)) << shift;
+      shift += 8n;
+    }
+    return signed ? BigInt.asIntN(bits, value) : value;
   }
 
   /** Read an IEEE 754 half-precision float (16 bits). */
   readFloat16(): number {
-    const raw = this.read(16);
-    return decodeFloat16(raw);
+    return decodeFloat16(this.read(16));
   }
 
   /** Read an IEEE 754 single-precision float (32 bits). */
   readFloat32(): number {
-    const raw = this.read(32) >>> 0;
-    F32_U32[0] = raw;
+    F32_U32[0] = this.read(32);
     return F32_F32[0] ?? 0;
   }
 
@@ -126,30 +136,26 @@ export class BitReader {
     return this.bitOffset;
   }
 
-  private readBitsAsBigInt(bits: number): bigint {
-    if (this.bitOffset + bits > this.totalBits) {
-      throw new RangeError("read: past end of buffer");
-    }
-    let value = BIG_ZERO;
-    let produced = 0;
-    while (produced < bits) {
-      const byteIndex = this.bitOffset >>> 3;
-      const bitInByte = this.bitOffset & 7;
-      const bitsLeftInByte = 8 - bitInByte;
-      const take = Math.min(bitsLeftInByte, bits - produced);
-      const byte = this.buf[byteIndex] ?? 0;
-      const slice = (byte >>> bitInByte) & ((1 << take) - 1);
-      value |= BigInt(slice) << BigInt(produced);
+  /** Pull `n` (1..8) bits off the stream, most significant bit first. */
+  private readChunk(n: number): number {
+    let out = 0;
+    let left = n;
+    while (left > 0) {
+      const avail = 8 - (this.bitOffset & 7);
+      const take = left < avail ? left : avail;
+      const byte = this.buf[this.bitOffset >>> 3];
+      out = (out << take) | ((byte >>> (avail - take)) & ((1 << take) - 1));
       this.bitOffset += take;
-      produced += take;
+      left -= take;
     }
-    return value;
+    return out;
   }
 }
 
 /**
- * Sequential writer that grows a byte buffer LSB-first as fields are
- * pushed. `toUint8Array` returns the trimmed payload.
+ * Sequential writer that grows a byte buffer as fields are pushed, using the
+ * same bit layout {@link BitReader} reads. `toUint8Array` returns the payload
+ * zero-padded to a whole byte.
  */
 export class BitWriter {
   private bytes: number[] = [];
@@ -160,26 +166,30 @@ export class BitWriter {
     return this.bitOffset;
   }
 
-  /** Write up to 32 bits of an unsigned or signed integer. */
+  /** Write the low `bits` (0..32) bits of an unsigned or signed integer. */
   write(value: number, bits: number): void {
     if (bits < 0 || bits > 32) {
       throw new RangeError("write: bits must be 0..32; use writeBig for >32");
     }
     if (bits === 0) return;
-    const mask = bits === 32 ? 0xffffffff : (1 << bits) - 1;
-    // Coerce to two's-complement representation by masking.
-    const unsigned = BigInt(value >>> 0) & BigInt(mask);
-    this.writeBitsFromBigInt(unsigned, bits);
+    // Two's complement image of the low `bits` bits.
+    const image = value >>> 0;
+    let u = bits === 32 ? image : image & (2 ** bits - 1);
+    for (let left = bits; left > 0; left -= 8) {
+      this.writeChunk(u & 0xff, left < 8 ? left : 8);
+      u >>>= 8;
+    }
   }
 
-  /** Write an arbitrary-width integer from a `bigint`. */
+  /** Write the low `bits` bits of an arbitrary-width integer. */
   writeBig(value: bigint, bits: number): void {
     if (bits < 0) throw new RangeError("writeBig: bits must be non-negative");
     if (bits === 0) return;
-    const mask = (BIG_ONE << BigInt(bits)) - BIG_ONE;
-    // Handle negatives by wrapping into the unsigned mask.
-    const unsigned = value < BIG_ZERO ? (value + (BIG_ONE << BigInt(bits))) & mask : value & mask;
-    this.writeBitsFromBigInt(unsigned, bits);
+    let u = BigInt.asUintN(bits, value);
+    for (let left = bits; left > 0; left -= 8) {
+      this.writeChunk(Number(u & 0xffn), left < 8 ? left : 8);
+      u >>= 8n;
+    }
   }
 
   /** Write an IEEE 754 half-precision float (16 bits). */
@@ -190,8 +200,7 @@ export class BitWriter {
   /** Write an IEEE 754 single-precision float (32 bits). */
   writeFloat32(v: number): void {
     F32_F32[0] = v;
-    const raw = F32_U32[0] ?? 0;
-    this.writeBig(BigInt(raw >>> 0), 32);
+    this.write(F32_U32[0] ?? 0, 32);
   }
 
   /**
@@ -218,26 +227,21 @@ export class BitWriter {
 
   /** Finalize and return the byte buffer (zero-padded at the tail). */
   toUint8Array(): Uint8Array {
-    const totalBytes = Math.ceil(this.bitOffset / 8);
-    const out = new Uint8Array(totalBytes);
-    for (let i = 0; i < totalBytes; i++) out[i] = this.bytes[i] ?? 0;
-    return out;
+    return Uint8Array.from(this.bytes);
   }
 
-  private writeBitsFromBigInt(value: bigint, bits: number): void {
-    let remaining = bits;
-    let v = value;
-    while (remaining > 0) {
-      const byteIndex = this.bitOffset >>> 3;
-      const bitInByte = this.bitOffset & 7;
-      const bitsLeftInByte = 8 - bitInByte;
-      const take = Math.min(bitsLeftInByte, remaining);
-      const slice = Number(v & ((BIG_ONE << BigInt(take)) - BIG_ONE));
-      if (byteIndex >= this.bytes.length) this.bytes.push(0);
-      this.bytes[byteIndex] = (this.bytes[byteIndex] ?? 0) | (slice << bitInByte);
+  /** Push the low `n` (1..8) bits of `value`, most significant bit first. */
+  private writeChunk(value: number, n: number): void {
+    let left = n;
+    while (left > 0) {
+      const avail = 8 - (this.bitOffset & 7);
+      const take = left < avail ? left : avail;
+      const slice = (value >>> (left - take)) & ((1 << take) - 1);
+      const index = this.bitOffset >>> 3;
+      if (index === this.bytes.length) this.bytes.push(0);
+      this.bytes[index] |= slice << (avail - take);
       this.bitOffset += take;
-      remaining -= take;
-      v >>= BigInt(take);
+      left -= take;
     }
   }
 }

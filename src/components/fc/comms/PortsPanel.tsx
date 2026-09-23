@@ -10,6 +10,9 @@ import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { PanelHeader } from "../shared/PanelHeader";
+import { useParamEnums } from "../shared/ParamEnumSelect";
+import { EnumSelect } from "../parameters/EnumSelect";
+import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import {
   Save,
   Usb,
@@ -20,7 +23,7 @@ import {
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 
 import {
-  PROTOCOL_OPTIONS, BAUD_OPTIONS, NUM_PORTS, HARDWARE_LABELS,
+  NUM_PORTS, HARDWARE_LABELS,
   PORT_PARAMS, PX4_PORTS, PX4_PORT_PARAMS, PX4_BAUD_OPTIONS,
 } from "./ports-constants";
 
@@ -30,6 +33,9 @@ export function PortsPanel() {
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
   const [needsReboot, setNeedsReboot] = useState(false);
+  // SERIALn_PROTOCOL / SERIALn_BAUD options come from the firmware metadata
+  // (verbatim ArduPilot @Values as the offline floor), never a hand table.
+  const { enumValues } = useParamEnums(useParamMetadataMap());
 
   const portParamNames = useMemo(
     () => (isPx4 ? PX4_PORT_PARAMS : PORT_PARAMS),
@@ -62,11 +68,9 @@ export function PortsPanel() {
 
   // ── Helpers to read param values from flat Map ──────────────
 
-  const getProtocolValue = (i: number) =>
-    String(params.get(`SERIAL${i}_PROTOCOL`) ?? -1);
+  const getProtocolValue = (i: number) => params.get(`SERIAL${i}_PROTOCOL`) ?? -1;
 
-  const getBaudValue = (i: number) =>
-    String(params.get(`SERIAL${i}_BAUD`) ?? 57);
+  const getBaudValue = (i: number) => params.get(`SERIAL${i}_BAUD`) ?? 57;
 
   // ── Save / Flash / Reboot ───────────────────────────────────
 
@@ -246,16 +250,16 @@ export function PortsPanel() {
                         <span className="text-xs text-text-tertiary">
                           {HARDWARE_LABELS[i]}
                         </span>
-                        <Select
-                          options={PROTOCOL_OPTIONS}
+                        <EnumSelect
+                          values={enumValues(`SERIAL${i}_PROTOCOL`)}
                           value={getProtocolValue(i)}
-                          onChange={(v) => setLocalValue(`SERIAL${i}_PROTOCOL`, Number(v))}
+                          onChange={(v) => setLocalValue(`SERIAL${i}_PROTOCOL`, v)}
                           className={protocolDirty ? "border-status-warning/60" : undefined}
                         />
-                        <Select
-                          options={BAUD_OPTIONS}
+                        <EnumSelect
+                          values={enumValues(`SERIAL${i}_BAUD`)}
                           value={getBaudValue(i)}
-                          onChange={(v) => setLocalValue(`SERIAL${i}_BAUD`, Number(v))}
+                          onChange={(v) => setLocalValue(`SERIAL${i}_BAUD`, v)}
                           className={baudDirty ? "border-status-warning/60" : undefined}
                         />
                       </div>

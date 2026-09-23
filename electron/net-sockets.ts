@@ -11,8 +11,8 @@
 import { ipcMain, type BrowserWindow } from "electron";
 import dgram from "node:dgram";
 import net from "node:net";
-import { isIP } from "node:net";
 import { randomUUID } from "node:crypto";
+import { UdpPeerTracker, isLocalEndpoint } from "./udp-peer";
 
 /**
  * Upper bound on concurrently open sockets.
@@ -26,35 +26,6 @@ const MAX_HANDLES = 32;
 /** TCP connect deadline. Without one an unreachable host hung the connect
  *  dialog for the OS SYN timeout (~75 s) with no cancel. */
 const TCP_CONNECT_TIMEOUT_MS = 8000;
-
-/**
- * Whether `host` is a loopback / private / link-local endpoint.
- *
- * `net:open` is the ENTIRE renderer-to-main attack surface, and it passed
- * `spec.host` and `spec.port` verbatim to `net.createConnection` /
- * `dgram.bind` with nothing checked at runtime. This file's own header
- * already stated the intended invariant — loopback/LAN endpoints only — and
- * nothing enforced it, so any HTML-injection sink in the app became LAN
- * port-scanning and raw-socket access from the flight-line machine.
- */
-function isLocalEndpoint(host: string): boolean {
-  const h = host.trim().toLowerCase();
-  if (h === "" || h === "0.0.0.0" || h === "::" || h === "localhost") return true;
-  if (h.endsWith(".local")) return true;
-  const family = isIP(h);
-  if (family === 6) {
-    // Loopback, unique-local (fc00::/7) and link-local (fe80::/10).
-    return h === "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe8");
-  }
-  if (family !== 4) return false;
-  const [a, b] = h.split(".").map(Number);
-  if (a === 127) return true;                       // loopback
-  if (a === 10) return true;                        // 10/8
-  if (a === 192 && b === 168) return true;          // 192.168/16
-  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16/12
-  if (a === 169 && b === 254) return true;          // link-local
-  return false;
-}
 
 /** Reject a spec the renderer should never have been able to send. */
 function validateSpec(spec: unknown): OpenSpec {
@@ -75,6 +46,9 @@ function validateSpec(spec: unknown): OpenSpec {
   ) {
     throw new Error("net:open: port must be an integer 1-65535");
   }
+  // `net:open` is the entire renderer-to-main attack surface: only loopback /
+  // LAN endpoints the operator can mean are ever bound or dialled, so an
+  // HTML-injection sink in the app cannot become LAN port-scanning.
   if (!isLocalEndpoint(s.host)) {
     throw new Error(`net:open: refusing a non-local endpoint: ${s.host}`);
   }
@@ -91,9 +65,9 @@ interface OpenSpec {
 interface UdpHandle {
   proto: "udp";
   socket: dgram.Socket;
-  /** Where to send GCS→drone bytes: learned from the first datagram (listen)
-   *  or the fixed target (target mode). */
-  peer: { host: string; port: number } | null;
+  /** Where GCS→drone bytes go: the fixed target, or the peer learned once in
+   *  listen mode. */
+  peers: UdpPeerTracker;
 }
 interface TcpHandle {
   proto: "tcp";
@@ -123,32 +97,20 @@ function openSocket(rawSpec: unknown): Promise<{ id: string }> {
       const handle: UdpHandle = {
         proto: "udp",
         socket,
-        peer:
+        peers: new UdpPeerTracker(
           spec.mode === "target" ? { host: spec.host, port: spec.port } : null,
+        ),
       };
 
       let settled = false;
 
       socket.on("message", (msg, rinfo) => {
-        // Learn the peer ONCE, from the first datagram in listen mode (the
-        // autopilot sends to us, e.g. `--out=udp:GCS:14550`); keep the fixed
-        // target otherwise.
-        //
-        // The guard used to be `handle.peer === null || spec.mode !== "target"`,
-        // whose second clause is ALWAYS true in listen mode — so the peer was
-        // overwritten by the source address of the most recent datagram, and
-        // the shipped default is `{host:"0.0.0.0", port:14550, mode:"listen"}`,
-        // which binds every interface. One spoofed datagram from anywhere on
-        // the operator's network silently redirected every subsequent
-        // GCS→vehicle byte: arm/disarm, mode change, RTL and mission upload
-        // stopped reaching the aircraft while the link still read healthy,
-        // because real telemetry kept flipping the peer back.
-        if (handle.peer === null) {
-          handle.peer = { host: rinfo.address, port: rinfo.port };
-        }
-        // Datagrams from outside the local endpoint space are dropped rather
-        // than relayed into the MAVLink parser.
-        if (!isLocalEndpoint(rinfo.address)) return;
+        // Non-local sources are dropped before they can reach the MAVLink
+        // parser or become the peer. The peer is learned once, from the first
+        // local MAVLink frame; the shipped default binds 0.0.0.0:14550, so a
+        // later sender (a spoofed datagram from the field network) must never
+        // redirect arm/disarm, mode changes or mission uploads.
+        if (handle.peers.observe(rinfo.address, rinfo.port, msg) === "drop") return;
         pushToRenderer("net:data", { id, data: msg });
       });
 
@@ -236,9 +198,8 @@ function sendSocket(id: string, data: Uint8Array): void {
   if (!handle) return;
   const buf = Buffer.from(data);
   if (handle.proto === "udp") {
-    if (handle.peer) {
-      handle.socket.send(buf, handle.peer.port, handle.peer.host);
-    }
+    const peer = handle.peers.peer;
+    if (peer) handle.socket.send(buf, peer.port, peer.host);
   } else if (!handle.socket.destroyed) {
     handle.socket.write(buf);
   }
@@ -259,10 +220,14 @@ function closeSocket(id: string): void {
   }
 }
 
-/** Tear down every open socket (called on app shutdown). */
-export function closeAllSockets(): void {
+/**
+ * Tear down every open socket and tell the renderer each one is gone, so its
+ * transport never keeps reporting a link whose socket no longer exists.
+ */
+export function closeAllSockets(reason: string): void {
   for (const id of [...handles.keys()]) {
     closeSocket(id);
+    pushToRenderer("net:close", { id, reason });
   }
 }
 
@@ -289,12 +254,15 @@ export function setupNetSockets(window: BrowserWindow): void {
     closeSocket(id);
   });
 
-  // A renderer reload or crash leaves every socket bound and pushing
-  // `net:data` into a renderer that discards it by id — forever, once per
-  // reload. Tear them down with the document that opened them.
-  window.webContents.on("did-start-navigation", (_e, _url, _isInPlace, isMainFrame) => {
-    if (isMainFrame) closeAllSockets();
+  // A renderer reload, crash or cross-document navigation leaves every socket
+  // bound and pushing `net:data` into a document that no longer owns it. A
+  // same-document navigation (client-side route change via history.pushState)
+  // keeps the document, and with it the live link.
+  window.webContents.on("did-start-navigation", (details) => {
+    if (details.isMainFrame && !details.isSameDocument) {
+      closeAllSockets("page navigated away");
+    }
   });
-  window.webContents.on("render-process-gone", () => closeAllSockets());
-  window.on("closed", () => closeAllSockets());
+  window.webContents.on("render-process-gone", () => closeAllSockets("renderer exited"));
+  window.on("closed", () => closeAllSockets("window closed"));
 }

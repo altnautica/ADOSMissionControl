@@ -13,7 +13,8 @@ import type { Map as LeafletMap } from "leaflet";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useGuidedStore } from "@/stores/guided-store";
 import { useRallyStore } from "@/stores/rally-store";
-import { handleFlyHere, handleLoiterHere, handleLandHere } from "./actions/navigation";
+import { handleFlyHere, handleLoiterHere } from "./actions/navigation";
+import { landAtPoint } from "@/lib/skills/guided-target";
 import { handlePointCamera, handleClearRoi, handleTriggerCamera } from "./actions/camera";
 import { handleSetEkfOrigin } from "./actions/home";
 import { handleAddRally, handleSetHeading } from "./actions/markers";
@@ -56,6 +57,7 @@ export function useMenuActions({
   report,
 }: UseMenuActionsArgs): MenuActionResult {
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const showConfirm = useGuidedStore((s) => s.showConfirm);
   const addRally = useRallyStore((s) => s.addPoint);
   const uploadRally = useRallyStore((s) => s.uploadRallyPoints);
@@ -71,10 +73,12 @@ export function useMenuActions({
         case "fly-here":
         case "fly-here-alt": {
           handleFlyHere({
+            droneId: selectedDroneId,
             menuPos,
             rectLeft: rect.left,
             rectTop: rect.top,
             showConfirm,
+            report,
           });
           return true;
         }
@@ -87,7 +91,14 @@ export function useMenuActions({
           return true;
         }
         case "land-here": {
-          void handleLandHere({ protocol, menuPos, relativeAlt, report });
+          void landAtPoint({
+            protocol,
+            droneId: selectedDroneId,
+            lat: menuPos.lat,
+            lon: menuPos.lon,
+            alt: relativeAlt ?? 10,
+            report,
+          });
           return true;
         }
         case "point-camera": {
@@ -143,6 +154,7 @@ export function useMenuActions({
     [
       menuPos,
       getProtocol,
+      selectedDroneId,
       map,
       latestPos,
       distLabel,

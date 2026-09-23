@@ -230,8 +230,7 @@ export function buildSkillContextForNode(
   // whichever vehicle beat last would clobber.
   if (liveFc) {
     const entry = useNodeRegistryStore.getState().getEntry(node._id);
-    const armState: ArmState =
-      entry?.fc.armState === "armed" ? "armed" : "disarmed";
+    const armState: ArmState = entry?.fc.armState ?? "unknown";
     const flightMode = asFlightMode(entry?.fc.flightMode) ?? UNRECOGNISED_MODE;
     const handler = liveFc.getFirmwareHandler();
     return {
@@ -268,7 +267,7 @@ export function buildSkillContextForNode(
   const offline = nodeLiveness(node, status) === "offline";
   const armed =
     !offline && typeof telemetry?.armed === "boolean" ? telemetry.armed : null;
-  const armState: ArmState = armed ? "armed" : "disarmed";
+  const armState: ArmState = armed === null ? "unknown" : armed ? "armed" : "disarmed";
   const flightMode = asFlightMode(telemetry?.mode) ?? UNRECOGNISED_MODE;
 
   const sink = armed === null ? null : resolveNodeCommandSink(node, options);

@@ -139,6 +139,15 @@ export interface FtpDirEntry {
   isDir: boolean;
 }
 
+/** Options for {@link DroneProtocol.guidedGoto}. */
+export interface GuidedGotoOptions {
+  /**
+   * Switch the vehicle into its guided mode as part of the reposition
+   * (MAV_DO_REPOSITION_FLAGS_CHANGE_MODE). Defaults to true.
+   */
+  changeMode?: boolean;
+}
+
 export interface DroneProtocol {
   readonly protocolName: string;
 
@@ -160,8 +169,9 @@ export interface DroneProtocol {
   disarm(): Promise<CommandResult>;
   setFlightMode(mode: UnifiedFlightMode): Promise<CommandResult>;
   returnToLaunch(): Promise<CommandResult>;
-  /** Land. `at` commands a landing POINT; without it the vehicle lands in
-   *  place, so a surface promising "land here" must pass one. */
+  /** Land. `at` is sent with the command, but ArduPilot ignores it and lands
+   *  in place; a surface that lands somewhere else repositions first and
+   *  calls this once the vehicle is holding over the point. */
   land(at?: { lat: number; lon: number }): Promise<CommandResult>;
   takeoff(altitude: number): Promise<CommandResult>;
   /**
@@ -170,7 +180,13 @@ export interface DroneProtocol {
    * guessing that a bare click meant it.
    */
   killSwitch(confirmed: boolean): Promise<CommandResult>;
-  guidedGoto(lat: number, lon: number, alt: number): Promise<CommandResult>;
+  /**
+   * Reposition to a point (MAV_CMD_DO_REPOSITION). By default the vehicle is
+   * also switched into its guided mode; `changeMode: false` sends the
+   * reposition without that flag, so a stream of updates never pulls a vehicle
+   * back out of a mode the pilot or a failsafe chose.
+   */
+  guidedGoto(lat: number, lon: number, alt: number, options?: GuidedGotoOptions): Promise<CommandResult>;
   pauseMission(): Promise<CommandResult>;
   resumeMission(): Promise<CommandResult>;
   clearMission(): Promise<CommandResult>;
@@ -374,7 +390,12 @@ export interface DroneProtocol {
   // ── Parameters ──────────────────────────────────────────
   getAllParameters(): Promise<ParameterValue[]>;
   getParameter(name: string): Promise<ParameterValue>;
-  setParameter(name: string, value: number, type?: number): Promise<CommandResult>;
+  /**
+   * Write one parameter. The MAV_PARAM_TYPE (and, on firmware that packs
+   * integers bytewise, the value encoding) comes from the vehicle's own last
+   * report of the parameter, never from the caller.
+   */
+  setParameter(name: string, value: number): Promise<CommandResult>;
   resetParametersToDefault(): Promise<CommandResult>;
   /** Return cached parameter names (from last getAllParameters download). Empty if not yet downloaded. */
   getCachedParameterNames(): string[];
@@ -439,6 +460,13 @@ export interface DroneProtocol {
 
   // ── Motor Test ──────────────────────────────────────────
   motorTest(motor: number, throttle: number, duration: number): Promise<CommandResult>;
+  /**
+   * Bench-test every motor output at once: `throttlesPct[i]` percent for
+   * output i in a single frame, idled by the adapter after `durationSeconds`.
+   * An all-zero vector is the stop and is accepted even while armed; any other
+   * vector needs a positive duration and a disarmed vehicle. MSP only.
+   */
+  setMotorTestOutputs?(throttlesPct: readonly number[], durationSeconds: number): Promise<CommandResult>;
 
   // ── Reboot ──────────────────────────────────────────────
   rebootToBootloader(): Promise<CommandResult>;

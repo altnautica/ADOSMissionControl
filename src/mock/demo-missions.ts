@@ -16,7 +16,7 @@
  */
 
 import type { SavedPlan, Waypoint, WaypointCommand, AltitudeFrame, PlanFolder } from "@/lib/types";
-import { foldLegacyWaypoints } from "@/lib/mission/mission-expand";
+import { foldLegacyWaypoints, type FlatWaypointRow } from "@/lib/mission/flat-rows";
 import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PatternResult } from "@/lib/patterns/types";
@@ -39,8 +39,8 @@ export const DEMO_MISSION_FOLDER: PlanFolder = {
   order: 0,
 };
 
-/** A waypoint before the plan assigns it a stable id + default frame. */
-type RawWp = Omit<Waypoint, "id"> & { frame?: AltitudeFrame };
+/** A waypoint (or inline action row) before the plan assigns it a stable id + default frame. */
+type RawWp = Omit<FlatWaypointRow, "id"> & { frame?: AltitudeFrame };
 
 /** Map a generator's PatternWaypoint output into raw waypoints. */
 function fromPattern(result: PatternResult): RawWp[] {
@@ -61,7 +61,7 @@ interface DemoSpec {
 }
 
 function buildPlan(spec: DemoSpec): SavedPlan {
-  const flat: Waypoint[] = spec.raw.map((w, i) => ({
+  const flat: FlatWaypointRow[] = spec.raw.map((w, i) => ({
     ...w,
     id: `${spec.id}-wp-${i}`,
     frame: w.frame ?? spec.frame,
@@ -127,8 +127,8 @@ const liberty = buildPlan({
     { lat: 40.68840, lon: -74.04470, alt: 20, command: "TAKEOFF" },
     { lat: 40.68840, lon: -74.04470, alt: 20, command: "DO_MOUNT_CONTROL", param1: -15, param2: 0, param3: 0 },
     ...fromPattern(libertyScan),
-    { lat: 40.68935, lon: -74.04405, alt: 95, command: "DO_DIGICAM" },
-    { lat: 40.68935, lon: -74.04450, alt: 100, speed: 4, holdTime: 15, command: "LOITER_TURNS", param1: 2, param3: 30 },
+    { lat: 40.68935, lon: -74.04405, alt: 95, command: "DO_DIGICAM", param5: 1 },
+    { lat: 40.68935, lon: -74.04450, alt: 100, speed: 4, holdTime: 2, command: "LOITER_TURNS", param2: 30 },
     { lat: 40.68935, lon: -74.04450, alt: 100, command: "DO_SET_ROI_NONE" },
     { lat: 40.68870, lon: -74.04465, alt: 25, command: "DO_LAND_START" },
     { lat: 40.68840, lon: -74.04470, alt: 0, command: "LAND" },
@@ -206,10 +206,10 @@ const sydney = buildPlan({
     { lat: operaHouse[0], lon: operaHouse[1], alt: 60, command: "ROI" },
     ...fromPattern(generateOrbit({ center: operaHouse, radius: 70, direction: "cw", turns: 1, startAngle: 0, altitude: 60, speed: 6 })),
     { lat: -33.8558, lon: 151.2140, alt: 65, speed: 7, command: "SPLINE_WAYPOINT" },
-    { lat: -33.8558, lon: 151.2140, alt: 65, command: "DO_DIGICAM" },
+    { lat: -33.8558, lon: 151.2140, alt: 65, command: "DO_DIGICAM", param5: 1 },
     { lat: -33.8548, lon: 151.2125, alt: 70, speed: 7, command: "SPLINE_WAYPOINT" },
     { lat: -33.8540, lon: 151.2118, alt: 72, speed: 7, command: "SPLINE_WAYPOINT" },
-    { lat: -33.8538, lon: 151.2112, alt: 80, speed: 7, holdTime: 18, command: "LOITER_TURNS", param1: 2, param3: 40 },
+    { lat: -33.8538, lon: 151.2112, alt: 80, speed: 7, holdTime: 2, command: "LOITER_TURNS", param2: 40 },
     { lat: -33.8538, lon: 151.2112, alt: 80, command: "DO_SET_ROI_NONE" },
     { lat: -33.8558, lon: 151.2135, alt: 60, speed: 8, command: "SPLINE_WAYPOINT" },
     ...fromPattern(generateVtolLanding({ landingPoint: [-33.8575, 151.2160], approachHeading: -1, transitionDistance: 150, approachAltitude: 60, descentSpeed: 2, speed: 8 })),

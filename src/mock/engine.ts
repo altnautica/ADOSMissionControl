@@ -379,7 +379,12 @@ class MockFlightEngine {
         }
       }
 
-      if (cfg.pathIndex < 0) continue;
+      if (cfg.pathIndex < 0) {
+        // A parked demo FC still heartbeats; without this its seeded arm state
+        // ages past the staleness window and projects as a lost link.
+        registry.updateFcTelemetry(nid(cfg.id), { lastHeartbeat: now });
+        continue;
+      }
 
       const path = FLIGHT_PATHS[cfg.pathIndex];
       if (!path || path.length < 2) continue;

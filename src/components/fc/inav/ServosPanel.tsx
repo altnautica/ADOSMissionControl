@@ -96,7 +96,7 @@ export function ServosPanel() {
         )}
         <PanelHeader
           title="Servo Config"
-          subtitle="Travel limits, center position, and input sources"
+          subtitle="Travel limits, center position, and rate"
           icon={<Sliders size={16} />}
           loading={loading}
           loadProgress={null}
@@ -169,8 +169,12 @@ export function ServosPanel() {
                       <span className="text-[10px] text-text-tertiary font-mono">Rate (%)</span>
                       <input
                         type="number"
+                        min={-125}
+                        max={125}
                         value={sv.rate}
-                        onChange={(e) => updateServo(idx, { rate: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          updateServo(idx, { rate: Math.max(-125, Math.min(125, parseInt(e.target.value) || 0)) })
+                        }
                         className="bg-bg-tertiary border border-border-default rounded px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
                       />
                     </label>

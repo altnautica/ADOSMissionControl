@@ -15,7 +15,7 @@
 import type {
   DroneProtocol, Transport, TransportMiddleware, VehicleInfo, CommandResult, ParameterValue,
   MissionItem, FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
-  LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo,
+  LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo, GuidedGotoOptions,
 } from './types'
 import { MAVLinkParser, type MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat, MAV_CMD_SET_EKF_SOURCE_SET } from './mavlink-encoder'
@@ -490,7 +490,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async reboot() { return cmds.cmdReboot(this.cc) }
   async resetParametersToDefault() { return cmds.cmdResetParametersToDefault(this.cc) }
   async killSwitch(confirmed: boolean) { return cmds.cmdKillSwitch(this.cc, confirmed) }
-  async guidedGoto(lat: number, lon: number, alt: number) { return cmds.cmdGuidedGoto(this.cc, lat, lon, alt) }
+  async guidedGoto(lat: number, lon: number, alt: number, options?: GuidedGotoOptions) { return cmds.cmdGuidedGoto(this.cc, lat, lon, alt, options) }
   async pauseMission() { return cmds.cmdPauseMission(this.cc) }
   async resumeMission() { return cmds.cmdResumeMission(this.cc) }
   async commitParamsToFlash() { return cmds.cmdCommitParamsToFlash(this.cc) }
@@ -606,7 +606,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async getAllParameters() { const c = this.pc; const p = prm.getAllParameters(c); this.parameterDownload = c.parameterDownload; const r = await p; this.parameterDownload = c.parameterDownload; return r }
   getCachedParameterNames() { return prm.getCachedParameterNames(this.pc) }
   async getParameter(name: string) { return prm.getParameter(this.pc, name) }
-  async setParameter(name: string, value: number, type = 9) { return prm.setParameter(this.pc, name, value, type) }
+  async setParameter(name: string, value: number) { return prm.setParameter(this.pc, name, value) }
 
   // ── Delegated Missions ─────────────────────────────────
   async uploadMission(items: MissionItem[]) { const c = this.mc; const p = msn.uploadMission(c, items); this.missionUpload = c.missionUpload as msn.MissionUploadState | null; const r = await p; this.missionUpload = c.missionUpload as msn.MissionUploadState | null; return r }

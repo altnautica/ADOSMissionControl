@@ -268,9 +268,14 @@ export function bridgeTelemetry(
       // Previous arm state and mode come from THIS drone's registry entry, not
       // from the single-slot drone-store: the store holds the selected drone
       // only, so deriving arm/disarm and mode-change events from it attributed
-      // one drone's transitions to another.
+      // one drone's transitions to another. Across a lost link the previous
+      // state is "unknown": the first heartbeat back reports where the
+      // aircraft is, not a transition anyone observed, so it raises no
+      // arm/disarm event or sound.
       const prevEntry = useNodeRegistryStore.getState().getEntry(droneId)?.fc;
-      const wasArmed = prevEntry?.armState === "armed";
+      const prevArm = prevEntry?.armState;
+      const armedNow = data.armed && prevArm !== "armed" && prevArm !== "unknown";
+      const disarmedNow = !data.armed && prevArm === "armed";
       const prevMode = prevEntry?.flightMode;
 
       // A mode outside the union is reported as UNKNOWN, never as the last
@@ -295,10 +300,10 @@ export function bridgeTelemetry(
         }
       }
 
-      if (data.armed && !wasArmed) {
+      if (armedNow) {
         useDiagnosticsStore.getState().logEvent("arm", "Vehicle armed");
       }
-      if (!data.armed && wasArmed) {
+      if (disarmedNow) {
         useDiagnosticsStore.getState().logEvent("disarm", "Vehicle disarmed");
       }
 
@@ -320,8 +325,8 @@ export function bridgeTelemetry(
 
       const settings = useSettingsStore.getState();
       if (settings.audioEnabled && settings.alertArmDisarm) {
-        if (data.armed && !wasArmed) audioEngine.play("arm");
-        if (!data.armed && wasArmed) audioEngine.play("disarm");
+        if (armedNow) audioEngine.play("arm");
+        if (disarmedNow) audioEngine.play("disarm");
       }
 
       // Flight-state mirrors into the registry FC sub-state. The projection
@@ -336,20 +341,21 @@ export function bridgeTelemetry(
       });
     }),
 
-    // Link-loss decay. The producer side of this has existed since the
-    // adapter's 1 Hz `linkLostCheckInterval` was written and had ZERO
-    // subscribers, so on a link that goes silent while the transport stays open
-    // (UDP-listen, an MQTT relay, the agent's WS proxy with a dead FC serial
-    // link, an SiK radio whose USB port stays enumerated) the last heartbeat's
-    // ARMED / CONNECTED persisted forever: `FlightDataCard` rendered ARMED and
-    // `useArmedLock()` hard-blocked every FC panel on a vehicle that was gone.
+    // Link-loss decay. On a link that goes silent while the transport stays
+    // open (UDP-listen, an MQTT relay, the agent's WS proxy with a dead FC
+    // serial link, an SiK radio whose USB port stays enumerated) the last
+    // heartbeat's ARMED / CONNECTED would otherwise persist forever. The arm
+    // state becomes "unknown", never "disarmed": an aircraft that stops
+    // talking may still be flying, and a disarmed reading would offer an ARM
+    // button and drop it from every armed-fleet surface. `useArmedLock()`
+    // treats unknown as unlocked, so the FC panels of a gone vehicle unlock.
     ...(protocol.onLinkLost ? [protocol.onLinkLost(() => {
       if (isSelected()) {
         const droneStore = useDroneStore.getState();
         droneStore.setConnectionState("disconnected");
-        droneStore.setArmState("disarmed");
+        droneStore.setArmState("unknown");
       }
-      registry.updateFcTelemetry(droneId, { status: "offline" });
+      registry.updateFcTelemetry(droneId, { status: "offline", armState: "unknown" });
       useDiagnosticsStore.getState().logEvent("link_lost", `Link lost: ${droneName}`);
     })] : []),
 

@@ -4,7 +4,7 @@
  * @license GPL-3.0-only
  */
 
-import type { ActionCommand, MissionAction, NavCommand } from "@/lib/types";
+import type { ActionCommand, CommandMissionAction, NavCommand } from "@/lib/types";
 
 /**
  * The commands a navigation waypoint's own command Select offers. Only navigation
@@ -40,10 +40,17 @@ export const ACTION_COMMAND_GROUPS: { groupKey: string; commands: ActionCommand[
 ];
 
 /**
+ * The attached actions iNav can fly: ROI → SET_POI, DO_JUMP → JUMP and
+ * CONDITION_YAW → SET_HEAD. Any other action has no iNav equivalent and the
+ * upload refuses it.
+ */
+export const INAV_ACTION_COMMANDS: readonly ActionCommand[] = ["ROI", "DO_JUMP", "CONDITION_YAW"];
+
+/**
  * Sensible default parameters applied when a fresh action of the given command is
  * added, so a newly-inserted action is immediately valid rather than all-zero.
  */
-export function defaultActionParams(command: ActionCommand): Partial<MissionAction> {
+export function defaultActionParams(command: ActionCommand): Partial<CommandMissionAction> {
   switch (command) {
     case "DO_SET_SPEED": return { param1: 1, param2: 5 }; // airspeed type, 5 m/s
     case "DO_SET_CAM_TRIGG": return { param1: 10 }; // trigger every 10 m
@@ -54,10 +61,11 @@ export function defaultActionParams(command: ActionCommand): Partial<MissionActi
     case "DO_SET_SERVO": return { param1: 5, param2: 1500 }; // servo 5, 1500 us
     case "DO_MOUNT_CONTROL": return { param1: -30 }; // pitch down 30°
     case "DO_GRIPPER": return { param1: 1, param2: 1 }; // gripper 1, grab
-    case "DO_WINCH": return { param1: 1 }; // winch 1
+    case "DO_WINCH": return { param1: 1, param2: 1 }; // winch 1, length control
+    case "DO_DIGICAM": return { param5: 1 }; // shoot command = take one photo
     case "DO_FENCE_ENABLE": return { param1: 1 }; // enable
     case "DO_AUX_FUNCTION": return { param1: 0, param2: 0 };
-    default: return {}; // ROI / DO_SET_HOME (positioned) / DO_DIGICAM / DO_SET_ROI_NONE
+    default: return {}; // ROI / DO_SET_HOME (positioned) / DO_SET_ROI_NONE
   }
 }
 

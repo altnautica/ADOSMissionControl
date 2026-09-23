@@ -27,8 +27,6 @@ export interface Waypoint {
    * so an absolute-altitude waypoint is never silently downgraded to relative.
    */
   frame?: AltitudeFrame;
-  /** iNav action code (1-8). Populated only when connected firmware is iNav. */
-  inavAction?: number;
   /**
    * Ordered actions performed at (or on the way from) this navigation waypoint.
    * Actions are non-navigation MAVLink commands (set-speed, yaw, camera trigger,
@@ -64,23 +62,31 @@ export type ActionCommand =
 export type WaypointCommand = NavCommand | ActionCommand;
 
 /**
- * A non-navigation command attached to a `Waypoint`. On the wire it expands to
- * its own `MissionItem` sequenced right after the parent NAV item.
+ * A known non-navigation command attached to a `Waypoint`. On the wire it
+ * expands to its own `MissionItem` sequenced right after the parent NAV item.
  *
  * `lat`/`lon`/`alt` are only meaningful for the position-bearing action commands
- * (`ROI`, `DO_SET_HOME`) and are otherwise omitted (encoded as x=y=z=0).
+ * (`ROI`, `DO_SET_HOME`) and are written to the item's x/y/z. Every other
+ * action carries its fifth to seventh MAVLink parameters in `param5`..`param7`
+ * (the same x/y/z wire slots, unscaled), e.g. DO_DIGICAM's shoot command.
  * `jumpTargetId` is only meaningful for `DO_JUMP`: it references the `id` of the
  * NAV `Waypoint` to jump to (resolved to a flattened `seq` at encode time),
  * decoupling the jump target from raw sequence indices that shift as the mission
  * is edited.
  */
-export interface MissionAction {
+export interface CommandMissionAction {
   id: string;
   command: ActionCommand;
   param1?: number;
   param2?: number;
   param3?: number;
   param4?: number;
+  /** MAVLink param5 (item x) for a non-positional action. */
+  param5?: number;
+  /** MAVLink param6 (item y) for a non-positional action. */
+  param6?: number;
+  /** MAVLink param7 (item z) for a non-positional action. */
+  param7?: number;
   /** Latitude in degrees. Only for position-bearing actions (ROI / DO_SET_HOME). */
   lat?: number;
   /** Longitude in degrees. Only for position-bearing actions (ROI / DO_SET_HOME). */
@@ -90,6 +96,33 @@ export interface MissionAction {
   /** For DO_JUMP: the `id` of the NAV waypoint to jump to. */
   jumpTargetId?: string;
 }
+
+/**
+ * A mission item whose command this GCS does not model, carried verbatim so a
+ * download → upload round trip re-emits it byte-for-byte. It rides the NAV
+ * waypoint it followed on the wire and is shown read-only in the planner.
+ */
+export interface RawMissionAction {
+  id: string;
+  command: "RAW";
+  /** The MAV_CMD id exactly as received. */
+  rawCommand: number;
+  param1: number;
+  param2: number;
+  param3: number;
+  param4: number;
+  /** Wire x (int32) exactly as received. */
+  x: number;
+  /** Wire y (int32) exactly as received. */
+  y: number;
+  /** Wire z exactly as received. */
+  z: number;
+  /** MAV_FRAME exactly as received. */
+  frame: number;
+}
+
+/** An action attached to a navigation waypoint: a modelled command or a raw passthrough. */
+export type MissionAction = CommandMissionAction | RawMissionAction;
 
 /** Available tools in the map toolbar. */
 export type PlannerTool =

@@ -48,6 +48,7 @@ export { analyzeMotors } from "./motor-analysis";
 
 // Safety
 export { getSafetyRange, validateSuggestion } from "./pid-safety";
+export type { SuggestionCheck } from "./pid-safety";
 
 // Log extraction
 export {

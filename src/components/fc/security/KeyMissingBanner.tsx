@@ -14,8 +14,6 @@
  *   3. Clear FC signing (destructive; agent `/disable-on-fc`, leaves the
  *      FC accepting unsigned commands)
  *
- * Addresses audit finding M2 UX surface.
- *
  * @license GPL-3.0-only
  */
 

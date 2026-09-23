@@ -27,19 +27,13 @@ import type { CommandResult } from "@/lib/protocol/types";
 
 /** The single protocol method a parameter write needs. */
 export interface ParamWriter {
-  setParameter(
-    name: string,
-    value: number,
-    type?: number,
-  ): Promise<CommandResult>;
+  setParameter(name: string, value: number): Promise<CommandResult>;
 }
 
 export interface ParamWriteRequest {
   writer: ParamWriter;
   name: string;
   value: number;
-  /** MAV_PARAM_TYPE, when the caller knows it (the raw grid does). */
-  type?: number;
   /** Value on the vehicle before this write, for the pending-write record. */
   oldValue: number;
   /** Panel the pending-write record is attributed to. */
@@ -75,8 +69,8 @@ export async function confirmArmedParamWrite(
 export async function writeParamToFc(
   req: ParamWriteRequest,
 ): Promise<CommandResult> {
-  const { writer, name, value, type, oldValue, panelId, rebootRequired } = req;
-  const result = await writer.setParameter(name, value, type);
+  const { writer, name, value, oldValue, panelId, rebootRequired } = req;
+  const result = await writer.setParameter(name, value);
   if (!result.success) return result;
 
   const safety = useParamSafetyStore.getState();

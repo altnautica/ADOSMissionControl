@@ -157,7 +157,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             connectId = answeredId;
           }
         }
-        set({ connected: true, stalePairing: null });
+        set({ connected: true, stalePairing: null, mavlinkPairRequired: false });
         if (!opts?.relay) {
           // Under relay `attemptUrl`'s hostname is the GROUND STATION, so this
           // would point AgentMavlinkBridge at the ground station's own FC lane
@@ -372,6 +372,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
       mavlinkUrl: null,
       consecutiveFailures: 0,
       stalePairing: null,
+      mavlinkPairRequired: false,
       controlRttMs: null,
       relay: false,
     });

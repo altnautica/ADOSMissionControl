@@ -3,7 +3,7 @@
  * @description Codec for `uavcan.protocol.RestartNode` (service type id 5).
  *
  * Request:  uint40 magic_number  (5 bytes little-endian, must be 0xACCE551B1E)
- * Response: bool   ok            (uint8 wire, 0 or 1)
+ * Response: bool   ok            (one bit: the most significant bit of byte 0)
  * @license GPL-3.0-only
  */
 
@@ -46,12 +46,12 @@ export function decodeRestartNodeRequest(buf: Uint8Array): RestartNodeRequest {
 export function encodeRestartNodeResponse(
   res: RestartNodeResponse,
 ): Uint8Array {
-  return new Uint8Array([res.ok ? 1 : 0]);
+  return new Uint8Array([res.ok ? 0x80 : 0]);
 }
 
 export function decodeRestartNodeResponse(buf: Uint8Array): RestartNodeResponse {
   if (buf.length < 1) {
     throw new Error(`RestartNodeResponse too short: ${buf.length}`);
   }
-  return { ok: buf[0] !== 0 };
+  return { ok: (buf[0] & 0x80) !== 0 };
 }

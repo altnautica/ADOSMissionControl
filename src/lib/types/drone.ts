@@ -23,7 +23,13 @@ export type ConnectionState = "disconnected" | "connecting" | "connected" | "arm
  * the explicit unrecognised-mode member; nothing may substitute a neighbour.
  */
 export type FlightMode = UnifiedFlightMode;
-export type ArmState = "disarmed" | "armed";
+/**
+ * What the vehicle last reported about arming. `"unknown"` means no live
+ * heartbeat backs either answer (the FC link was lost, or none has arrived
+ * yet): an aircraft that stops talking may still be flying, so link loss must
+ * never read as `"disarmed"`.
+ */
+export type ArmState = "disarmed" | "armed" | "unknown";
 
 export interface DroneInfo {
   id: string;
@@ -54,6 +60,12 @@ export interface FleetDrone extends DroneInfo {
    * showing a fabricated disarmed / STABILIZE / 0% reading. Undefined on
    * rows that predate the registry projection (treated as attached). */
   fcAttached?: boolean;
+  /** True when an FC is attached but its heartbeat stopped: the adapter
+   * reported link loss, or the last heartbeat is older than the telemetry
+   * staleness window. The row's arm state is then `"unknown"` and it is
+   * neither `armed` nor `in_mission`, so no surface keeps a confident ARM /
+   * In-Mission claim (or a disarmed one) for an aircraft it cannot hear. */
+  fcLinkLost?: boolean;
   /** "local" for direct MAVLink connections, "cloud" for cloud-paired agents */
   source?: "local" | "cloud";
   /** The agent device id of a node the GCS holds a pairing for, LAN or cloud.

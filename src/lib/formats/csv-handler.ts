@@ -15,7 +15,7 @@ import {
   flattenForSerialization,
   foldLegacyWaypoints,
   type FlatWaypointRow,
-} from "@/lib/mission/mission-expand";
+} from "@/lib/mission/flat-rows";
 
 const CSV_HEADER =
   "seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3,param4";

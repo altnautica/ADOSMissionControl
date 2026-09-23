@@ -60,14 +60,14 @@ export function useFlightShortcuts({
       }
 
       const droneState = useDroneStore.getState();
-      const isArmed = droneState.armState === "armed";
 
       switch (e.key) {
         case "A": {
           // ARM / DISARM toggle: open the same confirmation flow as the UI.
+          // With no live heartbeat the toggle has no side to pick.
           e.preventDefault();
-          if (isArmed) onDisarmConfirm();
-          else onArmConfirm();
+          if (droneState.armState === "armed") onDisarmConfirm();
+          else if (droneState.armState === "disarmed") onArmConfirm();
           break;
         }
         case "R": {

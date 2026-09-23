@@ -195,7 +195,10 @@ export function deriveHudStatus(
         : null,
     satellites:
       gpsFresh && typeof gps?.satellites === "number" ? gps.satellites : null,
-    armed: heartbeatFresh ? flight.armState === "armed" : null,
+    armed:
+      heartbeatFresh && flight.armState !== "unknown"
+        ? flight.armState === "armed"
+        : null,
     mode: heartbeatFresh ? flight.flightMode : null,
     signalBars: signalBarsFromRssi(radio),
   };

@@ -2,7 +2,8 @@
  * Tests for the iNav waypoint translator.
  *
  * Covers round-trip fidelity, coordinate scaling, altitude conversion,
- * WP numbering, last-WP flag preservation, and unknown command fallback.
+ * WP numbering, last-WP flag preservation, the altitude-datum bit, and the
+ * refusal of commands iNav cannot fly.
  *
  * @license GPL-3.0-only
  */
@@ -67,14 +68,38 @@ describe("translateToInavWaypoints", () => {
     expect(wps[1].flag).toBe(0);
   });
 
-  it("maps MAV_CMD_NAV_WAYPOINT (16) to INAV_WP_ACTION.WAYPOINT", () => {
+  it("maps MAV_CMD_NAV_WAYPOINT (16) to INAV_WP_ACTION.WAYPOINT at the default speed", () => {
     const wps = translateToInavWaypoints([missionItem({ command: 16 })]);
     expect(wps[0].action).toBe(INAV_WP_ACTION.WAYPOINT);
+    expect(wps[0].p1).toBe(0); // iNav WAYPOINT p1 is a leg speed; 0 = mission speed
   });
 
-  it("maps MAV_CMD_NAV_RETURN_TO_LAUNCH (20) to INAV_WP_ACTION.RTH", () => {
+  it("turns a WAYPOINT hold time into a timed position hold instead of a leg speed", () => {
+    const wps = translateToInavWaypoints([missionItem({ command: 16, param1: 60 })]);
+    expect(wps[0].action).toBe(INAV_WP_ACTION.POSHOLD_TIME);
+    expect(wps[0].p1).toBe(60);
+  });
+
+  it("derives the p3 altitude datum from the frame and never copies param3", () => {
+    // A relative waypoint with an odd pass radius in param3 stays relative.
+    const rel = translateToInavWaypoints([missionItem({ frame: 3, param3: 5 })]);
+    expect(rel[0].p3).toBe(0);
+    const relInt = translateToInavWaypoints([missionItem({ frame: 6 })]);
+    expect(relInt[0].p3).toBe(0);
+    const abs = translateToInavWaypoints([missionItem({ frame: 0 })]);
+    expect(abs[0].p3).toBe(1);
+    const absInt = translateToInavWaypoints([missionItem({ frame: 5 })]);
+    expect(absInt[0].p3).toBe(1);
+  });
+
+  it("refuses a terrain-relative waypoint rather than flying it above home", () => {
+    expect(() => translateToInavWaypoints([missionItem({ frame: 10 })])).toThrow(/MAV_FRAME 10/);
+  });
+
+  it("maps MAV_CMD_NAV_RETURN_TO_LAUNCH (20) to INAV_WP_ACTION.RTH with landing", () => {
     const wps = translateToInavWaypoints([missionItem({ command: 20 })]);
     expect(wps[0].action).toBe(INAV_WP_ACTION.RTH);
+    expect(wps[0].p1).toBe(1);
   });
 
   it("maps MAV_CMD_NAV_LAND (21) to INAV_WP_ACTION.LAND", () => {
@@ -82,12 +107,14 @@ describe("translateToInavWaypoints", () => {
     expect(wps[0].action).toBe(INAV_WP_ACTION.LAND);
   });
 
-  it("carries the LAND elevation (p2) and altitude-datum bit (p3) to the wire", () => {
-    // param2 = landing-site elevation (m); param3 bit0 = MSL datum.
-    const wps = translateToInavWaypoints([missionItem({ command: 21, param2: 12, param3: 1 })]);
-    expect(wps[0].action).toBe(INAV_WP_ACTION.LAND);
-    expect(wps[0].p2).toBe(12);
-    expect(wps[0].p3 & 1).toBe(1);
+  it("carries the LAND elevation (p2) and takes the datum bit (p3) from the frame", () => {
+    // Model param1 (landing-site elevation, m) rides wire param2.
+    const abs = translateToInavWaypoints([missionItem({ command: 21, frame: 0, param2: 12, param3: 0 })]);
+    expect(abs[0].action).toBe(INAV_WP_ACTION.LAND);
+    expect(abs[0].p2).toBe(12);
+    expect(abs[0].p3).toBe(1);
+    const rel = translateToInavWaypoints([missionItem({ command: 21, frame: 3, param2: 12, param3: 1 })]);
+    expect(rel[0].p3).toBe(0);
   });
 
   it("maps MAV_CMD_NAV_LOITER_UNLIM (17) to INAV_WP_ACTION.POSHOLD_UNLIM", () => {
@@ -96,8 +123,15 @@ describe("translateToInavWaypoints", () => {
   });
 
   it("maps MAV_CMD_NAV_LOITER_TIME (19) to INAV_WP_ACTION.POSHOLD_TIME", () => {
-    const wps = translateToInavWaypoints([missionItem({ command: 19 })]);
+    const wps = translateToInavWaypoints([missionItem({ command: 19, param1: 15 })]);
     expect(wps[0].action).toBe(INAV_WP_ACTION.POSHOLD_TIME);
+    expect(wps[0].p1).toBe(15);
+  });
+
+  it("flies MAV_CMD_NAV_TAKEOFF (22) as a waypoint over the takeoff point", () => {
+    const wps = translateToInavWaypoints([missionItem({ command: 22, param1: 15 })]);
+    expect(wps[0].action).toBe(INAV_WP_ACTION.WAYPOINT);
+    expect(wps[0].p1).toBe(0);
   });
 
   it("maps MAV_CMD_DO_JUMP (177) to INAV_WP_ACTION.JUMP and shifts target to 1-based", () => {
@@ -119,9 +153,14 @@ describe("translateToInavWaypoints", () => {
     expect(wps[0].p1).toBe(90);
   });
 
-  it("falls back to WAYPOINT for unknown MAV_CMD", () => {
-    const wps = translateToInavWaypoints([missionItem({ command: 9999 })]);
-    expect(wps[0].action).toBe(INAV_WP_ACTION.WAYPOINT);
+  it("refuses every command with no iNav equivalent, naming it", () => {
+    // DO_SET_CAM_TRIGG rides as its own item at x=y=z=0; flying it as a
+    // WAYPOINT would send the aircraft to 0°N 0°E.
+    expect(() =>
+      translateToInavWaypoints([missionItem(), missionItem({ command: 206, x: 0, y: 0, z: 0 })]),
+    ).toThrow(/DO_SET_CAM_TRIGG.*waypoint 2/);
+    expect(() => translateToInavWaypoints([missionItem({ command: 18 })])).toThrow(/LOITER_TURNS/);
+    expect(() => translateToInavWaypoints([missionItem({ command: 9999 })])).toThrow(/MAV_CMD 9999/);
   });
 });
 
@@ -179,6 +218,17 @@ describe("translateFromInavWaypoints", () => {
       p1: 0, p2: 0, p3: 0, flag: 0,
     };
     expect(translateFromInavWaypoints([wp])[0].command).toBe(20);
+  });
+
+  it("sets the frame from the p3 datum bit instead of assuming above-home", () => {
+    const base = { number: 1, action: INAV_WP_ACTION.WAYPOINT, lat: 0, lon: 0, altitude: 0, p1: 0, p2: 0, flag: 0 };
+    expect(translateFromInavWaypoints([{ ...base, p3: 1 }])[0].frame).toBe(0);
+    expect(translateFromInavWaypoints([{ ...base, p3: 0 }])[0].frame).toBe(3);
+  });
+
+  it("does not read a WAYPOINT leg speed (p1) back as a hold time", () => {
+    const wp = { number: 1, action: INAV_WP_ACTION.WAYPOINT, lat: 0, lon: 0, altitude: 0, p1: 125, p2: 0, p3: 0, flag: 0 };
+    expect(translateFromInavWaypoints([wp])[0].param1).toBe(0);
   });
 
   it("round-trips a multi-waypoint mission", () => {

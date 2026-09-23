@@ -1004,12 +1004,12 @@
     "udpModeListen": "Écouter",
     "udpModeTarget": "Cible",
     "nativeSocketReady": "Socket natif prêt (application de bureau).",
-    "bridgeNeeded": "Un navigateur ne peut pas ouvrir un socket brut. Lancez le pont local, puis connectez-vous-y :",
+    "bridgeNeeded": "Un navigateur ne peut pas ouvrir un socket brut. Lancez le pont local ci-dessous. Au démarrage, il affiche une URL ws://…/?token=… ; collez cette URL complète dans URL du pont.",
     "bridgeUrlLabel": "URL du pont",
     "checkBridge": "Vérifier",
     "checking": "Vérification...",
     "bridgeReachable": "Pont accessible.",
-    "bridgeUnreachable": "Pont inaccessible. Est-il en cours d'exécution ?",
+    "bridgeUnreachable": "Pont inaccessible. Est-il en cours d'exécution, et l'URL contient-elle le ?token= affiché ?",
     "copy": "Copier",
     "copied": "Copié",
     "connectionFailed": "Échec de la connexion",
@@ -2658,6 +2658,10 @@
     "release": "Relâcher",
     "grab": "Saisir",
     "winchNum": "Numéro de treuil",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "Longueur",
     "fence": "Clôture",
     "disable": "Désactiver",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "Appairez ce nœud pour ouvrir sa liaison de vol",
+      "body": "L'ordinateur embarqué est joignable mais n'est pas appairé. Un nœud non appairé n'ouvre la liaison de son contrôleur de vol qu'à son propre point d'accès, à l'USB ou à une connexion locale. Appairez-le pour le piloter d'ici.",
+      "cta": "Appairer ce nœud"
     }
   },
   "blackbox": {

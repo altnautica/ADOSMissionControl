@@ -7,7 +7,11 @@
  * as a WebSocket subprotocol.
  *   - a pairing key is held → a ticket is minted and the raw URL is dialed
  *     with the ticket subprotocol;
- *   - no pairing key (unpaired) → the raw URL is dialed bare (open posture);
+ *   - no pairing key → the agent is asked whether it is paired. An unpaired
+ *     agent refuses a keyless WebSocket off its own box and lifeline links, so
+ *     on an ordinary LAN the dial is skipped and the pair-this-node state is
+ *     raised; on a lifeline (hotspot) address the raw URL is dialed bare, and
+ *     a refused dial there raises the same state;
  *   - a WebSocket failure falls through to the MQTT relay.
  */
 
@@ -21,6 +25,7 @@ interface ConnState {
   agentUrl: string | null;
   cloudDeviceId: string | null;
   apiKey: string | null;
+  setMavlinkPairRequired: (required: boolean) => void;
 }
 
 // Shared mock state + spies. Declared via vi.hoisted so the hoisted
@@ -34,6 +39,7 @@ const h = vi.hoisted(() => {
       agentUrl: null,
       cloudDeviceId: null,
       apiKey: null,
+      setMavlinkPairRequired: () => {},
     },
   };
   return {
@@ -49,6 +55,8 @@ const h = vi.hoisted(() => {
     >(),
     adapterConnect: vi.fn(async () => ({ firmware: "ardupilot" })),
     mintWsTicket: vi.fn<() => Promise<string | null>>(),
+    probeAgent: vi.fn<(host: string) => Promise<{ paired: boolean }>>(),
+    setMavlinkPairRequired: vi.fn<(required: boolean) => void>(),
     addDrone: vi.fn(),
     removeDrone: vi.fn(),
     selectDrone: vi.fn(),
@@ -92,6 +100,12 @@ vi.mock("@/lib/protocol/mavlink-adapter", () => ({
 vi.mock("@/lib/api/ground-station/ws-ticket", () => ({
   WS_TICKET_PROTOCOL: "ados-ws-ticket",
   mintWsTicket: (...args: unknown[]) => h.mintWsTicket(...(args as [])),
+}));
+
+// --- Mocked pairing probe (/api/pairing/info) -------------------------------
+
+vi.mock("@/lib/agent/local-pair/probe", () => ({
+  probeAgent: (host: string) => h.probeAgent(host),
 }));
 
 // --- Mocked stores ----------------------------------------------------------
@@ -139,7 +153,7 @@ import { AgentMavlinkBridge } from "../AgentMavlinkBridge";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { setMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
 
-const { wsConnect, mqttConnect, mintWsTicket, addDrone } = h;
+const { wsConnect, mqttConnect, mintWsTicket, addDrone, probeAgent, setMavlinkPairRequired } = h;
 
 /** Hold a live write grant covering the cloud device the bridge will dial. */
 function holdGrant() {
@@ -161,6 +175,7 @@ beforeEach(() => {
   wsConnect.mockResolvedValue(undefined);
   mqttConnect.mockResolvedValue(undefined);
   mintWsTicket.mockResolvedValue("tok-xyz");
+  probeAgent.mockResolvedValue({ paired: true });
   h.conn.current = {
     mavlinkUrl: "ws://drone.local:8765/",
     connected: true,
@@ -168,6 +183,7 @@ beforeEach(() => {
     agentUrl: "http://drone.local:8080",
     cloudDeviceId: "cloud-1",
     apiKey: "key-abc",
+    setMavlinkPairRequired,
   };
 });
 
@@ -192,15 +208,64 @@ describe("AgentMavlinkBridge connection cascade", () => {
     expect(url).toBe("ws://drone.local:8765/");
     expect(protocols).toEqual(["ados-ws-ticket", "tok-xyz"]);
     expect(mqttConnect).not.toHaveBeenCalled();
+    // A held key never needs the pairing probe.
+    expect(probeAgent).not.toHaveBeenCalled();
   });
 
-  it("dials the raw URL bare with no subprotocol for an unpaired agent", async () => {
+  it("does not dial an unpaired agent keyless over the LAN and raises pair-this-node", async () => {
     h.conn.current.apiKey = null;
+    h.conn.current.cloudDeviceId = null;
+    probeAgent.mockResolvedValue({ paired: false });
+    render(<AgentMavlinkBridge />);
+
+    await waitFor(() => expect(setMavlinkPairRequired).toHaveBeenCalledWith(true));
+    expect(probeAgent).toHaveBeenCalledWith("http://drone.local:8080");
+    expect(wsConnect).not.toHaveBeenCalled();
+    expect(addDrone).not.toHaveBeenCalled();
+  });
+
+  it("dials an unpaired agent bare on its hotspot address without asking first", async () => {
+    h.conn.current = {
+      ...h.conn.current,
+      apiKey: null,
+      mavlinkUrl: "ws://192.168.4.1:8765/",
+      agentUrl: "http://192.168.4.1:8080",
+    };
+    probeAgent.mockResolvedValue({ paired: false });
     render(<AgentMavlinkBridge />);
 
     await waitFor(() => expect(addDrone).toHaveBeenCalledTimes(1));
     expect(mintWsTicket).not.toHaveBeenCalled();
+    expect(probeAgent).not.toHaveBeenCalled();
+    const [url, protocols] = wsConnect.mock.calls[0];
+    expect(url).toBe("ws://192.168.4.1:8765/");
+    expect(protocols).toBeUndefined();
+    expect(setMavlinkPairRequired).toHaveBeenCalledWith(false);
+  });
+
+  it("maps a refused keyless handshake from an unpaired agent to pair-this-node", async () => {
+    h.conn.current = {
+      ...h.conn.current,
+      apiKey: null,
+      cloudDeviceId: null,
+      mavlinkUrl: "ws://192.168.4.1:8765/",
+      agentUrl: "http://192.168.4.1:8080",
+    };
+    wsConnect.mockRejectedValue(new Error("WebSocket error"));
+    probeAgent.mockResolvedValue({ paired: false });
+    render(<AgentMavlinkBridge />);
+
+    await waitFor(() => expect(setMavlinkPairRequired).toHaveBeenCalledWith(true));
     expect(wsConnect).toHaveBeenCalledTimes(1);
+    expect(addDrone).not.toHaveBeenCalled();
+  });
+
+  it("still dials keyless when the agent reports itself paired", async () => {
+    h.conn.current.apiKey = null;
+    render(<AgentMavlinkBridge />);
+
+    await waitFor(() => expect(addDrone).toHaveBeenCalledTimes(1));
+    expect(probeAgent).toHaveBeenCalledTimes(1);
     const [url, protocols] = wsConnect.mock.calls[0];
     expect(url).toBe("ws://drone.local:8765/");
     expect(protocols).toBeUndefined();

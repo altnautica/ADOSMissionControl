@@ -31,7 +31,7 @@ vi.mock("@/stores/drone-manager", () => ({
  * holds the operator's SELECTED drone — so a plugin bound to drone B checked
  * drone A's arm state and then uploaded to drone A as well.
  */
-let armState: "armed" | "disarmed";
+let armState: "armed" | "disarmed" | "unknown";
 vi.mock("@/stores/node-registry", () => ({
   useNodeRegistryStore: {
     getState: () => ({
@@ -339,6 +339,22 @@ describe("mission.write gates", () => {
     expect(missionStore.setWaypoints).not.toHaveBeenCalled();
     expect(missionStore.uploadMission).not.toHaveBeenCalled();
     expect(validateMissionMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to write while the arm state is unknown after a lost link", async () => {
+    armState = "unknown";
+    withProtocol();
+    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { ctx } = makeCtx({ capability: "mission.write" });
+    const out = await handlers["mission.write"](
+      { payload: { waypoints: [WP("w1"), WP("w2")] } },
+      ctx,
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: "cannot write mission while the arm state is unknown",
+    });
+    expect(missionStore.uploadMission).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid mission with the validator errors, before confirm", async () => {

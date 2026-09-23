@@ -105,10 +105,23 @@ export async function inavDownloadMotorMixer(queue: MspSerialQueue | null): Prom
   return decodeMspCommonMotorMixer(dv(frame.payload))
 }
 
+/** A slot with throttle 0 is unused; the FC stops counting motors at the first one. */
+const EMPTY_MOTOR_RULE: MotorMixerRule = { throttle: 0, roll: 0, pitch: 0, yaw: 0 }
+
+/**
+ * Write the motor mixer table. Slots past the last rule are written empty so a
+ * motor removed in the editor cannot keep mixing from a stale slot on the FC.
+ * The slot count is the length of the table the FC itself reports.
+ */
 export async function inavUploadMotorMixer(queue: MspSerialQueue | null, rules: MotorMixerRule[]): Promise<void> {
   if (!queue) return
-  for (let i = 0; i < rules.length; i++) {
-    await queue.send(INAV_MSP.MSP2_COMMON_SET_MOTOR_MIXER, encodeMspCommonSetMotorMixer(i, rules[i]))
+  const current = await queue.send(INAV_MSP.MSP2_COMMON_MOTOR_MIXER)
+  const slotCount = Math.floor(current.payload.byteLength / 8)
+  if (rules.length > slotCount) {
+    throw new Error(`This flight controller has ${slotCount} motor mixer slots; ${rules.length} rules do not fit`)
+  }
+  for (let i = 0; i < slotCount; i++) {
+    await queue.send(INAV_MSP.MSP2_COMMON_SET_MOTOR_MIXER, encodeMspCommonSetMotorMixer(i, rules[i] ?? EMPTY_MOTOR_RULE))
   }
 }
 

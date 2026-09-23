@@ -6,9 +6,9 @@
  *   int14[<=20] cmd      array of signed 14-bit motor commands
  *
  * `cmd` is the only field, so the length prefix is omitted by the
- * tail-array optimization. Each entry occupies exactly 14 bits in the
- * DroneCAN little-endian, LSB-first bit stream; consecutive entries pack
- * across byte boundaries.
+ * tail-array optimization. Each entry occupies exactly 14 bits and
+ * consecutive entries pack across byte boundaries in the DroneCAN scalar
+ * layout described in `bit-buffer.ts`: `[0, 1229]` is `00 03 34 40`.
  *
  * @license GPL-3.0-only
  */

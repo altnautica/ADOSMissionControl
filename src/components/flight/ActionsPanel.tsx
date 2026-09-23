@@ -15,8 +15,10 @@ import { ChecklistModal } from "./action-dialogs";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useChecklistStore } from "@/stores/checklist-store";
+import { useFollowMeStore } from "@/stores/follow-me-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useFlightShortcuts } from "@/hooks/use-flight-shortcuts";
+import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 import { useShallow } from "zustand/react/shallow";
 import { buildSkillContext, activate } from "@/lib/skills";
 import type { SkillActivateArgs } from "@/lib/skills";
@@ -25,10 +27,18 @@ import { cn } from "@/lib/utils";
 
 export function ActionsPanel() {
   const t = useTranslations("flight");
+  const tReason = useTranslations("skills.reason");
+  // Every button here dispatches a skill; without the bridge a refusal
+  // (pre-arm failure, no link, already armed) would be silent.
+  useSkillToastBridge();
   const armState = useDroneStore((s) => s.armState);
   const flightMode = useDroneStore((s) => s.flightMode);
   const previousMode = useDroneStore((s) => s.previousMode);
   const selectedId = useDroneManager((s) => s.selectedDroneId);
+  // A running follow-me session keeps its stop control on screen whatever the
+  // selected drone's arm state or capabilities: the session may be commanding
+  // an aircraft that is not the one shown here.
+  const followMeActive = useFollowMeStore((s) => s.isActive);
 
   const [takeoffAlt, setTakeoffAlt] = useState("10");
   const [showChecklist, setShowChecklist] = useState(false);
@@ -47,6 +57,9 @@ export function ActionsPanel() {
   );
 
   const isArmed = armState === "armed";
+  // With no heartbeat to read it from, the arm state is unknown: the control
+  // offers neither ARM nor DISARM rather than guessing.
+  const armUnknown = armState === "unknown";
   const { supports } = useFirmwareCapabilities();
   const hasMissions = supports("supportsMissionUpload");
   const hasAutonomousFlight = supports("supportsAutonomousNav"); // RTL/Land/Takeoff
@@ -113,17 +126,18 @@ export function ActionsPanel() {
           {/* ARM / DISARM */}
           <div className="flex-1 [&>*]:w-full">
             <Tooltip
-              content={isArmed ? t("disarmShortcut") : t("armShortcut")}
+              content={armUnknown ? tReason("noFcLink") : isArmed ? t("disarmShortcut") : t("armShortcut")}
               position="right"
             >
               <Button
-                variant={isArmed ? "danger" : "primary"}
+                variant={armUnknown ? "secondary" : isArmed ? "danger" : "primary"}
                 size="sm"
                 icon={<Power size={14} />}
                 className="w-full h-9 text-sm"
+                disabled={armUnknown}
                 onClick={fireArmToggle}
               >
-                {isArmed ? t("disarm") : t("arm")}
+                {armUnknown ? tReason("noFcLink") : isArmed ? t("disarm") : t("arm")}
               </Button>
             </Tooltip>
           </div>
@@ -251,8 +265,8 @@ export function ActionsPanel() {
           </div>
         </div>
 
-        {/* Follow-me mode */}
-        {isArmed && hasAutonomousFlight && (
+        {/* Follow-me mode: start on an armed, capable drone; stop whenever active */}
+        {(followMeActive || (isArmed && hasAutonomousFlight)) && (
           <FollowMeButton />
         )}
       </div>

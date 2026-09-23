@@ -85,6 +85,18 @@ async function getProfileByUserId(
   return legacy ?? null;
 }
 
+/**
+ * The caller's own auth user id, or null when the request carries no valid
+ * session. Resolves for every signed-in caller whether or not a profile row
+ * exists, so the client can settle its identity without waiting on one.
+ */
+export const getMyUserId = query({
+  args: {},
+  handler: async (ctx) => {
+    return await getAuthUserId(ctx);
+  },
+});
+
 export const getMyProfile = query({
   args: {},
   handler: async (ctx) => {

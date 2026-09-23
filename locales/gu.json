@@ -1004,12 +1004,12 @@
     "udpModeListen": "સાંભળો",
     "udpModeTarget": "લક્ષ્ય",
     "nativeSocketReady": "નેટિવ સોકેટ તૈયાર (ડેસ્કટોપ એપ).",
-    "bridgeNeeded": "બ્રાઉઝર રો સોકેટ ખોલી શકતું નથી. સ્થાનિક બ્રિજ ચલાવો, પછી તેની સાથે જોડાઓ:",
+    "bridgeNeeded": "બ્રાઉઝર રો સોકેટ ખોલી શકતું નથી. નીચેનો સ્થાનિક બ્રિજ ચલાવો. શરૂ થતાં તે ws://…/?token=… URL બતાવે છે; તે આખો URL બ્રિજ URL માં પેસ્ટ કરો.",
     "bridgeUrlLabel": "બ્રિજ URL",
     "checkBridge": "તપાસો",
     "checking": "તપાસી રહ્યું છે...",
     "bridgeReachable": "બ્રિજ પહોંચી શકાય તેવું છે.",
-    "bridgeUnreachable": "બ્રિજ પહોંચી શકાતું નથી. શું તે ચાલુ છે?",
+    "bridgeUnreachable": "બ્રિજ પહોંચી શકાતું નથી. શું તે ચાલુ છે, અને શું URL માં તેણે બતાવેલ ?token= છે?",
     "copy": "કૉપિ કરો",
     "copied": "કૉપિ થયું",
     "connectionFailed": "જોડાણ નિષ્ફળ",
@@ -2658,6 +2658,10 @@
     "release": "છોડો",
     "grab": "પકડો",
     "winchNum": "વિંચ નંબર",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "લંબાઈ",
     "fence": "વાડ",
     "disable": "અક્ષમ",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "ઉડાન લિંક ખોલવા માટે આ નોડને પેર કરો",
+      "body": "કમ્પેનિયન કમ્પ્યુટર પહોંચમાં છે પણ પેર થયેલ નથી. પેર ન થયેલ નોડ તેની ફ્લાઇટ-કંટ્રોલર લિંક ફક્ત પોતાના હોટસ્પોટ, USB અથવા ઓન-બોર્ડ કનેક્શન માટે જ ખોલે છે. અહીંથી ઉડાડવા માટે તેને પેર કરો.",
+      "cta": "આ નોડને પેર કરો"
     }
   },
   "blackbox": {

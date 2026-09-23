@@ -126,7 +126,7 @@ describe('frame + full-command-set round-trip', () => {
     expect(parsed[1].actions?.[0].command).toBe('DO_SET_SPEED');
     const jump = parsed[2].actions?.[0];
     expect(jump?.command).toBe('DO_JUMP');
-    expect(jump?.jumpTargetId).toBe(parsed[1].id);
+    expect(jump?.command === 'DO_JUMP' ? jump.jumpTargetId : undefined).toBe(parsed[1].id);
   });
 
 });

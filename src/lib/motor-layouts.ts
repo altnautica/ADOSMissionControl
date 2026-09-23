@@ -2,7 +2,9 @@
 /**
  * Frame class/type → motor position/rotation data for ArduPilot.
  *
- * Roll/Pitch coefficients are used as x/y positions in the top-down diagram.
+ * Each motor stores ArduPilot's roll and pitch mixer factors. Use
+ * `motorBodyPosition` to turn them into a body-frame position; the factors
+ * themselves are not screen coordinates.
  *
  * @license GPL-3.0-only
  */
@@ -13,9 +15,12 @@ export interface MotorPosition {
   number: number;
   testOrder: number;
   rotation: "CW" | "CCW" | "?";
-  /** Roll coefficient — maps to X axis (right = positive). */
+  /**
+   * ArduPilot roll mixer factor, cos(angle + 90°) for a motor at `angle`
+   * clockwise from the nose. Negative for motors on the right side.
+   */
   roll: number;
-  /** Pitch coefficient — maps to Y axis (forward/up = positive). */
+  /** ArduPilot pitch mixer factor, cos(angle). Positive for motors ahead of centre. */
   pitch: number;
   /** True for yaw servos (e.g., Tri motor 7). Not counted as a motor. */
   isServo?: boolean;
@@ -932,6 +937,17 @@ export function formatMotorCount(layout: FrameLayout): string {
   const servos = getServoCount(layout);
   if (servos === 0) return `${motors} motors`;
   return `${motors} motor${motors !== 1 ? "s" : ""} + ${servos} servo${servos !== 1 ? "s" : ""}`;
+}
+
+// ── Geometry ─────────────────────────────────────────────────
+
+/**
+ * Body-frame position of a motor, in mixer-factor units: `forward` toward the
+ * nose and `right` toward the right wing. The roll factor is negated because
+ * ArduPilot's roll factor is -sin(angle), negative on the right.
+ */
+export function motorBodyPosition(motor: MotorPosition): { forward: number; right: number } {
+  return { forward: motor.pitch, right: -motor.roll };
 }
 
 // ── Dedup Helpers ────────────────────────────────────────────

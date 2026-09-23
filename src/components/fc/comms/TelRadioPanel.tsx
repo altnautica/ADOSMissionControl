@@ -12,13 +12,12 @@ import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { Button } from "@/components/ui/button";
 import { Radio, Save, HardDrive, Terminal, Signal } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import {
   TELRADIO_PARAMS, OPTIONAL_TELRADIO_PARAMS,
-  SERIAL_PROTOCOL_OPTIONS, SERIAL_BAUD_OPTIONS,
   rssiPercent, Card, RssiBar, LiveStat,
 } from "./telradio-helpers";
 
@@ -28,6 +27,7 @@ export function TelRadioPanel() {
   const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
   const paramMeta = useParamMetadataMap();
+  const { enumValues } = useParamEnums(paramMeta);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={paramMeta} />;
   const [saving, setSaving] = useState(false);
   const [atCommand, setAtCommand] = useState("");
@@ -120,34 +120,34 @@ export function TelRadioPanel() {
               <div>
                 <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">SERIAL1 (TELEM1)</span>
                 <div className="mt-2 space-y-2">
-                  <Select
+                  <ParamEnumSelect
                     label={lbl("SERIAL1_PROTOCOL — Protocol")}
-                    options={SERIAL_PROTOCOL_OPTIONS}
-                    value={p("SERIAL1_PROTOCOL", "2")}
-                    onChange={(v) => set("SERIAL1_PROTOCOL", v)}
+                    values={enumValues("SERIAL1_PROTOCOL")}
+                    value={params.get("SERIAL1_PROTOCOL") ?? 2}
+                    onChange={(v) => setLocalValue("SERIAL1_PROTOCOL", v)}
                   />
-                  <Select
+                  <ParamEnumSelect
                     label={lbl("SERIAL1_BAUD — Baud Rate")}
-                    options={SERIAL_BAUD_OPTIONS}
-                    value={p("SERIAL1_BAUD", "57")}
-                    onChange={(v) => set("SERIAL1_BAUD", v)}
+                    values={enumValues("SERIAL1_BAUD")}
+                    value={params.get("SERIAL1_BAUD") ?? 57}
+                    onChange={(v) => setLocalValue("SERIAL1_BAUD", v)}
                   />
                 </div>
               </div>
               <div>
                 <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">SERIAL2 (TELEM2)</span>
                 <div className="mt-2 space-y-2">
-                  <Select
+                  <ParamEnumSelect
                     label={lbl("SERIAL2_PROTOCOL — Protocol")}
-                    options={SERIAL_PROTOCOL_OPTIONS}
-                    value={p("SERIAL2_PROTOCOL", "2")}
-                    onChange={(v) => set("SERIAL2_PROTOCOL", v)}
+                    values={enumValues("SERIAL2_PROTOCOL")}
+                    value={params.get("SERIAL2_PROTOCOL") ?? 2}
+                    onChange={(v) => setLocalValue("SERIAL2_PROTOCOL", v)}
                   />
-                  <Select
+                  <ParamEnumSelect
                     label={lbl("SERIAL2_BAUD — Baud Rate")}
-                    options={SERIAL_BAUD_OPTIONS}
-                    value={p("SERIAL2_BAUD", "57")}
-                    onChange={(v) => set("SERIAL2_BAUD", v)}
+                    values={enumValues("SERIAL2_BAUD")}
+                    value={params.get("SERIAL2_BAUD") ?? 57}
+                    onChange={(v) => setLocalValue("SERIAL2_BAUD", v)}
                   />
                 </div>
               </div>

@@ -1,7 +1,9 @@
 /**
  * @module FollowMeButton
  * @description Toggle button for follow-me mode in the flight actions panel.
- * Shows GPS accuracy indicator when active.
+ * Starts a session on the selected drone. While a session runs, the button is
+ * its stop control and names the drone being commanded, and shows the GPS
+ * accuracy of the GCS fix.
  * @license GPL-3.0-only
  */
 "use client";
@@ -18,7 +20,8 @@ export function FollowMeButton() {
   const isActive = useFollowMeStore((s) => s.isActive);
   const isPaused = useFollowMeStore((s) => s.isPaused);
   const gcsAccuracy = useFollowMeStore((s) => s.gcsAccuracy);
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const droneName = useFollowMeStore((s) => s.droneName);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
   const [starting, setStarting] = useState(false);
 
   const handleToggle = useCallback(async () => {
@@ -26,22 +29,17 @@ export function FollowMeButton() {
       stopFollowMe();
       return;
     }
-
-    const protocol = getProtocol();
-    if (!protocol?.isConnected) return;
+    if (!selectedId) return;
 
     setStarting(true);
     try {
-      const ok = await startFollowMe(protocol);
-      if (!ok) {
-        // Permission denied or already running
-      }
+      await startFollowMe(selectedId);
     } catch {
       // Geolocation error
     } finally {
       setStarting(false);
     }
-  }, [isActive, getProtocol]);
+  }, [isActive, selectedId]);
 
   // Accuracy color
   const accColor = gcsAccuracy < 15
@@ -53,9 +51,7 @@ export function FollowMeButton() {
   const label = starting
     ? "Starting..."
     : isActive
-    ? isPaused
-      ? "GPS Lost"
-      : "Following"
+    ? `${isPaused ? "GPS weak" : "Following"}: ${droneName ?? "drone"} (stop)`
     : "Follow Me";
 
   return (
@@ -66,6 +62,7 @@ export function FollowMeButton() {
         icon={<MapPin size={12} />}
         onClick={handleToggle}
         disabled={starting}
+        title={isActive ? `Stop follow-me on ${droneName ?? "drone"}` : undefined}
         className={cn(
           "flex-1",
           isActive && "ring-1 ring-accent-primary",

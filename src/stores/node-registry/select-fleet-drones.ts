@@ -11,9 +11,13 @@
  *    the command-fleet status updatedAt, so a LAN-only heartbeat keeps a node
  *    online even with no cloud row (fixes the false-OFFLINE bug);
  *  - battery / gps / position are present and arm / mode are real ONLY when an
- *    FC is attached (fc.managedId !== null). With no FC they are undefined and
- *    `fcAttached` is false, so the card hides them rather than rendering a
- *    fabricated disarmed / STABILIZE / 0% reading;
+ *    FC is attached (fc.managedId !== null). With no FC they are undefined,
+ *    arm state is "unknown" and `fcAttached` is false, so the card hides them
+ *    rather than rendering a fabricated disarmed / STABILIZE / 0% reading;
+ *  - an attached FC whose link was lost (adapter link-loss, or a heartbeat
+ *    older than the telemetry staleness window) projects `fcLinkLost`, arm
+ *    state "unknown", and is never "armed" / "in_mission": the last heartbeat
+ *    says nothing about an aircraft the GCS can no longer hear;
  *  - a cloud presence tick never writes the FC sub-state, so it can never
  *    overwrite live flight state;
  *  - `cloudDeviceId` and `healthScore` are carried only when a source actually
@@ -26,9 +30,10 @@
  * @license GPL-3.0-only
  */
 
-import type { FleetDrone, FlightMode } from "@/lib/types/drone";
+import type { ArmState, FleetDrone, FlightMode } from "@/lib/types/drone";
 import type { CommandCloudStatus } from "@/stores/command-fleet-store";
 import { OFFLINE_THRESHOLD_MS } from "@/lib/agent/freshness";
+import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import type { NodeEntry } from "./types";
 
 /** Inputs to the pure projection. */
@@ -74,6 +79,22 @@ export function freshestHeartbeat(
 }
 
 /**
+ * True when an attached FC has reported at least one heartbeat and has since
+ * gone silent: the adapter flagged link loss (status "offline" / arm state
+ * "unknown") or the newest heartbeat is past the staleness window. An FC that
+ * has not reported yet is not lost, only not heard from.
+ */
+function isFcLinkLost(entry: NodeEntry, now: number): boolean {
+  const { fc } = entry;
+  if (fc.managedId === null || fc.lastHeartbeat === undefined) return false;
+  return (
+    fc.status === "offline" ||
+    fc.armState === "unknown" ||
+    now - fc.lastHeartbeat >= TELEMETRY_STALE_MS
+  );
+}
+
+/**
  * Project a single {@link NodeEntry} (plus its cloud display status, if any)
  * into a {@link FleetDrone}. Pure: identical inputs yield identical output.
  */
@@ -98,17 +119,24 @@ export function nodeEntryToFleetDrone(
   const profile = asProfile(presence.profile);
   const role = asRole(presence.role);
 
-  // Connection state: an attached + armed FC reports its arm state; otherwise
-  // the node is just "connected" (online) or "disconnected" (stale/offline).
-  const armed = fcAttached && fc.armState === "armed";
+  // Arm state is real only from a live FC heartbeat. A lost link, an FC that
+  // has not reported yet, and a node with no FC all read "unknown", so neither
+  // a confident ARM nor a fabricated disarmed survives the link.
+  const fcLinkLost = isFcLinkLost(entry, now);
+  const armState: ArmState =
+    fcAttached && !fcLinkLost ? (fc.armState ?? "unknown") : "unknown";
+  const armed = armState === "armed";
+
+  // Connection state: a live, armed FC reports its arm state; otherwise the
+  // node is just "connected" (online) or "disconnected" (stale/offline).
   const connectionState: FleetDrone["connectionState"] = armed
     ? "armed"
     : online
       ? "connected"
       : "disconnected";
 
-  // Status: an armed FC is in_mission; an online node is online; a dead one
-  // is offline. No fabricated "idle" for an FC-less but present agent.
+  // Status: a live, armed FC is in_mission; an online node is online; a dead
+  // one is offline. No fabricated "idle" for an FC-less but present agent.
   const droneStatus: FleetDrone["status"] = armed
     ? "in_mission"
     : online
@@ -122,13 +150,12 @@ export function nodeEntryToFleetDrone(
       (deviceId ? `Agent ${deviceId.slice(0, 8)}` : "Drone"),
     status: droneStatus,
     connectionState,
-    // Arm / mode are FC-gated: only real when an FC is attached. With none,
-    // default to a benign disarmed / STABILIZE that the card hides via
-    // `fcAttached === false` (it never renders these for an FC-less node).
+    // Mode is FC-gated: only real when an FC is attached. With none, default
+    // to a benign STABILIZE that the card hides via `fcAttached === false`.
     flightMode: fcAttached
       ? ((fc.flightMode as FlightMode | undefined) ?? "STABILIZE")
       : "STABILIZE",
-    armState: armed ? "armed" : "disarmed",
+    armState,
     lastHeartbeat,
     firmwareVersion: fc.firmwareVersion,
     frameType: fc.frameType,
@@ -138,6 +165,7 @@ export function nodeEntryToFleetDrone(
     healthScore: fc.healthScore,
     hasAgent: presence.sources.length > 0,
     fcAttached,
+    fcLinkLost,
     // Source / cloud identity come from presence, never from FC telemetry.
     source: presence.sources.includes("cloud") ? "cloud" : "local",
     // Transitive-reach provenance: the ground node this drone is linked
@@ -205,6 +233,8 @@ interface CachedRow {
   status: CommandCloudStatus | undefined;
   /** Whether the row read as online at projection time. */
   online: boolean;
+  /** Whether the row's FC link read as lost at projection time. */
+  fcLinkLost: boolean;
   row: FleetDrone;
 }
 
@@ -225,9 +255,10 @@ export type FleetDronesProjector = (
  * what cost. Reference stability turns a fleet tick with no change into zero
  * re-renders.
  *
- * `online` is derived from `now`, so it is part of the cache key: the 1 Hz
- * clock tick correctly re-projects any row crossing the offline threshold and
- * leaves every other row alone.
+ * `online` and the FC link verdict are derived from `now`, so both are part of
+ * the cache key: the 1 Hz clock tick correctly re-projects any row crossing
+ * the offline or heartbeat-staleness threshold and leaves every other row
+ * alone.
  *
  * Stateful by design — one instance per consumer. Not for use inside a pure
  * test of the projection; call {@link selectFleetDrones} for that.
@@ -249,20 +280,22 @@ export function createFleetDronesProjector(): FleetDronesProjector {
         ? cloudStatuses[entry.presence.deviceId]
         : undefined;
       const cached = cache[nodeId];
-      // `online` flips purely on elapsed time, so a cached row is only valid
-      // while its liveness verdict still holds at this `now`.
+      // `online` and the FC link verdict flip purely on elapsed time, so a
+      // cached row is only valid while both still hold at this `now`.
       const online = isOnline(entry, status, now);
+      const fcLinkLost = isFcLinkLost(entry, now);
       if (
         cached !== undefined &&
         cached.rev === entry.rev &&
         cached.status === status &&
-        cached.online === online
+        cached.online === online &&
+        cached.fcLinkLost === fcLinkLost
       ) {
         nextCache[nodeId] = cached;
         rows.push(cached.row);
       } else {
         const row = nodeEntryToFleetDrone(entry, status, now);
-        nextCache[nodeId] = { rev: entry.rev, status, online, row };
+        nextCache[nodeId] = { rev: entry.rev, status, online, fcLinkLost, row };
         rows.push(row);
         changed = true;
       }

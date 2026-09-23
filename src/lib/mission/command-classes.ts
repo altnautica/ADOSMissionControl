@@ -66,6 +66,12 @@ export const ACTION_COMMANDS: ReadonlySet<ActionCommand> = new Set(
   ),
 );
 
+/** Action commands whose own position (lat/lon/alt) rides in the item's x/y/z. */
+export const POSITION_BEARING_ACTIONS: ReadonlySet<ActionCommand> = new Set<ActionCommand>([
+  "ROI",
+  "DO_SET_HOME",
+]);
+
 /**
  * True when `c` is a navigation command. An undefined command defaults to
  * `WAYPOINT` (the wire default), which is a nav command, so `isNavCommand()`

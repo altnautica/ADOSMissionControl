@@ -10,6 +10,9 @@ import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import { useParamMetadataMap } from "@/hooks/use-param-metadata";
+import { useParamEnums } from "../shared/ParamEnumSelect";
+import { GnssConstellationEditor } from "./GnssConstellationEditor";
 import { MapPin, Navigation, Satellite, Compass, Save, HardDrive, Info } from "lucide-react";
 import {
   apGpsParamNames,
@@ -36,6 +39,7 @@ import {
 export function ArduPilotGpsPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const scrollRef = usePanelScroll("ap-gps");
+  const { bitmaskBits } = useParamEnums(useParamMetadataMap());
 
   const panelParams = usePanelParams({
     paramNames: apGpsParamNames,
@@ -163,15 +167,6 @@ export function ArduPilotGpsPanel() {
               />
             )}
             <Input
-              label="GNSS Mode"
-              type="number"
-              step="1"
-              min="0"
-              max="127"
-              value={p("GPS_GNSS_MODE")}
-              onChange={(e) => set("GPS_GNSS_MODE", e.target.value)}
-            />
-            <Input
               label="Min Elevation"
               type="number"
               step="1"
@@ -182,9 +177,15 @@ export function ArduPilotGpsPanel() {
               onChange={(e) => set("GPS_MIN_ELEV", e.target.value)}
             />
           </div>
-          <p className="text-[10px] text-text-tertiary">
-            GNSS Mode is a constellation bitmask (0 leaves the receiver as configured): 1 = GPS, 2 = SBAS, 4 = Galileo, 8 = BeiDou, 16 = IMES, 32 = QZSS, 64 = GLONASS.
-          </p>
+          <div className="space-y-1">
+            <span className="text-xs text-text-secondary">GNSS Constellations</span>
+            <GnssConstellationEditor
+              paramName="GPS_GNSS_MODE"
+              value={Number(p("GPS_GNSS_MODE"))}
+              bits={bitmaskBits("GPS_GNSS_MODE")}
+              onChange={(v) => setLocalValue("GPS_GNSS_MODE", v)}
+            />
+          </div>
         </div>
 
         {/* GPS for yaw + antenna offsets */}

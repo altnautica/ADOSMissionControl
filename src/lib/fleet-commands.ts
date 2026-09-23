@@ -23,24 +23,28 @@ export interface FleetCommandOutcome {
   attempted: number;
 }
 
-/** Drones the fleet view considers airborne or armed. */
-export function activeFleetDrones() {
-  return useFleetStore
-    .getState()
-    .drones.filter(
-      (d) => d.connectionState === "in_flight" || d.connectionState === "armed",
-    );
-}
-
 /**
- * Command every active fleet drone to return to launch, one at a time, and
- * report each vehicle's own acknowledgement.
+ * Command every fleet drone that is airborne or armed on a live FC link to
+ * return to launch, one at a time, and report each vehicle's own
+ * acknowledgement. A drone whose FC link is lost has an unknown arm state: it
+ * is reported as a failure without a send, because nothing would acknowledge
+ * it and the operator has to know that aircraft was not recalled.
  */
 export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
-  const targets = activeFleetDrones();
+  const fleet = useFleetStore.getState().drones;
+  const targets = fleet.filter(
+    (d) => d.connectionState === "in_flight" || d.connectionState === "armed",
+  );
   const managed = useDroneManager.getState().drones;
   const acknowledged: string[] = [];
   const failures: string[] = [];
+  let attempted = targets.length;
+
+  for (const drone of fleet) {
+    if (drone.fcLinkLost !== true) continue;
+    failures.push(`${drone.name}: FC link lost, arm state unknown`);
+    attempted++;
+  }
 
   for (const drone of targets) {
     const protocol = managed.get(drone.id)?.protocol;
@@ -59,14 +63,20 @@ export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
     }
   }
 
-  return { acknowledged, failures, attempted: targets.length };
+  return { acknowledged, failures, attempted };
 }
 
-/** Operator-facing summary of a fleet fan-out, with the toast severity. */
+/**
+ * Operator-facing summary of a fleet fan-out, with the toast severity. An
+ * outcome that attempted nothing is a warning, never an affirmative.
+ */
 export function describeFleetOutcome(
   outcome: FleetCommandOutcome,
   verb: string,
-): { message: string; variant: "success" | "error" } {
+): { message: string; variant: "success" | "warning" | "error" } {
+  if (outcome.attempted === 0) {
+    return { message: `No active drones for ${verb}`, variant: "warning" };
+  }
   if (outcome.failures.length === 0) {
     const n = outcome.acknowledged.length;
     return {

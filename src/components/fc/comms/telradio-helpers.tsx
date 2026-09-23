@@ -10,40 +10,6 @@ export const OPTIONAL_TELRADIO_PARAMS = [
   "SERIAL1_OPTIONS", "SERIAL2_OPTIONS",
 ];
 
-export const SERIAL_PROTOCOL_OPTIONS = [
-  { value: "-1", label: "-1 — None" },
-  { value: "1", label: "1 — MAVLink1" },
-  { value: "2", label: "2 — MAVLink2" },
-  { value: "3", label: "3 — Frsky D" },
-  { value: "4", label: "4 — Frsky SPort" },
-  { value: "5", label: "5 — GPS" },
-  { value: "10", label: "10 — FrSky Passthrough" },
-  { value: "12", label: "12 — Lidar360" },
-  { value: "13", label: "13 — Beacon" },
-  { value: "14", label: "14 — Volz Servo" },
-  { value: "19", label: "19 — SBUS Out" },
-  { value: "22", label: "22 — LTM" },
-  { value: "23", label: "23 — DroneCAN" },
-  { value: "28", label: "28 — MSP" },
-  { value: "29", label: "29 — DJI FPV" },
-];
-
-export const SERIAL_BAUD_OPTIONS = [
-  { value: "1", label: "1200" },
-  { value: "2", label: "2400" },
-  { value: "4", label: "4800" },
-  { value: "9", label: "9600" },
-  { value: "19", label: "19200" },
-  { value: "38", label: "38400" },
-  { value: "57", label: "57600" },
-  { value: "111", label: "111100" },
-  { value: "115", label: "115200" },
-  { value: "230", label: "230400" },
-  { value: "460", label: "460800" },
-  { value: "500", label: "500000" },
-  { value: "921", label: "921600" },
-];
-
 export function rssiPercent(rssi: number): number {
   return Math.min(100, Math.max(0, (rssi / 255) * 100));
 }

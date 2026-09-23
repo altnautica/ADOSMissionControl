@@ -104,9 +104,12 @@ export const INAV_FW_VEHICLE_INFO: VehicleInfo = {
   autopilotType: 0, vehicleType: 1,
 };
 
-/** 6 waypoints: TAKEOFF -> 4 waypoints -> LAND */
-export function getMockMission(): MissionItem[] {
-  return [
+/**
+ * 6 waypoints: TAKEOFF -> 4 waypoints -> LAND. With `homeSlot` the list uses the
+ * ArduPilot layout: the home position at seq 0 and the mission from seq 1.
+ */
+export function getMockMission(homeSlot: boolean): MissionItem[] {
+  const mission: MissionItem[] = [
     { seq: 0, frame: 3, command: 22, current: 1, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: Math.round(0.0 * 1e7), y: Math.round(0.0 * 1e7), z: 50 },
     { seq: 1, frame: 3, command: 16, current: 0, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: Math.round(0.002 * 1e7), y: Math.round(0.002 * 1e7), z: 50 },
     { seq: 2, frame: 3, command: 16, current: 0, autocontinue: 1, param1: 5, param2: 0, param3: 0, param4: 0, x: Math.round(0.004 * 1e7), y: Math.round(0.0 * 1e7), z: 60 },
@@ -114,6 +117,9 @@ export function getMockMission(): MissionItem[] {
     { seq: 4, frame: 3, command: 16, current: 0, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: Math.round(0.002 * 1e7), y: Math.round(-0.002 * 1e7), z: 50 },
     { seq: 5, frame: 3, command: 21, current: 0, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: Math.round(0.0 * 1e7), y: Math.round(0.0 * 1e7), z: 0 },
   ];
+  if (!homeSlot) return mission;
+  const home: MissionItem = { seq: 0, frame: 0, command: 16, current: 0, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: 0, y: 0, z: 0 };
+  return [home, ...mission.map((it) => ({ ...it, seq: it.seq + 1 }))];
 }
 
 export function getMockLogList(): LogEntry[] {

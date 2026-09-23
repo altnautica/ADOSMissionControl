@@ -1004,12 +1004,12 @@
     "udpModeListen": "ऐका",
     "udpModeTarget": "लक्ष्य",
     "nativeSocketReady": "नेटिव्ह सॉकेट तयार (डेस्कटॉप अॅप).",
-    "bridgeNeeded": "ब्राउझर रॉ सॉकेट उघडू शकत नाही. स्थानिक ब्रिज चालवा, मग त्याला जोडा:",
+    "bridgeNeeded": "ब्राउझर रॉ सॉकेट उघडू शकत नाही. खालील स्थानिक ब्रिज चालवा. सुरू होताना तो ws://…/?token=… URL दाखवतो; तो संपूर्ण URL ब्रिज URL मध्ये पेस्ट करा.",
     "bridgeUrlLabel": "ब्रिज URL",
     "checkBridge": "तपासा",
     "checking": "तपासत आहे...",
     "bridgeReachable": "ब्रिज पोहोचण्यायोग्य आहे.",
-    "bridgeUnreachable": "ब्रिज पोहोचण्यायोग्य नाही. ते चालू आहे का?",
+    "bridgeUnreachable": "ब्रिज पोहोचण्यायोग्य नाही. ते चालू आहे का, आणि URL मध्ये त्याने दाखवलेला ?token= आहे का?",
     "copy": "कॉपी करा",
     "copied": "कॉपी केले",
     "connectionFailed": "कनेक्शन अयशस्वी",
@@ -2658,6 +2658,10 @@
     "release": "सोडा",
     "grab": "पकडा",
     "winchNum": "विंच क्रमांक",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "लांबी",
     "fence": "कुंपण",
     "disable": "अक्षम करा",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "उड्डाण लिंक उघडण्यासाठी हा नोड पेअर करा",
+      "body": "कंपॅनियन संगणक पोहोचण्याजोगा आहे पण पेअर केलेला नाही. पेअर न केलेला नोड आपला फ्लाइट-कंट्रोलर लिंक फक्त स्वतःच्या हॉटस्पॉट, USB किंवा ऑन-बोर्ड कनेक्शनसाठी उघडतो. येथून उडवण्यासाठी तो पेअर करा.",
+      "cta": "हा नोड पेअर करा"
     }
   },
   "blackbox": {

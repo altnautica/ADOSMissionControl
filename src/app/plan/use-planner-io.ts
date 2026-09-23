@@ -275,6 +275,7 @@ export function usePlannerIO(deps: IODeps) {
       toast("Mission download failed — nothing was loaded", "error");
       return;
     }
+    for (const warning of useMissionStore.getState().downloadWarnings) toast(warning, "warning");
     if (downloaded.length === 0) { toast("No mission found on drone", "info"); return; }
     const time = new Date().toLocaleTimeString("en-US", { hour12: false });
     const name = `Drone Mission (${time})`;

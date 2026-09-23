@@ -54,6 +54,12 @@ export interface LocalState {
    * card remembers (re-flashed → new device id, or unpaired). Null whenever a
    * connection is live or the failure was a plain offline/transient one. */
   stalePairing: StalePairingInfo | null;
+  /** True when the agent is reachable but reports itself unpaired, this
+   * browser holds no key for it, and its MAVLink WebSocket proxy only admits
+   * a paired caller (or one on the agent's own box, hotspot, USB or
+   * link-local lifeline). No flight link can open until the node is paired,
+   * so the FC surfaces offer pairing instead of a link failure. */
+  mavlinkPairRequired: boolean;
   /** Control-plane round-trip time to the agent in milliseconds, measured on
    * the LAN-direct poll (the GET /api/ping echo, or the status request when
    * ping is unavailable). Null until the first successful measurement, or in
@@ -83,6 +89,7 @@ export interface CloudState {
 export interface LocalActions {
   setApiKey: (key: string | null) => void;
   setMavlinkUrl: (url: string | null) => void;
+  setMavlinkPairRequired: (required: boolean) => void;
   /** Record a fresh control-plane RTT measurement (ms). */
   setControlRttMs: (rttMs: number | null) => void;
   noteFetchSuccess: () => void;

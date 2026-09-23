@@ -72,7 +72,6 @@ export const RC_OPTION_GROUPS: RcOptionGroup[] = [
   {
     label: "Arming",
     options: [
-      { value: 41, label: "Motor Emergency Stop (KILL)" },
       { value: 81, label: "Disarm" },
       { value: 153, label: "Arm/Disarm (4.2+)" },
       { value: 154, label: "Arm/Disarm + AirMode" },

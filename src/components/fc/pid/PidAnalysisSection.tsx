@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { Brain, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePidAnalysisStore } from "@/stores/pid-analysis-store";
+import { usePidAnalysisStore, type SuggestionTarget } from "@/stores/pid-analysis-store";
 import { PidAnalysisWizard } from "./PidAnalysisWizard";
 import { PidLogUploader } from "./PidLogUploader";
 import { PidAnalysisSummary } from "./PidAnalysisSummary";
@@ -14,13 +14,11 @@ import { PidMotorChart } from "./PidMotorChart";
 import { PidAiRecommendations } from "./PidAiRecommendations";
 import { PidLiveAnalysis } from "./PidLiveAnalysis";
 import { AiSuggestionsGate } from "../shared/AiSuggestionsGate";
-import type { VehicleType } from "./pid-constants";
 import type { AnalysisMode } from "@/lib/analysis/types";
 
 interface PidAnalysisSectionProps {
-  vehicleType: VehicleType;
-  params: Map<string, number>;
-  setLocalValue: (name: string, value: number) => void;
+  /** FC-confirmed values, vehicle type and writer that AI suggestions are checked and applied against. */
+  target: SuggestionTarget;
   connected: boolean;
 }
 
@@ -28,12 +26,7 @@ const AXIS_COLORS = { roll: "#3A82FF", pitch: "#22c55e", yaw: "#f59e0b" };
 
 type QuickTab = "fft" | "step" | "tracking" | "motors";
 
-export function PidAnalysisSection({
-  vehicleType,
-  params,
-  setLocalValue,
-  connected,
-}: PidAnalysisSectionProps) {
+export function PidAnalysisSection({ target, connected }: PidAnalysisSectionProps) {
   const [expanded, setExpanded] = useState(false);
 
   const analysisMode = usePidAnalysisStore((s) => s.analysisMode);
@@ -46,19 +39,13 @@ export function PidAnalysisSection({
   const startAnalysis = usePidAnalysisStore((s) => s.startAnalysis);
   const loadMockAnalysis = usePidAnalysisStore((s) => s.loadMockAnalysis);
   const requestAiAnalysis = usePidAnalysisStore((s) => s.requestAiAnalysis);
-  const applyRecommendation = usePidAnalysisStore((s) => s.applyRecommendation);
-  const applyAllRecommended = usePidAnalysisStore((s) => s.applyAllRecommended);
 
   const [quickTab, setQuickTab] = useState<QuickTab>("fft");
   const [stepEventIdx, setStepEventIdx] = useState(0);
 
   const handleRequestAi = useCallback(() => {
-    const paramsObj: Record<string, number> = {};
-    params.forEach((value, key) => {
-      paramsObj[key] = value;
-    });
-    requestAiAnalysis(vehicleType, paramsObj);
-  }, [params, vehicleType, requestAiAnalysis]);
+    requestAiAnalysis(target.vehicleType, Object.fromEntries(target.fcParams));
+  }, [target, requestAiAnalysis]);
 
   return (
     <div className="border border-border-default bg-bg-secondary">
@@ -102,12 +89,7 @@ export function PidAnalysisSection({
 
           {/* Wizard mode */}
           {analysisMode === "wizard" && (
-            <PidAnalysisWizard
-              vehicleType={vehicleType}
-              params={params}
-              setLocalValue={setLocalValue}
-              connected={connected}
-            />
+            <PidAnalysisWizard target={target} connected={connected} />
           )}
 
           {/* Quick mode */}
@@ -231,8 +213,7 @@ export function PidAnalysisSection({
                     )}
                     <PidAiRecommendations
                       recommendations={aiRecommendations}
-                      onApply={(id) => applyRecommendation(id, setLocalValue)}
-                      onApplyAll={() => applyAllRecommended(setLocalValue)}
+                      target={target}
                       aiLoading={aiLoading}
                     />
                   </div>

@@ -22,37 +22,3 @@ export const OPTIONAL_SENSOR_PARAMS = [
   "SENS_EN_MB12XX", "SENS_EN_LL40LS", "SENS_EN_SF1XX",
   "EKF2_RNG_AID", "EKF2_RNG_A_HMAX", "EKF2_RNG_NOISE", "EKF2_RNG_SFE", "EKF2_MIN_RNG",
 ];
-
-export const RNGFND_TYPE_OPTIONS = [
-  { value: "0", label: "0 — None" },
-  { value: "1", label: "1 — Analog" },
-  { value: "2", label: "2 — MaxbotixI2C" },
-  { value: "5", label: "5 — PX4" },
-  { value: "9", label: "9 — LightWareI2C" },
-  { value: "10", label: "10 — MAVLink" },
-  { value: "16", label: "16 — Benewake TFmini" },
-  { value: "17", label: "17 — LightWareSerial" },
-  { value: "20", label: "20 — Benewake TF02" },
-];
-
-export const RNGFND_ORIENT_OPTIONS = [
-  { value: "0", label: "0 — Forward" },
-  { value: "24", label: "24 — Up" },
-  { value: "25", label: "25 — Down" },
-];
-
-export const FLOW_TYPE_OPTIONS = [
-  { value: "0", label: "0 — None" },
-  { value: "1", label: "1 — PX4Flow" },
-  { value: "2", label: "2 — Pixart" },
-  { value: "5", label: "5 — PMW3901" },
-];
-
-export const ARSPD_TYPE_OPTIONS = [
-  { value: "0", label: "0 — None" },
-  { value: "1", label: "1 — MS4525D" },
-  { value: "2", label: "2 — Analog" },
-  { value: "3", label: "3 — MS5525" },
-  { value: "7", label: "7 — DLVR" },
-  { value: "8", label: "8 — UAVCAN" },
-];

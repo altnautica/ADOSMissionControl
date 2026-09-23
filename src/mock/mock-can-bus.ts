@@ -7,14 +7,17 @@
  * via `emitCanFrame` and show up in the CAN Monitor panel with decoded
  * labels (see `src/lib/can/known-ids.ts`).
  *
- * This is NOT a DSDL encoder — it fabricates plausible payload bytes
- * so the monitor has something to display. Real DroneCAN decoding is
- * not required for a viewer.
+ * NodeStatus and GNSS Fix2 broadcasts are real DroneCAN transfers built with
+ * the GCS codecs (`encodeNodeStatus`, `encodeFix2`) and split into frames by
+ * `encodeTransfer`, tail bytes and multi-frame CRC included. The ESC,
+ * airspeed and power frames carry plausible fabricated bytes for display.
  *
  * @license GPL-3.0-only
  */
 
 import type { MockProtocol } from "./mock-protocol";
+import { encodeTransfer } from "@/lib/dronecan/transfer-coder";
+import { DATA_TYPE_IDS, DSDL_SIGNATURES } from "@/lib/dronecan/signatures";
 
 /** DroneCAN priority levels (lower = higher priority). */
 const PRIORITY_NORMAL = 20;
@@ -55,6 +58,8 @@ interface CanNode {
   nextEmitMs: number;
   /** Frame builder — returns zero or more frames to emit. */
   buildFrames: (t: number, node: CanNode) => MockCanFrame[];
+  /** Next 5-bit DroneCAN transfer ID for this node's encoded broadcasts. */
+  transferId: number;
 }
 
 export interface MockCanFrame {
@@ -114,22 +119,52 @@ function buildEscFrames(t: number, node: CanNode): MockCanFrame[] {
   return frames;
 }
 
+/**
+ * Split one DroneCAN broadcast from `node` into bus frames and advance the
+ * node's transfer ID.
+ */
+function broadcastFrames(
+  node: CanNode,
+  dataTypeId: number,
+  signature: bigint,
+  payload: Uint8Array,
+  priority: number,
+): MockCanFrame[] {
+  const frames = encodeTransfer(payload, {
+    priority,
+    dataTypeId,
+    srcNodeId: node.nodeId,
+    transferId: node.transferId,
+    signature,
+  });
+  node.transferId = (node.transferId + 1) & 0x1f;
+  return frames.map((f) => ({ id: f.canId, bus: 0, len: f.data.length, data: f.data }));
+}
+
 /** GPS node: emits GNSS Fix2 at 5 Hz. */
 function buildGpsFrames(t: number, node: CanNode): MockCanFrame[] {
-  const buf = new Uint8Array(8);
   // Lat: 12.9716 (Bangalore), jitter ~2m
   const lat = 12.9716 + (Math.sin(t / 2000) * 2e-5);
   const lon = 77.5946 + (Math.cos(t / 2000) * 2e-5);
-  packFloat32LE(buf, 0, lat);
-  packFloat32LE(buf, 4, lon);
-  return [
-    {
-      id: buildMessageFrameId(node.nodeId, 1061),
-      bus: 0,
-      len: 8,
-      data: buf,
-    },
-  ];
+  const usec = BigInt(Math.floor(t * 1000));
+  const payload = encodeFix2({
+    timestamp: { usecMonotonic: usec },
+    gnssTimestamp: { usecMonotonic: usec },
+    gnssTimeStandard: GNSS_TIME_STANDARD_UTC,
+    numLeapSeconds: 18,
+    longitudeDeg1e8: BigInt(Math.round(lon * 1e8)),
+    latitudeDeg1e8: BigInt(Math.round(lat * 1e8)),
+    heightEllipsoidMm: 920_000,
+    heightMslMm: 900_000,
+    nedVelocity: [0, 0, 0],
+    satsUsed: 14,
+    status: STATUS_3D_FIX,
+    mode: MODE_SINGLE,
+    subMode: 0,
+    covariance: [],
+    pdop: 1.2,
+  });
+  return broadcastFrames(node, DATA_TYPE_IDS.GnssFix2, DSDL_SIGNATURES.GnssFix2, payload, PRIORITY_NORMAL);
 }
 
 /** Airspeed node: emits airspeed + static pressure at 10 Hz. */
@@ -165,25 +200,15 @@ function buildPowerFrames(t: number, node: CanNode): MockCanFrame[] {
   ];
 }
 
-/** Flight controller: emits NodeStatus heartbeat at 1 Hz per node. */
+/** Every node emits a NodeStatus heartbeat at 1 Hz. */
 function buildNodeStatus(t: number, node: CanNode): MockCanFrame[] {
-  const buf = new Uint8Array(7);
-  const uptime = Math.floor(t / 1000);
-  buf[0] = uptime & 0xff;
-  buf[1] = (uptime >>> 8) & 0xff;
-  buf[2] = (uptime >>> 16) & 0xff;
-  buf[3] = (uptime >>> 24) & 0xff;
-  buf[4] = 0; // health OK
-  buf[5] = 2; // mode OPERATIONAL
-  buf[6] = 0; // sub-mode
-  return [
-    {
-      id: buildMessageFrameId(node.nodeId, 341, PRIORITY_HIGH),
-      bus: 0,
-      len: 7,
-      data: buf,
-    },
-  ];
+  const payload = encodeNodeStatus({
+    uptime_sec: Math.floor(t / 1000),
+    health: HEALTH_OK,
+    mode: MODE_OPERATIONAL,
+    vendor_specific_status_code: 0,
+  });
+  return broadcastFrames(node, DATA_TYPE_IDS.NodeStatus, DSDL_SIGNATURES.NodeStatus, payload, PRIORITY_HIGH);
 }
 
 // ── Node registry ─────────────────────────────────────────────────
@@ -212,6 +237,7 @@ export class MockCanBus {
         periodMs: 20, // 50 Hz
         nextEmitMs: 0,
         buildFrames: buildEscFrames,
+        transferId: 0,
       },
       {
         nodeId: 11,
@@ -220,6 +246,7 @@ export class MockCanBus {
         periodMs: 200, // 5 Hz
         nextEmitMs: 0,
         buildFrames: buildGpsFrames,
+        transferId: 0,
       },
       {
         nodeId: 12,
@@ -228,6 +255,7 @@ export class MockCanBus {
         periodMs: 100, // 10 Hz
         nextEmitMs: 0,
         buildFrames: buildAirspeedFrames,
+        transferId: 0,
       },
       {
         nodeId: 13,
@@ -236,6 +264,7 @@ export class MockCanBus {
         periodMs: 200, // 5 Hz
         nextEmitMs: 0,
         buildFrames: buildPowerFrames,
+        transferId: 0,
       },
     ];
   }
@@ -329,6 +358,7 @@ import {
   type NodeHealth,
   type NodeMode,
   type NodeStatus,
+  encodeNodeStatus,
 } from "@/lib/dronecan/dsdl/node-status";
 import type { GetNodeInfoResponse } from "@/lib/dronecan/dsdl/get-node-info";
 import {
@@ -344,6 +374,7 @@ import type {
 import type { GetTransportStatsResponse } from "@/lib/dronecan/dsdl/get-transport-stats";
 import type { GnssFix2 } from "@/lib/dronecan/dsdl/gnss-fix2";
 import {
+  encodeFix2,
   STATUS_3D_FIX,
   MODE_SINGLE,
   GNSS_TIME_STANDARD_UTC,

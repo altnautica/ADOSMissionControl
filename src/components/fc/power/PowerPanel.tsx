@@ -14,6 +14,7 @@ import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { Battery, Zap, ShieldAlert, Save, HardDrive } from "lucide-react";
 import { StarredParam } from "../parameters/ParamStar";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { LiveBatteryDisplay } from "./LiveBatteryDisplay";
 
 const BATT_MONITOR_OPTIONS = [
@@ -26,15 +27,6 @@ const BATT_MONITOR_OPTIONS = [
   { value: "9", label: "9 — ESC" },
   { value: "10", label: "10 — Sum of Selected" },
   { value: "16", label: "16 — Analog VCC" },
-];
-
-const BATT_FS_ACTION_OPTIONS = [
-  { value: "0", label: "0 — None" },
-  { value: "1", label: "1 — Land" },
-  { value: "2", label: "2 — RTL" },
-  { value: "3", label: "3 — SmartRTL or RTL" },
-  { value: "4", label: "4 — SmartRTL or Land" },
-  { value: "5", label: "5 — Terminate" },
 ];
 
 const POWER_PARAMS = [
@@ -60,6 +52,7 @@ export function PowerPanel() {
   const isBetaflight = firmwareType === 'betaflight';
   const { label: pl } = useParamLabel();
   const metadata = useParamMetadataMap();
+  const { enumValues } = useParamEnums(metadata);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
 
   const powerParamNames = useMemo(() => isBetaflight ? [...BF_POWER_PARAMS] : POWER_PARAMS, [isBetaflight]);
@@ -78,6 +71,12 @@ export function PowerPanel() {
 
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
+  // Battery failsafe actions are vehicle-specific enums (Copter 1 = Land,
+  // Plane 1 = RTL, PX4 COM_LOW_BAT_ACT) and come from the vehicle's metadata.
+  const actionField = (name: string, text: string) => (
+    <ParamEnumSelect label={lbl(`${name} — ${text}`)} values={enumValues(name)}
+      value={params.get(name) ?? 0} onChange={(v) => setLocalValue(name, v)} />
+  );
 
   return (
     <ArmedLockOverlay>
@@ -155,9 +154,10 @@ export function PowerPanel() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input label={lbl("BATT_FS_LOW_VOLT — Low Voltage")} type="number" step="0.1" min="0" unit="V" value={p("BATT_FS_LOW_VOLT")} onChange={(e) => set("BATT_FS_LOW_VOLT", e.target.value)} />
-            <Select label={lbl("BATT_FS_LOW_ACT — Low Action")} options={BATT_FS_ACTION_OPTIONS} value={p("BATT_FS_LOW_ACT")} onChange={(v) => set("BATT_FS_LOW_ACT", v)} />
+            {actionField("BATT_FS_LOW_ACT", isPx4 ? "Battery Failsafe Action" : "Low Action")}
             <Input label={lbl("BATT_FS_CRT_VOLT — Critical Voltage")} type="number" step="0.1" min="0" unit="V" value={p("BATT_FS_CRT_VOLT")} onChange={(e) => set("BATT_FS_CRT_VOLT", e.target.value)} />
-            <Select label={lbl("BATT_FS_CRT_ACT — Critical Action")} options={BATT_FS_ACTION_OPTIONS} value={p("BATT_FS_CRT_ACT")} onChange={(v) => set("BATT_FS_CRT_ACT", v)} />
+            {/* PX4 has a single battery action (COM_LOW_BAT_ACT, above). */}
+            {!isPx4 && actionField("BATT_FS_CRT_ACT", "Critical Action")}
             <Input label={lbl("BATT_FS_LOW_MAH — Low mAh Remaining")} type="number" step="50" min="0" unit="mAh" value={p("BATT_FS_LOW_MAH")} onChange={(e) => set("BATT_FS_LOW_MAH", e.target.value)} />
             <Input label={lbl("BATT_FS_CRT_MAH — Critical mAh Remaining")} type="number" step="50" min="0" unit="mAh" value={p("BATT_FS_CRT_MAH")} onChange={(e) => set("BATT_FS_CRT_MAH", e.target.value)} />
           </div>
@@ -183,9 +183,9 @@ export function PowerPanel() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input label={lbl("BATT2_FS_LOW_VOLT — Low Voltage")} type="number" step="0.1" min="0" unit="V" value={p("BATT2_FS_LOW_VOLT")} onChange={(e) => set("BATT2_FS_LOW_VOLT", e.target.value)} />
-                <Select label={lbl("BATT2_FS_LOW_ACT — Low Action")} options={BATT_FS_ACTION_OPTIONS} value={p("BATT2_FS_LOW_ACT")} onChange={(v) => set("BATT2_FS_LOW_ACT", v)} />
+                {actionField("BATT2_FS_LOW_ACT", "Low Action")}
                 <Input label={lbl("BATT2_FS_CRT_VOLT — Critical Voltage")} type="number" step="0.1" min="0" unit="V" value={p("BATT2_FS_CRT_VOLT")} onChange={(e) => set("BATT2_FS_CRT_VOLT", e.target.value)} />
-                <Select label={lbl("BATT2_FS_CRT_ACT — Critical Action")} options={BATT_FS_ACTION_OPTIONS} value={p("BATT2_FS_CRT_ACT")} onChange={(v) => set("BATT2_FS_CRT_ACT", v)} />
+                {actionField("BATT2_FS_CRT_ACT", "Critical Action")}
                 <Input label={lbl("BATT2_FS_LOW_MAH — Low mAh Remaining")} type="number" step="50" min="0" unit="mAh" value={p("BATT2_FS_LOW_MAH")} onChange={(e) => set("BATT2_FS_LOW_MAH", e.target.value)} />
                 <Input label={lbl("BATT2_FS_CRT_MAH — Critical mAh Remaining")} type="number" step="50" min="0" unit="mAh" value={p("BATT2_FS_CRT_MAH")} onChange={(e) => set("BATT2_FS_CRT_MAH", e.target.value)} />
               </div>

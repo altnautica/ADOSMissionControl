@@ -12,8 +12,46 @@ import type {
   WorkerOutMessage,
 } from "@/lib/analysis/types";
 import type { VehicleType } from "@/components/fc/pid/pid-constants";
+import { validateSuggestion } from "@/lib/analysis/pid-safety";
 import { requestAiPidAnalysis } from "./pid-analysis-ai";
 import { formatErrorMessage } from "@/lib/utils";
+
+/** Where validated suggestions are written, and what they are checked against. */
+export interface SuggestionTarget {
+  vehicleType: VehicleType;
+  /** Values confirmed on the flight controller (loaded or saved, no pending local edit). */
+  fcParams: ReadonlyMap<string, number>;
+  setLocalValue: (name: string, value: number) => void;
+}
+
+/** Count of suggested parameter changes by outcome after an apply. */
+export interface ApplySummary {
+  applied: number;
+  clamped: number;
+  rejected: number;
+}
+
+function applySuggestions(recs: AiRecommendation[], target: SuggestionTarget): ApplySummary {
+  const summary: ApplySummary = { applied: 0, clamped: 0, rejected: 0 };
+  for (const rec of recs) {
+    for (const p of rec.parameters) {
+      const check = validateSuggestion(
+        p.param,
+        target.fcParams.get(p.param),
+        p.suggestedValue,
+        target.vehicleType,
+      );
+      if (check.status === "rejected") {
+        summary.rejected++;
+        continue;
+      }
+      target.setLocalValue(p.param, check.value);
+      if (check.status === "clamped") summary.clamped++;
+      else summary.applied++;
+    }
+  }
+  return summary;
+}
 
 interface PidAnalysisState {
   // Analysis state
@@ -49,14 +87,10 @@ interface PidAnalysisActions {
     currentParams: Record<string, number>,
   ) => Promise<void>;
 
-  // Recommendation actions
-  applyRecommendation: (
-    id: string,
-    setLocalValue: (name: string, value: number) => void,
-  ) => void;
-  applyAllRecommended: (
-    setLocalValue: (name: string, value: number) => void,
-  ) => void;
+  // Recommendation actions. Every suggestion is validated against the FC's
+  // confirmed value; rejected ones are skipped, the rest may be limited.
+  applyRecommendation: (id: string, target: SuggestionTarget) => ApplySummary;
+  applyAllRecommended: (target: SuggestionTarget) => ApplySummary;
 
   // Usage tracking
   setAiUsageInfo: (remaining: number | null, weeklyLimit: number | null) => void;
@@ -233,27 +267,13 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
 
     // ── Recommendation actions ────────────────────────────────────────────
 
-    applyRecommendation: (
-      id: string,
-      setLocalValue: (name: string, value: number) => void,
-    ) => {
+    applyRecommendation: (id: string, target: SuggestionTarget) => {
       const rec = get().aiRecommendations.find((r) => r.id === id);
-      if (!rec) return;
-      for (const p of rec.parameters) {
-        setLocalValue(p.param, p.suggestedValue);
-      }
+      return applySuggestions(rec ? [rec] : [], target);
     },
 
-    applyAllRecommended: (
-      setLocalValue: (name: string, value: number) => void,
-    ) => {
-      const recs = get().aiRecommendations.filter((r) => r.confidence >= 80);
-      for (const rec of recs) {
-        for (const p of rec.parameters) {
-          setLocalValue(p.param, p.suggestedValue);
-        }
-      }
-    },
+    applyAllRecommended: (target: SuggestionTarget) =>
+      applySuggestions(get().aiRecommendations.filter((r) => r.confidence >= 80), target),
 
     // ── Usage tracking ──────────────────────────────────────────────────
 

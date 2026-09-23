@@ -55,6 +55,13 @@ interface InputStoreState {
    */
   axesAt: number | null;
   rawAxes: [number, number, number, number]; // pre-calibration raw values
+  /**
+   * The physical right stick (standard-mapping axes 2 and 3), x right = +,
+   * y up = +, before calibration, deadzone or TX-mode mapping. The skill
+   * radial aims from this, so aiming reads the stick the operator is moving
+   * rather than whichever flight axis the TX mode puts on it.
+   */
+  rightStick: [number, number];
   buttons: boolean[];
   deadzone: number;
   expo: number;
@@ -76,10 +83,20 @@ interface InputStoreState {
    * response with nothing on screen to explain it.
    */
   manualControlLinkBlock: string | null;
+  /**
+   * An on-screen control (the skill radial) is using the sticks, so they are
+   * not flight input. While set, the manual-control stream sends roll and
+   * pitch as centred and holds throttle at `capturedThrottle`, so aiming the
+   * radial never becomes an RC override on the aircraft.
+   */
+  sticksCaptured: boolean;
+  /** The mapped throttle axis at the moment the sticks were captured. */
+  capturedThrottle: number;
 
   setController: (controller: InputController) => void;
   setAxes: (axes: [number, number, number, number]) => void;
   setRawAxes: (axes: [number, number, number, number]) => void;
+  setRightStick: (stick: [number, number]) => void;
   setButtons: (buttons: boolean[]) => void;
   setDeadzone: (deadzone: number) => void;
   setExpo: (expo: number) => void;
@@ -87,6 +104,7 @@ interface InputStoreState {
   clearCalibration: () => void;
   setManualControlEnabled: (enabled: boolean) => void;
   setManualControlLinkBlock: (reason: string | null) => void;
+  setSticksCaptured: (captured: boolean) => void;
   resetInput: () => void;
 }
 
@@ -95,16 +113,20 @@ export const useInputStore = create<InputStoreState>((set) => ({
   axes: [0, 0, 0, 0],
   axesAt: null,
   rawAxes: [0, 0, 0, 0],
+  rightStick: [0, 0],
   buttons: new Array(16).fill(false),
   deadzone: 0.05,
   expo: 0.3,
   calibration: loadCalibration(),
   manualControlEnabled: false,
   manualControlLinkBlock: null,
+  sticksCaptured: false,
+  capturedThrottle: 0,
 
   setController: (activeController) => set({ activeController }),
   setAxes: (axes) => set({ axes, axesAt: Date.now() }),
   setRawAxes: (rawAxes) => set({ rawAxes }),
+  setRightStick: (rightStick) => set({ rightStick }),
   setButtons: (buttons) => set({ buttons }),
   setDeadzone: (deadzone) => set({ deadzone }),
   setExpo: (expo) => set({ expo }),
@@ -118,12 +140,21 @@ export const useInputStore = create<InputStoreState>((set) => ({
   },
   setManualControlEnabled: (manualControlEnabled) => set({ manualControlEnabled }),
   setManualControlLinkBlock: (manualControlLinkBlock) => set({ manualControlLinkBlock }),
+  // Returning the same state object on a no-op keeps subscribers from being
+  // re-notified: the radial sets this from inside its own store subscription.
+  setSticksCaptured: (captured) =>
+    set((s) =>
+      s.sticksCaptured === captured
+        ? s
+        : { sticksCaptured: captured, capturedThrottle: captured ? s.axes[2] : 0 },
+    ),
   resetInput: () =>
     set({
       activeController: "none",
       axes: [0, 0, 0, 0],
       axesAt: null,
       rawAxes: [0, 0, 0, 0],
+      rightStick: [0, 0],
       buttons: new Array(16).fill(false),
       // The reason belongs to a link that is no longer being written to.
       manualControlLinkBlock: null,

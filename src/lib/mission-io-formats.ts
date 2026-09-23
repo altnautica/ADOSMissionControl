@@ -17,9 +17,22 @@
 
 import type { Waypoint, WaypointCommand, AltitudeFrame } from "@/lib/types";
 import type { MissionItem } from "@/lib/protocol/types/mission";
-import type { GeofenceSnapshot, FenceZone } from "@/stores/geofence-store";
+import type { GeofenceSnapshot } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
-import { expandToItems, collapseFromItems } from "@/lib/mission/mission-expand";
+import {
+  geofenceToQGC,
+  parseQGCGeoFence,
+  parseQGCRally,
+  rallyToQGC,
+  type QGCGeoFence,
+  type QGCRallyPoints,
+} from "@/lib/mission/qgc-plan-extras";
+import {
+  expandToItems,
+  collapseFromItems,
+  itemCarriesLocation,
+  missionCommandName,
+} from "@/lib/mission/mission-expand";
 import {
   DEFAULT_ALTITUDE_FRAME,
   frameToMav,
@@ -36,15 +49,11 @@ export { frameToMav, mavToFrame };
 /** Mission default frame applied when a waypoint carries no explicit frame. */
 const DEFAULT_FRAME: AltitudeFrame = DEFAULT_ALTITUDE_FRAME;
 
-/**
- * Flat-file sequence numbering offset. Both interop formats number their first
- * mission item `1`: `.waypoints` reserves row `0` for the home position (the
- * ArduPilot convention) and `.plan` numbers `doJumpId` from 1. Our wire items
- * are 0-based, so the offset is applied to the row sequence AND to a `DO_JUMP`
- * target — which is a sequence number, not a user parameter, and would
- * otherwise point one item early in every exported file.
- */
-const FILE_SEQ_OFFSET = 1;
+// Both interop formats number the first mission item `1`: `.waypoints` writes
+// the home position in row `0` (the ArduPilot layout) and `.plan` numbers
+// `doJumpId` from 1 with the home in `plannedHomePosition`. The export expands
+// with a reserved home slot, so rows and DO_JUMP targets carry that numbering
+// straight from `expandToItems`.
 
 /** Optional explicit home position written into a flat file's home slot. */
 export interface FlatExportOptions {
@@ -65,15 +74,47 @@ function num(raw: string | undefined, fallback: number): number {
 }
 
 /**
- * Apply the flat-file sequence offset to the wire items of one mission.
- * A `DO_JUMP`'s `param1` is a target sequence, so it shifts with the rows.
+ * Expand one mission into file items: seq 0 is the home slot, the mission
+ * starts at seq 1 and every DO_JUMP target is numbered to match.
  */
-function toFileItems(waypoints: readonly Waypoint[], defaultFrame: AltitudeFrame): MissionItem[] {
-  return expandToItems(waypoints, { defaultFrame }).map((item) =>
-    item.command === cmdMap.DO_JUMP
-      ? { ...item, seq: item.seq + FILE_SEQ_OFFSET, param1: item.param1 + FILE_SEQ_OFFSET }
-      : { ...item, seq: item.seq + FILE_SEQ_OFFSET },
-  );
+function toFileItems(waypoints: readonly Waypoint[], opts?: FlatExportOptions): MissionItem[] {
+  const home = opts?.home ?? { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
+  return expandToItems(waypoints, {
+    defaultFrame: opts?.defaultFrame ?? DEFAULT_FRAME,
+    reserveHomeSlot: { lat: home.lat, lon: home.lon, alt: home.alt ?? 0 },
+  });
+}
+
+/** Text-file value of an item's x/y: degrees for a location, else the raw parameter. */
+function fileXY(item: MissionItem): [number, number] {
+  return itemCarriesLocation(item.command) ? [item.x / 1e7, item.y / 1e7] : [item.x, item.y];
+}
+
+/** Wire x/y from a text-file param5/param6 pair (inverse of {@link fileXY}). */
+function wireXY(command: number, p5: number, p6: number): [number, number] {
+  return itemCarriesLocation(command)
+    ? [Math.round(p5 * 1e7), Math.round(p6 * 1e7)]
+    : [Math.round(p5), Math.round(p6)];
+}
+
+/** Collapse file items, naming every leading item that had no waypoint to ride. */
+function collapseWithWarnings(items: readonly MissionItem[]): ParsedWaypoints {
+  const warnings: string[] = [];
+  const waypoints = collapseFromItems(items, (dropped) => {
+    warnings.push(droppedItemWarning(dropped));
+  });
+  return { waypoints, warnings };
+}
+
+/** Operator-facing note for an item dropped because it preceded every waypoint. */
+export function droppedItemWarning(item: MissionItem): string {
+  return `Dropped ${missionCommandName(item.command)} at item ${item.seq}: it comes before the first navigation waypoint`;
+}
+
+/** Waypoints parsed from a mission file plus any item that could not be kept. */
+export interface ParsedWaypoints {
+  waypoints: Waypoint[];
+  warnings: string[];
 }
 
 /** MAVLink command string -> number mapping. */
@@ -82,7 +123,7 @@ export const cmdMap: Record<WaypointCommand, number> = {
   RTL: 20, LAND: 21, TAKEOFF: 22, ROI: 201, DO_SET_SPEED: 178,
   DO_SET_CAM_TRIGG: 206, DO_DIGICAM: 203, DO_JUMP: 177, DELAY: 112,
   CONDITION_YAW: 115, DO_SET_SERVO: 183, DO_FENCE_ENABLE: 207,
-  DO_MOUNT_CONTROL: 205, DO_GRIPPER: 211, DO_WINCH: 212,
+  DO_MOUNT_CONTROL: 205, DO_GRIPPER: 211, DO_WINCH: 42600,
   NAV_PAYLOAD_PLACE: 94, CONDITION_DISTANCE: 114, DO_SET_HOME: 179,
   DO_AUX_FUNCTION: 218, VTOL_TAKEOFF: 84, VTOL_LAND: 85,
   DO_SET_ROI_NONE: 197,
@@ -110,19 +151,17 @@ export function exportWaypointsFormat(
   name: string,
   opts?: FlatExportOptions,
 ): void {
-  const items = toFileItems(waypoints, opts?.defaultFrame ?? DEFAULT_FRAME);
-  const home = opts?.home ?? { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
+  // Row 0 is the home slot the format mandates; rows 1..N are the mission.
+  const items = toFileItems(waypoints, opts);
 
   const lines: string[] = ["QGC WPL 110"];
-  lines.push(
-    `0\t1\t0\t16\t0\t0\t0\t0\t${home.lat}\t${home.lon}\t${home.alt ?? 0}\t1`,
-  );
   for (const it of items) {
+    const [x, y] = fileXY(it);
     lines.push(
       [
         it.seq, it.current, it.frame, it.command,
         it.param1, it.param2, it.param3, it.param4,
-        it.x / 1e7, it.y / 1e7, it.z, it.autocontinue,
+        x, y, it.z, it.autocontinue,
       ].join("\t"),
     );
   }
@@ -138,8 +177,11 @@ export function exportWaypointsFormat(
 
 // ── .waypoints Import ────────────────────────────────────────
 
-/** Parse a `.waypoints` (QGC WPL 110) file into Waypoint array. */
-export function parseWaypointsFile(text: string): Waypoint[] {
+/**
+ * Parse a `.waypoints` (QGC WPL 110) file into waypoints. `warnings` names
+ * every item that was dropped because no navigation waypoint preceded it.
+ */
+export function parseWaypointsFile(text: string): ParsedWaypoints {
   const lines = text.trim().split("\n");
   if (!lines[0]?.startsWith("QGC WPL")) {
     throw new Error("Invalid .waypoints file — missing QGC WPL header");
@@ -150,21 +192,23 @@ export function parseWaypointsFile(text: string): Waypoint[] {
     const cols = lines[i].trim().split("\t");
     if (cols.length < 12) continue;
 
-    // Row 0 is the home position, not a mission item.
-    const fileSeq = num(cols[0], items.length + FILE_SEQ_OFFSET);
+    // Row 0 is the home position, not a mission item; mission rows count from 1.
+    const fileSeq = num(cols[0], items.length + 1);
     if (fileSeq === 0) continue;
 
-    const lat = Number.parseFloat(cols[8]);
-    const lon = Number.parseFloat(cols[9]);
+    const p5 = Number.parseFloat(cols[8]);
+    const p6 = Number.parseFloat(cols[9]);
     // Skip malformed rows: a non-numeric lat/lon would otherwise create a
     // waypoint at NaN,NaN that renders nowhere and fails validation silently.
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (!Number.isFinite(p5) || !Number.isFinite(p6)) continue;
 
+    const command = num(cols[3], cmdMap.WAYPOINT);
+    const [x, y] = wireXY(command, p5, p6);
     items.push({
       seq: fileSeq,
       current: num(cols[1], 0),
       frame: num(cols[2], frameToMav(DEFAULT_FRAME)),
-      command: num(cols[3], cmdMap.WAYPOINT),
+      command,
       // A legitimate 0 is a real parameter value, so parse then check
       // finiteness — `parseFloat(x) || 0` would be identical here but
       // `parseFloat(x) || undefined` (the old form) silently ate every zero.
@@ -172,17 +216,16 @@ export function parseWaypointsFile(text: string): Waypoint[] {
       param2: num(cols[5], 0),
       param3: num(cols[6], 0),
       param4: num(cols[7], 0),
-      x: Math.round(lat * 1e7),
-      y: Math.round(lon * 1e7),
+      x,
+      y,
       z: num(cols[10], 0),
       autocontinue: num(cols[11], 1),
     });
   }
 
   // Collapse the wire items back into nav waypoints with attached actions.
-  // DO_JUMP targets resolve in the file's own sequence space, which is why the
-  // export shifted them alongside the rows.
-  return collapseFromItems(items);
+  // DO_JUMP targets resolve in the file's own sequence space (home = row 0).
+  return collapseWithWarnings(items);
 }
 
 // ── Extra plan payload (fence + rally) carried alongside waypoints ──
@@ -194,86 +237,12 @@ export interface PlanExtras {
 }
 
 /** Result of parsing a `.plan` file: waypoints plus any fence / rally it carried. */
-export interface ParsedPlan {
-  waypoints: Waypoint[];
+export interface ParsedPlan extends ParsedWaypoints {
   geofence?: GeofenceSnapshot;
   rally?: RallyPoint[];
 }
 
 // ── .plan Export (QGroundControl JSON format) ────────────────
-
-interface QGCFenceCircleEntry {
-  inclusion: boolean;
-  version: 1;
-  circle: { center: [number, number]; radius: number };
-}
-
-interface QGCFencePolygonEntry {
-  inclusion: boolean;
-  version: 1;
-  polygon: Array<[number, number]>;
-}
-
-/** Serialize the operator geofence into the .plan geoFence block. */
-function geofenceToQGC(snapshot: GeofenceSnapshot | undefined): {
-  circles: QGCFenceCircleEntry[];
-  polygons: QGCFencePolygonEntry[];
-  version: 2;
-} {
-  const circles: QGCFenceCircleEntry[] = [];
-  const polygons: QGCFencePolygonEntry[] = [];
-
-  if (snapshot) {
-    // Multi-zone inclusion / exclusion fences.
-    for (const z of snapshot.zones) {
-      const inclusion = z.role === "inclusion";
-      if (z.type === "circle" && z.circleCenter) {
-        circles.push({
-          inclusion,
-          version: 1,
-          circle: { center: [z.circleCenter[0], z.circleCenter[1]], radius: z.circleRadius },
-        });
-      } else if (z.type === "polygon" && z.polygonPoints.length >= 3) {
-        polygons.push({
-          inclusion,
-          version: 1,
-          polygon: z.polygonPoints.map(([lat, lon]) => [lat, lon] as [number, number]),
-        });
-      }
-    }
-
-    // Legacy single top-level fence (inclusion by definition — must stay inside).
-    if (snapshot.enabled) {
-      if (snapshot.fenceType === "circle" && snapshot.circleCenter) {
-        circles.push({
-          inclusion: true,
-          version: 1,
-          circle: {
-            center: [snapshot.circleCenter[0], snapshot.circleCenter[1]],
-            radius: snapshot.circleRadius,
-          },
-        });
-      } else if (snapshot.fenceType === "polygon" && snapshot.polygonPoints.length >= 3) {
-        polygons.push({
-          inclusion: true,
-          version: 1,
-          polygon: snapshot.polygonPoints.map(([lat, lon]) => [lat, lon] as [number, number]),
-        });
-      }
-    }
-  }
-
-  return { circles, polygons, version: 2 };
-}
-
-/** Serialize rally points into the .plan rallyPoints block ([lat, lon, alt] triples). */
-function rallyToQGC(rally: RallyPoint[] | undefined): {
-  points: Array<[number, number, number]>;
-  version: 2;
-} {
-  const points: Array<[number, number, number]> = (rally ?? []).map((p) => [p.lat, p.lon, p.alt]);
-  return { points, version: 2 };
-}
 
 /**
  * Export waypoints as a `.plan` file (QGC JSON format). When `extras` carries a
@@ -290,16 +259,21 @@ export function exportQGCPlan(
   extras?: PlanExtras,
   opts?: FlatExportOptions,
 ): void {
-  const wireItems = toFileItems(waypoints, opts?.defaultFrame ?? DEFAULT_FRAME);
-  const home = opts?.home ?? { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
-  const items = wireItems.map((it) => ({
-    autoContinue: it.autocontinue === 1,
-    command: it.command,
-    doJumpId: it.seq,
-    frame: it.frame,
-    params: [it.param1, it.param2, it.param3, it.param4, it.x / 1e7, it.y / 1e7, it.z],
-    type: "SimpleItem",
-  }));
+  // `.plan` keeps home in `plannedHomePosition`, so the home slot is not an item;
+  // the mission items keep their 1-based seq as `doJumpId`.
+  const [homeItem, ...wireItems] = toFileItems(waypoints, opts);
+  const home = { lat: homeItem.x / 1e7, lon: homeItem.y / 1e7, alt: homeItem.z };
+  const items = wireItems.map((it) => {
+    const [x, y] = fileXY(it);
+    return {
+      autoContinue: it.autocontinue === 1,
+      command: it.command,
+      doJumpId: it.seq,
+      frame: it.frame,
+      params: [it.param1, it.param2, it.param3, it.param4, x, y, it.z],
+      type: "SimpleItem",
+    };
+  });
 
   const plan = {
     fileType: "Plan",
@@ -347,26 +321,11 @@ interface QGCTransectStyle {
   VisualTransectPoints?: Array<[number, number]>;
 }
 
-interface QGCGeoFence {
-  circles?: Array<{ inclusion?: boolean; circle?: { center?: [number, number]; radius?: number } }>;
-  polygons?: Array<{ inclusion?: boolean; polygon?: Array<[number, number]> }>;
-}
-
 interface QGCPlanFile {
   fileType?: string;
   mission?: { items?: QGCMissionItem[] };
   geoFence?: QGCGeoFence;
-  rallyPoints?: { points?: Array<[number, number, number]> };
-}
-
-let importZoneCounter = 0;
-function nextImportZoneId(): string {
-  return `fence-import-${++importZoneCounter}`;
-}
-
-let importRallyCounter = 0;
-function nextImportRallyId(): string {
-  return `rally-import-${++importRallyCounter}`;
+  rallyPoints?: QGCRallyPoints;
 }
 
 /**
@@ -377,19 +336,23 @@ function nextImportRallyId(): string {
  */
 function simpleItemToWireItem(item: QGCMissionItem, seq: number): MissionItem {
   const params = item.params ?? [];
-  const lat = Number.isFinite(params[4]) ? params[4] : 0;
-  const lon = Number.isFinite(params[5]) ? params[5] : 0;
+  const command = typeof item.command === "number" ? item.command : cmdMap.WAYPOINT;
+  const [x, y] = wireXY(
+    command,
+    Number.isFinite(params[4]) ? params[4] : 0,
+    Number.isFinite(params[5]) ? params[5] : 0,
+  );
   return {
     seq,
-    current: seq === FILE_SEQ_OFFSET ? 1 : 0,
+    current: seq === 1 ? 1 : 0,
     frame: typeof item.frame === "number" ? item.frame : frameToMav(DEFAULT_FRAME),
-    command: typeof item.command === "number" ? item.command : cmdMap.WAYPOINT,
+    command,
     param1: Number.isFinite(params[0]) ? params[0] : 0,
     param2: Number.isFinite(params[1]) ? params[1] : 0,
     param3: Number.isFinite(params[2]) ? params[2] : 0,
     param4: Number.isFinite(params[3]) ? params[3] : 0,
-    x: Math.round(lat * 1e7),
-    y: Math.round(lon * 1e7),
+    x,
+    y,
     z: Number.isFinite(params[6]) ? params[6] : 0,
     autocontinue: item.autoContinue === false ? 0 : 1,
   };
@@ -400,12 +363,12 @@ function simpleItemToWireItem(item: QGCMissionItem, seq: number): MissionItem {
  * ComplexItem / TransectStyleComplexItem (survey / corridor / structure grid)
  * is expanded from its embedded transect items or coordinates. A complex item
  * that carries no expandable geometry throws rather than being silently dropped.
- * Sequence numbers come from output position, not the file, so an expanded grid
- * does not collide with the surrounding items.
+ * Sequence numbers come from output position (from 1, the `doJumpId` numbering),
+ * not the file, so an expanded grid does not collide with the surrounding items.
  */
 function expandPlanItem(item: QGCMissionItem, out: MissionItem[]): void {
   if (item.type === "SimpleItem") {
-    out.push(simpleItemToWireItem(item, out.length + FILE_SEQ_OFFSET));
+    out.push(simpleItemToWireItem(item, out.length + 1));
     return;
   }
 
@@ -424,10 +387,10 @@ function expandPlanItem(item: QGCMissionItem, out: MissionItem[]): void {
     if (Array.isArray(visual) && visual.length > 0) {
       for (const pt of visual) {
         if (Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1])) {
-          const seq = out.length + FILE_SEQ_OFFSET;
+          const seq = out.length + 1;
           out.push({
             seq,
-            current: seq === FILE_SEQ_OFFSET ? 1 : 0,
+            current: seq === 1 ? 1 : 0,
             frame: frameToMav(DEFAULT_FRAME),
             command: cmdMap.WAYPOINT,
             param1: 0, param2: 0, param3: 0, param4: 0,
@@ -449,86 +412,6 @@ function expandPlanItem(item: QGCMissionItem, out: MissionItem[]): void {
   // Unrecognized non-simple, non-complex item types are skipped.
 }
 
-/** Parse the .plan geoFence block into a GeofenceSnapshot (inclusion / exclusion zones). */
-function parseQGCGeoFence(geoFence: QGCGeoFence | undefined): GeofenceSnapshot | undefined {
-  if (!geoFence) return undefined;
-
-  const zones: FenceZone[] = [];
-
-  for (const c of geoFence.circles ?? []) {
-    const center = c?.circle?.center;
-    const radius = c?.circle?.radius;
-    if (
-      Array.isArray(center) && center.length >= 2 &&
-      Number.isFinite(center[0]) && Number.isFinite(center[1]) &&
-      typeof radius === "number" && Number.isFinite(radius)
-    ) {
-      zones.push({
-        id: nextImportZoneId(),
-        role: c.inclusion === false ? "exclusion" : "inclusion",
-        type: "circle",
-        polygonPoints: [],
-        circleCenter: [center[0], center[1]],
-        circleRadius: radius,
-      });
-    }
-  }
-
-  for (const p of geoFence.polygons ?? []) {
-    const poly = p?.polygon;
-    if (Array.isArray(poly)) {
-      const points = poly
-        .filter((pt) => Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1]))
-        .map((pt) => [pt[0], pt[1]] as [number, number]);
-      if (points.length >= 3) {
-        zones.push({
-          id: nextImportZoneId(),
-          role: p.inclusion === false ? "exclusion" : "inclusion",
-          type: "polygon",
-          polygonPoints: points,
-          circleCenter: null,
-          circleRadius: 0,
-        });
-      }
-    }
-  }
-
-  if (zones.length === 0) return undefined;
-
-  return {
-    enabled: true,
-    fenceType: zones[0].type,
-    maxAltitude: 120,
-    minAltitude: 0,
-    breachAction: "RTL",
-    circleCenter: null,
-    circleRadius: 200,
-    polygonPoints: [],
-    zones,
-  };
-}
-
-/** Parse the .plan rallyPoints block into RallyPoint[]. */
-function parseQGCRally(rallyPoints: QGCPlanFile["rallyPoints"]): RallyPoint[] | undefined {
-  const raw = rallyPoints?.points;
-  if (!Array.isArray(raw)) return undefined;
-
-  const points: RallyPoint[] = [];
-  for (const pt of raw) {
-    if (Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1])) {
-      const alt = pt[2];
-      points.push({
-        id: nextImportRallyId(),
-        lat: pt[0],
-        lon: pt[1],
-        alt: typeof alt === "number" && Number.isFinite(alt) ? alt : 0,
-      });
-    }
-  }
-
-  return points.length > 0 ? points : undefined;
-}
-
 /**
  * Parse a `.plan` (QGC JSON) file into waypoints plus any fence / rally it
  * carries. Survey / corridor / structure grids (ComplexItem) are expanded into
@@ -545,10 +428,12 @@ export function parseQGCPlan(text: string): ParsedPlan {
     expandPlanItem(item, items);
   }
 
+  // Collapse DO / CONDITION sibling items into their navigation waypoint's
+  // actions, restoring each item's frame and every parameter slot.
+  const { waypoints, warnings } = collapseWithWarnings(items);
   return {
-    // Collapse DO / CONDITION sibling items into their navigation waypoint's
-    // actions, restoring each item's frame and every parameter slot.
-    waypoints: collapseFromItems(items),
+    waypoints,
+    warnings,
     geofence: parseQGCGeoFence(data.geoFence),
     rally: parseQGCRally(data.rallyPoints),
   };

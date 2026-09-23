@@ -288,7 +288,6 @@ export function ParametersPanel() {
           writer: protocol,
           name,
           value,
-          type: param?.type,
           oldValue: param?.value ?? 0,
           panelId: PANEL_ID,
           rebootRequired: metadata.get(name)?.rebootRequired,

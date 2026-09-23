@@ -10,7 +10,9 @@
  *      Authentication is orthogonal to the URL: the same proxy validates the
  *      ticket subprotocol for any profile. Used when a pairing key is held.
  *   2. Legacy raw WebSocket — the same proxy URL dialed bare (no subprotocol),
- *      for an unpaired agent in an open posture.
+ *      for an agent with no key held. An unpaired agent admits that only from
+ *      its own box or a lifeline link, so off one the agent is asked first and
+ *      an unpaired answer raises the pair-this-node state instead of a dial.
  *   3. MQTT relay (via the cloud relay) — works from anywhere.
  *
  * Once connected via any path, calls DroneManager.addDrone() which activates
@@ -34,6 +36,10 @@ import {
 } from "@/lib/api/ground-station/ws-ticket";
 import { isMspVariant } from "@/lib/protocol/select-fc-adapter";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
+import {
+  agentReportsUnpaired,
+  isAgentLifelineHost,
+} from "@/lib/agent/unpaired-mavlink-gate";
 import {
   relayWriteAuthFor,
   useMqttControlGrantStore,
@@ -104,8 +110,9 @@ export function AgentMavlinkBridge() {
   // can lag or never fire on a relayed link). On a true->false transition
   // while this bridge owns a connected drone, remove it so the FC panels stop
   // rendering stale telemetry and queued writes stop going to a dead link.
-  // removeDrone keeps a presence-bridge-owned fleet row in place, so the node
-  // card reverts to "flight controller not connected" instead of vanishing.
+  // removeDrone detaches the FC from the registry and keeps a presence-owned
+  // fleet row in place, so the node card reverts to "flight controller not
+  // connected" instead of vanishing.
   useEffect(() => {
     const prev = prevFcActiveRef.current;
     prevFcActiveRef.current = fcActive;
@@ -113,12 +120,6 @@ export function AgentMavlinkBridge() {
       const droneId = connectedDroneIdRef.current;
       connectedDroneIdRef.current = null;
       useDroneManager.getState().removeDrone(droneId);
-      // Detach the FC from the registry row: the node reverts to "no FC
-      // attached" (projection hides arm/mode/battery) but the presence row
-      // survives. Clear the connection's fcConnected flag too.
-      const registry = useNodeRegistryStore.getState();
-      registry.updateConnection(droneId, { fcConnected: false });
-      registry.detachFc(droneId);
     }
   }, [fcActive]);
 
@@ -335,20 +336,43 @@ export function AgentMavlinkBridge() {
         // prior URL; if the current URL fails we retry the prior URL once
         // before falling through to the MQTT relay path so a brief rotation
         // doesn't drop an in-flight session.
+        //
+        // With no key held the agent must also admit a keyless caller. An
+        // unpaired agent refuses this WebSocket to anyone not on its own box
+        // or one of its lifelines (hotspot, USB, link-local), and the browser
+        // is never told why a handshake failed (no status, no reason). So off
+        // a lifeline the agent is asked first; on a lifeline it is dialed and
+        // asked only when the dial is refused. A definitive "unpaired" answer
+        // skips the dial and raises the pair-this-node state rather than a
+        // link failure that no retry can fix.
         if (!transport && legacyUsable && mavlinkUrl) {
-          try {
-            transport = await tryWs(mavlinkUrl);
-          } catch {
-            // Retry the prior WS URL once (handles an agent WS-binding
-            // rotation); if that also fails, fall through to the MQTT relay.
-            if (mavlinkWsUrlPrev && mavlinkWsUrlPrev !== mavlinkUrl) {
-              try {
-                transport = await tryWs(mavlinkWsUrlPrev);
-              } catch {
-                // previous URL also failed; MQTT relay is the next fallback
+          const keylessProbeBase = !apiKey && agentUrl ? agentUrl : null;
+          const onLifeline = isAgentLifelineHost(new URL(mavlinkUrl).hostname);
+          let pairRequired =
+            keylessProbeBase !== null && !onLifeline
+              ? await agentReportsUnpaired(keylessProbeBase)
+              : false;
+          if (cancelled) return;
+          if (!pairRequired) {
+            try {
+              transport = await tryWs(mavlinkUrl);
+            } catch {
+              // Retry the prior WS URL once (handles an agent WS-binding
+              // rotation); if that also fails, fall through to the MQTT relay.
+              if (mavlinkWsUrlPrev && mavlinkWsUrlPrev !== mavlinkUrl) {
+                try {
+                  transport = await tryWs(mavlinkWsUrlPrev);
+                } catch {
+                  // previous URL also failed; MQTT relay is the next fallback
+                }
               }
             }
+            if (!transport && keylessProbeBase !== null && onLifeline) {
+              pairRequired = await agentReportsUnpaired(keylessProbeBase);
+              if (cancelled) return;
+            }
           }
+          useAgentConnectionStore.getState().setMavlinkPairRequired(pairRequired);
         }
 
         // Try 3: MQTT relay (cloud, works from anywhere). An MSP FC rides the
@@ -431,22 +455,9 @@ export function AgentMavlinkBridge() {
         // reconcile against; only own a standalone row when there is none.
         const ownsFleetRow = !nodeDeviceId;
 
-        // Attach the FC to the registry FIRST so a late presence patch merges
-        // onto the row instead of being dropped (fixes the bare-row race), and
-        // bind the connection transport. attachFc creates the row when this is
-        // a direct-USB FC with no prior presence.
-        registry.attachFc(droneId, droneId);
-        registry.updateConnection(droneId, {
-          transport: connType,
-          mavlinkUrl: mavlinkUrl || undefined,
-          fcConnected: true,
-          // Recorded from the transport rather than assumed from the fact that
-          // a connection was established. These differ on the relay: the FC is
-          // attached and talking while the send lane is refused, and reporting
-          // only `fcConnected` is what let that read as a live command link.
-          canCommand: transport.canCommand,
-        });
-
+        // addDrone attaches the FC to the registry row (creating it for a
+        // direct-USB FC with no prior presence) and binds the connection
+        // transport, including whether it can carry a command.
         useDroneManager.getState().addDrone(
           droneId,
           droneName,

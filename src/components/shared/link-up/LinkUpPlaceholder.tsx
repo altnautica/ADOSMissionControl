@@ -50,6 +50,7 @@ export type LinkUpVariant =
   | "no-fc-agent"
   | "fc-unverified"
   | "stale-pairing"
+  | "pair-required"
   | "agent-offline"
   | "agent-stale"
   | "no-camera"
@@ -94,6 +95,7 @@ const VARIANTS: Record<LinkUpVariant, VariantSpec> = {
   "no-fc-agent": { accent: "neutral" },
   "fc-unverified": { accent: "warning" },
   "stale-pairing": { accent: "warning", primary: "custom" },
+  "pair-required": { accent: "warning", primary: "pairNode" },
   "agent-offline": { accent: "error", primary: "reconnect", pairFallback: true },
   "agent-stale": { accent: "warning", primary: "reconnect" },
   "no-camera": { accent: "neutral", primary: "custom" },
@@ -118,6 +120,7 @@ function variantIcon(variant: LinkUpVariant, className: string): ReactNode {
     case "no-connection":
       return <Plug {...p} />;
     case "locked":
+    case "pair-required":
       return <Lock {...p} />;
     case "no-fc-direct":
     case "no-fc-agent":
@@ -231,6 +234,7 @@ export function LinkUpPlaceholder({
       if (variant === "stale-pairing") return t("cta.rePair");
       return t("cta.retry");
     }
+    if (variant === "pair-required") return t("pair-required.cta");
     return t(`cta.${kind}`);
   }
 

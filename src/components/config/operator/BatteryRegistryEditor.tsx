@@ -10,7 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -41,11 +41,6 @@ export function BatteryRegistryEditor() {
   const update = useBatteryRegistryStore((s) => s.update);
   const remove = useBatteryRegistryStore((s) => s.remove);
   const retire = useBatteryRegistryStore((s) => s.retire);
-  const loadFromIDB = useBatteryRegistryStore((s) => s.loadFromIDB);
-
-  useEffect(() => {
-    void loadFromIDB();
-  }, [loadFromIDB]);
 
   const packs = Object.values(packsMap).sort((a, b) => a.label.localeCompare(b.label));
   const [selectedId, setSelectedId] = useState<string | null>(null);

@@ -12,13 +12,13 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { AircraftRecord } from "@/lib/types/operator";
+import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_KEY = "altcmd:aircraft-registry";
 
 interface State {
   /** Plain object map keyed by drone id (Zustand-friendlier than Map). */
   aircraft: Record<string, AircraftRecord>;
-  _loadedFromIdb: boolean;
 }
 
 interface Actions {
@@ -38,15 +38,18 @@ interface Actions {
   getOrCreate: (droneId: string, droneName: string) => AircraftRecord;
   /** Increment usage stats. Called by flight-lifecycle on disarm. */
   recordFlight: (droneId: string, flightSeconds: number) => void;
-  /** Async: load persisted registry from IndexedDB. Idempotent. */
-  loadFromIDB: () => Promise<void>;
-  /** Async: write current registry to IndexedDB. */
+  /**
+   * Async: read the persisted registry once and merge it into memory (the
+   * stored record wins over one seeded before the load finished).
+   * Idempotent; concurrent callers share one read.
+   */
+  ensureLoaded: () => Promise<void>;
+  /** Async: write current registry to IndexedDB, after the load completes. */
   persistToIDB: () => Promise<void>;
 }
 
 export const useAircraftRegistryStore = create<State & Actions>((set, getState) => ({
   aircraft: {},
-  _loadedFromIdb: false,
 
   upsert: (record) => {
     set((s) => ({ aircraft: { ...s.aircraft, [record.id]: record } }));
@@ -108,26 +111,14 @@ export const useAircraftRegistryStore = create<State & Actions>((set, getState) 
     void getState().persistToIDB();
   },
 
-  loadFromIDB: async () => {
-    if (getState()._loadedFromIdb) return;
-    try {
-      const stored = (await idbGet(IDB_KEY)) as Record<string, AircraftRecord> | undefined;
-      if (stored && typeof stored === "object") {
-        set({ aircraft: stored, _loadedFromIdb: true });
-      } else {
-        set({ _loadedFromIdb: true });
-      }
-    } catch (err) {
-      console.warn("[aircraft-registry-store] loadFromIDB failed", err);
-      set({ _loadedFromIdb: true });
-    }
-  },
+  ensureLoaded: () => idb.ensureLoaded(),
 
-  persistToIDB: async () => {
-    try {
-      await idbSet(IDB_KEY, getState().aircraft);
-    } catch (err) {
-      console.warn("[aircraft-registry-store] persistToIDB failed", err);
-    }
-  },
+  persistToIDB: () => idb.persist(() => idbSet(IDB_KEY, getState().aircraft)),
 }));
+
+const idb = createIdbStoreLoader("aircraft-registry-store", async () => {
+  const stored = (await idbGet(IDB_KEY)) as Record<string, AircraftRecord> | undefined;
+  if (stored && typeof stored === "object") {
+    useAircraftRegistryStore.setState((s) => ({ aircraft: { ...s.aircraft, ...stored } }));
+  }
+});

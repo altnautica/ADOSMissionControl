@@ -3,7 +3,7 @@
  * @module protocol/mavlink-adapter-commands
  */
 
-import type { Transport, CommandResult, UnifiedFlightMode, FirmwareHandler } from './types'
+import type { Transport, CommandResult, UnifiedFlightMode, FirmwareHandler, GuidedGotoOptions } from './types'
 import type { CommandQueue } from './command-queue'
 import {
   encodeManualControl, encodeSetPositionTargetGlobalInt, encodeSetAttitudeTarget,
@@ -98,12 +98,12 @@ export function cmdReturnToLaunch(ctx: CommandContext): Promise<CommandResult> {
 /**
  * MAV_CMD_NAV_LAND (21).
  *
- * `at` is the landing point. Without it the aircraft lands wherever it is,
- * which is why the map's "Land Here" used to reposition and then fire a
- * target-less land 500 ms later: at 5 m/s the vehicle had travelled ~2.5 m and
- * landed essentially where it started, under a menu item promising otherwise.
- * The position rides in param5/6 (lat/lon) of the command, so the FC lands at
- * the commanded point rather than in place.
+ * `at` rides in x/y of a COMMAND_INT, but it is not a landing target the
+ * autopilot will fly to: ArduCopter handles this command by switching to LAND
+ * mode, which descends at the vehicle's current position and ignores x/y. A
+ * caller that wants to land somewhere else has to reposition first and send
+ * this only once the vehicle is holding over the point (the map's "Land Here"
+ * sequence does exactly that).
  */
 export function cmdLand(ctx: CommandContext, at?: { lat: number; lon: number }): Promise<CommandResult> {
   if (!at) return ctx.sendCommandLong(21, [0, 0, 0, 0, 0, 0, 0])
@@ -277,7 +277,13 @@ export function cmdKillSwitch(ctx: CommandContext, confirmed: boolean): Promise<
   return ctx.sendCommandLong(185, [1, 0, 0, 0, 0, 0, 0])
 }
 
-export function cmdGuidedGoto(ctx: CommandContext, lat: number, lon: number, alt: number): Promise<CommandResult> {
+export function cmdGuidedGoto(
+  ctx: CommandContext,
+  lat: number,
+  lon: number,
+  alt: number,
+  options?: GuidedGotoOptions,
+): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) {
     return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
   }
@@ -285,9 +291,13 @@ export function cmdGuidedGoto(ctx: CommandContext, lat: number, lon: number, alt
   // precision. It used to be a raw transport write that reported success on
   // the WRITE, so a rejected or unsupported reposition read as accepted; it is
   // ack-tracked now like every other flight-affecting command.
+  // param2 bit 0 is MAV_DO_REPOSITION_FLAGS_CHANGE_MODE: set, the autopilot
+  // enters its guided mode from whatever mode it is in. A streaming caller
+  // clears it after the first reposition so it cannot override a mode change.
+  const changeMode = options?.changeMode ?? true
   return ctx.sendCommandInt(
     192,
-    [-1, 1, 0, 0],
+    [-1, changeMode ? 1 : 0, 0, 0],
     Math.round(lat * 1e7),
     Math.round(lon * 1e7),
     alt,

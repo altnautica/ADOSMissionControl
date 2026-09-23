@@ -59,9 +59,10 @@ export type NodeCloudPosture = "local" | "cloud" | "self_hosted";
 export type NodeTransport = "websocket" | "mqtt-mavlink";
 
 /**
- * Arming state mirrored from the attached FC.
+ * Arming state mirrored from the attached FC. `"unknown"` once the FC link is
+ * lost: the last heartbeat no longer says anything about the aircraft.
  */
-export type NodeArmState = "disarmed" | "armed";
+export type NodeArmState = "disarmed" | "armed" | "unknown";
 
 /**
  * Presence sub-state: who/what/where the node is, and on which transport(s)

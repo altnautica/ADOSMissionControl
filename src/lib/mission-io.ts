@@ -26,7 +26,8 @@ import { parseKmlBoundary } from "@/lib/formats/kml-boundary";
 import { parseShapefile } from "@/lib/formats/shp-import";
 import { exportKML, exportKMZ } from "@/lib/formats/kml-exporter";
 import { downloadCSV, parseCSV } from "@/lib/formats/csv-handler";
-import { foldLegacyWaypoints } from "@/lib/mission/mission-expand";
+import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
+import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
 import {
   parseWaypointsFile,
   parseQGCPlan,
@@ -59,8 +60,12 @@ export interface MissionMetadata {
 }
 
 export interface MissionFile {
-  /** v1 = legacy flat waypoint list. v2 = per-waypoint nested `actions[]`. */
-  version: 1 | 2;
+  /**
+   * v1 = legacy flat waypoint list. v2 = per-waypoint nested `actions[]`.
+   * v3 = iNav action on `command`; LOITER_TURNS / PAYLOAD_PLACE values in the
+   * slots that reach the right MAVLink parameter.
+   */
+  version: 1 | 2 | 3;
   metadata: MissionMetadata;
   waypoints: Waypoint[];
   /** Operator geofence, preserved so the native format round-trips the fence. */
@@ -72,19 +77,20 @@ export interface MissionFile {
 }
 
 /** Current native-file schema version written on every export. */
-const MISSION_FILE_VERSION = 2 as const;
+const MISSION_FILE_VERSION = 3 as const;
 
 /**
  * Migrate a parsed native mission file forward to the current schema version.
  * v2 nests action commands (DO_/CONDITION_) under the navigation waypoint they
  * fire at; a v1 file carries a legacy flat waypoint list, so its action rows are
- * folded into `actions[]` here. Idempotent for an already-current file.
+ * folded into `actions[]` here. v3 rewrites the per-command parameter slots.
+ * Idempotent for an already-current file.
  */
 export function migrateMissionFile(data: MissionFile): MissionFile {
-  if ((data.version ?? 1) < 2) {
-    return { ...data, version: MISSION_FILE_VERSION, waypoints: foldLegacyWaypoints(data.waypoints) };
-  }
-  return data;
+  const version = data.version ?? 1;
+  if (version >= MISSION_FILE_VERSION) return data;
+  const nested = version < 2 ? foldLegacyWaypoints(data.waypoints) : data.waypoints;
+  return { ...data, version: MISSION_FILE_VERSION, waypoints: migrateWaypointSlots(nested) };
 }
 
 /**
@@ -108,6 +114,8 @@ export interface ImportedMission {
   metadata?: MissionMetadata;
   geofence?: GeofenceSnapshot;
   rally?: RallyPoint[];
+  /** Items the parser could not keep (named), for the importer to show. */
+  warnings?: string[];
 }
 
 interface RecentMission {
@@ -329,13 +337,12 @@ export async function importMissionFile(file: File): Promise<ImportedMission> {
 
   if (ext === "waypoints") {
     const text = await file.text();
-    return { waypoints: parseWaypointsFile(text) };
+    return parseWaypointsFile(text);
   }
 
   if (ext === "plan") {
     const text = await file.text();
-    const { waypoints, geofence, rally } = parseQGCPlan(text);
-    return { waypoints, geofence, rally };
+    return parseQGCPlan(text);
   }
 
   if (ext === "kml") {

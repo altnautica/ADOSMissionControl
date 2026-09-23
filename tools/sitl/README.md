@@ -66,6 +66,8 @@ npx tsx src/index.ts --vehicle ArduPlane
 |------|---------|-------------|
 | `--drones` | `1` | Number of drone instances |
 | `--ws-port` | `5760` | WebSocket port for GCS |
+| `--ws-host` | `::1` | WebSocket bind address (IPv6 loopback; see below) |
+| `--allow-origin` | — | Also accept a GCS page from this exact origin (repeatable) |
 | `--lat` | `12.9716` | Home latitude (default origin) |
 | `--lon` | `77.5946` | Home longitude |
 | `--speedup` | `1` | Simulation speed multiplier |
@@ -77,12 +79,19 @@ npx tsx src/index.ts --vehicle ArduPlane
 ## Connecting from Command GCS
 
 1. Start SITL: `npx tsx src/index.ts`
-2. In Command GCS, connect to `ws://localhost:5760`
+2. Copy the `ws://[::1]:5760/?token=...` URL it prints (one per drone) and connect
+   to it from Command GCS, `?token=` included. The token changes on every start.
 3. Drone appears with real telemetry — arm, takeoff, fly with full physics
+
+The WebSocket accepts only clients that present the token, and only browser
+pages served from `localhost`, `127.0.0.1` or `[::1]` (plus any
+`--allow-origin`). It binds the IPv6 loopback `::1` because each drone's
+WebSocket shares its SITL TCP port number and SITL listens on IPv4, so an IPv4
+loopback bind on the same port would collide with SITL itself.
 
 ## Multi-Drone
 
-ArduPilot SITL natively supports multiple instances with `--auto-sysid`. Each gets a unique system ID. The bridge multiplexes all instances onto a single WebSocket port. The GCS demuxes by system ID from HEARTBEAT messages.
+ArduPilot SITL natively supports multiple instances with `--auto-sysid`. Each gets a unique system ID and its own SITL TCP port: `--ws-port` (default 5760) for drone #1, then +10 per drone (5770, 5780, ...). The bridge runs one WebSocket server per drone on that drone's SITL port number, bound to `::1` (or `--ws-host`), and relays only that drone's TCP stream through it. The startup log prints one `ws://[::1]:<port>/?token=...` URL per drone; all share the same per-run token. Connect the GCS to each URL separately.
 
 ## What SITL Gives You
 

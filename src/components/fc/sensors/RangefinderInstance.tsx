@@ -11,8 +11,7 @@
 
 import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { RNGFND_TYPE_OPTIONS, RNGFND_ORIENT_OPTIONS } from "./sensor-constants";
+import { ParamEnumSelect } from "../shared/ParamEnumSelect";
 
 interface RangefinderInstanceProps {
   /** Instance suffix: "2".."9" or "A". */
@@ -20,9 +19,11 @@ interface RangefinderInstanceProps {
   p: (name: string, fallback?: string) => string;
   set: (name: string, v: string) => void;
   lbl: (raw: string) => ReactNode;
+  /** Enum options for a param, from the vehicle's metadata (see useParamEnums). */
+  enumValues: (canonical: string) => ReadonlyMap<number, string>;
 }
 
-export function RangefinderInstance({ instance, p, set, lbl }: RangefinderInstanceProps) {
+export function RangefinderInstance({ instance, p, set, lbl, enumValues }: RangefinderInstanceProps) {
   const key = (field: string) => `RNGFND${instance}_${field}`;
   const type = p(key("TYPE"));
 
@@ -31,11 +32,11 @@ export function RangefinderInstance({ instance, p, set, lbl }: RangefinderInstan
       <div className="text-[11px] font-medium text-text-secondary">
         Rangefinder {instance}
       </div>
-      <Select
+      <ParamEnumSelect
         label={lbl(`${key("TYPE")} — Sensor Type`)}
-        options={RNGFND_TYPE_OPTIONS}
-        value={type}
-        onChange={(v) => set(key("TYPE"), v)}
+        values={enumValues(key("TYPE"))}
+        value={Number(type)}
+        onChange={(v) => set(key("TYPE"), String(v))}
       />
       {type !== "0" && (
         <>
@@ -65,11 +66,11 @@ export function RangefinderInstance({ instance, p, set, lbl }: RangefinderInstan
             value={p(key("MAX_CM"), "700")}
             onChange={(e) => set(key("MAX_CM"), e.target.value)}
           />
-          <Select
+          <ParamEnumSelect
             label={lbl(`${key("ORIENT")} — Orientation`)}
-            options={RNGFND_ORIENT_OPTIONS}
-            value={p(key("ORIENT"), "25")}
-            onChange={(v) => set(key("ORIENT"), v)}
+            values={enumValues(key("ORIENT"))}
+            value={Number(p(key("ORIENT"), "25"))}
+            onChange={(v) => set(key("ORIENT"), String(v))}
           />
         </>
       )}

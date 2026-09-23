@@ -17,7 +17,8 @@
  *   - Signed in as U -> Signed in as V (same browser):
  *       purgeForUser(V). User U's records get deleted.
  *
- * Fixes audit finding B3 (user-switch keystore leak on shared devices).
+ * This keeps one user's signing keys from surviving a user switch on a
+ * shared device.
  *
  * @license GPL-3.0-only
  */

@@ -26,6 +26,7 @@ import {
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFollowMeStore } from "@/stores/follow-me-store";
+import { stopFollowMe } from "@/lib/follow-me";
 
 export type { SkillCharges } from "./types";
 export {
@@ -80,6 +81,16 @@ function guardKey(droneId: string, skillId: string): string {
 }
 
 /**
+ * Skills that take the vehicle somewhere else or change what it is doing. A
+ * follow-me session on the same drone streams repositions, so it ends before
+ * one of these runs rather than fighting it. Every `mode.*` skill is a mode
+ * change too.
+ */
+const PREEMPTS_FOLLOW_ME: Record<string, true> = {
+  rth: true, land: true, abort: true, kill: true, "set-mode": true, pause: true,
+};
+
+/**
  * The single gating pipeline used by keyboard, gamepad, the Skill Bar, and the
  * action panel. Enforces, in order: drone/skill presence → busy/re-entrancy →
  * disabled gate (toast, no dialog) → toggle-off short-circuit → arm-requirement
@@ -117,14 +128,19 @@ export async function activate(
   }
 
   // Arm-requirement gate — explicit second check so activate never runs in the
-  // wrong arm state even if getState was momentarily stale.
+  // wrong arm state even if getState was momentarily stale. An unknown arm
+  // state (no heartbeat to read it from) satisfies neither requirement, and is
+  // reported as the missing link it is rather than as armed or disarmed.
   const armReq = skill.armRequirement ?? "any";
-  if (armReq === "armed" && ctx.armState !== "armed") {
-    ctx.notify("skills.reason.notArmed", "warning");
-    return;
-  }
-  if (armReq === "disarmed" && ctx.armState !== "disarmed") {
-    ctx.notify("skills.reason.alreadyArmed", "warning");
+  if (armReq !== "any" && ctx.armState !== armReq) {
+    ctx.notify(
+      ctx.armState === "unknown"
+        ? "skills.reason.noFcLink"
+        : armReq === "armed"
+          ? "skills.reason.notArmed"
+          : "skills.reason.alreadyArmed",
+      "warning",
+    );
     return;
   }
 
@@ -154,6 +170,13 @@ export async function activate(
     const until = cooldownUntil.get(key) ?? 0;
     if (now < until) return;
     cooldownUntil.set(key, now + DEBOUNCE_MS);
+  }
+
+  if (
+    (PREEMPTS_FOLLOW_ME[skillId] === true || skillId.startsWith("mode.")) &&
+    useFollowMeStore.getState().droneId === ctx.droneId
+  ) {
+    stopFollowMe();
   }
 
   busy.add(key);

@@ -12,8 +12,7 @@
  * link_id) pair. The signer tracks the last emitted timestamp in memory
  * and clamps forward-only: a system clock that jumps backward (or two
  * sign() calls arriving within the same millisecond) never causes a
- * regression. This is the audit finding M4 mitigation baked in at the
- * primitive layer.
+ * regression.
  *
  * The CryptoKey is non-extractable. JS cannot read its raw bytes back
  * even if an XSS payload gains same-origin execution.
@@ -124,7 +123,7 @@ export class MavlinkSigner {
     // the same drone. Without this, two tabs would each read/advance the
     // persisted timestamp counter independently, and the flight controller
     // would reject whichever frame arrives with the lower timestamp as a
-    // replay. Fixes audit finding B2.
+    // replay.
     const lockName = `ados-signing:${this.droneId}:${this.linkId}`;
     return this.withSigningLock(lockName, () => this.signLocked(frameBytesThroughCrc));
   }
@@ -212,7 +211,7 @@ export class MavlinkSigner {
   /**
    * Forward-only timestamp. Never reads system clock after the first call
    * in a way that could regress: subsequent calls take max(Date.now(), last+1).
-   * Fixes audit finding M4 (clock forward-then-back jump).
+   * A clock that jumps forward then back therefore never regresses it.
    */
   private nextTimestamp(): bigint {
     const now10us = BigInt(Math.max(0, Date.now() - EPOCH_2015_MS)) * BIG_100;

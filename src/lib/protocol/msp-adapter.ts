@@ -242,6 +242,7 @@ export class MSPAdapter implements DroneProtocol {
   async setFlightMode(m: UnifiedFlightMode) { return cmds.mspSetFlightMode(this.cmdCtx, m) }
   sendManualControl(r: number, p: number, t: number, y: number, _b: number) { cmds.mspSendManualControl(this.cmdCtx, r, p, t, y) }
   async motorTest(m: number, t: number, d: number) { return cmds.mspMotorTest(this.cmdCtx, m, t, d) }
+  async setMotorTestOutputs(t: readonly number[], d: number) { return cmds.mspSetMotorOutputs(this.cmdCtx, t, d) }
   async reboot() { return cmds.mspReboot(this.cmdCtx) }
   async rebootToBootloader() { return cmds.mspRebootToBootloader(this.cmdCtx) }
   async startCalibration(type: 'accel'|'gyro'|'compass'|'level'|'airspeed'|'baro'|'rc'|'esc'|'compassmot') { return cmds.mspStartCalibration(this.cmdCtx, type) }
@@ -547,7 +548,7 @@ export class MSPAdapter implements DroneProtocol {
   // ── Parameters ──────────────────────────────────────────────
   async getAllParameters() { const c = this.prmCtx; const r = await prm.mspGetAllParameters(c); this.paramNameCache = c.paramNameCache; return r }
   async getParameter(name: string) { return prm.mspGetParameter(this.prmCtx, name) }
-  async setParameter(name: string, value: number, _type?: number) { return prm.mspSetParameter(this.prmCtx, name, value) }
+  async setParameter(name: string, value: number) { return prm.mspSetParameter(this.prmCtx, name, value) }
   getCachedParameterNames(): string[] { return this.paramNameCache }
 
   // ── iNav name-based settings ────────────────────────────────

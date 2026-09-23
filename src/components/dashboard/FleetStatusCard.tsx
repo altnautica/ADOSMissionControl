@@ -37,6 +37,12 @@ export function FleetStatusCard() {
     (n, d) => (d.navigationGpsDenied === true ? n + 1 : n),
     0,
   );
+  // Counted under their node's liveness above, but their FC went silent: the
+  // operator has to see that no arm or mission state stands behind them.
+  const linkLostCount = drones.reduce(
+    (n, d) => (d.fcLinkLost === true ? n + 1 : n),
+    0,
+  );
 
   const statuses: DroneStatus[] = ["in_mission", "online", "idle", "returning", "maintenance", "offline"];
 
@@ -62,6 +68,17 @@ export function FleetStatusCard() {
             </div>
           );
         })}
+        {linkLostCount > 0 && (
+          <div className="flex items-center justify-between border-t border-border-default/40 mt-1 pt-1.5">
+            <div className="flex items-center gap-2">
+              <StatusDot status="critical" />
+              <span className="text-xs text-text-secondary">FC link lost</span>
+            </div>
+            <span className="text-xs font-mono text-text-primary tabular-nums">
+              {linkLostCount}
+            </span>
+          </div>
+        )}
         {gpsDeniedCount > 0 && (
           <div className="flex items-center justify-between border-t border-border-default/40 mt-1 pt-1.5">
             <div className="flex items-center gap-2">

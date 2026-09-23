@@ -158,11 +158,14 @@ export async function inavUploadSafehomes(
 
 // ── Geozone download ──────────────────────────────────────────
 
-/** Maximum geozone slots in iNav. */
+/** iNav geozone shape value for a circle (centre vertex plus radius). */
+const GEOZONE_SHAPE_CIRCULAR = 0
 
 /**
- * Download up to 15 geozones and their vertices.
- * Queries each slot by index; stops on decode error or enabled=false after first zone.
+ * Download every configured geozone and its vertices. A slot with no vertices
+ * is unused and is skipped. A circular zone is read as its centre vertex,
+ * whose reply carries the radius. Any failed frame fails the whole download,
+ * so a partial read never stands in for the FC's zones.
  */
 export async function inavDownloadGeozones(
   queue: MspSerialQueue | null,
@@ -170,24 +173,17 @@ export async function inavDownloadGeozones(
   if (!queue) return { zones: [], vertices: [] }
   const zones: INavGeozone[] = []
   const vertices: INavGeozoneVertex[] = []
-  try {
-    for (let i = 0; i < GEOZONE_COUNT; i++) {
-      const payload = new Uint8Array([i])
-      const zoneFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE, payload)
-      const zdv = new DataView(zoneFrame.payload.buffer, zoneFrame.payload.byteOffset, zoneFrame.payload.byteLength)
-      const zone = decodeMspINavGeozone(zdv)
-      zones.push(zone)
+  for (let i = 0; i < GEOZONE_COUNT; i++) {
+    const zoneFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE, new Uint8Array([i]))
+    const zone = decodeMspINavGeozone(new DataView(zoneFrame.payload.buffer, zoneFrame.payload.byteOffset, zoneFrame.payload.byteLength))
+    if (zone.vertexCount === 0) continue
+    zones.push(zone)
 
-      // Fetch vertices for this zone
-      for (let v = 0; v < zone.vertexCount; v++) {
-        const vPayload = new Uint8Array([i, v])
-        const vFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE_VERTEX, vPayload)
-        const vdv = new DataView(vFrame.payload.buffer, vFrame.payload.byteOffset, vFrame.payload.byteLength)
-        vertices.push(decodeMspINavGeozoneVertex(vdv))
-      }
+    const fetchCount = zone.shape === GEOZONE_SHAPE_CIRCULAR ? 1 : zone.vertexCount
+    for (let v = 0; v < fetchCount; v++) {
+      const vFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE_VERTEX, new Uint8Array([i, v]))
+      vertices.push(decodeMspINavGeozoneVertex(new DataView(vFrame.payload.buffer, vFrame.payload.byteOffset, vFrame.payload.byteLength)))
     }
-  } catch (err) {
-    console.warn('Geozone download failed:', formatErrorMessage(err))
   }
   return { zones, vertices }
 }
@@ -195,8 +191,9 @@ export async function inavDownloadGeozones(
 // ── Geozone upload ────────────────────────────────────────────
 
 /**
- * Upload zones and their vertices to the FC.
- * Sends zone metadata first, then all vertices for that zone.
+ * Upload zones and their vertices to the FC. Each zone frame resets that
+ * zone's vertices on the FC, so its vertices follow it. A circular zone sends
+ * only its centre vertex, which carries the radius.
  */
 export async function inavUploadGeozones(
   queue: MspSerialQueue | null,
@@ -209,14 +206,12 @@ export async function inavUploadGeozones(
   }
   try {
     for (const zone of zones) {
-      const zPayload = encodeMspINavSetGeozone(zone)
-      await queue.send(INAV_MSP.MSP2_INAV_SET_GEOZONE, zPayload)
+      await queue.send(INAV_MSP.MSP2_INAV_SET_GEOZONE, encodeMspINavSetGeozone(zone))
 
-      // Upload vertices belonging to this zone
       const zoneVerts = vertices.filter((v) => v.geozoneId === zone.number)
-      for (const vert of zoneVerts) {
-        const vPayload = encodeMspINavSetGeozoneVertex(vert)
-        await queue.send(INAV_MSP.MSP2_INAV_SET_GEOZONE_VERTEX, vPayload)
+      const toSend = zone.shape === GEOZONE_SHAPE_CIRCULAR ? zoneVerts.slice(0, 1) : zoneVerts
+      for (const vert of toSend) {
+        await queue.send(INAV_MSP.MSP2_INAV_SET_GEOZONE_VERTEX, encodeMspINavSetGeozoneVertex(vert))
       }
     }
     return { success: true, resultCode: 0, message: `Uploaded ${zones.length} geozones` }

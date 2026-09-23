@@ -10,6 +10,7 @@ import type { MissionItem } from '@/lib/protocol/types';
 let mockProtocol: {
   uploadMission: (items: MissionItem[]) => Promise<{ success: boolean }>;
   downloadMission: () => Promise<MissionItem[]>;
+  getVehicleInfo: () => { firmwareType: string } | null;
 } | null = null;
 
 // Mock dependencies
@@ -188,6 +189,7 @@ describe('mission-store', () => {
         return { success: true };
       },
       downloadMission: async () => [],
+      getVehicleInfo: () => ({ firmwareType: 'px4' }),
     };
 
     useMissionStore.setState({
@@ -231,6 +233,7 @@ describe('mission-store', () => {
     mockProtocol = {
       uploadMission: async () => ({ success: true }),
       downloadMission: async () => items,
+      getVehicleInfo: () => ({ firmwareType: 'px4' }),
     };
 
     const waypoints = await useMissionStore.getState().downloadMission();
@@ -239,5 +242,78 @@ describe('mission-store', () => {
     expect(waypoints[1].actions).toHaveLength(1);
     expect(waypoints[1].actions?.[0].command).toBe('DO_SET_SPEED');
     expect(useMissionStore.getState().downloadState).toBe('downloaded');
+  });
+
+  // An ArduPilot mission: TAKEOFF 30 m, WP A, WP B carrying DO_JUMP → A ×2, RTL.
+  function arduPilotPlan(): Waypoint[] {
+    return [
+      makeWaypoint({ id: 't', command: 'TAKEOFF', alt: 30 }),
+      makeWaypoint({ id: 'a', command: 'WAYPOINT', lat: 12.98 }),
+      makeWaypoint({
+        id: 'b', command: 'WAYPOINT', lat: 12.99,
+        actions: [{ id: 'j', command: 'DO_JUMP', jumpTargetId: 'a', param2: 2 }],
+      }),
+      makeWaypoint({ id: 'r', command: 'RTL', lat: 0, lon: 0, alt: 0 }),
+    ];
+  }
+
+  it('uploadMission() to ArduPilot writes home at seq 0 and starts the mission at seq 1', async () => {
+    let uploaded: MissionItem[] = [];
+    mockProtocol = {
+      uploadMission: async (items) => {
+        uploaded = items;
+        return { success: true };
+      },
+      downloadMission: async () => [],
+      getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
+    };
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+
+    expect(await useMissionStore.getState().uploadMission()).toBe(true);
+    // No HOME_POSITION received: the slot takes the first waypoint at 0 m.
+    expect(uploaded[0]).toMatchObject({ seq: 0, command: 16, frame: 0, current: 0, z: 0 });
+    expect(uploaded[0].x).toBe(Math.round(12.97 * 1e7));
+    expect(uploaded[1]).toMatchObject({ seq: 1, command: 22, z: 30 });
+    const jump = uploaded.find((it) => it.command === 177);
+    expect(jump?.param1).toBe(2); // WP A sits at seq 2
+    expect(uploaded.every((it, i) => it.seq === i)).toBe(true);
+  });
+
+  it('downloadMission() from ArduPilot drops the home slot and keeps TAKEOFF first', async () => {
+    mockProtocol = {
+      uploadMission: async () => ({ success: true }),
+      downloadMission: async () => [],
+      getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
+    };
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    let onVehicle: MissionItem[] = [];
+    mockProtocol.uploadMission = async (items) => {
+      onVehicle = items;
+      return { success: true };
+    };
+    await useMissionStore.getState().uploadMission();
+    mockProtocol.downloadMission = async () => onVehicle;
+
+    const waypoints = await useMissionStore.getState().downloadMission();
+    expect(waypoints.map((w) => w.command)).toEqual(['TAKEOFF', 'WAYPOINT', 'WAYPOINT', 'RTL']);
+    const jump = waypoints[2].actions?.[0];
+    expect(jump?.command === 'DO_JUMP' ? jump.jumpTargetId : undefined).toBe(waypoints[1].id);
+    expect(useMissionStore.getState().downloadWarnings).toEqual([]);
+  });
+
+  it('downloadMission() names a leading item it cannot attach to a waypoint', async () => {
+    mockProtocol = {
+      uploadMission: async () => ({ success: true }),
+      downloadMission: async () => [
+        { seq: 0, frame: 2, command: 181, current: 0, autocontinue: 1, param1: 1, param2: 1, param3: 0, param4: 0, x: 0, y: 0, z: 0 },
+        { seq: 1, frame: 3, command: 16, current: 1, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: 129700000, y: 775900000, z: 30 },
+      ],
+      getVehicleInfo: () => ({ firmwareType: 'px4' }),
+    };
+    const waypoints = await useMissionStore.getState().downloadMission();
+    expect(waypoints).toHaveLength(1);
+    expect(useMissionStore.getState().downloadWarnings).toEqual([
+      expect.stringContaining('MAV_CMD 181'),
+    ]);
   });
 });

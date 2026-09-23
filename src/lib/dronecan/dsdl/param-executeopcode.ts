@@ -8,7 +8,7 @@
  *
  * Response layout:
  *   int48  argument
- *   bool   ok        (uint8 wire, 0 or 1)
+ *   bool   ok        (one bit: the most significant bit of byte 6)
  * @license GPL-3.0-only
  */
 
@@ -78,7 +78,7 @@ export function encodeParamExecuteOpcodeResponse(
 ): Uint8Array {
   const out = new Uint8Array(7);
   out.set(encodeInt48(res.argument), 0);
-  out[6] = res.ok ? 1 : 0;
+  out[6] = res.ok ? 0x80 : 0;
   return out;
 }
 
@@ -88,5 +88,5 @@ export function decodeParamExecuteOpcodeResponse(
   if (buf.length < 7) {
     throw new Error(`ParamExecuteOpcodeResponse too short: ${buf.length}`);
   }
-  return { argument: decodeInt48(buf, 0), ok: buf[6] !== 0 };
+  return { argument: decodeInt48(buf, 0), ok: (buf[6] & 0x80) !== 0 };
 }

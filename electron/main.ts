@@ -152,7 +152,7 @@ app.on("will-quit", (event) => {
   if (teardownDone) return;
   event.preventDefault();
   teardownDone = true;
-  closeAllSockets();
+  closeAllSockets("app quitting");
   void stopServer()
     .catch((err) => console.error("[main] stopServer failed:", err))
     .finally(() => app.exit(0));

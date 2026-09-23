@@ -28,7 +28,11 @@ export interface NetConnectOptions {
   port: number;
   /** UDP only; defaults to "listen". */
   mode?: UdpMode;
-  /** Browser bridge WebSocket URL; defaults to {@link DEFAULT_BRIDGE_URL}. */
+  /**
+   * Browser bridge WebSocket URL; defaults to {@link DEFAULT_BRIDGE_URL}. The
+   * bridge prints its URL with a per-run token (`ws://127.0.0.1:14551/?token=…`)
+   * and refuses connections without it, so the URL is dialled exactly as given.
+   */
   bridgeUrl?: string;
 }
 

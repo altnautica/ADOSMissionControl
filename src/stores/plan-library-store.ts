@@ -12,7 +12,8 @@ import type { GeofenceSnapshot } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
 import { indexedDBStorage } from "@/lib/storage";
-import { foldLegacyWaypoints } from "@/lib/mission/mission-expand";
+import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
+import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
 import { planSnapshotString } from "@/lib/plan-snapshot";
 
 /** Fence + rally + POI geometry captured alongside a plan's waypoints on save. */
@@ -30,6 +31,9 @@ export interface PlanExtras {
  * - v3 added optional `pois` on each SavedPlan.
  * - v4 nests action commands under their navigation waypoint (per-waypoint
  *   `actions[]`), so each saved plan's legacy flat waypoint list is folded.
+ * - v5 maps the iNav action onto `command` and moves the LOITER_TURNS /
+ *   PAYLOAD_PLACE editor values into the slots that reach the right MAVLink
+ *   parameter.
  *
  * The v2/v3 fields are optional, so a pre-migration plan simply reads them as
  * `undefined` with no transform. v4 is the first branch that rewrites data.
@@ -54,6 +58,13 @@ export function migratePlanLibrary(
           : plan,
       );
     }
+  }
+  if (version < 5 && Array.isArray(state.plans)) {
+    state.plans = state.plans.map((plan) =>
+      Array.isArray(plan.waypoints)
+        ? { ...plan, waypoints: migrateWaypointSlots(plan.waypoints) }
+        : plan,
+    );
   }
   return state;
 }
@@ -250,7 +261,7 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
     {
       name: "altcmd:plan-library",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 4,
+      version: 5,
       partialize: (state) => ({
         plans: state.plans,
         folders: state.folders,

@@ -7,13 +7,15 @@ import type { SelectOption } from "@/components/ui/select";
 
 export interface EnumSelectProps {
   /** Enum code → label. */
-  values: Map<number, string>;
+  values: ReadonlyMap<number, string>;
   /** Current numeric value. */
   value: number;
   onChange: (next: number) => void;
   /** Called after a commit so the grid can leave edit mode. */
   onClose?: () => void;
   disabled?: boolean;
+  /** Extra classes for the select trigger (e.g. a dirty-state border). */
+  className?: string;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface EnumSelectProps {
  * enums, keeps an out-of-enum value selectable, and offers a "123" toggle to
  * type an arbitrary numeric value not present in the enum.
  */
-export function EnumSelect({ values, value, onChange, onClose, disabled = false }: EnumSelectProps) {
+export function EnumSelect({ values, value, onChange, onClose, disabled = false, className }: EnumSelectProps) {
   const t = useTranslations("parameters");
   const [manual, setManual] = useState(false);
   const [raw, setRaw] = useState(String(value));
@@ -66,6 +68,7 @@ export function EnumSelect({ values, value, onChange, onClose, disabled = false 
           value={String(value)}
           onChange={(v) => { onChange(Number(v)); onClose?.(); }}
           disabled={disabled}
+          className={className}
           searchable={values.size > 15}
         />
       </div>

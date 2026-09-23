@@ -520,7 +520,7 @@ export class FlashManager {
     let failed = 0;
     for (const param of params) {
       try {
-        const result = await this.protocol.setParameter(param.name, param.value, param.type);
+        const result = await this.protocol.setParameter(param.name, param.value);
         if (result.success) restored++;
         else failed++;
       } catch {

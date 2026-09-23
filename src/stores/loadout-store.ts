@@ -17,13 +17,13 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { LoadoutSnapshot } from "@/lib/types";
+import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_KEY = "altcmd:loadouts";
 
 interface State {
   /** droneId → current loadout. */
   loadouts: Record<string, LoadoutSnapshot>;
-  _loadedFromIdb: boolean;
 }
 
 interface Actions {
@@ -31,13 +31,14 @@ interface Actions {
   set: (droneId: string, loadout: LoadoutSnapshot) => void;
   patch: (droneId: string, patch: Partial<LoadoutSnapshot>) => void;
   clear: (droneId: string) => void;
-  loadFromIDB: () => Promise<void>;
+  /** Async: read the persisted loadouts once and merge them into memory. Idempotent. */
+  ensureLoaded: () => Promise<void>;
+  /** Async: write current loadouts to IndexedDB, after the load completes. */
   persistToIDB: () => Promise<void>;
 }
 
 export const useLoadoutStore = create<State & Actions>((set, getState) => ({
   loadouts: {},
-  _loadedFromIdb: false,
 
   get: (droneId) => getState().loadouts[droneId],
 
@@ -68,26 +69,14 @@ export const useLoadoutStore = create<State & Actions>((set, getState) => ({
     void getState().persistToIDB();
   },
 
-  loadFromIDB: async () => {
-    if (getState()._loadedFromIdb) return;
-    try {
-      const stored = (await idbGet(IDB_KEY)) as Record<string, LoadoutSnapshot> | undefined;
-      if (stored && typeof stored === "object") {
-        set({ loadouts: stored, _loadedFromIdb: true });
-      } else {
-        set({ _loadedFromIdb: true });
-      }
-    } catch (err) {
-      console.warn("[loadout-store] loadFromIDB failed", err);
-      set({ _loadedFromIdb: true });
-    }
-  },
+  ensureLoaded: () => idb.ensureLoaded(),
 
-  persistToIDB: async () => {
-    try {
-      await idbSet(IDB_KEY, getState().loadouts);
-    } catch (err) {
-      console.warn("[loadout-store] persistToIDB failed", err);
-    }
-  },
+  persistToIDB: () => idb.persist(() => idbSet(IDB_KEY, getState().loadouts)),
 }));
+
+const idb = createIdbStoreLoader("loadout-store", async () => {
+  const stored = (await idbGet(IDB_KEY)) as Record<string, LoadoutSnapshot> | undefined;
+  if (stored && typeof stored === "object") {
+    useLoadoutStore.setState((s) => ({ loadouts: { ...s.loadouts, ...stored } }));
+  }
+});

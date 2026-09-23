@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Select, type SelectOptionGroup } from "@/components/ui/select";
-import type { ActionCommand, MissionAction, Waypoint } from "@/lib/types";
+import type { ActionCommand, CommandMissionAction, MissionAction, Waypoint } from "@/lib/types";
 import { useMissionStore } from "@/stores/mission-store";
 import { ACTION_COMMAND_GROUPS, defaultActionParams } from "./waypoint-constants";
 import { ActionRow, type NavTarget } from "./ActionRow";
@@ -24,9 +24,11 @@ function freshId(): string {
 interface WaypointActionTimelineProps {
   waypoint: Waypoint;
   onUpdate: (update: Partial<Waypoint>) => void;
+  /** Restrict the "Add action" picker to these commands (e.g. what iNav can fly). */
+  allowedCommands?: readonly ActionCommand[];
 }
 
-export function WaypointActionTimeline({ waypoint, onUpdate }: WaypointActionTimelineProps) {
+export function WaypointActionTimeline({ waypoint, onUpdate, allowedCommands }: WaypointActionTimelineProps) {
   const t = useTranslations("planner");
   const allWaypoints = useMissionStore((s) => s.waypoints);
   const actions = waypoint.actions ?? [];
@@ -43,17 +45,23 @@ export function WaypointActionTimeline({ waypoint, onUpdate }: WaypointActionTim
 
   const addOptions: SelectOptionGroup[] = ACTION_COMMAND_GROUPS.map((g) => ({
     label: t(`actions.group.${g.groupKey}`),
-    options: g.commands.map((c) => ({ value: c, label: t(`actions.cmd.${c}`) })),
-  }));
+    options: g.commands
+      .filter((c) => !allowedCommands || allowedCommands.includes(c))
+      .map((c) => ({ value: c, label: t(`actions.cmd.${c}`) })),
+  })).filter((g) => g.options.length > 0);
 
   const addAction = (command: ActionCommand) => {
-    const action: MissionAction = { id: freshId(), command, ...defaultActionParams(command) };
+    const action: CommandMissionAction = { id: freshId(), command, ...defaultActionParams(command) };
     onUpdate({ actions: [...actions, action] });
     setExpandedId(action.id);
   };
 
-  const updateAction = (id: string, partial: Partial<MissionAction>) => {
-    onUpdate({ actions: actions.map((a) => (a.id === id ? { ...a, ...partial } : a)) });
+  const updateAction = (id: string, partial: Partial<CommandMissionAction>) => {
+    onUpdate({
+      actions: actions.map((a): MissionAction =>
+        a.id === id && a.command !== "RAW" ? { ...a, ...partial } : a,
+      ),
+    });
   };
 
   const removeAction = (id: string) => {

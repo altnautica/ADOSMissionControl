@@ -5,21 +5,26 @@
  */
 
 import type { MotorMixerRule } from '../../msp-decoders-inav';
-import { writeU8 } from './_helpers';
+import { writeU8, writeU16 } from './_helpers';
+
+/** Mixer weight range the FC stores; it clamps the wire value to 0..4 then subtracts 2. */
+const WEIGHT_MIN = -2;
+const WEIGHT_MAX = 2;
 
 /**
- * Encode MSP2_COMMON_SET_MOTOR_MIXER (0x1006) payload for one slot.
+ * Encode MSP2_COMMON_SET_MOTOR_MIXER (0x1006) payload for one slot, 9 bytes.
  *
- * Layout: U8 idx, S16 throttle x1000, S16 roll x1000, S16 pitch x1000, S16 yaw x1000.
- * 9 bytes total.
+ * Layout: U8 idx, then U16 throttle, roll, pitch, yaw, each (weight + 2.0) x 1000.
+ * A rule with throttle 0 marks the slot unused.
  */
 export function encodeMspCommonSetMotorMixer(idx: number, rule: MotorMixerRule): Uint8Array {
   const buf = new Uint8Array(9);
   const dv = new DataView(buf.buffer);
   writeU8(dv, 0, idx & 0xff);
-  dv.setInt16(1, Math.round(rule.throttle * 1000), true);
-  dv.setInt16(3, Math.round(rule.roll * 1000), true);
-  dv.setInt16(5, Math.round(rule.pitch * 1000), true);
-  dv.setInt16(7, Math.round(rule.yaw * 1000), true);
+  const weights = [rule.throttle, rule.roll, rule.pitch, rule.yaw];
+  weights.forEach((w, i) => {
+    const clamped = Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, w));
+    writeU16(dv, 1 + i * 2, Math.round((clamped + 2) * 1000));
+  });
   return buf;
 }

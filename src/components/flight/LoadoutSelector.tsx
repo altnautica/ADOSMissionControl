@@ -104,18 +104,9 @@ export function LoadoutSelector() {
   const loadoutMap = useLoadoutStore((s) => s.loadouts);
   const setLoadout = useLoadoutStore((s) => s.set);
   const clearLoadout = useLoadoutStore((s) => s.clear);
-  const loadLoadouts = useLoadoutStore((s) => s.loadFromIDB);
 
   const batteries = useBatteryRegistryStore((s) => s.packs);
   const equipment = useEquipmentRegistryStore((s) => s.items);
-  const loadBatteries = useBatteryRegistryStore((s) => s.loadFromIDB);
-  const loadEquipment = useEquipmentRegistryStore((s) => s.loadFromIDB);
-
-  useEffect(() => {
-    void loadLoadouts();
-    void loadBatteries();
-    void loadEquipment();
-  }, [loadLoadouts, loadBatteries, loadEquipment]);
 
   const [editing, setEditing] = useState(false);
 

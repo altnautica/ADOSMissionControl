@@ -9,7 +9,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { DataValue } from "@/components/ui/data-value";
@@ -75,7 +75,6 @@ export default function ReportsPage() {
   const t = useTranslations("history");
   const tr = useTranslations("history.reports");
   const records = useHistoryStore((s) => s.records);
-  const loadFromIDB = useHistoryStore((s) => s.loadFromIDB);
   const clockNow = useClockStore((s) => s.now);
   const [preset, setPreset] = useState<DatePreset>("30d");
 
@@ -89,10 +88,6 @@ export default function ReportsPage() {
     }),
     [t],
   );
-
-  useEffect(() => {
-    void loadFromIDB();
-  }, [loadFromIDB]);
 
   const filtered = useMemo(() => {
     if (preset === "all") return records;

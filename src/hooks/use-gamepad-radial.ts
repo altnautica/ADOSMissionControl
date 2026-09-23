@@ -46,10 +46,6 @@ const DPAD_DOWN = 13;
 const DPAD_LEFT = 14;
 const DPAD_RIGHT = 15;
 
-/** Right-stick axes in the input store's [roll, pitch, throttle, yaw] tuple. */
-const RIGHT_STICK_X = 0; // roll
-const RIGHT_STICK_Y = 1; // pitch (already Y-inverted by the poller: up = +)
-
 /** Below this magnitude the right stick is treated as centered (no aim). */
 const STICK_AIM_DEADZONE = 0.4;
 
@@ -142,12 +138,14 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
   selectedIdRef.current = selectedId;
 
   // Close + clear whenever the path is disabled (e.g. Cockpit turned off or a
-  // confirm modal took input) so a stale overlay never lingers.
+  // confirm modal took input) so a stale overlay never lingers, and hand the
+  // sticks back to the flight stream.
   useEffect(() => {
     if (!enabled && (openRef.current || highlightRef.current !== -1)) {
       setOpen(false);
       setHighlightedIndex(-1);
     }
+    if (!enabled) useInputStore.getState().setSticksCaptured(false);
   }, [enabled]);
 
   useEffect(() => {
@@ -165,15 +163,23 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
     const unsubscribe = useInputStore.subscribe((state) => {
       const list = wedgesRef.current;
       const holdDown = state.buttons[RADIAL_GAMEPAD_BUTTON] ?? false;
+      const opening = holdDown && !prevHold;
+      const releasing = !holdDown && prevHold;
+      // Advance the edge detector before any store write below: capturing the
+      // sticks notifies this same subscription re-entrantly, and that nested
+      // pass must not see the edge a second time.
+      prevHold = holdDown;
 
       // ── Open / fire on the hold-button edges ─────────────────────────────
-      if (holdDown && !prevHold) {
-        // Open with no preselection; the operator aims to pick.
+      if (opening) {
+        // Open with no preselection; the operator aims to pick. While open the
+        // sticks aim the radial, so they stop being flight input.
         if (list.length > 0) {
           setOpen(true);
           setHighlightedIndex(-1);
+          useInputStore.getState().setSticksCaptured(true);
         }
-      } else if (!holdDown && prevHold) {
+      } else if (releasing) {
         // Release: fire the highlighted wedge through the shared dispatcher.
         if (openRef.current) {
           const idx = highlightRef.current;
@@ -185,8 +191,12 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
         }
         setOpen(false);
         setHighlightedIndex(-1);
+        useInputStore.getState().setSticksCaptured(false);
+        for (const b of [DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT]) {
+          prevDpad[b] = state.buttons[b] ?? false;
+        }
+        return;
       }
-      prevHold = holdDown;
 
       // Aim only while the radial is open.
       if (!openRef.current) {
@@ -197,10 +207,11 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
       }
 
       // ── Right-stick aim ──────────────────────────────────────────────────
-      const sx = state.axes[RIGHT_STICK_X] ?? 0;
-      const sy = state.axes[RIGHT_STICK_Y] ?? 0;
+      // The physical right stick, not the mapped flight axes: in TX mode 1
+      // the mapped pitch lives on the left stick.
+      const [sx, sy] = state.rightStick;
       if (Math.hypot(sx, sy) >= STICK_AIM_DEADZONE) {
-        // Screen angle: 0 = up, clockwise. Poller already inverts Y so up = +.
+        // Screen angle: 0 = up, clockwise. The poller inverts Y so up = +.
         const angle = Math.atan2(sx, sy);
         const norm = angle < 0 ? angle + 2 * Math.PI : angle;
         const idx = nearestWedge(list, norm);
@@ -235,7 +246,10 @@ export function useGamepadRadial(enabled: boolean): GamepadRadialModel {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      useInputStore.getState().setSticksCaptured(false);
+    };
   }, [enabled]);
 
   return { open, wedges, highlightedIndex };

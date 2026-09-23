@@ -8,8 +8,8 @@
  *
  * Records are tagged with the owning `userId` at import time. On every
  * auth state change the keystore purges records that do not match the
- * current user. This closes the shared-machine user-switch leak (audit
- * finding B3).
+ * current user, so keys do not leak across a user switch on a shared
+ * machine.
  *
  * @module protocol/signing-keystore
  */
@@ -155,7 +155,7 @@ export async function listDroneIds(): Promise<string[]> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// User-switch purge (audit finding B3)
+// User-switch purge
 // ──────────────────────────────────────────────────────────────
 
 /**

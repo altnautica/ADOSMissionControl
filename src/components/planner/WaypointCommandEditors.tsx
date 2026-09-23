@@ -5,11 +5,10 @@
  */
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import type { Waypoint } from "@/lib/types";
-import { INAV_WP_ACTION } from "@/lib/protocol/msp/msp-decoders-inav";
 
 /** The subset of parameter fields the command editors read directly. Both a
  * navigation `Waypoint` and an attached `MissionAction` satisfy this shape, so
@@ -18,6 +17,7 @@ export interface EditableParams {
   param1?: number;
   param2?: number;
   param3?: number;
+  param4?: number;
 }
 
 /** The fields the per-command editors commit; a superset of both a waypoint's
@@ -39,19 +39,21 @@ interface CmdEditorProps {
   onUpdate: (update: EditableParams) => void;
 }
 
-interface INavActionEditorProps {
-  action: number;
-  waypoint: Waypoint;
-  localParam1: string;
-  localParam2: string;
-  localParam3: string;
-  localHoldTime: string;
-  setLocalParam1: (v: string) => void;
-  setLocalParam2: (v: string) => void;
-  setLocalParam3: (v: string) => void;
-  setLocalHoldTime: (v: string) => void;
-  commitField: (field: keyof Waypoint, value: string) => void;
-  onUpdate: (update: Partial<Waypoint>) => void;
+/**
+ * Winch rate (MAVLink param4). Winch is an action-only command, so the rate
+ * keeps its own draft value rather than widening the shared editor props.
+ */
+function WinchRateInput({ params, onUpdate }: Pick<CmdEditorProps, "params" | "onUpdate">) {
+  const t = useTranslations("planner");
+  const [draft, setDraft] = useState(params.param4 !== undefined ? String(params.param4) : "");
+  return (
+    <Input label={t("rate")} type="number" unit="m/s" placeholder="0" value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        const num = parseFloat(draft);
+        onUpdate({ param4: draft === "" || isNaN(num) ? undefined : num });
+      }} />
+  );
 }
 
 export function CommandSpecificEditors({
@@ -68,11 +70,13 @@ export function CommandSpecificEditors({
           onBlur={() => commitField("holdTime", localHoldTime)} />
       )}
       {cmd === "LOITER_TURNS" && (
+        // MAVLink LOITER_TURNS: param1 turns, param3 radius. The nav one-slot
+        // shift puts holdTime in param1 and model param2 in param3.
         <div className="grid grid-cols-2 gap-2">
-          <Input label={t("turns")} type="number" placeholder="1" value={localParam1}
-            onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
-          <Input label={t("radius")} type="number" unit="m" placeholder="0" value={localParam3}
-            onChange={(e) => setLocalParam3(e.target.value)} onBlur={() => commitField("param3", localParam3)} />
+          <Input label={t("turns")} type="number" placeholder="1" value={localHoldTime}
+            onChange={(e) => setLocalHoldTime(e.target.value)} onBlur={() => commitField("holdTime", localHoldTime)} />
+          <Input label={t("radius")} type="number" unit="m" placeholder="0" value={localParam2}
+            onChange={(e) => setLocalParam2(e.target.value)} onBlur={() => commitField("param2", localParam2)} />
         </div>
       )}
       {cmd === "CONDITION_YAW" && (
@@ -114,11 +118,20 @@ export function CommandSpecificEditors({
         </div>
       )}
       {cmd === "DO_WINCH" && (
+        // MAVLink DO_WINCH: param1 instance, param2 action, param3 length, param4 rate.
         <div className="grid grid-cols-2 gap-2">
           <Input label={t("winchNum")} type="number" placeholder="1" value={localParam1}
             onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
+          <Select label={t("winchAction")}
+            options={[
+              { value: "0", label: t("winchRelax") },
+              { value: "1", label: t("winchLength") },
+              { value: "2", label: t("winchRate") },
+            ]}
+            value={String(params.param2 ?? 0)} onChange={(v) => onUpdate({ param2: parseInt(v) })} />
           <Input label={t("length")} type="number" unit="m" placeholder="0" value={localParam3}
             onChange={(e) => setLocalParam3(e.target.value)} onBlur={() => commitField("param3", localParam3)} />
+          <WinchRateInput params={params} onUpdate={onUpdate} />
         </div>
       )}
       {cmd === "DO_FENCE_ENABLE" && (
@@ -126,8 +139,9 @@ export function CommandSpecificEditors({
           value={String(params.param1 ?? 1)} onChange={(v) => onUpdate({ param1: parseInt(v) })} />
       )}
       {cmd === "NAV_PAYLOAD_PLACE" && (
-        <Input label={t("maxDescent")} type="number" unit="m" placeholder="10" value={localParam1}
-          onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
+        // MAVLink PAYLOAD_PLACE param1 (max descent) is the nav holdTime slot.
+        <Input label={t("maxDescent")} type="number" unit="m" placeholder="10" value={localHoldTime}
+          onChange={(e) => setLocalHoldTime(e.target.value)} onBlur={() => commitField("holdTime", localHoldTime)} />
       )}
       {cmd === "CONDITION_DISTANCE" && (
         <Input label={t("distance")} type="number" unit="m" placeholder="0" value={localParam1}
@@ -160,17 +174,31 @@ export function CommandSpecificEditors({
   );
 }
 
-// ── iNav action parameter hints ───────────────────────────────
+// ── iNav navigation-command editors ───────────────────────────
 
-export function INavActionEditors({
-  action, waypoint,
-  localParam1, localParam2, localParam3, localHoldTime,
-  setLocalParam1, setLocalParam2, setLocalParam3, setLocalHoldTime,
-  commitField, onUpdate,
-}: INavActionEditorProps) {
+interface INavCommandEditorProps {
+  cmd: string;
+  localParam1: string;
+  localHoldTime: string;
+  setLocalParam1: (v: string) => void;
+  setLocalHoldTime: (v: string) => void;
+  commitField: (field: EditableField, value: string) => void;
+}
+
+/**
+ * Editors for the navigation commands an iNav waypoint maps onto. Each field
+ * writes the model slot the iNav translator reads: POSHOLD_TIME hold time is
+ * `holdTime` (MAVLink param1 → iNav p1) and the LAND site elevation is `param1`
+ * (MAVLink param2 → iNav p2). The altitude datum (iNav p3 bit 0) follows the
+ * waypoint's altitude frame. SET_POI, JUMP and SET_HEAD are attached actions
+ * (ROI, DO_JUMP, CONDITION_YAW) in the action timeline.
+ */
+export function INavCommandEditors({
+  cmd, localParam1, localHoldTime, setLocalParam1, setLocalHoldTime, commitField,
+}: INavCommandEditorProps) {
   return (
     <>
-      {action === INAV_WP_ACTION.POSHOLD_TIME && (
+      {cmd === "LOITER_TIME" && (
         <div className="flex flex-col gap-1">
           <Input label="Hold time" type="number" unit="s" placeholder="0"
             value={localHoldTime} onChange={(e) => setLocalHoldTime(e.target.value)}
@@ -180,73 +208,31 @@ export function INavActionEditors({
           </span>
         </div>
       )}
-      {action === INAV_WP_ACTION.JUMP && (
-        <div className="flex flex-col gap-1.5">
-          <div className="grid grid-cols-2 gap-2">
-            <Input label="Target WP" type="number" placeholder="1" value={localParam1}
-              onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
-            <Input label="Repeat" type="number" placeholder="1" value={localParam2}
-              onChange={(e) => setLocalParam2(e.target.value)} onBlur={() => commitField("param2", localParam2)} />
-          </div>
-          <span className="text-[9px] text-text-tertiary">
-            Target is a 1-based waypoint number. Repeat 0 means infinite loop.
-          </span>
-          {localParam2 && Number(localParam2) === 0 && (
-            <span className="text-[9px] text-status-warning">Repeat count 0 causes infinite loop</span>
-          )}
-        </div>
-      )}
-      {action === INAV_WP_ACTION.SET_POI && (
+      {cmd === "WAYPOINT" && (
         <span className="text-[9px] text-text-tertiary">
-          Points the gimbal at this coordinate. The aircraft continues to the next waypoint.
+          Flies through this position at the mission speed.
         </span>
       )}
-      {action === INAV_WP_ACTION.SET_HEAD && (
-        <div className="flex flex-col gap-1">
-          <Input label="Heading" type="number" unit="deg" placeholder="0" value={localParam1}
-            onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
-          <span className="text-[9px] text-text-tertiary">
-            Locks aircraft heading until the next SET_HEAD or RTH. Use -1 to cancel.
-          </span>
-        </div>
-      )}
-      {action === INAV_WP_ACTION.WAYPOINT && (
-        <div className="flex flex-col gap-1">
-          <Input label="Speed" type="number" unit="cm/s" placeholder="0 (default)" value={localParam2}
-            onChange={(e) => setLocalParam2(e.target.value)} onBlur={() => commitField("param2", localParam2)} />
-          <span className="text-[9px] text-text-tertiary">
-            Override speed for this waypoint leg. 0 uses the mission default.
-          </span>
-        </div>
-      )}
-      {action === INAV_WP_ACTION.POSHOLD_UNLIM && (
+      {cmd === "LOITER" && (
         <span className="text-[9px] text-text-tertiary">
           Loiters at this position indefinitely. Mission does not advance automatically.
         </span>
       )}
-      {action === INAV_WP_ACTION.RTH && (
+      {cmd === "RTL" && (
         <span className="text-[9px] text-text-tertiary">
-          Returns to home from this waypoint. Mission ends after landing.
+          Returns to home and lands. The mission ends here.
         </span>
       )}
-      {action === INAV_WP_ACTION.LAND && (
+      {cmd === "LAND" && (
         <div className="flex flex-col gap-1.5">
-          <div className="grid grid-cols-2 gap-2">
-            <Input label="Elevation" type="number" unit="m" placeholder="0 (auto)" value={localParam2}
-              onChange={(e) => setLocalParam2(e.target.value)} onBlur={() => commitField("param2", localParam2)} />
-            <Select label="Altitude datum"
-              options={[{ value: "0", label: "Relative (takeoff)" }, { value: "1", label: "Absolute (MSL)" }]}
-              value={String((waypoint.param3 ?? 0) & 1)}
-              onChange={(v) => onUpdate({ param3: ((waypoint.param3 ?? 0) & ~1) | (parseInt(v) & 1) })} />
-          </div>
+          <Input label="Elevation" type="number" unit="m" placeholder="0 (auto)" value={localParam1}
+            onChange={(e) => setLocalParam1(e.target.value)} onBlur={() => commitField("param1", localParam1)} />
           <span className="text-[9px] text-text-tertiary">
-            Final waypoint. Site elevation 0 uses the takeoff/home elevation. Approach direction and
-            landing heading are configured in the FW Approach panel.
+            Landing-site elevation in the waypoint&apos;s altitude frame. 0 uses the takeoff/home
+            elevation. Approach direction and landing heading are configured in the FW Approach panel.
           </span>
         </div>
       )}
-      {/* Props not used in every branch. Kept in signature for API consistency */}
-      {(void localParam3, void localHoldTime, void waypoint, void setLocalParam3, void setLocalHoldTime, void onUpdate, null)}
     </>
   );
 }

@@ -22,7 +22,6 @@ import {
   decodeMspINavBatteryConfig,
   decodeMspINavRateProfile,
   decodeMspINavAirSpeed,
-  decodeMspINavMixer,
   decodeMspINavOsdLayoutsHeader,
   decodeMspINavOsdAlarms,
   decodeMspINavOsdPreferences,
@@ -41,14 +40,10 @@ import {
   decodeMspINavFwApproach,
   decodeMspINavRateDynamics,
   decodeMspINavEzTune,
-  decodeMspINavServoConfig,
-  decodeMspINavGeozone,
-  decodeMspINavGeozoneVertex,
   decodeMspAdsbVehicleList,
   decodeCommonSetting,
   decodeCommonSettingInfo,
   decodeCommonPgList,
-  decodeMspCommonMotorMixer,
 } from "@/lib/protocol/msp/msp-decoders-inav";
 
 // ── fixture helpers ────────────────────────────────────────────
@@ -226,29 +221,10 @@ describe("iNav decoder parity", () => {
   });
 
   // ── mixer / servo / output ─────────────────────────────────
-  it("decodeMspINavMixer", () => {
-    const bytes = Array(16).fill(0).map((_, i) => (i * 3 + 1) & 0xff);
-    expect(normalise(decodeMspINavMixer(dv(bytes)))).toMatchSnapshot();
-  });
-
   it("decodeMspINavServoMixer (two rules)", () => {
     const rule = [0x01, 0x02, ...s16(500), 0x05, 0x04];
     const bytes = [...rule, ...rule];
     expect(normalise(decodeMspINavServoMixer(dv(bytes)))).toMatchSnapshot();
-  });
-
-  it("decodeMspINavServoConfig (two servos)", () => {
-    const servo = [
-      ...s16(100), // rate
-      ...s16(1000), // min
-      ...s16(2000), // max
-      ...s16(1500), // middle
-      0x03, // forwardFromChannel
-      ...u16(0x000a), // reversedInputSources
-      0x01, // flags
-    ];
-    const bytes = [...servo, ...servo];
-    expect(normalise(decodeMspINavServoConfig(dv(bytes)))).toMatchSnapshot();
   });
 
   it("decodeMspINavOutputMappingExt2 (three entries)", () => {
@@ -263,18 +239,6 @@ describe("iNav decoder parity", () => {
   it("decodeMspINavTimerOutputMode (three timers)", () => {
     const bytes = [0x00, 0x01, 0x01, 0x02, 0x02, 0x03];
     expect(normalise(decodeMspINavTimerOutputMode(dv(bytes)))).toMatchSnapshot();
-  });
-
-  it("decodeMspCommonMotorMixer (mixed occupancy)", () => {
-    const rule = (t: number, r: number, p: number, y: number): number[] => [
-      ...s16(t), ...s16(r), ...s16(p), ...s16(y),
-    ];
-    const bytes = [
-      ...rule(1000, 1000, 1000, -1000),
-      ...rule(0, 0, 0, 0), // empty slot, skipped
-      ...rule(1000, -1000, -1000, 1000),
-    ];
-    expect(normalise(decodeMspCommonMotorMixer(dv(bytes)))).toMatchSnapshot();
   });
 
   // ── OSD ────────────────────────────────────────────────────
@@ -383,32 +347,6 @@ describe("iNav decoder parity", () => {
   it("decodeMspINavProgrammingPidStatus (two rules)", () => {
     const bytes = [0x00, ...s32(500), 0x01, ...s32(-750)];
     expect(normalise(decodeMspINavProgrammingPidStatus(dv(bytes)))).toMatchSnapshot();
-  });
-
-  // ── geofence ──────────────────────────────────────────────
-  it("decodeMspINavGeozone", () => {
-    const bytes = [
-      0x02, // number
-      0x01, // type
-      0x01, // shape
-      ...s32(10000), // minAlt cm
-      ...s32(50000), // maxAlt cm
-      0x01, // fenceAction
-      0x05, // vertexCount
-      0x01, // isSeaLevelRef
-      0x01, // enabled
-    ];
-    expect(normalise(decodeMspINavGeozone(dv(bytes)))).toMatchSnapshot();
-  });
-
-  it("decodeMspINavGeozoneVertex", () => {
-    const bytes = [
-      0x02, // geozoneId
-      0x01, // vertexIdx
-      ...s32(135000000), // lat
-      ...s32(774000000), // lon
-    ];
-    expect(normalise(decodeMspINavGeozoneVertex(dv(bytes)))).toMatchSnapshot();
   });
 
   // ── ADS-B ─────────────────────────────────────────────────

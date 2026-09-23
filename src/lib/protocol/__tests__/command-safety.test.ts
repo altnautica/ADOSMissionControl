@@ -205,6 +205,16 @@ describe("guidedGoto is ack-tracked and keeps 1e7 precision", () => {
     expect(throughFloat32).not.toBe(129715987);
   });
 
+  it("sets the change-mode flag in param2 only when asked to", async () => {
+    const { ctx, ints } = ctxWith("ardupilot-copter");
+    await cmdGuidedGoto(ctx, 1, 2, 30);
+    await cmdGuidedGoto(ctx, 1, 2, 30, { changeMode: false });
+
+    // MAV_DO_REPOSITION_FLAGS_CHANGE_MODE is bit 0 of param2.
+    expect(ints[0].params[1]).toBe(1);
+    expect(ints[1].params[1]).toBe(0);
+  });
+
   it("refuses cleanly when the transport is down", async () => {
     const { ctx, ints } = ctxWith("ardupilot-copter");
     const offline: CommandContext = { ...ctx, transport: null };

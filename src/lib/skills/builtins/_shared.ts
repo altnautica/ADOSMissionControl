@@ -26,20 +26,13 @@ export function disabledIfNoLink(ctx: SkillContext): SkillState | null {
   return null;
 }
 
-/** Disabled when the vehicle is not in the required arm state. */
-export function disabledIfArmMismatch(
-  ctx: SkillContext,
-  need: "armed" | "disarmed",
-): SkillState | null {
-  if (need === "disarmed" && ctx.armState === "armed") {
-    return {
-      kind: "disabled",
-      reason:
-        need === "disarmed" ? REASON.alreadyArmed : REASON.notArmed,
-    };
-  }
-  if (need === "armed" && ctx.armState === "disarmed") {
-    return { kind: "disabled", reason: REASON.notArmed };
-  }
+/**
+ * Disabled unless the vehicle is positively known to be disarmed: an armed
+ * vehicle is already armed, and an unknown arm state means no heartbeat is
+ * being read, so arming blind is refused as a missing link.
+ */
+export function disabledUnlessDisarmed(ctx: SkillContext): SkillState | null {
+  if (ctx.armState === "armed") return { kind: "disabled", reason: REASON.alreadyArmed };
+  if (ctx.armState === "unknown") return { kind: "disabled", reason: REASON.noFcLink };
   return null;
 }

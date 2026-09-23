@@ -12,7 +12,6 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import { useAuthStore } from "@/stores/auth-store";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 
 function sanitizeAuthError(msg: string, t: (key: string) => string): string {
@@ -99,7 +98,6 @@ function ConvexSignInForm({
   onModeChange: (mode: "signIn" | "signUp") => void;
 }) {
   const { signIn } = useAuthActions();
-  const setAuth = useAuthStore((s) => s.setAuth);
   const t = useTranslations("auth");
 
   const [email, setEmail] = useState("");
@@ -121,13 +119,7 @@ function ConvexSignInForm({
         ...(mode === "signUp" ? { fullName } : {}),
       });
 
-      // Set Zustand auth immediately for snappy UI feedback.
-      // AuthBridge will update with full profile data once the query resolves.
-      setAuth({
-        id: email,
-        name: fullName || email.split("@")[0],
-        email,
-      });
+      // AuthBridge publishes the identity once the server confirms it.
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";

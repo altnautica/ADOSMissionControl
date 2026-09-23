@@ -35,7 +35,9 @@
  *   4. dials the ground station's `:8765` and registers the resulting
  *      `DroneProtocol` into `drone-manager` KEYED BY THE DRONE's nodeId (not
  *      the ground station's), `ownsFleetRow: false` since `RelayedDroneBridge`
- *      already owns the drone's presence row.
+ *      already owns the drone's presence row. `addDrone` attaches the FC to
+ *      that registry row and `removeDrone` detaches it, so the relayed
+ *      drone's arm state, position and battery project into the fleet.
  *
  * A drone that is ALSO paired directly is skipped entirely — its own
  * `AgentMavlinkBridge` session already owns that same node id, and re-adding

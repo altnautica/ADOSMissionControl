@@ -18,23 +18,26 @@ import type {
 // ── iNav MIXER decoder ───────────────────────────────────────
 
 /**
- * MSP2_INAV_MIXER (0x2010)
+ * MSP2_INAV_MIXER (0x2010), 9 bytes:
  *
+ * U8  motorDirectionInverted (bool)
+ * U8  0 (formerly yaw_jump_prevention_limit)
+ * U8  motorstopOnLow (bool)
  * U8  platformType (0=MULTIROTOR, 1=AIRPLANE, 2=TRICOPTER, 3=ROVER, 4=BOAT, 5=HELICOPTER)
- * U8  yawMotorsReversed (bool)
  * U8  hasFlaps (bool)
  * U16 appliedMixerPreset
- * U8  motorCount
- * U8  servoCount
+ * U8  MAX_SUPPORTED_MOTORS
+ * U8  MAX_SUPPORTED_SERVOS
  */
 export function decodeMspINavMixer(dv: DataView): INavMixer {
   return {
-    platformType: readU8(dv, 0),
-    yawMotorsReversed: dv.byteLength > 1 ? readU8(dv, 1) !== 0 : false,
-    hasFlaps: dv.byteLength > 2 ? readU8(dv, 2) !== 0 : false,
-    appliedMixerPreset: dv.byteLength > 4 ? readU16(dv, 3) : 0,
-    motorCount: dv.byteLength > 5 ? readU8(dv, 5) : 0,
-    servoCount: dv.byteLength > 6 ? readU8(dv, 6) : 0,
+    motorDirectionInverted: readU8(dv, 0) !== 0,
+    motorstopOnLow: readU8(dv, 2) !== 0,
+    platformType: readU8(dv, 3),
+    hasFlaps: readU8(dv, 4) !== 0,
+    appliedMixerPreset: readU16(dv, 5),
+    maxSupportedMotors: readU8(dv, 7),
+    maxSupportedServos: readU8(dv, 8),
   };
 }
 
@@ -114,57 +117,59 @@ export function decodeMspINavServoMixer(dv: DataView): INavServoMixerRule[] {
 
 // ── iNav SERVO CONFIG decoder ─────────────────────────────────
 
+/** Bytes per servo slot in MSP2_INAV_SERVO_CONFIG. */
+const SERVO_CONFIG_RECORD = 7;
+
 /**
  * MSP2_INAV_SERVO_CONFIG (0x2200)
  *
- * Repeated per servo (10 bytes each):
- *   S16 rate
- *   S16 min
- *   S16 max
- *   S16 middle
- *   U8  forwardFromChannel
- *   U16 reversedInputSources (bitmask)
- *   U8  flags
+ * Repeated per servo slot (7 bytes each):
+ *   S16 min (us)
+ *   S16 max (us)
+ *   S16 middle (us)
+ *   S8  rate (%)
  */
 export function decodeMspINavServoConfig(dv: DataView): INavServoConfig[] {
   const result: INavServoConfig[] = [];
-  let offset = 0;
-  while (offset + 10 <= dv.byteLength) {
+  for (let offset = 0; offset + SERVO_CONFIG_RECORD <= dv.byteLength; offset += SERVO_CONFIG_RECORD) {
     result.push({
-      rate: readS16(dv, offset),
-      min: readS16(dv, offset + 2),
-      max: readS16(dv, offset + 4),
-      middle: readS16(dv, offset + 6),
-      forwardFromChannel: readU8(dv, offset + 8),
-      reversedInputSources: dv.byteLength >= offset + 11 ? readU16(dv, offset + 9) : 0,
-      flags: dv.byteLength >= offset + 12 ? readU8(dv, offset + 11) : 0,
+      min: readS16(dv, offset),
+      max: readS16(dv, offset + 2),
+      middle: readS16(dv, offset + 4),
+      rate: dv.getInt8(offset + 6),
     });
-    offset += 12;
   }
   return result;
 }
 
+/** Bytes per slot in MSP2_COMMON_MOTOR_MIXER. */
+const MOTOR_MIXER_RECORD = 8;
+
+/** The FC carries each mixer weight as u16 (weight + 2.0) x 1000. */
+function mixerWeight(dv: DataView, offset: number): number {
+  return (readU16(dv, offset) - 2000) / 1000;
+}
 
 /**
  * Decode MSP2_COMMON_MOTOR_MIXER (0x1005) response.
  *
- * iNav transmits the motor mixer as a flat array of 8-byte records in slot
- * order (no index field). Each record: S16 throttle, S16 roll, S16 pitch,
- * S16 yaw, all x1000. Empty slots where all four values are 0 are omitted
- * from the returned array.
+ * A flat array of 8-byte records in slot order (no index field), one per
+ * MAX_SUPPORTED_MOTORS slot. Each record: U16 throttle, U16 roll, U16 pitch,
+ * U16 yaw, every one (weight + 2.0) x 1000. A slot whose throttle weight is 0
+ * is unused on the FC, and the FC stops counting motors at the first one, so
+ * decoding stops there too.
  */
 export function decodeMspCommonMotorMixer(dv: DataView): MotorMixerRule[] {
   const rules: MotorMixerRule[] = [];
-  let offset = 0;
-  while (offset + 7 < dv.byteLength) {
-    const throttle = readS16(dv, offset) / 1000;
-    const roll = readS16(dv, offset + 2) / 1000;
-    const pitch = readS16(dv, offset + 4) / 1000;
-    const yaw = readS16(dv, offset + 6) / 1000;
-    if (throttle !== 0 || roll !== 0 || pitch !== 0 || yaw !== 0) {
-      rules.push({ throttle, roll, pitch, yaw });
-    }
-    offset += 8;
+  for (let offset = 0; offset + MOTOR_MIXER_RECORD <= dv.byteLength; offset += MOTOR_MIXER_RECORD) {
+    const throttle = mixerWeight(dv, offset);
+    if (throttle === 0) break;
+    rules.push({
+      throttle,
+      roll: mixerWeight(dv, offset + 2),
+      pitch: mixerWeight(dv, offset + 4),
+      yaw: mixerWeight(dv, offset + 6),
+    });
   }
   return rules;
 }

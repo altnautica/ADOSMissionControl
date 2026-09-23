@@ -25,11 +25,6 @@ const UNIT_OPTIONS = [
 export function OperatorProfileEditor() {
   const profile = useOperatorProfileStore((s) => s.profile);
   const updateProfile = useOperatorProfileStore((s) => s.updateProfile);
-  const loadFromIDB = useOperatorProfileStore((s) => s.loadFromIDB);
-
-  useEffect(() => {
-    void loadFromIDB();
-  }, [loadFromIDB]);
 
   const [draft, setDraft] = useState<OperatorProfile>(profile);
 

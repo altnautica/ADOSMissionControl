@@ -112,7 +112,7 @@ export interface MissionContext {
   onParameter: (cb: ParameterCallback) => () => void
   onFencePoint: (cb: FencePointCallback) => () => void
   getParameter: (name: string) => Promise<{ value: number }>
-  setParameter: (name: string, value: number, type?: number) => Promise<CommandResult>
+  setParameter: (name: string, value: number) => Promise<CommandResult>
 }
 
 /**

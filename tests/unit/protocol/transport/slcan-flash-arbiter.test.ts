@@ -181,10 +181,10 @@ describe("enterSlcanMode — happy paths", () => {
     const session = await promise;
 
     expect(session.slcanTransport).toBeTruthy();
-    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_CPORT", 1, 9);
-    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_SERNUM", 0, 9);
-    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_TIMOUT", 300, 9);
-    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_OVRIDE", 1, 9);
+    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_CPORT", 1);
+    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_SERNUM", 0);
+    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_TIMOUT", 300);
+    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_OVRIDE", 1);
     expect(reboot).toHaveBeenCalled();
     expect(useSlcanModeStore.getState().state).toBe("SLCAN_ACTIVE");
   });
@@ -246,7 +246,7 @@ describe("enterSlcanMode — failure paths", () => {
     await rejection;
 
     expect(useSlcanModeStore.getState().state).toBe("ERROR");
-    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_CPORT", 0, 9);
+    expect(setParam).toHaveBeenCalledWith("CAN_SLCAN_CPORT", 0);
   });
 
   it("enableCanForward rejected by FC triggers rollback", async () => {

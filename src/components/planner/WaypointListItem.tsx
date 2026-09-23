@@ -13,54 +13,36 @@ import { GripVertical, X, ChevronDown, ChevronRight, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { Waypoint, WaypointCommand } from "@/lib/types";
+import type { NavCommand, Waypoint, WaypointCommand } from "@/lib/types";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { NAV_COMMAND_OPTIONS, CMD_LETTER } from "./waypoint-constants";
+import { NAV_COMMAND_OPTIONS, CMD_LETTER, INAV_ACTION_COMMANDS } from "./waypoint-constants";
 import { cmdMap } from "@/lib/mission-io-formats";
 import { useSupportedMissionCommands } from "@/hooks/use-supported-mission-commands";
-import { CommandSpecificEditors, INavActionEditors } from "./WaypointCommandEditors";
+import { CommandSpecificEditors, INavCommandEditors } from "./WaypointCommandEditors";
 import { WaypointActionTimeline } from "./WaypointActionTimeline";
-import { INAV_WP_ACTION } from "@/lib/protocol/msp/msp-decoders-inav";
 
 const FRAME_LABELS: Record<string, string> = { relative: "AGL", absolute: "MSL", terrain: "Terrain" };
 
 // ── iNav action options ───────────────────────────────────────
 
-const INAV_ACTION_OPTIONS = [
-  { value: String(INAV_WP_ACTION.WAYPOINT),      label: "WAYPOINT" },
-  { value: String(INAV_WP_ACTION.POSHOLD_UNLIM), label: "POSHOLD_UNLIM" },
-  { value: String(INAV_WP_ACTION.POSHOLD_TIME),  label: "POSHOLD_TIME" },
-  { value: String(INAV_WP_ACTION.RTH),           label: "RTH" },
-  { value: String(INAV_WP_ACTION.SET_POI),       label: "SET_POI" },
-  { value: String(INAV_WP_ACTION.JUMP),          label: "JUMP" },
-  { value: String(INAV_WP_ACTION.SET_HEAD),      label: "SET_HEAD" },
-  { value: String(INAV_WP_ACTION.LAND),          label: "LAND" },
+/**
+ * The iNav waypoint actions that own a position, each mapped onto the
+ * navigation command the mission model and the iNav translator share. SET_POI,
+ * JUMP and SET_HEAD are attached actions (ROI, DO_JUMP, CONDITION_YAW).
+ */
+const INAV_ACTION_OPTIONS: { value: NavCommand; label: string }[] = [
+  { value: "WAYPOINT",    label: "WAYPOINT" },
+  { value: "LOITER",      label: "POSHOLD_UNLIM" },
+  { value: "LOITER_TIME", label: "POSHOLD_TIME" },
+  { value: "RTL",         label: "RTH" },
+  { value: "LAND",        label: "LAND" },
 ];
 
-// Compact-row display for an iNav waypoint's action, mirroring the CMD_LETTER
-// conventions used for the MAVLink command letters.
-const INAV_ACTION_LABEL: Record<number, string> = {
-  [INAV_WP_ACTION.WAYPOINT]:      "WAYPOINT",
-  [INAV_WP_ACTION.POSHOLD_UNLIM]: "POSHOLD_UNLIM",
-  [INAV_WP_ACTION.POSHOLD_TIME]:  "POSHOLD_TIME",
-  [INAV_WP_ACTION.RTH]:           "RTH",
-  [INAV_WP_ACTION.SET_POI]:       "SET_POI",
-  [INAV_WP_ACTION.JUMP]:          "JUMP",
-  [INAV_WP_ACTION.SET_HEAD]:      "SET_HEAD",
-  [INAV_WP_ACTION.LAND]:          "LAND",
-};
-
-const INAV_ACTION_LETTER: Record<number, string> = {
-  [INAV_WP_ACTION.WAYPOINT]:      "W",
-  [INAV_WP_ACTION.POSHOLD_UNLIM]: "L",
-  [INAV_WP_ACTION.POSHOLD_TIME]:  "L",
-  [INAV_WP_ACTION.RTH]:           "R",
-  [INAV_WP_ACTION.SET_POI]:       "O",
-  [INAV_WP_ACTION.JUMP]:          "J",
-  [INAV_WP_ACTION.SET_HEAD]:      "Y",
-  [INAV_WP_ACTION.LAND]:          "D",
-};
+/** iNav action name per navigation command, for the compact row. */
+const INAV_ACTION_LABEL: Record<string, string> = Object.fromEntries(
+  INAV_ACTION_OPTIONS.map((o) => [o.value, o.label]),
+);
 
 interface WaypointListItemProps {
   waypoint: Waypoint;
@@ -104,12 +86,14 @@ export function WaypointListItem({
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const protocol = getProtocol();
   const isInav = protocol?.getVehicleInfo()?.firmwareType === "inav";
-  const inavAction = waypoint.inavAction ?? INAV_WP_ACTION.WAYPOINT;
 
-  // The compact row reflects the chosen iNav action when the connected firmware
-  // is iNav, otherwise the MAVLink command.
-  const rowLabel = isInav ? (INAV_ACTION_LABEL[inavAction] ?? "WAYPOINT") : cmd;
-  const rowLetter = isInav ? (INAV_ACTION_LETTER[inavAction] ?? "W") : (CMD_LETTER[cmd] ?? "W");
+  // The compact row names the iNav action when the connected firmware is iNav,
+  // otherwise the MAVLink command. Both derive from the one `command` field.
+  const rowLabel = isInav ? (INAV_ACTION_LABEL[cmd] ?? cmd) : cmd;
+  const rowLetter = CMD_LETTER[cmd] ?? "W";
+  const inavOptions = INAV_ACTION_LABEL[cmd]
+    ? INAV_ACTION_OPTIONS
+    : [...INAV_ACTION_OPTIONS, { value: cmd, label: cmd }];
 
   const [localLat, setLocalLat] = useState(waypoint.lat.toFixed(6));
   const [localLon, setLocalLon] = useState(waypoint.lon.toFixed(6));
@@ -196,17 +180,19 @@ export function WaypointListItem({
           </div>
           {isInav ? (
             <>
-              <Select label="Action" options={INAV_ACTION_OPTIONS} value={String(inavAction)}
+              <Select label="Action" options={inavOptions} value={cmd}
                 onChange={(v) => {
-                  const action = parseInt(v);
-                  onUpdate({ inavAction: action, command: undefined, param1: undefined, param2: undefined, param3: undefined });
+                  // A new action starts from clean slots: a stale hold time would
+                  // turn a WAYPOINT into a timed position hold on upload.
+                  onUpdate({ command: v as NavCommand, holdTime: undefined, param1: undefined, param2: undefined, param3: undefined });
                 }} />
-              <INavActionEditors
-                action={inavAction} waypoint={waypoint}
-                localParam1={localParam1} localParam2={localParam2} localParam3={localParam3} localHoldTime={localHoldTime}
-                setLocalParam1={setLocalParam1} setLocalParam2={setLocalParam2} setLocalParam3={setLocalParam3} setLocalHoldTime={setLocalHoldTime}
-                commitField={commitField} onUpdate={onUpdate}
+              <INavCommandEditors
+                cmd={cmd}
+                localParam1={localParam1} localHoldTime={localHoldTime}
+                setLocalParam1={setLocalParam1} setLocalHoldTime={setLocalHoldTime}
+                commitField={commitField}
               />
+              <WaypointActionTimeline waypoint={waypoint} onUpdate={onUpdate} allowedCommands={INAV_ACTION_COMMANDS} />
             </>
           ) : (
             <>

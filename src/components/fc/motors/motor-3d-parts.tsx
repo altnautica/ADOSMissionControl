@@ -6,6 +6,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Group } from "three";
 import type { MotorPosition } from "@/lib/motor-layouts";
+import { BODY_PLANE_ROTATION, motorScenePosition } from "./motor-scene-frame";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
 // ── Brand colors ──────────────────────────────────────────────
@@ -161,9 +162,7 @@ export const MotorAssembly = memo(function MotorAssembly({
   onUnhover: () => void;
   isHovered: boolean;
 }) {
-  const x = motor.roll * SCALE;
-  const z = -motor.pitch * SCALE;
-  const y = yOffset;
+  const [x, y, z] = motorScenePosition(motor, SCALE, yOffset);
   const color = rotationColor(motor.rotation);
   const isUnknown = motor.rotation === "?";
 
@@ -206,9 +205,7 @@ export const ServoAssembly = memo(function ServoAssembly({
   motor: MotorPosition;
   yOffset: number;
 }) {
-  const x = motor.roll * SCALE;
-  const z = -motor.pitch * SCALE;
-  const y = yOffset;
+  const [x, y, z] = motorScenePosition(motor, SCALE, yOffset);
 
   return (
     <group position={[x, y, z]}>
@@ -243,9 +240,7 @@ export const Arm = memo(function Arm({
   motor: MotorPosition;
   yOffset: number;
 }) {
-  const x = motor.roll * SCALE;
-  const z = -motor.pitch * SCALE;
-  const y = yOffset;
+  const [x, y, z] = motorScenePosition(motor, SCALE, yOffset);
 
   const length = Math.sqrt(x * x + z * z);
   if (length < 0.01) return null;
@@ -267,18 +262,19 @@ export const Arm = memo(function Arm({
 // ── Forward chevron on body ──────────────────────────────────
 
 export function ForwardChevron() {
+  // Drawn in the body plane (x = right, y = forward) with the tip at the nose.
   const shape = useMemo(() => {
     const s = new THREE.Shape();
-    s.moveTo(0, -0.35);
-    s.lineTo(0.08, -0.22);
-    s.lineTo(0, -0.26);
-    s.lineTo(-0.08, -0.22);
+    s.moveTo(0, 0.35);
+    s.lineTo(0.08, 0.22);
+    s.lineTo(0, 0.26);
+    s.lineTo(-0.08, 0.22);
     s.closePath();
     return s;
   }, []);
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.042, 0]}>
+    <mesh rotation={BODY_PLANE_ROTATION} position={[0, 0.042, 0]}>
       <shapeGeometry args={[shape]} />
       <meshStandardMaterial color={COLOR_CW} metalness={0.5} roughness={0.4} side={THREE.DoubleSide} />
     </mesh>

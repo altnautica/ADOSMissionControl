@@ -18,13 +18,11 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Gauge, Save, HardDrive } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { RangefinderInstance } from "./RangefinderInstance";
 import {
-  SENSOR_PARAMS, OPTIONAL_SENSOR_PARAMS,
-  RNGFND_TYPE_OPTIONS, RNGFND_ORIENT_OPTIONS,
-  RNGFND_EXTRA_INSTANCES,
-  FLOW_TYPE_OPTIONS, ARSPD_TYPE_OPTIONS,
+  SENSOR_PARAMS, OPTIONAL_SENSOR_PARAMS, RNGFND_EXTRA_INSTANCES,
 } from "./sensor-constants";
 
 export function SensorsPanel() {
@@ -35,6 +33,7 @@ export function SensorsPanel() {
   const isPx4 = firmwareType === "px4";
   const { label: pl } = useParamLabel();
   const metadata = useParamMetadataMap();
+  const { enumValues } = useParamEnums(metadata);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
   const scrollRef = usePanelScroll("sensors");
   const [saving, setSaving] = useState(false);
@@ -56,6 +55,12 @@ export function SensorsPanel() {
 
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
+  // Every enum here (rangefinder/flow/airspeed type, ARSPD_USE, BARO_PRIMARY)
+  // comes from the vehicle's metadata with the verbatim @Values as the floor.
+  const enumField = (name: string, text: string, fallback = 0) => (
+    <ParamEnumSelect label={lbl(`${name} — ${text}`)} values={enumValues(name)}
+      value={params.get(name) ?? fallback} onChange={(v) => setLocalValue(name, v)} />
+  );
 
   // Additional ArduPilot rangefinder instances (2..A): show any that are
   // already configured (TYPE != 0), plus any the operator reveals via "Add".
@@ -158,13 +163,13 @@ export function SensorsPanel() {
                 </div>
               ) : (
                 <>
-                  <Select label={lbl("RNGFND1_TYPE — Sensor Type")} options={RNGFND_TYPE_OPTIONS} value={p("RNGFND1_TYPE")} onChange={(v) => set("RNGFND1_TYPE", v)} />
+                  {enumField("RNGFND1_TYPE", "Sensor Type")}
                   {p("RNGFND1_TYPE") !== "0" && (
                     <>
                       <Input label={lbl("RNGFND1_PIN — Analog Pin")} type="number" step="1" min="-1" value={p("RNGFND1_PIN", "-1")} onChange={(e) => set("RNGFND1_PIN", e.target.value)} />
                       <Input label={lbl("RNGFND1_MIN_CM — Min Distance")} type="number" step="1" min="0" unit="cm" value={p("RNGFND1_MIN_CM", "20")} onChange={(e) => set("RNGFND1_MIN_CM", e.target.value)} />
                       <Input label={lbl("RNGFND1_MAX_CM — Max Distance")} type="number" step="1" min="0" unit="cm" value={p("RNGFND1_MAX_CM", "700")} onChange={(e) => set("RNGFND1_MAX_CM", e.target.value)} />
-                      <Select label={lbl("RNGFND1_ORIENT — Orientation")} options={RNGFND_ORIENT_OPTIONS} value={p("RNGFND1_ORIENT", "25")} onChange={(v) => set("RNGFND1_ORIENT", v)} />
+                      {enumField("RNGFND1_ORIENT", "Orientation", 25)}
                       {latestDistance && (
                         <div className="mt-2 p-3 bg-bg-tertiary/50 rounded space-y-2">
                           <div className="flex items-center justify-between">
@@ -185,7 +190,7 @@ export function SensorsPanel() {
                     </>
                   )}
                   {extraRngfnd.map((n) => (
-                    <RangefinderInstance key={n} instance={n} p={p} set={set} lbl={lbl} />
+                    <RangefinderInstance key={n} instance={n} p={p} set={set} lbl={lbl} enumValues={enumValues} />
                   ))}
                   {canAddRngfnd && (
                     <Button variant="ghost" size="sm" onClick={addRngfnd} className="mt-1 self-start">
@@ -200,7 +205,7 @@ export function SensorsPanel() {
           {/* Optical Flow */}
           <CollapsibleSection title="Optical Flow">
             <div className="p-4 space-y-3">
-              <Select label={lbl("FLOW_TYPE — Sensor Type")} options={FLOW_TYPE_OPTIONS} value={p("FLOW_TYPE")} onChange={(v) => set("FLOW_TYPE", v)} />
+              {enumField("FLOW_TYPE", "Sensor Type")}
               {p("FLOW_TYPE") !== "0" && (
                 <>
                   <Input label={lbl("FLOW_FXSCALER — X Scaler")} type="number" step="1" value={p("FLOW_FXSCALER")} onChange={(e) => set("FLOW_FXSCALER", e.target.value)} />
@@ -214,10 +219,10 @@ export function SensorsPanel() {
           {/* Airspeed */}
           <CollapsibleSection title="Airspeed">
             <div className="p-4 space-y-3">
-              <Select label={lbl("ARSPD_TYPE — Sensor Type")} options={ARSPD_TYPE_OPTIONS} value={p("ARSPD_TYPE")} onChange={(v) => set("ARSPD_TYPE", v)} />
+              {enumField("ARSPD_TYPE", "Sensor Type")}
               {p("ARSPD_TYPE") !== "0" && (
                 <>
-                  <Select label={lbl("ARSPD_USE — Use Airspeed")} options={[{ value: "0", label: "0 — Disabled" }, { value: "1", label: "1 — Enabled" }, { value: "2", label: "2 — Use only for EKF" }]} value={p("ARSPD_USE", "1")} onChange={(v) => set("ARSPD_USE", v)} />
+                  {enumField("ARSPD_USE", "Use Airspeed", 1)}
                   <Input label={lbl("ARSPD_OFFSET — Pressure Offset")} type="number" step="0.1" unit="Pa" value={p("ARSPD_OFFSET")} onChange={(e) => set("ARSPD_OFFSET", e.target.value)} />
                   <Input label={lbl("ARSPD_RATIO — Speed Ratio")} type="number" step="0.01" value={p("ARSPD_RATIO", "1.9936")} onChange={(e) => set("ARSPD_RATIO", e.target.value)} />
                 </>
@@ -238,7 +243,7 @@ export function SensorsPanel() {
             <div className="p-4 space-y-3">
               <Input label={lbl("GND_ABS_PRESS — Absolute Pressure")} type="number" step="0.01" unit="Pa" value={p("GND_ABS_PRESS")} onChange={(e) => set("GND_ABS_PRESS", e.target.value)} />
               <Input label={lbl("GND_TEMP — Ground Temperature")} type="number" step="0.1" unit="°C" value={p("GND_TEMP")} onChange={(e) => set("GND_TEMP", e.target.value)} />
-              <Select label={lbl("BARO_PRIMARY — Primary Barometer")} options={[{ value: "0", label: "0 — First Baro" }, { value: "1", label: "1 — Second Baro" }, { value: "2", label: "2 — Third Baro" }]} value={p("BARO_PRIMARY")} onChange={(v) => set("BARO_PRIMARY", v)} />
+              {enumField("BARO_PRIMARY", "Primary Barometer")}
             </div>
           </CollapsibleSection>
 

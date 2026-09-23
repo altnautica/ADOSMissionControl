@@ -8,7 +8,7 @@
  */
 
 import type { Skill } from "../types";
-import { disabledIfNoLink, REASON } from "./_shared";
+import { disabledIfNoLink, disabledUnlessDisarmed } from "./_shared";
 
 export const armSkill: Skill = {
   id: "arm",
@@ -26,14 +26,7 @@ export const armSkill: Skill = {
     typedPhrase: "ARM",
     checklistAware: true,
   },
-  getState: (ctx) => {
-    const noLink = disabledIfNoLink(ctx);
-    if (noLink) return noLink;
-    if (ctx.armState === "armed") {
-      return { kind: "disabled", reason: REASON.alreadyArmed };
-    }
-    return { kind: "idle" };
-  },
+  getState: (ctx) => disabledIfNoLink(ctx) ?? disabledUnlessDisarmed(ctx) ?? { kind: "idle" },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal (e.g. a prearm failure) and spends nothing on it.
   activate: async (ctx) => ctx.protocol?.arm(),

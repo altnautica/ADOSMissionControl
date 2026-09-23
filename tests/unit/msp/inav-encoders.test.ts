@@ -7,8 +7,6 @@ import {
   encodeCommonSettingInfo,
   encodeMspINavSetMisc,
   encodeMspINavSetBatteryConfig,
-  encodeMspINavSetGeozone,
-  encodeMspINavSetGeozoneVertex,
   encodeMspINavSelectBatteryProfile,
   encodeMspINavSelectMixerProfile,
 } from '@/lib/protocol/msp/msp-encoders-inav'
@@ -189,67 +187,6 @@ describe('encodeMspINavSetBatteryConfig', () => {
 
   it('encodes cellMin as U16LE at offset 16', () => {
     expect(readU16LE(encodeMspINavSetBatteryConfig(cfg), 16)).toBe(3300)
-  })
-})
-
-// ── encodeMspINavSetGeozone ───────────────────────────────────
-
-describe('encodeMspINavSetGeozone', () => {
-  const g = {
-    number: 2, type: 0, shape: 1,
-    minAlt: -100, maxAlt: 12000,
-    fenceAction: 2, vertexCount: 4,
-    isSeaLevelRef: false, enabled: true,
-  }
-
-  it('produces a 14-byte payload', () => {
-    expect(encodeMspINavSetGeozone(g).byteLength).toBe(14)
-  })
-
-  it('encodes zone number at offset 0', () => {
-    expect(readU8(encodeMspINavSetGeozone(g), 0)).toBe(2)
-  })
-
-  it('encodes shape at offset 2', () => {
-    expect(readU8(encodeMspINavSetGeozone(g), 2)).toBe(1)
-  })
-
-  it('encodes minAlt as S32LE at offset 3', () => {
-    expect(readS32LE(encodeMspINavSetGeozone(g), 3)).toBe(-100)
-  })
-
-  it('encodes maxAlt as S32LE at offset 7', () => {
-    expect(readS32LE(encodeMspINavSetGeozone(g), 7)).toBe(12000)
-  })
-
-  it('encodes fenceAction at offset 11', () => {
-    expect(readU8(encodeMspINavSetGeozone(g), 11)).toBe(2)
-  })
-})
-
-// ── encodeMspINavSetGeozoneVertex ─────────────────────────────
-
-describe('encodeMspINavSetGeozoneVertex', () => {
-  const v = { geozoneId: 1, vertexIdx: 3, lat: 12.5, lon: 77.5 }
-
-  it('produces a 10-byte payload', () => {
-    expect(encodeMspINavSetGeozoneVertex(v).byteLength).toBe(10)
-  })
-
-  it('encodes geozoneId at offset 0', () => {
-    expect(readU8(encodeMspINavSetGeozoneVertex(v), 0)).toBe(1)
-  })
-
-  it('encodes vertexIdx at offset 1', () => {
-    expect(readU8(encodeMspINavSetGeozoneVertex(v), 1)).toBe(3)
-  })
-
-  it('encodes lat x1e7 as S32LE at offset 2', () => {
-    expect(readS32LE(encodeMspINavSetGeozoneVertex(v), 2)).toBe(Math.round(12.5 * 1e7))
-  })
-
-  it('encodes lon x1e7 as S32LE at offset 6', () => {
-    expect(readS32LE(encodeMspINavSetGeozoneVertex(v), 6)).toBe(Math.round(77.5 * 1e7))
   })
 })
 

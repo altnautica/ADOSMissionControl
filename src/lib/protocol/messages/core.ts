@@ -5,6 +5,8 @@
  * @module protocol/messages/core
  */
 
+import { readParamWireValue } from "../param-value-codec";
+
 // Shared UTF-8 decoder reused across all string-bearing decoders in this
 // module. Avoids per-message allocation at telemetry rates (10-30 Hz).
 const TEXT_DECODER = new TextDecoder("utf-8", { fatal: false });
@@ -135,20 +137,25 @@ export interface ParamValueMsg {
  * | 6      | uint16   | paramIndex |
  * | 8      | char[16] | paramId    |
  * | 24     | uint8    | paramType  |
+ *
+ * `bytewise` is the vehicle's integer encoding (see `param-value-codec`):
+ * true reads an integer-typed paramValue from its bytes, false reads the
+ * float.
  */
-export function decodeParamValue(dv: DataView): ParamValueMsg {
+export function decodeParamValue(dv: DataView, bytewise: boolean): ParamValueMsg {
   // Extract null-terminated param ID
   const bytes = new Uint8Array(dv.buffer, dv.byteOffset + 8, 16);
   let end = bytes.indexOf(0);
   if (end === -1) end = 16;
   const paramId = TEXT_DECODER.decode(bytes.subarray(0, end));
+  const paramType = dv.getUint8(24);
 
   return {
-    paramValue: dv.getFloat32(0, true),
+    paramValue: readParamWireValue(dv, 0, paramType, bytewise),
     paramCount: dv.getUint16(4, true),
     paramIndex: dv.getUint16(6, true),
     paramId,
-    paramType: dv.getUint8(24),
+    paramType,
   };
 }
 

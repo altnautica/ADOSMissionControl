@@ -1,39 +1,43 @@
 /**
  * @module GuidedTargetOverlay
- * @description Map overlay showing active guided mode target.
- * Renders a pulsing target marker and a dashed line from drone to target.
- * Includes cancel button. Clears automatically when drone arrives (< 3m).
+ * @description Map overlay for the selected drone's active guided target:
+ * a Fly Here in progress, or a Land Here repositioning before it descends.
+ * Cancel commands the vehicle to hold (through the skill dispatcher, so a
+ * refusal is reported) and ends the target; arrival and mode changes are
+ * handled by the target's supervisor.
  * @license GPL-3.0-only
  */
 "use client";
 
-import { useEffect } from "react";
 import { useGuidedStore } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { haversineDistance } from "@/lib/telemetry-utils";
+import { activate, buildSkillContext } from "@/lib/skills";
+import { cancelGuidedTarget } from "@/lib/skills/guided-target";
 import { X, Navigation } from "lucide-react";
-
-const ARRIVAL_THRESHOLD_M = 5;
 
 export function GuidedTargetOverlay() {
   const target = useGuidedStore((s) => s.target);
-  const clearTarget = useGuidedStore((s) => s.clearTarget);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const posBuffer = useTelemetryStore((s) => s.position);
   const latestPos = posBuffer.latest();
 
-  // Auto-clear when drone arrives at target
-  useEffect(() => {
-    if (!target || !latestPos) return;
-    const dist = haversineDistance(latestPos.lat, latestPos.lon, target.lat, target.lon);
-    if (dist < ARRIVAL_THRESHOLD_M) {
-      clearTarget();
-    }
-  }, [target, latestPos, clearTarget]);
+  if (!target || target.droneId !== selectedDroneId) return null;
 
-  if (!target || !latestPos) return null;
+  // The cancel control stays reachable even with no position fix.
+  const distance = latestPos
+    ? haversineDistance(latestPos.lat, latestPos.lon, target.lat, target.lon)
+    : null;
+  const landing = target.purpose === "land";
 
-  const distance = haversineDistance(latestPos.lat, latestPos.lon, target.lat, target.lon);
+  const cancel = () => {
+    const { droneId } = target;
+    cancelGuidedTarget();
+    // Clearing the overlay alone left the vehicle flying on to the target.
+    // Pause holds it where it is (LOITER on ArduPilot, Hold on PX4).
+    void activate("pause", buildSkillContext(droneId));
+  };
 
   return (
     <div className="absolute top-3 right-3 z-[1100]">
@@ -41,16 +45,19 @@ export function GuidedTargetOverlay() {
         <Navigation size={12} className="text-accent-primary shrink-0" />
         <div className="flex flex-col">
           <span className="text-[10px] text-accent-primary font-semibold">
-            Flying to target
+            {landing ? "Repositioning to land point" : "Flying to target"}
           </span>
           <span className="text-[10px] text-text-secondary font-mono">
-            {distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(2)} km`} remaining
+            {distance === null
+              ? "-- remaining"
+              : `${distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(2)} km`} remaining`}
           </span>
         </div>
         <button
-          onClick={clearTarget}
+          onClick={cancel}
           className="ml-2 p-1 text-text-tertiary hover:text-status-error transition-colors cursor-pointer"
-          title="Cancel guided target"
+          title={landing ? "Cancel land here and hold position" : "Cancel guided target and hold position"}
+          aria-label={landing ? "Cancel land here and hold position" : "Cancel guided target and hold position"}
         >
           <X size={12} />
         </button>

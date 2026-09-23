@@ -8,33 +8,22 @@ import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { Button } from "@/components/ui/button";
 import { Save, HardDrive } from "lucide-react";
+import { useParamMetadataMap } from "@/hooks/use-param-metadata";
+import { useParamLabel } from "@/hooks/use-param-label";
+import { useParamEnums } from "../shared/ParamEnumSelect";
+import { GnssConstellationEditor } from "./GnssConstellationEditor";
 
 const GPS_OFFSET_PARAMS = ["GPS_POS1_X", "GPS_POS1_Y", "GPS_POS1_Z"];
 const GPS_GNSS_PARAMS = ["GPS_GNSS_MODE"];
 const ALL_GPS_PARAMS = [...GPS_OFFSET_PARAMS, ...GPS_GNSS_PARAMS];
-
-// GPS_GNSS_MODE is a bitmask
-const GNSS_CONSTELLATIONS = [
-  { bit: 0, label: "GPS", value: 1 },
-  { bit: 1, label: "SBAS", value: 2 },
-  { bit: 2, label: "Galileo", value: 4 },
-  { bit: 3, label: "BeiDou", value: 8 },
-  { bit: 4, label: "GLONASS", value: 16 },
-] as const;
-
-const GNSS_PRESETS = [
-  { label: "Auto (all)", value: 0 },
-  { label: "GPS + GLONASS", value: 17 },
-  { label: "GPS + Galileo", value: 5 },
-  { label: "GPS + BeiDou", value: 9 },
-  { label: "GPS only", value: 1 },
-] as const;
 
 export function GpsConfigSection() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
+  const { paramName } = useParamLabel();
+  const { bitmaskBits } = useParamEnums(useParamMetadataMap());
 
   const {
     params, loading, dirtyParams, hasRamWrites,
@@ -46,21 +35,6 @@ export function GpsConfigSection() {
   const hasDirty = dirtyParams.size > 0;
 
   const gnssMode = params.get("GPS_GNSS_MODE") ?? 0;
-
-  function toggleConstellation(bitValue: number) {
-    if (gnssMode === 0) {
-      // Auto mode: switching to manual with this constellation selected
-      setLocalValue("GPS_GNSS_MODE", bitValue);
-    } else {
-      const newVal = gnssMode ^ bitValue;
-      setLocalValue("GPS_GNSS_MODE", newVal === 0 ? 0 : newVal);
-    }
-  }
-
-  function isConstellationEnabled(bitValue: number): boolean {
-    if (gnssMode === 0) return true; // Auto = all enabled
-    return (gnssMode & bitValue) !== 0;
-  }
 
   async function handleSave() {
     setSaving(true);
@@ -123,45 +97,12 @@ export function GpsConfigSection() {
           {/* GPS Constellation Selection */}
           <div>
             <h4 className="text-xs font-medium text-text-secondary mb-2">GNSS Constellation</h4>
-            <p className="text-[10px] text-text-tertiary mb-2">
-              GPS_GNSS_MODE: 0 = auto (uses all available). Otherwise bitmask of enabled constellations.
-            </p>
-
-            {/* Presets */}
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {GNSS_PRESETS.map((preset) => (
-                <button
-                  key={preset.value}
-                  onClick={() => setLocalValue("GPS_GNSS_MODE", preset.value)}
-                  className={`px-2 py-1 text-[10px] border transition-colors ${
-                    gnssMode === preset.value
-                      ? "bg-accent-primary/20 border-accent-primary text-accent-primary"
-                      : "bg-bg-tertiary border-border-default text-text-secondary hover:border-text-tertiary"
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Individual checkboxes */}
-            <div className="flex flex-wrap gap-3">
-              {GNSS_CONSTELLATIONS.map((c) => (
-                <label key={c.bit} className="flex items-center gap-1.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isConstellationEnabled(c.value)}
-                    onChange={() => toggleConstellation(c.value)}
-                    className="accent-accent-primary"
-                  />
-                  <span className="text-xs text-text-primary">{c.label}</span>
-                </label>
-              ))}
-            </div>
-
-            <p className="text-[10px] text-text-tertiary mt-1.5 font-mono">
-              GPS_GNSS_MODE = {gnssMode}{gnssMode === 0 ? " (auto)" : ""}
-            </p>
+            <GnssConstellationEditor
+              paramName={paramName("GPS_GNSS_MODE")}
+              value={gnssMode}
+              bits={bitmaskBits("GPS_GNSS_MODE")}
+              onChange={(v) => setLocalValue("GPS_GNSS_MODE", v)}
+            />
           </div>
 
           <div className="flex gap-2">

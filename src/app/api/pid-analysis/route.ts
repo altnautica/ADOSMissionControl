@@ -17,6 +17,8 @@ import type {
   AiAnalysisResponse,
   AiRecommendation,
 } from "@/lib/analysis/types";
+import { validateSuggestion } from "@/lib/analysis/pid-safety";
+import type { VehicleType } from "@/components/fc/pid/pid-constants";
 
 const GROQ_API = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "openai/gpt-oss-20b";
@@ -24,7 +26,7 @@ const GROQ_MODEL = "openai/gpt-oss-20b";
 const SYSTEM_PROMPT = `You are an expert ArduPilot PID tuning advisor. Given flight log analysis metrics and current PID parameters, provide tuning recommendations.
 
 Rules:
-- Only suggest parameters that need changing
+- Only suggest parameters that need changing, and only parameters listed in currentParams
 - Keep suggestions conservative (small increments)
 - Prioritize stability over responsiveness
 - If noise is high, suggest lowering D-term and adjusting filters first
@@ -105,6 +107,42 @@ function parseGroqResponse(text: string): AiAnalysisResponse {
   const summary = typeof parsed.summary === "string" ? parsed.summary : "";
 
   return { recommendations: validRecs, summary };
+}
+
+function isValidAnalysisRequest(v: unknown): v is AiAnalysisRequest {
+  if (!v || typeof v !== "object") return false;
+  const obj = v as Record<string, unknown>;
+  const vehicleTypes: VehicleType[] = ["copter", "plane", "rover"];
+  return (
+    vehicleTypes.includes(obj.vehicleType as VehicleType) &&
+    !!obj.currentParams &&
+    typeof obj.currentParams === "object" &&
+    !Array.isArray(obj.currentParams) &&
+    Object.values(obj.currentParams).every((n) => typeof n === "number" && Number.isFinite(n))
+  );
+}
+
+/**
+ * Check every suggested change against the safety ranges and the vehicle's
+ * current values sent with the request. Unsafe or unknown params are dropped,
+ * the rest are limited to the safe range and step, and a recommendation whose
+ * suggestions were all dropped is removed.
+ */
+function enforceSafetyRanges(
+  recs: AiRecommendation[],
+  request: AiAnalysisRequest,
+): AiRecommendation[] {
+  const { vehicleType, currentParams } = request;
+  return recs.flatMap((rec) => {
+    const parameters = rec.parameters.flatMap((p) => {
+      const current = Object.hasOwn(currentParams, p.param) ? currentParams[p.param] : undefined;
+      const check = validateSuggestion(p.param, current, p.suggestedValue, vehicleType);
+      if (check.status === "rejected" || current === undefined) return [];
+      return [{ param: p.param, currentValue: current, suggestedValue: check.value, delta: check.value - current }];
+    });
+    if (rec.parameters.length > 0 && parameters.length === 0) return [];
+    return [{ ...rec, parameters }];
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -193,7 +231,9 @@ export async function POST(request: NextRequest) {
 
   let body: AiAnalysisRequest;
   try {
-    body = await request.json();
+    const parsedBody: unknown = await request.json();
+    if (!isValidAnalysisRequest(parsedBody)) throw new Error("invalid request shape");
+    body = parsedBody;
   } catch {
     return NextResponse.json(
       { recommendations: [], summary: "", error: "Invalid request body" },
@@ -241,7 +281,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(response);
     }
 
-    const result = parseGroqResponse(content);
+    const parsed = parseGroqResponse(content);
+    const result = { ...parsed, recommendations: enforceSafetyRanges(parsed.recommendations, body) };
     return NextResponse.json({
       ...result,
       remaining: usageResult.remaining,

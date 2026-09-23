@@ -13,6 +13,7 @@ import {
   MotorAssembly, ServoAssembly, Arm, ForwardChevron, ShadowDisc,
   AttitudeHUD, WebGLErrorBoundary,
 } from "./motor-3d-parts";
+import { attitudeToSceneEuler } from "./motor-scene-frame";
 
 // ── Scene contents ───────────────────────────────────────────
 
@@ -28,6 +29,9 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
 
   const attitude = useTelemetryStore((s) => s.attitude);
   const version = useTelemetryStore((s) => s._version);
+  // Reused per frame so the render loop does not allocate.
+  const targetEuler = useMemo(() => new THREE.Euler(), []);
+  const targetQuat = useMemo(() => new THREE.Quaternion(), []);
 
   useFrame(() => {
     if (!droneGroupRef.current) return;
@@ -40,13 +44,10 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
 
     if (!isGyroActive) setIsGyroActive(true);
 
-    const rollRad = (latest.roll * Math.PI) / 180;
-    const pitchRad = (latest.pitch * Math.PI) / 180;
-    const yawRad = (latest.yaw * Math.PI) / 180;
-
-    droneGroupRef.current.rotation.z = THREE.MathUtils.lerp(droneGroupRef.current.rotation.z, rollRad, 0.15);
-    droneGroupRef.current.rotation.x = THREE.MathUtils.lerp(droneGroupRef.current.rotation.x, pitchRad, 0.15);
-    droneGroupRef.current.rotation.y = THREE.MathUtils.lerp(droneGroupRef.current.rotation.y, yawRad, 0.15);
+    attitudeToSceneEuler(latest.roll, latest.pitch, latest.yaw, targetEuler);
+    targetQuat.setFromEuler(targetEuler);
+    // Slerp takes the short way round, so a yaw wrap at ±180° does not spin the model.
+    droneGroupRef.current.quaternion.slerp(targetQuat, 0.15);
   });
 
   void version;

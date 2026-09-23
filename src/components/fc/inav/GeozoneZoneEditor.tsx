@@ -12,6 +12,7 @@ import { useGeozoneStore, GEOZONE_SHAPE, GEOZONE_TYPE } from "@/stores/geozone-s
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { GeozoneMapEditor } from "./GeozoneMapEditor";
+import { GeozoneCircleFields } from "./GeozoneCircleFields";
 import type { INavGeozoneVertex } from "@/lib/protocol/msp/msp-decoders-inav";
 import { Plus, Trash2, ChevronDown, ChevronRight, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -296,11 +297,7 @@ export function GeozoneZoneEditor({
             </div>
           )}
 
-          {!isPolygon && (
-            <p className="text-[10px] text-text-tertiary font-mono">
-              Circular zones use param1 on the waypoint as radius. Set via the mission planner.
-            </p>
-          )}
+          {!isPolygon && <GeozoneCircleFields zoneId={zone.number} centre={zoneVerts[0]} />}
         </div>
       )}
     </div>

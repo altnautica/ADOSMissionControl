@@ -23,7 +23,7 @@ import { PX4Handler } from "@/lib/protocol/firmware/px4";
 import { betaflightHandler } from "@/lib/protocol/firmware/betaflight";
 import { inavHandler } from "@/lib/protocol/firmware/inav";
 import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
-import { MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, BETAFLIGHT_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
+import { MOCK_PARAMS, ARDUPLANE_MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, BETAFLIGHT_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
 import type { ManualControlSample, PositionTargetSample, AttitudeTargetSample } from "./mock-control-samples";
 import * as E from "./mock-protocol-emitters";
@@ -81,7 +81,7 @@ export class MockProtocol implements DroneProtocol {
       case 'ardupilot-heli':
         this.handler = new ArduCopterHandler(); this.defaults = HELI_MOCK_PARAMS; this._vehicleInfo = HELI_VEHICLE_INFO; break;
       case 'ardupilot-plane':
-        this.handler = new ArduPlaneHandler(); this.defaults = MOCK_PARAMS; this._vehicleInfo = ARDUPLANE_VEHICLE_INFO; break;
+        this.handler = new ArduPlaneHandler(); this.defaults = ARDUPLANE_MOCK_PARAMS; this._vehicleInfo = ARDUPLANE_VEHICLE_INFO; break;
       case 'ardupilot-plane-vtol':
         this.handler = new ArduPlaneHandler(); this.defaults = QUADPLANE_MOCK_PARAMS; this._vehicleInfo = ARDUPLANE_VTOL_VEHICLE_INFO; break;
       case 'ardupilot-plane-tailsitter':
@@ -279,10 +279,10 @@ export class MockProtocol implements DroneProtocol {
     if (!p) throw new ParamAbsentError(name);
     return { name: p.name, value: p.value, type: p.type, index: Array.from(this.params.keys()).indexOf(name), count: this.params.size };
   }
-  async setParameter(name: string, value: number, type = 9): Promise<CommandResult> {
+  async setParameter(name: string, value: number): Promise<CommandResult> {
     const existing = this.params.get(name);
-    if (existing) existing.value = value; else this.params.set(name, { name, value, type });
-    const pv: ParameterValue = { name, value, type, index: Array.from(this.params.keys()).indexOf(name), count: this.params.size };
+    if (existing) existing.value = value; else this.params.set(name, { name, value, type: 9 });
+    const pv: ParameterValue = { name, value, type: existing?.type ?? 9, index: Array.from(this.params.keys()).indexOf(name), count: this.params.size };
     for (const cb of this.cbs.parameterCbs) cb(pv);
     return ok(`${name} = ${value}`);
   }
@@ -293,7 +293,7 @@ export class MockProtocol implements DroneProtocol {
 
   // ── Mission ────────────────────────────────────────────
   async uploadMission(): Promise<CommandResult> { return ok("Mission uploaded"); }
-  async downloadMission(): Promise<MissionItem[]> { await new Promise((r) => setTimeout(r, 800)); return getMockMission(); }
+  async downloadMission(): Promise<MissionItem[]> { await new Promise((r) => setTimeout(r, 800)); return getMockMission(this._vehicleInfo.firmwareType.startsWith("ardupilot-")); }
   async setCurrentMissionItem(): Promise<CommandResult> { return ok("Mission item set"); }
 
   // ── Calibration (delegated) ────────────────────────────

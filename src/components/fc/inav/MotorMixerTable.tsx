@@ -62,12 +62,11 @@ export function MotorMixerTable({ isArmed, lockMessage }: MotorMixerTableProps) 
                         onChange={(e) =>
                           setMotorRule(idx, { [field]: parseFloat(e.target.value) || 0 })
                         }
-                        onBlur={(e) => {
-                          const v = Math.min(
-                            2,
-                            Math.max(-2, parseFloat(e.target.value) || 0),
-                          );
-                          setMotorRule(idx, { [field]: v });
+                        onBlur={() => {
+                          // The FC stores weights in [-2, 2]; clamp only a value the
+                          // operator actually pushed outside that range.
+                          const v = Math.min(2, Math.max(-2, rule[field]));
+                          if (v !== rule[field]) setMotorRule(idx, { [field]: v });
                         }}
                       />
                     </td>

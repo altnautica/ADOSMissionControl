@@ -1004,12 +1004,12 @@
     "udpModeListen": "ಆಲಿಸಿ",
     "udpModeTarget": "ಗುರಿ",
     "nativeSocketReady": "ನೇಟಿವ್ ಸಾಕೆಟ್ ಸಿದ್ಧ (ಡೆಸ್ಕ್‌ಟಾಪ್ ಆ್ಯಪ್).",
-    "bridgeNeeded": "ಬ್ರೌಸರ್ ರಾ ಸಾಕೆಟ್ ತೆರೆಯಲಾಗದು. ಸ್ಥಳೀಯ ಬ್ರಿಜ್ ಚಲಾಯಿಸಿ, ನಂತರ ಅದಕ್ಕೆ ಸಂಪರ್ಕಿಸಿ:",
+    "bridgeNeeded": "ಬ್ರೌಸರ್ ರಾ ಸಾಕೆಟ್ ತೆರೆಯಲಾಗದು. ಕೆಳಗಿನ ಸ್ಥಳೀಯ ಬ್ರಿಜ್ ಚಲಾಯಿಸಿ. ಪ್ರಾರಂಭದಲ್ಲಿ ಅದು ws://…/?token=… URL ತೋರಿಸುತ್ತದೆ; ಆ ಸಂಪೂರ್ಣ URL ಅನ್ನು ಬ್ರಿಜ್ URL ನಲ್ಲಿ ಅಂಟಿಸಿ.",
     "bridgeUrlLabel": "ಬ್ರಿಜ್ URL",
     "checkBridge": "ಪರಿಶೀಲಿಸಿ",
     "checking": "ಪರಿಶೀಲಿಸುತ್ತಿದೆ...",
     "bridgeReachable": "ಬ್ರಿಜ್ ತಲುಪಬಹುದು.",
-    "bridgeUnreachable": "ಬ್ರಿಜ್ ತಲುಪಲಾಗದು. ಅದು ಚಾಲನೆಯಲ್ಲಿದೆಯೇ?",
+    "bridgeUnreachable": "ಬ್ರಿಜ್ ತಲುಪಲಾಗದು. ಅದು ಚಾಲನೆಯಲ್ಲಿದೆಯೇ, ಮತ್ತು URL ನಲ್ಲಿ ಅದು ತೋರಿಸಿದ ?token= ಇದೆಯೇ?",
     "copy": "ನಕಲಿಸಿ",
     "copied": "ನಕಲಿಸಲಾಗಿದೆ",
     "connectionFailed": "ಸಂಪರ್ಕ ವಿಫಲವಾಗಿದೆ",
@@ -2658,11 +2658,15 @@
     "release": "Release",
     "grab": "Grab",
     "winchNum": "Winch Number",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "Length",
     "fence": "Fence",
     "disable": "ಮುಚ್ಚಿ",
     "enable": "Enable",
-    "maxDescent": "Max Descent Rate",
+    "maxDescent": "Max Descent",
     "distance": "ದೂರ",
     "functionNum": "Function Number",
     "switch": "Switch",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "ಹಾರಾಟ ಲಿಂಕ್ ತೆರೆಯಲು ಈ ನೋಡ್ ಅನ್ನು ಜೋಡಿಸಿ",
+      "body": "ಸಹಾಯಕ ಕಂಪ್ಯೂಟರ್ ತಲುಪಬಹುದು ಆದರೆ ಜೋಡಿಸಲಾಗಿಲ್ಲ. ಜೋಡಿಸದ ನೋಡ್ ತನ್ನ ಫ್ಲೈಟ್-ಕಂಟ್ರೋಲರ್ ಲಿಂಕ್ ಅನ್ನು ತನ್ನದೇ ಹಾಟ್‌ಸ್ಪಾಟ್, USB ಅಥವಾ ಆನ್-ಬೋರ್ಡ್ ಸಂಪರ್ಕಕ್ಕೆ ಮಾತ್ರ ತೆರೆಯುತ್ತದೆ. ಇಲ್ಲಿಂದ ಹಾರಿಸಲು ಅದನ್ನು ಜೋಡಿಸಿ.",
+      "cta": "ಈ ನೋಡ್ ಜೋಡಿಸಿ"
     }
   },
   "blackbox": {

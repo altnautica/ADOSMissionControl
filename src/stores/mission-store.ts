@@ -20,6 +20,7 @@ import type { Mission, Waypoint, MissionState } from "@/lib/types";
 import type { DroneProtocol, MissionItem } from "@/lib/protocol/types";
 import { useDroneManager } from "./drone-manager";
 import { usePlannerStore } from "./planner-store";
+import { useTelemetryStore } from "./telemetry-store";
 import { indexedDBStorage } from "@/lib/storage";
 import {
   recordHistory,
@@ -36,12 +37,15 @@ import {
 import { registerWaypointAdapter } from "@/lib/planner-history-adapter";
 // The pure mission ⇄ wire expander/collapser: the single source of truth for how
 // the waypoint model (with attached actions) maps onto the MAVLink mission wire
-// format on upload/download, and how a legacy flat plan folds into it.
+// format on upload/download.
 import {
   expandToItems,
   collapseFromItems,
-  foldLegacyWaypoints,
+  type HomeSlot,
 } from "@/lib/mission/mission-expand";
+import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
+import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
+import { droppedItemWarning } from "@/lib/mission-io-formats";
 
 /**
  * The execution half of a {@link Mission}, reset to "not running".
@@ -127,7 +131,28 @@ export function migrateMissionStore(
       state.activeMission = { ...active, ...IDLE_EXECUTION };
     }
   }
+  if (version < 5) {
+    // v5 maps the iNav action onto `command` and moves the LOITER_TURNS /
+    // PAYLOAD_PLACE editor values into the slots that reach the right
+    // MAVLink parameter.
+    if (Array.isArray(state.waypoints)) {
+      state.waypoints = migrateWaypointSlots(state.waypoints as Waypoint[]);
+    }
+  }
   return state as unknown as MissionStoreState;
+}
+
+/**
+ * The home position written into ArduPilot's mission slot 0: the vehicle's
+ * HOME_POSITION when this is the selected drone and one has been received,
+ * else the first waypoint at 0 m. The flight controller replaces slot 0 with
+ * its own home on arming, so the fallback only has to be a valid position.
+ */
+export function uploadHome(protocol: DroneProtocol, waypoints: readonly Waypoint[]): HomeSlot {
+  const isSelected = useDroneManager.getState().getSelectedProtocol() === protocol;
+  const home = isSelected ? useTelemetryStore.getState().homePosition.latest() : undefined;
+  if (home) return { lat: home.lat, lon: home.lon, alt: home.alt };
+  return { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
 }
 
 interface MissionStoreState {
@@ -137,6 +162,8 @@ interface MissionStoreState {
   currentWaypoint: number;
   uploadState: "idle" | "uploading" | "uploaded" | "error";
   downloadState: "idle" | "downloading" | "downloaded" | "error";
+  /** Items the last download could not keep, named for the operator. */
+  downloadWarnings: string[];
 
   setMission: (mission: Mission | null) => void;
   setWaypoints: (waypoints: Waypoint[]) => void;
@@ -176,6 +203,7 @@ export const useMissionStore = create<MissionStoreState>()(
   currentWaypoint: 0,
   uploadState: "idle",
   downloadState: "idle",
+  downloadWarnings: [],
 
   setMission: (activeMission) => set({
     activeMission,
@@ -306,8 +334,13 @@ export const useMissionStore = create<MissionStoreState>()(
 
     // Flatten the waypoint model (NAV waypoints + their attached actions) into
     // the FC's contiguous `seq` item list. All wire-mapping and DO_JUMP target
-    // resolution lives in this one pure module.
-    const items: MissionItem[] = expandToItems(waypoints, { defaultFrame });
+    // resolution lives in this one pure module. ArduPilot keeps home in slot 0
+    // and starts the mission at slot 1, so the home slot is reserved there.
+    const isArduPilot = protocol.getVehicleInfo()?.firmwareType.startsWith("ardupilot-") ?? false;
+    const items: MissionItem[] = expandToItems(waypoints, {
+      defaultFrame,
+      reserveHomeSlot: isArduPilot ? uploadHome(protocol, waypoints) : undefined,
+    });
 
     try {
       const result = await protocol.uploadMission(items);
@@ -323,14 +356,21 @@ export const useMissionStore = create<MissionStoreState>()(
     const protocol = useDroneManager.getState().getSelectedProtocol();
     if (!protocol) return [];
 
-    set({ downloadState: "downloading" });
+    set({ downloadState: "downloading", downloadWarnings: [] });
 
     try {
-      const items = await protocol.downloadMission();
+      const downloaded = await protocol.downloadMission();
+      // ArduPilot's slot 0 is the home position, not a mission item. Jump
+      // targets keep their absolute seq, which collapse resolves directly.
+      const isArduPilot = protocol.getVehicleInfo()?.firmwareType.startsWith("ardupilot-") ?? false;
+      const items = isArduPilot ? downloaded.filter((it) => it.seq !== 0) : downloaded;
       // Re-nest the flat FC item list back into NAV waypoints with attached
       // actions, resolving each DO_JUMP's target seq to its owning waypoint id.
-      const waypoints: Waypoint[] = collapseFromItems(items);
-      set({ waypoints, downloadState: "downloaded" });
+      const downloadWarnings: string[] = [];
+      const waypoints: Waypoint[] = collapseFromItems(items, (dropped) => {
+        downloadWarnings.push(droppedItemWarning(dropped));
+      });
+      set({ waypoints, downloadState: "downloaded", downloadWarnings });
       return waypoints;
     } catch {
       set({ downloadState: "error" });
@@ -341,7 +381,7 @@ export const useMissionStore = create<MissionStoreState>()(
     {
       name: "altcmd:mission-store",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 4,
+      version: 5,
       partialize: missionPartialize,
       migrate: migrateMissionStore,
     }

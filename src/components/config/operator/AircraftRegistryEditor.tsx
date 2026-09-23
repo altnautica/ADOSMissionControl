@@ -10,7 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -40,11 +40,6 @@ export function AircraftRegistryEditor() {
   const upsert = useAircraftRegistryStore((s) => s.upsert);
   const update = useAircraftRegistryStore((s) => s.update);
   const remove = useAircraftRegistryStore((s) => s.remove);
-  const loadFromIDB = useAircraftRegistryStore((s) => s.loadFromIDB);
-
-  useEffect(() => {
-    void loadFromIDB();
-  }, [loadFromIDB]);
 
   const aircraft = Object.values(aircraftMap);
   const [selectedId, setSelectedId] = useState<string | null>(null);

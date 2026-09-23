@@ -16,9 +16,10 @@ export function FleetTelemetryCard() {
 
   const connected = drones.filter((d) => d.connectionState !== "disconnected");
   const armed = connected.filter((d) => d.armState === "armed");
+  const linkLost = connected.filter((d) => d.fcLinkLost === true).length;
 
-  // GPS health
-  const withGps = connected.filter((d) => d.gps);
+  // GPS health, from FCs that are still talking
+  const withGps = connected.filter((d) => d.gps && d.fcLinkLost !== true);
   const gps3d = withGps.filter((d) => d.gps!.fixType >= 3).length;
   const lowSats = withGps.filter((d) => d.gps!.satellites < 6 && d.gps!.fixType > 0).length;
 
@@ -29,7 +30,10 @@ export function FleetTelemetryCard() {
     const fix = d.gps?.fixType ?? 0;
     const voltage = d.battery?.voltage ?? 0;
     const pct = d.battery?.remaining ?? 0;
-    return { id: d.id, name, sats, fix, voltage, pct, mode: d.flightMode, armState: d.armState };
+    return {
+      id: d.id, name, sats, fix, voltage, pct, mode: d.flightMode,
+      armState: d.armState, linkLost: d.fcLinkLost === true,
+    };
   });
 
   if (connected.length === 0) {
@@ -65,6 +69,9 @@ export function FleetTelemetryCard() {
         {lowSats > 0 && (
           <Badge variant="warning">{lowSats} low sats</Badge>
         )}
+        {linkLost > 0 && (
+          <Badge variant="error">{linkLost} link lost</Badge>
+        )}
       </div>
 
       {/* Per-drone rows */}
@@ -72,18 +79,24 @@ export function FleetTelemetryCard() {
         {droneRows.map((d) => (
           <div key={d.id} className="flex items-center justify-between text-[10px] py-0.5">
             <span className="text-text-secondary truncate w-20">{d.name}</span>
-            <div className="flex items-center gap-2">
-              <span className={`font-mono tabular-nums ${d.sats < 6 && d.fix > 0 ? "text-status-warning" : "text-text-tertiary"}`}>
-                {d.sats}sat
-              </span>
-              <span className={`font-mono tabular-nums ${d.pct < 25 ? "text-status-error" : "text-text-tertiary"}`}>
-                {d.voltage.toFixed(1)}V
-              </span>
-              <FleetModeLabel mode={d.mode} />
-              <Badge variant={d.armState === "armed" ? "warning" : "neutral"} size="sm">
-                {d.armState === "armed" ? "ARM" : "DIS"}
-              </Badge>
-            </div>
+            {d.linkLost ? (
+              // The FC stopped talking: its last sats, voltage, mode and arm
+              // state describe an aircraft the GCS can no longer hear.
+              <Badge variant="error" size="sm">LINK LOST</Badge>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className={`font-mono tabular-nums ${d.sats < 6 && d.fix > 0 ? "text-status-warning" : "text-text-tertiary"}`}>
+                  {d.sats}sat
+                </span>
+                <span className={`font-mono tabular-nums ${d.pct < 25 ? "text-status-error" : "text-text-tertiary"}`}>
+                  {d.voltage.toFixed(1)}V
+                </span>
+                <FleetModeLabel mode={d.mode} />
+                <Badge variant={d.armState === "armed" ? "warning" : "neutral"} size="sm">
+                  {d.armState === "armed" ? "ARM" : d.armState === "disarmed" ? "DIS" : "—"}
+                </Badge>
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -2,8 +2,8 @@
  * @module gnss-fix2
  * @description Codec for `uavcan.equipment.gnss.Fix2` (data type id 1063).
  *
- * Wire layout (bit stream, little-endian byte order, LSB-first within
- * each byte):
+ * Wire layout (bit stream in the DroneCAN scalar layout described in
+ * `bit-buffer.ts`):
  *   uavcan.Timestamp   timestamp                  (uint56)
  *   uavcan.Timestamp   gnss_timestamp             (uint56)
  *   uint3              gnss_time_standard
@@ -20,16 +20,18 @@
  *   uint6              sub_mode
  *   float16[<=36]      covariance (uint6 length prefix; this array is not last)
  *   float16            pdop
- *   ECEFPositionVelocity[<=1] ecef_position_velocity (last field; TAO drops the length prefix)
+ *   ECEFPositionVelocity[<=1] ecef_position_velocity (last field; TAO drops the 1-bit length prefix)
  *
  * ECEFPositionVelocity nested type:
  *   float32[3]         velocity_xyz
  *   int36[3]           position_xyz_mm
  *   void6              (alignment)
- *   float16[<=36]      covariance (last field; TAO drops the length prefix)
+ *   float16[<=36]      covariance (uint6 length prefix: elements of a
+ *                      tail-optimized composite array are encoded without
+ *                      the optimization, so this inner array keeps its prefix)
  *
- * The GCS subscribes to `Fix2` broadcasts; an encoder is provided for
- * round-trip tests but is not used at runtime.
+ * The GCS subscribes to `Fix2` broadcasts; the encoder feeds the demo CAN
+ * bus and the tests.
  *
  * @license GPL-3.0-only
  */
@@ -122,10 +124,11 @@ export function decodeFix2(buf: Uint8Array): GnssFix2 {
   // otherwise the broadcast carried no ECEF block.
   //
   // Inside ECEFPositionVelocity: velocity_xyz is float32[3] (96 bits),
-  // position_xyz_mm is int36[3] (108 bits), then void6, then a TAO
-  // float16[<=36] covariance whose count is inferred from remaining bits.
+  // position_xyz_mm is int36[3] (108 bits), then void6, then the
+  // covariance count (uint6) and that many float16 entries. The element is
+  // encoded without TAO, so the count is on the wire.
   let ecefPositionVelocity: EcefPositionVelocity | undefined;
-  const ECEF_HEADER_BITS = 96 + 108 + 6; // velocity + position + void6
+  const ECEF_HEADER_BITS = 96 + 108 + 6 + 6; // velocity + position + void6 + count
   if (r.remaining() >= ECEF_HEADER_BITS) {
     const vx = r.readFloat32();
     const vy = r.readFloat32();
@@ -134,10 +137,7 @@ export function decodeFix2(buf: Uint8Array): GnssFix2 {
     const py = r.readBig(36, true);
     const pz = r.readBig(36, true);
     r.skip(6); // void6 alignment pad
-    const innerCount = Math.min(
-      Math.floor(r.remaining() / 16),
-      FIX2_COVARIANCE_MAX,
-    );
+    const innerCount = Math.min(r.read(6), FIX2_COVARIANCE_MAX);
     const innerCov: number[] = [];
     for (let i = 0; i < innerCount; i++) innerCov.push(r.readFloat16());
     ecefPositionVelocity = {
@@ -167,7 +167,7 @@ export function decodeFix2(buf: Uint8Array): GnssFix2 {
   };
 }
 
-/** Encode a `Fix2` broadcast payload. Used by round-trip tests. */
+/** Encode a `Fix2` broadcast payload. Used by the demo CAN bus and tests. */
 export function encodeFix2(msg: GnssFix2): Uint8Array {
   if (msg.covariance.length > FIX2_COVARIANCE_MAX) {
     throw new RangeError(
@@ -195,8 +195,8 @@ export function encodeFix2(msg: GnssFix2): Uint8Array {
 
   // ecef_position_velocity is the last field with composite element type,
   // so TAO drops the outer length prefix. We emit either the full
-  // ECEFPositionVelocity block or nothing. The inner covariance array is
-  // also under TAO and emits without a length prefix.
+  // ECEFPositionVelocity block or nothing. The element itself is encoded
+  // without TAO, so its covariance array keeps its uint6 length prefix.
   const ecef = msg.ecefPositionVelocity;
   if (ecef) {
     if (ecef.covariance.length > FIX2_COVARIANCE_MAX) {
@@ -207,6 +207,7 @@ export function encodeFix2(msg: GnssFix2): Uint8Array {
     for (const v of ecef.velocityXyz) w.writeFloat32(v);
     for (const p of ecef.positionXyzMm) w.writeBig(p, 36);
     w.write(0, 6); // void6 alignment pad
+    w.write(ecef.covariance.length, 6);
     for (const v of ecef.covariance) w.writeFloat16(v);
   }
   return w.toUint8Array();

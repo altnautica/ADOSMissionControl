@@ -8,7 +8,7 @@
  */
 
 import type { Skill } from "../types";
-import { disabledIfNoLink, REASON } from "./_shared";
+import { disabledIfNoLink, disabledUnlessDisarmed } from "./_shared";
 
 const DEFAULT_TAKEOFF_M = 10;
 
@@ -29,14 +29,7 @@ export const takeoffSkill: Skill = {
     typedPhrase: "TAKEOFF",
     checklistAware: true,
   },
-  getState: (ctx) => {
-    const noLink = disabledIfNoLink(ctx);
-    if (noLink) return noLink;
-    if (ctx.armState === "armed") {
-      return { kind: "disabled", reason: REASON.alreadyArmed };
-    }
-    return { kind: "idle" };
-  },
+  getState: (ctx) => disabledIfNoLink(ctx) ?? disabledUnlessDisarmed(ctx) ?? { kind: "idle" },
   activate: async (ctx, args) => {
     if (!ctx.protocol) return;
     const altitudeM =

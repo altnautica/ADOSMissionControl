@@ -105,6 +105,7 @@ export const cloudStateSlice: AgentConnectionSliceCreator<CloudStateSlice> = (
       apiKey: lanKey,
       client: null,
       mavlinkUrl: null,
+      mavlinkPairRequired: false,
       consecutiveFailures: 0,
     });
     // The freshness clock is deliberately left alone. Clearing it would read as

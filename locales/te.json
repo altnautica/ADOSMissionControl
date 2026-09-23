@@ -1004,12 +1004,12 @@
     "udpModeListen": "వినండి",
     "udpModeTarget": "లక్ష్యం",
     "nativeSocketReady": "నేటివ్ సాకెట్ సిద్ధం (డెస్క్‌టాప్ యాప్).",
-    "bridgeNeeded": "బ్రౌజర్ రా సాకెట్‌ను తెరవలేదు. లోకల్ బ్రిడ్జ్‌ను అమలు చేసి, ఆపై దానికి కనెక్ట్ చేయండి:",
+    "bridgeNeeded": "బ్రౌజర్ రా సాకెట్‌ను తెరవలేదు. కింద ఉన్న లోకల్ బ్రిడ్జ్‌ను అమలు చేయండి. ప్రారంభంలో అది ws://…/?token=… URL చూపుతుంది; ఆ పూర్తి URL ను బ్రిడ్జ్ URL లో అతికించండి.",
     "bridgeUrlLabel": "బ్రిడ్జ్ URL",
     "checkBridge": "తనిఖీ చేయండి",
     "checking": "తనిఖీ చేస్తోంది...",
     "bridgeReachable": "బ్రిడ్జ్ చేరుకోగలదు.",
-    "bridgeUnreachable": "బ్రిడ్జ్ చేరుకోలేకపోయింది. ఇది అమలులో ఉందా?",
+    "bridgeUnreachable": "బ్రిడ్జ్ చేరుకోలేకపోయింది. ఇది అమలులో ఉందా, URL లో అది చూపిన ?token= ఉందా?",
     "copy": "కాపీ చేయండి",
     "copied": "కాపీ చేయబడింది",
     "connectionFailed": "కనెక్షన్ విఫలమైంది",
@@ -2658,6 +2658,10 @@
     "release": "విడుదల",
     "grab": "పట్టుకో",
     "winchNum": "వించ్ సంఖ్య",
+    "winchAction": "Winch Action",
+    "winchRelax": "Relax",
+    "winchLength": "Length Control",
+    "winchRate": "Rate Control",
     "length": "పొడవు",
     "fence": "ఫెన్స్",
     "disable": "డిసేబుల్",
@@ -5969,6 +5973,11 @@
     "stale-pairing": {
       "title": "This node needs re-pairing",
       "body": "The agent at this address was re-flashed or unpaired, so the saved pairing no longer matches. Re-pair to reconnect, or remove this node."
+    },
+    "pair-required": {
+      "title": "ఫ్లైట్ లింక్‌ను తెరవడానికి ఈ నోడ్‌ను పెయిర్ చేయండి",
+      "body": "కంపానియన్ కంప్యూటర్ అందుబాటులో ఉంది కానీ పెయిర్ కాలేదు. పెయిర్ కాని నోడ్ తన ఫ్లైట్-కంట్రోలర్ లింక్‌ను తన స్వంత హాట్‌స్పాట్, USB లేదా ఆన్-బోర్డ్ కనెక్షన్‌కు మాత్రమే తెరుస్తుంది. ఇక్కడి నుండి ఎగరేయడానికి దీన్ని పెయిర్ చేయండి.",
+      "cta": "ఈ నోడ్‌ను పెయిర్ చేయండి"
     }
   },
   "blackbox": {

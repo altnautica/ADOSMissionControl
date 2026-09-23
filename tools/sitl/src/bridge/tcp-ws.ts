@@ -4,6 +4,7 @@
 import { EventEmitter } from 'node:events';
 import net from 'node:net';
 import { WebSocketServer, WebSocket } from 'ws';
+import { wsVerifyClient, type WsGuardOptions } from './ws-guard.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,8 +16,15 @@ export interface TcpInstance {
   sysId: number;
 }
 
-export interface BridgeConfig {
+export interface BridgeConfig extends WsGuardOptions {
   wsPort: number;
+  /**
+   * WebSocket bind address. Each drone's WebSocket shares its SITL TCP port
+   * number, and SITL listens on IPv4 0.0.0.0, so the loopback default is the
+   * IPv6 `::1`: an IPv4 loopback bind on the same port would capture the
+   * bridge's own TCP connection to SITL.
+   */
+  wsHost: string;
   tcpInstances: TcpInstance[];
 }
 
@@ -93,7 +101,11 @@ export class TcpWsBridge extends EventEmitter<BridgeEvents> {
   start(): void {
     for (const instance of this.config.tcpInstances) {
       // Each drone gets its own WebSocket server on its TCP port
-      const wss = new WebSocketServer({ port: instance.port });
+      const wss = new WebSocketServer({
+        port: instance.port,
+        host: this.config.wsHost,
+        verifyClient: wsVerifyClient(this.config),
+      });
 
       wss.on('connection', (ws, req) => {
         const remoteAddress = req.socket.remoteAddress ?? 'unknown';

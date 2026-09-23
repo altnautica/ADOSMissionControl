@@ -107,41 +107,30 @@ describe("mixer config", () => {
   it("reports the quad airframe for the copter mock", async () => {
     const mixer = await makeCopter().getMixerConfig();
     expect(mixer.platformType).toBe(0);
-    expect(mixer.motorCount).toBe(4);
-    expect(mixer.servoCount).toBe(0);
     expect(mixer.hasFlaps).toBe(false);
-  });
-
-  it("motor count matches the seeded motor mixer", async () => {
-    const proto = makeCopter();
-    const mixer = await proto.getMixerConfig();
-    expect((await proto.downloadMotorMixer()).length).toBe(mixer.motorCount);
   });
 
   it("reports the plane airframe for the plane mock", async () => {
     const mixer = await makePlane().getMixerConfig();
     expect(mixer.platformType).toBe(1);
-    expect(mixer.motorCount).toBe(1);
-    expect(mixer.servoCount).toBe(5);
     expect(mixer.hasFlaps).toBe(true);
   });
 
   it("selecting the second profile changes the reported mixer", async () => {
     const proto = makeCopter();
-    expect((await proto.getMixerConfig()).yawMotorsReversed).toBe(false);
+    expect((await proto.getMixerConfig()).motorDirectionInverted).toBe(false);
 
     expect((await proto.selectMixerProfile(1)).success).toBe(true);
-    expect((await proto.getMixerConfig()).yawMotorsReversed).toBe(true);
+    expect((await proto.getMixerConfig()).motorDirectionInverted).toBe(true);
 
     await proto.selectMixerProfile(0);
-    expect((await proto.getMixerConfig()).yawMotorsReversed).toBe(false);
+    expect((await proto.getMixerConfig()).motorDirectionInverted).toBe(false);
   });
 
-  it("a profile switch republishes the platform settings", async () => {
+  it("a profile switch republishes the platform setting", async () => {
     const proto = makeCopter();
-    await proto.settings.setSetting("motor_count", 0);
+    await proto.settings.setSetting("platform_type", 1);
     await proto.selectMixerProfile(1);
-    expect(await proto.settings.getSetting("motor_count")).toEqual({ type: "uint8", value: 4 });
     expect(await proto.settings.getSetting("platform_type")).toEqual({ type: "uint8", value: 0 });
   });
 
@@ -209,10 +198,7 @@ describe("servo config", () => {
   it("reports eight slots at 1000-2000 us neutral travel", async () => {
     const servos = await makeCopter().getServoConfigs();
     expect(servos.length).toBe(8);
-    expect(servos[0]).toEqual({
-      rate: 100, min: 1000, max: 2000, middle: 1500,
-      forwardFromChannel: 255, reversedInputSources: 0, flags: 0,
-    });
+    expect(servos[0]).toEqual({ min: 1000, max: 2000, middle: 1500, rate: 100 });
   });
 
   it("a per-slot write is visible to the next read", async () => {

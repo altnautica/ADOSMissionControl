@@ -1,8 +1,8 @@
 /**
  * Operator profile store — pilot, organization, insurance, and defaults.
  *
- * Persisted to IndexedDB under `altcmd:operator-profile`. Loaded on app boot
- * (history page mount). Mirrors the history-store IDB persistence pattern.
+ * Persisted to IndexedDB under `altcmd:operator-profile`. Loaded once at app
+ * start by the root local-store hydrator; writes wait for that load.
  *
  * @module stores/operator-profile-store
  * @license GPL-3.0-only
@@ -11,12 +11,12 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { OperatorProfile } from "@/lib/types/operator";
+import { createIdbStoreLoader } from "@/lib/idb-store-loader";
 
 const IDB_KEY = "altcmd:operator-profile";
 
 interface State {
   profile: OperatorProfile;
-  _loadedFromIdb: boolean;
 }
 
 interface Actions {
@@ -24,15 +24,17 @@ interface Actions {
   setProfile: (profile: OperatorProfile) => void;
   /** Patch a subset of fields and persist. */
   updateProfile: (patch: Partial<OperatorProfile>) => void;
-  /** Async: load persisted profile from IndexedDB. Idempotent. */
-  loadFromIDB: () => Promise<void>;
-  /** Async: write current profile to IndexedDB. */
+  /**
+   * Async: read the persisted profile once and merge it into memory (stored
+   * fields win). Idempotent; concurrent callers share one read.
+   */
+  ensureLoaded: () => Promise<void>;
+  /** Async: write current profile to IndexedDB, after the load completes. */
   persistToIDB: () => Promise<void>;
 }
 
 export const useOperatorProfileStore = create<State & Actions>((set, get) => ({
   profile: { units: "metric" },
-  _loadedFromIdb: false,
 
   setProfile: (profile) => set({ profile }),
 
@@ -41,26 +43,14 @@ export const useOperatorProfileStore = create<State & Actions>((set, get) => ({
     void get().persistToIDB();
   },
 
-  loadFromIDB: async () => {
-    if (get()._loadedFromIdb) return;
-    try {
-      const stored = (await idbGet(IDB_KEY)) as OperatorProfile | undefined;
-      if (stored && typeof stored === "object") {
-        set({ profile: stored, _loadedFromIdb: true });
-      } else {
-        set({ _loadedFromIdb: true });
-      }
-    } catch (err) {
-      console.warn("[operator-profile-store] loadFromIDB failed", err);
-      set({ _loadedFromIdb: true });
-    }
-  },
+  ensureLoaded: () => idb.ensureLoaded(),
 
-  persistToIDB: async () => {
-    try {
-      await idbSet(IDB_KEY, get().profile);
-    } catch (err) {
-      console.warn("[operator-profile-store] persistToIDB failed", err);
-    }
-  },
+  persistToIDB: () => idb.persist(() => idbSet(IDB_KEY, get().profile)),
 }));
+
+const idb = createIdbStoreLoader("operator-profile-store", async () => {
+  const stored = (await idbGet(IDB_KEY)) as OperatorProfile | undefined;
+  if (stored && typeof stored === "object") {
+    useOperatorProfileStore.setState((s) => ({ profile: { ...s.profile, ...stored } }));
+  }
+});
