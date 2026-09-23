@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useSyncedDraft } from "@/hooks/use-synced-draft";
+import { draftText, useSyncedDraft } from "@/hooks/use-synced-draft";
 import type {
   ActionCommand, CommandMissionAction, MissionAction, RawMissionAction,
 } from "@/lib/types";
@@ -196,9 +196,9 @@ function CommandActionRow({
 
   // Drafts follow the action, so undo/redo never leaves a stale value in a
   // field for the next blur to write back.
-  const [p1, setP1] = useSyncedDraft(action.param1);
-  const [p2, setP2] = useSyncedDraft(action.param2);
-  const [p3, setP3] = useSyncedDraft(action.param3);
+  const [p1, setP1] = useSyncedDraft(draftText(action.param1));
+  const [p2, setP2] = useSyncedDraft(draftText(action.param2));
+  const [p3, setP3] = useSyncedDraft(draftText(action.param3));
 
   // Commit a single numeric parameter, clearing it when the field is emptied.
   const commitField = useCallback(
@@ -290,9 +290,9 @@ function PositionEditor({
   action, onUpdate,
 }: { action: CommandMissionAction; onUpdate: (update: Partial<CommandMissionAction>) => void }) {
   const t = useTranslations("planner");
-  const [lat, setLat] = useSyncedDraft(action.lat);
-  const [lon, setLon] = useSyncedDraft(action.lon);
-  const [alt, setAlt] = useSyncedDraft(action.alt);
+  const [lat, setLat] = useSyncedDraft(draftText(action.lat));
+  const [lon, setLon] = useSyncedDraft(draftText(action.lon));
+  const [alt, setAlt] = useSyncedDraft(draftText(action.alt));
   const commit = (field: "lat" | "lon" | "alt", value: string) => {
     const num = parseFloat(value);
     if (!isNaN(num)) onUpdate({ [field]: num });

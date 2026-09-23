@@ -10,7 +10,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import {
   subscribeWorldStream,
-  WORLD_STREAM_RETRY_MS,
   WORLD_STREAM_PORT,
   WORLD_WS_ROUTE,
   worldStreamUrl,
@@ -18,6 +17,7 @@ import {
   type WorldStreamSocket,
   type WorldStreamState,
 } from "../world-stream";
+import { SOCKET_RETRY_MS } from "@/lib/net/reconnecting-socket";
 
 /** A hand-driven stand-in for the browser socket. */
 class FakeSocket implements WorldStreamSocket {
@@ -132,7 +132,7 @@ describe("subscribeWorldStream", () => {
     expect(states).toEqual(["connecting", "reconnecting"]);
     expect(sockets).toHaveLength(1);
 
-    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS - 1);
+    vi.advanceTimersByTime(SOCKET_RETRY_MS - 1);
     expect(sockets).toHaveLength(1);
     vi.advanceTimersByTime(1);
     expect(sockets).toHaveLength(2);
@@ -141,7 +141,7 @@ describe("subscribeWorldStream", () => {
     for (let i = 0; i < 10; i++) {
       const before = sockets.length;
       sockets[before - 1].onclose?.();
-      vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS);
+      vi.advanceTimersByTime(SOCKET_RETRY_MS);
       expect(sockets.length).toBe(before + 1);
     }
 
@@ -161,12 +161,12 @@ describe("subscribeWorldStream", () => {
       },
     });
     sockets[0].onclose?.();
-    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS);
+    vi.advanceTimersByTime(SOCKET_RETRY_MS);
     // A handler that accepts and closes immediately must not turn the
     // reconnect into a tight loop.
     sockets[1].onopen?.();
     sockets[1].onclose?.();
-    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS - 1);
+    vi.advanceTimersByTime(SOCKET_RETRY_MS - 1);
     expect(sockets).toHaveLength(2);
     vi.advanceTimersByTime(1);
     expect(sockets).toHaveLength(3);
@@ -187,7 +187,7 @@ describe("subscribeWorldStream", () => {
     });
     sockets[0].onclose?.();
     stop();
-    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS * 5);
+    vi.advanceTimersByTime(SOCKET_RETRY_MS * 5);
     expect(sockets).toHaveLength(1);
   });
 
@@ -203,7 +203,7 @@ describe("subscribeWorldStream", () => {
       },
     });
     expect(calls).toBe(1);
-    vi.advanceTimersByTime(WORLD_STREAM_RETRY_MS);
+    vi.advanceTimersByTime(SOCKET_RETRY_MS);
     expect(calls).toBe(2);
     stop();
   });

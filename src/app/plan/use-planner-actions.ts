@@ -17,7 +17,7 @@ import { clearAutoSave } from "@/lib/mission-io";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useRallyStore } from "@/stores/rally-store";
-import { recordHistory } from "@/lib/planner-history";
+import { withPlannerHistory } from "@/lib/planner-history";
 import { clampLat, clampLon, clampAlt } from "./use-planner-state";
 import type { ContextMenuState } from "./use-planner-state";
 import type { Waypoint } from "@/lib/types";
@@ -129,10 +129,7 @@ export function usePlannerActions(deps: ActionsDeps) {
   const handleMapClick = useCallback(
     (lat: number, lon: number) => {
       if (activeTool === "rally") {
-        // Sticky: keep placing rally points until the tool is switched. Record the
-        // pre-placement combined state so this rally drop is a single undo step on
-        // the shared planner timeline.
-        recordHistory();
+        // Sticky: keep placing rally points until the tool is switched.
         addRallyPoint({ id: randomId(), lat: clampLat(lat), lon: clampLon(lon), alt: clampAlt(defaultAlt) });
         toast("Rally point placed", "success");
         return;
@@ -166,7 +163,6 @@ export function usePlannerActions(deps: ActionsDeps) {
       // than creating a top-level ROI row, which is not a navigation command.
       if (activeTool === "roi") {
         if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
-        recordHistory();
         const attached = attachRoiAction(waypoints, clampLat(lat), clampLon(lon), clampAlt(defaultAlt));
         toast(
           attached ? "ROI attached to the last waypoint" : "Add a waypoint before setting an ROI",
@@ -317,14 +313,13 @@ export function usePlannerActions(deps: ActionsDeps) {
   }, [waypoints.length, setShowClearConfirm]);
 
   const confirmClear = useCallback(() => {
-    // clearMission() records the full combined pre-clear snapshot (waypoints +
-    // fence + rally + drawings) as one undo point BEFORE wiping waypoints; the
-    // leaf-domain clears below don't record, so the whole "Clear All" is a single
-    // undo that restores everything.
-    clearMission();
-    useRallyStore.getState().clearPoints();
-    useDrawingStore.getState().clearAll();
-    useGeofenceStore.getState().clearFence();
+    // One undo step restores every domain "Clear All" wiped.
+    withPlannerHistory(() => {
+      clearMission();
+      useRallyStore.getState().clearPoints();
+      useDrawingStore.getState().clearAll();
+      useGeofenceStore.getState().clearFence();
+    });
     void clearAutoSave();
     setSelectedWaypoint(null);
     setExpandedWaypoint(null);

@@ -16,7 +16,8 @@
  */
 
 import type { OrbitConfig, PatternResult, PatternWaypoint } from "./types";
-import { haversineDistance, offsetPoint } from "@/lib/drawing/geo-utils";
+import { offsetPoint } from "@/lib/drawing/geo-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 export function generateOrbit(config: OrbitConfig): PatternResult {
   const { center, radius, direction, turns, startAngle, altitude, speed, targetHeight = 0 } = config;

@@ -131,14 +131,15 @@ export function useFlightModeParams({
     if (!isDirty) return;
     setSaving(true);
     try {
+      const writes: { name: string; value: number }[] = [];
       if (globalDirty) {
         const g = globalConfig;
         const gb = globalBaselineRef.current;
         if (g.modeChannel !== gb.modeChannel) {
-          await protocol.setParameter("FLTMODE_CH", Number(g.modeChannel));
+          writes.push({ name: "FLTMODE_CH", value: Number(g.modeChannel) });
         }
         if (!isPx4 && g.initialMode !== gb.initialMode) {
-          await protocol.setParameter("INITIAL_MODE", Number(g.initialMode));
+          writes.push({ name: "INITIAL_MODE", value: Number(g.initialMode) });
         }
       }
 
@@ -157,13 +158,13 @@ export function useFlightModeParams({
             if (slotValue === null) {
               toast(`${slot.mode} has no PX4 mode slot; skipped`, "warning");
             } else {
-              await protocol.setParameter(`FLTMODE${idx + 1}`, slotValue);
+              writes.push({ name: `FLTMODE${idx + 1}`, value: slotValue });
             }
           } else {
             const { customMode } = firmwareHandler.encodeFlightMode(
               slot.mode as UnifiedFlightMode,
             );
-            await protocol.setParameter(`FLTMODE${idx + 1}`, customMode);
+            writes.push({ name: `FLTMODE${idx + 1}`, value: customMode });
           }
         }
 
@@ -176,7 +177,7 @@ export function useFlightModeParams({
         for (let i = 0; i < MODE_SLOT_COUNT; i++) {
           if (slots[i].simple) simpleSet.add(i);
         }
-        await protocol.setParameter("SIMPLE", setToBitmask(simpleSet));
+        writes.push({ name: "SIMPLE", value: setToBitmask(simpleSet) });
       }
 
       if (isCopter && !isPx4 && superSimpleChanged) {
@@ -184,7 +185,19 @@ export function useFlightModeParams({
         for (let i = 0; i < MODE_SLOT_COUNT; i++) {
           if (slots[i].superSimple) ssSet.add(i);
         }
-        await protocol.setParameter("SUPER_SIMPLE", setToBitmask(ssSet));
+        writes.push({ name: "SUPER_SIMPLE", value: setToBitmask(ssSet) });
+      }
+
+      // Each write reports the vehicle's own answer; the edit counts as saved
+      // only when every one of them landed, otherwise it stays dirty to retry.
+      const failures: string[] = [];
+      for (const { name, value } of writes) {
+        const result = await protocol.setParameter(name, value).catch(() => null);
+        if (!result?.success) failures.push(`${name}: ${result?.message ?? "write failed"}`);
+      }
+      if (failures.length > 0) {
+        toast(`Flight modes not fully saved. Failed: ${failures.join(", ")}`, "error");
+        return;
       }
 
       baselineRef.current = slots.map((s) => ({ ...s }));

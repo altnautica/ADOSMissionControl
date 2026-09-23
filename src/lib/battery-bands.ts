@@ -40,18 +40,6 @@ export function batteryBand(
   return "good";
 }
 
-/**
- * The remaining-capacity percent a battery sample actually reports, or null.
- * BATTERY_STATUS.battery_remaining and the MSP battery decoders use -1 for
- * "not estimated": that is an unknown, never an empty pack, so every surface
- * that shows or judges a percentage reads it through here.
- */
-export function knownRemainingPct(remaining: number | null | undefined): number | null {
-  return typeof remaining === "number" && Number.isFinite(remaining) && remaining >= 0
-    ? remaining
-    : null;
-}
-
 /** The operator's configured thresholds, live from the settings store. */
 export function useBatteryThresholds(): BatteryThresholds {
   const warningPct = useSettingsStore((s) => s.batteryWarningPct);

@@ -47,6 +47,20 @@ export function isTerminalStage(stage: InstallStage): boolean {
   return stage === "completed" || stage === "failed";
 }
 
+const ALL_STAGES: readonly InstallStage[] = [...INSTALL_STAGES, "completed", "failed"];
+const KNOWN_STAGES: Record<string, InstallStage> = Object.fromEntries(
+  ALL_STAGES.map((s): [InstallStage, InstallStage] => [s, s]),
+);
+
+/**
+ * The stage a cloud install-job row reports, or null for one this UI does not
+ * know. A cancelled job stopped reporting, which reads as a failure.
+ */
+export function cloudJobStage(stage: string): InstallStage | null {
+  if (stage === "cancelled") return "failed";
+  return Object.hasOwn(KNOWN_STAGES, stage) ? KNOWN_STAGES[stage] : null;
+}
+
 /** Index of `stage` in the canonical order. Terminal stages map past the
  * end so a completed job lights every dot. */
 export function stageIndex(stage: InstallStage): number {

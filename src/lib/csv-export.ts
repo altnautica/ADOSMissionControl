@@ -5,6 +5,7 @@
 
 import type { FlightRecord } from "@/lib/types";
 import { formatDate, formatTime, formatDuration } from "@/lib/utils";
+import { downloadBlob } from "@/lib/download";
 
 /**
  * Export an array of flight records as a CSV file download.
@@ -52,17 +53,7 @@ export function exportFlightRecordsAsCsv(records: FlightRecord[]): void {
     .join("\n");
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `flight-history-${dateStr}.csv`;
-  a.style.display = "none";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `flight-history-${dateStr}.csv`);
 }

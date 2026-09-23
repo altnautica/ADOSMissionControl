@@ -13,7 +13,7 @@ import { describe, it, expect } from "vitest";
 import { buildSegments } from "@/components/map/AltitudeTrail";
 import type { TrailPoint } from "@/stores/trail-store";
 
-function pt(alt: number, i: number): TrailPoint {
+function pt(alt: number, i: number): TrailPoint & { alt: number } {
   return { lat: 12.9 + i * 1e-5, lon: 77.6 + i * 1e-5, alt };
 }
 

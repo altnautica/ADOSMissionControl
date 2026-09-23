@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import type { ServiceInfo, SystemResources } from "@/lib/agent/types";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useFreshness } from "@/lib/agent/freshness";
-import { MemorySparkline } from "../shared/MemorySparkline";
+import { Sparkline } from "../shared/Sparkline";
 import { CollapsibleSection } from "./shared";
 
 /**
@@ -230,7 +230,7 @@ export function MemoryPanel() {
         </div>
 
         <div>
-          <MemorySparkline />
+          <Sparkline series="memoryHistory" tokenColor="--color-accent-secondary" />
         </div>
 
         <div>

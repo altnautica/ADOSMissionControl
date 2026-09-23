@@ -24,7 +24,7 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { isTimestampFresh } from "@/hooks/use-telemetry-freshness";
 import { mpsToKph } from "@/lib/telemetry-utils";
-import { knownRemainingPct } from "@/lib/battery-bands";
+import { knownRemainingPct } from "@/lib/battery";
 import type {
   AttitudeData,
   BatteryData,

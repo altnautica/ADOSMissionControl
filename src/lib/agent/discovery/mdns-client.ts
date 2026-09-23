@@ -7,6 +7,8 @@
  * @license GPL-3.0-only
  */
 
+import { withTimeoutSignal } from "../agent-client/timeout";
+
 /** Result shape returned by the LAN discover route. */
 export interface LanDiscoveredAgent {
   host: string;
@@ -44,14 +46,13 @@ export interface LanScanResult {
  */
 export async function findHostByCodeOnLan(
   code: string,
-  combineSignals: (caller?: AbortSignal, timeoutMs?: number) => AbortSignal,
   signal?: AbortSignal,
 ): Promise<LanScanResult> {
   try {
     const discoverResp = await fetch("/api/lan-pair/discover", {
       method: "GET",
       headers: { Accept: "application/json" },
-      signal: combineSignals(signal, 5000),
+      signal: withTimeoutSignal(5000, signal ?? null),
     });
     if (!discoverResp.ok) return { matchedHost: null, unpaired: [] };
     const { agents } = (await discoverResp.json()) as {
@@ -90,7 +91,7 @@ export async function findHostByCodeOnLan(
             Accept: "application/json",
           },
           body: JSON.stringify({ host: target }),
-          signal: combineSignals(signal, 4000),
+          signal: withTimeoutSignal(4000, signal ?? null),
         });
         if (!probeResp.ok) return { target, info: null };
         const info = (await probeResp.json()) as ProbeOutcome["info"];

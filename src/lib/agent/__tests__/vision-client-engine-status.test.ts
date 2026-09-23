@@ -99,19 +99,13 @@ describe("VisionAgentClient.getEngineStatus", () => {
     );
     const client = new VisionAgentClient("http://drone.local:8080");
     const status = await client.getEngineStatus();
-    expect(status.npuUtilizationPct).toBeNull();
-    expect(status.modelCount).toBe(1);
+    expect(status).toMatchObject({ known: true, npuUtilizationPct: null, modelCount: 1 });
   });
 
-  it("returns the empty status on a 404 (older agent, no engine read-back)", async () => {
+  it("returns the unknown status on a 404 (older agent, no engine read-back)", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "not found" }, 404));
     const client = new VisionAgentClient("http://drone.local:8080");
-    await expect(client.getEngineStatus()).resolves.toEqual({
-      known: false,
-      models: [],
-      npuUtilizationPct: null,
-      modelCount: 0,
-    });
+    await expect(client.getEngineStatus()).resolves.toEqual({ known: false });
   });
 
   it("drops malformed entries and models with no id", async () => {
@@ -132,7 +126,7 @@ describe("VisionAgentClient.getEngineStatus", () => {
     );
     const client = new VisionAgentClient("http://drone.local:8080");
     const status = await client.getEngineStatus();
-    expect(status.models).toEqual([
+    expect(status.known && status.models).toEqual([
       {
         id: "ok",
         kind: "detection",

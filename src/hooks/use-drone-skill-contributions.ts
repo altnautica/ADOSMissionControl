@@ -27,7 +27,7 @@
  */
 
 import { useMemo } from "react";
-import { makeFunctionReference } from "convex/server";
+import { api } from "../../convex/_generated/api";
 
 import { isDemoMode } from "@/lib/utils";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
@@ -58,11 +58,9 @@ interface SkillContributionRow {
 }
 
 /**
- * Shape of one install row from `cmdPlugins:listForDevice`. Mirrors
- * `cmd_pluginInstalls` plus the additive denormalized manifest fields the
- * cloud-relay surface attaches so the per-drone view does not need to fetch
- * the manifest blob on every render. The flight-skill fields are additive and
- * forward-compatible: an older surface that omits them yields no skills.
+ * One install row, the shape both sources (the cloud `cmdPlugins:listForDevice`
+ * query and the local agent detail) are projected into. The flight-skill
+ * fields are optional: an install that declares none yields no skills.
  */
 interface InstallRowForDevice {
   _id: string;
@@ -84,12 +82,6 @@ interface InstallRowForDevice {
   flightSkills?: SkillContributionRow[];
 }
 
-const listForDeviceRef = makeFunctionReference<
-  "query",
-  { deviceId: string },
-  InstallRowForDevice[]
->("cmdPlugins:listForDevice");
-
 /**
  * Per-drone `flight.skill` contributions for `agentId`. Returns a stable,
  * memoized array once the source has resolved: empty when `agentId` is falsy,
@@ -103,7 +95,7 @@ export function useDroneSkillContributions(
 ): DroneSkillContribution[] | null {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const installs = useConvexSkipQuery(listForDeviceRef, {
+  const installs = useConvexSkipQuery(api.cmdPlugins.listForDevice, {
     args: agentId ? { deviceId: agentId } : undefined,
     enabled: isAuthenticated && Boolean(agentId),
   });

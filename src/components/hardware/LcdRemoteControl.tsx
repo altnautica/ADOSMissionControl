@@ -29,7 +29,7 @@ import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useToast } from "@/components/ui/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { STALE_THRESHOLD_MS } from "@/lib/agent/freshness";
+import { livenessFromTimestamp } from "@/lib/nodes/presence";
 
 type PageId = "dashboard" | "video" | "settings" | "more";
 
@@ -72,8 +72,9 @@ export function LcdRemoteControl() {
   }
 
   const activePage = optimisticPage ?? display.activePage ?? null;
-  const heartbeatAgeMs = lastUpdatedAt ? Date.now() - lastUpdatedAt : null;
-  const offline = heartbeatAgeMs !== null && heartbeatAgeMs > STALE_THRESHOLD_MS;
+  // A heartbeat that was never stamped leaves the controls usable; one that
+  // stamped and then went quiet past the stale threshold disables them.
+  const offline = !!lastUpdatedAt && livenessFromTimestamp(lastUpdatedAt) !== "live";
   const disabled = !client || offline || pending;
 
   const onPick = async (id: PageId) => {

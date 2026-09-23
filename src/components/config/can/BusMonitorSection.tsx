@@ -21,6 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, tabButtonId } from "@/components/ui/tabs";
 import { CanMonitorPanel } from "@/components/fc/can/CanMonitorPanel";
 import { useDroneCanBusStore, type DecodedFrame } from "@/stores/dronecan/bus-store";
+import { downloadBlob } from "@/lib/download";
 
 function hex(n: number, digits: number): string {
   return n.toString(16).toUpperCase().padStart(digits, "0");
@@ -52,12 +53,7 @@ function exportDecodedFrames(frames: DecodedFrame[]): void {
     ].join(","));
   }
   const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `dronecan-frames-${Date.now()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `dronecan-frames-${Date.now()}.csv`);
 }
 
 function DecodedFramesView() {

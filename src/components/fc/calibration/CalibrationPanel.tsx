@@ -7,7 +7,8 @@ import {
   ACCEL_STEPS, GYRO_STEPS, COMPASS_STEPS,
 } from "./calibration-types";
 import { CalibrationWizard } from "./CalibrationWizard";
-import type { CompassProgressEntry, CompassResultEntry } from "./CalibrationWizard";
+import type { CompassResultEntry } from "./CalibrationWizard";
+import { compassProgressEntries } from "./compass-display";
 import { CalibrationRebootBanner } from "./CalibrationRebootBanner";
 import { CalibrationLog } from "./CalibrationLog";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
@@ -29,14 +30,7 @@ export function CalibrationPanel() {
 
   const cal = useCalibrationEngine();
 
-  const compassProgressEntries: CompassProgressEntry[] = Array.from(cal.compass.compassProgress.entries())
-    .map(([id, pct]) => ({
-      compassId: id,
-      completionPct: pct,
-      calStatus: cal.compass.compassStatus.get(id) ?? 0,
-      completionMask: cal.compass.compassCompletionMask.get(id) ?? [],
-      direction: cal.compass.compassDirection.get(id) ?? { x: 0, y: 0, z: 0 },
-    }));
+  const compassProgress = compassProgressEntries(cal.compass);
 
   const compassResultEntries: CompassResultEntry[] = Array.from(cal.compass.compassResults.entries())
     .map(([id, r]) => ({ ...r, compassId: id }));
@@ -110,7 +104,7 @@ export function CalibrationPanel() {
             waitingForConfirm={cal.compass.waitingForConfirm}
             onConfirm={cal.acceptCompass}
             confirmLabel={t("acceptOffsets")}
-            compassProgress={compassProgressEntries}
+            compassProgress={compassProgress}
             compassResults={compassResultEntries}
             failureFixes={cal.compass.failureFixes}
             onForceSave={cal.forceCompassSave}

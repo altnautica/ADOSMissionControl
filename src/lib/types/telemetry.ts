@@ -8,9 +8,10 @@ export interface AttitudeData {
   roll: number;    // degrees
   pitch: number;   // degrees
   yaw: number;     // degrees (heading)
-  rollSpeed: number;
-  pitchSpeed: number;
-  yawSpeed: number;
+  // rad/s; absent when the link does not report body rates (MSP)
+  rollSpeed?: number;
+  pitchSpeed?: number;
+  yawSpeed?: number;
 }
 
 export interface PositionData {
@@ -18,11 +19,11 @@ export interface PositionData {
   lat: number;
   lon: number;
   alt: number;        // meters MSL (GLOBAL_POSITION_INT.alt)
-  relativeAlt: number; // meters above home (GLOBAL_POSITION_INT.relative_alt)
+  relativeAlt?: number; // meters above home (GLOBAL_POSITION_INT.relative_alt); absent when the link has no height-above-home estimate
   heading?: number;   // degrees 0-360; absent when the source reports no heading
   groundSpeed: number; // m/s
   airSpeed?: number;   // m/s; absent when the source carries no airspeed (VFR_HUD owns it on MAVLink)
-  climbRate: number;   // m/s
+  climbRate?: number;  // m/s; absent when the source carries no vertical speed (MSP GPS)
 }
 
 export interface BatteryData {

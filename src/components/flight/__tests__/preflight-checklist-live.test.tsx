@@ -35,7 +35,7 @@ function inputs(battery: BatteryData | undefined, knownCellCount: number | null 
     knownCellCount,
     gps: undefined,
     ekf: undefined,
-    sensors: { lastUpdate: 0, healthyCount: 0, presentCount: 0, prearm: undefined },
+    sysStatus: undefined,
     missionOnVehicle: null,
     fenceOnVehicle: null,
     formatGpsFix: String,
@@ -79,6 +79,30 @@ describe("battery checks judge charge per cell", () => {
     const v = evaluateAutoChecks(inputs(pack(16.8, { cellCount: 4 })), NOW + TELEMETRY_STALE_MS);
     expect(v["battery-level"].status).toBe("pending");
     expect(v["battery-voltage"].status).toBe("pending");
+  });
+});
+
+describe("sensor and pre-arm items read SYS_STATUS", () => {
+  const PREARM = 1 << 28;
+  const GYRO = 1 << 0;
+  const sys = (healthy: number, timestamp = NOW) => ({
+    timestamp, cpuLoad: 100, sensorsPresent: GYRO | PREARM, sensorsEnabled: GYRO | PREARM,
+    sensorsHealthy: healthy, batteryRemaining: -1, dropRateComm: 0, errorsComm: 0,
+  });
+
+  it("passes on a fresh all-healthy report and fails on an FC pre-arm failure", () => {
+    const pass = evaluateAutoChecks({ ...inputs(undefined), sysStatus: sys(GYRO | PREARM) }, NOW);
+    expect(pass["sensors-healthy"]).toEqual({ status: "pass", displayValue: "2/2" });
+    expect(pass["prearm-pass"].status).toBe("pass");
+
+    const fail = evaluateAutoChecks({ ...inputs(undefined), sysStatus: sys(GYRO) }, NOW);
+    expect(fail["prearm-pass"].status).toBe("fail");
+  });
+
+  it("gives no verdict from a stale report", () => {
+    const v = evaluateAutoChecks({ ...inputs(undefined), sysStatus: sys(GYRO | PREARM) }, NOW + TELEMETRY_STALE_MS);
+    expect(v["sensors-healthy"].status).toBe("pending");
+    expect(v["prearm-pass"].status).toBe("pending");
   });
 });
 

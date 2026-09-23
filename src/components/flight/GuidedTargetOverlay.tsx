@@ -12,10 +12,10 @@
 import { useGuidedStore } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { cancelGuidedTarget } from "@/lib/skills/guided-target";
 import { X, Navigation } from "lucide-react";
+import { haversineDistance } from "@/lib/geo/distance";
 
 export function GuidedTargetOverlay() {
   const target = useGuidedStore((s) => s.target);

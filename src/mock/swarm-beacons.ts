@@ -168,13 +168,13 @@ function resolvePositions(
 
 /** NED velocity components from a position sample's heading + rates. `vz` is
  * positive DESCENDING on the wire, while `climbRate` is positive climbing —
- * negate once, here. */
-function nedVelocity(pos: PositionData): { vx: number; vy: number; vz: number } {
+ * negate once, here. A sample with no climb rate has no vertical velocity. */
+function nedVelocity(pos: PositionData): { vx: number; vy: number; vz: number | null } {
   const headingRad = ((pos.heading ?? 0) * Math.PI) / 180;
   return {
     vx: pos.groundSpeed * Math.cos(headingRad),
     vy: pos.groundSpeed * Math.sin(headingRad),
-    vz: -pos.climbRate,
+    vz: pos.climbRate === undefined ? null : -pos.climbRate,
   };
 }
 
@@ -212,7 +212,7 @@ function buildNeighborRow(
     alt_m: fix(position.alt),
     vx_ms: fix(vx),
     vy_ms: fix(vy),
-    vz_ms: fix(vz),
+    vz_ms: vz === null ? null : fix(vz),
     heading_deg: fix(position.heading ?? 0),
     armed,
     guided,

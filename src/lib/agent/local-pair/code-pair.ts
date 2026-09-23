@@ -9,10 +9,9 @@
  * @license GPL-3.0-only
  */
 
-import { findHostByCodeOnLan as findHostByCodeOnLanImpl } from "../discovery/mdns-client";
+import { findHostByCodeOnLan } from "../discovery/mdns-client";
 import type { CodeClaimResult, ProbeResult } from "./types";
 import { AgentAlreadyPairedError, PairClientError } from "./errors";
-import { combineSignals } from "./transport";
 import { probeAgent } from "./probe";
 
 /** Pair codes use the agent's safe charset (uppercase letters and
@@ -24,16 +23,6 @@ const PAIR_CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;
 
 export function looksLikePairCode(input: string): boolean {
   return PAIR_CODE_RE.test(input.trim().toUpperCase());
-}
-
-/** Re-export of the LAN discovery scan with the local `combineSignals`
- *  helper bound. Keeps the public surface of this module unchanged for
- *  callers that import the function by name. */
-export function findHostByCodeOnLan(
-  code: string,
-  signal?: AbortSignal,
-): ReturnType<typeof findHostByCodeOnLanImpl> {
-  return findHostByCodeOnLanImpl(code, combineSignals, signal);
 }
 
 /** Anonymous code-pair: resolve a 6-character pair code into an agent

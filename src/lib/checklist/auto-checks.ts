@@ -13,10 +13,10 @@
  * @license GPL-3.0-only
  */
 
-import type { BatteryData, EkfData, GpsData } from "@/lib/types/telemetry";
-import { freshOnly, isFresh } from "@/lib/telemetry/freshness";
-import { plausibleCellVoltages, resolveCellCount } from "@/lib/telemetry/battery-cells";
-import { knownRemainingPct } from "@/lib/battery-bands";
+import type { BatteryData, EkfData, GpsData, SysStatusData } from "@/lib/types/telemetry";
+import { freshOnly } from "@/lib/telemetry/freshness";
+import { knownRemainingPct, plausibleCellVoltages, resolveCellCount } from "@/lib/battery";
+import { decodeSensorHealth, sensorCounts } from "@/lib/sensor-health";
 
 /**
  * Lowest resting voltage per cell accepted before flight. It sits above the
@@ -51,22 +51,14 @@ export interface AutoCheckVerdict {
 
 export type AutoCheckVerdicts = Record<AutoCheckId, AutoCheckVerdict>;
 
-export interface SensorHealthSnapshot {
-  /** When SYS_STATUS last updated the sensor table (ms epoch, 0 = never). */
-  lastUpdate: number;
-  healthyCount: number;
-  presentCount: number;
-  /** The FC's own pre-arm verdict bit, when the vehicle publishes it. */
-  prearm: { present: boolean; healthy: boolean } | undefined;
-}
-
 export interface AutoCheckInputs {
   battery: BatteryData | undefined;
   /** Series cell count known independently of the live voltage, else null. */
   knownCellCount: number | null;
   gps: GpsData | undefined;
   ekf: EkfData | undefined;
-  sensors: SensorHealthSnapshot;
+  /** The latest SYS_STATUS, whose sensor bitmasks carry sensor health. */
+  sysStatus: SysStatusData | undefined;
   /**
    * Waypoints in the plan the selected drone acknowledged (its upload receipt
    * matches the planner's current plan), or null when the vehicle is not known
@@ -127,7 +119,8 @@ export function evaluateAutoChecks(inputs: AutoCheckInputs, now: number): AutoCh
   const battery = freshOnly(inputs.battery, now);
   const gps = freshOnly(inputs.gps, now);
   const ekf = freshOnly(inputs.ekf, now);
-  const sensorsFresh = isFresh(inputs.sensors.lastUpdate, now);
+  const sysStatus = freshOnly(inputs.sysStatus, now);
+  const sensors = sysStatus ? decodeSensorHealth(sysStatus) : null;
 
   const gpsFix: AutoCheckVerdict = gps
     ? {
@@ -151,18 +144,19 @@ export function evaluateAutoChecks(inputs: AutoCheckInputs, now: number): AutoCh
       }
     : UNKNOWN;
 
-  const { healthyCount, presentCount, prearm } = inputs.sensors;
+  const counts = sensors ? sensorCounts(sensors) : null;
   const sensorsHealthy: AutoCheckVerdict =
-    sensorsFresh && presentCount > 0
+    counts && counts.present > 0
       ? {
-          status: healthyCount === presentCount ? "pass" : "fail",
-          displayValue: `${healthyCount}/${presentCount}`,
+          status: counts.healthy === counts.present ? "pass" : "fail",
+          displayValue: `${counts.healthy}/${counts.present}`,
         }
       : UNKNOWN;
   // SYS_STATUS bit 28 (MAV_SYS_STATUS_PREARM_CHECK) is the FC's own verdict.
   // A vehicle that does not publish it leaves the item pending.
+  const prearm = sensors?.find((s) => s.name === "pre_arm_check");
   const prearmPass: AutoCheckVerdict =
-    sensorsFresh && prearm?.present
+    prearm?.present
       ? prearm.healthy
         ? { status: "pass" }
         : { status: "fail", displayValue: "FC reports pre-arm failures" }

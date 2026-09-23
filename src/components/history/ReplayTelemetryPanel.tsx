@@ -9,6 +9,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { formatDecimal } from "@/lib/i18n/format";
+import { knownRemainingPct } from "@/lib/battery";
 
 function Row({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
   return (
@@ -74,7 +75,7 @@ export function ReplayTelemetryPanel() {
       </Section>
 
       <Section title="Battery">
-        <Row label="BAT" value={bat && bat.remaining >= 0 ? Math.round(bat.remaining) : "—"} unit="%" />
+        <Row label="BAT" value={knownRemainingPct(bat?.remaining)?.toFixed(0) ?? "—"} unit="%" />
         <Row label="VOLT" value={formatDecimal(bat?.voltage, 1, locale)} unit="V" />
         <Row label="AMP" value={formatDecimal(bat?.current, 1, locale)} unit="A" />
       </Section>

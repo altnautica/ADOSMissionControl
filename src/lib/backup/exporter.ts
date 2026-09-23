@@ -7,6 +7,7 @@
 
 import JSZip from "jszip";
 import { get as idbGet, keys as idbKeys } from "idb-keyval";
+import { downloadBlob } from "@/lib/download";
 
 /**
  * Every IndexedDB key a backup carries, and the only keys a restore writes:
@@ -88,10 +89,5 @@ export async function exportBackup(includeRecordings = false): Promise<void> {
 
   // Generate and download
   const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `ados-backup-${new Date().toISOString().slice(0, 10)}.zip`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `ados-backup-${new Date().toISOString().slice(0, 10)}.zip`);
 }

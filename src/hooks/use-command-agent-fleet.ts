@@ -17,7 +17,8 @@ import {
 import { useClockTick } from "@/lib/agent/freshness";
 import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
 import { linkStateReach } from "@/components/hardware/radio/labels";
-import { isFcReachable } from "@/lib/agent/mavlink-link";
+import { nodeFcReachable } from "@/lib/nodes/fc-reading";
+import { knownRemainingPct } from "@/lib/battery";
 import { resolveAgentVideoUrl } from "@/lib/agent/video-url";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
@@ -123,11 +124,10 @@ const numberOrNull = (v: unknown): number | null =>
 export function normalizeFleetTelemetry(
   telemetry: CommandTelemetrySnapshot | undefined,
 ): CommandAgentSummary["telemetry"] {
-  const remaining = numberOrNull(telemetry?.battery?.remaining);
   return {
     armed: typeof telemetry?.armed === "boolean" ? telemetry.armed : null,
     mode: telemetry?.mode ? telemetry.mode : null,
-    batteryRemaining: remaining !== null && remaining >= 0 ? remaining : null,
+    batteryRemaining: knownRemainingPct(telemetry?.battery?.remaining),
     batteryVoltage: numberOrNull(telemetry?.battery?.voltage),
     gpsSatellites: numberOrNull(telemetry?.gps?.satellites),
     gpsFixType: numberOrNull(telemetry?.gps?.fix_type),
@@ -218,16 +218,9 @@ export function useCommandAgentFleet(
           memoryPercent: status?.memoryPercent ?? null,
           diskPercent: status?.diskPercent ?? null,
           temperature: status?.temperature ?? null,
-          // A reachable MSP FC (Betaflight/iNav) never sets fcConnected — it
-          // sends no MAVLink heartbeat — but it IS a connected, drivable FC, so
-          // fold the MSP variant/transport signal in rather than reading "no FC".
-          // Named for what it holds: the reachability verdict, not the raw flag.
-          fcReachable: isFcReachable({
-            fcConnected: status?.fcConnected ?? drone.fcConnected,
-            fcVariant: status?.fcVariant,
-            transportOpen: status?.transportOpen,
-            fcReachable: status?.fcReachable,
-          }),
+          // The reachability verdict, not the raw fcConnected flag: the board
+          // cells and the per-node skill context judge the FC through it.
+          fcReachable: nodeFcReachable(drone, status),
           serviceCount: services.length,
           runningServiceCount: countRunning(services),
         },

@@ -20,11 +20,11 @@
 
 import type { DroneProtocol, UnifiedFlightMode } from "@/lib/protocol/types";
 import { freshOnly } from "@/lib/telemetry/freshness";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useGuidedStore, type GuidedTarget } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** Supervision cadence. */
 export const GUIDED_POLL_MS = 1_000;

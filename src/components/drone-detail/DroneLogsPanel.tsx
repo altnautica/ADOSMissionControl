@@ -26,6 +26,7 @@ import {
   type CategoryFilter,
 } from "@/hooks/use-drone-log-filter";
 import { LogTelemetryGraph } from "./LogTelemetryGraph";
+import { downloadBlob } from "@/lib/download";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -177,12 +178,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
       return `[${time}] [${sev}] ${m.text}`;
     });
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `altnautica-log-${droneId}-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `altnautica-log-${droneId}-${Date.now()}.txt`);
   }, [processedMessages, droneId]);
 
   // ── Helpers ────────────────────────────────────────────────

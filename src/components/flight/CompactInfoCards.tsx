@@ -3,13 +3,13 @@
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { BatteryBar } from "@/components/shared/battery-bar";
-import { SensorHealthBar } from "@/components/shared/SensorHealthBar";
+import { SensorHealthGrid } from "@/components/indicators/SensorHealthGrid";
 import { AgentSystemInfoCard } from "@/components/flight/AgentSystemInfoCard";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { knownRemainingPct } from "@/lib/battery-bands";
+import { knownRemainingPct } from "@/lib/battery";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useHistoryStore } from "@/stores/history-store";
 import { useDroneMetadataStore, type DroneMetadata } from "@/stores/drone-metadata-store";
@@ -242,7 +242,7 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
     <div className="bg-bg-secondary">
       {/* Health — READ-ONLY */}
       <Section title={t("health")}>
-        <SensorHealthBar compact fcLive={fcLive} />
+        <SensorHealthGrid compact fcLive={fcLive} className="py-1" />
         <div className="grid grid-cols-2 gap-2 mt-2">
           <MetricCell
             label={t("health")}

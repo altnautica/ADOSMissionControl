@@ -16,7 +16,6 @@ import { usePlannerStore } from "@/stores/planner-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useRallyUploadStatus } from "@/hooks/use-upload-status";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { recordHistory } from "@/lib/planner-history";
 
 export function RallyPointEditor() {
   const t = useTranslations("rally");
@@ -58,25 +57,13 @@ export function RallyPointEditor() {
     setConfirmReplace(false);
     setDownloading(true);
     setTransferError(null);
-    // The undo step is recorded only when the download succeeded and is about
-    // to replace the local points.
-    const r = await downloadRallyPoints(recordHistory);
+    const r = await downloadRallyPoints();
     if (!r.success) setTransferError(`${t("downloadFailed")}: ${r.message}`);
     setDownloading(false);
   }, [downloadRallyPoints, t]);
 
-  // Every panel edit is one undo step, recorded before the change lands.
-  const handleUpdate = useCallback((id: string, update: Partial<RallyPoint>) => {
-    recordHistory();
-    updatePoint(id, update);
-  }, [updatePoint]);
-  const handleRemove = useCallback((id: string) => {
-    recordHistory();
-    removePoint(id);
-  }, [removePoint]);
   const handleClear = useCallback(() => {
     setConfirmClear(false);
-    recordHistory();
     clearPoints();
   }, [clearPoints]);
 
@@ -139,8 +126,8 @@ export function RallyPointEditor() {
               key={point.id}
               point={point}
               index={idx}
-              onUpdate={handleUpdate}
-              onRemove={handleRemove}
+              onUpdate={updatePoint}
+              onRemove={removePoint}
             />
           ))}
         </div>

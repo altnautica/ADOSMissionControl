@@ -35,7 +35,6 @@ import { useTranslations } from "next-intl";
 import { AlertTriangle } from "lucide-react";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
-import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 import { useNodeCommandLane } from "@/components/command/nodes-view/use-node-command-lane";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useClockStore } from "@/stores/clock-store";
@@ -70,9 +69,6 @@ export function SwarmView({
 }: SwarmViewProps) {
   const t = useTranslations("swarmView");
   const laneOptions = useNodeCommandLane();
-  // A refused fleet command has to say why. The dispatcher answers with raw
-  // keys, so without this bridge every refusal on this board would be silent.
-  useSkillToastBridge();
 
   const rows = useSwarmBeaconStore(selectSwarmRows);
   const fleetSlots = useSwarmBeaconStore(selectSwarmFleetSlots);

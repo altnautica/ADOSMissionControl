@@ -22,7 +22,7 @@ import { useDroneManager } from "./drone-manager";
 import { useTelemetryStore } from "./telemetry-store";
 import { indexedDBStorage } from "@/lib/storage";
 import {
-  recordHistory,
+  withPlannerHistory,
   undoHistory,
   redoHistory,
   clearHistory,
@@ -238,61 +238,56 @@ export const useMissionStore = create<MissionStoreState>()(
     currentWaypoint: null,
   }),
 
-  setWaypoints: (waypoints) => {
-    recordHistory();
-    set({ waypoints });
-  },
+  setWaypoints: (waypoints) => withPlannerHistory(() => set({ waypoints })),
 
-  addWaypoint: (waypoint) => {
-    recordHistory();
-    set((s) => ({ waypoints: [...s.waypoints, waypoint] }));
-  },
+  addWaypoint: (waypoint) =>
+    withPlannerHistory(() => set((s) => ({ waypoints: [...s.waypoints, waypoint] }))),
 
-  insertWaypoint: (waypoint, atIndex) => {
-    recordHistory();
-    set((s) => {
-      const wps = [...s.waypoints];
-      wps.splice(atIndex, 0, waypoint);
-      return { waypoints: wps };
-    });
-  },
+  insertWaypoint: (waypoint, atIndex) =>
+    withPlannerHistory(() =>
+      set((s) => {
+        const wps = [...s.waypoints];
+        wps.splice(atIndex, 0, waypoint);
+        return { waypoints: wps };
+      }),
+    ),
 
-  removeWaypoint: (id) => {
-    recordHistory();
-    set((s) => ({ waypoints: s.waypoints.filter((w) => w.id !== id) }));
-  },
+  removeWaypoint: (id) =>
+    withPlannerHistory(() => set((s) => ({ waypoints: s.waypoints.filter((w) => w.id !== id) }))),
 
   updateWaypoint: (id, update) => {
-    recordHistory();
     // Moving a position-inheriting item gives it a real position.
     const moved = ("lat" in update || "lon" in update) && !("inheritsPosition" in update);
-    set((s) => ({
-      waypoints: s.waypoints.map((w) =>
-        w.id === id ? { ...w, ...update, ...(moved ? { inheritsPosition: undefined } : {}) } : w
-      ),
-    }));
+    withPlannerHistory(() =>
+      set((s) => ({
+        waypoints: s.waypoints.map((w) =>
+          w.id === id ? { ...w, ...update, ...(moved ? { inheritsPosition: undefined } : {}) } : w
+        ),
+      })),
+    );
   },
 
   batchUpdateWaypoints: (ids, update) => {
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    recordHistory();
-    set((s) => ({
-      waypoints: s.waypoints.map((w) =>
-        idSet.has(w.id) ? { ...w, ...update } : w
-      ),
-    }));
+    withPlannerHistory(() =>
+      set((s) => ({
+        waypoints: s.waypoints.map((w) =>
+          idSet.has(w.id) ? { ...w, ...update } : w
+        ),
+      })),
+    );
   },
 
-  reorderWaypoints: (fromIndex, toIndex) => {
-    recordHistory();
-    set((s) => {
-      const wps = [...s.waypoints];
-      const [moved] = wps.splice(fromIndex, 1);
-      wps.splice(toIndex, 0, moved);
-      return { waypoints: wps };
-    });
-  },
+  reorderWaypoints: (fromIndex, toIndex) =>
+    withPlannerHistory(() =>
+      set((s) => {
+        const wps = [...s.waypoints];
+        const [moved] = wps.splice(fromIndex, 1);
+        wps.splice(toIndex, 0, moved);
+        return { waypoints: wps };
+      }),
+    ),
 
   applyMissionCurrent: (droneId, seq) => {
     const { waypoints } = get();
@@ -340,14 +335,15 @@ export const useMissionStore = create<MissionStoreState>()(
   },
 
   clearMission: () => {
-    recordHistory();
-    set({
-      activeMission: null,
-      waypoints: [],
-      progress: 0,
-      currentWaypoint: null,
-      uploadState: "idle",
-    });
+    withPlannerHistory(() =>
+      set({
+        activeMission: null,
+        waypoints: [],
+        progress: 0,
+        currentWaypoint: null,
+        uploadState: "idle",
+      }),
+    );
   },
 
   undo: () => undoHistory(),

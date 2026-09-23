@@ -12,6 +12,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { knownRemainingPct } from "@/lib/battery";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
@@ -32,6 +33,7 @@ function useLiveTelemetryPreview(): Record<string, string> {
   const p = useFreshTelemetry("position");
 
   return useMemo(() => {
+    const remaining = knownRemainingPct(b?.remaining);
     return {
       ALTITUDE: v ? `${v.alt.toFixed(0)}m` : "ALT",
       BAT_VOLT: b ? `${b.voltage.toFixed(1)}V` : "BATT",
@@ -44,7 +46,7 @@ function useLiveTelemetryPreview(): Record<string, string> {
       THROTTLE: v?.throttle !== undefined ? `${v.throttle}%` : "THR",
       HEADING: p?.heading !== undefined ? `${p.heading.toFixed(0)}°` : "HDG",
       POWER: b?.current !== undefined ? `${(b.voltage * b.current).toFixed(0)}W` : "PWR",
-      BATTBAR: b && b.remaining >= 0 ? `${b.remaining}%` : "BAR",
+      BATTBAR: remaining !== null ? `${remaining}%` : "BAR",
       BATUSED: b?.consumed !== undefined ? `${b.consumed.toFixed(0)}` : "mAh",
       CLK: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
     };

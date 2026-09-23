@@ -16,7 +16,7 @@ import {
   BatteryCell,
   ModeReadout,
 } from "@/components/command/nodes-view/StateCells";
-import { fcReading } from "@/components/command/nodes-view/cell-primitives";
+import { fcReading } from "@/lib/nodes/fc-reading";
 import { normalizeFleetTelemetry } from "@/hooks/use-command-agent-fleet";
 
 afterEach(cleanup);

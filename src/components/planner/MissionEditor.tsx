@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { FleetDrone } from "@/lib/types";
 import { isFresh } from "@/lib/telemetry/freshness";
+import { knownRemainingPct } from "@/lib/battery";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useClockStore } from "@/stores/clock-store";
 
@@ -70,7 +71,8 @@ export function MissionEditor({
  */
 function batteryLabel(d: FleetDrone, now: number, staleLabel: string): string {
   const battery = d.fcAttached === false ? undefined : d.battery;
-  if (!battery || !Number.isFinite(battery.remaining) || battery.remaining < 0) return "—";
-  const pct = `${Math.round(battery.remaining)}%`;
+  const remaining = knownRemainingPct(battery?.remaining);
+  if (!battery || remaining === null) return "—";
+  const pct = `${Math.round(remaining)}%`;
   return isFresh(battery.timestamp, now) ? pct : `${pct}, ${staleLabel}`;
 }

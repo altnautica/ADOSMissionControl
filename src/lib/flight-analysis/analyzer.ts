@@ -16,6 +16,7 @@ import type { TelemetryFrame } from "@/lib/telemetry-recorder";
 import type { FlightEvent, FlightFlag, HealthSummary } from "@/lib/types";
 import { AIRBORNE_ALT_M } from "./phase-detector";
 import { THRESHOLDS } from "./thresholds";
+import { knownRemainingPct } from "@/lib/battery";
 
 export interface AnalyzeResult {
   events: FlightEvent[];
@@ -125,27 +126,27 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
       }
     } else if (frame.channel === "battery") {
       const d = frame.data as BatteryFrame;
-      // -1 is the autopilot's "remaining not measured", not an empty pack.
-      if (typeof d.remaining === "number" && d.remaining >= 0) {
-        if (batteryStartPct === undefined) batteryStartPct = d.remaining;
-        batteryEndPct = d.remaining;
+      const remaining = knownRemainingPct(d.remaining);
+      if (remaining !== null) {
+        if (batteryStartPct === undefined) batteryStartPct = remaining;
+        batteryEndPct = remaining;
 
-        if (!lastBatteryAlertedCritical && d.remaining <= THRESHOLDS.batteryCriticalPct) {
+        if (!lastBatteryAlertedCritical && remaining <= THRESHOLDS.batteryCriticalPct) {
           events.push({
             t,
             type: "battery_critical",
             severity: "error",
-            label: `Battery critical (${d.remaining}%)`,
-            data: { remaining: d.remaining },
+            label: `Battery critical (${remaining}%)`,
+            data: { remaining },
           });
           lastBatteryAlertedCritical = true;
-        } else if (!lastBatteryAlertedLow && d.remaining <= THRESHOLDS.batteryLowPct) {
+        } else if (!lastBatteryAlertedLow && remaining <= THRESHOLDS.batteryLowPct) {
           events.push({
             t,
             type: "battery_low",
             severity: "warning",
-            label: `Battery low (${d.remaining}%)`,
-            data: { remaining: d.remaining },
+            label: `Battery low (${remaining}%)`,
+            data: { remaining },
           });
           lastBatteryAlertedLow = true;
         }
@@ -241,22 +242,22 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
       }
     } else if (frame.channel === "sysStatus") {
       const d = frame.data as SysStatusFrame;
+      const remaining = knownRemainingPct(d.batteryRemaining);
       // SYS_STATUS carries the same remaining % as BATTERY_STATUS. It is a
       // reading, not an autopilot failsafe, and is reported once only when
       // the battery stream has not already raised the critical event.
       if (
         !batteryBelowReported &&
         !lastBatteryAlertedCritical &&
-        typeof d.batteryRemaining === "number" &&
-        d.batteryRemaining >= 0 &&
-        d.batteryRemaining < THRESHOLDS.batteryCriticalPct
+        remaining !== null &&
+        remaining < THRESHOLDS.batteryCriticalPct
       ) {
         events.push({
           t,
           type: "battery_below",
           severity: "warning",
           label: `Battery below ${THRESHOLDS.batteryCriticalPct}%`,
-          data: { remaining: d.batteryRemaining },
+          data: { remaining },
         });
         batteryBelowReported = true;
       }

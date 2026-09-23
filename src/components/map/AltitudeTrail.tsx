@@ -90,8 +90,16 @@ interface TrailSegment {
   avgAlt: number;
 }
 
+/** A trail point whose height above home was reported. */
+type AltTrailPoint = TrailPoint & { alt: number };
+
+/** True when every point carries a reported altitude. */
+function everyPointHasAlt(trail: readonly TrailPoint[]): trail is readonly AltTrailPoint[] {
+  return trail.every((p) => p.alt !== undefined);
+}
+
 /** Group consecutive trail points into segments sharing one altitude band. */
-export function buildSegments(trail: TrailPoint[]): TrailSegment[] {
+export function buildSegments(trail: readonly AltTrailPoint[]): TrailSegment[] {
   if (trail.length < 2) return [];
 
   const segments: TrailSegment[] = [];
@@ -147,12 +155,13 @@ export function AltitudeTrail() {
     return ring.toArray();
   }, [ring, version]);
 
-  const hasAltData = useMemo(() => trail.some((p) => p.alt !== 0), [trail]);
-
+  // Colour by altitude only when every point reported one; a point with no
+  // height above home must not be painted into a band.
   const segments = useMemo(
-    () => (hasAltData ? buildSegments(trail) : []),
-    [trail, hasAltData],
+    () => (everyPointHasAlt(trail) && trail.some((p) => p.alt !== 0) ? buildSegments(trail) : null),
+    [trail],
   );
+  const hasAltData = segments !== null;
 
   // No altitude data — one plain accent-blue polyline for the whole track.
   const flatPositions = useMemo<[number, number][]>(

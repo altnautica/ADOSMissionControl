@@ -10,11 +10,12 @@
 
 import L from "leaflet";
 import type { DrawingMode } from "./types";
-import { haversineDistance, polygonArea, polygonCentroid, nearestVertexWithinThreshold } from "./geo-utils";
+import { polygonArea, polygonCentroid, nearestVertexWithinThreshold } from "./geo-utils";
 import { formatArea, formatDistance } from "@/lib/units/format";
 import type { UnitSystem } from "@/stores/settings-store-types";
 import { DRAW_COLORS, makeVertexIcon, makeDistanceLabel, makeAreaLabel } from "./drawing-labels";
 import { type MeasureState, createMeasureState, addMeasurePoint, updateMeasureLine, emitMeasureUpdate, clearMeasureState } from "./drawing-measure";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** Pixel radius within which a new vertex snaps onto an existing vertex / waypoint. */
 const SNAP_TARGET_PX = 12;

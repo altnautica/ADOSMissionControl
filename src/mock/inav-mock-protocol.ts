@@ -1305,23 +1305,31 @@ export class INavMockProtocol implements DroneProtocol {
       // GPS satellite count jitter
       this.sats = 11 + (Math.floor(ts / 5000) % 4);
 
+      // Mirrors what an MSP link carries: attitude angles without body rates,
+      // GPS position without vertical speed, and the baro altitude plus vario
+      // on the VFR stream.
       for (const cb of this.cbs.attitudeCbs) {
-        cb({ roll: this.roll, pitch: this.pitch, yaw: this.yaw, rollSpeed: 0, pitchSpeed: 0, yawSpeed: flying ? 0.5 : 0, timestamp: ts });
+        cb({ roll: this.roll, pitch: this.pitch, yaw: this.yaw, timestamp: ts });
       }
+      const relAlt = flying ? 45 : 0;
+      const climb = flying ? Math.cos(ts / 4000) * 0.5 : 0;
       for (const cb of this.cbs.positionCbs) {
         cb(flying
           ? {
               lat: this.lat, lon: this.lon,
               alt: 45 + Math.sin(ts / 8000) * 5,
-              relativeAlt: 45,
+              relativeAlt: relAlt,
               heading: this.yaw, groundSpeed: 5 + Math.sin(ts / 3000) * 2,
-              airSpeed: 6, climbRate: Math.cos(ts / 4000) * 0.5,
+              airSpeed: 6,
               timestamp: ts,
             }
           : {
-              lat: this.lat, lon: this.lon, alt: 0, relativeAlt: 0,
-              heading: this.yaw, groundSpeed: 0, climbRate: 0, timestamp: ts,
+              lat: this.lat, lon: this.lon, alt: 0, relativeAlt: relAlt,
+              heading: this.yaw, groundSpeed: 0, timestamp: ts,
             });
+      }
+      for (const cb of this.cbs.vfrCbs) {
+        cb({ timestamp: ts, alt: relAlt, climb });
       }
       for (const cb of this.cbs.batteryCbs) {
         const cellV = (16.8 * (this.battery / 100)) / 4;

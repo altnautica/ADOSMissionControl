@@ -46,10 +46,18 @@ export interface NodePresence {
   isDirectFc?: boolean;
 }
 
-/** Classify a heard-from timestamp against the shared freshness thresholds. */
-export function livenessFromTimestamp(ts: number | null): CommandAgentLiveness {
+/**
+ * Classify a heard-from timestamp against the shared freshness thresholds. The
+ * one liveness rule: every surface and gate that asks whether a node is still
+ * being heard from judges it here. `now` is injectable so a pure projection
+ * can tick on the shared clock.
+ */
+export function livenessFromTimestamp(
+  ts: number | null,
+  now: number = Date.now(),
+): CommandAgentLiveness {
   if (!ts) return "offline";
-  const elapsed = Date.now() - ts;
+  const elapsed = now - ts;
   if (elapsed < STALE_THRESHOLD_MS) return "live";
   if (elapsed < OFFLINE_THRESHOLD_MS) return "stale";
   return "offline";

@@ -43,6 +43,7 @@ import {
   type LogdWindow,
 } from "@/lib/community-api-logd";
 import type { LogLevel } from "@/lib/agent/agent-client/logging";
+import { downloadBlob } from "@/lib/download";
 
 const levelColors: Record<LogLevel, string> = {
   debug: "text-text-tertiary",
@@ -157,14 +158,7 @@ export function BlackBoxTab({ nodeDeviceId }: { nodeDeviceId: string | null }) {
       toast(t("exportUnavailable"), "warning");
       return;
     }
-    const url = URL.createObjectURL(result.blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = result.filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadBlob(result.blob, result.filename);
     toast(t("exportStarted"), "success");
   }
 

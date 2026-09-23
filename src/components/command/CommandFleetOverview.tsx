@@ -12,7 +12,8 @@ import { Activity, Cpu, ListChecks, Radio, Server, Video, WifiOff } from "lucide
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandFleetStore, type CommandCloudStatus } from "@/stores/command-fleet-store";
-import { STALE_THRESHOLD_MS, useClockTick } from "@/lib/agent/freshness";
+import { useClockTick } from "@/lib/agent/freshness";
+import { nodeLastSeen, livenessFromTimestamp } from "@/lib/nodes/presence";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
 import { StatTile } from "@/components/command/shared/StatTile";
 import { AgentFeedTile } from "./AgentFeedTile";
@@ -36,8 +37,7 @@ function canRunVideo(
   if (!status) return false;
   if (!status.videoWhepUrl) return false;
   if (status.videoState !== "running") return false;
-  const lastSeen = Math.max(drone.lastSeen ?? 0, status.updatedAt ?? 0);
-  return Date.now() - lastSeen < STALE_THRESHOLD_MS;
+  return livenessFromTimestamp(nodeLastSeen(drone, status)) === "live";
 }
 
 export function CommandFleetOverview({
@@ -63,8 +63,8 @@ export function CommandFleetOverview({
       .sort((a, b) => {
         const pinnedDelta = Number(pinnedIds.has(b.deviceId)) - Number(pinnedIds.has(a.deviceId));
         if (pinnedDelta !== 0) return pinnedDelta;
-        const aSeen = Math.max(a.lastSeen ?? 0, cloudStatuses[a.deviceId]?.updatedAt ?? 0);
-        const bSeen = Math.max(b.lastSeen ?? 0, cloudStatuses[b.deviceId]?.updatedAt ?? 0);
+        const aSeen = nodeLastSeen(a, cloudStatuses[a.deviceId]) ?? 0;
+        const bSeen = nodeLastSeen(b, cloudStatuses[b.deviceId]) ?? 0;
         return bSeen - aSeen || a.name.localeCompare(b.name);
       })
       .slice(0, MAX_ACTIVE_FEEDS)

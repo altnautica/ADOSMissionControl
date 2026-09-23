@@ -15,82 +15,7 @@
  */
 
 import type { GeofenceBreach, GeofenceSnapshot } from "@/lib/types";
-
-const EARTH_RADIUS_M = 6_371_000;
-
-interface LatLon {
-  lat: number;
-  lon: number;
-}
-
-function toRad(d: number): number {
-  return (d * Math.PI) / 180;
-}
-
-function haversineM(a: LatLon, b: LatLon): number {
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const sa =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(sa)));
-}
-
-/** Ray-casting point-in-polygon. Polygon is a [lat, lon][] ring. */
-function pointInPolygon(p: LatLon, polygon: [number, number][]): boolean {
-  if (polygon.length < 3) return false;
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i][0]; // lat
-    const yi = polygon[i][1]; // lon
-    const xj = polygon[j][0];
-    const yj = polygon[j][1];
-    if (
-      yi > p.lon !== yj > p.lon &&
-      p.lat < ((xj - xi) * (p.lon - yi)) / (yj - yi) + xi
-    ) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
-
-/** Distance from a point to a polygon edge (in meters). 0 when inside. */
-function distanceToPolygonEdgeM(p: LatLon, polygon: [number, number][]): number {
-  if (polygon.length < 2) return 0;
-  let best = Infinity;
-  for (let i = 0; i < polygon.length; i++) {
-    const a: LatLon = { lat: polygon[i][0], lon: polygon[i][1] };
-    const b: LatLon = {
-      lat: polygon[(i + 1) % polygon.length][0],
-      lon: polygon[(i + 1) % polygon.length][1],
-    };
-    // Local equirectangular projection.
-    const cosLat = Math.cos(toRad(a.lat));
-    const ax = 0;
-    const ay = 0;
-    const bx = (b.lon - a.lon) * cosLat * 111_320;
-    const by = (b.lat - a.lat) * 111_320;
-    const px = (p.lon - a.lon) * cosLat * 111_320;
-    const py = (p.lat - a.lat) * 111_320;
-    const dx = bx - ax;
-    const dy = by - ay;
-    const len2 = dx * dx + dy * dy;
-    if (len2 === 0) {
-      const d = Math.sqrt(px * px + py * py);
-      if (d < best) best = d;
-      continue;
-    }
-    const t = Math.max(0, Math.min(1, (px * dx + py * dy) / len2));
-    const projX = t * dx;
-    const projY = t * dy;
-    const ex = px - projX;
-    const ey = py - projY;
-    const d = Math.sqrt(ex * ex + ey * ey);
-    if (d < best) best = d;
-  }
-  return best;
-}
+import { distanceToPolygonEdgeM, haversineDistance, pointInPolygon } from "@/lib/geo/distance";
 
 interface PerPointBreach {
   zoneId: string;
@@ -119,7 +44,7 @@ export function detectGeofenceBreaches(
   for (const zone of zones) {
     if (zone.type === "polygon" && zone.polygonPoints && zone.polygonPoints.length >= 3) {
       for (let i = 0; i < path.length; i++) {
-        const p: LatLon = { lat: path[i][0], lon: path[i][1] };
+        const p = path[i];
         const inside = pointInPolygon(p, zone.polygonPoints);
         const isInclusion = zone.role === "inclusion";
         const isBreach = isInclusion ? !inside : inside;
@@ -133,11 +58,10 @@ export function detectGeofenceBreaches(
         }
       }
     } else if (zone.type === "circle" && zone.circleCenter && zone.circleRadius) {
-      const center: LatLon = { lat: zone.circleCenter[0], lon: zone.circleCenter[1] };
+      const [cLat, cLon] = zone.circleCenter;
       const r = zone.circleRadius;
       for (let i = 0; i < path.length; i++) {
-        const p: LatLon = { lat: path[i][0], lon: path[i][1] };
-        const d = haversineM(p, center);
+        const d = haversineDistance(path[i][0], path[i][1], cLat, cLon);
         const isInclusion = zone.role === "inclusion";
         const isBreach = isInclusion ? d > r : d <= r;
         if (isBreach) {

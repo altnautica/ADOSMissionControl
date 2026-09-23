@@ -22,6 +22,7 @@ vi.mock('@/lib/storage', () => ({
 
 import { useRallyStore, rallyContentHash } from '@/stores/rally-store';
 import { useUploadReceiptsStore, receiptFor, receiptStatus } from '@/stores/upload-receipts-store';
+import { clearHistory, undoDepth, undoHistory } from '@/lib/planner-history';
 
 const POINT = { id: 'r1', lat: 12.97, lon: 77.59, alt: 60 };
 
@@ -34,6 +35,7 @@ describe('rally-store transfers', () => {
     protocol = null;
     useRallyStore.setState({ points: [{ ...POINT }] });
     useUploadReceiptsStore.setState({ receipts: {} });
+    clearHistory();
   });
 
   it('reports failure with no flight controller', async () => {
@@ -64,23 +66,21 @@ describe('rally-store transfers', () => {
   });
 
   it('a failed download keeps the local points and records no undo step', async () => {
-    const beforeReplace = vi.fn();
     protocol = { downloadRallyPoints: vi.fn().mockRejectedValue(new Error('Not connected')) };
-    const r = await useRallyStore.getState().downloadRallyPoints(beforeReplace);
+    const r = await useRallyStore.getState().downloadRallyPoints();
     expect(r).toEqual({ success: false, message: 'Not connected' });
     expect(useRallyStore.getState().points).toEqual([POINT]);
-    expect(beforeReplace).not.toHaveBeenCalled();
+    expect(undoDepth()).toBe(0);
   });
 
-  it('a successful download records the undo step before replacing', async () => {
-    const beforeReplace = vi.fn(() => {
-      expect(useRallyStore.getState().points).toEqual([POINT]);
-    });
+  it('a successful download is one undo step back to the local points', async () => {
     protocol = { downloadRallyPoints: vi.fn().mockResolvedValue([{ lat: 1, lon: 2, alt: 40 }]) };
-    const r = await useRallyStore.getState().downloadRallyPoints(beforeReplace);
+    const r = await useRallyStore.getState().downloadRallyPoints();
     expect(r.success).toBe(true);
-    expect(beforeReplace).toHaveBeenCalledTimes(1);
     expect(useRallyStore.getState().points).toMatchObject([{ lat: 1, lon: 2, alt: 40 }]);
     expect(rallyStatus()).toBe('on-aircraft');
+    expect(undoDepth()).toBe(1);
+    undoHistory();
+    expect(useRallyStore.getState().points).toEqual([POINT]);
   });
 });

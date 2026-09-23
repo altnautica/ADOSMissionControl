@@ -14,7 +14,7 @@ import { useTranslations } from "next-intl";
 import { getFreshness, useClockTick } from "@/lib/agent/freshness";
 import { cn } from "@/lib/utils";
 
-export const CARD = "rounded border border-border-default bg-bg-secondary p-5";
+const CARD = "rounded border border-border-default bg-bg-secondary p-5";
 
 export function Section({
   title,
@@ -52,12 +52,23 @@ export function InfoNote({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** A compact label / mono value pair for a reported fact. */
-export function ReadRow({ label, value }: { label: string; value: string }) {
+/**
+ * A compact label / mono value pair for a reported fact. A null or empty value
+ * is a fact the node has not reported, and says so rather than rendering a
+ * blank or a fabricated default.
+ */
+export function ReadRow({ label, value }: { label: string; value: string | null }) {
+  const t = useTranslations("nodeSettings");
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className="text-[11px] text-text-tertiary">{label}</span>
-      <span className="shrink-0 font-mono text-xs text-text-primary">{value}</span>
+      <span className="min-w-0 truncate text-right font-mono text-xs text-text-primary">
+        {value != null && value.length > 0 ? (
+          value
+        ) : (
+          <span className="text-text-tertiary">{t("notReported")}</span>
+        )}
+      </span>
     </div>
   );
 }

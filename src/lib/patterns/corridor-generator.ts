@@ -14,11 +14,11 @@
 
 import type { CorridorConfig, PatternResult, PatternWaypoint } from "./types";
 import {
-  haversineDistance,
   bearing,
   offsetPoint,
   polygonArea,
 } from "@/lib/drawing/geo-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 export function generateCorridor(config: CorridorConfig): PatternResult {
   const { pathPoints, corridorWidth, lineSpacing, altitude, speed } = config;

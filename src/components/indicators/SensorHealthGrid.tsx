@@ -2,47 +2,45 @@
 
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useSensorHealthStore } from "@/stores/sensor-health-store";
-import { useClockTick } from "@/lib/agent/freshness";
-import { useClockStore } from "@/stores/clock-store";
-import { isFresh } from "@/lib/telemetry/freshness";
+import { useSensorHealth } from "@/hooks/use-sensor-health";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
-  Check, X, AlertTriangle, Minus, ChevronDown,
+  Check, X, Minus, ChevronDown,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
   healthy: { color: "text-status-success", bg: "bg-status-success/10", Icon: Check },
-  unhealthy: { color: "text-status-warning", bg: "bg-status-warning/10", Icon: AlertTriangle },
   error: { color: "text-status-error", bg: "bg-status-error/10", Icon: X },
+  disabled: { color: "text-text-secondary", bg: "bg-bg-tertiary/50", Icon: Minus },
   not_present: { color: "text-text-tertiary", bg: "bg-bg-tertiary/50", Icon: Minus },
 } as const;
 
 /**
- * 32-sensor status grid decoded from MAV_SYS_STATUS_SENSOR bitmask.
- * Shows only present sensors by default, expandable to show all.
- * Clicking a sensor row expands detailed telemetry info. A SYS_STATUS that
- * stopped arriving renders as no data, never as the last sensor verdicts.
+ * The one sensor-health view, decoded from the selected drone's SYS_STATUS
+ * (MAV_SYS_STATUS_SENSOR bitmasks). Present sensors only by default,
+ * expandable to all; `compact` is a count plus one dot per sensor. A
+ * SYS_STATUS that stopped arriving renders as no data, never as the last
+ * sensor verdicts.
  */
 export function SensorHealthGrid({
   showAll = false,
   compact = false,
+  fcLive = true,
   className,
 }: {
   showAll?: boolean;
   compact?: boolean;
+  /**
+   * False when the surface knows no FC is attached; no sensor claims are shown
+   * whatever the telemetry ring still holds.
+   */
+  fcLive?: boolean;
   className?: string;
 }) {
   const t = useTranslations("indicators");
-  const sensors = useSensorHealthStore((s) => s.sensors);
-  const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
-  const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
-  const lastUpdate = useSensorHealthStore((s) => s.lastUpdate);
+  const health = useSensorHealth();
   const [expandedBits, setExpandedBits] = useState<Set<number>>(new Set());
-  // Re-render as time passes so a report that stops arriving decays.
-  useClockTick();
-  const now = useClockStore((s) => s.now);
 
   const toggleExpand = useCallback((bit: number) => {
     setExpandedBits((prev) => {
@@ -53,15 +51,17 @@ export function SensorHealthGrid({
     });
   }, []);
 
-  const displayed = showAll ? sensors : sensors.filter((s) => s.present);
+  const sensors = fcLive ? health.sensors : null;
 
-  if (lastUpdate > 0 && !isFresh(lastUpdate, now)) {
+  if (!sensors && fcLive && health.heard) {
     return (
       <div className={cn("text-xs text-status-error", className)} data-telemetry-stale>
         Sensors · {t("telemetryNone")}
       </div>
     );
   }
+
+  const displayed = sensors ? (showAll ? sensors : sensors.filter((s) => s.present)) : [];
 
   if (displayed.length === 0) {
     return (
@@ -73,20 +73,23 @@ export function SensorHealthGrid({
 
   if (compact) {
     return (
-      <div className={cn("flex items-center gap-1", className)}>
+      <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
         <span className="text-[10px] font-mono text-text-secondary">
-          {healthyCount}/{totalPresent}
+          {health.healthyCount}/{health.presentCount}
         </span>
-        <div className="flex gap-px">
-          {displayed.map((sensor) => {
-            const cfg = STATUS_CONFIG[sensor.status];
-            return (
-              <Tooltip key={sensor.bit} content={`${sensor.label}: ${sensor.status}`}>
-                <div className={cn("w-1.5 h-1.5 rounded-sm", cfg.color.replace("text-", "bg-"))} />
-              </Tooltip>
-            );
-          })}
-        </div>
+        {displayed.map((sensor) => {
+          const cfg = STATUS_CONFIG[sensor.status];
+          return (
+            <Tooltip key={sensor.bit} content={`${sensor.label}: ${sensor.status}`}>
+              <span className="flex items-center gap-1">
+                <span className={cn("w-1.5 h-1.5 rounded-full", cfg.color.replace("text-", "bg-"))} />
+                <span className={cn("font-mono text-[9px]", sensor.status === "healthy" ? "text-text-secondary" : cfg.color)}>
+                  {sensor.shortLabel}
+                </span>
+              </span>
+            </Tooltip>
+          );
+        })}
       </div>
     );
   }
@@ -139,10 +142,10 @@ export function SensorHealthGrid({
                   <span className="text-text-tertiary">{t("bit")}</span>
                   <span>{sensor.bit} (0x{(2 ** sensor.bit).toString(16).toUpperCase()})</span>
                 </div>
-                {lastUpdate > 0 && (
+                {health.updatedAt !== undefined && (
                   <div className="flex justify-between">
                     <span className="text-text-tertiary">{t("lastUpdate")}</span>
-                    <span>{new Date(lastUpdate).toLocaleTimeString()}</span>
+                    <span>{new Date(health.updatedAt).toLocaleTimeString()}</span>
                   </div>
                 )}
               </div>

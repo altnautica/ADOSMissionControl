@@ -15,9 +15,10 @@ export type AttitudeCallback = (data: {
   roll: number;
   pitch: number;
   yaw: number;
-  rollSpeed: number;
-  pitchSpeed: number;
-  yawSpeed: number;
+  /** rad/s; absent when the link does not report body rates (MSP). */
+  rollSpeed?: number;
+  pitchSpeed?: number;
+  yawSpeed?: number;
 }) => void;
 
 export type PositionCallback = (data: {
@@ -25,13 +26,15 @@ export type PositionCallback = (data: {
   lat: number;
   lon: number;
   alt: number;
-  relativeAlt: number;
+  /** Metres above home; absent when the link has no height-above-home estimate. */
+  relativeAlt?: number;
   /** Degrees; absent when the source reports no heading (GLOBAL_POSITION_INT hdg UINT16_MAX). */
   heading?: number;
   groundSpeed: number;
   /** m/s; omitted when the message carries no airspeed (on MAVLink, VFR_HUD owns it). */
   airSpeed?: number;
-  climbRate: number;
+  /** m/s; absent when the source message carries no vertical speed (MSP GPS). */
+  climbRate?: number;
 }) => void;
 
 export type BatteryCallback = (data: {
@@ -461,11 +464,12 @@ export type MissionItemCallback = (data: {
 export type AltitudeCallback = (data: {
   timestamp: number;
   altitudeMonotonic: number;
-  altitudeAmsl: number;
+  /** Absent when the link does not report the quantity (MSP carries only the baro estimate). */
+  altitudeAmsl?: number;
   altitudeLocal: number;
   altitudeRelative: number;
-  altitudeTerrain: number;
-  bottomClearance: number;
+  altitudeTerrain?: number;
+  bottomClearance?: number;
 }) => void;
 
 export type WindCovCallback = (data: {

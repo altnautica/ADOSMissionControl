@@ -7,7 +7,8 @@
  * @license GPL-3.0-only
  */
 
-import { combineSignals, normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import { withTimeoutSignal } from "../agent-client/timeout";
+import { FETCH_TIMEOUT_MS, normaliseHost, safeJson, shouldUseProxy } from "./transport";
 import { pairFailureFromResponse } from "./failure-copy";
 
 /** POST ``/api/pairing/unpair`` with the stored API key in the header.
@@ -29,7 +30,7 @@ export async function unpairLocal(
             Accept: "application/json",
           },
           body: JSON.stringify({ host, apiKey }),
-          signal: combineSignals(signal),
+          signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
         })
       : await fetch(`${host}/api/pairing/unpair`, {
           method: "POST",
@@ -39,7 +40,7 @@ export async function unpairLocal(
             "X-ADOS-Key": apiKey,
             Accept: "application/json",
           },
-          signal: combineSignals(signal),
+          signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
         });
   } catch (e) {
     if (signal?.aborted) throw e;

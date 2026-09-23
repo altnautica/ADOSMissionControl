@@ -31,7 +31,8 @@ import {
   heartbeatAgeLabel,
   mspFcLabel,
 } from "@/lib/agent/mavlink-link";
-import { fcFirmwareLabel } from "@/lib/protocol/fc-firmware-label";
+import { fcFlavorLabel } from "@/lib/protocol/fc-firmware-label";
+import { groundRoleKey } from "@/lib/nodes/node-profile";
 import {
   useNodeDisplayName,
   useReachedViaName,
@@ -134,13 +135,6 @@ function fcLinkState(status: {
     case "down":
       return { label: "FC Disconnected", level: "offline" };
   }
-}
-
-/** firmware · airframe (e.g. "ArduPilot · Copter"), or null when unknown. */
-function flavor(fcFirmware?: string, fcVariant?: string, frameType?: string): string | null {
-  const name = fcFirmwareLabel(fcFirmware, fcVariant);
-  if (!name) return null;
-  return frameType ? `${name} · ${frameType}` : name;
 }
 
 export function NodeStatusHoverCard({ node }: { node: FleetNodeEntry }) {
@@ -263,7 +257,7 @@ function DroneBody({
     transportOpen: node.transportOpen,
     mavlinkAlive: status?.mavlinkAlive,
   });
-  const flav = flavor(node.fcFirmware, node.fcVariant, node.frameType);
+  const flav = fcFlavorLabel(node.fcFirmware, node.fcVariant, node.frameType);
   const portBaud =
     status?.transportOpen !== false && status?.fcPort
       ? `${status.fcPort}${status.fcBaud ? ` @ ${status.fcBaud}` : ""}`
@@ -359,10 +353,7 @@ function GroundStationBody({
   hasHostMetrics: boolean;
 }) {
   const t = useTranslations("nodeConsole");
-  const roleLabel =
-    node.role === "relay" || node.role === "receiver" || node.role === "direct"
-      ? t(`role.${node.role}`)
-      : t("role.unknown");
+  const roleLabel = t(`role.${groundRoleKey(node.role)}`);
   const peer = status?.peerDeviceId;
   const peerRssi = status?.peerRssiDbm;
   const peerName = useNodeDisplayName(peer ?? null);

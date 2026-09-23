@@ -41,7 +41,7 @@ export function PerceptionUsageCard() {
     return () => clearInterval(id);
   }, [connected, fetchResources]);
 
-  const npuUtil = status.npuUtilizationPct;
+  const npuUtil = status.known ? status.npuUtilizationPct : null;
 
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-3 space-y-3">

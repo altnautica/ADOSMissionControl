@@ -51,7 +51,7 @@ export function VisionModelCountTile({ droneId }: { droneId: string }) {
       pipelines.filter((p) => p.active).map((p) => p.modelId),
     );
     return status.models.filter((m) => !streaming.has(m.id)).length;
-  }, [pipelines, status.known, status.models]);
+  }, [pipelines, status]);
 
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-3">

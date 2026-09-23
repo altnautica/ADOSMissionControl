@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { Download, Clipboard, Check } from "lucide-react";
+import { downloadBlob } from "@/lib/download";
 
 function buildSnapshot(): Record<string, unknown> {
   const state = useDiagnosticsStore.getState();
@@ -68,12 +69,7 @@ export function DiagnosticsExport() {
     const snapshot = buildSnapshot();
     const json = JSON.stringify(snapshot, null, 2);
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `diagnostics-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `diagnostics-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`);
   }, []);
 
   const handleCopy = useCallback(async () => {

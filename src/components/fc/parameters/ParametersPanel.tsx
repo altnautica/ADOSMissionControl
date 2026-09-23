@@ -25,7 +25,6 @@ import { ParameterSearchFilter } from "./ParameterSearchFilter";
 import { ParamCompare, type ParamCompareApplied } from "./ParamCompare";
 import { ParamDefaultsDiff } from "./ParamDefaultsDiff";
 import { FavoritesQuickAccess } from "./FavoritesQuickAccess";
-import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -36,18 +35,9 @@ import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
-import { confirmArmedParamWrite, describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
 import { cn } from "@/lib/utils";
 import { ListTree, RefreshCw, SlidersHorizontal } from "lucide-react";
-import type { ParameterValue } from "@/lib/protocol/types";
-import { exportParamFile } from "./param-file-io";
-import { useParameterList } from "./use-parameter-list";
-
-/**
- * Panel id every write from this surface is attributed to, in the armed-confirm
- * dialog and the pending-write records. The FC panels use their own ids.
- */
-const PANEL_ID = "parameters";
+import { useParameterEdits } from "./use-parameter-edits";
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
@@ -69,22 +59,20 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 
 export function ParametersPanel() {
   const t = useTranslations("parameters");
-  const { toast } = useToast();
-  const [modified, setModified] = useState<Map<string, number>>(new Map());
-  const resetModified = useCallback(() => setModified(new Map()), []);
   const {
-    parameters, metadata, loading, progress, error, setError, downloadParams, applyWritten,
-  } = useParameterList(resetModified);
+    parameters, metadata, loading, progress, error, downloadParams,
+    modified, fcParamMap, saving, writeProgress, writeChanges,
+    showRebootPrompt, setShowRebootPrompt,
+    stage: handleModify, revert: handleRevert, writeStaged, resetToDefaults, reboot: handleReboot,
+    exportMissionPlanner: handleExport, exportQgc: handleExportQgc,
+  } = useParameterEdits();
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, 150);
   const [category, setCategory] = useState<string | null>(null);
   const [showModifiedOnly, setShowModifiedOnly] = useState(false);
   const [showNonDefault, setShowNonDefault] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [writeProgress, setWriteProgress] = useState({ current: 0, total: 0 });
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
-  const [showRebootPrompt, setShowRebootPrompt] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [showDefaultsDiff, setShowDefaultsDiff] = useState(false);
@@ -136,13 +124,6 @@ export function ParametersPanel() {
     }
   }, [pendingParamSearch, setPendingParamSearch]);
 
-  // Pre-built Map for O(1) lookups instead of O(n) .find() calls
-  const paramsByName = useMemo(() => {
-    const map = new Map<string, ParameterValue>();
-    for (const p of parameters) map.set(p.name, p);
-    return map;
-  }, [parameters]);
-
   const categories = useMemo(() => {
     const map = new Map<string, number>();
     for (const p of parameters) { const cat = getCategory(p.name); map.set(cat, (map.get(cat) || 0) + 1); }
@@ -164,124 +145,19 @@ export function ParametersPanel() {
     return result;
   }, [parameters, category, showNonDefault, showFavorites, favoriteParams, modified, metadata]);
 
-  const handleModify = useCallback((name: string, value: number) => {
-    setModified((prev) => {
-      const original = paramsByName.get(name);
-      if (original && original.value === value) { const next = new Map(prev); next.delete(name); return next; }
-      return new Map(prev).set(name, value);
-    });
-  }, [paramsByName]);
-
-  const handleSave = useCallback(async () => {
-    if (modified.size === 0) return;
-    setShowWriteConfirm(true);
+  const handleSave = useCallback(() => {
+    if (modified.size > 0) setShowWriteConfirm(true);
   }, [modified]);
 
   const doWrite = useCallback(async () => {
     setShowWriteConfirm(false);
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol || modified.size === 0) return;
-
-    const entries = Array.from(modified.entries());
-    // Armed-write guard, the same one every FC panel pops: an armed vehicle
-    // gets an explicit confirmation naming the parameters about to change.
-    const confirmed = await confirmArmedParamWrite(
-      PANEL_ID,
-      entries.map(([name]) => name),
-    );
-    if (!confirmed) return;
-
-    setSaving(true); setError(null);
-    // Which names the FC actually acknowledged. A lossy link makes a batch
-    // PARTIALLY land, and the grid has to show the vehicle's real state: the
-    // writes that succeeded are no longer pending, and the ones that failed
-    // still are. Reporting the whole batch as failed left all N rows marked
-    // modified with their old values, so Save re-wrote what had already landed
-    // and Revert silently discarded the record that the vehicle had changed.
-    setWriteProgress({ current: 0, total: entries.length });
-    const outcome = await writeParamBatch(
-      protocol,
-      entries.map(([name, value]) => ({
-        name,
-        value,
-        oldValue: paramsByName.get(name)?.value ?? 0,
-        rebootRequired: metadata.get(name)?.rebootRequired,
-      })),
-      PANEL_ID,
-      (current, total) => setWriteProgress({ current, total }),
-    );
-    const { written, failures } = outcome;
-
-    // Commit what landed, whether or not the rest did.
-    if (written.size > 0) {
-      const landed = new Map<string, number>();
-      for (const name of written) {
-        const nv = modified.get(name);
-        if (nv !== undefined) landed.set(name, nv);
-      }
-      applyWritten(landed);
-      setModified((prev) => {
-        const next = new Map(prev);
-        for (const name of written) next.delete(name);
-        return next;
-      });
-    }
-
-    if (failures.length > 0) {
-      setError(`Failed to write ${failures.length} of ${entries.length} param(s): ${failures.join(", ")}`);
-    }
-
-    const summary = describeParamBatch(outcome);
-    toast(summary.message, summary.level);
-    // Only the parameters that landed can require a reboot.
-    if (outcome.rebootRequired) setShowRebootPrompt(true);
-    setSaving(false); setWriteProgress({ current: 0, total: 0 });
-  }, [modified, paramsByName, metadata, toast, applyWritten, setError]);
-
-  const writeChanges = useMemo(() => Array.from(modified.entries()).map(([name, newValue]) => ({
-    name, oldValue: paramsByName.get(name)?.value ?? 0, newValue,
-  })), [modified, paramsByName]);
-
-  const handleRevert = useCallback(() => { setModified(new Map()); }, []);
-
-  /** The reboot the "parameters need a restart" prompt offers. The FC can
-   * refuse the command (wrong mode, armed, unsupported); closing the dialog on
-   * a refusal reads as a reboot that happened, so report the refusal. */
-  const handleReboot = useCallback(async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol) { setShowRebootPrompt(false); return; }
-    try {
-      const result = await protocol.reboot();
-      if (!result.success) {
-        toast(result.message || "The FC refused the reboot command", "error");
-      }
-    } catch {
-      toast("Reboot command failed", "error");
-    } finally {
-      setShowRebootPrompt(false);
-    }
-  }, [toast]);
+    await writeStaged();
+  }, [writeStaged]);
 
   const handleResetConfirm = useCallback(async () => {
     setShowResetConfirm(false);
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol) { setError(t("noDroneConnected")); return; }
-    setSaving(true); setError(null);
-    try {
-      const result = await protocol.resetParametersToDefault();
-      if (result.success) { await new Promise((r) => setTimeout(r, 1000)); await downloadParams(); setShowRebootPrompt(true); }
-      else { setError(`Reset failed: ${result.message}`); }
-    } catch (err) { setError(err instanceof Error ? err.message : "Reset command failed"); }
-    finally { setSaving(false); }
-  }, [downloadParams, setError]);
-
-  // The compare view diffs a file against what the vehicle holds, so staged
-  // (unwritten) grid edits stay out of its "FC Value" column.
-  const fcParamMap = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const p of parameters) map.set(p.name, p.value);
-    return map;
-  }, [parameters]);
+    await resetToDefaults();
+  }, [resetToDefaults]);
 
   // Re-read the vehicle whenever any compare write landed; close the compare
   // view only when all of it did, so the failures stay in front of the operator.
@@ -289,20 +165,7 @@ export function ParametersPanel() {
     if (allLanded) setShowCompare(false);
     if (rebootRequired) setShowRebootPrompt(true);
     downloadParams();
-  }, [downloadParams]);
-
-  const handleExport = useCallback(() => {
-    exportParamFile(parameters, modified, { format: "mp" });
-  }, [parameters, modified]);
-
-  const handleExportQgc = useCallback(() => {
-    const vi = useDroneManager.getState().getSelectedDrone()?.vehicleInfo;
-    exportParamFile(parameters, modified, {
-      format: "qgc",
-      systemId: vi?.systemId ?? 1,
-      componentId: vi?.componentId ?? 1,
-    });
-  }, [parameters, modified]);
+  }, [downloadParams, setShowRebootPrompt]);
 
   return (
     <ArmedWarningBanner className="h-full overflow-hidden">

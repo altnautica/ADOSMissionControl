@@ -5,61 +5,16 @@
  * @description The board's shared truthfulness primitives.
  *
  * Every live cell on this board reads a value the node last pushed. How much
- * that value is worth depends entirely on how recently the node was heard from,
- * so freshness is resolved once per row and every cell renders against it: a
- * live node shows its reading, a stale node shows it dimmed and says how old it
- * is, and an unreachable node shows nothing at all rather than the last number
- * it happened to send before it went dark.
+ * that value is worth is resolved once per row (`@/lib/nodes/fc-reading`) and
+ * every cell renders against it: a live node shows its reading, a stale node
+ * shows it dimmed and says how old it is, and an unreachable node shows nothing
+ * at all rather than the last number it happened to send before it went dark.
  *
  * @license GPL-3.0-only
  */
 
 import { cn } from "@/lib/utils";
-import type {
-  CommandAgentLiveness,
-  CommandAgentSummary,
-} from "@/hooks/use-command-agent-fleet";
-
-/** How much a node's last-pushed reading is worth right now. */
-export type ReadingFreshness = "fresh" | "stale" | "none";
-
-/** A reading is only fresh while the node is live; an offline node has none. */
-export function readingFreshness(
-  liveness: CommandAgentLiveness,
-): ReadingFreshness {
-  if (liveness === "live") return "fresh";
-  if (liveness === "stale") return "stale";
-  return "none";
-}
-
-/** How much a row's flight-controller readings are worth, and if nothing, why. */
-export interface FcReading {
-  freshness: ReadingFreshness;
-  /** `nodesView` key naming why there is nothing to show; null when there is. */
-  absentKey: "noLiveReading" | "fc.notReachable" | "fc.notFlightNode" | null;
-}
-
-/**
- * Resolve a node's FC reading. Narrower than its liveness: an agent keeps
- * heartbeating after its FC is unplugged or its serial link dies, and its
- * published vehicle state keeps the last values. A ground station or
- * workstation flies nothing; an offline node has no reading; a live node whose
- * agent reports no reachable FC has an agent reading but no flight-controller
- * one.
- */
-export function fcReading(
-  summary: Pick<CommandAgentSummary, "liveness" | "profile" | "system">,
-): FcReading {
-  if (summary.profile !== "drone") {
-    return { freshness: "none", absentKey: "fc.notFlightNode" };
-  }
-  const freshness = readingFreshness(summary.liveness);
-  if (freshness === "none") return { freshness, absentKey: "noLiveReading" };
-  if (!summary.system.fcReachable) {
-    return { freshness: "none", absentKey: "fc.notReachable" };
-  }
-  return { freshness, absentKey: null };
-}
+import type { ReadingFreshness } from "@/lib/nodes/fc-reading";
 
 /** Dim tone applied to a last-known reading so it never reads as current. */
 export function staleClass(freshness: ReadingFreshness): string {

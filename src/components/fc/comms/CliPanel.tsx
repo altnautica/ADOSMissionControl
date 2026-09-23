@@ -9,6 +9,7 @@ import { Trash2, Terminal, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RingBuffer } from "@/lib/ring-buffer";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
+import { downloadBlob } from "@/lib/download";
 
 interface LogEntry {
   id: number;
@@ -129,12 +130,7 @@ export function CliPanel() {
       return `[${time}] [${sev}] ${e.text}`;
     });
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `fc-console-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `fc-console-${Date.now()}.txt`);
   }, [ring]);
 
   const handleSubmit = useCallback(

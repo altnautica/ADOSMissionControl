@@ -194,24 +194,22 @@ export interface EngineModel {
  * node-level perception telemetry. `npuUtilizationPct` is null when the node
  * reports no real sampler value — the hub HIDES the bar rather than show a
  * fabricated 0 (no fabricated reading). `modelCount` is the engine's own count, falling back
- * to `models.length` when the agent does not report it. `known` is false when
- * there is no read-back at all (older agent, unreachable engine, no LAN
- * client), so an empty model list there is "not known", never "zero".
+ * to `models.length` when the agent does not report it. With no read-back at
+ * all (older agent, unreachable engine, no LAN client) the status is
+ * `{ known: false }` and carries no model list or counts, so nothing can render
+ * an unread engine as "zero models".
  */
-export interface EngineStatus {
-  known: boolean;
-  models: EngineModel[];
-  npuUtilizationPct: number | null;
-  modelCount: number;
-}
+export type EngineStatus =
+  | { known: false }
+  | {
+      known: true;
+      models: EngineModel[];
+      npuUtilizationPct: number | null;
+      modelCount: number;
+    };
 
-/** The empty engine status (older agent / unreachable / no read-back). */
-export const EMPTY_ENGINE_STATUS: EngineStatus = {
-  known: false,
-  models: [],
-  npuUtilizationPct: null,
-  modelCount: 0,
-};
+/** The engine status when there is no read-back (older agent / unreachable). */
+export const UNKNOWN_ENGINE_STATUS: EngineStatus = { known: false };
 
 /** A pixel-space box in the source frame's own resolution (origin top-left). */
 export interface DesignateBox {
@@ -603,13 +601,13 @@ export class VisionAgentClient implements VisionClient {
    * not only the models in the live detection stream. Direct LAN path — the
    * same posture as the live-detection socket it complements (both are
    * LAN-direct); on a hosted HTTPS session neither flows and the caller falls
-   * back to the stream view. An older agent 404s here → an empty status.
+   * back to the stream view. An older agent 404s here → an unknown status.
    */
   async getEngineStatus(): Promise<EngineStatus> {
     const res = await timedFetch(`${this.baseUrl}/api/vision/status`, {
       headers: this.headers(),
     });
-    if (res.status === 404) return { ...EMPTY_ENGINE_STATUS };
+    if (res.status === 404) return UNKNOWN_ENGINE_STATUS;
     const body = await this.json(res);
     const e = body as Record<string, unknown>;
     const models = coerceEngineModels(e.models);

@@ -1,4 +1,5 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -89,5 +90,37 @@ export const getRemaining = query({
       weeklyLimit,
       usedThisWeek,
     };
+  },
+});
+
+/**
+ * A usage row older than this can no longer count toward any quota: the week
+ * starts on the most recent Monday 00:00 UTC, never more than seven days ago.
+ */
+const USAGE_RETENTION_MS = 8 * 24 * 60 * 60 * 1000;
+/** Bounded so a backlog cannot blow the per-call limits. */
+const USAGE_PRUNE_BATCH = 256;
+
+/**
+ * Cron job: delete usage rows past every quota window. One row lands per AI
+ * call, so without this the table grows for the lifetime of the deployment.
+ * Ranges `by_usedAt` so the cost tracks what is deleted, and reschedules while
+ * a full batch went.
+ */
+export const pruneOldUsage = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ deleted: number }> => {
+    const cutoff = Date.now() - USAGE_RETENTION_MS;
+    const stale = await ctx.db
+      .query("cmd_ai_usage")
+      .withIndex("by_usedAt", (q) => q.lt("usedAt", cutoff))
+      .take(USAGE_PRUNE_BATCH);
+    for (const row of stale) {
+      await ctx.db.delete(row._id);
+    }
+    if (stale.length === USAGE_PRUNE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.cmdAiUsage.pruneOldUsage, {});
+    }
+    return { deleted: stale.length };
   },
 });

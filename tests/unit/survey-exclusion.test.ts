@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { generateSurvey } from '@/lib/patterns/survey-generator';
-import { pointInPolygon, polygonArea } from '@/lib/drawing/geo-utils';
+import { polygonArea } from '@/lib/drawing/geo-utils';
 import type { SurveyConfig } from '@/lib/patterns/types';
+import { pointInPolygon } from "@/lib/geo/distance";
 
 // A ~660 m boundary square. gridAngle 0 + turnAroundDistance 0 keeps transect
 // endpoints on the exact scan-line crossings, so exclusion clipping is easy to

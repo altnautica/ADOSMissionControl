@@ -1,3 +1,4 @@
+import { haversineDistance } from "@/lib/geo/distance";
 /**
  * @module airspace/airports
  * @description Static, offline dataset of major international airports plus a
@@ -7,7 +8,6 @@
  * @license GPL-3.0-only
  */
 
-import { haversineDistance } from "@/lib/telemetry-utils";
 
 /** A major airport reference point. */
 export interface Airport {

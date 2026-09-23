@@ -8,7 +8,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useLiveRc } from "./use-live-rc";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -33,7 +33,7 @@ export function ReceiverPanel() {
 
   // Live RC data: re-read on every telemetry push and dropped once stale, so
   // the bars and the calibration capture never work from a frozen frame.
-  const latestRc = useLiveRc();
+  const latestRc = useFreshTelemetry("rc");
   const channels = latestRc?.channels ?? Array.from({ length: RC_CHANNEL_COUNT }, () => 0);
   // Absent until an RC frame arrives. "RSSI 0" reads as a receiver reporting a
   // dead link, which is a stronger claim than having heard nothing yet.

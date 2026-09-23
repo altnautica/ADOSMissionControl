@@ -14,6 +14,7 @@ import { useSettingsStore } from "./settings-store";
 import { useTrailStore } from "./trail-store";
 import { audioEngine } from "@/lib/audio-engine";
 import { isFailsafeAnnouncement } from "@/lib/telemetry/failsafe-text";
+import { knownRemainingPct } from "@/lib/battery";
 import { useDiagnosticsStore } from "./diagnostics-store";
 import { useGeofenceStore } from "./geofence-store";
 import { useCanMonitorStore } from "./can-monitor-store";
@@ -138,8 +139,9 @@ export function bridgeTelemetry(
       alerts.batteryRemaining(data.batteryRemaining);
 
       const settings = useSettingsStore.getState();
-      if (settings.audioEnabled && settings.alertLowBattery) {
-        if (data.batteryRemaining >= 0 && data.batteryRemaining < settings.batteryCriticalPct) {
+      const remaining = knownRemainingPct(data.batteryRemaining);
+      if (settings.audioEnabled && settings.alertLowBattery && remaining !== null) {
+        if (remaining < settings.batteryCriticalPct) {
           audioEngine.play("low_battery");
         }
       }

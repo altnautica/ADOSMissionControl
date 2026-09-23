@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   polygonArea,
-  haversineDistance,
   nearestVertexWithinThreshold,
 } from "../geo-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 describe("polygonArea", () => {
   it("returns the enclosed area of a known square (~side²)", () => {

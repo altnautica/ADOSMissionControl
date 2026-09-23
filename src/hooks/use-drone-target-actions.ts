@@ -15,7 +15,7 @@
  */
 
 import { useMemo } from "react";
-import { makeFunctionReference } from "convex/server";
+import { api } from "../../convex/_generated/api";
 
 import { isDemoMode } from "@/lib/utils";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
@@ -37,6 +37,8 @@ interface TargetActionRow {
   defaultKey?: string;
 }
 
+/** One install row, the shape both sources (the cloud `cmdPlugins:listForDevice`
+ * query and the local agent detail) are projected into. */
 interface InstallRowWithTargetActions {
   _id: string;
   pluginId: string;
@@ -44,18 +46,12 @@ interface InstallRowWithTargetActions {
   targetActions?: TargetActionRow[];
 }
 
-const listForDeviceRef = makeFunctionReference<
-  "query",
-  { deviceId: string },
-  InstallRowWithTargetActions[]
->("cmdPlugins:listForDevice");
-
 export function useDroneTargetActions(
   agentId: string | undefined,
 ): DroneTargetActionContribution[] {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const installs = useConvexSkipQuery(listForDeviceRef, {
+  const installs = useConvexSkipQuery(api.cmdPlugins.listForDevice, {
     args: agentId ? { deviceId: agentId } : undefined,
     enabled: isAuthenticated && Boolean(agentId),
   });

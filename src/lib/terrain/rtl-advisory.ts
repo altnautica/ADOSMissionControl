@@ -20,13 +20,13 @@
  * @license GPL-3.0-only
  */
 
-import { haversineDistance } from "@/lib/telemetry-utils";
 import {
   DEFAULT_MIN_TERRAIN_CLEARANCE,
   findCollisionSegments,
   type ClearanceSample,
 } from "@/lib/terrain/terrain-clearance";
 import type { Waypoint } from "@/lib/types";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** Severity of an RTL terrain advisory. Mirrors the airspace-check convention. */
 export type RtlAdvisoryLevel = "warn" | "error";

@@ -29,8 +29,9 @@ crons.interval(
 
 // Retention: terminal cloud-relay command rows and exported log windows are
 // append-mostly tables that otherwise grow without bound. Each sweep deletes
-// only rows past its retention window via a bounded indexed range, so the
-// hourly tick stays cheap and a backlog drains over successive ticks.
+// only rows past its retention window via a bounded indexed range, and
+// reschedules itself at once while a batch comes back full, so a backlog
+// drains in one pass rather than one batch per tick.
 crons.interval(
   "prune-terminal-commands",
   { hours: 1 },
@@ -74,6 +75,13 @@ crons.interval(
   "prune-expired-mqtt-control-grants",
   { hours: 6 },
   internal.cmdMqttControlGrants.pruneExpiredGrants
+);
+
+// One usage row per AI call; rows past every weekly quota window are dead.
+crons.interval(
+  "prune-old-ai-usage",
+  { hours: 24 },
+  internal.cmdAiUsage.pruneOldUsage
 );
 
 export default crons;

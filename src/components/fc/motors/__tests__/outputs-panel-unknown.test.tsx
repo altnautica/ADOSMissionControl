@@ -21,7 +21,7 @@ vi.mock("@/hooks/use-panel-params", () => ({
     refresh: vi.fn(), setLocalValue: vi.fn(), saveAllToRam: vi.fn(), commitToFlash: vi.fn(),
   }),
 }));
-const droneState = { getSelectedProtocol: () => ({}) };
+const droneState = { getSelectedProtocol: () => ({ getVehicleInfo: () => null }) };
 vi.mock("@/stores/drone-manager", () => ({
   useDroneManager: (selector: (s: unknown) => unknown) => selector(droneState),
 }));

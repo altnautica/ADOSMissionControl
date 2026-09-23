@@ -23,6 +23,7 @@ import { PX4Handler } from "@/lib/protocol/firmware/px4";
 import { betaflightHandler } from "@/lib/protocol/firmware/betaflight";
 import { inavHandler } from "@/lib/protocol/firmware/inav";
 import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
+import { decodeBoardId } from "@/lib/protocol/handlers/info-handlers";
 import { MOCK_PARAMS, ARDUPLANE_MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, BETAFLIGHT_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
 import type { ManualControlSample, PositionTargetSample, AttitudeTargetSample } from "./mock-control-samples";
@@ -473,8 +474,16 @@ export class MockProtocol implements DroneProtocol {
   }
   stopMockTelemetryTick(): void { for (const t of this.tickTimers) clearInterval(t); this.tickTimers = []; }
   async requestMessage(messageId: number): Promise<CommandResult> {
-    // SpeedyBee F405 Wing: ArduPilot sends its board id in the upper 16 bits of board_version.
-    if (messageId === 148) setTimeout(() => this.emitAutopilotVersion({ capabilities: 0xFF, flightSwVersion: 0x04050007, middlewareSwVersion: 0, osSwVersion: 0, boardVersion: (1106 << 16) >>> 0, boardId: 1106, uid: 0 }), 0);
+    if (messageId === 148) {
+      // SpeedyBee F405 Wing: ArduPilot sends its board id in the upper 16 bits of
+      // board_version. The id is decoded and stored exactly as the adapter does.
+      const boardVersion = (1106 << 16) >>> 0;
+      const boardId = decodeBoardId(boardVersion, this._vehicleInfo.firmwareType);
+      setTimeout(() => {
+        this._vehicleInfo = { ...this._vehicleInfo, boardId };
+        this.emitAutopilotVersion({ capabilities: 0xFF, flightSwVersion: 0x04050007, middlewareSwVersion: 0, osSwVersion: 0, boardVersion, boardId, uid: 0 });
+      }, 0);
+    }
     return ok("Message requested");
   }
 

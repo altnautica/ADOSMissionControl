@@ -8,7 +8,7 @@
  */
 
 import type { Waypoint } from "@/lib/types";
-import { haversineDistance } from "@/lib/telemetry-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** Inclusive numeric range for an axis. */
 export interface AltitudeRange {

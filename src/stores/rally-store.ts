@@ -10,6 +10,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
 import { useDroneManager } from "./drone-manager";
 import { useUploadReceiptsStore, contentHash } from "./upload-receipts-store";
+import { withPlannerHistory } from "@/lib/planner-history-adapter";
 
 export interface RallyPoint {
   id: string;
@@ -36,6 +37,7 @@ export interface RallySnapshot {
   points: RallyPoint[];
 }
 
+/** Point edits are operator-facing: each one is a planner undo step. */
 interface RallyStoreState {
   points: RallyPoint[];
   addPoint: (point: RallyPoint) => void;
@@ -46,12 +48,11 @@ interface RallyStoreState {
    *  acknowledged; never resolves success for an unconfirmed upload. */
   uploadRallyPoints: () => Promise<RallyTransferResult>;
   /**
-   * Replace the local points with the selected drone's. A failed, disconnected
-   * or unsupported download leaves the local points untouched.
-   * `beforeReplace` runs just before the replacement (the caller records the
-   * undo step there, so a failed download adds none).
+   * Replace the local points with the selected drone's, as one undo step. A
+   * failed, disconnected or unsupported download leaves the local points
+   * untouched and records no undo step.
    */
-  downloadRallyPoints: (beforeReplace?: () => void) => Promise<RallyTransferResult>;
+  downloadRallyPoints: () => Promise<RallyTransferResult>;
 
   /** Capture rally state for the coordinated undo timeline. */
   snapshot: () => RallySnapshot;
@@ -65,17 +66,19 @@ export const useRallyStore = create<RallyStoreState>()(
   points: [],
 
   addPoint: (point) =>
-    set((s) => ({ points: [...s.points, point] })),
+    withPlannerHistory(() => set((s) => ({ points: [...s.points, point] }))),
 
   removePoint: (id) =>
-    set((s) => ({ points: s.points.filter((p) => p.id !== id) })),
+    withPlannerHistory(() => set((s) => ({ points: s.points.filter((p) => p.id !== id) }))),
 
   updatePoint: (id, update) =>
-    set((s) => ({
-      points: s.points.map((p) => (p.id === id ? { ...p, ...update } : p)),
-    })),
+    withPlannerHistory(() =>
+      set((s) => ({
+        points: s.points.map((p) => (p.id === id ? { ...p, ...update } : p)),
+      })),
+    ),
 
-  clearPoints: () => set({ points: [] }),
+  clearPoints: () => withPlannerHistory(() => set({ points: [] })),
 
   uploadRallyPoints: async () => {
     const { drones, selectedDroneId } = useDroneManager.getState();
@@ -106,7 +109,7 @@ export const useRallyStore = create<RallyStoreState>()(
     return result;
   },
 
-  downloadRallyPoints: async (beforeReplace) => {
+  downloadRallyPoints: async () => {
     const { drones, selectedDroneId } = useDroneManager.getState();
     const protocol = selectedDroneId ? drones.get(selectedDroneId)?.protocol : undefined;
     if (!protocol || !selectedDroneId) return { success: false, message: "No flight controller connected" };
@@ -119,14 +122,13 @@ export const useRallyStore = create<RallyStoreState>()(
     } catch (err) {
       return { success: false, message: err instanceof Error ? err.message : String(err) };
     }
-    beforeReplace?.();
     const points = downloaded.map((p, i) => ({
       id: `rally-${Date.now()}-${i}`,
       lat: p.lat,
       lon: p.lon,
       alt: p.alt,
     }));
-    set({ points });
+    withPlannerHistory(() => set({ points }));
     useUploadReceiptsStore.getState().record("rally", {
       droneId: selectedDroneId,
       contentHash: rallyContentHash(points),

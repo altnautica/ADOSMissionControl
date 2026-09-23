@@ -7,7 +7,7 @@
 import type { Waypoint } from "@/lib/types";
 import type { TerrainProfile, TerrainPoint } from "./types";
 import { getElevations } from "./terrain-provider";
-import { haversineDistance } from "@/lib/telemetry-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /**
  * Compute a terrain elevation profile along a waypoint path.

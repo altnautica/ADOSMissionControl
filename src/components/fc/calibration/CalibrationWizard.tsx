@@ -17,7 +17,8 @@ export interface CompassProgressEntry {
   completionPct: number;
   calStatus: number;
   completionMask: number[];
-  direction: { x: number; y: number; z: number };
+  /** Body angular rate (rad/s); absent until the vehicle reports one. */
+  direction?: { x: number; y: number; z: number };
 }
 
 export interface CompassResultEntry {

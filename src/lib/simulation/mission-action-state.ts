@@ -12,7 +12,7 @@
  */
 
 import type { Waypoint } from "@/lib/types";
-import { haversineDistance } from "@/lib/telemetry-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** A camera trigger position, with the altitude in the waypoints' own frame. */
 export interface TriggerPoint {

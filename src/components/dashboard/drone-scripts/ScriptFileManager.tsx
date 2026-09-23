@@ -31,6 +31,7 @@ import {
   SCRIPT_EXTENSION,
   MAX_SCRIPT_BYTES,
 } from "./scripts-constants";
+import { downloadBlob } from "@/lib/download";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -132,12 +133,7 @@ export function ScriptFileManager({
     try {
       const bytes = await protocol.downloadFileViaFtp(`${SCRIPTS_DIR}/${entry.name}`);
       const blob = new Blob([bytes as BlobPart], { type: "text/x-lua" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = entry.name;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, entry.name);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast(`Download failed: ${msg}`, "error");

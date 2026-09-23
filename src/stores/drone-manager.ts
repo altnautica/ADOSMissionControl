@@ -20,7 +20,6 @@ import { usePanelCacheStore } from "./panel-cache-store";
 import { useUploadReceiptsStore } from "./upload-receipts-store";
 import { useMissionStore } from "./mission-store";
 import { useChecklistStore } from "./checklist-store";
-import { useSensorHealthStore } from "./sensor-health-store";
 import {
   startRecordingFor,
   stopRecordingFor,
@@ -401,10 +400,9 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       // newly selected drone inherits the previous one's track and its "home"
       // fix.
       useTrailStore.getState().clear();
-      // SYS_STATUS sensor health is the same single-slot state; the checklist
-      // session is per drone, so the leaving drone's ticks and verdicts must
-      // not read as the new drone's readiness.
-      useSensorHealthStore.getState().clear();
+      // The checklist session is per drone, so the leaving drone's ticks and
+      // verdicts must not read as the new drone's readiness. (Sensor health
+      // derives from the SYS_STATUS ring cleared above.)
       useChecklistStore.getState().resetSession();
       // Nothing has been measured for the drone just selected: its arm state
       // and mode read unknown and the previous drone's heartbeat must not age
@@ -475,7 +473,6 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     // without the other leaves a track on the map with no vehicle behind it.
     useTrailStore.getState().clear();
     usePrearmBufferStore.getState().clearAll();
-    useSensorHealthStore.getState().clear();
     useChecklistStore.getState().resetSession();
     // Latched breach state: nothing else lowers it once the FC stops sending
     // FENCE_STATUS, so a teardown that leaves it set keeps the alarm lit with

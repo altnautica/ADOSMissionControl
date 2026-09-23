@@ -18,6 +18,7 @@ import {
   blackboxParamNames, DEVICE_OPTIONS, RATE_PRESETS,
   formatBytes, type DataflashSummary,
 } from "./blackbox-constants";
+import { downloadBlob } from "@/lib/download";
 
 export function BlackboxPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
@@ -84,12 +85,7 @@ export function BlackboxPanel() {
       // Copy into a fresh ArrayBuffer-backed view so the Blob part is typed
       // Uint8Array<ArrayBuffer> (not the adapter's ArrayBufferLike return).
       const blob = new Blob([new Uint8Array(data)], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `blackbox-${Date.now()}.bbl`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, `blackbox-${Date.now()}.bbl`);
       toast(`Downloaded ${formatBytes(data.length)} blackbox log`, "success");
     } catch (err) {
       toast(`Blackbox download failed: ${err instanceof Error ? err.message : "unknown error"}`, "error");

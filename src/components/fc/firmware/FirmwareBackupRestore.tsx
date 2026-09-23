@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { Download, Upload, HardDrive, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import type { DroneProtocol } from "@/lib/protocol/types";
+import { downloadBlob } from "@/lib/download";
 
 interface FirmwareBackupRestoreProps {
   protocol: DroneProtocol | null;
@@ -39,12 +40,7 @@ export function FirmwareBackupRestore({
       const params = await protocol.getAllParameters();
       const lines = params.map((p) => `${p.name}\t${p.value}`);
       const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `params-backup-${Date.now()}.param`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, `params-backup-${Date.now()}.param`);
       onMessage(`Backed up ${params.length} parameters`);
       onParamBackupChecked();
       toast(`Backed up ${params.length} parameters`, "success");

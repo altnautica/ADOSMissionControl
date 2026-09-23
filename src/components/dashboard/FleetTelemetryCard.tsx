@@ -16,8 +16,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
-import { hasLiveFcReading } from "@/stores/node-registry/select-fleet-drones";
-import { batteryBand, useBatteryThresholds } from "@/lib/battery-bands";
+import { selectFleetSummary } from "@/stores/node-registry/fleet-summary";
+import { useBatteryThresholds } from "@/lib/battery-bands";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-constants";
@@ -27,42 +27,13 @@ export function FleetTelemetryCard() {
   const t = useTranslations("status");
   const drones = useFleetStore((s) => s.drones);
   const profiles = useDroneMetadataStore((s) => s.profiles);
-  const thresholds = useBatteryThresholds();
-
-  const connected = drones.filter(
-    (d) =>
-      d.profile === "drone" &&
-      d.fcAttached === true &&
-      d.connectionState !== "disconnected",
+  const { telemetryRows, armedCount, gps } = selectFleetSummary(
+    drones,
+    useBatteryThresholds(),
   );
-  const armed = connected.filter((d) => d.armState === "armed");
-  const linkLost = connected.filter((d) => d.fcLinkLost === true).length;
+  const linkLost = telemetryRows.filter((r) => r.linkLost).length;
 
-  // GPS health, from FCs that are still talking
-  const withGps = connected.filter((d) => d.gps && hasLiveFcReading(d));
-  const gps3d = withGps.filter((d) => d.gps!.fixType >= 3).length;
-  const lowSats = withGps.filter((d) => d.gps!.satellites !== undefined && d.gps!.satellites < 6 && d.gps!.fixType > 0).length;
-
-  const droneRows = connected.map((d) => {
-    const remaining =
-      d.battery && d.battery.remaining >= 0 ? d.battery.remaining : null;
-    return {
-      id: d.id,
-      name: profiles[d.id]?.displayName ?? d.name,
-      sats: d.gps?.satellites ?? null,
-      fix: d.gps?.fixType ?? null,
-      voltage: d.battery?.voltage ?? null,
-      band: batteryBand(remaining, thresholds),
-      // Arm state is "unknown" until the FC's first heartbeat, and the mode
-      // arrives with that heartbeat: before it, neither is a reading.
-      heard: d.armState !== "unknown",
-      mode: d.flightMode,
-      armState: d.armState,
-      linkLost: d.fcLinkLost === true,
-    };
-  });
-
-  if (connected.length === 0) {
+  if (telemetryRows.length === 0) {
     return (
       <Card title="Fleet Telemetry">
         <span className="text-[11px] text-text-tertiary">No connected drones</span>
@@ -77,23 +48,23 @@ export function FleetTelemetryCard() {
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] text-text-tertiary">{t("connected")}</span>
           <span className="text-xs font-mono font-semibold text-text-primary tabular-nums">
-            {connected.length}
+            {telemetryRows.length}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] text-text-tertiary">{t("armed")}</span>
           <span className="text-xs font-mono font-semibold text-status-warning tabular-nums">
-            {armed.length}
+            {armedCount}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] text-text-tertiary">3D Fix</span>
           <span className="text-xs font-mono font-semibold text-status-success tabular-nums">
-            {gps3d}/{withGps.length}
+            {gps.fix3d}/{gps.reporting}
           </span>
         </div>
-        {lowSats > 0 && (
-          <Badge variant="warning">{lowSats} low sats</Badge>
+        {gps.lowSats > 0 && (
+          <Badge variant="warning">{gps.lowSats} low sats</Badge>
         )}
         {linkLost > 0 && (
           <Badge variant="error">{linkLost} link lost</Badge>
@@ -102,10 +73,12 @@ export function FleetTelemetryCard() {
 
       {/* Per-drone rows */}
       <div className="flex flex-col gap-1">
-        {droneRows.map((d) => (
-          <div key={d.id} className="flex items-center justify-between text-[10px] py-0.5">
-            <span className="text-text-secondary truncate w-20">{d.name}</span>
-            {d.linkLost ? (
+        {telemetryRows.map((r) => (
+          <div key={r.drone.id} className="flex items-center justify-between text-[10px] py-0.5">
+            <span className="text-text-secondary truncate w-20">
+              {profiles[r.drone.id]?.displayName ?? r.drone.name}
+            </span>
+            {r.linkLost ? (
               // The FC stopped talking: its last sats, voltage, mode and arm
               // state describe an aircraft the GCS can no longer hear.
               <Badge variant="error" size="sm">LINK LOST</Badge>
@@ -113,31 +86,31 @@ export function FleetTelemetryCard() {
               <div className="flex items-center gap-2">
                 <span
                   className={`font-mono tabular-nums ${
-                    d.sats !== null && d.sats < 6 && d.fix !== null && d.fix > 0
+                    r.satellites !== null && r.satellites < 6 && r.fixType !== null && r.fixType > 0
                       ? "text-status-warning"
                       : "text-text-tertiary"
                   }`}
                 >
-                  {d.sats !== null ? `${d.sats}sat` : "—"}
+                  {r.satellites !== null ? `${r.satellites}sat` : "—"}
                 </span>
                 <span
                   className={`font-mono tabular-nums ${
-                    d.band === "critical"
+                    r.band === "critical"
                       ? "text-status-error"
-                      : d.band === "warning"
+                      : r.band === "warning"
                         ? "text-status-warning"
                         : "text-text-tertiary"
                   }`}
                 >
-                  {d.voltage !== null ? `${d.voltage.toFixed(1)}V` : "—"}
+                  {r.voltage !== null ? `${r.voltage.toFixed(1)}V` : "—"}
                 </span>
-                {d.heard ? (
-                  <FleetModeLabel mode={d.mode} />
+                {r.heard ? (
+                  <FleetModeLabel mode={r.drone.flightMode} />
                 ) : (
                   <span className="font-mono text-text-tertiary w-14 text-right">—</span>
                 )}
-                <Badge variant={d.armState === "armed" ? "warning" : "neutral"} size="sm">
-                  {d.armState === "armed" ? "ARM" : d.armState === "disarmed" ? "DIS" : "—"}
+                <Badge variant={r.armState === "armed" ? "warning" : "neutral"} size="sm">
+                  {r.armState === "armed" ? "ARM" : r.armState === "disarmed" ? "DIS" : "—"}
                 </Badge>
               </div>
             )}

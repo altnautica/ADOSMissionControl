@@ -12,6 +12,7 @@ import type { UlogFile } from "./parser";
 import { TOPIC_TO_CHANNEL, normalizeTopicData } from "./topics";
 import type { TelemetryFrame } from "../telemetry-recorder";
 import type { FlightRecord } from "../types";
+import { haversineDistance } from "@/lib/geo/distance";
 
 export interface BuiltUlogFlight {
   record: FlightRecord;
@@ -193,7 +194,7 @@ function buildRecordFromFrames(
       if (lat !== undefined && lon !== undefined) {
         if (firstLat === undefined) { firstLat = lat; firstLon = lon; }
         if (prevLat !== undefined && prevLon !== undefined) {
-          distance += haversineM(prevLat, prevLon, lat, lon);
+          distance += haversineDistance(prevLat, prevLon, lat, lon);
         }
         prevLat = lat;
         prevLon = lon;
@@ -255,15 +256,4 @@ function buildRecordFromFrames(
     sourceFilename,
     updatedAt: Date.now(),
   };
-}
-
-// ── Haversine ────────────────────────────────────────────────
-
-function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

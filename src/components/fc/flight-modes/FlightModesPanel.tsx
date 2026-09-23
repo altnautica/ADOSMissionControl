@@ -5,32 +5,28 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { Info } from "lucide-react";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { useAvailableModes } from "@/hooks/use-available-modes";
 import { ModeSlotRow } from "./ModeSlotRow";
 import { FlightModesHeader } from "./FlightModesHeader";
 import { FlightModeChannelControls } from "./FlightModeChannelControls";
 import { useFlightModeParams } from "./use-flight-mode-params";
 import { MODE_PWM_RANGES } from "./flight-mode-constants";
 
-const FALLBACK_MODES = [
-  "STABILIZE", "ACRO", "ALT_HOLD", "AUTO", "GUIDED", "LOITER",
-  "RTL", "LAND", "CIRCLE", "POSHOLD", "AUTOTUNE", "MANUAL",
-  "BRAKE", "SMART_RTL", "DRIFT", "SPORT",
-];
-
 export function FlightModesPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { toast } = useToast();
   const { isArmed, lockMessage } = useArmedLock();
   const protocol = getSelectedProtocol();
   const firmwareHandler = protocol?.getFirmwareHandler() ?? null;
   const isCopter = firmwareHandler?.vehicleClass === "copter";
 
-  const rcBuffer = useTelemetryStore((s) => s.rc);
-  const latestRc = rcBuffer.latest();
+  // The live mode-switch PWM; 0 (no active slot) once RC stops arriving.
+  const latestRc = useFreshTelemetry("rc");
   const heartbeatMode = useDroneStore((s) => s.flightMode);
 
   const {
@@ -50,12 +46,13 @@ export function FlightModesPanel() {
     updateGlobal,
   } = useFlightModeParams({ protocol, firmwareHandler, isCopter, toast });
 
-  const availableModes = useMemo(() => {
-    if (firmwareHandler) {
-      return firmwareHandler.getAvailableModes().map((m) => ({ value: m, label: m }));
-    }
-    return FALLBACK_MODES.map((m) => ({ value: m, label: m }));
-  }, [firmwareHandler]);
+  // The firmware's own mode table, the one the set-mode gate accepts; nothing
+  // is offered until the flight controller has identified its firmware.
+  const liveModes = useAvailableModes(selectedDroneId);
+  const availableModes = useMemo(
+    () => (liveModes ?? []).map((m) => ({ value: m, label: m })),
+    [liveModes],
+  );
 
   const channelOptions = useMemo(
     () => Array.from({ length: 16 }, (_, i) => ({

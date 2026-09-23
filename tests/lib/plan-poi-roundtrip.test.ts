@@ -47,7 +47,7 @@ import {
   migratePlanLibrary,
 } from "@/stores/plan-library-store";
 import { capturePlanExtras, applyPlanToWorkspace } from "@/lib/plan-workspace";
-import { clearHistory, recordHistory } from "@/lib/planner-history";
+import { clearHistory } from "@/lib/planner-history";
 import type { SavedPlan } from "@/lib/types";
 
 function poi(overrides: Partial<PointOfInterest> = {}): PointOfInterest {
@@ -139,8 +139,6 @@ describe("plan-attached POIs", () => {
   });
 
   it("a POI placement is undoable and redoable on the shared timeline", () => {
-    // Emulate the map placement: record the pre-placement state, then add.
-    recordHistory();
     usePlanPoiStore.getState().addPoint(poi({ id: "x" }));
     expect(usePlanPoiStore.getState().points).toHaveLength(1);
 
@@ -153,9 +151,7 @@ describe("plan-attached POIs", () => {
   });
 
   it("a mixed rally + POI sequence undoes step-by-step in reverse", () => {
-    recordHistory();
     useRallyStore.getState().addPoint({ id: "r1", lat: 1, lon: 2, alt: 30 });
-    recordHistory();
     usePlanPoiStore.getState().addPoint(poi({ id: "p1" }));
 
     expect(useRallyStore.getState().points).toHaveLength(1);

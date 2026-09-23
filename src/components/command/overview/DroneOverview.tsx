@@ -30,8 +30,7 @@ import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { AgentStatusCard } from "../shared/AgentStatusCard";
 import { ServiceTable } from "../shared/ServiceTable";
 import { SystemResourceGauges } from "../shared/SystemResourceGauges";
-import { CpuSparkline } from "../shared/CpuSparkline";
-import { MemorySparkline } from "../shared/MemorySparkline";
+import { Sparkline } from "../shared/Sparkline";
 import { LogViewer } from "../shared/LogViewer";
 import { StaleOverlay } from "@/components/shared/link-up/StaleOverlay";
 import { StaleBanner } from "../shared/StaleBanner";
@@ -231,10 +230,10 @@ function CompanionBand({ droneId }: { droneId: string }) {
           </OverviewTile>
         )}
         <OverviewTile span="quarter">
-          <CpuSparkline />
+          <Sparkline series="cpuHistory" tokenColor="--color-accent-primary" />
         </OverviewTile>
         <OverviewTile span="quarter">
-          <MemorySparkline />
+          <Sparkline series="memoryHistory" tokenColor="--color-accent-secondary" />
         </OverviewTile>
         <OverviewTile span="half">
           <ServiceTable

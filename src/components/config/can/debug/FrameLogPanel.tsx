@@ -39,6 +39,7 @@ import {
   type DecodedFrame,
 } from "@/stores/dronecan";
 import { DATA_TYPE_IDS } from "@/lib/dronecan/signatures";
+import { downloadBlob } from "@/lib/download";
 
 type Kind = DecodedFrame["decoded"]["kind"];
 type Dir = DecodedFrame["dir"];
@@ -200,14 +201,7 @@ export function FrameLogPanel() {
       );
     }
     const blob = new Blob([rows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `dronecan-frames-${Date.now()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `dronecan-frames-${Date.now()}.csv`);
   }, [visible, firstFrameT]);
 
   // Reset expanded row whenever the list shape changes — keep the UI honest.

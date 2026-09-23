@@ -16,17 +16,15 @@
 
 import type { SurveyConfig, PatternResult, PatternWaypoint } from "./types";
 import {
-  haversineDistance,
   bearing,
   offsetPoint,
   polygonArea,
   polygonCentroid,
-  pointInPolygon,
 } from "@/lib/drawing/geo-utils";
+import { EARTH_RADIUS_M, haversineDistance, pointInPolygon } from "@/lib/geo/distance";
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
-const EARTH_R = 6371000;
 
 // ── Local projection helpers ─────────────────────────────────
 // Project lat/lon to flat meters around a reference point,
@@ -40,8 +38,8 @@ function toLocal(
   cosRef: number
 ): [number, number] {
   return [
-    (lon - refLon) * DEG_TO_RAD * EARTH_R * cosRef,
-    (lat - refLat) * DEG_TO_RAD * EARTH_R,
+    (lon - refLon) * DEG_TO_RAD * EARTH_RADIUS_M * cosRef,
+    (lat - refLat) * DEG_TO_RAD * EARTH_RADIUS_M,
   ];
 }
 
@@ -53,8 +51,8 @@ function toGeo(
   cosRef: number
 ): [number, number] {
   return [
-    refLat + (y / EARTH_R) * RAD_TO_DEG,
-    refLon + (x / (EARTH_R * cosRef)) * RAD_TO_DEG,
+    refLat + (y / EARTH_RADIUS_M) * RAD_TO_DEG,
+    refLon + (x / (EARTH_RADIUS_M * cosRef)) * RAD_TO_DEG,
   ];
 }
 

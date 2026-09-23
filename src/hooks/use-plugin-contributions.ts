@@ -28,17 +28,12 @@
  *   - Only installs contributing to the requested `slot` are loaded, so a
  *     host for one slot never downloads another slot's bundle.
  *
- * The Convex query reference is hand-rolled via `makeFunctionReference`
- * so this file compiles before `api.d.ts` regenerates with the new
- * `cmdPlugins:listForDeviceWithDetail` path. The runtime resolves the
- * same way once the generated api picks the function up. Mirrors the
- * pattern in `use-drone-plugin-contributions.ts`.
- *
  * @license GPL-3.0-only
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { makeFunctionReference } from "convex/server";
+import { api } from "../../convex/_generated/api";
 import { useConvex } from "convex/react";
 import { useTranslations } from "next-intl";
 
@@ -112,40 +107,6 @@ function slotOffersOnProfile(
   return profile.includes(nodeProfile);
 }
 
-/**
- * One install row returned by `cmdPlugins:listForDeviceWithDetail`. The
- * Convex `installId` is an `Id<"cmd_pluginInstalls">` that serializes to a
- * string on the wire; declaring it `string` here is exact enough for the
- * hand-rolled reference and `String(...)` keeps it safe either way.
- */
-interface InstallDetailRow {
-  installId: string;
-  pluginId: string;
-  version: string;
-  name: string;
-  grantedCaps: string[];
-  gcsContributes: Array<{
-    slot: string;
-    panelId: string;
-    title?: string;
-    icon?: string;
-    order?: number;
-    profile?: PairedNodeProfile[];
-  }>;
-  bundleUrl: string | null;
-}
-
-/**
- * Hand-rolled reference for the `cmdPlugins:listForDeviceWithDetail`
- * query. Once `api.d.ts` exports the typed descriptor, this resolves to
- * the same value the generated `communityApi.plugins.*` export yields.
- */
-const listForDeviceWithDetailRef = makeFunctionReference<
-  "query",
-  { deviceId?: string },
-  InstallDetailRow[]
->("cmdPlugins:listForDeviceWithDetail");
-
 const EMPTY: ReadonlyArray<SlottedContribution> = Object.freeze([]);
 
 const KNOWN_SLOTS = new Set<string>(PLUGIN_SLOTS);
@@ -189,7 +150,7 @@ export function usePluginContributions(
 ): ReadonlyArray<SlottedContribution> {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const installs = useConvexSkipQuery(listForDeviceWithDetailRef, {
+  const installs = useConvexSkipQuery(api.cmdPlugins.listForDeviceWithDetail, {
     args: { deviceId: deviceId ?? undefined },
     enabled: isAuthenticated,
   });

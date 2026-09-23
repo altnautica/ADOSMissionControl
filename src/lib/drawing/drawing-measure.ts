@@ -9,10 +9,10 @@
  */
 
 import L from "leaflet";
-import { haversineDistance } from "./geo-utils";
 import { formatDistance } from "@/lib/units/format";
 import type { UnitSystem } from "@/stores/settings-store-types";
 import { DRAW_COLORS, makeVertexIcon, makeDistanceLabel, makeTotalLabel } from "./drawing-labels";
+import { haversineDistance } from "@/lib/geo/distance";
 
 export interface MeasureCallbacks {
   onMeasureUpdate?: (

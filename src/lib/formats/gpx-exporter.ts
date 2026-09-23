@@ -7,6 +7,8 @@
  * @license GPL-3.0-only
  */
 
+import { downloadBlob } from "@/lib/download";
+
 export interface GpxTrackPoint {
   lat: number;
   lon: number;
@@ -69,12 +71,5 @@ ${trkpts}
 export function downloadGpx(filename: string, options: GpxOptions): void {
   const xml = buildGpx(options);
   const blob = new Blob([xml], { type: "application/gpx+xml" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename.endsWith(".gpx") ? filename : `${filename}.gpx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, filename.endsWith(".gpx") ? filename : `${filename}.gpx`);
 }

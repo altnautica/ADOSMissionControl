@@ -1,8 +1,8 @@
 /**
  * @module agent/local-pair/transport
  * @description Shared transport internals for the local-first pair
- * flow: host normalisation, the proxy-vs-direct decision, signal
- * combination, and the JSON-safe response reader. These are the
+ * flow: host normalisation, the proxy-vs-direct decision, the pair-call
+ * deadline, and the JSON-safe response reader. These are the
  * primitives the probe / claim / unpair helpers build on.
  *
  * The three pair-flow calls route through Mission Control's own Next.js
@@ -63,24 +63,6 @@ export const FETCH_TIMEOUT_MS = LAN_PAIR_UPSTREAM_TIMEOUT_MS + 2000;
  * Mission Control proxy rather than a direct cross-origin fetch. */
 export function shouldUseProxy(): boolean {
   return typeof window !== "undefined";
-}
-
-/** Combine an optional caller signal with a local timeout signal. */
-export function combineSignals(
-  caller?: AbortSignal,
-  timeoutMs: number = FETCH_TIMEOUT_MS,
-): AbortSignal {
-  const timeout = AbortSignal.timeout(timeoutMs);
-  if (!caller) return timeout;
-  if ("any" in AbortSignal && typeof AbortSignal.any === "function") {
-    return AbortSignal.any([caller, timeout]);
-  }
-  // Fallback for environments without AbortSignal.any.
-  const ctrl = new AbortController();
-  const onAbort = () => ctrl.abort();
-  caller.addEventListener("abort", onAbort);
-  timeout.addEventListener("abort", onAbort);
-  return ctrl.signal;
 }
 
 export async function safeJson(resp: Response): Promise<unknown> {

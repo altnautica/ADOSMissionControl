@@ -3,6 +3,7 @@ import {
   serializeParamFile,
   type SerializeParamOptions,
 } from "@/lib/formats/param-file-parser";
+import { downloadBlob } from "@/lib/download";
 
 export interface ExportParamFileOptions {
   format?: "mp" | "qgc";
@@ -16,12 +17,7 @@ function dateStamp(): string {
 
 function downloadText(filename: string, text: string): void {
   const blob = new Blob([text], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, filename);
 }
 
 /** Export parameters to a Mission Planner .param or QGC .params file (download). */

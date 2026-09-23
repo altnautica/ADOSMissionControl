@@ -34,7 +34,7 @@ import { resolveVisionClient } from "@/lib/vision/resolve-vision-client";
 import { nodeToOffloadAddr } from "@/lib/vision/offload-target";
 import { ModelPicker } from "@/components/vision/ModelPicker";
 import { ConfigSelectField } from "./ConfigFields";
-import { CARD, InfoNote, ReadRow } from "./Section";
+import { InfoNote, ReadRow, Section } from "./Section";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 interface SectionProps {
@@ -329,20 +329,17 @@ export function VisionPerceptionSection({
   if (profile !== "drone" && profile !== "workstation") return null;
 
   return (
-    <section className={CARD}>
-      <div className="mb-3 flex items-center gap-2">
-        <Layers size={16} className="text-accent-primary" aria-hidden="true" />
-        <h2 className="text-lg font-medium text-text-primary">
-          {t("perception.title")}
-        </h2>
-      </div>
-      <p className="mb-4 text-xs text-text-secondary">
-        {profile === "drone"
+    <Section
+      title={t("perception.title")}
+      icon={Layers}
+      blurb={
+        profile === "drone"
           ? t("perception.blurb")
-          : t("perception.serving.blurb")}
-      </p>
+          : t("perception.serving.blurb")
+      }
+    >
       {profile === "drone" ? (
-        <div className="space-y-4">
+        <>
           <DroneDetector droneId={droneId} nodeDeviceId={nodeDeviceId} />
           <div className="space-y-4 border-t border-border-default pt-3">
             <div>
@@ -360,7 +357,7 @@ export function VisionPerceptionSection({
               setValue={setValue}
             />
           </div>
-        </div>
+        </>
       ) : (
         <WorkstationServing
           droneId={droneId}
@@ -370,6 +367,6 @@ export function VisionPerceptionSection({
           setValue={setValue}
         />
       )}
-    </section>
+    </Section>
   );
 }

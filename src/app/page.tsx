@@ -6,8 +6,7 @@ import { useTranslations } from "next-intl";
 import { LayoutGrid, LayoutDashboard, Network, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useFleetStore } from "@/stores/fleet-store";
-import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { resolveFleetRowId } from "@/lib/nodes/fleet-row";
 import { useUiStore } from "@/stores/ui-store";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
@@ -51,22 +50,11 @@ export default function DashboardPage() {
   const exitImmersiveMode = useUiStore((s) => s.exitImmersiveMode);
 
   // A grid tile's expand/open maps the agent deviceId back to its registry-
-  // projected fleet row (keyed by the canonical `node:<deviceId>`) and selects
-  // it, opening the NodeDetailPanel — same as a sidebar click.
+  // projected fleet row and selects it, opening the NodeDetailPanel — same as
+  // a sidebar click.
   function handleOpenAgent(deviceId: string) {
-    const fleet = useFleetStore.getState().drones;
-    // A direct-connect FC's grid tile carries its own managed id (fc:<random>)
-    // as the deviceId — it is already a fleet-row id, so select it directly
-    // rather than mapping it through nodeIdForDevice (which would double-prefix).
-    if (fleet.some((d) => d.id === deviceId)) {
-      selectDrone(deviceId);
-      return;
-    }
-    const nodeId = nodeIdForDevice(deviceId);
-    const match =
-      fleet.find((d) => d.id === nodeId) ??
-      fleet.find((d) => d.cloudDeviceId === deviceId);
-    if (match) selectDrone(match.id);
+    const rowId = resolveFleetRowId(deviceId);
+    if (rowId) selectDrone(rowId);
   }
 
   // Reuse the sidebar's Add-a-Node dialog (local-first pairing).

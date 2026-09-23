@@ -18,6 +18,7 @@ import { create } from "zustand";
 import { RingBuffer } from "@/lib/ring-buffer";
 import { APP_VERSION } from "@/lib/app-version";
 import type { FlashPhase } from "@/lib/protocol/firmware/types";
+import { downloadBlob } from "@/lib/download";
 
 export type FlashLogLevel = "debug" | "info" | "warning" | "error" | "success";
 
@@ -184,11 +185,6 @@ export const useFlashLogStore = create<FlashLogState>((set, get) => ({
   download: () => {
     if (typeof document === "undefined") return;
     const blob = new Blob([get().buildLogText()], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `flash-log-${Date.now()}.log`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `flash-log-${Date.now()}.log`);
   },
 }));

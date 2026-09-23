@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { useFleetStore } from "@/stores/fleet-store";
+import { selectFleetSummary } from "@/stores/node-registry/fleet-summary";
+import { useBatteryThresholds } from "@/lib/battery-bands";
 import { Card } from "@/components/ui/card";
 import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import type { DroneStatus } from "@/lib/types";
@@ -28,22 +30,15 @@ export function FleetStatusCard() {
     offline: t("fleetStatus.statuses.offline"),
   };
 
-  const counts = drones.reduce<Partial<Record<DroneStatus, number>>>((acc, d) => {
-    acc[d.status] = (acc[d.status] || 0) + 1;
-    return acc;
-  }, {});
-
-  // An offline node's navigation flag is its last report, not a current fact.
-  const gpsDeniedCount = drones.reduce(
-    (n, d) => (d.status !== "offline" && d.navigationGpsDenied === true ? n + 1 : n),
-    0,
-  );
+  const {
+    statusCounts: counts,
+    gpsDeniedCount,
+    linkLost,
+    total,
+  } = selectFleetSummary(drones, useBatteryThresholds());
   // Counted under their node's liveness above, but their FC went silent: the
   // operator has to see that no arm or mission state stands behind them.
-  const linkLostCount = drones.reduce(
-    (n, d) => (d.fcLinkLost === true ? n + 1 : n),
-    0,
-  );
+  const linkLostCount = linkLost.length;
 
   const statuses: DroneStatus[] = ["in_mission", "online", "idle", "returning", "maintenance", "offline"];
 
@@ -52,7 +47,7 @@ export function FleetStatusCard() {
       <div className="flex items-center justify-between mb-3">
         <span className="text-[11px] text-text-secondary">{t("fleetStatus.totalDrones")}</span>
         <span className="text-lg font-mono font-semibold text-text-primary tabular-nums">
-          {drones.length}
+          {total}
         </span>
       </div>
       <div className="flex flex-col gap-1.5">

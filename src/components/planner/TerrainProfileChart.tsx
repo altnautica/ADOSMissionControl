@@ -17,12 +17,12 @@ import { useTranslations } from "next-intl";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { Mountain, Loader2, RefreshCw } from "lucide-react";
 import type { Waypoint, AltitudeFrame } from "@/lib/types";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { useTerrainProfile } from "@/hooks/use-terrain-profile";
 import { usePlannerStore } from "@/stores/planner-store";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { findCollisionSegments, DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { waypointAbsoluteAltitude } from "@/lib/mission/altitude-frame";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** Merged data point for the combined chart. All altitudes are MSL. */
 interface ChartDataPoint {

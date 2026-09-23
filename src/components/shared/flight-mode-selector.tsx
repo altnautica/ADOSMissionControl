@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select";
 import type { SelectOption } from "@/components/ui/select";
 import type { FlightMode } from "@/lib/types";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useAvailableModes } from "@/hooks/use-available-modes";
 
 interface FlightModeSelectorProps {
   value: FlightMode;
@@ -65,12 +66,12 @@ export function flightModeChoices(
 
 export function FlightModeSelector({ value, onChange, className }: FlightModeSelectorProps) {
   const t = useTranslations("flightModes");
-  const protocol = useDroneManager((s) => s.getSelectedDrone()?.protocol ?? null);
-  const handler = protocol?.isConnected ? protocol.getFirmwareHandler() : null;
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  const available = useAvailableModes(selectedDroneId);
 
   const options: SelectOption[] = useMemo(
     () =>
-      flightModeChoices(handler?.getAvailableModes() ?? null, value).map(({ mode, disabled }) => {
+      flightModeChoices(available, value).map(({ mode, disabled }) => {
         const keys = MODE_KEYS[mode];
         return {
           value: mode,
@@ -79,7 +80,7 @@ export function FlightModeSelector({ value, onChange, className }: FlightModeSel
           disabled,
         };
       }),
-    [handler, value, t],
+    [available, value, t],
   );
 
   return (

@@ -67,7 +67,7 @@ export function GpsTrackMap() {
     let alt = 0;
     for (let i = 0; i < trail.length; i++) {
       const curr = trail[i];
-      if (curr.alt > alt) alt = curr.alt;
+      if (curr.alt !== undefined && curr.alt > alt) alt = curr.alt;
       if (i === 0) continue;
       const prev = trail[i - 1];
       const dlat = (curr.lat - prev.lat) * 111320;

@@ -9,34 +9,14 @@
  * @license GPL-3.0-only
  */
 
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useUiStore } from "@/stores/ui-store";
-import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { resolveFleetRowId } from "@/lib/nodes/fleet-row";
 import type { McpActivityRow } from "@/lib/mcp/activity";
 
 /** The route event CommandShell listens for to push a Next route. */
 export const MCP_NAVIGATE_EVENT = "ados:navigate";
-
-/**
- * Resolve an activity row's `node` (a deviceId in fleet-mode, an id or `local`
- * in agent-mode) to a selectable fleet-row id — mirrors the Dashboard's
- * `handleOpenAgent` mapping. `local` names the agent this GCS is connected to.
- * Returns null when no fleet row matches (fleet-wide `*`, `local` with no
- * connected agent, or a node not present in this GCS's fleet).
- */
-export function resolveFleetRowId(node: string): string | null {
-  const target = node === "local" ? useAgentConnectionStore.getState().nodeDeviceId : node;
-  if (!target) return null;
-  const fleet = useFleetStore.getState().drones;
-  // A direct-FC id (fc:<random>) or an already-canonical node id is a row id.
-  if (fleet.some((d) => d.id === target)) return target;
-  const nid = nodeIdForDevice(target);
-  if (fleet.some((d) => d.id === nid)) return nid;
-  const match = fleet.find((d) => d.cloudDeviceId === target);
-  return match ? match.id : null;
-}
 
 /** True when {@link navigateToRow} would navigate: a whole-page route surface,
  *  or a tab surface whose node resolves to a fleet row. */

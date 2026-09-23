@@ -10,9 +10,10 @@
 
 import type { TelemetryRecording } from "./telemetry-recorder";
 import { loadRecordingFrames } from "./telemetry-recorder";
-import { haversineDistance } from "./telemetry-utils";
 import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import type { PositionData, AttitudeData, BatteryData, GpsData, VfrData } from "@/lib/types";
+import { haversineDistance } from "@/lib/geo/distance";
+import { downloadBlob } from "@/lib/download";
 
 // ── CSV Export ───────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ interface FlattenedRow {
   lat: number;
   lon: number;
   alt_m: number;
-  relative_alt_m: number;
+  relative_alt_m: number | "";
   heading_deg: number | "";
   roll_deg: number | "";
   pitch_deg: number | "";
@@ -35,7 +36,7 @@ interface FlattenedRow {
   groundspeed_ms: number;
   /** VFR_HUD owns airspeed; the position sample is the fallback. */
   airspeed_ms: number | "";
-  climb_ms: number;
+  climb_ms: number | "";
   battery_v: number | "";
   battery_pct: number | "";
   battery_current_a: number | "";
@@ -124,14 +125,14 @@ export async function exportTelemetryAsCSV(
       lat: pos.lat,
       lon: pos.lon,
       alt_m: pos.alt,
-      relative_alt_m: pos.relativeAlt,
+      relative_alt_m: pos.relativeAlt ?? "",
       heading_deg: pos.heading ?? "",
       roll_deg: a?.roll ?? "",
       pitch_deg: a?.pitch ?? "",
       yaw_deg: a?.yaw ?? "",
       groundspeed_ms: pos.groundSpeed,
       airspeed_ms: v?.airspeed ?? pos.airSpeed ?? "",
-      climb_ms: pos.climbRate,
+      climb_ms: pos.climbRate ?? v?.climb ?? "",
       battery_v: b?.voltage ?? "",
       battery_pct: b?.remaining ?? "",
       battery_current_a: b?.current ?? "",
@@ -339,14 +340,6 @@ function escapeXml(text: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 function generateEmptyKML(name: string): string {
   return [

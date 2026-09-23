@@ -23,6 +23,7 @@
  */
 
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
+import { downloadBlob } from "@/lib/download";
 
 /** Our frame name, written verbatim into ExtendedData for a lossless re-import. */
 export const KML_FRAME_KEY = "adosAltitudeFrame";
@@ -167,14 +168,6 @@ function escapeXml(text: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 /**
  * Build a minimal ZIP file containing a single deflated file.

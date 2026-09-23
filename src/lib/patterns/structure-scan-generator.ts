@@ -12,10 +12,10 @@
 
 import type { PatternResult, PatternStats } from "./types";
 import {
-  haversineDistance,
   offsetPoint,
   polygonCentroid,
 } from "@/lib/drawing/geo-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 export interface StructureScanConfig {
   /** Structure boundary polygon vertices [lat, lon] */

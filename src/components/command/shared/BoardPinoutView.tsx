@@ -7,10 +7,11 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Cpu, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useBoardId } from "@/hooks/use-board-id";
 import { detectBoardProfile, type BoardProfile } from "@/lib/board-profiles";
 
 /** 6-color palette for distinguishing timer groups visually. */
@@ -55,27 +56,9 @@ export function BoardPinoutView() {
     const id = s.selectedDroneId;
     return id ? s.drones.get(id) : null;
   });
-  const [boardId, setBoardId] = useState<number | null>(null);
-
-  // Subscribe to AUTOPILOT_VERSION for the selected drone. The board id is
-  // cleared first so a drone switch never shows the previous drone's timer
-  // table under the new drone while its AUTOPILOT_VERSION is still pending.
-  useEffect(() => {
-    setBoardId(null);
-    const protocol = drone?.protocol;
-    if (!protocol) return;
-    const currentInfo = protocol.getVehicleInfo();
-    if (currentInfo?.boardId !== undefined) {
-      setBoardId(currentInfo.boardId);
-    }
-    if (!protocol.onAutopilotVersion) return;
-    const unsub = protocol.onAutopilotVersion((info) => {
-      // 0 = the firmware reported no board id; renders as an unknown board.
-      setBoardId(info.boardId ?? 0);
-    });
-    protocol.requestMessage?.(148).catch(() => {});
-    return unsub;
-  }, [drone?.protocol]);
+  // null while the selected drone's AUTOPILOT_VERSION is pending, so a drone
+  // switch never shows the previous drone's timer table under the new drone.
+  const boardId = useBoardId(drone?.protocol);
 
   const profile = useMemo(() => {
     if (boardId === null) return null;

@@ -70,15 +70,20 @@ export function SensorGraphPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeWindow, tick, activeImu]);
 
-  // ATTITUDE rates arrive in rad/s. MSP links publish no body rates (the
-  // adapter fills zeros), so there is nothing real to fall back to there.
-  const attitudeRatesReported = firmwareType !== "betaflight" && firmwareType !== "inav";
+  // ATTITUDE rates arrive in rad/s. A link that reports no body rates (MSP)
+  // leaves them absent, so only samples carrying all three are charted.
   const attitudeGyroFallback = useMemo(() => {
-    if (windowedSamples.length > 0 || !attitudeRatesReported) return null;
+    if (windowedSamples.length > 0) return null;
     const cutoff = Date.now() - timeWindow * 1000;
-    return attitudeRing.toArray().filter((a) => a.timestamp >= cutoff);
+    const rates: { roll: number; pitch: number; yaw: number }[] = [];
+    for (const a of attitudeRing.toArray()) {
+      if (a.timestamp < cutoff) continue;
+      if (a.rollSpeed === undefined || a.pitchSpeed === undefined || a.yawSpeed === undefined) continue;
+      rates.push({ roll: a.rollSpeed * RAD_TO_DEG, pitch: a.pitchSpeed * RAD_TO_DEG, yaw: a.yawSpeed * RAD_TO_DEG });
+    }
+    return rates;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeWindow, tick, windowedSamples.length, attitudeRing.length, attitudeRatesReported]);
+  }, [timeWindow, tick, windowedSamples.length, attitudeRing.length]);
 
   const extractAxis = useCallback(
     (key: keyof ImuSample): number[] => windowedSamples.map((s) => s[key]),
@@ -138,9 +143,9 @@ export function SensorGraphPanel() {
             ) : hasAttitudeFallback && attitudeGyroFallback ? (
               <div className="space-y-2">
                 <p className="text-[9px] text-text-tertiary italic mb-1">Using attitude rate data (SCALED_IMU not available)</p>
-                <WaveformChart data={attitudeGyroFallback.map((a) => a.rollSpeed * RAD_TO_DEG)} label="R" unit="deg/s" color={XYZ_COLORS.x} />
-                <WaveformChart data={attitudeGyroFallback.map((a) => a.pitchSpeed * RAD_TO_DEG)} label="P" unit="deg/s" color={XYZ_COLORS.y} />
-                <WaveformChart data={attitudeGyroFallback.map((a) => a.yawSpeed * RAD_TO_DEG)} label="Y" unit="deg/s" color={XYZ_COLORS.z} />
+                <WaveformChart data={attitudeGyroFallback.map((r) => r.roll)} label="R" unit="deg/s" color={XYZ_COLORS.x} />
+                <WaveformChart data={attitudeGyroFallback.map((r) => r.pitch)} label="P" unit="deg/s" color={XYZ_COLORS.y} />
+                <WaveformChart data={attitudeGyroFallback.map((r) => r.yaw)} label="Y" unit="deg/s" color={XYZ_COLORS.z} />
               </div>
             ) : null}
           </div>

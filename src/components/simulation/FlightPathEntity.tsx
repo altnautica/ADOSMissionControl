@@ -29,12 +29,12 @@ import {
 } from "cesium";
 import type { AltitudeFrame, Waypoint, WaypointCommand } from "@/lib/types";
 import { MAP_COLORS } from "@/lib/map-constants";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { useSettingsStore } from "@/stores/settings-store";
 import { roundCorners, type LatLonAlt } from "@/lib/simulation/spline-path";
 import { mslToEllipsoidal } from "@/lib/terrain/geoid";
 import { altitudeDatumFor, formatAltitudeWithDatum } from "@/lib/mission/altitude-frame";
 import { hasDepictedActions, legActionStates } from "@/lib/simulation/mission-action-state";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /**
  * Corner-rounding defaults for the display-only smoothed path.

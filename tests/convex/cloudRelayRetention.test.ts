@@ -20,6 +20,8 @@ import { describe, expect, it } from "vitest";
 import * as commands from "../../convex/cmdDroneCommands";
 import * as drones from "../../convex/cmdDrones";
 import * as mcpTokens from "../../convex/cmdMcpTokens";
+import * as aiUsage from "../../convex/cmdAiUsage";
+import * as pairing from "../../convex/cmdPairing";
 import * as plugins from "../../convex/cmdPlugins";
 import { invoke, makeCtx } from "./fakeConvexCtx";
 
@@ -209,6 +211,47 @@ describe("the append-only event tables are swept", () => {
     expect(crons).toContain("internal.cmdMcpTokens.pruneOldAuditEvents");
     expect(crons).toContain("internal.cmdDroneCommands.expireStuckCommands");
     expect(crons).not.toContain("api.cmdPlugins.pruneOldEvents");
+  });
+});
+
+describe("usage and security sweeps", () => {
+  it("keeps every usage row a weekly quota can still count", async () => {
+    const ctx = makeCtx();
+    const now = Date.now();
+    ctx.db.seed("cmd_ai_usage", [
+      { userId: "u", feature: "pid_analysis", usedAt: now - 9 * DAY_MS },
+      { userId: "u", feature: "pid_analysis", usedAt: now - 7 * DAY_MS },
+    ]);
+
+    const result = await invoke(aiUsage.pruneOldUsage, ctx);
+
+    expect(result).toEqual({ deleted: 1 });
+    expect(ctx.db.rows("cmd_ai_usage").map((r) => r.usedAt)).toEqual([now - 7 * DAY_MS]);
+  });
+
+  it("drains a full batch of terminal commands but never spins on locked buckets", async () => {
+    const ctx = makeCtx();
+    const now = Date.now();
+    ctx.db.seed(
+      "cmd_droneCommands",
+      Array.from({ length: 300 }, () => ({
+        deviceId: "d", userId: "u", command: "reboot", status: "completed",
+        createdAt: now - 10 * DAY_MS, completedAt: now - 10 * DAY_MS,
+      })),
+    );
+    await invoke(commands.pruneTerminalCommands, ctx);
+    expect(ctx.scheduled).toHaveLength(1);
+
+    const locked = makeCtx();
+    locked.db.seed(
+      "cmd_authAttempts",
+      Array.from({ length: 256 }, (_, i) => ({
+        key: `k${i}`, attempts: 9, firstAttemptAt: now - 2 * DAY_MS,
+        lastAttemptAt: now - 2 * DAY_MS, lockedUntil: now + 60_000,
+      })),
+    );
+    await invoke(pairing.cleanExpiredSecurityState, locked);
+    expect(locked.scheduled).toHaveLength(0);
   });
 });
 

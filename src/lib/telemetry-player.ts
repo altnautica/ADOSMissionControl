@@ -173,7 +173,7 @@ function pushTrailPoint(data: unknown): void {
   const d = data as { lat?: unknown; lon?: unknown; relativeAlt?: unknown };
   if (typeof d.lat !== "number" || typeof d.lon !== "number") return;
   if (d.lat === 0 && d.lon === 0) return;
-  useTrailStore.getState().pushPoint(d.lat, d.lon, typeof d.relativeAlt === "number" ? d.relativeAlt : 0);
+  useTrailStore.getState().pushPoint(d.lat, d.lon, typeof d.relativeAlt === "number" ? d.relativeAlt : undefined);
 }
 
 /** Empty the stores replay writes, so a fresh position starts clean. */

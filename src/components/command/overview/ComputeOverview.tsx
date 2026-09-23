@@ -16,9 +16,7 @@ import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { AgentStatusCard } from "../shared/AgentStatusCard";
 import { ServiceTable } from "../shared/ServiceTable";
 import { SystemResourceGauges } from "../shared/SystemResourceGauges";
-import { CpuSparkline } from "../shared/CpuSparkline";
-import { MemorySparkline } from "../shared/MemorySparkline";
-import { GpuSparkline } from "../shared/GpuSparkline";
+import { Sparkline } from "../shared/Sparkline";
 import { LogViewer } from "../shared/LogViewer";
 import { AgentDisconnectedPage } from "../AgentDisconnectedPage";
 import { StaleBanner } from "../shared/StaleBanner";
@@ -87,7 +85,7 @@ export function ComputeOverview({ nodeId }: { nodeId?: string }) {
         <OverviewTile span="third">
           <div className="space-y-3">
             <ComputeMetricsCard profile="workstation" />
-            <GpuSparkline />
+            <Sparkline series="gpuHistory" tokenColor="--node-swatch-cyan" />
           </div>
         </OverviewTile>
 
@@ -96,8 +94,8 @@ export function ComputeOverview({ nodeId }: { nodeId?: string }) {
           <div className="space-y-3">
             <AgentStatusCard status={status} profile="workstation" />
             {resources && <SystemResourceGauges resources={resources} />}
-            <CpuSparkline />
-            <MemorySparkline />
+            <Sparkline series="cpuHistory" tokenColor="--color-accent-primary" />
+            <Sparkline series="memoryHistory" tokenColor="--color-accent-secondary" />
           </div>
         </OverviewTile>
 

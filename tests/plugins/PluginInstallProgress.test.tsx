@@ -10,9 +10,6 @@ const isDemoModeMock = vi.fn(() => false);
 vi.mock("convex/react", () => ({
   useQuery: (...args: unknown[]) => useQueryMock(...args),
 }));
-vi.mock("convex/server", () => ({
-  makeFunctionReference: (name: string) => ({ _ref: name }),
-}));
 vi.mock("@/app/ConvexClientProvider", () => ({
   useConvexAvailable: () => useConvexAvailableMock(),
 }));
@@ -136,7 +133,7 @@ describe("PluginInstallProgress", () => {
     const [mintUrl, init] = fetchMock.mock.calls[0]!;
     expect(String(mintUrl)).toBe("http://testnode.local:8080/api/_ws/ticket");
     expect(JSON.parse(String((init as RequestInit).body))).toEqual({
-      scope: "plugins.install_job",
+      scope: "plugins.install_job:job-1",
     });
     expect(
       (init as RequestInit | undefined)?.method,

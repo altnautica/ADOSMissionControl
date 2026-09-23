@@ -9,7 +9,8 @@
 import { isDemoMode } from "@/lib/utils";
 import type { ProbeResult } from "./types";
 import { PairClientError } from "./errors";
-import { combineSignals, normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import { withTimeoutSignal } from "../agent-client/timeout";
+import { FETCH_TIMEOUT_MS, normaliseHost, safeJson, shouldUseProxy } from "./transport";
 import { pairFailureFromResponse } from "./failure-copy";
 
 /** Hit ``/api/pairing/info`` and return the agent identity.
@@ -69,7 +70,7 @@ export async function probeAgent(
           Accept: "application/json",
         },
         body: JSON.stringify({ host }),
-        signal: combineSignals(signal),
+        signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
       });
     } catch (e) {
       if (signal?.aborted) throw e;
@@ -90,7 +91,7 @@ export async function probeAgent(
       resp = await fetch(`${host}/api/pairing/info`, {
         method: "GET",
         headers: { Accept: "application/json" },
-        signal: combineSignals(signal),
+        signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
       });
     } catch (e) {
       if (signal?.aborted) throw e;

@@ -10,7 +10,8 @@
 import { getBrowserId } from "@/stores/browser-identity-store";
 import type { ClaimResult } from "./types";
 import { AgentAlreadyPairedError } from "./errors";
-import { combineSignals, normaliseHost, safeJson, shouldUseProxy } from "./transport";
+import { withTimeoutSignal } from "../agent-client/timeout";
+import { FETCH_TIMEOUT_MS, normaliseHost, safeJson, shouldUseProxy } from "./transport";
 import { pairFailureFromResponse } from "./failure-copy";
 
 /** POST ``/api/pairing/claim`` with the browser-local UUID as ``user_id``.
@@ -33,7 +34,7 @@ export async function pairLocally(
             Accept: "application/json",
           },
           body: JSON.stringify({ host, userId }),
-          signal: combineSignals(signal),
+          signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
         })
       : await fetch(`${host}/api/pairing/claim`, {
           method: "POST",
@@ -42,7 +43,7 @@ export async function pairLocally(
             Accept: "application/json",
           },
           body: JSON.stringify({ user_id: userId }),
-          signal: combineSignals(signal),
+          signal: withTimeoutSignal(FETCH_TIMEOUT_MS, signal ?? null),
         });
   } catch (e) {
     // Nothing answered (DNS failure, refused connection, the 8 s timeout).

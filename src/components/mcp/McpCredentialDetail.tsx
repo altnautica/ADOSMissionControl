@@ -22,7 +22,12 @@ import { timeAgo } from "@/lib/plan-library";
 import { useMcpTabStore } from "@/stores/mcp-tab-store";
 import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
-import { SAFETY_CLASSES, credentialStatus, safetyClassBadge } from "./mcp-shared";
+import {
+  MINTED_CREDENTIAL_REACH,
+  SAFETY_CLASSES,
+  credentialStatus,
+  safetyClassBadge,
+} from "./mcp-shared";
 import {
   summarizeCredentialReach,
   type BlockReason,
@@ -62,19 +67,20 @@ export function McpCredentialDetail({ rows }: { rows: McpTokenRow[] }) {
 
   const row = rows.find((r) => r.tokenId === selectedId) ?? null;
 
+  const status = row ? credentialStatus(row, now) : null;
+  const usable = status === "active";
+
   const reach = useMemo(
     () =>
       row
-        ? summarizeCredentialReach({ scopes: row.scopes, allowedNodes: row.allowedNodes }, CATALOG_TOOLS, {
-            flightEnforced: false,
-            fleetMode: true,
-          })
+        ? summarizeCredentialReach(
+            { scopes: row.scopes, allowedNodes: row.allowedNodes },
+            CATALOG_TOOLS,
+            MINTED_CREDENTIAL_REACH,
+          )
         : null,
     [row],
   );
-
-  const status = row ? credentialStatus(row, now) : null;
-  const usable = status === "active";
 
   return (
     <Modal

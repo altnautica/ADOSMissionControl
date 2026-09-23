@@ -19,8 +19,7 @@ import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useGroundStationPoll } from "../nodes/ground-station/use-gs-poll";
 import { AgentStatusCard } from "../shared/AgentStatusCard";
 import { SystemResourceGauges } from "../shared/SystemResourceGauges";
-import { CpuSparkline } from "../shared/CpuSparkline";
-import { MemorySparkline } from "../shared/MemorySparkline";
+import { Sparkline } from "../shared/Sparkline";
 import { LogViewer } from "../shared/LogViewer";
 import { ServiceTable } from "../shared/ServiceTable";
 import { AgentDisconnectedPage } from "../AgentDisconnectedPage";
@@ -142,8 +141,8 @@ export function GroundStationOverview({ name }: { name?: string }) {
         <OverviewTile span="half">
           <div className="space-y-3">
             {resources && <SystemResourceGauges resources={resources} />}
-            <CpuSparkline />
-            <MemorySparkline />
+            <Sparkline series="cpuHistory" tokenColor="--color-accent-primary" />
+            <Sparkline series="memoryHistory" tokenColor="--color-accent-secondary" />
           </div>
         </OverviewTile>
         <OverviewTile span="half">

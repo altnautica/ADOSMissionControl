@@ -23,11 +23,8 @@ import { useTranslations } from "next-intl";
 import { AlertTriangle, Bot, Power, Satellite } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import {
-  UnknownValue,
-  staleClass,
-  type ReadingFreshness,
-} from "@/components/command/nodes-view/cell-primitives";
+import { UnknownValue, staleClass } from "@/components/command/nodes-view/cell-primitives";
+import type { ReadingFreshness } from "@/lib/nodes/fc-reading";
 import type { SwarmSlotRow } from "./swarm-rows";
 
 /**

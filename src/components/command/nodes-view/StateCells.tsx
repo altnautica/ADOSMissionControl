@@ -22,7 +22,8 @@ import { BatteryLow, BatteryMedium, BatteryFull } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import { useBatteryBand } from "@/lib/battery-bands";
-import { UnknownValue, staleClass, type FcReading } from "./cell-primitives";
+import { UnknownValue, staleClass } from "./cell-primitives";
+import type { FcReading } from "@/lib/nodes/fc-reading";
 
 export function BatteryCell({
   telemetry,

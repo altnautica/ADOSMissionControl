@@ -7,7 +7,7 @@ import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useKnownCellCount } from "@/hooks/use-known-cell-count";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { resolveCellCount } from "@/lib/telemetry/battery-cells";
+import { knownRemainingPct, resolveCellCount } from "@/lib/battery";
 import {
   useSettingsStore,
   type TelemetryDeckMetricId,
@@ -89,8 +89,7 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
   const fixType = gps?.fixType;
   const satellites = gps?.satellites;
   const hdop = gps?.hdop;
-  // -1 is the FC's "capacity unknown", not an empty pack.
-  const remainingPct = bat !== undefined && bat.remaining >= 0 ? bat.remaining : undefined;
+  const remainingPct = knownRemainingPct(bat?.remaining) ?? undefined;
   const powerWatts = bat?.current !== undefined ? bat.voltage * bat.current : undefined;
   const estimatedMinutes =
     bat?.current !== undefined && bat.consumed !== undefined && remainingPct !== undefined

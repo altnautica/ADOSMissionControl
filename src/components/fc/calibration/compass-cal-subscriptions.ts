@@ -108,6 +108,8 @@ export function subscribeCompassCalibration(
 
   if (protocol.onAttitude) {
     const attUnsub = protocol.onAttitude(({ rollSpeed, pitchSpeed, yawSpeed }) => {
+      // A link without body rates leaves the direction indicator unset.
+      if (rollSpeed === undefined || pitchSpeed === undefined || yawSpeed === undefined) return;
       setter((prev) => {
         if (prev.status !== "in_progress") return prev;
         const cd = new Map(prev.compassDirection);

@@ -24,6 +24,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { MagneticFieldStrength2 } from "@/lib/dronecan/dsdl/magnetic-field-strength-2";
 import { RingBuffer } from "@/lib/ring-buffer";
+import { downloadBlob } from "@/lib/download";
 
 interface MagSample {
   ts: number;
@@ -116,12 +117,7 @@ export function CompassStreamCard({ client }: CompassStreamCardProps = {}) {
       lines.push(`${s.ts},${s.x.toFixed(6)},${s.y.toFixed(6)},${s.z.toFixed(6)}`);
     }
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `compass-${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `compass-${Date.now()}.csv`);
   }, [samples]);
 
   return (

@@ -70,7 +70,7 @@ function publishTelemetry(
   telemetry: { armed?: boolean; mode?: string },
 ): void {
   useCommandFleetStore.getState().upsertCloudStatuses([
-    { deviceId, telemetry, updatedAt: Date.now() },
+    { deviceId, telemetry, fcConnected: true, updatedAt: Date.now() },
   ]);
 }
 
@@ -159,7 +159,7 @@ describe("cloud command lane", () => {
 
   it("offers a command surface from streamed telemetry alone", () => {
     useCommandFleetStore.getState().upsertCloudStatuses([
-      { deviceId: CLOUD_DEVICE_ID, updatedAt: Date.now() },
+      { deviceId: CLOUD_DEVICE_ID, fcConnected: true, updatedAt: Date.now() },
     ]);
     streamTelemetry(CLOUD_DEVICE_ID, { armed: true, mode: "GUIDED" });
 
@@ -181,6 +181,7 @@ describe("cloud command lane", () => {
       {
         deviceId: CLOUD_DEVICE_ID,
         telemetry: { armed: false, mode: "LOITER" },
+        fcConnected: true,
         updatedAt: Date.now(),
       },
     ]);
@@ -219,6 +220,7 @@ describe("state that cannot be sourced per node", () => {
       {
         deviceId: DEVICE_ID,
         telemetry: { armed: false, mode: "LOITER" },
+        fcConnected: true,
         updatedAt: TEN_MINUTES_AGO,
       },
     ]);
@@ -233,6 +235,26 @@ describe("state that cannot be sourced per node", () => {
     expect(armSkill.getState(ctx).kind).toBe("disabled");
   });
 
+  it("offers no command surface when the node's agent reports no reachable FC", () => {
+    // The agent keeps heartbeating and keeps its last vehicle state after its
+    // flight controller drops; the board reads that row as "FC not reachable",
+    // so the controls beside it must not act on the frozen armed flag.
+    useCommandFleetStore.getState().upsertCloudStatuses([
+      {
+        deviceId: DEVICE_ID,
+        telemetry: { armed: false, mode: "LOITER" },
+        fcConnected: false,
+        updatedAt: Date.now(),
+      },
+    ]);
+
+    const ctx = buildSkillContextForNode(NODE, { originIsHttps: false });
+
+    expect(ctx.protocol).toBeNull();
+    expect(ctx.armState).toBe("unknown");
+    expect(armSkill.getState(ctx).kind).toBe("disabled");
+  });
+
   it("keeps the command surface through the stale window", () => {
     // Stale (heard from within the offline threshold) dims the readings but is
     // not gone; blocking there would flap controls on every slow heartbeat.
@@ -240,6 +262,7 @@ describe("state that cannot be sourced per node", () => {
       {
         deviceId: DEVICE_ID,
         telemetry: { armed: false, mode: "LOITER" },
+        fcConnected: true,
         updatedAt: Date.now() - 50_000,
       },
     ]);

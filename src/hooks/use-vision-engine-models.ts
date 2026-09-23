@@ -13,8 +13,8 @@
  * quietly, so the panel degrades to the stream-only view rather than erroring.
  * In demo mode the canned client answers with a small model set.
  *
- * `useVisionEngineStatus()` returns the full status; its `known` flag is false
- * whenever there is no read-back, so callers never show an empty list as zero.
+ * `useVisionEngineStatus()` returns a tagged status: `{ known: false }` whenever
+ * there is no read-back, so callers never show an unread engine as zero.
  *
  * @license GPL-3.0-only
  */
@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { resolveVisionClient } from "@/lib/vision/resolve-vision-client";
 import {
-  EMPTY_ENGINE_STATUS,
+  UNKNOWN_ENGINE_STATUS,
   type EngineStatus,
 } from "@/lib/agent/vision-client";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -35,14 +35,14 @@ export const ENGINE_MODELS_POLL_MS = 5000;
 /**
  * The engine's status for the active agent (registered models + NPU
  * utilization + model count), refreshed on a slow poll while mounted. Returns
- * the empty status until the first read lands, on any failure (unreachable
+ * the unknown status until the first read lands, on any failure (unreachable
  * engine / older agent / HTTPS-blocked), and when no LAN client is resolvable.
  * The value is stable between reads.
  */
 export function useVisionEngineStatus(): EngineStatus {
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
-  const [status, setStatus] = useState<EngineStatus>(EMPTY_ENGINE_STATUS);
+  const [status, setStatus] = useState<EngineStatus>(UNKNOWN_ENGINE_STATUS);
 
   const client = useMemo(
     () => resolveVisionClient(agentUrl, apiKey),
@@ -62,8 +62,8 @@ export function useVisionEngineStatus(): EngineStatus {
         if (!cancelled) setStatus(next);
       } catch {
         // Unreachable engine / older agent / mixed-content on HTTPS: drop back
-        // to the empty status and let the live-stream view carry the panel.
-        if (!cancelled) setStatus(EMPTY_ENGINE_STATUS);
+        // to the unknown status and let the live-stream view carry the panel.
+        if (!cancelled) setStatus(UNKNOWN_ENGINE_STATUS);
       }
     };
     void read();
@@ -76,5 +76,5 @@ export function useVisionEngineStatus(): EngineStatus {
 
   // With no engine read-back (older agent / cloud-only) the last-good status is
   // never cleared by the effect, so gate it here rather than with a setState.
-  return canRead ? status : EMPTY_ENGINE_STATUS;
+  return canRead ? status : UNKNOWN_ENGINE_STATUS;
 }

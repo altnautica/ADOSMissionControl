@@ -18,6 +18,7 @@
 
 import type { AlertSeverity } from "@/lib/types";
 import { batteryBand, type BatteryBand } from "@/lib/battery-bands";
+import { knownRemainingPct } from "@/lib/battery";
 import { isFailsafeAnnouncement } from "@/lib/telemetry/failsafe-text";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -64,8 +65,9 @@ export function createFleetAlertProducer(
       }
     },
 
-    batteryRemaining(remaining) {
-      if (!Number.isFinite(remaining) || remaining < 0) return;
+    batteryRemaining(reported) {
+      const remaining = knownRemainingPct(reported);
+      if (remaining === null) return;
       const { batteryWarningPct, batteryCriticalPct } =
         useSettingsStore.getState();
       const band = batteryBand(remaining, {

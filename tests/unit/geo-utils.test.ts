@@ -1,16 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
-  haversineDistance,
   bearing,
   polygonArea,
   polygonCentroid,
-  pointInPolygon,
   offsetPoint,
   polygonBounds,
   isConvex,
   isSelfIntersecting,
 } from '@/lib/drawing/geo-utils';
 import { BANGALORE, CHENNAI, BANGALORE_POLYGON } from '../helpers/geo-fixtures';
+import { haversineDistance, pointInPolygon } from "@/lib/geo/distance";
 
 describe('haversineDistance()', () => {
   it('between Bangalore and Chennai is ~290km (tolerance +/-5km)', () => {

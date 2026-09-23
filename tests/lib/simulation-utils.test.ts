@@ -5,7 +5,7 @@ import {
   createSimulationMissionSignature,
   interpolatePosition,
 } from "@/lib/simulation-utils";
-import { haversineDistance } from "@/lib/telemetry-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 const baseWaypoints: Waypoint[] = [
   { id: "wp-1", lat: 12.9716, lon: 77.5946, alt: 30, command: "TAKEOFF" },

@@ -22,8 +22,8 @@
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import type { FenceZone } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
-import { haversineDistance, bearing } from "@/lib/telemetry-utils";
-import { pointInPolygon, isSelfIntersecting } from "@/lib/drawing/geo-utils";
+import { bearing } from "@/lib/telemetry-utils";
+import { isSelfIntersecting } from "@/lib/drawing/geo-utils";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { isActionCommand } from "@/lib/mission/command-classes";
 import {
@@ -31,6 +31,7 @@ import {
   resolveWaypointAltitude,
   type AltitudeDatums,
 } from "@/lib/mission/altitude-frame";
+import { haversineDistance, pointInPolygon } from "@/lib/geo/distance";
 
 /** How much a mission issue matters. */
 export type ValidationSeverity =

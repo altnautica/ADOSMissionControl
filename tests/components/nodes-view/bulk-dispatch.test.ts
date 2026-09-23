@@ -92,8 +92,9 @@ function probeSkill(seen: string[]): Skill {
 function seedReachable(nodes: SkillTargetNode[]): void {
   useLocalNodesStore.setState({ nodes: nodes.map((n) => lanNode(n.deviceId)) });
   // A command surface is only offered for a node whose arm state is being read
-  // AND that is currently being heard from, so each node needs a telemetry
-  // snapshot with a fresh heartbeat timestamp to be commandable at all.
+  // AND that is currently being heard from with a reachable flight controller,
+  // so each node needs a telemetry snapshot, a fresh heartbeat timestamp and
+  // fcConnected to be commandable at all.
   useCommandFleetStore.setState({
     cloudStatuses: Object.fromEntries(
       nodes.map((n) => [
@@ -101,6 +102,7 @@ function seedReachable(nodes: SkillTargetNode[]): void {
         {
           deviceId: n.deviceId,
           telemetry: { armed: false },
+          fcConnected: true,
           updatedAt: Date.now(),
         },
       ]),
@@ -153,6 +155,7 @@ describe("dispatchSkillForNodes", () => {
           {
             deviceId: n.deviceId,
             telemetry: { armed: false },
+            fcConnected: true,
             updatedAt: Date.now() - 10 * 60_000,
           },
         ]),

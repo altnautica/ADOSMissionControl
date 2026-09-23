@@ -16,10 +16,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
-import {
-  safeTranslate,
-  useSkillToastBridge,
-} from "@/hooks/use-skill-toast-bridge";
+import { safeTranslate } from "@/hooks/use-skill-toast-bridge";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useCockpitStore } from "@/stores/cockpit-store";
@@ -43,11 +40,6 @@ const DANGER_SKILL_IDS = new Set(["arm", "disarm", "kill", "abort"]);
 export function SkillBar() {
   const enabled = useCockpitStore((s) => s.enabled);
   const t = useTranslations();
-
-  // The toast bridge is always wired so any dispatch path (keyboard/gamepad)
-  // surfaces feedback even when the bar itself is hidden.
-  useSkillToastBridge();
-
   const selectedId = useDroneManager((s) => s.selectedDroneId);
 
   const activeLoadoutId = useSettingsStore((s) => s.activeLoadoutId);

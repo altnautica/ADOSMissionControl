@@ -46,6 +46,7 @@ import { registerBuiltins, initSkillSubscriptions } from "@/lib/skills";
 import { SkillConfirmHost } from "@/components/cockpit/SkillConfirmHost";
 import { ChecklistAutoRunner } from "@/components/flight/ChecklistAutoRunner";
 import { useSkillInput } from "@/hooks/use-skill-input";
+import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 // Single operator-confirm host for safety-critical plugin RPCs
 // (command.send / mission.write). Mounted shell-wide so any plugin iframe can
 // raise a confirm; when absent, requestPluginConfirm denies (safe default).
@@ -141,6 +142,9 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
   // The one keyboard + gamepad skill dispatcher. Live only while a flying
   // surface (Cockpit, Flight actions) is mounted and nothing owns input.
   useSkillInput();
+  // The one route from the dispatcher's feedback (refusals, no link, the FC's
+  // own answer) to the toast host, for every surface that fires skills.
+  useSkillToastBridge();
 
   const t = useTranslations("shell");
   const { isElectron, isWindows, isLinux } = usePlatform();

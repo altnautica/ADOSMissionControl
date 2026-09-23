@@ -6,7 +6,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TelemetryReadout } from "@/components/flight/TelemetryReadout";
 import { ActionsPanel } from "@/components/flight/ActionsPanel";
 import { CompactInfoCards } from "@/components/flight/CompactInfoCards";
-import { SensorStatusCard } from "@/components/command/shared/SensorStatusCard";
 import { RcInputCard } from "@/components/command/shared/RcInputCard";
 import { StatusTextCard } from "@/components/command/shared/StatusTextCard";
 import type { FleetDrone } from "@/lib/types";
@@ -65,8 +64,8 @@ export function DroneOverviewTab({
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      {/* Left column: HUD + Telemetry + Actions + Info + the FC message and
-          sensor-health readouts that moved off Status. */}
+      {/* Left column: HUD + Telemetry + Actions + Info (which carries the
+          sensor health) + the FC message readout that moved off Status. */}
       {!telemetryCollapsed && (
         <div className="w-[22rem] shrink-0 flex flex-col overflow-y-auto border-r border-border-default">
           <div className="h-60 shrink-0">
@@ -76,7 +75,6 @@ export function DroneOverviewTab({
           <ActionsPanel />
           <CompactInfoCards drone={drone} />
           <div className="flex flex-col gap-2 p-2">
-            <SensorStatusCard />
             {showRcCard && <RcInputCard />}
             <StatusTextCard />
           </div>

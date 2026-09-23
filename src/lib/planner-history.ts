@@ -10,11 +10,14 @@
  * not "undo my last action in this one panel", so this module unifies them into
  * ONE timeline of combined snapshots.
  *
- * On any planner mutation, the caller records the combined state of all four
- * domains as a single timeline entry. A single Ctrl+Z restores the whole
- * snapshot, so undo never surprises the operator by reverting a change in a
- * domain they were not looking at — it reverts exactly the previous combined
- * state regardless of which domain the last edit touched.
+ * Every operator-facing mutation in the planner domain stores runs inside
+ * `withPlannerHistory`, which records the combined state of all domains as a
+ * single timeline entry before the change lands; a compound edit wrapped in
+ * one outer `withPlannerHistory` is one entry however many stores it touches.
+ * A single Ctrl+Z restores the whole snapshot, so undo never surprises the
+ * operator by reverting a change in a domain they were not looking at — it
+ * reverts exactly the previous combined state regardless of which domain the
+ * last edit touched.
  *
  * Timeline semantics (before-snapshot, matching the legacy waypoint stack):
  *   record()  → push the CURRENT combined state onto the undo timeline, clear redo
@@ -41,6 +44,8 @@ import {
   registerWaypointAdapter,
   snapshotWaypoints,
   restoreWaypoints,
+  registerHistoryRecorder,
+  withPlannerHistory,
 } from "./planner-history-adapter";
 import type { WaypointSnapshot, WaypointAdapter } from "./planner-history-adapter";
 
@@ -49,7 +54,7 @@ import type { WaypointSnapshot, WaypointAdapter } from "./planner-history-adapte
 // before it is initialised (a temporal-dead-zone hazard if it lived here, since
 // the store imports above pull in the drone-manager graph). Re-export the public
 // surface so existing consumers keep importing it from this module.
-export { registerWaypointAdapter };
+export { registerWaypointAdapter, withPlannerHistory };
 export type { WaypointSnapshot, WaypointAdapter };
 
 /** Maximum coordinated-history depth (matches the legacy waypoint stack). */
@@ -115,16 +120,18 @@ function applyCombined(snap: CombinedSnapshot): void {
 }
 
 /**
- * Record the current combined state as one undo point. Call this BEFORE applying
- * a mutation (the before-snapshot model the legacy waypoint stack used). Clears
- * the redo timeline because a new edit branches off the current state.
+ * Record the current combined state as one undo point (the before-snapshot
+ * model the legacy waypoint stack used). Clears the redo timeline because a new
+ * edit branches off the current state. Reached only through
+ * `withPlannerHistory`, which decides whether an edit starts a new step.
  */
-export function recordHistory(): void {
+function recordHistory(): void {
   undoStack = [...undoStack, captureCombined()];
   if (undoStack.length > MAX_PLANNER_HISTORY) undoStack.shift();
   redoStack = [];
   notify();
 }
+registerHistoryRecorder(recordHistory);
 
 /**
  * Undo the last recorded planner change across all domains. The current combined

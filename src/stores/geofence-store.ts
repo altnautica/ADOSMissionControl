@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
 import { useDroneManager } from "./drone-manager";
+import { withPlannerHistory } from "@/lib/planner-history-adapter";
 import { polygonBounds } from "@/lib/drawing/geo-utils";
 import type { FenceElement } from "@/lib/protocol/types";
 import {
@@ -91,6 +92,8 @@ interface GeofenceStoreState {
    *  it once the breach clears, so nothing else ever lowers the alarm. Called
    *  on connection reset and on a selected-drone switch. */
   clearBreachState: () => void;
+  // Fence edits below (through clearFence) are operator-facing: each one is a
+  // planner undo step.
   setEnabled: (enabled: boolean) => void;
   setFenceType: (type: FenceType) => void;
   setMaxAltitude: (alt: number) => void;
@@ -154,16 +157,16 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     set({ breachStatus, breachCount, breachType }),
 
   clearBreachState: () => set({ breachStatus: 0, breachCount: 0, breachType: 0 }),
-  setEnabled: (enabled) => set({ enabled }),
-  setFenceType: (fenceType) => set({ fenceType }),
-  setMaxAltitude: (maxAltitude) => set({ maxAltitude }),
-  setMinAltitude: (minAltitude) => set({ minAltitude }),
-  setBreachAction: (breachAction) => set({ breachAction }),
+  setEnabled: (enabled) => withPlannerHistory(() => set({ enabled })),
+  setFenceType: (fenceType) => withPlannerHistory(() => set({ fenceType })),
+  setMaxAltitude: (maxAltitude) => withPlannerHistory(() => set({ maxAltitude })),
+  setMinAltitude: (minAltitude) => withPlannerHistory(() => set({ minAltitude })),
+  setBreachAction: (breachAction) => withPlannerHistory(() => set({ breachAction })),
 
   setCircle: (center, radius) =>
-    set({ circleCenter: center, circleRadius: radius }),
+    withPlannerHistory(() => set({ circleCenter: center, circleRadius: radius })),
 
-  setPolygonPoints: (polygonPoints) => set({ polygonPoints }),
+  setPolygonPoints: (polygonPoints) => withPlannerHistory(() => set({ polygonPoints })),
 
   generateFromBoundary: (points, bufferMeters) => {
     if (points.length === 0) return;
@@ -181,41 +184,43 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
       [maxLat + dLat, maxLon + dLon],
       [maxLat + dLat, minLon - dLon],
     ];
-    set({ fenceType: "polygon", polygonPoints, enabled: true });
+    withPlannerHistory(() => set({ fenceType: "polygon", polygonPoints, enabled: true }));
   },
 
   addZone: (zone) => {
     const id = nextZoneId();
-    set((s) => ({ zones: [...s.zones, { ...zone, id }] }));
+    withPlannerHistory(() => set((s) => ({ zones: [...s.zones, { ...zone, id }] })));
   },
 
-  removeZone: (id) => {
-    set((s) => ({ zones: s.zones.filter((z) => z.id !== id) }));
-  },
+  removeZone: (id) =>
+    withPlannerHistory(() => set((s) => ({ zones: s.zones.filter((z) => z.id !== id) }))),
 
-  updateZonePolygon: (id, points) => {
-    set((s) => ({
-      zones: s.zones.map((z) => (z.id === id ? { ...z, polygonPoints: points } : z)),
-    }));
-  },
+  updateZonePolygon: (id, points) =>
+    withPlannerHistory(() =>
+      set((s) => ({
+        zones: s.zones.map((z) => (z.id === id ? { ...z, polygonPoints: points } : z)),
+      })),
+    ),
 
-  updateZoneCircle: (id, center, radius) => {
-    set((s) => ({
-      zones: s.zones.map((z) =>
-        z.id === id ? { ...z, circleCenter: center, circleRadius: radius } : z,
-      ),
-    }));
-  },
+  updateZoneCircle: (id, center, radius) =>
+    withPlannerHistory(() =>
+      set((s) => ({
+        zones: s.zones.map((z) =>
+          z.id === id ? { ...z, circleCenter: center, circleRadius: radius } : z,
+        ),
+      })),
+    ),
 
-  toggleZoneRole: (id) => {
-    set((s) => ({
-      zones: s.zones.map((z) =>
-        z.id === id
-          ? { ...z, role: z.role === "inclusion" ? "exclusion" : "inclusion" }
-          : z,
-      ),
-    }));
-  },
+  toggleZoneRole: (id) =>
+    withPlannerHistory(() =>
+      set((s) => ({
+        zones: s.zones.map((z) =>
+          z.id === id
+            ? { ...z, role: z.role === "inclusion" ? "exclusion" : "inclusion" }
+            : z,
+        ),
+      })),
+    ),
 
   uploadFence: async () => {
     const protocol = useDroneManager.getState().getSelectedProtocol();
@@ -365,18 +370,20 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
   },
 
   clearFence: () =>
-    set({
-      enabled: false,
-      circleCenter: null,
-      circleRadius: 200,
-      polygonPoints: [],
-      zones: [],
-      uploadState: "idle",
-      downloadState: "idle",
-      breachStatus: 0,
-      breachCount: 0,
-      breachType: 0,
-    }),
+    withPlannerHistory(() =>
+      set({
+        enabled: false,
+        circleCenter: null,
+        circleRadius: 200,
+        polygonPoints: [],
+        zones: [],
+        uploadState: "idle",
+        downloadState: "idle",
+        breachStatus: 0,
+        breachCount: 0,
+        breachType: 0,
+      }),
+    ),
 
   snapshot: () => {
     const s = get();

@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadBlob } from "@/lib/download";
+
 export interface DebugValue {
   name: string;
   value: number;
@@ -80,10 +82,5 @@ export function exportCSV(
     }
   }
   const blob = new Blob([rows.join("\n")], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `debug-values-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `debug-values-${new Date().toISOString().slice(0, 10)}.csv`);
 }

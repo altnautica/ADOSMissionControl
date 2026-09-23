@@ -25,7 +25,7 @@ import * as cmds from "../mavlink-adapter-commands";
 import { setCurrentMissionItem, type MissionContext } from "../mavlink-adapter-missions";
 import { CommandQueue, MAV_RESULT } from "../command-queue";
 import { MAV_PARAM_TYPE } from "../param-value-codec";
-import { mspGpsFixToMavlink } from "../msp-adapter-telemetry";
+import { mspGpsFixToMavlink } from "../msp/msp-mavlink-semantics";
 import type { CommandResult, FirmwareType } from "../types";
 
 interface FieldDef {

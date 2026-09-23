@@ -21,7 +21,7 @@ type NumericFieldProps = Omit<ComponentProps<typeof Input>, "value" | "onChange"
 };
 
 export function NumericField({ value, onCommit, min, max, onBlur, onKeyDown, ...rest }: NumericFieldProps) {
-  const [draft, setDraft] = useSyncedDraft(value);
+  const [draft, setDraft] = useSyncedDraft(draftText(value));
 
   const commit = () => {
     const n = draft.trim() === "" ? NaN : Number(draft);

@@ -21,11 +21,12 @@ import { Cpu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
-import type { EffProfile } from "@/lib/nodes/node-profile";
+import { groundRoleKey, type EffProfile } from "@/lib/nodes/node-profile";
 import { Badge } from "@/components/ui/badge";
 import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import { droneLiveness } from "../fleet/types";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
+import { fcFlavorLabel } from "@/lib/protocol/fc-firmware-label";
 
 type BadgeVariant = "success" | "warning" | "serious" | "error" | "info" | "neutral";
 
@@ -37,25 +38,6 @@ interface NodeBadge {
   dot?: StatusLevel;
   /** Companion marker: the drone carries an onboard computer. */
   companion?: boolean;
-}
-
-/** The firmware · airframe flavor label for a drone / FC row (e.g. "ArduPilot ·
- * VTOL", "PX4", "Betaflight · FPV"), or null when the firmware is unknown. This
- * is the badge that distinguishes the firmware flavors at a glance. */
-function flavorLabel(node: FleetNodeEntry): string | null {
-  const fw = node.fcFirmware;
-  if (!fw || fw === "unknown") return null;
-  const name =
-    fw === "ardupilot"
-      ? "ArduPilot"
-      : fw === "px4"
-        ? "PX4"
-        : fw === "betaflight"
-          ? "Betaflight"
-          : fw === "inav"
-            ? "iNav"
-            : fw;
-  return node.frameType ? `${name} · ${node.frameType}` : name;
 }
 
 /**
@@ -115,15 +97,12 @@ export function nodeBadges(
     case "ground-station": {
       // role -> identity. Only a reported, known role earns a role label; an
       // unset or not-yet-reported role reads as unknown, never as "Direct".
-      badges.push(
-        node.role === "relay"
-          ? { key: "role", label: labels.relay, variant: "info" }
-          : node.role === "receiver"
-            ? { key: "role", label: labels.receiver, variant: "info" }
-            : node.role === "direct"
-              ? { key: "role", label: labels.direct, variant: "neutral" }
-              : { key: "role", label: labels.roleUnknown, variant: "neutral" },
-      );
+      const role = groundRoleKey(node.role);
+      badges.push({
+        key: "role",
+        label: role === "unknown" ? labels.roleUnknown : labels[role],
+        variant: role === "relay" || role === "receiver" ? "info" : "neutral",
+      });
       if (node.tier != null) {
         badges.push({ key: "tier", label: `T${node.tier}`, variant: "neutral" });
       }
@@ -139,7 +118,7 @@ export function nodeBadges(
       break;
     }
     case "flight-controller": {
-      const flavor = flavorLabel(node);
+      const flavor = fcFlavorLabel(node.fcFirmware, node.fcVariant, node.frameType);
       if (flavor) badges.push({ key: "flavor", label: flavor, variant: "info" });
       badges.push({ key: "fc", label: labels.fc, variant: "info" });
       if (node.tier != null) {
@@ -149,7 +128,7 @@ export function nodeBadges(
     }
     case "drone":
     default: {
-      const flavor = flavorLabel(node);
+      const flavor = fcFlavorLabel(node.fcFirmware, node.fcVariant, node.frameType);
       if (flavor) badges.push({ key: "flavor", label: flavor, variant: "info" });
       const fcReachable = isFcReachable({
         fcConnected: node.fcConnected,

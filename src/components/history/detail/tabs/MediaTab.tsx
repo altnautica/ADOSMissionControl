@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Download, X, Image, MapPin } from "lucide-react";
 import type { FlightRecord, FlightMedia } from "@/lib/types";
 import { formatCoord } from "@/lib/i18n/format";
+import { downloadBlob } from "@/lib/download";
 
 interface MediaTabProps {
   record: FlightRecord;
@@ -79,14 +80,10 @@ function MediaGrid({ media, flightId }: { media: FlightMedia[]; flightId: string
       try {
         const blob = await idbGet(m.blobKey) as Blob | undefined;
         if (!blob) continue;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${flightId}-${new Date(m.capturedAt).toISOString().replace(/[:.]/g, "-")}-${m.name}`;
-        a.click();
-        // Defer the revoke: revoking synchronously after click() can cancel a
-        // large-media download before the browser starts the stream.
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        downloadBlob(
+          blob,
+          `${flightId}-${new Date(m.capturedAt).toISOString().replace(/[:.]/g, "-")}-${m.name}`,
+        );
         // Sequence the downloads so firing N synthetic clicks in a tight loop
         // does not race the browser's download manager.
         await new Promise((resolve) => setTimeout(resolve, 150));

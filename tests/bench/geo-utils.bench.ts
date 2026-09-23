@@ -1,5 +1,6 @@
 import { describe, bench } from 'vitest';
-import { haversineDistance, pointInPolygon, polygonArea, bearing, offsetPoint } from '@/lib/drawing/geo-utils';
+import { polygonArea, bearing, offsetPoint } from '@/lib/drawing/geo-utils';
+import { haversineDistance, pointInPolygon } from "@/lib/geo/distance";
 
 const polygon: [number, number][] = [
   [12.97, 77.59], [12.97, 77.60], [12.98, 77.60], [12.98, 77.59],

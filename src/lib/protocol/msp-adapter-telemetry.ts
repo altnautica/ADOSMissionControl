@@ -11,8 +11,9 @@ import type { CallbackStore } from './mavlink-adapter-callbacks'
 import { MSP } from './msp/msp-constants'
 import { resolveActiveMode } from './msp/msp-mode-map'
 import { INAV_MSP, decodeMspAdsbVehicleList, decodeMspINavAnalog } from './msp/msp-decoders-inav'
-import { mspSensorFlagsToMavlink } from './msp/msp-sensor-flags'
+import { mspGpsFixToMavlink, mspRssiToRcChannels, mspSensorFlagsToMavlink, RC_RSSI_UNKNOWN } from './msp/msp-mavlink-semantics'
 import { useTelemetryStore } from '@/stores/telemetry-store'
+import { isFresh } from '@/lib/telemetry/freshness'
 
 function u8(buf: Uint8Array, offset: number): number { return buf[offset] }
 function u16(buf: Uint8Array, offset: number): number { return buf[offset] | (buf[offset + 1] << 8) }
@@ -20,25 +21,22 @@ function u32(buf: Uint8Array, offset: number): number { return (buf[offset] | (b
 function i16(buf: Uint8Array, offset: number): number { const val = u16(buf, offset); return val >= 0x8000 ? val - 0x10000 : val }
 function i32(buf: Uint8Array, offset: number): number { return buf[offset] | (buf[offset + 1] << 8) | (buf[offset + 2] << 16) | (buf[offset + 3] << 24) }
 
-/** MAVLink GPS_FIX_TYPE values the rest of the app reads fixType in. */
-const GPS_FIX_TYPE_NO_FIX = 1
-const GPS_FIX_TYPE_2D = 2
-const GPS_FIX_TYPE_3D = 3
-
 /**
- * Translate MSP_RAW_GPS byte 0 into MAVLink GPS_FIX_TYPE.
- *
- * iNav writes gpsFixType_e (0 NO_FIX, 1 FIX_2D, 2 FIX_3D). Betaflight writes
- * STATE(GPS_FIX), the raw state bit (0 or 2), and only sets it on a valid 3D
- * fix, so any non-zero value is a 3D fix.
+ * What one MSP link carries between frames. RSSI arrives on MSP_ANALOG and the
+ * channels on MSP_RC, polled at different rates; the RC sample pairs the
+ * channels with the last RSSI rather than inventing one. Height above home
+ * arrives on MSP_ALTITUDE and the fix on MSP_RAW_GPS; the position sample
+ * pairs the fix with the last altitude estimate while it is fresh.
  */
-export function mspGpsFixToMavlink(raw: number, firmwareType: VehicleInfo['firmwareType'] | undefined): number {
-  if (firmwareType === 'inav') {
-    if (raw >= 2) return GPS_FIX_TYPE_3D
-    if (raw === 1) return GPS_FIX_TYPE_2D
-    return GPS_FIX_TYPE_NO_FIX
-  }
-  return raw !== 0 ? GPS_FIX_TYPE_3D : GPS_FIX_TYPE_NO_FIX
+export interface MspTelemetryState {
+  /** Last MSP_ANALOG RSSI on the RC_CHANNELS scale (255 = unknown). */
+  rcRssi: number
+  /** Last MSP_ALTITUDE estimate (metres above the arming origin) and when it arrived. */
+  relativeAlt: { altM: number; at: number } | null
+}
+
+export function createMspTelemetryState(): MspTelemetryState {
+  return { rcRssi: RC_RSSI_UNKNOWN, relativeAlt: null }
 }
 
 export function dispatchMspTelemetry(
@@ -47,6 +45,7 @@ export function dispatchMspTelemetry(
   cbs: CallbackStore,
   vehicleInfo: VehicleInfo | null,
   boxIds: number[],
+  state: MspTelemetryState,
 ): void {
   const ts = Date.now()
 
@@ -56,22 +55,20 @@ export function dispatchMspTelemetry(
       const roll = i16(payload, 0) / 10
       const pitch = i16(payload, 2) / 10
       const yaw = i16(payload, 4)
+      // MSP_ATTITUDE carries angles only; body rates stay absent.
       for (const cb of cbs.attitudeCallbacks) {
-        cb({ roll, pitch, yaw, rollSpeed: 0, pitchSpeed: 0, yawSpeed: 0, timestamp: ts })
+        cb({ roll, pitch, yaw, timestamp: ts })
       }
       break
     }
 
     case MSP.MSP_ANALOG: {
-      // Only the RSSI is taken from here. MSP_BATTERY_STATE is polled in the
-      // same group and carries the pack voltage (0.01 V), current and mAh
-      // drawn; a battery sample from this frame (legacy 0.1 V voltage) would
-      // alternate with it.
+      // Only the RSSI is taken from here, and it rides on the next MSP_RC
+      // sample. MSP_BATTERY_STATE is polled in the same group and carries the
+      // pack voltage (0.01 V), current and mAh drawn; a battery sample from
+      // this frame (legacy 0.1 V voltage) would alternate with it.
       if (payload.length < 7) break
-      const rssi = u16(payload, 3)
-      for (const cb of cbs.rcCallbacks) {
-        cb({ channels: [], rssi: Math.round(rssi / 1023 * 255), timestamp: ts })
-      }
+      state.rcRssi = mspRssiToRcChannels(u16(payload, 3))
       break
     }
 
@@ -162,7 +159,7 @@ export function dispatchMspTelemetry(
         channels.push(u16(payload, i * 2))
       }
       for (const cb of cbs.rcCallbacks) {
-        cb({ channels, rssi: 0, timestamp: ts })
+        cb({ channels, rssi: state.rcRssi, timestamp: ts })
       }
       break
     }
@@ -194,13 +191,15 @@ export function dispatchMspTelemetry(
 
     case MSP.MSP_ALTITUDE: {
       if (payload.length < 6) break
+      // Both firmwares send the estimator altitude in cm relative to the
+      // arming origin (the estimate is re-zeroed on arm), and the vario in cm/s.
       const altM = i32(payload, 0) / 100
+      state.relativeAlt = { altM, at: ts }
       const climbRate = i16(payload, 4) / 100
       for (const cb of cbs.altitudeCallbacks) {
-        cb({
-          timestamp: ts, altitudeMonotonic: altM, altitudeAmsl: 0,
-          altitudeLocal: altM, altitudeRelative: altM, altitudeTerrain: 0, bottomClearance: 0,
-        })
+        // Baro-estimated altitude only: AMSL, terrain and bottom clearance
+        // are not on the wire and stay absent.
+        cb({ timestamp: ts, altitudeMonotonic: altM, altitudeLocal: altM, altitudeRelative: altM })
       }
       // MSP_ALTITUDE carries altitude and vario only. Speed, heading and
       // throttle stay absent so readouts fall back to the GPS ground speed
@@ -227,10 +226,16 @@ export function dispatchMspTelemetry(
       for (const cb of cbs.gpsCallbacks) {
         cb({ timestamp: ts, fixType, satellites: numSat, hdop, lat, lon, alt: altGps })
       }
+      // The GPS altitude is metres MSL, so height above home comes only from
+      // a fresh MSP_ALTITUDE estimate; without one it stays absent.
+      const relativeAlt = state.relativeAlt && isFresh(state.relativeAlt.at, ts)
+        ? state.relativeAlt.altM
+        : undefined
       for (const cb of cbs.positionCallbacks) {
+        // MSP_RAW_GPS carries no vertical speed; the vario rides on MSP_ALTITUDE.
         cb({
-          timestamp: ts, lat, lon, alt: altGps, relativeAlt: altGps,
-          heading: groundCourse / 10, groundSpeed: speed / 100, climbRate: 0,
+          timestamp: ts, lat, lon, alt: altGps, relativeAlt,
+          heading: groundCourse / 10, groundSpeed: speed / 100,
         })
       }
       break

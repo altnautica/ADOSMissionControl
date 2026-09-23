@@ -21,7 +21,7 @@
  */
 
 import type { PathElevationSample } from "./types";
-import { haversineDistance } from "@/lib/telemetry-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 const API_URL = "https://api.open-elevation.com/api/v1/lookup";
 const MAX_CACHE_SIZE = 10_000;

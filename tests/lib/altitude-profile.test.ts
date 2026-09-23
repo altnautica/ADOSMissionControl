@@ -4,8 +4,8 @@ import {
   altitudeRange,
   linearScale,
 } from "@/lib/altitude-profile";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import type { Waypoint } from "@/lib/types";
+import { haversineDistance } from "@/lib/geo/distance";
 
 function wp(id: string, lat: number, lon: number, alt: number): Waypoint {
   return { id, lat, lon, alt };

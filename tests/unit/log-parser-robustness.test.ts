@@ -11,7 +11,8 @@
 
 import { describe, it, expect } from "vitest";
 import { parseUlog } from "@/lib/ulog/parser";
-import { parseDataFlashLog, parseDataFlashLogStreaming } from "@/lib/dataflash-parser";
+import { parseDataFlashLog } from "@/lib/dataflash-parser";
+import { parseDataFlashLogStreaming } from "@/lib/dataflash-streaming";
 
 // ── ULog ─────────────────────────────────────────────────────
 

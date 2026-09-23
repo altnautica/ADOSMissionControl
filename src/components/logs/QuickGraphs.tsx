@@ -40,7 +40,7 @@ function AltitudeChart() {
   const data = useMemo(() => {
     void stamp; // the ring mutates in place; the stamp is the trigger
     const arr = positionRing.toArray() as PositionData[];
-    return arr.map((p) => ({ t: p.timestamp, v: p.relativeAlt }));
+    return arr.flatMap((p) => (p.relativeAlt !== undefined ? [{ t: p.timestamp, v: p.relativeAlt }] : []));
   }, [positionRing, stamp]);
 
   return (
@@ -102,7 +102,7 @@ function ClimbRateChart() {
   const data = useMemo(() => {
     void stamp; // the ring mutates in place; the stamp is the trigger
     const arr = positionRing.toArray() as PositionData[];
-    return arr.map((p) => ({ t: p.timestamp, v: p.climbRate }));
+    return arr.flatMap((p) => (p.climbRate !== undefined ? [{ t: p.timestamp, v: p.climbRate }] : []));
   }, [positionRing, stamp]);
 
   return (

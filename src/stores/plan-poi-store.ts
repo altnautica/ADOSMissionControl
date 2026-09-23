@@ -16,6 +16,7 @@
  */
 
 import { create } from "zustand";
+import { withPlannerHistory } from "@/lib/planner-history-adapter";
 
 export interface PointOfInterest {
   id: string;
@@ -40,6 +41,7 @@ interface PlanPoiStoreState {
   points: PointOfInterest[];
   /** ID of the POI selected in the editor / on the map, or null. */
   selectedId: string | null;
+  /** Point edits are operator-facing: each one is a planner undo step. */
   addPoint: (point: PointOfInterest) => void;
   removePoint: (id: string) => void;
   updatePoint: (id: string, update: Partial<PointOfInterest>) => void;
@@ -57,23 +59,27 @@ export const usePlanPoiStore = create<PlanPoiStoreState>()((set, get) => ({
   points: [],
   selectedId: null,
 
-  addPoint: (point) => set((s) => ({ points: [...s.points, point] })),
+  addPoint: (point) => withPlannerHistory(() => set((s) => ({ points: [...s.points, point] }))),
 
   removePoint: (id) =>
-    set((s) => ({
-      points: s.points.filter((p) => p.id !== id),
-      // Drop the selection when the selected point is the one being removed.
-      selectedId: s.selectedId === id ? null : s.selectedId,
-    })),
+    withPlannerHistory(() =>
+      set((s) => ({
+        points: s.points.filter((p) => p.id !== id),
+        // Drop the selection when the selected point is the one being removed.
+        selectedId: s.selectedId === id ? null : s.selectedId,
+      })),
+    ),
 
   updatePoint: (id, update) =>
-    set((s) => ({
-      points: s.points.map((p) => (p.id === id ? { ...p, ...update } : p)),
-    })),
+    withPlannerHistory(() =>
+      set((s) => ({
+        points: s.points.map((p) => (p.id === id ? { ...p, ...update } : p)),
+      })),
+    ),
 
   select: (selectedId) => set({ selectedId }),
 
-  clearPoints: () => set({ points: [], selectedId: null }),
+  clearPoints: () => withPlannerHistory(() => set({ points: [], selectedId: null })),
 
   snapshot: () => ({
     // Copy each point so a later mutation can never alias a stored snapshot.

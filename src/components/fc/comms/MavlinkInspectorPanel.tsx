@@ -14,6 +14,7 @@ import {
   type InspectorMessage,
   type MsgRate,
 } from "./mavlink-inspector-data";
+import { downloadBlob } from "@/lib/download";
 
 const MAX_MESSAGES = 500;
 const ROW_ESTIMATE_PX = 16;
@@ -113,14 +114,7 @@ export function MavlinkInspectorPanel() {
       return `[${time}] RX ${m.msgName}(${m.msgId}) sys=${m.frame.systemId} comp=${m.frame.componentId} seq=${m.frame.sequence} [${payloadHex(m.frame.payload)}]`;
     });
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `mavlink-log-${Date.now()}.txt`;
-    a.click();
-    // Defer the revoke past download initiation. Revoking synchronously after
-    // click() can cancel the download before the browser starts the stream.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    downloadBlob(blob, `mavlink-log-${Date.now()}.txt`);
   }, [filtered]);
 
   const clear = useCallback(() => {

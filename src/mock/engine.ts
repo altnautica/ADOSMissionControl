@@ -6,7 +6,7 @@
  *
  * Also creates a MockProtocol + MockTransport per flying drone and
  * registers them in DroneManager via addDrone(). This enables the
- * Configure tab, Flight Logs, SensorHealthBar, and all panels that
+ * Configure tab, Flight Logs, sensor health, and all panels that
  * depend on getSelectedProtocol() returning a real protocol.
  */
 
@@ -41,9 +41,9 @@ import {
   useNodeRegistryStore,
   resolveNodeId,
 } from "@/stores/node-registry";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { randomId } from "@/lib/utils";
 import type { FleetDrone, FlightRecord } from "@/lib/types";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** Demo node id for a config id (the canonical `node:<id>`). */
 const nid = (id: string): string => resolveNodeId(id);

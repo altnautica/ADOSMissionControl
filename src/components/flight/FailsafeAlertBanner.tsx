@@ -6,7 +6,7 @@ import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { knownRemainingPct } from "@/lib/battery-bands";
+import { knownRemainingPct } from "@/lib/battery";
 
 type FailsafeType = "LOW_BATTERY" | "GPS_LOST" | "RC_LOST" | "EKF_FAIL" | "MOTOR_FAIL" | "PREARM_FAIL" | "EMERGENCY";
 

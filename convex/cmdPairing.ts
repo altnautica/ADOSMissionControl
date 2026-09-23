@@ -810,7 +810,9 @@ export const cleanExpiredRequests = internalMutation({
  */
 export const cleanExpiredSecurityState = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (
+    ctx,
+  ): Promise<{ deletedBuckets: number; deletedSessions: number }> => {
     const now = Date.now();
     // One day of idle is far past every policy window and every lockout ceiling.
     const settledBefore = now - 24 * 60 * 60 * 1000;
@@ -835,6 +837,15 @@ export const cleanExpiredSecurityState = internalMutation({
       await ctx.db.delete(session._id);
     }
 
+    // Drain while a batch came back full. A skipped (still-locked) bucket stays
+    // in the range, so only a batch that deleted every row it read reschedules;
+    // otherwise a range of locked rows would spin the scheduler.
+    if (
+      deletedBuckets === CLEAN_EXPIRED_BATCH ||
+      sessions.length === CLEAN_EXPIRED_BATCH
+    ) {
+      await ctx.scheduler.runAfter(0, internal.cmdPairing.cleanExpiredSecurityState, {});
+    }
     return { deletedBuckets, deletedSessions: sessions.length };
   },
 });

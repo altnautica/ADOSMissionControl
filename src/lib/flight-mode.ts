@@ -1,5 +1,6 @@
 /**
- * Runtime narrowing for flight-mode strings.
+ * Runtime narrowing for flight-mode strings, and the one source of the modes a
+ * live flight controller offers.
  *
  * Mode names arrive as free-form strings — from a heartbeat decode, from an
  * agent's telemetry snapshot — and have to be narrowed before they can be
@@ -12,6 +13,18 @@
  */
 
 import type { FlightMode } from "@/lib/types";
+import type { DroneProtocol, UnifiedFlightMode } from "@/lib/protocol/types";
+
+/**
+ * The mode table of `protocol`'s firmware handler: what the mode selector
+ * offers, the Flight Modes panel assigns, and the set-mode skill gate accepts.
+ * Null when there is no connected flight controller, or it has not identified
+ * its firmware yet.
+ */
+export function liveAvailableModes(protocol: DroneProtocol | null | undefined): UnifiedFlightMode[] | null {
+  if (!protocol?.isConnected) return null;
+  return protocol.getFirmwareHandler()?.getAvailableModes() ?? null;
+}
 
 /**
  * Every mode name that maps cleanly onto the `FlightMode` union.

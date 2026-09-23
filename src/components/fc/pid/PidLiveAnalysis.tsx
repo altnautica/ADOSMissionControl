@@ -60,9 +60,10 @@ export interface LivePidStats {
 /**
  * Stats over the attitude samples of the last `TELEMETRY_STALE_MS`.
  * ATTITUDE body rates arrive in rad/s and are converted to deg/s here.
- * Samples older than the window are ignored, so a lost link empties the
- * strip instead of freezing it; a vehicle that sends no VIBRATION shows an
- * unknown vibration level rather than "Good".
+ * Samples older than the window, or from a link that reports no body rates,
+ * are ignored, so a lost link empties the strip instead of freezing it; a
+ * vehicle that sends no VIBRATION shows an unknown vibration level rather
+ * than "Good".
  */
 export function computeLivePidStats(
   attitude: readonly AttitudeData[],
@@ -70,10 +71,16 @@ export function computeLivePidStats(
   now: number,
 ): LivePidStats {
   const cutoff = now - TELEMETRY_STALE_MS;
-  const recent = attitude.filter((a) => a.timestamp >= cutoff);
-  const roll = recent.map((a) => a.rollSpeed * RAD_TO_DEG);
-  const pitch = recent.map((a) => a.pitchSpeed * RAD_TO_DEG);
-  const yaw = recent.map((a) => a.yawSpeed * RAD_TO_DEG);
+  const roll: number[] = [];
+  const pitch: number[] = [];
+  const yaw: number[] = [];
+  for (const a of attitude) {
+    if (a.timestamp < cutoff) continue;
+    if (a.rollSpeed === undefined || a.pitchSpeed === undefined || a.yawSpeed === undefined) continue;
+    roll.push(a.rollSpeed * RAD_TO_DEG);
+    pitch.push(a.pitchSpeed * RAD_TO_DEG);
+    yaw.push(a.yawSpeed * RAD_TO_DEG);
+  }
   return {
     rollRms: computeRms(roll),
     pitchRms: computeRms(pitch),
@@ -83,7 +90,7 @@ export function computeLivePidStats(
       computeStdDev(pitch) > OSCILLATION_THRESHOLD_DEG_S ||
       computeStdDev(yaw) > OSCILLATION_THRESHOLD_DEG_S,
     vibe: vibeLevel(freshOnly(latestVibration, now)),
-    hasData: recent.length > 0,
+    hasData: roll.length > 0,
   };
 }
 

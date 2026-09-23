@@ -7,6 +7,8 @@
  * @license GPL-3.0-only
  */
 
+import { knownRemainingPct } from "@/lib/battery";
+
 export interface SeriesPoint {
   /** Seconds since flight start. */
   t: number;
@@ -69,8 +71,7 @@ export function buildSeries(frames: RawFrame[]): SeriesData {
       out.speed.push({ t, gs: d.groundspeed, as: d.airspeed });
     } else if (f.channel === "battery") {
       const d = f.data as BatteryFrame;
-      // -1 is the autopilot's "remaining not measured", not an empty pack.
-      const pct = typeof d.remaining === "number" && d.remaining >= 0 ? d.remaining : undefined;
+      const pct = knownRemainingPct(d.remaining) ?? undefined;
       out.battery.push({ t, v: d.voltage, pct });
     } else if (f.channel === "attitude") {
       const d = f.data as AttitudeFrame;

@@ -13,7 +13,7 @@ import { useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { freshOnly } from "@/lib/telemetry/freshness";
-import { haversineDistance } from "@/lib/drawing/geo-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 function fmt(n: number | undefined | null, digits = 0): string {
   if (n === undefined || n === null || !Number.isFinite(n)) return "--";

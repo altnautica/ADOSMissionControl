@@ -9,8 +9,8 @@
  * show them. Until that happens the notifier is a no-op and every rejection is
  * silent — an operator presses a control, nothing moves, and nothing says why.
  *
- * So any surface that dispatches skills mounts this. It is a global singleton
- * write, safe to mount from whichever surface is on screen.
+ * So the shell mounts this once (CommandShell, beside the skill dispatcher),
+ * and every surface that fires skills gets its feedback from that one mount.
  *
  * @license GPL-3.0-only
  */

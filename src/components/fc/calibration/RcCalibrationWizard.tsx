@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { RC_CAL_STEPS } from "./calibration-types";
 import { RcChannelBar, RcCalSummaryTable } from "./RcChannelBar";
 import { rcCalibrationEntries, type RcChannelCapture } from "./rc-calibration-entries";
-import { useLiveRc } from "../receiver/use-live-rc";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 
 const RC_CHANNEL_COUNT = 8;
 const RC_CHANNEL_LABELS = ["Roll", "Pitch", "Throttle", "Yaw", "Aux 1", "Aux 2", "Aux 3", "Aux 4"];
@@ -37,7 +37,7 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const { firmwareType } = useFirmwareCapabilities();
-  const liveRc = useLiveRc();
+  const liveRc = useFreshTelemetry("rc");
   const { toast } = useToast();
 
   const [step, setStep] = useState<RcCalStep>("idle");

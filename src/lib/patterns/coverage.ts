@@ -25,11 +25,11 @@
  */
 
 import type { Waypoint, WaypointCommand } from "@/lib/types";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { isActionCommand } from "@/lib/mission/command-classes";
 import type { CameraProfile } from "./gsd-calculator";
 import { computeFootprint } from "./gsd-calculator";
 import { sampleCapturePoints, type CaptureRouteRow } from "./coverage-footprints";
+import { EARTH_RADIUS_M, haversineDistance } from "@/lib/geo/distance";
 
 // Re-export so callers get a single, gsd-consistent footprint function.
 export { computeFootprint };
@@ -75,7 +75,6 @@ export interface CoverageGapResult {
 }
 
 const DEG_TO_RAD = Math.PI / 180;
-const EARTH_R = 6371000;
 // Segments within ~45 deg of the dominant flight heading count as along-track;
 // steeper ones count as cross (line-to-line) hops. cos(45 deg).
 const ALONG_TRACK_COS = Math.SQRT1_2;
@@ -109,8 +108,8 @@ function toLocalXY(
   cosRef: number,
 ): [number, number] {
   return [
-    (lon - refLon) * DEG_TO_RAD * EARTH_R * cosRef,
-    (lat - refLat) * DEG_TO_RAD * EARTH_R,
+    (lon - refLon) * DEG_TO_RAD * EARTH_RADIUS_M * cosRef,
+    (lat - refLat) * DEG_TO_RAD * EARTH_RADIUS_M,
   ];
 }
 

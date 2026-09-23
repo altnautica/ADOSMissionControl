@@ -27,7 +27,7 @@ import type { ModeRange } from './msp/msp-mode-map'
 import { betaflightHandler } from './firmware/betaflight'
 import { inavHandler } from './firmware/inav'
 import { createCallbackStore, bindCallbackMethods } from './mavlink-adapter-callbacks'
-import { dispatchMspTelemetry } from './msp-adapter-telemetry'
+import { createMspTelemetryState, dispatchMspTelemetry } from './msp-adapter-telemetry'
 import * as cmds from './msp-adapter-commands'
 import * as prm from './msp-adapter-params'
 import * as inav from './msp-adapter-inav'
@@ -222,8 +222,10 @@ export class MSPAdapter implements DroneProtocol {
     // Retain the armed flag as it goes past: the motor-test gate needs it and
     // MSP offers no way to ask for it on demand.
     this.cbs.heartbeatCallbacks.push((hb) => { this.lastArmed = hb.armed })
+    // Fresh per connection: an RSSI heard on a previous link is not this one's.
+    const telemetryState = createMspTelemetryState()
     this.poller = new MspTelemetryPoller(this.queue, (command, payload) =>
-      dispatchMspTelemetry(command, payload, this.cbs, this.vehicleInfo, this.boxIds))
+      dispatchMspTelemetry(command, payload, this.cbs, this.vehicleInfo, this.boxIds, telemetryState))
     this.poller.start()
     this._connected = true
     return info

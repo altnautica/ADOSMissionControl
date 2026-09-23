@@ -1,11 +1,12 @@
 /**
  * @module drawing/geo-utils
- * @description Geodetic math utilities for polygon area, centroid, point-in-polygon,
- * offset, bounds, line clipping, convexity, haversine distance, bearing, and formatting.
+ * @description Geodetic math utilities for polygon area, centroid, offset,
+ * bounds, line clipping, convexity and bearing. Distance and point-in-polygon
+ * live in `@/lib/geo/distance`.
  * @license GPL-3.0-only
  */
 
-const R = 6371000; // Earth radius in meters
+import { EARTH_RADIUS_M as R } from "@/lib/geo/distance";
 
 function degToRad(deg: number): number {
   return (deg * Math.PI) / 180;
@@ -13,23 +14,6 @@ function degToRad(deg: number): number {
 
 function radToDeg(rad: number): number {
   return (rad * 180) / Math.PI;
-}
-
-/**
- * Haversine distance between two points in meters.
- */
-export function haversineDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const dLat = degToRad(lat2 - lat1);
-  const dLon = degToRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(degToRad(lat1)) * Math.cos(degToRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 /**
@@ -117,25 +101,6 @@ export function polygonCentroid(vertices: [number, number][]): [number, number] 
   const lat = vertices.reduce((s, v) => s + v[0], 0) / n;
   const lon = vertices.reduce((s, v) => s + v[1], 0) / n;
   return [lat, lon];
-}
-
-/**
- * Ray casting algorithm for point-in-polygon test.
- */
-export function pointInPolygon(
-  point: [number, number],
-  polygon: [number, number][]
-): boolean {
-  const [py, px] = point;
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [iy, ix] = polygon[i];
-    const [jy, jx] = polygon[j];
-    if (iy > py !== jy > py && px < ((jx - ix) * (py - iy)) / (jy - iy) + ix) {
-      inside = !inside;
-    }
-  }
-  return inside;
 }
 
 /**

@@ -23,7 +23,6 @@ import { useFenceUploadStatus } from "@/hooks/use-upload-status";
 import { Upload, Download, Pentagon, Circle, Trash2, ShieldPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { recordHistory } from "@/lib/planner-history";
 
 /**
  * Resolve the boundary the auto-fence should wrap. Prefers an active
@@ -95,14 +94,12 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
 
   const [confirmClear, setConfirmClear] = useState(false);
 
-  // Every fence edit made here is one undo step, recorded before it lands.
   const handleAutoFence = () => {
     const boundary = resolveBoundaryPoints();
     if (boundary.length === 0) {
       toast(t("autoFenceNoBoundary"), "info");
       return;
     }
-    recordHistory();
     generateFromBoundary(boundary, autoFenceBuffer);
   };
 
@@ -110,7 +107,6 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
     if (maxAltText === null) return;
     const v = parseFloat(maxAltText);
     if (Number.isFinite(v) && v > 0 && v !== maxAltitude) {
-      recordHistory();
       setMaxAltitude(v);
     }
     setMaxAltText(null);
@@ -119,7 +115,7 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
   return (
     <div className="flex flex-col gap-3 px-3 py-2">
       <div className="flex items-center justify-between">
-        <Toggle label={t("enableGeofence")} checked={enabled} onChange={(v) => { recordHistory(); setEnabled(v); }} />
+        <Toggle label={t("enableGeofence")} checked={enabled} onChange={setEnabled} />
         <Badge variant={enabled ? "success" : "neutral"} size="sm">
           {enabled ? t("active") : t("off")}
         </Badge>
@@ -160,7 +156,7 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
             label={t("type")}
             options={GEOFENCE_TYPE_OPTIONS}
             value={fenceType}
-            onChange={(v) => { if (v !== fenceType) { recordHistory(); setFenceType(v as FenceType); } }}
+            onChange={(v) => { if (v !== fenceType) setFenceType(v as FenceType); }}
           />
           <Input
             label={t("maxAltitude")}
@@ -177,7 +173,7 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
             label={t("fenceAction")}
             options={GEOFENCE_ACTION_OPTIONS}
             value={breachAction}
-            onChange={(v) => { if (v !== breachAction) { recordHistory(); setBreachAction(v as BreachAction); } }}
+            onChange={(v) => { if (v !== breachAction) setBreachAction(v as BreachAction); }}
           />
 
           {/* Draw on Map button */}
@@ -266,7 +262,7 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
         message={t("clearFenceConfirm")}
         variant="danger"
         confirmLabel={tCommon("delete")}
-        onConfirm={() => { setConfirmClear(false); recordHistory(); clearFence(); }}
+        onConfirm={() => { setConfirmClear(false); clearFence(); }}
         onCancel={() => setConfirmClear(false)}
       />
     </div>

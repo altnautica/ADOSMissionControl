@@ -18,7 +18,7 @@ import catalog from "@/data/mcp/tools-catalog.json";
 import { Select } from "@/components/ui/select";
 import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
-import { credentialStatus, safetyClassBadge } from "./mcp-shared";
+import { MINTED_CREDENTIAL_REACH, credentialStatus, safetyClassBadge } from "./mcp-shared";
 import { canCredentialCallTool } from "./mcp-scope-model";
 import type { McpTokenRow } from "./McpConsole";
 
@@ -72,8 +72,7 @@ export function McpToolsCatalog({ credentials = [] }: { credentials?: McpTokenRo
       ? canCredentialCallTool(
           { scopes: cred.scopes, allowedNodes: cred.allowedNodes },
           { name: x.name, scope: x.scope, safetyClass: x.safetyClass, agentModeOnly: x.agentModeOnly, affectsFlight: x.affectsFlight },
-          // A minted credential only connects through the fleet relay.
-          { flightEnforced: false, fleetMode: true },
+          MINTED_CREDENTIAL_REACH,
         )
       : null;
 

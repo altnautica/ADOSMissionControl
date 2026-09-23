@@ -40,10 +40,12 @@
  * phrase instead of accepting a checklist completed for a different vehicle.
  *
  * Above all: with no telemetry snapshot proving the node's arm state, there is
- * no protocol at all — and a snapshot from a node that is no longer being
- * heard from proves nothing, so an offline node's persisted telemetry is read
- * the same as none. A command surface is offered only for a node whose live
- * state can actually be read, so a flight action is never dispatched blind.
+ * no protocol at all — and a snapshot is proof only while the node carries a
+ * current flight-controller reading (`nodeFcReading`, the same verdict the
+ * board's cells render against). An offline node, a node that flies nothing,
+ * and a live agent whose FC is not reachable all read the same as no snapshot.
+ * A command surface is offered only for a node whose live state can actually
+ * be read, so a flight action is never dispatched blind.
  *
  * @module skills/node-context
  * @license GPL-3.0-only
@@ -51,10 +53,11 @@
 
 import type { FirmwareType, UnifiedFlightMode } from "@/lib/protocol/types";
 import type { ArmState, FlightMode } from "@/lib/types";
-import { asFlightMode } from "@/lib/flight-mode";
+import { asFlightMode, liveAvailableModes } from "@/lib/flight-mode";
 import { createFirmwareHandlerByType } from "@/lib/protocol/firmware/ardupilot";
 import { agentModeName } from "@/lib/agent/agent-mode-names";
-import { nodeLiveness, telemetryValue } from "@/lib/nodes/presence";
+import { telemetryValue } from "@/lib/nodes/presence";
+import { nodeFcReading, type FcNode } from "@/lib/nodes/fc-reading";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
@@ -74,7 +77,7 @@ import type {
 } from "./types";
 
 /** The node fields a per-node context reads. A fleet node entry satisfies it. */
-export interface SkillTargetNode extends CommandTargetNode {
+export interface SkillTargetNode extends CommandTargetNode, FcNode {
   /** Canonical fleet id — the key the dispatcher's per-node guards run on. */
   _id: string;
   /** FC firmware family the node's agent identified. */
@@ -235,13 +238,12 @@ export function buildSkillContextForNode(
     const entry = useNodeRegistryStore.getState().getEntry(node._id);
     const armState: ArmState = entry?.fc.armState ?? "unknown";
     const flightMode = asFlightMode(entry?.fc.flightMode) ?? UNRECOGNISED_MODE;
-    const handler = liveFc.getFirmwareHandler();
     return {
       droneId: node._id,
       protocol: liveFc,
       armState,
       flightMode,
-      availableModes: handler?.getAvailableModes() ?? [],
+      availableModes: liveAvailableModes(liveFc) ?? [],
       previousMode: flightMode,
       // Real capabilities: the live protocol has handshaken, so its flags are
       // truthful (unlike the sink-backed branch below).
@@ -256,20 +258,18 @@ export function buildSkillContextForNode(
 
   const fleet = useCommandFleetStore.getState();
   const status = fleet.cloudStatuses[node.deviceId];
-  const telemetry = telemetryValue(
-    fleet.telemetryByDeviceId[node.deviceId],
-    status,
-  );
-
   // A boolean armed flag is the proof that this node's flight-controller state
-  // is actually being read — and it only stays proof while the node itself is
-  // being heard from. Both telemetry maps persist a node's last value after it
-  // goes dark, so past the offline threshold the snapshot proves nothing: the
-  // arm state reads unknown and no command surface is offered, on the same
-  // clock the board's display cells go dark on.
-  const offline = nodeLiveness(node, status) === "offline";
-  const armed =
-    !offline && typeof telemetry?.armed === "boolean" ? telemetry.armed : null;
+  // is actually being read — and it only stays proof while the node carries a
+  // current FC reading. Both telemetry maps persist a node's last value after
+  // it goes dark, and an agent keeps publishing its last vehicle state after
+  // its FC drops, so without a reading the snapshot proves nothing: the arm
+  // state and mode read unknown and no command surface is offered, on the same
+  // verdict the board's display cells go dark on.
+  const telemetry =
+    nodeFcReading(node, status).absentKey === null
+      ? telemetryValue(fleet.telemetryByDeviceId[node.deviceId], status)
+      : undefined;
+  const armed = typeof telemetry?.armed === "boolean" ? telemetry.armed : null;
   const armState: ArmState = armed === null ? "unknown" : armed ? "armed" : "disarmed";
   const flightMode = asFlightMode(telemetry?.mode) ?? UNRECOGNISED_MODE;
 
@@ -298,7 +298,7 @@ export function buildSkillContextForNode(
       : resolveNodeCommandSink(node, { ...options, agentFirmware });
 
   const firmwareModes =
-    liveHandler?.getAvailableModes() ??
+    liveAvailableModes(managed?.protocol) ??
     availableModesForNode(node.fcFirmware, node.frameType);
   const availableModes =
     sink?.transport === "direct-fc"

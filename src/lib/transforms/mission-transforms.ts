@@ -8,10 +8,10 @@
  */
 
 import type { Waypoint } from "@/lib/types";
+import { EARTH_RADIUS_M } from "@/lib/geo/distance";
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
-const EARTH_RADIUS = 6371000; // meters
 
 /**
  * Compute the geographic centroid of a set of waypoints.
@@ -204,7 +204,7 @@ function offsetPoint(
 ): [number, number] {
   const latRad = lat * DEG_TO_RAD;
   const bearingRad = bearingDeg * DEG_TO_RAD;
-  const angDist = distanceMeters / EARTH_RADIUS;
+  const angDist = distanceMeters / EARTH_RADIUS_M;
   const newLatRad = Math.asin(
     Math.sin(latRad) * Math.cos(angDist) +
     Math.cos(latRad) * Math.sin(angDist) * Math.cos(bearingRad)

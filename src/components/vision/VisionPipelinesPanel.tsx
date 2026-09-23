@@ -34,6 +34,9 @@ function ageLabel(ms: number): string {
   return s < 60 ? `${s}s ago` : `${Math.round(s / 60)}m ago`;
 }
 
+/** Stable empty list while the engine status is unknown, so memos keep their identity. */
+const NO_ENGINE_MODELS: readonly EngineModel[] = [];
+
 /** Per-model inference metrics + honesty badge, shown only when the agent
  * forwards real values (no fabricated reading). A mock/CPU backend that reports
  * `isInferenceCapable === false` is badged as such rather than implying it
@@ -213,7 +216,7 @@ export function VisionPipelinesPanel({
   const t = useTranslations("vision");
   const pipelines = useVisionPipelines(droneId);
   const engineStatus = useVisionEngineStatus();
-  const engineModels = engineStatus.models;
+  const engineModels = engineStatus.known ? engineStatus.models : NO_ENGINE_MODELS;
   const runningCount = pipelines.filter((p) => p.active).length;
 
   // Where detection runs for this node (tier-derived), stamped onto every row.

@@ -21,9 +21,10 @@ import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useKnownCellCount } from "@/hooks/use-known-cell-count";
 import { useDroneManager } from "@/stores/drone-manager";
 import {
+  knownRemainingPct,
   plausibleCellVoltages,
   resolveCellCount,
-} from "@/lib/telemetry/battery-cells";
+} from "@/lib/battery";
 
 const NOT_MEASURED = "—";
 
@@ -60,6 +61,7 @@ export function LiveBatteryDisplay() {
 
   const cells = plausibleCellVoltages(battery?.cellVoltages);
   const cellCount = resolveCellCount(battery?.cellVoltages, knownCellCount);
+  const remaining = knownRemainingPct(battery?.remaining);
 
   const cellImbalance = useMemo(() => {
     if (!cells || cells.length < 2) return null;
@@ -96,7 +98,7 @@ export function LiveBatteryDisplay() {
         />
         <LiveStat
           label="Remaining"
-          value={battery && battery.remaining >= 0 ? `${Math.round(battery.remaining)}` : NOT_MEASURED}
+          value={remaining !== null ? `${Math.round(remaining)}` : NOT_MEASURED}
           unit="%"
         />
         <LiveStat

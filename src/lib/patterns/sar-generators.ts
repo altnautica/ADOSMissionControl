@@ -12,9 +12,9 @@
 
 import type { PatternResult, PatternStats } from "./types";
 import {
-  haversineDistance,
   offsetPoint,
 } from "@/lib/drawing/geo-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 // ── Types ─────────────────────────────────────────────────────
 

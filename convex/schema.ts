@@ -548,7 +548,9 @@ export default defineSchema({
     userId: v.string(),
     feature: v.string(),
     usedAt: v.number(),
-  }).index("by_userId_feature", ["userId", "feature"]),
+  })
+    .index("by_userId_feature", ["userId", "feature"])
+    .index("by_usedAt", ["usedAt"]),
 
   // ── ADOS Pairing tables (cmd_ prefix) ──────────────────────
 

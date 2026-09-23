@@ -24,12 +24,8 @@ import {
   linkStateLabel,
 } from "@/components/hardware/radio/labels";
 import { cn } from "@/lib/utils";
-import {
-  Chip,
-  UnknownValue,
-  staleClass,
-  type ReadingFreshness,
-} from "./cell-primitives";
+import { Chip, UnknownValue, staleClass } from "./cell-primitives";
+import type { ReadingFreshness } from "@/lib/nodes/fc-reading";
 
 export function LinkCell({
   radio,

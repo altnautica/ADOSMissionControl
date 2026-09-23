@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useSensorHealthStore } from "@/stores/sensor-health-store";
-import { isFresh } from "@/lib/telemetry/freshness";
+import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useSensorHealth } from "@/hooks/use-sensor-health";
+import { decodeSensorHealth } from "@/lib/sensor-health";
+import { freshOnly } from "@/lib/telemetry/freshness";
 import { cn, formatErrorMessage } from "@/lib/utils";
 import { Check, X, AlertTriangle, RefreshCw, CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -101,8 +103,7 @@ function appendFailure(prev: PreArmMessage[], text: string): PreArmMessage[] {
 export function PreArmChecks({ className }: { className?: string }) {
   const t = useTranslations("preArm");
   const protocol = useDroneManager.getState().getSelectedProtocol();
-  const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
-  const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
+  const { healthyCount, presentCount: totalPresent } = useSensorHealth();
   const [failures, setFailures] = useState<PreArmMessage[]>([]);
   const [checking, setChecking] = useState(false);
   const [lastChecked, setLastChecked] = useState<number | null>(null);
@@ -147,9 +148,11 @@ export function PreArmChecks({ className }: { className?: string }) {
       const windowClosed = Promise.withResolvers<void>();
       setTimeout(windowClosed.resolve, STATUSTEXT_WINDOW_MS);
       await windowClosed.promise;
-      const health = useSensorHealthStore.getState();
-      const prearm = health.getSensorByName("pre_arm_check");
-      if (prearm && isFresh(health.lastUpdate, Date.now())) {
+      const sysStatus = freshOnly(useTelemetryStore.getState().sysStatus.latest(), Date.now());
+      const prearm = sysStatus
+        ? decodeSensorHealth(sysStatus).find((s) => s.name === "pre_arm_check")
+        : undefined;
+      if (prearm) {
         if (prearm.healthy) setVerdictPass(true);
         else if (prearm.present) addFailure(t("fcReportsFailures"));
       }

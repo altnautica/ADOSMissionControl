@@ -21,17 +21,12 @@
  * `src/mock/mock-plugins.ts` so the per-drone Plugins tab and the
  * dynamic plugin tabs render without a Convex backend.
  *
- * The Convex query reference is hand-rolled via `makeFunctionReference`
- * so this file compiles before `api.d.ts` regenerates with the
- * `cmdPlugins:listForDeviceWithDetail` path. The runtime resolves the
- * same way once the generated api picks the function up. Mirrors the
- * pattern in `use-plugin-contributions.ts`.
- *
  * @license GPL-3.0-only
  */
 
 import { useMemo } from "react";
-import { makeFunctionReference } from "convex/server";
+import { api } from "../../convex/_generated/api";
+import { parseParameterContributions } from "@/lib/plugins/parameters/parse";
 
 import { isDemoMode } from "@/lib/utils";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
@@ -97,11 +92,10 @@ export interface DronePluginContribution {
 }
 
 /**
- * Shape of one install row returned by
- * `cmdPlugins:listForDeviceWithDetail` — only the fields the header
- * hook needs. The query already filters to enabled/running installs
- * that ship a GCS half, so every returned row is a live tab candidate;
- * its `gcsContributes` carries the denormalised slot contributions.
+ * One live install row, the shape both sources (the cloud
+ * `cmdPlugins:listForDeviceWithDetail` query and the local agent detail)
+ * are projected into. Every row is a live tab candidate; its
+ * `gcsContributes` carries the denormalised slot contributions.
  */
 interface InstallDetailRow {
   installId: string;
@@ -121,19 +115,6 @@ interface InstallDetailRow {
 
 /** The per-drone tab slot, sourced from the canonical slot list. */
 const NODE_DETAIL_TAB_SLOT: PluginSlotName = "node.detail.tab";
-
-/**
- * Hand-rolled function reference for the
- * `cmdPlugins:listForDeviceWithDetail` Convex query — the same query
- * the contribution producer uses. Once the generated `api.d.ts`
- * exports the typed descriptor, this reference resolves to the same
- * value the generated `communityApi.plugins.*` export would yield.
- */
-const listForDeviceWithDetailRef = makeFunctionReference<
-  "query",
-  { deviceId?: string },
-  InstallDetailRow[]
->("cmdPlugins:listForDeviceWithDetail");
 
 /**
  * Per-drone plugin tab contributions for the currently-selected drone.
@@ -157,7 +138,7 @@ export function useDronePluginContributions(
 ): DronePluginContribution[] {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const installs = useConvexSkipQuery(listForDeviceWithDetailRef, {
+  const installs = useConvexSkipQuery(api.cmdPlugins.listForDeviceWithDetail, {
     args: agentId ? { deviceId: agentId } : undefined,
     enabled: isAuthenticated && Boolean(agentId),
   });
@@ -186,8 +167,17 @@ export function useDronePluginContributions(
     // enabled/running. Local: the agent reports live status, so filter to
     // the same set here so a tab header never renders without an enabled
     // body behind it.
+    // The cloud row stores parameters as loosely-typed JSON, so it is narrowed
+    // through the manifest parser the local path already went through.
     const rows: InstallDetailRow[] = isAuthenticated
-      ? (installs ?? [])
+      ? (installs ?? []).map((r) => ({
+          installId: r.installId,
+          pluginId: r.pluginId,
+          version: r.version,
+          name: r.name,
+          gcsContributes: r.gcsContributes,
+          gcsParameters: parseParameterContributions(r.gcsParameters) ?? [],
+        }))
       : (localDetail ?? [])
           .filter((r) => isLiveStatus(r.status))
           .map((r) => ({

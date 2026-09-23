@@ -16,7 +16,8 @@ import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
-import { STALE_THRESHOLD_MS, useClockTick } from "@/lib/agent/freshness";
+import { useClockTick } from "@/lib/agent/freshness";
+import { livenessFromTimestamp } from "@/lib/nodes/presence";
 import { normalizeCameraUsbRecovery } from "@/lib/agent/camera-recovery";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import type {
@@ -125,7 +126,7 @@ export function CloudDroneBridge() {
     const now = Date.now();
     for (const drone of myDrones) {
       if (!trackedDeviceIds.current.has(drone.deviceId)) continue;
-      if (now - (drone.lastSeen ?? 0) < STALE_THRESHOLD_MS) continue;
+      if (livenessFromTimestamp(drone.lastSeen ?? null, now) === "live") continue;
       dropCloudNode(drone.deviceId);
       trackedDeviceIds.current.delete(drone.deviceId);
     }
@@ -143,7 +144,7 @@ export function CloudDroneBridge() {
     for (const drone of myDrones) {
       const deviceId = drone.deviceId;
       const lastSeen = drone.lastSeen ?? 0;
-      const isOnline = now - lastSeen < STALE_THRESHOLD_MS;
+      const isOnline = livenessFromTimestamp(lastSeen, now) === "live";
       const nodeId = resolveNodeId(deviceId);
 
       // A stale node is withdrawn by the staleness effect above (which runs

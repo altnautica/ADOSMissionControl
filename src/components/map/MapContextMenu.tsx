@@ -21,7 +21,7 @@ import { useToast } from "@/components/ui/toast";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useGuidedStore } from "@/stores/guided-store";
 import { usePoiStore } from "@/stores/poi-store";
-import { haversineDistance, bearing } from "@/lib/telemetry-utils";
+import { bearing } from "@/lib/telemetry-utils";
 
 import type { MenuPosition, MenuReport } from "./context-menu/types";
 import { useMenuContext, useMenuItems } from "./context-menu/use-menu-items";
@@ -39,6 +39,7 @@ import {
   readReturnAltitude,
 } from "./context-menu/actions/markers";
 import { useRallyStore } from "@/stores/rally-store";
+import { haversineDistance } from "@/lib/geo/distance";
 
 export function MapContextMenu() {
   const map = useMap();

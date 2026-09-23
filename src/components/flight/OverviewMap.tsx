@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useFreshTelemetry, useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
-import { knownRemainingPct } from "@/lib/battery-bands";
+import { knownRemainingPct } from "@/lib/battery";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";

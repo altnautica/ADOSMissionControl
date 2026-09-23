@@ -13,9 +13,9 @@ import {
   type TerrainProvider,
 } from "cesium";
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { loadGeoidGrid, mslToEllipsoidal } from "@/lib/terrain/geoid";
 import { altitudeDatumFor } from "@/lib/mission/altitude-frame";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** Spacing between intermediate sub-sample points (meters). */
 const SUBSAMPLE_INTERVAL = 100;

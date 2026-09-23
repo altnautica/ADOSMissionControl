@@ -18,57 +18,10 @@
  */
 
 import type { MissionAdherence } from "@/lib/types";
+import { haversineDistance, pointToSegmentM } from "@/lib/geo/distance";
 
 const HIT_RADIUS_M = 15;
 const DEVIATION_THRESHOLD_M = 30;
-const EARTH_RADIUS_M = 6_371_000;
-
-interface LatLon {
-  lat: number;
-  lon: number;
-}
-
-function toRad(d: number): number {
-  return (d * Math.PI) / 180;
-}
-
-function haversineM(a: LatLon, b: LatLon): number {
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const sa =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(sa)));
-}
-
-/**
- * Distance from a point to a great-circle leg, approximated as the
- * perpendicular distance to the chord in a local equirectangular plane.
- * Acceptable for the legs of typical drone missions (≤10 km).
- */
-function pointToSegmentM(p: LatLon, a: LatLon, b: LatLon): number {
-  // Project all three to a tangent plane centred on `a`.
-  const cosLat = Math.cos(toRad(a.lat));
-  const ax = 0;
-  const ay = 0;
-  const bx = (b.lon - a.lon) * cosLat * 111_320;
-  const by = (b.lat - a.lat) * 111_320;
-  const px = (p.lon - a.lon) * cosLat * 111_320;
-  const py = (p.lat - a.lat) * 111_320;
-
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len2 = dx * dx + dy * dy;
-  if (len2 === 0) return Math.sqrt(px * px + py * py);
-
-  // Project p onto the segment, clamped to [0, 1].
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
-  const projX = ax + t * dx;
-  const projY = ay + t * dy;
-  const ex = px - projX;
-  const ey = py - projY;
-  return Math.sqrt(ex * ex + ey * ey);
-}
 
 /**
  * Compute mission adherence stats. Returns null when there are fewer than
@@ -85,7 +38,7 @@ export function computeAdherence(
   let reached = 0;
   for (const wp of waypoints) {
     for (const [pLat, pLon] of path) {
-      if (haversineM({ lat: pLat, lon: pLon }, wp) <= HIT_RADIUS_M) {
+      if (haversineDistance(pLat, pLon, wp.lat, wp.lon) <= HIT_RADIUS_M) {
         reached += 1;
         break;
       }
@@ -108,11 +61,11 @@ export function computeAdherence(
   let sumErr = 0;
   const errors: number[] = new Array(path.length);
 
+  const legs = waypoints.map((wp): [number, number] => [wp.lat, wp.lon]);
   for (let i = 0; i < path.length; i++) {
-    const p: LatLon = { lat: path[i][0], lon: path[i][1] };
     let bestForPoint = Infinity;
-    for (let j = 0; j < waypoints.length - 1; j++) {
-      const d = pointToSegmentM(p, waypoints[j], waypoints[j + 1]);
+    for (let j = 0; j < legs.length - 1; j++) {
+      const d = pointToSegmentM(path[i], legs[j], legs[j + 1]);
       if (d < bestForPoint) bestForPoint = d;
     }
     errors[i] = bestForPoint;

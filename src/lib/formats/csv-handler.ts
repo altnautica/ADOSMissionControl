@@ -20,6 +20,7 @@ import {
   foldLegacyWaypoints,
   type FlatWaypointRow,
 } from "@/lib/mission/flat-rows";
+import { downloadBlob } from "@/lib/download";
 
 const CSV_HEADER =
   "seq,lat,lon,alt,command,frame,speed,holdTime,param1,param2,param3,param4,param5,param6,param7,rawCommand";
@@ -76,12 +77,7 @@ export function exportCSV(waypoints: Waypoint[]): string {
 export function downloadCSV(waypoints: Waypoint[], name: string): void {
   const csv = exportCSV(waypoints);
   const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${name || "mission"}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `${name || "mission"}.csv`);
 }
 
 /**

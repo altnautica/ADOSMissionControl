@@ -1839,7 +1839,6 @@
       "urlsTitle": "Advertised URLs",
       "urlsEmpty": "The node reports no reachable URLs.",
       "primaryBadge": "primary",
-      "notReported": "not reported",
       "refresh": "Refresh"
     },
     "selfHeal": {

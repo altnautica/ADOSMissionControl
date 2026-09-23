@@ -32,7 +32,7 @@ import { RelayModeCell } from "./RelayModeCell";
 import { FeaturesCell } from "./FeaturesCell";
 import { NodeActionsMenu } from "./NodeActionsMenu";
 import { useNodeSkills } from "./use-node-skills";
-import { fcReading, readingFreshness } from "./cell-primitives";
+import { fcReading, readingFreshness } from "@/lib/nodes/fc-reading";
 
 const CELL = "px-2 py-2 align-middle";
 

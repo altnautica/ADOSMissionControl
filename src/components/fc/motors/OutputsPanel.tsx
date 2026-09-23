@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useBoardId } from "@/hooks/use-board-id";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { SERVO_FUNCTION_GROUPS } from "@/lib/servo-functions";
 import {
@@ -108,15 +109,9 @@ export function OutputsPanel() {
   const { pwmWarnings, conflicts } = useMemo(() => validateOutputs(outputs), [outputs]);
 
   const motPwmType = params.get('MOT_PWM_TYPE') ?? 0;
-  const [boardId, setBoardId] = useState(0);
+  // 0 (unknown board) until AUTOPILOT_VERSION names one.
+  const boardId = useBoardId(protocol) ?? 0;
   const [manualBoardOverride, setManualBoardOverride] = useState<BoardProfile | null>(null);
-
-  useEffect(() => {
-    if (!protocol?.onAutopilotVersion) return;
-    const unsub = protocol.onAutopilotVersion((data) => { setBoardId(data.boardId ?? 0); });
-    protocol.requestMessage?.(148).catch(() => {});
-    return unsub;
-  }, [protocol]);
 
   const autoDetectedProfile = useMemo(() => detectBoardProfile(boardId), [boardId]);
   const boardProfile = (autoDetectedProfile !== UNKNOWN_BOARD) ? autoDetectedProfile : (manualBoardOverride ?? UNKNOWN_BOARD);

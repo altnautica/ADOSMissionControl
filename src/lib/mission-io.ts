@@ -37,6 +37,7 @@ import {
 } from "./mission-io-formats";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { downloadBlob } from "@/lib/download";
 
 const AUTOSAVE_KEY = "altcmd_autosave";
 
@@ -157,12 +158,7 @@ export function downloadMissionFile(
     ...(extras?.pois && extras.pois.length > 0 ? { pois: extras.pois } : {}),
   };
   const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${metadata.name || "mission"}.altmission`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `${metadata.name || "mission"}.altmission`);
 }
 
 /** Load mission from a File object. */

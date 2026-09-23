@@ -24,7 +24,7 @@ import type { SetupAccessUrl } from "@/lib/agent/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfigToggleField, ConfigReadonlyRow } from "./ConfigFields";
-import { Section } from "./Section";
+import { InfoNote, ReadRow, Section } from "./Section";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 interface SectionProps {
@@ -49,30 +49,6 @@ type ReachLoad =
   | { state: "loading" }
   | { state: "failed" }
   | { state: "loaded"; reach: AdvertisedReach };
-
-function InfoNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded border border-border-default/60 bg-bg-tertiary/40 px-3 py-2 text-[11px] text-text-tertiary">
-      {children}
-    </div>
-  );
-}
-
-function ReadRow({ label, value }: { label: string; value: string | null }) {
-  const t = useTranslations("nodeSettings.discovery");
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="text-[11px] text-text-tertiary">{label}</span>
-      <span className="min-w-0 truncate text-right font-mono text-xs text-text-primary">
-        {value != null && value.length > 0 ? (
-          value
-        ) : (
-          <span className="text-text-tertiary">{t("notReported")}</span>
-        )}
-      </span>
-    </div>
-  );
-}
 
 export function DiscoverySection({
   nodeDeviceId,

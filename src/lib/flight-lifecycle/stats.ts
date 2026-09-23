@@ -7,7 +7,8 @@
  */
 
 import type { TelemetryFrame } from "../telemetry-recorder";
-import { haversineMeters } from "./geo";
+import { haversineDistance } from "@/lib/geo/distance";
+import { knownRemainingPct } from "@/lib/battery";
 
 export interface FlightStats {
   distance: number;
@@ -63,7 +64,7 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
       // 0,0 is the autopilot's "no position estimate yet", not a fix.
       if (typeof d.lat === "number" && typeof d.lon === "number" && !(d.lat === 0 && d.lon === 0)) {
         if (prevLat !== undefined && prevLon !== undefined) {
-          distance += haversineMeters(prevLat, prevLon, d.lat, d.lon);
+          distance += haversineDistance(prevLat, prevLon, d.lat, d.lon);
         }
         prevLat = d.lat;
         prevLon = d.lon;
@@ -96,10 +97,10 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
         if (batteryStartV === undefined) batteryStartV = d.voltage;
         batteryEndV = d.voltage;
       }
-      // -1 is the autopilot's "remaining not measured".
-      if (typeof d.remaining === "number" && d.remaining >= 0) {
-        if (batteryStartPct === undefined) batteryStartPct = d.remaining;
-        batteryEndPct = d.remaining;
+      const remaining = knownRemainingPct(d.remaining);
+      if (remaining !== null) {
+        if (batteryStartPct === undefined) batteryStartPct = remaining;
+        batteryEndPct = remaining;
       }
     }
   }

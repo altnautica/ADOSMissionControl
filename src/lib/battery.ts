@@ -1,24 +1,36 @@
 /**
- * @module telemetry/battery-cells
- * @description Series cell count for per-cell battery thresholds.
+ * @module lib/battery
+ * @description What a battery sample actually reports: the remaining percent
+ * and the series cell count, read the same way by every surface.
  *
- * BATTERY_STATUS carries per-cell voltages only when the FC monitors cells.
- * When it does not, the MAVLink spec puts the whole pack voltage in
+ * Remaining: BATTERY_STATUS.battery_remaining and the MSP battery decoders use
+ * -1 for "not estimated". That is an unknown, never an empty pack.
+ *
+ * Cells: BATTERY_STATUS carries per-cell voltages only when the FC monitors
+ * cells. When it does not, the MAVLink spec puts the whole pack voltage in
  * voltages[0] and UINT16_MAX in the rest, so after the unused entries are
  * dropped a 4S pack arrives as `cellVoltages: [16.8]` — one "cell" at 16.8 V.
  * Counting entries would apply per-cell thresholds to the whole pack and never
  * alarm. Inferring the count from live pack voltage is just as wrong: a 4S
  * sagging to 14.0 V rounds to a healthy-looking 3S. So the count comes from
  * measured cells that are plausibly single Li cells, or from a count that is
- * known independently of the voltage, and otherwise it is unknown.
+ * known independently of the voltage (the FC-reported MSP cell count, the
+ * fitted pack), and otherwise it is unknown.
  *
  * @license GPL-3.0-only
  */
 
 /** Lowest voltage a single lithium cell can plausibly report under load. */
-export const MIN_PLAUSIBLE_CELL_V = 2.5;
+const MIN_PLAUSIBLE_CELL_V = 2.5;
 /** Highest voltage a single lithium cell (including HV chemistries) reports. */
-export const MAX_PLAUSIBLE_CELL_V = 4.5;
+const MAX_PLAUSIBLE_CELL_V = 4.5;
+
+/** The remaining-capacity percent a battery sample actually reports, or null. */
+export function knownRemainingPct(remaining: number | null | undefined): number | null {
+  return typeof remaining === "number" && Number.isFinite(remaining) && remaining >= 0
+    ? remaining
+    : null;
+}
 
 /**
  * The per-cell voltages when every entry is a plausible single cell,

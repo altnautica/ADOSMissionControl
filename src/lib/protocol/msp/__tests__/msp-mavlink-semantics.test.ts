@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import { mspSensorFlagsToMavlink } from "../msp-sensor-flags";
+import { mspSensorFlagsToMavlink } from "../msp-mavlink-semantics";
 
 // MAVLink MAV_SYS_STATUS_SENSOR positions.
 const MAV_GYRO = 1 << 0;

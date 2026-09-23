@@ -1,7 +1,8 @@
 /**
  * @module planner-history-adapter
- * @description The mission-waypoint snapshot/restore adapter holder for the
- * coordinated planner undo timeline.
+ * @description The mission-waypoint snapshot/restore adapter holder and the
+ * history-scope entry point (`withPlannerHistory`) for the coordinated planner
+ * undo timeline.
  *
  * This is a deliberately dependency-free leaf module. The coordinated history
  * (`planner-history.ts`) imports the three leaf domain stores, two of which pull
@@ -12,6 +13,8 @@
  * module-level `let` had initialised — a temporal-dead-zone throw. Isolating the
  * holder in a module that imports nothing means it is fully initialised before
  * any other module can reach it, so registration during a cycle is always safe.
+ * The planner domain stores import `withPlannerHistory` from here for the same
+ * reason: the timeline imports them, so they cannot import the timeline back.
  *
  * @license GPL-3.0-only
  */
@@ -52,4 +55,33 @@ export function snapshotWaypoints(): WaypointSnapshot {
 /** Restore the registered waypoint domain (no-op when none is registered). */
 export function restoreWaypoints(snap: WaypointSnapshot): void {
   if (waypointAdapter) waypointAdapter.restore(snap);
+}
+
+let historyRecorder: (() => void) | null = null;
+let scopeDepth = 0;
+
+/**
+ * Register the function that captures one undo point (the coordinated
+ * timeline's `recordHistory`). Called once by planner-history at module init.
+ */
+export function registerHistoryRecorder(recorder: () => void): void {
+  historyRecorder = recorder;
+}
+
+/**
+ * Run one operator-facing planner edit as a single undo step. The combined
+ * planner state is recorded before `edit` runs; nested calls (a compound edit
+ * whose parts are themselves recorded store mutations) add no further points,
+ * so the whole compound undoes in one step. Every operator-facing mutation in
+ * the planner domain stores goes through this, so no caller has to remember
+ * to record.
+ */
+export function withPlannerHistory<T>(edit: () => T): T {
+  if (scopeDepth === 0) historyRecorder?.();
+  scopeDepth += 1;
+  try {
+    return edit();
+  } finally {
+    scopeDepth -= 1;
+  }
 }

@@ -11,7 +11,7 @@ import { useState, useCallback, useRef } from "react";
 import { BarChart3, Upload } from "lucide-react";
 import { QuickGraphs } from "./QuickGraphs";
 import { ExternalLogLinks } from "./ExternalLogLinks";
-import { parseDataFlashLogStreaming } from "@/lib/dataflash-parser";
+import { parseDataFlashLogStreaming } from "@/lib/dataflash-streaming";
 import type { DataFlashLog } from "@/lib/dataflash-parser";
 import dynamic from "next/dynamic";
 

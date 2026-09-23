@@ -15,9 +15,10 @@ import { useInterpolatedPosition } from "@/hooks/use-interpolated-position";
 import { useCameraTriggerCount } from "./CameraTriggerEntities";
 import { useTranslations } from "next-intl";
 import { formatEta } from "@/lib/simulation-utils";
-import { formatAlt, formatHeading, haversineDistance } from "@/lib/telemetry-utils";
+import { formatAlt, formatHeading } from "@/lib/telemetry-utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import { MAP_OVERLAY_Z } from "@/lib/map-overlay-z";
+import { haversineDistance } from "@/lib/geo/distance";
 
 export function SimulationHUD() {
   const waypoints = useMissionStore((s) => s.waypoints);

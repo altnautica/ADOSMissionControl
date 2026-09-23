@@ -6,7 +6,7 @@ import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
@@ -42,8 +42,8 @@ export function GimbalPanel() {
   const [liveMode, setLiveMode] = useState("2");
   const [modeSending, setModeSending] = useState(false);
 
-  const gimbalBuffer = useTelemetryStore((s) => s.gimbal);
-  const latestGimbal = gimbalBuffer.latest();
+  // Hidden once the gimbal attitude stops arriving, never frozen on screen.
+  const latestGimbal = useFreshTelemetry("gimbal");
 
   const {
     params, loading, error, dirtyParams, hasRamWrites,

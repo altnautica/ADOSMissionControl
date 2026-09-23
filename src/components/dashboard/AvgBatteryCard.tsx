@@ -4,10 +4,9 @@
  * @module dashboard/AvgBatteryCard
  * @description Fleet battery summary: average, lowest pack and low count.
  *
- * Only a current reading counts. A row whose flight controller is absent,
- * silent or offline contributes nothing, and a pack the FC reports as unknown
- * (remaining < 0) is left out of the average, the minimum and the low count.
- * With no reading at all the card says so instead of showing 0% / 0.0V.
+ * Only a current reading counts; which rows and packs qualify is decided once
+ * by `selectFleetSummary`. With no reading at all the card says so instead of
+ * showing 0% / 0.0V.
  *
  * @license GPL-3.0-only
  */
@@ -15,7 +14,7 @@
 import { useTranslations } from "next-intl";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
-import { hasLiveFcReading } from "@/stores/node-registry/select-fleet-drones";
+import { selectFleetSummary } from "@/stores/node-registry/fleet-summary";
 import { batteryBand, useBatteryThresholds } from "@/lib/battery-bands";
 import { Card } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -26,13 +25,10 @@ export function AvgBatteryCard() {
   const profiles = useDroneMetadataStore((s) => s.profiles);
   const thresholds = useBatteryThresholds();
 
-  const reporting = drones.flatMap((d) =>
-    hasLiveFcReading(d) && d.battery && d.battery.remaining >= 0
-      ? [{ drone: d, battery: d.battery }]
-      : [],
-  );
+  const { reporting, averagePct, averageVoltage, lowest, lowCount } =
+    selectFleetSummary(drones, thresholds).battery;
 
-  if (reporting.length === 0) {
+  if (averagePct === null || averageVoltage === null || lowest === null) {
     return (
       <Card title={t("avgBattery.title")}>
         <div className="flex items-center justify-between">
@@ -45,18 +41,7 @@ export function AvgBatteryCard() {
     );
   }
 
-  const avgBattery =
-    reporting.reduce((sum, r) => sum + r.battery.remaining, 0) / reporting.length;
-  const avgVoltage =
-    reporting.reduce((sum, r) => sum + r.battery.voltage, 0) / reporting.length;
-  const lowest = reporting.reduce((min, r) =>
-    r.battery.remaining < min.battery.remaining ? r : min,
-  );
-  const lowCount = reporting.filter((r) => {
-    const band = batteryBand(r.battery.remaining, thresholds);
-    return band === "warning" || band === "critical";
-  }).length;
-  const lowestBand = batteryBand(lowest.battery.remaining, thresholds);
+  const lowestBand = batteryBand(lowest.remaining, thresholds);
   const lowestName = profiles[lowest.drone.id]?.displayName ?? lowest.drone.name;
 
   return (
@@ -65,14 +50,14 @@ export function AvgBatteryCard() {
         <div>
           <span className="text-[11px] text-text-secondary">{t("avgBattery.average")}</span>
           <span className="text-[10px] text-text-tertiary ml-2 font-mono tabular-nums">
-            {avgVoltage.toFixed(1)}V
+            {averageVoltage.toFixed(1)}V
           </span>
         </div>
         <span className="text-lg font-mono font-semibold text-text-primary tabular-nums">
-          {Math.round(avgBattery)}%
+          {Math.round(averagePct)}%
         </span>
       </div>
-      <ProgressBar value={avgBattery} showLabel={false} />
+      <ProgressBar value={averagePct} showLabel={false} />
       <div className="flex items-center justify-between mt-2">
         <span className="text-[10px] text-text-tertiary">
           {t("avgBattery.lowCount", { count: lowCount })}
@@ -95,7 +80,7 @@ export function AvgBatteryCard() {
                   : "text-text-secondary"
             }`}
           >
-            {Math.round(lowest.battery.remaining)}% / {lowest.battery.voltage.toFixed(1)}V
+            {Math.round(lowest.remaining)}% / {lowest.voltage.toFixed(1)}V
           </span>
         </div>
       )}

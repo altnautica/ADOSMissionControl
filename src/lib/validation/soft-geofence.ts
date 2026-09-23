@@ -8,8 +8,7 @@
  */
 
 import type { Waypoint } from "@/lib/types";
-import { haversineDistance } from "@/lib/telemetry-utils";
-import { pointInPolygon } from "@/lib/drawing/geo-utils";
+import { distanceToPolygonEdgeM, haversineDistance, pointInPolygon } from "@/lib/geo/distance";
 
 /** A geofence boundary: a polygon OR a circle. */
 export interface SoftGeofence {
@@ -33,45 +32,6 @@ export interface SoftBufferWarning {
 
 /** Default warning buffer width in meters. */
 export const DEFAULT_SOFT_BUFFER_M = 30;
-
-/** Meters per degree of latitude (also longitude at the equator). */
-const M_PER_DEG = 111_320;
-
-/**
- * Perpendicular distance in meters from `p` to the segment `a`-`b`, computed in a
- * local equirectangular plane centered on `a`. Accurate for the short boundary
- * segments of typical drone geofences (well under 10 km). Points are [lat, lon].
- */
-function pointToSegmentM(
-  p: [number, number],
-  a: [number, number],
-  b: [number, number]
-): number {
-  const cosLat = Math.cos((a[0] * Math.PI) / 180);
-  const bx = (b[1] - a[1]) * cosLat * M_PER_DEG;
-  const by = (b[0] - a[0]) * M_PER_DEG;
-  const px = (p[1] - a[1]) * cosLat * M_PER_DEG;
-  const py = (p[0] - a[0]) * M_PER_DEG;
-
-  const len2 = bx * bx + by * by;
-  if (len2 === 0) return Math.hypot(px, py);
-
-  const t = Math.max(0, Math.min(1, (px * bx + py * by) / len2));
-  return Math.hypot(px - t * bx, py - t * by);
-}
-
-/** Minimum distance in meters from `point` to any edge of `polygon`. */
-function distanceToPolygonEdgeM(
-  point: [number, number],
-  polygon: [number, number][]
-): number {
-  let min = Infinity;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const d = pointToSegmentM(point, polygon[j], polygon[i]);
-    if (d < min) min = d;
-  }
-  return min;
-}
 
 /**
  * Warn about waypoints that are inside the fence but within `bufferM` meters of

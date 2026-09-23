@@ -28,7 +28,7 @@ import { safeTranslate } from "@/hooks/use-skill-toast-bridge";
 import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { ModeReadout } from "./StateCells";
-import type { FcReading } from "./cell-primitives";
+import type { FcReading } from "@/lib/nodes/fc-reading";
 import {
   BOARD_MODE_SKILLS,
   type NodeSkills,

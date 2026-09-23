@@ -6,8 +6,9 @@
  */
 
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
-import { haversineDistance, bearing, normalizeHeading } from "@/lib/telemetry-utils";
+import { bearing, normalizeHeading } from "@/lib/telemetry-utils";
 import { isActionCommand } from "@/lib/mission/command-classes";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** A resolved point the simulated vehicle flies to. */
 export interface SimPoint {

@@ -19,7 +19,7 @@
 import type { DataflashLog, DataflashRecord } from "./parser";
 import type { FlightRecord } from "@/lib/types";
 import type { TelemetryFrame } from "@/lib/telemetry-recorder";
-import { haversineMeters } from "@/lib/flight-lifecycle/geo";
+import { haversineDistance } from "@/lib/geo/distance";
 import { logClockOffsetMs } from "./gps-clock";
 
 /** ArduPilot EV (event) numbers we care about for arm/disarm splitting. */
@@ -282,7 +282,7 @@ function buildFlight(
     const relativeAlt = num(r, "RelHomeAlt") ?? alt - slicePosBaseAlt;
 
     if (prevLat !== undefined && prevLon !== undefined) {
-      distanceM += haversineMeters(prevLat, prevLon, lat, lon);
+      distanceM += haversineDistance(prevLat, prevLon, lat, lon);
     }
     prevLat = lat;
     prevLon = lon;

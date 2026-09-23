@@ -22,17 +22,14 @@
  * @license GPL-3.0-only
  */
 
+import { openReconnectingSocket, type ReconnectingSocketLike } from "@/lib/net/reconnecting-socket";
+
 /** The route the node serves, one path per device (the agent's own constant). */
 export const WORLD_WS_ROUTE = "/ws/atlas/:device_id";
 
 /** The compute engine's own listener port, where the stream is mounted beside
  * the job API — not the `:8080` ados-control front. */
 export const WORLD_STREAM_PORT = "8092";
-
-/** Reconnect delay. Fixed, never growing and never reset by an open the node
- * immediately closes: a compute node that is not up yet is the common case,
- * and a constant cadence both notices it coming up and never hammers it. */
-export const WORLD_STREAM_RETRY_MS = 3000;
 
 /** The concrete WS path for a device. */
 export function worldWsPath(deviceId: string): string {
@@ -62,13 +59,8 @@ export function worldStreamUrl(
 }
 
 /** The subset of `WebSocket` this client drives, so a test can inject one. */
-export interface WorldStreamSocket {
+export interface WorldStreamSocket extends ReconnectingSocketLike {
   binaryType: string;
-  onopen: (() => void) | null;
-  onmessage: ((ev: { data: unknown }) => void) | null;
-  onclose: (() => void) | null;
-  onerror: (() => void) | null;
-  close: () => void;
 }
 
 export type WorldStreamState = "connecting" | "connected" | "reconnecting";
@@ -87,80 +79,29 @@ export interface WorldStreamOptions {
  * called. Returns a no-op teardown when there is no `WebSocket` available (SSR).
  */
 export function subscribeWorldStream(opts: WorldStreamOptions): () => void {
-  const globalFactory =
-    typeof WebSocket !== "undefined"
-      ? (url: string) => new WebSocket(url) as unknown as WorldStreamSocket
-      : null;
-  // Narrowed into its own const so the hoisted `connect` below sees a
-  // non-nullable factory rather than re-narrowing a captured union.
-  const openSocket = opts.socketFactory ?? globalFactory;
-  if (openSocket === null) return () => {};
-  const factory: (url: string) => WorldStreamSocket = openSocket;
+  const factory =
+    opts.socketFactory ??
+    (typeof WebSocket !== "undefined" ? (url: string) => new WebSocket(url) : null);
+  if (factory === null) return () => {};
 
-  let closed = false;
-  let socket: WorldStreamSocket | null = null;
-  let attempts = 0;
-  let timer: ReturnType<typeof setTimeout> | null = null;
-
-  const scheduleReconnect = () => {
-    if (closed || timer !== null) return;
-    timer = setTimeout(() => {
-      timer = null;
-      if (closed) return;
-      connect();
-    }, WORLD_STREAM_RETRY_MS);
-  };
-
-  function connect(): void {
-    if (closed) return;
-    attempts += 1;
-    opts.onState(attempts === 1 ? "connecting" : "reconnecting");
-    let ws: WorldStreamSocket;
-    try {
-      ws = factory(opts.url);
-    } catch {
-      scheduleReconnect();
-      return;
-    }
-    socket = ws;
-    ws.binaryType = "arraybuffer";
-    ws.onopen = () => {
-      opts.onState("connected");
-    };
-    ws.onmessage = (ev) => {
+  return openReconnectingSocket({
+    open: () => {
+      const ws = factory(opts.url);
+      ws.binaryType = "arraybuffer";
+      return ws;
+    },
+    onMessage: (data) => {
       // Descriptors are binary. A text frame is off-contract; ignoring it keeps
       // a chatty proxy from being counted as a malformed descriptor.
-      if (ev.data instanceof ArrayBuffer) {
-        opts.onFrame(new Uint8Array(ev.data));
-      } else if (ev.data instanceof Uint8Array) {
-        opts.onFrame(ev.data);
+      if (data instanceof ArrayBuffer) {
+        opts.onFrame(new Uint8Array(data));
+      } else if (data instanceof Uint8Array) {
+        opts.onFrame(data);
       }
-    };
-    // `onclose` drives every reconnect, so `onerror` only has to not throw.
-    ws.onerror = () => {};
-    ws.onclose = () => {
-      socket = null;
-      if (closed) return;
-      opts.onState("reconnecting");
-      scheduleReconnect();
-    };
-  }
-
-  connect();
-
-  return () => {
-    closed = true;
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
-    if (socket) {
-      try {
-        socket.close();
-      } catch {
-        // a socket already closing is not an error worth propagating
-      }
-      socket = null;
-    }
-  };
+    },
+    // Teardown is the caller's own act, not a stream state it tracks.
+    onState: (state) => {
+      if (state !== "closed") opts.onState(state);
+    },
+  });
 }

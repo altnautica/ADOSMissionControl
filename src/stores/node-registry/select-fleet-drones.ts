@@ -32,7 +32,7 @@
 
 import type { ArmState, FleetDrone, FlightMode } from "@/lib/types/drone";
 import type { CommandCloudStatus } from "@/stores/command-fleet-store";
-import { OFFLINE_THRESHOLD_MS } from "@/lib/agent/freshness";
+import { livenessFromTimestamp } from "@/lib/nodes/presence";
 import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import type { NodeEntry } from "./types";
 
@@ -113,8 +113,7 @@ export function nodeEntryToFleetDrone(
   // heartbeat but no cloud row stays online (fixes the false-OFFLINE bug); a
   // node is offline only once EVERY source is past the offline threshold.
   const lastHeartbeat = freshestHeartbeat(entry, status);
-  const online =
-    lastHeartbeat > 0 && now - lastHeartbeat < OFFLINE_THRESHOLD_MS;
+  const online = isOnline(entry, status, now);
 
   const profile = asProfile(presence.profile);
   const role = asRole(presence.role);
@@ -207,22 +206,6 @@ export function nodeEntryToFleetDrone(
     boardSoc: status?.boardSoc,
     boardTier: status?.boardTier,
   };
-}
-
-/**
- * True when a fleet row's FC-gated fields (battery, GPS, mode, arm state) are a
- * current reading: a flight controller is attached, it has not gone silent, and
- * the node itself is online. Fleet summaries count and render FC fields only
- * for these rows; any other row's values are defaults or a frozen last frame.
- */
-export function hasLiveFcReading(
-  drone: Pick<FleetDrone, "fcAttached" | "fcLinkLost" | "status">,
-): boolean {
-  return (
-    drone.fcAttached === true &&
-    drone.fcLinkLost !== true &&
-    drone.status !== "offline"
-  );
 }
 
 /**
@@ -338,6 +321,5 @@ function isOnline(
   status: CommandCloudStatus | undefined,
   now: number,
 ): boolean {
-  const lastHeartbeat = freshestHeartbeat(entry, status);
-  return lastHeartbeat > 0 && now - lastHeartbeat < OFFLINE_THRESHOLD_MS;
+  return livenessFromTimestamp(freshestHeartbeat(entry, status), now) !== "offline";
 }

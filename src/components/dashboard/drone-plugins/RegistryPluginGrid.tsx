@@ -23,7 +23,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
-import { makeFunctionReference } from "convex/server";
 import { useTranslations } from "next-intl";
 import { Package, Search } from "lucide-react";
 
@@ -67,55 +66,6 @@ interface ListPluginsResult {
   nextCursor: string | null;
   total: number;
 }
-
-/** Subset of the version row the install path needs. Carries the
- * manifest YAML + canonical download URL + SHA-256 pin so the agent
- * can verify archive bytes after pulling, plus the signing fields and
- * vendor-attribution rows the modal renders (the manifest YAML text
- * is for display copy; the registry row is authoritative for signing
- * + vendor entries). */
-interface RegistryVersionLite {
-  manifest_yaml: string;
-  download_url: string;
-  archive_sha256: string;
-  /** Ed25519 signer key id (e.g. `altnautica-2026-A`). Drives the
-   * "Signed by" chip in the trust strip and the sidebar metadata. */
-  signer_key_id?: string;
-  /** Base64 Ed25519 signature over the canonical archive bytes.
-   * Plumbed through for future revocation checks; not rendered. */
-  signature?: string;
-  /** Hex digest of the signed payload (manifest+archive). */
-  payload_hash?: string;
-  /** Bundled-vendor-binary attribution array stored verbatim from the
-   * agent manifest's `agent.vendor_attribution` block. Triggers the
-   * "What's included" warning rows and the sidebar's Vendor Binaries
-   * branch. */
-  vendor_attribution?: ReadonlyArray<{
-    name: string;
-    license: string;
-    source_url: string;
-    upstream_version?: string;
-    notice?: string;
-  }>;
-}
-
-const getVersionRef = makeFunctionReference<
-  "query",
-  { pluginId: string; version: string },
-  RegistryVersionLite | null
->("pluginRegistry:getVersion");
-
-/** Per-device install row shape (subset). Only needs `pluginId` so the
- * grid can mark installed plugins on their card. */
-interface InstallRowForDevice {
-  pluginId: string;
-}
-
-const listForDeviceRef = makeFunctionReference<
-  "query",
-  { deviceId: string },
-  InstallRowForDevice[]
->("cmdPlugins:listForDevice");
 
 type CardState = "loading" | { error: string } | undefined;
 
@@ -161,7 +111,7 @@ export function RegistryPluginGrid({
   // (correct for LAN-only mode), and the local-first install store is
   // merged in so a plugin installed with no cloud session still shows
   // the Installed pill.
-  const installs = useConvexSkipQuery(listForDeviceRef, {
+  const installs = useConvexSkipQuery(api.cmdPlugins.listForDevice, {
     args: { deviceId: deviceId ?? "" },
     enabled: !isDemoMode() && deviceId !== null,
   });
@@ -190,11 +140,11 @@ export function RegistryPluginGrid({
   // wait for the result without an action hop. Convex deduplicates
   // overlapping subscriptions across cards that share an id.
   const versionRow = useQuery(
-    getVersionRef,
+    api.pluginRegistry.getVersion,
     pendingFetch && convexAvailable
       ? { pluginId: pendingFetch.pluginId, version: pendingFetch.version }
       : "skip",
-  ) as RegistryVersionLite | null | undefined;
+  );
 
   const installTarget = target;
 

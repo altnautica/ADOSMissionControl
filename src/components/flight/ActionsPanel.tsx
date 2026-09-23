@@ -19,7 +19,6 @@ import { useFollowMeStore } from "@/stores/follow-me-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useFlightInputSurface } from "@/hooks/use-skill-input";
 import { useSkillInputStore } from "@/stores/skill-input-store";
-import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 import { useToast } from "@/components/ui/toast";
 import { useShallow } from "zustand/react/shallow";
 import { buildSkillContext, activate } from "@/lib/skills";
@@ -31,9 +30,6 @@ import { cn } from "@/lib/utils";
 export function ActionsPanel() {
   const t = useTranslations("flight");
   const tReason = useTranslations("skills.reason");
-  // Every button here dispatches a skill; without the bridge a refusal
-  // (pre-arm failure, no link, already armed) would be silent.
-  useSkillToastBridge();
   const { toast } = useToast();
   const armState = useDroneStore((s) => s.armState);
   const flightMode = useDroneStore((s) => s.flightMode);

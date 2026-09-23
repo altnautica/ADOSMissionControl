@@ -24,10 +24,7 @@ import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { batteryBand, type BatteryThresholds } from "@/lib/battery-bands";
 import type { StatusLevel } from "@/components/ui/status-dot";
-import {
-  fcReading,
-  type ReadingFreshness,
-} from "@/components/command/nodes-view/cell-primitives";
+import { fcReading, type ReadingFreshness } from "@/lib/nodes/fc-reading";
 import {
   SWARM_BEACON_STALE_MS,
   type SwarmBeaconRow,

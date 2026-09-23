@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
-import { useSensorHealthStore } from "@/stores/sensor-health-store";
+import { useSensorHealth } from "@/hooks/use-sensor-health";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { SensorHealthGrid } from "@/components/indicators/SensorHealthGrid";
 import { EkfStatusBars } from "@/components/indicators/EkfStatusBars";
@@ -38,8 +38,7 @@ import { cn } from "@/lib/utils";
 
 export function PreArmPanel() {
   const t = useTranslations("navigation.panel");
-  const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
-  const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
+  const { healthyCount, presentCount: totalPresent } = useSensorHealth();
   const protocol = useDroneManager.getState().getSelectedProtocol();
   const firmwareType = protocol?.getVehicleInfo()?.firmwareType;
 

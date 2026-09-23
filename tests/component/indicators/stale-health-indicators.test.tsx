@@ -15,7 +15,6 @@ import { GpsSkyView } from "@/components/indicators/GpsSkyView";
 import { SensorHealthGrid } from "@/components/indicators/SensorHealthGrid";
 import { VibrationGauges } from "@/components/indicators/VibrationGauges";
 import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
-import { useSensorHealthStore } from "@/stores/sensor-health-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
 const OLD = () => Date.now() - TELEMETRY_STALE_MS - 1_000;
@@ -78,14 +77,18 @@ describe("stale health indicators", () => {
   });
 
   it("Sensors: stale SYS_STATUS verdicts are not shown as green chips", () => {
-    const sensors = useSensorHealthStore.getState().sensors.map((s) => ({
-      ...s,
-      present: true,
-      enabled: true,
-      healthy: true,
-      status: "healthy" as const,
-    }));
-    useSensorHealthStore.setState({ sensors, lastUpdate: OLD() });
+    act(() => {
+      useTelemetryStore.getState().pushSysStatus({
+        timestamp: OLD(),
+        cpuLoad: 100,
+        sensorsPresent: 0b111,
+        sensorsEnabled: 0b111,
+        sensorsHealthy: 0b111,
+        batteryRemaining: -1,
+        dropRateComm: 0,
+        errorsComm: 0,
+      });
+    });
     const { container } = renderWithIntl(<SensorHealthGrid />);
     expect(container.querySelector(".text-status-success")).toBeNull();
     expect(screen.getByText(/Sensors · No Data/)).toBeTruthy();

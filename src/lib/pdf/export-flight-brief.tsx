@@ -15,6 +15,7 @@
 import { computeFlightPlan } from "@/lib/simulation-utils";
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import type { BriefWaypointRow, BriefStats } from "./flight-brief-document";
+import { downloadBlob } from "@/lib/download";
 
 /** Default cruise speed (m/s) — mirrors the planner store default. */
 export const DEFAULT_CRUISE_SPEED_MPS = 5;
@@ -94,19 +95,6 @@ export function buildBriefRows(
   }));
 }
 
-/** Trigger a browser download of a generated Blob, then revoke the URL. */
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 /**
  * Render the current mission plan to a PDF flight brief and download it. Safe to
  * call with an empty plan (produces an honest brief with zeroed stats), though
@@ -139,5 +127,5 @@ export async function exportFlightBrief(input: FlightBriefInput): Promise<void> 
     />,
   ).toBlob();
 
-  triggerDownload(blob, `${slugifyMissionName(name)}.pdf`);
+  downloadBlob(blob, `${slugifyMissionName(name)}.pdf`);
 }

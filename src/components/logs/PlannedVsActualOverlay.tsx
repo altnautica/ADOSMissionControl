@@ -13,44 +13,7 @@ import { useMemo } from "react";
 import { Polyline, CircleMarker, Tooltip } from "react-leaflet";
 import { useMissionStore } from "@/stores/mission-store";
 import { useTrailStore } from "@/stores/trail-store";
-
-/** Approximate distance in meters between two lat/lon points. */
-function distanceMeters(
-  lat1: number, lon1: number,
-  lat2: number, lon2: number,
-): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-/**
- * Minimum distance from a point to a line segment (all in lat/lon).
- * Projects the point onto the segment and returns the distance in meters.
- */
-function pointToSegmentDistance(
-  pLat: number, pLon: number,
-  aLat: number, aLon: number,
-  bLat: number, bLon: number,
-): number {
-  const dx = bLon - aLon;
-  const dy = bLat - aLat;
-  const lenSq = dx * dx + dy * dy;
-
-  if (lenSq === 0) return distanceMeters(pLat, pLon, aLat, aLon);
-
-  let t = ((pLon - aLon) * dx + (pLat - aLat) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-
-  const projLat = aLat + t * dy;
-  const projLon = aLon + t * dx;
-  return distanceMeters(pLat, pLon, projLat, projLon);
-}
+import { pointToSegmentM } from "@/lib/geo/distance";
 
 /** Minimum distance from a point to any segment of the planned path. */
 function minDistToPath(
@@ -59,11 +22,7 @@ function minDistToPath(
 ): number {
   let min = Infinity;
   for (let i = 0; i < path.length - 1; i++) {
-    const d = pointToSegmentDistance(
-      lat, lon,
-      path[i][0], path[i][1],
-      path[i + 1][0], path[i + 1][1],
-    );
+    const d = pointToSegmentM([lat, lon], path[i], path[i + 1]);
     if (d < min) min = d;
   }
   return min;

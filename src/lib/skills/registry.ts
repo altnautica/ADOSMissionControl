@@ -22,6 +22,7 @@ import type {
 } from "./types";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
 import { autonomousNavFromCapabilities } from "./autonomous-nav";
+import { liveAvailableModes } from "@/lib/flight-mode";
 import { getCooldownState, getChargeCount } from "./cooldown";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -67,8 +68,7 @@ export function buildSkillContextFor(droneId: string): SkillContext {
   const live = protocol && protocol.isConnected ? protocol : null;
 
   const droneState = useDroneStore.getState();
-  const handler = live?.getFirmwareHandler() ?? null;
-  const availableModes = handler?.getAvailableModes() ?? [];
+  const availableModes = liveAvailableModes(live) ?? [];
 
   const supports = (cap: keyof ProtocolCapabilities): boolean => {
     if (!live) return false;

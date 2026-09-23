@@ -7,6 +7,7 @@ import type { DroneProtocol } from "@/lib/protocol/types";
 import { Terminal, Send, Trash2, Copy, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { downloadBlob } from "@/lib/download";
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -130,12 +131,7 @@ export function MavlinkShellPanel() {
 
   function downloadOutput() {
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `nsh-output-${new Date().toISOString().slice(0, 19)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `nsh-output-${new Date().toISOString().slice(0, 19)}.txt`);
   }
 
   return (

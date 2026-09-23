@@ -88,7 +88,7 @@ function endReason(s: FollowSession, now: number): string | null {
 
   const fc = useNodeRegistryStore.getState().getEntry(s.droneId)?.fc;
   if (fc?.armState === "disarmed") return "the drone disarmed";
-  if (!fc?.position || !isFresh(fc.position.timestamp, now)) {
+  if (!fc?.position || !isFresh(fc.position.timestamp, now) || fc.position.relativeAlt === undefined) {
     return "the drone's altitude report is not current";
   }
 
@@ -151,11 +151,12 @@ function tick(s: FollowSession): void {
   }
   if (s.inFlight) return;
 
-  // endReason proved the position is present and fresh.
+  // endReason proved the position is present, fresh and carries a height above home.
   const position = useNodeRegistryStore.getState().getEntry(s.droneId)!.fc.position!;
+  const relativeAlt = position.relativeAlt!;
   // Altitude FLOOR, not a fixed altitude: hold the followed drone's own
   // current height above home, never below the minimum.
-  const targetAlt = Math.max(position.relativeAlt, Math.max(s.minAltitude, 2));
+  const targetAlt = Math.max(relativeAlt, Math.max(s.minAltitude, 2));
 
   const fix = useGcsLocationStore.getState().position;
   if (!fix || fix.timestamp < s.startedAt) return; // waiting for a current fix

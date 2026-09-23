@@ -15,7 +15,7 @@
  * side effects beyond defining the per-drone state map.
  *
  * This file owns the state-machine core. Helpers live in the
- * flight-lifecycle/ folder: `geo` (haversine, id), `stats` (flight-stat
+ * flight-lifecycle/ folder: `geo` (id), `stats` (flight-stat
  * derivation), `snapshots` (preflight + geofence capture).
  *
  * @module flight-lifecycle
@@ -46,7 +46,8 @@ import { estimateWind } from "./flight-analysis/wind-estimator";
 import { useMissionStore } from "@/stores/mission-store";
 import { computeSunMoon } from "./environment/sun-moon";
 import { getWeatherSnapshot } from "./environment/weather-provider";
-import { reverseGeocode, haversineKmLocal } from "./geocoding/reverse";
+import { reverseGeocode } from "./geocoding/reverse";
+import { haversineDistance } from "@/lib/geo/distance";
 import type { FlightRecord, LoadoutSnapshot, SysStatusData } from "./types";
 import { cryptoRandomId } from "./flight-lifecycle/geo";
 import { computeFlightStats } from "./flight-lifecycle/stats";
@@ -428,7 +429,7 @@ async function handleDisarm(droneId: string): Promise<void> {
     stats.landingLat !== undefined &&
     stats.landingLon !== undefined &&
     draftRow &&
-    haversineKmLocal(draftRow.takeoffLat, draftRow.takeoffLon, stats.landingLat, stats.landingLon) > 5
+    haversineDistance(draftRow.takeoffLat, draftRow.takeoffLon, stats.landingLat, stats.landingLon) > 5000
   ) {
     const draftId = draftRow.id;
     const latL = stats.landingLat;

@@ -27,7 +27,7 @@ vi.mock("idb-keyval", () => {
   };
 });
 vi.mock("@/lib/environment/weather-provider", () => ({ getWeatherSnapshot: async () => null }));
-vi.mock("@/lib/geocoding/reverse", () => ({ reverseGeocode: async () => null, haversineKmLocal: () => 0 }));
+vi.mock("@/lib/geocoding/reverse", () => ({ reverseGeocode: async () => null }));
 
 import { clearLifecycleState, notifyArmed } from "@/lib/flight-lifecycle";
 import {

@@ -2,15 +2,16 @@
 
 import { useTranslations } from "next-intl";
 import { useFleetStore } from "@/stores/fleet-store";
+import { selectFleetSummary } from "@/stores/node-registry/fleet-summary";
+import { useBatteryThresholds } from "@/lib/battery-bands";
 import { Card } from "@/components/ui/card";
 
 export function ActiveMissionsCard() {
   const t = useTranslations("dashboard");
   const drones = useFleetStore((s) => s.drones);
-  const inFlight = drones.filter((d) => d.status === "in_mission");
   // An FC that stopped talking is not known to be in a mission, but it is not
-  // known to be down either: list it as link lost rather than dropping it.
-  const linkLost = drones.filter((d) => d.fcLinkLost === true);
+  // known to be down either: it is listed as link lost rather than dropped.
+  const { inFlight, linkLost } = selectFleetSummary(drones, useBatteryThresholds());
 
   return (
     <Card title={t("activeMissions.title")}>

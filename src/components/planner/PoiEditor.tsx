@@ -14,8 +14,8 @@ import { useTranslations } from "next-intl";
 import { MapPinned, Trash2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { NumericField } from "@/components/ui/numeric-field";
+import { useSyncedDraft } from "@/hooks/use-synced-draft";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { recordHistory } from "@/lib/planner-history";
 import { usePlanPoiStore, type PointOfInterest } from "@/stores/plan-poi-store";
 import { usePlannerStore } from "@/stores/planner-store";
 
@@ -35,18 +35,8 @@ export function PoiEditor() {
   const clearPoints = usePlanPoiStore((s) => s.clearPoints);
   const [confirmClear, setConfirmClear] = useState(false);
 
-  // Every panel edit is one undo step, recorded before the change lands.
-  const handleUpdate = useCallback((id: string, update: Partial<PointOfInterest>) => {
-    recordHistory();
-    updatePoint(id, update);
-  }, [updatePoint]);
-  const handleRemove = useCallback((id: string) => {
-    recordHistory();
-    removePoint(id);
-  }, [removePoint]);
   const handleClear = useCallback(() => {
     setConfirmClear(false);
-    recordHistory();
     clearPoints();
   }, [clearPoints]);
 
@@ -88,8 +78,8 @@ export function PoiEditor() {
               index={idx}
               selected={point.id === selectedId}
               onSelect={select}
-              onUpdate={handleUpdate}
-              onRemove={handleRemove}
+              onUpdate={updatePoint}
+              onRemove={removePoint}
             />
           ))}
         </div>
@@ -125,8 +115,9 @@ interface PoiRowProps {
 
 function PoiRow({ point, index, selected, onSelect, onUpdate, onRemove }: PoiRowProps) {
   const t = useTranslations("poi");
-  const [localLabel, setLocalLabel] = useState(point.label ?? "");
-  const [localNote, setLocalNote] = useState(point.note ?? "");
+  // Drafts follow the point, so an undo or redo never gets reverted by a blur.
+  const [localLabel, setLocalLabel] = useSyncedDraft(point.label ?? "");
+  const [localNote, setLocalNote] = useSyncedDraft(point.note ?? "");
 
   // A blur that changed nothing writes nothing (and records no undo step).
   const commitLabel = useCallback(() => {

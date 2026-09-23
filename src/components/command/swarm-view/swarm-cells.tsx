@@ -31,10 +31,9 @@ import {
   Chip,
   NEUTRAL_CHIP,
   UnknownValue,
-  fcReading,
   staleClass,
-  type ReadingFreshness,
 } from "@/components/command/nodes-view/cell-primitives";
+import { fcReading, type ReadingFreshness } from "@/lib/nodes/fc-reading";
 import type { SwarmModePrecedence } from "@/stores/swarm-beacon-store";
 import { SWARM_WEAK_RSSI_DBM, type SwarmSlotRow } from "./swarm-rows";
 

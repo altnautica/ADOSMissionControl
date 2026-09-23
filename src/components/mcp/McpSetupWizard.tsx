@@ -39,6 +39,7 @@ import {
   DEFAULT_FLEET_PATH,
   LOCAL_FLEET_FILENAME,
 } from "./mcp-shared";
+import { downloadBlob } from "@/lib/download";
 
 const STEP_COUNT = 5;
 type NodeVerify = "checking" | "reachable" | "unreachable";
@@ -150,14 +151,7 @@ export function McpSetupWizard() {
     const blob = new Blob([fleetFileContents(selected.map(toFleetNode))], {
       type: "application/json",
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = LOCAL_FLEET_FILENAME;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, LOCAL_FLEET_FILENAME);
   }
 
   const one = selected[0];

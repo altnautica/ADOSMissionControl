@@ -3,6 +3,20 @@
 import { cn } from "@/lib/utils";
 import { CheckCircle, XCircle } from "lucide-react";
 import type { CompassProgressEntry, CompassResultEntry } from "./CalibrationWizard";
+import type { CalibrationState } from "./calibration-types";
+
+/** One progress row per compass the calibration has reported on. */
+export function compassProgressEntries(
+  compass: Pick<CalibrationState, "compassProgress" | "compassStatus" | "compassCompletionMask" | "compassDirection">,
+): CompassProgressEntry[] {
+  return Array.from(compass.compassProgress.entries()).map(([id, pct]) => ({
+    compassId: id,
+    completionPct: pct,
+    calStatus: compass.compassStatus.get(id) ?? 0,
+    completionMask: compass.compassCompletionMask.get(id) ?? [],
+    direction: compass.compassDirection.get(id),
+  }));
+}
 
 // ── Fitness helpers (aligned with QGC) ──────────────────
 
@@ -140,7 +154,7 @@ export function CompassProgressDisplay({ entries }: { entries: CompassProgressEn
   return (
     <div className="mb-3 space-y-3">
       {entries.map(({ compassId, completionPct, calStatus: cs, completionMask, direction }) => {
-        const hint = getRotationHint(direction);
+        const hint = direction ? getRotationHint(direction) : null;
         const sectors = countSectors(completionMask);
         return (
           <div key={compassId}>
@@ -162,16 +176,20 @@ export function CompassProgressDisplay({ entries }: { entries: CompassProgressEn
               <p className="text-[9px] font-mono text-text-tertiary uppercase tracking-wide mb-1">Angular rate (rad/s)</p>
               <div className="space-y-0.5">
                 {(["x", "y", "z"] as const).map((axis) => {
-                  const val = direction[axis];
-                  const pct = Math.min(100, (Math.abs(val) / 3.0) * 100);
+                  const val = direction?.[axis];
+                  const pct = val === undefined ? 0 : Math.min(100, (Math.abs(val) / 3.0) * 100);
                   const axisLabel = axis === "x" ? "Roll" : axis === "y" ? "Pitch" : "Yaw";
                   return (
                     <div key={axis} className="flex items-center gap-1.5">
                       <span className="text-[9px] font-mono text-text-tertiary w-7">{axisLabel}</span>
                       <div className="h-1 bg-bg-tertiary flex-1 relative">
-                        <div className={cn("h-full transition-all duration-150", val > 0 ? "bg-accent-primary" : "bg-status-warning")} style={{ width: `${pct}%` }} />
+                        {val !== undefined && (
+                          <div className={cn("h-full transition-all duration-150", val > 0 ? "bg-accent-primary" : "bg-status-warning")} style={{ width: `${pct}%` }} />
+                        )}
                       </div>
-                      <span className="text-[9px] font-mono text-text-tertiary w-10 text-right">{val.toFixed(2)}</span>
+                      <span className="text-[9px] font-mono text-text-tertiary w-10 text-right" data-testid={`compass-${compassId}-rate-${axis}`}>
+                        {val === undefined ? "\u2014" : val.toFixed(2)}
+                      </span>
                     </div>
                   );
                 })}

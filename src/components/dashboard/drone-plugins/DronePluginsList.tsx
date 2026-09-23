@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { makeFunctionReference } from "convex/server";
+import { api } from "../../../../convex/_generated/api";
 
 import { isDemoMode } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
@@ -53,29 +53,6 @@ interface DronePluginsListProps {
   /** Render fallback when the list is empty. */
   emptyState?: React.ReactNode;
 }
-
-/**
- * Convex install row shape returned by `cmdPlugins:listForDevice`.
- * Mirrors the schema in `convex/schema.ts` plus the cloud-relay
- * identifier the card needs to enqueue commands.
- */
-interface InstallRowForDevice {
-  _id: string;
-  pluginId: string;
-  name: string;
-  version: string;
-  source: PluginSource;
-  signerId?: string;
-  status: PluginInstallStatus;
-  halves: Array<"agent" | "gcs">;
-  deviceId: string;
-}
-
-const listForDeviceRef = makeFunctionReference<
-  "query",
-  { deviceId: string },
-  InstallRowForDevice[]
->("cmdPlugins:listForDevice");
 
 /** Hard ceiling on inventory entries that survive the heartbeat
  *  poisoning filter. A real drone has dozens at most; anything
@@ -157,7 +134,7 @@ export function DronePluginsList({
   // Cloud-relay sessions with a real auth identity still get their
   // proper install list.
   const { data: installs, state: installsState } = useConvexSkipQueryState(
-    listForDeviceRef,
+    api.cmdPlugins.listForDevice,
     {
       args: { deviceId: agentId },
       enabled: Boolean(agentId) && !isDemoMode(),
@@ -196,7 +173,8 @@ export function DronePluginsList({
       status: row.status,
       halves: row.halves,
       installId: String(row._id),
-      deviceId: row.deviceId,
+      // The query selects this drone's rows, so the card's device is the list's.
+      deviceId: agentId,
     }));
     // Merge agent-reported inventory entries that the Convex query
     // did not return. These are typically webapp installs done on

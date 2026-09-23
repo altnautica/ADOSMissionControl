@@ -20,7 +20,6 @@ import { useTranslations } from "next-intl";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useSensorHealthStore } from "@/stores/sensor-health-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useClockTick } from "@/lib/agent/freshness";
@@ -54,11 +53,7 @@ export function ChecklistAutoRunner(): null {
   const batteryBuf = useTelemetryStore((s) => s.battery);
   const gpsBuf = useTelemetryStore((s) => s.gps);
   const ekfBuf = useTelemetryStore((s) => s.ekf);
-  const sensorsUpdated = useSensorHealthStore((s) => s.lastUpdate);
-  const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
-  const presentCount = useSensorHealthStore((s) => s.getTotalPresentCount());
-  const prearmPresent = useSensorHealthStore((s) => s.getSensorByName("pre_arm_check")?.present ?? false);
-  const prearmHealthy = useSensorHealthStore((s) => s.getSensorByName("pre_arm_check")?.healthy ?? false);
+  const sysStatusBuf = useTelemetryStore((s) => s.sysStatus);
   // Only what the selected drone acknowledged counts: a planned mission or a
   // drawn fence that was never uploaded (or was edited since) is not on it.
   const missionStatus = useMissionUploadStatus();
@@ -83,12 +78,7 @@ export function ChecklistAutoRunner(): null {
           knownCellCount,
           gps: gpsBuf.latest(),
           ekf: ekfBuf.latest(),
-          sensors: {
-            lastUpdate: sensorsUpdated,
-            healthyCount,
-            presentCount,
-            prearm: { present: prearmPresent, healthy: prearmHealthy },
-          },
+          sysStatus: sysStatusBuf.latest(),
           missionOnVehicle,
           fenceOnVehicle,
           formatGpsFix: (fixType) => tFix(GPS_FIX_KEYS[fixType] ?? "fix3d"),
@@ -98,8 +88,7 @@ export function ChecklistAutoRunner(): null {
     );
   }, [
     droneId, sessionDroneId, sessionId, applyAutoVerdicts, version, tick, battery, knownCellCount,
-    gpsBuf, ekfBuf, sensorsUpdated, healthyCount, presentCount, prearmPresent,
-    prearmHealthy, missionOnVehicle, fenceOnVehicle, tFix,
+    gpsBuf, ekfBuf, sysStatusBuf, missionOnVehicle, fenceOnVehicle, tFix,
   ]);
 
   return null;

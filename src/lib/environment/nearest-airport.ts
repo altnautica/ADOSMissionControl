@@ -12,6 +12,8 @@
  * @license GPL-3.0-only
  */
 
+import { haversineDistance } from "@/lib/geo/distance";
+
 export interface AirportSummary {
   icao: string;
   name: string;
@@ -31,21 +33,6 @@ interface RawAirport {
   type: string;
   country_code: string;
   municipality: string;
-}
-
-const EARTH_RADIUS_KM = 6371;
-
-function toRad(deg: number): number {
-  return (deg * Math.PI) / 180;
-}
-
-export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
 /** 4-letter ICAO pattern excluding numeric/hyphenated placeholder codes. */
@@ -110,7 +97,7 @@ export async function findNearestMetarStation(
   let best: AirportSummary | null = null;
   let bestDist = Infinity;
   for (const a of candidates) {
-    const d = haversineKm(lat, lon, a.lat, a.lon);
+    const d = haversineDistance(lat, lon, a.lat, a.lon) / 1000;
     if (d < bestDist) {
       bestDist = d;
       best = a;

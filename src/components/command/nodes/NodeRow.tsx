@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import {
   type EffProfile,
+  groundRoleKey,
   NODE_ACCENT_VAR,
   swatchVar,
   tintStyle,
@@ -119,12 +120,11 @@ export function nodeSubtitle(
 ): string {
   if (droneLiveness(node) === "offline") return labels.offline;
   const parts: string[] = [];
-  if (
-    effProfile === "ground-station" &&
-    node.role &&
-    node.role !== "direct"
-  ) {
-    parts.push(node.role === "relay" ? labels.relay : labels.receiver);
+  // A relay or receiver names its role; a direct or unreported role leads with
+  // the node type instead.
+  const role = groundRoleKey(node.role);
+  if (effProfile === "ground-station" && (role === "relay" || role === "receiver")) {
+    parts.push(labels[role]);
   } else {
     parts.push(typeLabel);
   }

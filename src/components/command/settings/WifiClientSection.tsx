@@ -41,19 +41,10 @@ import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { Section } from "./Section";
+import { ReadRow, Section } from "./Section";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 const STATUS_POLL_MS = 10000;
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="text-[11px] text-text-tertiary">{label}</span>
-      <span className="shrink-0 font-mono text-xs text-text-primary">{value}</span>
-    </div>
-  );
-}
 
 export function WifiClientSection({
   nodeDeviceId,
@@ -317,11 +308,11 @@ export function WifiClientSection({
                   </Button>
                 </div>
                 {status.signal !== null ? (
-                  <Row label={t("wifi.signalLabel")} value={`${status.signal}%`} />
+                  <ReadRow label={t("wifi.signalLabel")} value={`${status.signal}%`} />
                 ) : null}
-                {status.ip ? <Row label={t("wifi.ipLabel")} value={status.ip} /> : null}
+                {status.ip ? <ReadRow label={t("wifi.ipLabel")} value={status.ip} /> : null}
                 {status.security ? (
-                  <Row label={t("wifi.securityLabel")} value={status.security} />
+                  <ReadRow label={t("wifi.securityLabel")} value={status.security} />
                 ) : null}
               </div>
             ) : (

@@ -5,7 +5,7 @@ import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { mpsToKph, normalizeHeading } from "@/lib/telemetry-utils";
-import { knownRemainingPct } from "@/lib/battery-bands";
+import { knownRemainingPct } from "@/lib/battery";
 import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-constants";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";

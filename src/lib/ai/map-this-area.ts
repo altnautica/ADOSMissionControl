@@ -14,9 +14,13 @@
  * @license GPL-3.0-only
  */
 
-import { computeGSD, type CameraProfile } from "@/lib/patterns/gsd-calculator";
+import {
+  computeLineSpacing,
+  computeTriggerDistance,
+  type CameraProfile,
+} from "@/lib/patterns/gsd-calculator";
 import type { SurveyConfig } from "@/lib/patterns/types";
-import { haversineDistance } from "@/lib/telemetry-utils";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** Axis-aligned geographic bounding box, degrees. */
 export interface MapBounds {
@@ -137,28 +141,15 @@ export function quickSurveyFromBounds(
   const gridAngle = widthM >= heightM ? 0 : 90;
 
   // Line spacing from the camera footprint when available, else altitude-based.
-  const footprintWidthM = options.camera
-    ? computeGSD(
-        altitude,
-        options.camera.focalLength,
-        options.camera.sensorWidth,
-        options.camera.imageWidth,
-      ) * options.camera.imageWidth
-    : altitude * ASSUMED_FOOTPRINT_TO_ALT_RATIO;
-  const lineSpacing = Math.max(footprintWidthM * (1 - overlap), MIN_LINE_SPACING_M);
+  const cameraLineSpacing = options.camera
+    ? computeLineSpacing(altitude, options.camera, overlap)
+    : altitude * ASSUMED_FOOTPRINT_TO_ALT_RATIO * (1 - overlap);
+  const lineSpacing = Math.max(cameraLineSpacing, MIN_LINE_SPACING_M);
 
   // Camera trigger distance uses the along-track footprint at the same overlap.
-  let cameraTriggerDistance = 0;
-  if (options.camera) {
-    const footprintHeightM =
-      computeGSD(
-        altitude,
-        options.camera.focalLength,
-        options.camera.sensorHeight,
-        options.camera.imageHeight,
-      ) * options.camera.imageHeight;
-    cameraTriggerDistance = Math.max(footprintHeightM * (1 - overlap), 0);
-  }
+  const cameraTriggerDistance = options.camera
+    ? Math.max(computeTriggerDistance(altitude, options.camera, overlap), 0)
+    : 0;
 
   const config: SurveyConfig = {
     polygon,

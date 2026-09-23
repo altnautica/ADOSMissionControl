@@ -11,10 +11,10 @@
  */
 
 import { offsetPoint, bearing } from "@/lib/drawing/geo-utils";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { isActionCommand } from "@/lib/mission/command-classes";
 import type { WaypointCommand } from "@/lib/types";
 import { computeFootprint, type CameraProfile } from "@/lib/patterns/gsd-calculator";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /** A route row as the pattern generators emit it: a nav point or an attached action. */
 export interface CaptureRouteRow {

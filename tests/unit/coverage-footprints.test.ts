@@ -9,8 +9,8 @@ import { describe, it, expect } from "vitest";
 import {
   buildFootprintPolygon, buildFootprintPolygons, sampleCapturePoints, type CaptureRouteRow,
 } from "@/lib/patterns/coverage-footprints";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import type { CameraProfile } from "@/lib/patterns/gsd-calculator";
+import { haversineDistance } from "@/lib/geo/distance";
 
 const CAMERA: CameraProfile = {
   name: "Test",

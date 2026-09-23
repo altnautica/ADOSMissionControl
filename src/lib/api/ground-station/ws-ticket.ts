@@ -17,7 +17,7 @@ import { timedFetch } from "@/lib/agent/agent-client/timeout";
 export const WS_TICKET_PROTOCOL = "ados-ws-ticket";
 
 /** Scope strings the agent accepts at the ticket-mint endpoint. Keep
- *  in sync with ``ALLOWED_SCOPES`` in the agent's ws-ticket route. */
+ *  in sync with ``TICKET_SCOPES`` in the agent's ws-ticket route. */
 export type WsAuthScope =
   | "setup.cloudflare_logs"
   | "gs.pic_events"
@@ -25,7 +25,14 @@ export type WsAuthScope =
   | "gs.uplink_events"
   | "gs.mesh_events"
   | "vision.detections"
-  | "plugins.install_job";
+  | `plugins.install_job:${string}`;
+
+/** The ticket scope for one plugin install job's progress stream. The
+ *  agent binds the ticket to the job, so it opens that job's stream and
+ *  no other. */
+export function installJobTicketScope(jobId: string): WsAuthScope {
+  return `plugins.install_job:${jobId}`;
+}
 
 interface TicketMintResponse {
   ok: boolean;

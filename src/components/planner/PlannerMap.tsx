@@ -13,7 +13,7 @@ import dynamic from "next/dynamic";
 import type { Waypoint, PlannerTool } from "@/lib/types";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
-import { haversineDistance, bearing } from "@/lib/telemetry-utils";
+import { bearing } from "@/lib/telemetry-utils";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { useDefaultCenter } from "@/hooks/use-default-center";
 import { DrawingManager, registerActiveDrawApi } from "@/lib/drawing/drawing-manager";
@@ -30,11 +30,12 @@ import {
 } from "./planner-map-helpers";
 import { PlannerGpsBadge, PlannerGuidanceVectors } from "./PlannerLiveVehicle";
 import { generateSplinePath } from "@/lib/spline-interpolation";
-import { recordHistory } from "@/lib/planner-history";
+import { withPlannerHistory } from "@/lib/planner-history";
 import { JumpArrowOverlay } from "./JumpArrowOverlay";
 import { FleetPluginSlot } from "@/components/plugins/FleetPluginSlot";
 import { useMapEvents } from "react-leaflet";
 import { CURSOR_MOVE_EVENT } from "@/lib/planner/cursor-coord";
+import { haversineDistance } from "@/lib/geo/distance";
 
 /**
  * In-map tracker that reports the cursor's map coordinate to the bottom-right
@@ -164,18 +165,21 @@ export function PlannerMap({
     if (!manager) return;
     manager.setCallbacks({
       onPolygonComplete: (vertices) => {
-        // Record the pre-draw combined planner state first, so a single undo
-        // reverts the whole draw together with whatever it became (a geofence,
-        // a pattern boundary, or a free annotation) in one step.
-        recordHistory();
-        const id = randomId(); const area = polygonArea(vertices);
-        const shape: DrawnPolygon = { id, vertices, area };
-        addPolygon(shape); onDrawingComplete?.(shape); setDrawingMode(null); setActiveTool("select"); setActiveDrawingVertices([]);
+        // One undo step reverts the whole draw together with whatever it
+        // became (a geofence, a pattern boundary, or a free annotation).
+        withPlannerHistory(() => {
+          const id = randomId(); const area = polygonArea(vertices);
+          const shape: DrawnPolygon = { id, vertices, area };
+          addPolygon(shape); onDrawingComplete?.(shape);
+        });
+        setDrawingMode(null); setActiveTool("select"); setActiveDrawingVertices([]);
       },
       onCircleComplete: (center, radius) => {
-        recordHistory();
-        const id = randomId(); const shape: DrawnCircle = { id, center, radius };
-        addCircle(shape); onDrawingComplete?.(shape); setDrawingMode(null); setActiveTool("select"); setActiveDrawingVertices([]);
+        withPlannerHistory(() => {
+          const id = randomId(); const shape: DrawnCircle = { id, center, radius };
+          addCircle(shape); onDrawingComplete?.(shape);
+        });
+        setDrawingMode(null); setActiveTool("select"); setActiveDrawingVertices([]);
       },
       onMeasureUpdate: (points, segmentDistances, totalDistance) => { setMeasureLine({ points, segmentDistances, totalDistance }); },
       onVerticesUpdate: (vertices) => { setActiveDrawingVertices(vertices); },
@@ -313,7 +317,6 @@ export function PlannerMap({
           eventHandlers={{
             dragend: (e) => {
               const ll = e.target.getLatLng();
-              recordHistory();
               useRallyStore.getState().updatePoint(rp.id, { lat: ll.lat, lon: ll.lng });
             },
           }} />

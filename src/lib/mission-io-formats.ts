@@ -38,6 +38,7 @@ import {
   frameToMav,
   mavToFrame,
 } from "@/lib/mission/altitude-frame";
+import { downloadBlob } from "@/lib/download";
 
 /**
  * The altitude-frame ⇄ MAV_FRAME mapping lives in `mission/altitude-frame`
@@ -170,12 +171,7 @@ export function exportWaypointsFormat(
   }
 
   const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${name || "mission"}.waypoints`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `${name || "mission"}.waypoints`);
 }
 
 // ── .waypoints Import ────────────────────────────────────────
@@ -296,12 +292,7 @@ export function exportQGCPlan(
   };
 
   const blob = new Blob([JSON.stringify(plan, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${name || "mission"}.plan`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `${name || "mission"}.plan`);
 }
 
 // ── .plan Import ─────────────────────────────────────────────

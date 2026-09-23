@@ -24,7 +24,8 @@ import {
 } from "@/lib/telemetry-export";
 import { downloadGpx } from "@/lib/formats/gpx-exporter";
 import { exportFlightsAsIcs } from "@/lib/export/ics";
-import { exportFlights, downloadBlob } from "@/lib/compliance/exporter";
+import { exportFlights } from "@/lib/compliance/exporter";
+import { downloadBlob } from "@/lib/download";
 import { validateForJurisdiction, type ValidationIssue } from "@/lib/compliance/validator";
 import { listJurisdictions, JURISDICTIONS, resolveJurisdiction, type JurisdictionCode } from "@/lib/compliance/jurisdictions";
 import { useOperatorProfileStore } from "@/stores/operator-profile-store";
@@ -122,14 +123,7 @@ export function ExportTab({ record, matchedRecording }: ExportTabProps) {
 
   const handleJson = () => {
     const blob = new Blob([JSON.stringify(record, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${fileBase}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `${fileBase}.json`);
   };
 
   return (

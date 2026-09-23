@@ -13,6 +13,8 @@
  * @license GPL-3.0-only
  */
 
+import { EARTH_RADIUS_M } from "@/lib/geo/distance";
+
 export interface NoFlyZone {
   name: string;
   type: "airport" | "military" | "restricted";
@@ -27,12 +29,11 @@ export interface NoFlyZone {
  * with given radius in meters.
  */
 function circlePolygon(lat: number, lon: number, radiusM: number, points = 32): [number, number][] {
-  const R = 6371000;
   const result: [number, number][] = [];
   for (let i = 0; i < points; i++) {
     const angle = (2 * Math.PI * i) / points;
-    const dLat = (radiusM * Math.cos(angle)) / R;
-    const dLon = (radiusM * Math.sin(angle)) / (R * Math.cos((lat * Math.PI) / 180));
+    const dLat = (radiusM * Math.cos(angle)) / EARTH_RADIUS_M;
+    const dLon = (radiusM * Math.sin(angle)) / (EARTH_RADIUS_M * Math.cos((lat * Math.PI) / 180));
     result.push([
       lat + (dLat * 180) / Math.PI,
       lon + (dLon * 180) / Math.PI,

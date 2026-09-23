@@ -14,11 +14,11 @@ import { useGuidedStore } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
-import { haversineDistance } from "@/lib/telemetry-utils";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { FLY_HERE_ALTITUDE_M, parseFlyHereAltitude } from "@/lib/skills/builtins/fly-here";
 import { X, Navigation } from "lucide-react";
+import { haversineDistance } from "@/lib/geo/distance";
 
 const HOLD_DURATION_MS = 1500;
 const DEFAULT_ALT_M = 10;
@@ -48,7 +48,7 @@ export function GuidedConfirmDialog() {
   useEffect(() => {
     if (confirmPending) {
       const pos = freshOnly(useTelemetryStore.getState().position.latest(), Date.now());
-      const initAlt = pos ? Math.round(pos.relativeAlt) : DEFAULT_ALT_M;
+      const initAlt = pos?.relativeAlt !== undefined ? Math.round(pos.relativeAlt) : DEFAULT_ALT_M;
       setAltitudeText(
         String(Math.min(Math.max(initAlt, FLY_HERE_ALTITUDE_M.min), FLY_HERE_ALTITUDE_M.max)),
       );

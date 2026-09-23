@@ -14,6 +14,21 @@ export type EffProfile =
   | "ground-station"
   | "workstation";
 
+/** A ground station's role as every node surface labels it. */
+export type GroundRoleKey = "direct" | "relay" | "receiver" | "unknown";
+
+/**
+ * The role a ground station has actually reported. An unset or not-yet-
+ * reported role, or a value this build does not know, reads as unknown —
+ * never as "direct". Every surface that labels the role (sidebar badge, row
+ * subtitle, hover card) resolves it here so they cannot disagree.
+ */
+export function groundRoleKey(role: string | null | undefined): GroundRoleKey {
+  return role === "direct" || role === "relay" || role === "receiver"
+    ? role
+    : "unknown";
+}
+
 /** The CSS custom property holding each profile's identity accent hue. */
 export const NODE_ACCENT_VAR: Record<EffProfile, string> = {
   drone: "--node-accent-drone",

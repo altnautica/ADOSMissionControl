@@ -19,7 +19,6 @@ import { Marker, useMapEvents } from "react-leaflet";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { usePlannerStore } from "@/stores/planner-store";
-import { recordHistory } from "@/lib/planner-history";
 import { randomId } from "@/lib/utils";
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -92,7 +91,6 @@ export function PlanPoiLayer() {
   useMapEvents({
     click(e) {
       if (usePlannerStore.getState().activeTool !== "poi") return;
-      recordHistory();
       usePlanPoiStore.getState().addPoint({
         id: randomId(),
         lat: clamp(e.latlng.lat, -90, 90),
@@ -118,7 +116,6 @@ export function PlanPoiLayer() {
                 },
                 dragend: (e) => {
                   const ll = e.target.getLatLng();
-                  recordHistory();
                   usePlanPoiStore.getState().updatePoint(p.id, { lat: ll.lat, lon: ll.lng });
                 },
               }}

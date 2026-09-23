@@ -31,7 +31,7 @@ import { useGeofenceStore } from '@/stores/geofence-store';
 import { useRallyStore } from '@/stores/rally-store';
 import { useDrawingStore } from '@/stores/drawing-store';
 import { usePlannerHistoryStore } from '@/stores/planner-history-store';
-import { clearHistory, recordHistory, undoDepth, redoDepth } from '@/lib/planner-history';
+import { clearHistory, undoDepth, redoDepth, withPlannerHistory } from '@/lib/planner-history';
 import type { Waypoint } from '@/lib/types';
 import type { DrawnPolygon } from '@/lib/drawing/types';
 
@@ -103,11 +103,12 @@ describe('planner-history (coordinated undo/redo)', () => {
     useMissionStore.getState().setWaypoints(useMissionStore.getState().waypoints);
     expect(useGeofenceStore.getState().polygonPoints).toEqual([]);
 
-    // A geofence edit pairs with a history record at the call site; emulate that.
-    // (In the planner the draw handler records before the store write.)
-    recordPoint(); // records current combined state (empty fence)
-    useGeofenceStore.getState().setPolygonPoints([[1, 2], [3, 4], [5, 6]]);
-    useGeofenceStore.getState().setEnabled(true);
+    // A compound fence edit (the draw handler sets the shape and enables it)
+    // is one undo step.
+    withPlannerHistory(() => {
+      useGeofenceStore.getState().setPolygonPoints([[1, 2], [3, 4], [5, 6]]);
+      useGeofenceStore.getState().setEnabled(true);
+    });
 
     expect(useGeofenceStore.getState().polygonPoints).toHaveLength(3);
 
@@ -122,7 +123,6 @@ describe('planner-history (coordinated undo/redo)', () => {
 
   // ---- Rally round-trip ----
   it('undo/redo round-trips a rally change', () => {
-    recordPoint();
     useRallyStore.getState().addPoint({ id: 'r1', lat: 1, lon: 2, alt: 30 });
     expect(useRallyStore.getState().points).toHaveLength(1);
 
@@ -136,8 +136,8 @@ describe('planner-history (coordinated undo/redo)', () => {
 
   // ---- Drawn-shape round-trip ----
   it('undo/redo round-trips a drawn-shape change', () => {
-    recordPoint();
-    useDrawingStore.getState().addPolygon(makePolygon('p1'));
+    // Drawing-store writes are recorded by the draw handler's history scope.
+    withPlannerHistory(() => useDrawingStore.getState().addPolygon(makePolygon('p1')));
     expect(useDrawingStore.getState().polygons).toHaveLength(1);
 
     useMissionStore.getState().undo();
@@ -153,10 +153,8 @@ describe('planner-history (coordinated undo/redo)', () => {
     // Step 1: add a waypoint.
     useMissionStore.getState().addWaypoint(makeWaypoint({ id: 'wp-1' }));
     // Step 2: set a geofence.
-    recordPoint();
     useGeofenceStore.getState().setPolygonPoints([[1, 2], [3, 4], [5, 6]]);
     // Step 3: add a rally point.
-    recordPoint();
     useRallyStore.getState().addPoint({ id: 'r1', lat: 1, lon: 2, alt: 30 });
 
     // All three present.
@@ -182,7 +180,6 @@ describe('planner-history (coordinated undo/redo)', () => {
 
   it('redo replays a mixed sequence forward', () => {
     useMissionStore.getState().addWaypoint(makeWaypoint({ id: 'wp-1' }));
-    recordPoint();
     useRallyStore.getState().addPoint({ id: 'r1', lat: 1, lon: 2, alt: 30 });
 
     useMissionStore.getState().undo(); // undo rally
@@ -200,17 +197,35 @@ describe('planner-history (coordinated undo/redo)', () => {
 
   // ---- Snapshots are deep-copied (no aliasing) ----
   it('a later mutation does not corrupt a stored snapshot', () => {
-    recordPoint();
     useGeofenceStore.getState().setPolygonPoints([[1, 2], [3, 4], [5, 6]]);
 
-    recordPoint(); // snapshot the 3-point fence
-    // Mutate the fence further.
+    // Mutate the fence further (records the 3-point fence first).
     useGeofenceStore.getState().setPolygonPoints([[9, 9]]);
     expect(useGeofenceStore.getState().polygonPoints).toEqual([[9, 9]]);
 
     // Undo should restore the 3-point fence exactly, not an aliased/mutated one.
     useMissionStore.getState().undo();
     expect(useGeofenceStore.getState().polygonPoints).toEqual([[1, 2], [3, 4], [5, 6]]);
+  });
+
+  // ---- A compound edit is one step, however many recorded mutations it makes ----
+  it('a compound edit across domains records one undo step and undoes as one', () => {
+    useMissionStore.getState().addWaypoint(makeWaypoint({ id: 'wp-1' }));
+    useRallyStore.getState().addPoint({ id: 'r1', lat: 1, lon: 2, alt: 30 });
+    useGeofenceStore.getState().setPolygonPoints([[1, 2], [3, 4], [5, 6]]);
+    const depthBefore = undoDepth();
+
+    withPlannerHistory(() => {
+      useMissionStore.getState().clearMission();
+      useRallyStore.getState().clearPoints();
+      useGeofenceStore.getState().clearFence();
+    });
+
+    expect(undoDepth()).toBe(depthBefore + 1);
+    useMissionStore.getState().undo();
+    expect(useMissionStore.getState().waypoints).toHaveLength(1);
+    expect(useRallyStore.getState().points).toHaveLength(1);
+    expect(useGeofenceStore.getState().polygonPoints).toHaveLength(3);
   });
 
   // ---- Recording clears the redo branch ----
@@ -287,11 +302,3 @@ describe('planner-history (coordinated undo/redo)', () => {
     expect(renders).toBe(afterFlip);
   });
 });
-
-// A geofence / rally / drawing edit in the planner records a history point at the
-// call site (the draw handler) right before writing the store, using the
-// public recordHistory() verb from planner-history. The tests call it directly,
-// exactly as a non-waypoint domain call site would.
-function recordPoint() {
-  recordHistory();
-}

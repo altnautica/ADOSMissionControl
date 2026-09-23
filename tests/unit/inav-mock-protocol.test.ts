@@ -323,7 +323,7 @@ describe("telemetry tick", () => {
 
     const armed: boolean[] = [];
     proto.onHeartbeat((hb) => armed.push(hb.armed));
-    const alts: number[] = [];
+    const alts: (number | undefined)[] = [];
     proto.onPosition((p) => alts.push(p.relativeAlt));
 
     vi.advanceTimersByTime(150);

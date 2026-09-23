@@ -6,6 +6,8 @@
  * @license GPL-3.0-only
  */
 
+import type { ScopeContext } from "./mcp-scope-model";
+
 /**
  * The scope / safety-class vocabulary the whole MCP tab shares. `read`,
  * `safe_write`, and `admin` are the default (unelevated) classes; `flight`,
@@ -74,6 +76,13 @@ export function credentialStatus(
   if (row.expiresAt != null && row.expiresAt <= now) return "expired";
   return "active";
 }
+
+/**
+ * The reach context every minted credential is evaluated in. A minted
+ * credential only connects through the fleet relay (`--target fleet`), so
+ * agent-mode-only tools are unreachable and flight enforcement is off.
+ */
+export const MINTED_CREDENTIAL_REACH: ScopeContext = { flightEnforced: false, fleetMode: true };
 
 /** The scope set each preset mints. Read-only, Operate (the default), Full. */
 export const SCOPE_PRESETS: Record<string, string[]> = {

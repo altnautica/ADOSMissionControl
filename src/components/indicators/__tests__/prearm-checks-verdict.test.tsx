@@ -15,7 +15,7 @@ import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 import { PreArmChecks } from "@/components/indicators/PreArmChecks";
 import type { CommandResult, DroneProtocol } from "@/lib/protocol/types";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
-import { useSensorHealthStore } from "@/stores/sensor-health-store";
+import { useTelemetryStore } from "@/stores/telemetry-store";
 
 const PREARM_BIT = 1 << 28;
 const ALL_PASSED = "All checks passed";
@@ -54,7 +54,7 @@ async function runCheck(windowMs = 3_000): Promise<void> {
 describe("PreArmChecks verdict", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    useSensorHealthStore.getState().clear();
+    useTelemetryStore.getState().clear();
   });
 
   afterEach(() => {
@@ -88,7 +88,18 @@ describe("PreArmChecks verdict", () => {
   it("passes a MAVLink check when the FC's pre-arm bit is fresh and healthy", async () => {
     mountProtocol("mavlink", async () => ({ success: true, resultCode: 0, message: "Accepted" }));
     const { container } = renderWithIntl(<PreArmChecks />);
-    useSensorHealthStore.getState().updateFromSysStatus(PREARM_BIT, PREARM_BIT, PREARM_BIT);
+    act(() => {
+      useTelemetryStore.getState().pushSysStatus({
+        timestamp: Date.now(),
+        cpuLoad: 100,
+        sensorsPresent: PREARM_BIT,
+        sensorsEnabled: PREARM_BIT,
+        sensorsHealthy: PREARM_BIT,
+        batteryRemaining: -1,
+        dropRateComm: 0,
+        errorsComm: 0,
+      });
+    });
     await runCheck();
 
     expect(container.textContent).toContain(ALL_PASSED);

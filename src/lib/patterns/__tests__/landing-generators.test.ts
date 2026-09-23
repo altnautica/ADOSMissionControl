@@ -10,9 +10,9 @@ import { generateVtolLanding } from "../vtol-landing-generator";
 import { patternToMission } from "../pattern-to-mission";
 import { expandToItems } from "@/lib/mission/mission-expand";
 import { cmdMap } from "@/lib/mission-io-formats";
-import { haversineDistance } from "@/lib/drawing/geo-utils";
 import { bearing } from "@/lib/telemetry-utils";
 import type { FixedWingLandingConfig, VtolLandingConfig } from "../types";
+import { haversineDistance } from "@/lib/geo/distance";
 
 const LANDING: [number, number] = [12.95, 77.668];
 

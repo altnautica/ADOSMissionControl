@@ -7,6 +7,7 @@
 
 import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import {
   requireCommandForDevice,
   requireOwnedCommand,
@@ -249,8 +250,8 @@ export const listRecentCommands = query({
 // How long a terminal command row is retained before the sweep deletes it.
 const COMMAND_RETENTION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-// Per-status delete cap per cron tick so a large backlog cannot exceed the
-// per-call transaction limits; the hourly cron drains the rest over time.
+// Per-status delete cap per call so a large backlog cannot exceed the
+// per-call transaction limits; a full batch reschedules the sweep at once.
 const COMMAND_PRUNE_BATCH = 256;
 
 /**
@@ -262,9 +263,10 @@ const COMMAND_PRUNE_BATCH = 256;
  */
 export const pruneTerminalCommands = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ deleted: number }> => {
     const cutoff = Date.now() - COMMAND_RETENTION_MS;
     let deleted = 0;
+    let full = false;
     for (const status of ["completed", "failed"] as const) {
       const stale = await ctx.db
         .query("cmd_droneCommands")
@@ -276,6 +278,12 @@ export const pruneTerminalCommands = internalMutation({
         await ctx.db.delete(row._id);
         deleted += 1;
       }
+      if (stale.length === COMMAND_PRUNE_BATCH) full = true;
+    }
+    // A full batch means the range may hold more: drain it now rather than
+    // waiting a whole cron interval per batch.
+    if (full) {
+      await ctx.scheduler.runAfter(0, internal.cmdDroneCommands.pruneTerminalCommands, {});
     }
     return { deleted };
   },
@@ -306,10 +314,11 @@ const COMMAND_STUCK_MS = 60 * 60 * 1000;
  */
 export const expireStuckCommands = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ expired: number }> => {
     const now = Date.now();
     const cutoff = now - COMMAND_STUCK_MS;
     let expired = 0;
+    let full = false;
     for (const status of ["pending", "delivering"] as const) {
       const stuck = await ctx.db
         .query("cmd_droneCommands")
@@ -331,6 +340,11 @@ export const expireStuckCommands = internalMutation({
         });
         expired += 1;
       }
+      if (stuck.length === COMMAND_PRUNE_BATCH) full = true;
+    }
+    // Expiry moves each row out of the range, so a full batch drains on.
+    if (full) {
+      await ctx.scheduler.runAfter(0, internal.cmdDroneCommands.expireStuckCommands, {});
     }
     return { expired };
   },

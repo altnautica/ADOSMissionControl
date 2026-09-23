@@ -12,8 +12,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { MapControl } from "@/components/map/MapControl";
 import type { FlightRecord } from "@/lib/types";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
+import { pointInPolygon } from "@/lib/geo/distance";
 
 // ── Heatmap layer (leaflet.heat) ─────────────────────────────
 
@@ -205,17 +207,22 @@ function SearchPolygonOverlay({
   if (vertices.length === 0) return null;
 
   return (
-    <div className="absolute top-2 right-2 z-[1000] bg-bg-secondary border border-border-default rounded px-2 py-1 flex items-center gap-1.5">
-      <span className="text-[10px] text-text-secondary font-mono">
-        Search polygon active
-      </span>
-      <button
-        onClick={onClear}
-        className="text-[10px] text-accent-primary hover:underline"
+    <MapControl className="leaflet-top leaflet-right">
+      <div
+        className="leaflet-control bg-bg-secondary border border-border-default rounded px-2 py-1 flex items-center gap-1.5"
+        style={{ marginTop: 8, marginRight: 8 }}
       >
-        Clear
-      </button>
-    </div>
+        <span className="text-[10px] text-text-secondary font-mono">
+          Search polygon active
+        </span>
+        <button
+          onClick={onClear}
+          className="text-[10px] text-accent-primary hover:underline"
+        >
+          Clear
+        </button>
+      </div>
+    </MapControl>
   );
 }
 
@@ -301,7 +308,7 @@ export default function FleetCoverageMapInner({
       for (const r of records) {
         if (!r.path) continue;
         for (const [lat, lon] of r.path) {
-          if (pointInPolygon(lat, lon, vertices)) {
+          if (pointInPolygon([lat, lon], vertices)) {
             matchingIds.add(r.id);
             break;
           }
@@ -421,22 +428,4 @@ export default function FleetCoverageMapInner({
       </MapContainer>
     </div>
   );
-}
-
-// ── Point-in-polygon (ray-casting) ───────────────────────────
-
-function pointInPolygon(
-  lat: number,
-  lon: number,
-  polygon: [number, number][],
-): boolean {
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [yi, xi] = polygon[i];
-    const [yj, xj] = polygon[j];
-    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
-      inside = !inside;
-    }
-  }
-  return inside;
 }

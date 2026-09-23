@@ -12,7 +12,6 @@ import { useToast } from "@/components/ui/toast";
 import { getRegisteredCommands } from "@/lib/command-palette-registry";
 import { cn } from "@/lib/utils";
 import { activate, buildSkillContext } from "@/lib/skills";
-import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 import { RthAllConfirmDialog } from "./rth-all-confirm-dialog";
 
 
@@ -34,9 +33,6 @@ export function CommandPalette() {
   const pathname = usePathname();
   const { toast } = useToast();
   const [rthConfirmOpen, setRthConfirmOpen] = useState(false);
-  // Arm goes through the skill dispatcher, which reports its refusals (already
-  // armed, no link, the FC's own pre-arm answer) through this bridge.
-  useSkillToastBridge();
 
   // `/analytics` and `/wizard` had entries here and neither route exists under
   // `src/app`, so two localised palette items navigated straight to a 404 from

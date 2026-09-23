@@ -13,7 +13,8 @@ import { RingBuffer } from "@/lib/ring-buffer";
 export interface TrailPoint {
   lat: number;
   lon: number;
-  alt: number;
+  /** Metres above home; absent when the link reported no height above home. */
+  alt?: number;
 }
 
 interface TrailStoreState {
@@ -43,7 +44,7 @@ export const useTrailStore = create<TrailStoreState>((set, get) => ({
   maxPoints: DEFAULT_MAX_POINTS,
   _version: 0,
 
-  pushPoint: (lat, lon, alt = 0) => {
+  pushPoint: (lat, lon, alt) => {
     const ring = get()._ring;
     // Skip if position hasn't changed significantly (< ~1m)
     if (ring.length > 0) {

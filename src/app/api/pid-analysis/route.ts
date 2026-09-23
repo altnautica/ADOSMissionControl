@@ -11,7 +11,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies, headers } from "next/headers";
 import { fetchMutation } from "convex/nextjs";
-import { makeFunctionReference } from "convex/server";
+import { api } from "../../../../convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 import type {
   AiAnalysisRequest,
   AiAnalysisResponse,
@@ -162,10 +163,6 @@ async function getAuthToken(): Promise<string | null> {
   return cookieStore.get(tokenName)?.value ?? null;
 }
 
-const checkAndRecordRef = makeFunctionReference<"mutation">(
-  "cmdAiUsage:checkAndRecord",
-);
-
 // ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
@@ -216,10 +213,10 @@ export async function POST(request: NextRequest) {
   // ── Usage limit gate ─────────────────────────────────────────
   let usage: { remaining: number; weeklyLimit: number } | null = null;
   if (token) {
-    let usageResult: { allowed: boolean; remaining: number; weeklyLimit: number; error?: string };
+    let usageResult: FunctionReturnType<typeof api.cmdAiUsage.checkAndRecord>;
     try {
       usageResult = await fetchMutation(
-        checkAndRecordRef,
+        api.cmdAiUsage.checkAndRecord,
         { feature: "pid_analysis" },
         { token },
       );

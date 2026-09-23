@@ -18,26 +18,12 @@ import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { isFresh } from "@/lib/telemetry/freshness";
 import { useToast } from "@/components/ui/toast";
 import type { INavAdsbVehicle } from "@/lib/protocol/msp/msp-decoders-inav";
+import { haversineDistance } from "@/lib/geo/distance";
 
 // ── Proximity constants ──────────────────────────────────────
 
 const PROXIMITY_ALERT_RANGE_M = 500;
 const TOAST_COOLDOWN_MS = 30_000;
-
-// ── Distance helper ──────────────────────────────────────────
-
-function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6_371_000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 // ── Live traffic ─────────────────────────────────────────────
 
@@ -66,7 +52,7 @@ export function liveTraffic(
 function VehicleRow({ vehicle, ownLat, ownLon }: { vehicle: INavAdsbVehicle; ownLat: number | null; ownLon: number | null }) {
   const distM =
     ownLat !== null && ownLon !== null
-      ? haversineMeters(ownLat, ownLon, vehicle.lat, vehicle.lon)
+      ? haversineDistance(ownLat, ownLon, vehicle.lat, vehicle.lon)
       : null;
   const distLabel = distM !== null ? `${(distM / 1000).toFixed(2)} km` : "--";
   const altLabel = Number.isFinite(vehicle.alt) ? `${vehicle.alt} cm` : "--";
@@ -111,7 +97,7 @@ export function TrafficPill() {
     const now = Date.now();
 
     for (const v of vehicles) {
-      const distM = haversineMeters(ownLat, ownLon, v.lat, v.lon);
+      const distM = haversineDistance(ownLat, ownLon, v.lat, v.lon);
       if (distM <= PROXIMITY_ALERT_RANGE_M) {
         const lastAlert = alertedRef.current.get(v.icao) ?? 0;
         if (now - lastAlert > TOAST_COOLDOWN_MS) {

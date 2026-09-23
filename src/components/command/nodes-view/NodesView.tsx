@@ -22,7 +22,6 @@ import { useTranslations } from "next-intl";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandAgentFleet } from "@/hooks/use-command-agent-fleet";
-import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
 import { joinNodeRows, nodeMatchesQuery } from "@/lib/nodes/node-rows";
 import { buildNodeTree } from "@/lib/nodes/node-tree";
 import { describeNodeReach } from "@/lib/nodes/node-reach";
@@ -74,10 +73,6 @@ export function NodesView({
 }: NodesViewProps) {
   const t = useTranslations("nodesView");
   const laneOptions = useNodeCommandLane();
-  // A rejected control has to say why. The dispatcher answers with raw keys, so
-  // without this bridge every refusal on this board would be silent. The same
-  // bridge carries the cloud watcher's later accepted/rejected verdicts.
-  useSkillToastBridge();
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ReachFilter>("all");

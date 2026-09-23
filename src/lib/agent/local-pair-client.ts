@@ -44,8 +44,5 @@ export {
   setDashboardPin,
   clearDashboardPin,
 } from "./local-pair/dashboard-pin";
-export {
-  looksLikePairCode,
-  findHostByCodeOnLan,
-  probeByCode,
-} from "./local-pair/code-pair";
+export { looksLikePairCode, probeByCode } from "./local-pair/code-pair";
+export { findHostByCodeOnLan } from "./discovery/mdns-client";

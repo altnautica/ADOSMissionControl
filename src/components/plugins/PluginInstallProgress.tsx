@@ -13,15 +13,21 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Check, X, Loader2, AlertCircle, Minus } from "lucide-react";
 import { useQuery } from "convex/react";
-import { makeFunctionReference } from "convex/server";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 import { cn, isDemoMode } from "@/lib/utils";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
-import { mintWsTicket, WS_TICKET_PROTOCOL } from "@/lib/api/ground-station/ws-ticket";
+import {
+  installJobTicketScope,
+  mintWsTicket,
+  WS_TICKET_PROTOCOL,
+} from "@/lib/api/ground-station/ws-ticket";
 
 import {
   INSTALL_STAGES,
   LAN_SKIPPED_STAGES,
+  cloudJobStage,
   humanStage,
   isTerminalStage,
   parseAgentJobFrame,
@@ -31,22 +37,8 @@ import {
 } from "./install-stages";
 import type { InstallTransport } from "./transports/types";
 
-// Hand-rolled reference: the Convex deployment ships this query in a
-// parallel wave, before `api.d.ts` regenerates with the new path.
-interface JobDoc {
-  jobId: string;
-  stage: InstallStage;
-  updatedAt: number;
-  error?: InstallJobError;
-}
 /** Fixed delay before re-opening a dropped LAN progress stream. */
 const LAN_RECONNECT_MS = 2000;
-
-const getJobRef = makeFunctionReference<
-  "query",
-  { jobId: string },
-  JobDoc | null
->("cmdPluginInstallJobs:getJob");
 
 export interface PluginInstallProgressProps {
   jobId: string;
@@ -148,7 +140,7 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
         ticketAbort = new AbortController();
         ticket = await mintWsTicket(
           { baseUrl: agentLanUrl, apiKey: pairingKey },
-          "plugins.install_job",
+          installJobTicketScope(jobId),
           ticketAbort.signal,
         );
       } catch (err) {
@@ -208,21 +200,20 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
   const cloudArgs = useMemo(
     () =>
       !isDemoMode() && convexAvailable && transport === "cloud"
-        ? ({ jobId } as { jobId: string })
+        ? { jobId: jobId as Id<"plugin_install_jobs"> }
         : ("skip" as const),
     [convexAvailable, transport, jobId],
   );
   // Call the query unconditionally and pass "skip" when the cloud path is
   // inactive (demo mode, no Convex, or the LAN transport). Skipping keeps
   // the hook order stable across renders while doing no network work.
-  const cloudJob = useQuery(getJobRef, cloudArgs as never) as
-    | JobDoc
-    | null
-    | undefined;
+  const cloudJob = useQuery(api.cmdPluginInstallJobs.getJob, cloudArgs);
   useEffect(() => {
     if (!cloudJob) return;
+    const stage = cloudJobStage(cloudJob.stage);
+    if (stage === null) return;
     setState((s) => ({
-      stage: cloudJob.stage,
+      stage,
       error: cloudJob.error ?? s.error,
     }));
   }, [cloudJob]);

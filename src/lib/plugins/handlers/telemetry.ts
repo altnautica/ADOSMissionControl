@@ -18,6 +18,7 @@
 
 import type { DroneProtocol } from "@/lib/protocol/types";
 import type { BatteryData } from "@/lib/types";
+import { knownRemainingPct } from "@/lib/battery";
 import { useDroneManager } from "@/stores/drone-manager";
 import type { BridgeHandler, BridgeHandlerContext } from "@/lib/plugins/bridge";
 import { agentStateOrigin, subscribePluginEvent } from "@/lib/plugins/event-bus";
@@ -52,7 +53,7 @@ export function toBatterySample(b: BatteryData & { id: number }): PluginBatteryS
     totalVoltageV: b.voltage,
     currentA: b.current ?? null,
     consumedAh: b.consumed === undefined ? null : b.consumed / 1000,
-    remainingPercent: b.remaining < 0 ? null : b.remaining,
+    remainingPercent: knownRemainingPct(b.remaining),
     temperatureC: b.temperature ?? null,
     cellCount: b.cellCount ?? null,
   };

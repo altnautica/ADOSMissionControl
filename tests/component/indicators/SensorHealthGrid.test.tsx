@@ -1,95 +1,84 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { act, screen, fireEvent } from '@testing-library/react';
 import { renderWithIntl } from '../../helpers/intl-wrapper';
 import { SensorHealthGrid } from '@/components/indicators/SensorHealthGrid';
+import { useTelemetryStore } from '@/stores/telemetry-store';
 
 // Mock the Tooltip to just render children
 vi.mock('@/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-// Mock lucide-react icons
-vi.mock('lucide-react', () => ({
-  Check: (props: any) => <span data-testid="icon-check" {...props} />,
-  X: (props: any) => <span data-testid="icon-x" {...props} />,
-  AlertTriangle: (props: any) => <span data-testid="icon-alert" {...props} />,
-  Minus: (props: any) => <span data-testid="icon-minus" {...props} />,
-  ChevronDown: (props: any) => <span data-testid="icon-chevron" {...props} />,
-}));
+const GYRO = 1 << 0;
+const ACCEL = 1 << 1;
+const BARO = 1 << 3;
 
-// Mock sensor health store
-const mockSensors = vi.fn();
-const mockHealthyCount = vi.fn();
-const mockTotalPresent = vi.fn();
-const mockLastUpdate = vi.fn();
-
-vi.mock('@/stores/sensor-health-store', () => ({
-  useSensorHealthStore: (selector: any) => {
-    // The component calls the store with different selectors
-    const state = {
-      sensors: mockSensors(),
-      getHealthySensorCount: mockHealthyCount,
-      getTotalPresentCount: mockTotalPresent,
-      lastUpdate: mockLastUpdate(),
-    };
-    return selector(state);
-  },
-}));
+/** Gyro and accel healthy; baro present and enabled but unhealthy; no GPS. */
+function pushSysStatus(): void {
+  act(() => {
+    useTelemetryStore.getState().pushSysStatus({
+      timestamp: Date.now(),
+      cpuLoad: 100,
+      sensorsPresent: GYRO | ACCEL | BARO,
+      sensorsEnabled: GYRO | ACCEL | BARO,
+      sensorsHealthy: GYRO | ACCEL,
+      batteryRemaining: -1,
+      dropRateComm: 0,
+      errorsComm: 0,
+    });
+  });
+}
 
 describe('SensorHealthGrid', () => {
-  const sampleSensors = [
-    { bit: 0, label: 'Gyro', status: 'healthy' as const, present: true, enabled: true, healthy: true },
-    { bit: 1, label: 'Accel', status: 'healthy' as const, present: true, enabled: true, healthy: true },
-    { bit: 2, label: 'Baro', status: 'unhealthy' as const, present: true, enabled: true, healthy: false },
-    { bit: 3, label: 'GPS', status: 'not_present' as const, present: false, enabled: false, healthy: false },
-  ];
-
   beforeEach(() => {
-    mockSensors.mockReturnValue(sampleSensors);
-    mockHealthyCount.mockReturnValue(2);
-    mockTotalPresent.mockReturnValue(3);
-    mockLastUpdate.mockReturnValue(Date.now());
+    useTelemetryStore.getState().clear();
   });
 
-  it('shows "No sensor data" when no sensors are displayed', () => {
-    mockSensors.mockReturnValue([]);
-
+  it('shows "No sensor data" before any SYS_STATUS', () => {
     renderWithIntl(<SensorHealthGrid />);
     expect(screen.getByText('No sensor data')).toBeDefined();
   });
 
   it('renders present sensors by default (not all)', () => {
+    pushSysStatus();
     renderWithIntl(<SensorHealthGrid />);
 
-    // Present sensors: Gyro, Accel, Baro (3 out of 4)
-    expect(screen.getByText('Gyro')).toBeDefined();
-    expect(screen.getByText('Accel')).toBeDefined();
-    expect(screen.getByText('Baro')).toBeDefined();
-    // GPS is not present, should not appear without showAll
+    expect(screen.getByText('3D Gyro')).toBeDefined();
+    expect(screen.getByText('3D Accel')).toBeDefined();
+    expect(screen.getByText('Abs Pressure')).toBeDefined();
     expect(screen.queryByText('GPS')).toBeNull();
   });
 
   it('renders all sensors when showAll=true', () => {
+    pushSysStatus();
     renderWithIntl(<SensorHealthGrid showAll={true} />);
-
-    expect(screen.getByText('Gyro')).toBeDefined();
-    expect(screen.getByText('Accel')).toBeDefined();
-    expect(screen.getByText('Baro')).toBeDefined();
     expect(screen.getByText('GPS')).toBeDefined();
   });
 
+  it('marks an enabled but unhealthy sensor as an error', () => {
+    pushSysStatus();
+    const { container } = renderWithIntl(<SensorHealthGrid />);
+    expect(screen.getByText('Abs Pressure').className).toContain('text-status-error');
+    expect(container.querySelectorAll('.text-status-success').length).toBeGreaterThan(0);
+  });
+
   it('compact mode shows count ratio', () => {
+    pushSysStatus();
     renderWithIntl(<SensorHealthGrid compact={true} />);
     expect(screen.getByText('2/3')).toBeDefined();
   });
 
+  it('shows no sensor claims when the surface knows no FC is attached', () => {
+    pushSysStatus();
+    const { container } = renderWithIntl(<SensorHealthGrid compact fcLive={false} />);
+    expect(screen.getByText('No sensor data')).toBeDefined();
+    expect(container.querySelectorAll('.bg-status-success')).toHaveLength(0);
+  });
+
   it('clicking a sensor expands details', () => {
+    pushSysStatus();
     renderWithIntl(<SensorHealthGrid />);
-
-    // Click on Gyro to expand
-    fireEvent.click(screen.getByText('Gyro'));
-
-    // Should show expanded details
+    fireEvent.click(screen.getByText('3D Gyro'));
     expect(screen.getByText('Status')).toBeDefined();
     expect(screen.getByText('healthy')).toBeDefined();
     expect(screen.getByText('Present')).toBeDefined();

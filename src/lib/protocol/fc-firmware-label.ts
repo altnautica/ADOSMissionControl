@@ -31,6 +31,21 @@ export function fcFirmwareLabel(
   return firmwareTokenToLabel((fcVariant ?? "").trim().toLowerCase());
 }
 
+/**
+ * The firmware · airframe flavor a node surface shows for an FC ("ArduPilot ·
+ * VTOL", "PX4", "Betaflight"), or `undefined` when the family is not
+ * identified.
+ */
+export function fcFlavorLabel(
+  fcFirmware: string | null | undefined,
+  fcVariant: string | null | undefined,
+  frameType: string | null | undefined,
+): string | undefined {
+  const name = fcFirmwareLabel(fcFirmware, fcVariant);
+  if (!name) return undefined;
+  return frameType ? `${name} · ${frameType}` : name;
+}
+
 function firmwareTokenToLabel(token: string): string | undefined {
   if (token.startsWith("ardupilot")) return "ArduPilot";
   switch (token) {
