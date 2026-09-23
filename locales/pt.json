@@ -4530,8 +4530,10 @@
           },
           "retryButton": "Retry local pairing",
           "retrying": "Retrying...",
-          "retrySuccess": "Local pairing re-armed",
-          "failed": "Pairing failed"
+          "retrySuccess": "Local pairing retry requested; the rig tries the radio link on its next pass",
+          "failed": "Pairing failed",
+          "retryBlockedPaired": "This rig is already paired, so it will not re-arm pairing. The local link returns on its own when the radio can reach the peer; unpair first to pair again.",
+          "retryNotApplied": "The rig did not accept the retry request"
         }
       },
       "rssi": "RSSI",

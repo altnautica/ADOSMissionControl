@@ -169,17 +169,10 @@ export function applyFullStatus(
     });
   }
   if (full.video && typeof full.video.state === "string") {
-    // The agent bakes whep_url from the request Host header (may be
-    // an mDNS name the browser's WebRTC layer can't reach) and the
-    // drone-profile block omits it entirely while mediamtx readiness
-    // is transient. Re-point a supplied URL, or synthesize one, from
-    // the host we are already polling successfully (proven reachable)
-    // so LAN-direct video connects instead of an empty cascade.
-    const whep = resolveAgentWhepUrl(
-      full.video.whep_url,
-      full.video.state,
-      agentUrl,
-    );
+    // The agent bakes whep_url from the request Host header (may be an mDNS
+    // name the browser.s WebRTC layer can.t reach): re-point it at the host
+    // we are already polling successfully. No advertised URL, no stream.
+    const whep = resolveAgentWhepUrl(full.video.whep_url, agentUrl);
     useVideoStore
       .getState()
       .setAgentVideoStatus(full.video.state, whep);
@@ -236,7 +229,7 @@ export function applyFullStatus(
         role: leg.role,
         codec: leg.codec,
         live: leg.live,
-        whepUrl: resolveAgentWhepUrl(leg.whep, "running", agentUrl),
+        whepUrl: resolveAgentWhepUrl(leg.whep, agentUrl),
       }))
       .filter((leg) => leg.id && leg.whepUrl);
   }

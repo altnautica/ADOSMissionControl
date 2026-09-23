@@ -34,9 +34,7 @@ function canRunVideo(
 ): boolean {
   if (pausedIds.has(drone.deviceId)) return false;
   if (!status) return false;
-  const hasVideoUrl = Boolean(status?.videoWhepUrl)
-    || Boolean(status.lastIp && status.videoWhepPort && status.videoWhepPort > 0);
-  if (!hasVideoUrl) return false;
+  if (!status.videoWhepUrl) return false;
   if (status.videoState !== "running") return false;
   const lastSeen = Math.max(drone.lastSeen ?? 0, status.updatedAt ?? 0);
   return Date.now() - lastSeen < STALE_THRESHOLD_MS;

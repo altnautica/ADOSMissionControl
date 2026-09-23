@@ -90,7 +90,7 @@ describe("planRelayedEnrollment", () => {
             peerRssiDbm: -51,
             videoState: "running",
             lastIp: "192.168.1.50",
-            videoWhepPort: 8889,
+            videoWhepUrl: "/whep",
           }),
           radioUp: true,
         }),
@@ -102,9 +102,7 @@ describe("planRelayedEnrollment", () => {
     expect(e.funneledStatus?.deviceId).toBe("drone-a");
     expect(e.funneledStatus?.peerDeviceId).toBe("gs-1");
     expect(e.funneledStatus?.videoState).toBe("running");
-    expect(e.funneledStatus?.videoWhepUrl).toBe(
-      "http://192.168.1.50:8889/main/whep",
-    );
+    expect(e.funneledStatus?.videoWhepUrl).toBe("http://192.168.1.50:8080/whep");
   });
 
   it("shows NO funneled video when the ground link is not verified up (Rule 44)", () => {

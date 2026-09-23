@@ -11,10 +11,10 @@
  * path uses, and the drone — which sits on its own LAN with an upstream
  * route — fetches and verifies the archive itself.
  *
- * The LAN job-ticket WebSocket (`POST /api/plugins/jobs/{jobId}/ticket`
- * then `new WebSocket(..., ["ados-job-ticket", ticket])`) does not tunnel
- * through the relay proxy in this phase — it carries request/response RPC
- * only, no long-lived stream. `pollRelayInstallProgress` stands in for it:
+ * The LAN progress WebSocket (a `plugins.install_job` ticket on the
+ * `ados-ws-ticket` subprotocol) does not tunnel through the relay proxy: it
+ * carries request/response RPC only, no long-lived stream.
+ * `pollRelayInstallProgress` stands in for it:
  * a fixed-interval poll of the agent's job-status endpoint, mirrored into
  * the shared `useInstallProgressStore` so every surface watching a job id
  * sees relay progress the same way it would see a LAN or cloud one.

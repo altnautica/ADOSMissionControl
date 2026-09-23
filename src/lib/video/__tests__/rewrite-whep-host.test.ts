@@ -75,42 +75,18 @@ describe("rewriteWhepHost", () => {
 describe("resolveAgentWhepUrl", () => {
   it("rewrites a supplied whep_url onto the reachable connected host", () => {
     expect(
-      resolveAgentWhepUrl(
-        "http://127.0.0.1:8889/main/whep",
-        "running",
-        "http://192.168.1.50:8080",
-      ),
-    ).toBe("http://192.168.1.50:8889/main/whep");
+      resolveAgentWhepUrl("http://drone.local:8080/whep", "http://192.168.1.50:8080"),
+    ).toBe("http://192.168.1.50:8080/whep");
+    expect(resolveAgentWhepUrl("/whep", "http://192.168.1.50:8080")).toBe(
+      "http://192.168.1.50:8080/whep",
+    );
   });
 
-  it("synthesizes a WHEP url from the connected host when the agent omits it", () => {
-    // The drone-profile status returns state=running but no whep_url on a
-    // transient mediamtx-readiness miss — synthesize instead of null so the
-    // cascade has a reachable URL to dial.
-    expect(
-      resolveAgentWhepUrl(null, "running", "http://192.168.1.50:8080"),
-    ).toBe("http://192.168.1.50:8889/main/whep");
-  });
-
-  it("synthesizes for not_initialized / connecting (pipeline may be coming up)", () => {
-    expect(
-      resolveAgentWhepUrl(null, "not_initialized", "http://192.168.1.50:8080"),
-    ).toBe("http://192.168.1.50:8889/main/whep");
-    expect(
-      resolveAgentWhepUrl(undefined, "connecting", "http://drone.local:8080"),
-    ).toBe("http://drone.local:8889/main/whep");
-  });
-
-  it("returns null for hard-off states (stopped/disabled/error/absent)", () => {
-    for (const s of ["stopped", "disabled", "error", "absent"]) {
-      expect(
-        resolveAgentWhepUrl(null, s, "http://192.168.1.50:8080"),
-      ).toBeNull();
+  it("never synthesizes a URL when the agent advertises none", () => {
+    // mediamtx's own port is loopback-only on the node; an agent that sends no
+    // whep_url is not streaming, whatever state it reports.
+    for (const url of [null, undefined, ""]) {
+      expect(resolveAgentWhepUrl(url, "http://192.168.1.50:8080")).toBeNull();
     }
-  });
-
-  it("returns null when there is no base URL to synthesize from", () => {
-    expect(resolveAgentWhepUrl(null, "running", null)).toBeNull();
-    expect(resolveAgentWhepUrl(null, "running", "")).toBeNull();
   });
 });

@@ -53,24 +53,14 @@ describe("resolveVideoUrls", () => {
     expect(out.whepUrl).toBe("http://10.0.0.7:8889/main/whep");
   });
 
-  it("builds a WHEP URL from lastIp + port when no absolute URL is present", () => {
+  it("dials nothing when the node advertises no WHEP URL", () => {
+    // mediamtx's own WHEP port is loopback-only on the node; neither a port
+    // hint nor a LAN host becomes a URL.
     const out = resolveVideoUrls(
-      {
-        videoState: "running",
-        lastIp: "192.168.1.51",
-        videoWhepPort: 9001,
-      },
+      { videoState: "running", lastIp: "192.168.1.51", videoWhepPort: 9001 },
       "skynode.local",
     );
-    expect(out.whepUrl).toBe("http://192.168.1.51:9001/main/whep");
-  });
-
-  it("falls back to the LAN host on the stable :8889 default", () => {
-    const out = resolveVideoUrls(
-      { videoState: "running" },
-      "skynode.local",
-    );
-    expect(out.whepUrl).toBe("http://skynode.local:8889/main/whep");
+    expect(out.whepUrl).toBeNull();
   });
 
   it("returns a null WHEP URL when the pipeline is not running", () => {

@@ -50,23 +50,24 @@ describe("resolveAgentVideoUrl (WHEP)", () => {
     ).toBe("http://192.168.1.50:8080/whep");
   });
 
-  it("keeps an absolute URL from an older agent untouched", () => {
+  it("keeps an absolute advertised URL untouched", () => {
     expect(
       resolveAgentVideoUrl(
         status({
-          videoWhepUrl: "http://drone.local:8889/main/whep",
+          videoWhepUrl: "https://relay.example.com/whep/abc",
           lastIp: "192.168.1.50",
         }),
       ),
-    ).toBe("http://drone.local:8889/main/whep");
+    ).toBe("https://relay.example.com/whep/abc");
   });
 
-  it("rebuilds from lastIp + port when nothing is advertised", () => {
+  it("never rebuilds a mediamtx URL when nothing is advertised", () => {
+    // mediamtx's own WHEP port is loopback-only on the node.
     expect(
       resolveAgentVideoUrl(
         status({ videoWhepPort: 8889, lastIp: "192.168.1.50" }),
       ),
-    ).toBe("http://192.168.1.50:8889/main/whep");
+    ).toBeNull();
   });
 
   it("returns null when the node is not streaming", () => {

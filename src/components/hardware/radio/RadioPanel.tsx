@@ -397,10 +397,11 @@ export function RadioPanel() {
     }
   }, [agentUrl, apiKey, unpairBusy, toast, t]);
 
-  // Re-arm the auto-pair supervisor on the rig when the heartbeat
-  // says the local link has failed over to the cloud relay path. The
-  // supervisor turns on local pairing again, and the next heartbeat
-  // tick should clear the cloud_relay state.
+  // Ask the rig's auto-pair supervisor to retry the local bind when the
+  // heartbeat says the link has failed over to the cloud relay. The agent
+  // answers whether anything will happen: a paired rig refuses a re-arm
+  // (rearm_blocked), and only an applied request queues a retry the loop
+  // consumes on its next tick.
   const handleRetryLocal = useCallback(async () => {
     if (retryBusy) return;
     // Gate on the GS CLIENT as well as the URL: in demo `agentUrl` is the
@@ -409,8 +410,14 @@ export function RadioPanel() {
     if (!agentUrl || !groundStationApiFromAgent(agentUrl, apiKey)) return;
     setRetryBusy(true);
     try {
-      await setAutoPairOnRig({ baseUrl: agentUrl, apiKey }, true);
-      toast(t("pairing.failover.retrySuccess"), "success");
+      const res = await setAutoPairOnRig({ baseUrl: agentUrl, apiKey }, true);
+      if (res.rearm_blocked) {
+        toast(t("pairing.failover.retryBlockedPaired"), "warning");
+      } else if (!res.applied) {
+        toast(t("pairing.failover.retryNotApplied"), "error");
+      } else {
+        toast(t("pairing.failover.retrySuccess"), "success");
+      }
     } catch (exc) {
       const msg = exc instanceof Error ? exc.message : String(exc);
       toast(t("pairing.errorAgentError", { message: msg }), "error");

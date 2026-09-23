@@ -131,14 +131,15 @@ describe("PluginInstallProgress", () => {
     expect(ws.url.includes("api_key")).toBe(false);
     expect(ws.url.includes("secret-key")).toBe(false);
     // The ticket rides the subprotocol array.
-    expect(ws.protocols).toEqual(["ados-job-ticket", "abcdef0123"]);
+    expect(ws.protocols).toEqual(["ados-ws-ticket", "abcdef0123"]);
     // The ticket mint POST went through the REST middleware with
     // X-ADOS-Key.
     expect(fetchMock).toHaveBeenCalled();
     const [mintUrl, init] = fetchMock.mock.calls[0]!;
-    expect(String(mintUrl)).toBe(
-      "http://skynode.local:8080/api/plugins/jobs/job-1/ticket",
-    );
+    expect(String(mintUrl)).toBe("http://skynode.local:8080/api/_ws/ticket");
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+      scope: "plugins.install_job",
+    });
     expect(
       (init as RequestInit | undefined)?.method,
     ).toBe("POST");

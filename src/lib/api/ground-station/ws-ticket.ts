@@ -24,7 +24,8 @@ export type WsAuthScope =
   | "gs.mavlink_ws"
   | "gs.uplink_events"
   | "gs.mesh_events"
-  | "vision.detections";
+  | "vision.detections"
+  | "plugins.install_job";
 
 interface TicketMintResponse {
   ok: boolean;

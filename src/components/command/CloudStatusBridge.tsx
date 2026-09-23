@@ -347,18 +347,12 @@ export function CloudStatusBridge() {
       null;
 
     const { state: videoState, whepUrl } = resolveVideoUrls(cloudRecord, lanHost);
-    // Per-leg video streams (host-resolved) for the cockpit stream switcher.
-    const videoStreams = resolveVideoStreams(cloudRecord, lanHost);
+    // Per-leg video streams for the cockpit stream switcher.
+    const videoStreams = resolveVideoStreams(cloudRecord);
+    // No reported video state means no advertised stream: nothing is dialed
+    // until the heartbeat says what the node serves.
     if (videoState) {
       useVideoStore.getState().setAgentVideoStatus(videoState, whepUrl);
-    } else if (lanHost) {
-      // Convex doesn't yet know the video state (heartbeat hasn't landed,
-      // or the field is missing). Assume "running" so the cascade has a
-      // URL to attempt; if the agent rejects the WHEP POST the cascade
-      // surfaces a normal failure and falls through to the next mode.
-      useVideoStore
-        .getState()
-        .setAgentVideoStatus("running", `http://${lanHost}:8889/main/whep`);
     }
 
     // MAVLink WebSocket URL from agent heartbeat. The cascade dials this raw

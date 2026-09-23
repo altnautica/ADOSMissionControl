@@ -60,45 +60,31 @@ export function resolveVideoUrls(
   lanHost: string | null,
 ): VideoStreamUrls {
   const videoState = cloudStatus.videoState as string | undefined;
-  const videoWhepPort = cloudStatus.videoWhepPort as number | undefined;
   const videoWhepUrl = cloudStatus.videoWhepUrl as string | undefined;
   const lastIp = cloudStatus.lastIp as string | undefined;
 
-  // Current agents advertise a RELATIVE same-origin WHEP path (`/whep`)
-  // served by the agent's own :8080 front — the same origin this GCS reaches
-  // `/api/*` against. Resolve it against that base; an ABSOLUTE URL from an
-  // older agent is kept (optionally `.local`→IPv4 swapped).
+  // Agents advertise a RELATIVE WHEP path (`/whep`) served by their own :8080
+  // front, the origin this GCS reaches `/api/*` against and the only one that
+  // authenticates it. mediamtx's own WHEP port is loopback-only on the node, so
+  // nothing is synthesized against it. No advertised URL means no stream.
   const base = agentMediaBase(lastIp);
 
   let whepUrl: string | null = null;
   if (videoState === "running" && videoWhepUrl) {
-    if (videoWhepUrl.startsWith("/")) {
-      whepUrl = resolveMediaPath(videoWhepUrl, base);
-    } else {
-      whepUrl = preferIpv4Host(videoWhepUrl, lastIp);
-    }
-  } else if (
-    videoState === "running" &&
-    lastIp &&
-    videoWhepPort &&
-    videoWhepPort > 0
-  ) {
-    whepUrl = `http://${lastIp}:${videoWhepPort}/main/whep`;
-  } else if (videoState === "running" && lanHost) {
-    // mediamtx default WHEP port is stable across deployments.
-    whepUrl = `http://${lanHost}:8889/main/whep`;
+    whepUrl = videoWhepUrl.startsWith("/")
+      ? resolveMediaPath(videoWhepUrl, base)
+      : preferIpv4Host(videoWhepUrl, lastIp);
   }
 
   return { state: videoState, whepUrl, lanHost };
 }
 
 /** Resolve the per-leg video streams a cloud-relayed multi-stream node
- * advertises to dialable URLs against the node's reachable base (its LAN IP,
- * else the resolved LAN host), for the cockpit stream switcher. Empty unless
- * the pipeline is running and the node advertised more than the default leg. */
+ * advertises to dialable URLs against the node's :8080 front, for the cockpit
+ * stream switcher. Empty unless the pipeline is running; a leg with no
+ * advertised path is left out rather than guessed. */
 export function resolveVideoStreams(
   cloudStatus: Record<string, unknown>,
-  lanHost: string | null,
 ): VideoStreamLeg[] {
   const videoState = cloudStatus.videoState as string | undefined;
   const streams = cloudStatus.videoStreams as
@@ -111,29 +97,15 @@ export function resolveVideoStreams(
       }[]
     | undefined;
   if (videoState !== "running" || !streams?.length) return [];
-  const lastIp = cloudStatus.lastIp as string | undefined;
-  const host = lastIp || lanHost;
-  const base = agentMediaBase(lastIp);
-  if (!host) return [];
-  return streams
-    .filter((s) => s.id)
-    .map((s) => {
-      // Prefer the advertised RELATIVE path (current agents) resolved against
-      // the agent base; fall back to rebuilding the legacy path form against
-      // the reachable host.
-      const whepUrl = s.whep
-        ? s.whep.startsWith("/")
-          ? resolveMediaPath(s.whep, base) ?? `http://${host}:8889/${s.id}/whep`
-          : s.whep
-        : `http://${host}:8889/${s.id}/whep`;
-      return {
-        id: s.id,
-        role: s.role,
-        codec: s.codec,
-        live: s.live,
-        whepUrl,
-      };
-    });
+  const base = agentMediaBase(cloudStatus.lastIp as string | undefined);
+  // Only a leg the node advertised is dialable; its relative path resolves
+  // against the node's :8080 front.
+  return streams.flatMap((s) => {
+    const whepUrl = s.id && s.whep ? resolveMediaPath(s.whep, base) : null;
+    return whepUrl
+      ? [{ id: s.id, role: s.role, codec: s.codec, live: s.live, whepUrl }]
+      : [];
+  });
 }
 
 export interface MavlinkUrl {

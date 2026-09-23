@@ -142,7 +142,7 @@ describe("CommandFleetOverview", () => {
         services: [{ name: "ados-video", status: "running" }],
         lastIp: d.lastIp,
         videoState: "running",
-        videoWhepPort: 8889,
+        videoWhepUrl: "/whep",
         updatedAt: Date.now(),
       })),
     );

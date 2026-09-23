@@ -60,55 +60,21 @@ export function rewriteWhepHost(
   }
 }
 
-/** mediamtx serves WHEP on this port across every ADOS deployment. Kept as a
- * literal (not a shared const) to match the other call sites
- * (`status-mapper/urls.ts`, `CloudStatusBridge.tsx`, `use-command-agent-fleet.ts`). */
-const MEDIAMTX_WHEP_PORT = 8889;
-
-/** Video states that mean the pipeline is definitively NOT serving, so no WHEP
- * URL should be offered to the cascade. Everything else (running,
- * not_initialized, connecting, starting) may be serving or transiently
- * coming up. */
-const HARD_OFF_VIDEO_STATES = new Set([
-  "stopped",
-  "disabled",
-  "error",
-  "absent",
-]);
-
 /**
  * Resolve the WHEP URL the LAN-direct video cascade should dial for a
- * locally-connected agent.
+ * locally-connected agent: the URL the agent advertised, re-pointed at the host
+ * we are already polling successfully (`rewriteWhepHost`), so a mDNS/Host-header
+ * name the browser can't reach is swapped for the proven-reachable host.
  *
- * - When the agent's status carries a `whep_url`, re-point it at the host we
- *   are already polling successfully (`rewriteWhepHost`) so a mDNS/Host-header
- *   name the browser can't reach is swapped for the proven-reachable host.
- * - When the agent OMITS `whep_url` (the drone-profile `not_initialized`
- *   default, or a transient mediamtx-readiness miss while the endpoint is in
- *   fact serving), SYNTHESIZE `http://<reachable-host>:8889/main/whep` from the
- *   connected base URL instead of returning `null`. mediamtx's WHEP port + path
- *   are deployment-invariant and `agentBaseUrl` is reachable by definition (we
- *   poll it), so the cascade gets a URL to try rather than failing instantly
- *   with an empty cascade ("All transports failed"). Mirrors the cloud path's
- *   `resolveVideoUrls`. Hard-off states get no URL.
+ * An agent that advertises no `whep_url` is not streaming, and nothing is
+ * synthesized in its place: mediamtx's own WHEP port is loopback-only on the
+ * node, and the node's :8080 front is the only authenticated media origin.
  */
 export function resolveAgentWhepUrl(
   whepUrl: unknown,
-  state: string | undefined,
   agentBaseUrl: string | null | undefined,
 ): string | null {
-  if (typeof whepUrl === "string" && whepUrl) {
-    return rewriteWhepHost(whepUrl, agentBaseUrl);
-  }
-  if (agentBaseUrl && state && !HARD_OFF_VIDEO_STATES.has(state)) {
-    try {
-      const base = new URL(agentBaseUrl);
-      if (base.hostname) {
-        return `http://${base.hostname}:${MEDIAMTX_WHEP_PORT}/main/whep`;
-      }
-    } catch {
-      /* unparseable base URL; fall through to null */
-    }
-  }
-  return null;
+  return typeof whepUrl === "string" && whepUrl
+    ? rewriteWhepHost(whepUrl, agentBaseUrl)
+    : null;
 }

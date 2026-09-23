@@ -9,8 +9,8 @@
  * interface.
  *
  * Honesty rules: the connection state is the agent's own report (an agent
- * whose Wi-Fi manager is unreachable reports the same not-connected shape,
- * so it reads "no connection reported", not "disconnected"); a 404/501 scan
+ * whose Wi-Fi manager is unreachable answers 503, which reads as "status
+ * could not be read", never as "not connected"); a 404/501 scan
  * renders "not exposed by this agent version" instead of an empty list; the
  * passphrase is write-only — sent to the node on join, cleared locally,
  * never echoed back.

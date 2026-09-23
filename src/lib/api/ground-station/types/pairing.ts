@@ -94,7 +94,14 @@ export interface AutoPairToggleResponse {
   fingerprint: string | null;
   auto_pair_enabled: boolean;
   role: "drone" | "gs";
+  /** A re-arm on a paired rig without `force`: nothing was persisted. */
   rearm_blocked?: boolean;
+  /** Whether the change will actually take effect on the rig. */
+  applied: boolean;
+  /** Arming an unpaired rig queued a local-bind retry for the supervisor. */
+  retry_requested?: boolean;
+  /** A forced re-arm on a paired rig was granted. */
+  forced?: boolean;
 }
 
 // Mesh pairing window + approve/revoke + join shapes

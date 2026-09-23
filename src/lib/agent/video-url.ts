@@ -4,11 +4,9 @@
  * from its {@link CommandCloudStatus}. Shared so the fleet grid and the
  * transitive funneled-feed re-registration build the identical URL.
  *
- * The agent echoes its WHEP URL using the Host header of the poll, which can be
- * an mDNS name (e.g. `drone.local`) the browser cannot resolve, or null on
- * older agents. mediamtx serves WHEP on the same box at the WHEP port
- * (default 8889), so the URL is rebuilt from the known-reachable `lastIp`
- * whenever one is present, falling back to whatever the agent advertised.
+ * The agent advertises a relative WHEP path served by its own :8080 front,
+ * which resolves against the known-reachable `lastIp`. mediamtx's own WHEP
+ * port is loopback-only on the node, so nothing is rebuilt against it.
  * @license GPL-3.0-only
  */
 
@@ -55,14 +53,5 @@ export function resolveAgentVideoUrl(
   status: CommandCloudStatus | undefined,
 ): string | null {
   if (!status || status.videoState !== "running") return null;
-  const base = agentMediaBase(status.lastIp);
-  const advertised = status.videoWhepUrl;
-  if (advertised) return resolveMediaPath(advertised, base);
-  // Older agent with no advertised URL: rebuild from IP + port.
-  if (!status.lastIp) return null;
-  const port =
-    status.videoWhepPort && status.videoWhepPort > 0
-      ? status.videoWhepPort
-      : 8889;
-  return `http://${status.lastIp}:${port}/main/whep`;
+  return resolveMediaPath(status.videoWhepUrl, agentMediaBase(status.lastIp));
 }

@@ -35,16 +35,26 @@ describe("resolveVideoUrls — relative same-origin resolution", () => {
     expect("hlsUrl" in urls).toBe(false);
   });
 
-  it("keeps an absolute URL from an older agent (optionally .local-swapped)", () => {
+  it("keeps an absolute advertised URL, swapping a .local host for the IPv4", () => {
     const { whepUrl } = resolveVideoUrls(
       {
         videoState: "running",
-        videoWhepUrl: "http://drone.local:8889/main/whep",
+        videoWhepUrl: "http://drone.local:8080/whep",
         lastIp: "10.0.0.5",
       },
       null,
     );
-    expect(whepUrl).toBe("http://10.0.0.5:8889/main/whep");
+    expect(whepUrl).toBe("http://10.0.0.5:8080/whep");
+  });
+
+  it("never synthesizes a mediamtx URL when the node advertises none", () => {
+    // mediamtx's WHEP port is loopback-only on the node; only the :8080 front
+    // is reachable and authenticated.
+    const { whepUrl } = resolveVideoUrls(
+      { videoState: "running", videoWhepPort: 8889, lastIp: "10.0.0.5" },
+      "10.0.0.5",
+    );
+    expect(whepUrl).toBeNull();
   });
 });
 
@@ -58,7 +68,6 @@ describe("resolveVideoStreams — per-leg relative resolution", () => {
           { id: "ir", whep: "/whep?camera=ir", hls: "/hls/ir/index.m3u8" },
         ],
       },
-      null,
     );
     expect(legs).toEqual([
       {
@@ -71,17 +80,13 @@ describe("resolveVideoStreams — per-leg relative resolution", () => {
     ]);
   });
 
-  it("rebuilds the legacy per-leg URL form when no whep is advertised", () => {
-    const legs = resolveVideoStreams(
-      {
-        videoState: "running",
-        lastIp: "192.168.1.50",
-        videoStreams: [{ id: "ir" }],
-      },
-      null,
-    );
-    expect(legs[0].whepUrl).toBe("http://192.168.1.50:8889/ir/whep");
-    expect("hlsUrl" in legs[0]).toBe(false);
+  it("leaves out a leg the node advertised no path for", () => {
+    const legs = resolveVideoStreams({
+      videoState: "running",
+      lastIp: "192.168.1.50",
+      videoStreams: [{ id: "ir" }, { id: "eo", whep: "/whep?camera=eo" }],
+    });
+    expect(legs.map((l) => l.whepUrl)).toEqual(["http://192.168.1.50:8080/whep?camera=eo"]);
   });
 });
 

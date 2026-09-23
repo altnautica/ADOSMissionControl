@@ -501,7 +501,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
                 .getState()
                 .setAgentVideoStatus(
                   video.state,
-                  resolveAgentWhepUrl(video.whep_url, video.state, get().agentUrl),
+                  resolveAgentWhepUrl(video.whep_url, get().agentUrl),
                   deps,
                 );
             }

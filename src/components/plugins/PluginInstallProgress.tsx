@@ -17,6 +17,7 @@ import { makeFunctionReference } from "convex/server";
 
 import { cn, isDemoMode } from "@/lib/utils";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { mintWsTicket, WS_TICKET_PROTOCOL } from "@/lib/api/ground-station/ws-ticket";
 
 import {
   INSTALL_STAGES,
@@ -39,6 +40,9 @@ interface JobDoc {
   installId?: string;
   error?: InstallJobError;
 }
+/** Fixed delay before re-opening a dropped LAN progress stream. */
+const LAN_RECONNECT_MS = 2000;
+
 const getJobRef = makeFunctionReference<
   "query",
   { jobId: string },
@@ -157,23 +161,29 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
 
   // --- LAN WebSocket subscription -----------------------------------
   //
-  // Browsers cannot set custom headers on the WebSocket handshake,
-  // so the pairing key cannot ride a request header here. We exchange
-  // the pairing key (via the normal ``X-ADOS-Key`` REST middleware)
-  // for a one-shot ticket and hand the ticket to
-  // ``new WebSocket(url, ["ados-job-ticket", ticket])`` so it rides
-  // the subprotocol header instead of the URL. URLs end up in
-  // DevTools, HAR exports, and reverse-proxy access logs; the ticket
-  // does not.
+  // Browsers cannot set custom headers on the WebSocket handshake, so the
+  // pairing key is exchanged (over the normal ``X-ADOS-Key`` REST call) for a
+  // one-shot ticket that rides the ``ados-ws-ticket`` subprotocol, the same
+  // ticket every authenticated WS on the agent front accepts. A dropped
+  // stream is retried at a fixed interval until the job reaches a terminal
+  // stage or the view unmounts; it never gives up on its own.
   useEffect(() => {
     if (isDemoMode()) return;
     if (transport !== "lan" || !agentLanUrl) return;
 
-    let attempt = 0;
     let ws: WebSocket | null = null;
     let reconnectTimer: number | null = null;
     let cancelled = false;
     let ticketAbort: AbortController | null = null;
+
+    const retrySoon = (): void => {
+      if (cancelled) return;
+      setState((cur) => {
+        if (isTerminalStage(cur.stage)) return cur;
+        reconnectTimer = window.setTimeout(() => void open(), LAN_RECONNECT_MS);
+        return { ...cur, connectionWarning: "Reconnecting..." };
+      });
+    };
 
     const open = async (): Promise<void> => {
       if (cancelled) return;
@@ -189,60 +199,26 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
         return;
       }
 
-      // 1) Mint a one-shot ticket. The REST middleware authenticates
-      //    this call with ``X-ADOS-Key`` exactly like every other
-      //    REST route.
-      let ticket: string;
+      let ticket: string | null;
       try {
         ticketAbort = new AbortController();
-        const resp = await fetch(
-          `${agentLanUrl.replace(/\/$/, "")}/api/plugins/jobs/${encodeURIComponent(jobId)}/ticket`,
-          {
-            method: "POST",
-            headers: { "X-ADOS-Key": pairingKey },
-            signal: ticketAbort.signal,
-          },
+        ticket = await mintWsTicket(
+          { baseUrl: agentLanUrl, apiKey: pairingKey },
+          "plugins.install_job",
+          ticketAbort.signal,
         );
-        if (!resp.ok) {
-          throw new Error(`HTTP ${resp.status}`);
-        }
-        const body = (await resp.json()) as { ticket?: string };
-        if (!body.ticket) {
-          throw new Error("ticket mint response missing ticket");
-        }
-        ticket = body.ticket;
       } catch (err) {
-        if (cancelled) return;
-        if (err instanceof DOMException && err.name === "AbortError") {
-          return;
-        }
-        setState((cur) => {
-          if (isTerminalStage(cur.stage)) return cur;
-          if (attempt === 0) {
-            attempt = 1;
-            reconnectTimer = window.setTimeout(() => {
-              void open();
-            }, 1000);
-            return { ...cur, connectionWarning: "Reconnecting..." };
-          }
-          return {
-            ...cur,
-            connectionWarning: "Connection lost. Tap to retry.",
-          };
-        });
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        retrySoon();
         return;
       }
 
-      // 2) Open the WebSocket. The ticket rides the subprotocol
-      //    array per RFC 6455 — the agent echoes back
-      //    ``ados-job-ticket`` so the handshake completes.
       let wsUrlStr: string;
       try {
-        const u = new URL(
+        wsUrlStr = new URL(
           `/api/plugins/jobs/${encodeURIComponent(jobId)}`,
           agentLanUrl.replace(/^http/, "ws"),
-        );
-        wsUrlStr = u.toString();
+        ).toString();
       } catch {
         if (cancelled) return;
         setState((s) => ({
@@ -252,7 +228,10 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
         }));
         return;
       }
-      ws = new WebSocket(wsUrlStr, ["ados-job-ticket", ticket]);
+      if (cancelled) return;
+      ws = ticket
+        ? new WebSocket(wsUrlStr, [WS_TICKET_PROTOCOL, ticket])
+        : new WebSocket(wsUrlStr);
       ws.onmessage = (ev) => {
         try {
           const frame = JSON.parse(String(ev.data)) as Partial<JobDoc> & {
@@ -269,23 +248,7 @@ export function PluginInstallProgress(props: PluginInstallProgressProps) {
           /* ignore malformed frame */
         }
       };
-      ws.onclose = () => {
-        if (cancelled) return;
-        setState((cur) => {
-          if (isTerminalStage(cur.stage)) return cur;
-          if (attempt === 0) {
-            attempt = 1;
-            reconnectTimer = window.setTimeout(() => {
-              void open();
-            }, 1000);
-            return { ...cur, connectionWarning: "Reconnecting..." };
-          }
-          return {
-            ...cur,
-            connectionWarning: "Connection lost. Tap to retry.",
-          };
-        });
-      };
+      ws.onclose = () => retrySoon();
     };
 
     void open();
