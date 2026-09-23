@@ -4,7 +4,6 @@
  */
 
 import { CRC_EXTRA, crc16, crc16Accumulate } from "../mavlink-parser";
-import type { MavlinkSigner } from "../mavlink-signer";
 
 // ── Sequence Counter ────────────────────────────────────────
 
@@ -41,53 +40,31 @@ export function resetSequences(): void {
 // ── Frame Builder ───────────────────────────────────────────
 
 /**
- * Assemble a complete MAVLink v2 frame, optionally signed.
+ * Assemble a complete, unsigned MAVLink v2 frame.
  *
- * When `signer` is supplied, the frame has the MAVLINK_IFLAG_SIGNED bit
- * set in INC_FLAGS and a 13-byte signature tail appended after the CRC.
- * When omitted, the frame is emitted unsigned exactly as before.
+ * Signing happens on the send path (`MavlinkSigner.signFrame`), which sets
+ * the signed flag, recomputes the CRC and appends the signature tail.
  *
  * @param msgId   - 24-bit message ID
  * @param payload - Serialised payload bytes
  * @param sysId   - Sender system ID (default 255 = GCS)
  * @param compId  - Sender component ID (default 190 = MAV_COMP_ID_MISSIONPLANNER)
  * @param seq     - Explicit sequence number (auto-incremented if omitted)
- * @param signer  - Optional MavlinkSigner. When provided, the frame is signed.
- * @returns Complete frame ready to send over the transport. Signed
- *          frames resolve asynchronously.
+ * @returns Complete frame ready to send over the transport.
  */
-export function buildFrame(
-  msgId: number,
-  payload: Uint8Array,
-  sysId?: number,
-  compId?: number,
-  seq?: number,
-): Uint8Array;
-export function buildFrame(
-  msgId: number,
-  payload: Uint8Array,
-  sysId: number | undefined,
-  compId: number | undefined,
-  seq: number | undefined,
-  signer: MavlinkSigner,
-): Promise<Uint8Array>;
 export function buildFrame(
   msgId: number,
   payload: Uint8Array,
   sysId = 255,
   compId = 190,
   seq?: number,
-  signer?: MavlinkSigner,
-): Uint8Array | Promise<Uint8Array> {
+): Uint8Array {
   const payloadLen = payload.length;
-  const unsignedLen = 10 + payloadLen + 2;
-  const frame = new Uint8Array(signer ? unsignedLen + 13 : unsignedLen);
+  const frame = new Uint8Array(10 + payloadLen + 2);
 
-  // Header. INC_FLAGS bit 0 marks the frame as signed. The bit is part of
-  // the hashed region, so it MUST be set before computing the signature.
   frame[0] = 0xfd;
   frame[1] = payloadLen;
-  frame[2] = signer ? 0x01 : 0x00;
+  frame[2] = 0x00;
   frame[3] = 0;
   frame[4] = seq ?? nextSequence(sysId, compId);
   frame[5] = sysId;
@@ -111,16 +88,5 @@ export function buildFrame(
   frame[10 + payloadLen] = crc & 0xff;
   frame[10 + payloadLen + 1] = (crc >> 8) & 0xff;
 
-  if (!signer) {
-    return frame;
-  }
-
-  // Signed path. The signed region is bytes 1..end-of-CRC (i.e. header
-  // excluding STX, payload, CRC). Call the async signer and splice the
-  // 13-byte tail onto the end of the frame buffer before returning.
-  const signedRegion = frame.subarray(1, unsignedLen);
-  return signer.sign(signedRegion).then((tail) => {
-    frame.set(tail, unsignedLen);
-    return frame;
-  });
+  return frame;
 }

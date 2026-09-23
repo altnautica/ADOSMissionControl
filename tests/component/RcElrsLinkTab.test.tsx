@@ -184,19 +184,63 @@ describe("RcElrsLinkTab honest field reads", () => {
   });
 });
 
-describe("RcElrsLinkTab store wiring", () => {
-  it("reads the per-node crsf snapshot from the capability store", () => {
-    useAgentCapabilitiesStore.setState({
+describe("RcElrsLinkTab per-node reading", () => {
+  function seedNode(crsf: CrsfState | null, ageMs: number) {
+    const snapshot = {
       ...initialState,
-      crsf: makeCrsf({ state: "link_ok" }),
+      crsf,
+      receivedAt: Date.now() - ageMs,
+    };
+    const { focusedDeviceId: _f, byDevice: _b, ...slice } = snapshot;
+    useAgentCapabilitiesStore.setState({
+      // The focused slice describes another node with a healthy lane; the tab
+      // must not borrow it.
+      crsf: makeCrsf({ state: "link_ok", rssiDbm: -40 }),
+      byDevice: { "gs-1": slice },
     });
-    renderWithIntl(<RcElrsLinkTab />);
-    expect(screen.getByText("Connected")).toBeDefined();
+  }
+
+  it("reads the rendered node's own snapshot, not the focused slice", () => {
+    seedNode(makeCrsf({ state: "degraded", rssiDbm: -95 }), 1_000);
+    renderWithIntl(<RcElrsLinkTab nodeDeviceId="gs-1" />);
+    expect(screen.getByText("-95 dBm")).toBeDefined();
+    expect(screen.queryByText("-40 dBm")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("falls back to the empty state when the store carries no lane", () => {
-    useAgentCapabilitiesStore.setState({ ...initialState, crsf: null });
-    renderWithIntl(<RcElrsLinkTab />);
+  it("marks a reading from a node that stopped answering as not current", () => {
+    seedNode(makeCrsf({ state: "link_ok" }), 50_000);
+    renderWithIntl(<RcElrsLinkTab nodeDeviceId="gs-1" />);
+    expect(screen.getByRole("status").textContent).toMatch(
+      /Last reading 50s ago.*not current/,
+    );
+  });
+
+  it("says the node is not answering instead of 'not configured' when the last reading is old", () => {
+    seedNode(null, 120_000);
+    renderWithIntl(<RcElrsLinkTab nodeDeviceId="gs-1" />);
+    expect(screen.getByText("Node not answering")).toBeDefined();
+    expect(screen.queryByText("RC / ELRS lane not configured")).toBeNull();
+  });
+
+  it("says 'not read' for a node never heard from", () => {
+    renderWithIntl(<RcElrsLinkTab nodeDeviceId="gs-unknown" />);
+    expect(screen.getByText("No reading from this node yet")).toBeDefined();
+    expect(screen.queryByText("RC / ELRS lane not configured")).toBeNull();
+  });
+
+  it("shows the empty state for a fresh reading with no lane", () => {
+    seedNode(null, 1_000);
+    renderWithIntl(<RcElrsLinkTab nodeDeviceId="gs-1" />);
     expect(screen.getByText("RC / ELRS lane not configured")).toBeDefined();
+  });
+
+  it("treats a reading just written by a node payload as current", () => {
+    useAgentCapabilitiesStore
+      .getState()
+      .setCapabilities({ crsf: makeCrsf({ rssiDbm: -77 }) }, "gs-2");
+    renderWithIntl(<RcElrsLinkTab nodeDeviceId="gs-2" />);
+    expect(screen.getByText("-77 dBm")).toBeDefined();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

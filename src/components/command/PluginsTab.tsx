@@ -40,7 +40,7 @@ export function PluginsTab({ ctx }: { ctx: SurfaceContext }) {
   // id NodeDetailPanel keys `drones.find` on); every downstream consumer
   // here — the Convex `deviceId` key, the plugin inventory store — is
   // keyed by the bare device id instead, the same distinction
-  // NodeDetailPanel itself draws for `atlasDeviceId`. ctx.drone is
+  // NodeDetailPanel itself draws for `bareDeviceId`. ctx.drone is
   // guaranteed non-null: NodeDetailPanel renders no surface until it
   // resolves one, and this tab's nav entry only shows when the agent is
   // reachable (`ctx.agentDeviceId !== null || ctx.relayReach !== null`),

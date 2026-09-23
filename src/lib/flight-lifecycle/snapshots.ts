@@ -22,15 +22,20 @@ import type {
 
 export function capturePreflightSnapshot(droneId: string): PreflightSnapshot | undefined {
   const checklist = useChecklistStore.getState();
-  const items: PreflightChecklistItem[] = checklist.items.map((i) => ({
-    id: i.id,
-    category: i.category,
-    label: i.label,
-    status: i.status,
-    type: i.type,
-    displayValue: i.displayValue,
-  }));
-  const checklistComplete = items.length > 0 && items.every((i) => i.status === "pass" || i.status === "skipped");
+  // The checklist session belongs to one drone. Another drone's session says
+  // nothing about this one, so the record carries no checklist at all.
+  const ownSession = checklist.droneId === droneId;
+  const items: PreflightChecklistItem[] = ownSession
+    ? checklist.items.map((i) => ({
+        id: i.id,
+        category: i.category,
+        label: i.label,
+        status: i.status,
+        type: i.type,
+        displayValue: i.displayValue,
+      }))
+    : [];
+  const checklistComplete = checklist.isReadyToArm(droneId);
 
   // Drain the prearm STATUSTEXT buffer the bridge has been filling.
   const prearmFailures = usePrearmBufferStore.getState().drain(droneId);
@@ -48,8 +53,8 @@ export function capturePreflightSnapshot(droneId: string): PreflightSnapshot | u
   if (!hasAnything) return undefined;
 
   return {
-    checklistSessionId: checklist.sessionId ?? undefined,
-    checklistStartedAt: checklist.startedAt ?? undefined,
+    checklistSessionId: ownSession ? (checklist.sessionId ?? undefined) : undefined,
+    checklistStartedAt: ownSession ? (checklist.startedAt ?? undefined) : undefined,
     checklistItems: items,
     checklistComplete,
     sysStatusHealth: latestSys?.sensorsHealthy,

@@ -210,6 +210,22 @@ export function nodeEntryToFleetDrone(
 }
 
 /**
+ * True when a fleet row's FC-gated fields (battery, GPS, mode, arm state) are a
+ * current reading: a flight controller is attached, it has not gone silent, and
+ * the node itself is online. Fleet summaries count and render FC fields only
+ * for these rows; any other row's values are defaults or a frozen last frame.
+ */
+export function hasLiveFcReading(
+  drone: Pick<FleetDrone, "fcAttached" | "fcLinkLost" | "status">,
+): boolean {
+  return (
+    drone.fcAttached === true &&
+    drone.fcLinkLost !== true &&
+    drone.status !== "offline"
+  );
+}
+
+/**
  * Project the whole registry into a `FleetDrone[]`. One physical node yields
  * exactly one row (the registry already collapsed both transports onto one
  * nodeId), sorted by name for a stable list order.

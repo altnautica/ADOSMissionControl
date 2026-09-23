@@ -188,6 +188,11 @@ function clearReplayStores(): void {
  */
 function tick(): void {
   if (_state !== "playing") return;
+  // A vehicle managed mid-playback owns the stores from this frame on.
+  if (replayBlockedReason() !== null) {
+    pause();
+    return;
+  }
 
   const now = currentTimeMs();
 

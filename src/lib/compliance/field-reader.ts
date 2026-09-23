@@ -23,19 +23,19 @@ import type {
 } from "@/lib/types";
 import type { FieldRef } from "./jurisdictions";
 
-/** Operator-profile fields the record freezes at arm time. */
-const OPERATOR_SNAPSHOT: Partial<Record<keyof OperatorProfile, keyof FlightRecord>> = {
-  pilotFirstName: "pilotFirstName",
-  pilotLastName: "pilotLastName",
-  pilotLicenseNumber: "pilotLicenseNumber",
-  pilotLicenseIssuer: "pilotLicenseIssuer",
+/** Operator-profile fields the record freezes at arm time, by resolved pilot field. */
+const PILOT_FIELD: Partial<Record<keyof OperatorProfile, keyof ResolvedPilot>> = {
+  pilotFirstName: "firstName",
+  pilotLastName: "lastName",
+  pilotLicenseNumber: "licenseNumber",
+  pilotLicenseIssuer: "licenseIssuer",
 };
 
-/** Aircraft-registry fields the record freezes at arm time. */
-const AIRCRAFT_SNAPSHOT: Partial<Record<keyof AircraftRecord, keyof FlightRecord>> = {
-  registrationNumber: "aircraftRegistration",
-  serialNumber: "aircraftSerial",
-  mtomKg: "aircraftMtomKg",
+/** Aircraft-registry fields the record freezes at arm time, by resolved identity field. */
+const AIRCRAFT_FIELD: Partial<Record<keyof AircraftRecord, keyof ResolvedAircraftIdentity>> = {
+  registrationNumber: "registration",
+  serialNumber: "serial",
+  mtomKg: "mtomKg",
 };
 
 /** Read a single field. Returns `undefined` if missing or unresolvable. */
@@ -47,14 +47,12 @@ export function readField(
 ): unknown {
   if (ref.kind === "record") return record[ref.key];
   if (ref.kind === "operator") {
-    const snapshotKey = OPERATOR_SNAPSHOT[ref.key];
-    const frozen = snapshotKey ? record[snapshotKey] : undefined;
-    return frozen ?? operator[ref.key];
+    const field = PILOT_FIELD[ref.key];
+    return field ? resolvePilot(record, operator)[field] : operator[ref.key];
   }
   if (ref.kind === "aircraft") {
-    const snapshotKey = AIRCRAFT_SNAPSHOT[ref.key];
-    const frozen = snapshotKey ? record[snapshotKey] : undefined;
-    return frozen ?? aircraft?.[ref.key];
+    const field = AIRCRAFT_FIELD[ref.key];
+    return field ? resolveAircraftIdentity(record, aircraft)[field] : aircraft?.[ref.key];
   }
   return undefined;
 }
@@ -67,13 +65,41 @@ export interface ResolvedPilot {
   licenseIssuer?: string;
 }
 
-export function resolvePilot(record: FlightRecord, operator: OperatorProfile): ResolvedPilot {
+/** The pilot fields a flight record freezes at arm time. */
+type PilotSnapshot = Pick<
+  FlightRecord,
+  "pilotFirstName" | "pilotLastName" | "pilotLicenseNumber" | "pilotLicenseIssuer"
+>;
+
+export function resolvePilot(record: PilotSnapshot, operator: OperatorProfile): ResolvedPilot {
   return {
     firstName: record.pilotFirstName ?? operator.pilotFirstName,
     lastName: record.pilotLastName ?? operator.pilotLastName,
     licenseNumber: record.pilotLicenseNumber ?? operator.pilotLicenseNumber,
     licenseIssuer: record.pilotLicenseIssuer ?? operator.pilotLicenseIssuer,
   };
+}
+
+/**
+ * The one pilot who flew every record in `records`, for a cover block that
+ * names a single pilot. Null when the records' arm-time pilots disagree: each
+ * flight then carries its own pilot. With no records, the live profile.
+ */
+export function commonPilot(records: FlightRecord[], operator: OperatorProfile): ResolvedPilot | null {
+  if (records.length === 0) return resolvePilot({}, operator);
+  const first = resolvePilot(records[0], operator);
+  for (const record of records) {
+    const p = resolvePilot(record, operator);
+    if (
+      p.firstName !== first.firstName ||
+      p.lastName !== first.lastName ||
+      p.licenseNumber !== first.licenseNumber ||
+      p.licenseIssuer !== first.licenseIssuer
+    ) {
+      return null;
+    }
+  }
+  return first;
 }
 
 /** Aircraft identity for one flight: the arm-time snapshot, else the live registry. */

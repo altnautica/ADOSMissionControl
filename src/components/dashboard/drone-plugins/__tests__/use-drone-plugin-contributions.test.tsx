@@ -57,16 +57,16 @@ describe("useDronePluginContributions", () => {
 
   it("returns mock contributions for a known demo drone", () => {
     const { result } = renderHook(() =>
-      useDronePluginContributions("demo-drone-1"),
+      useDronePluginContributions("alpha-1"),
     );
-    // demo-drone-1 has the vision-nav plugin enabled.
+    // alpha-1 has the vision-nav plugin enabled.
     expect(result.current.length).toBeGreaterThan(0);
     expect(result.current[0].pluginId).toBe("com.altnautica.vision-nav");
   });
 
   it("surfaces a demo plugin's declarative parameters on its tab", () => {
     const { result } = renderHook(() =>
-      useDronePluginContributions("demo-drone-1"),
+      useDronePluginContributions("alpha-1"),
     );
     const visionNav = result.current.find(
       (c) => c.pluginId === "com.altnautica.vision-nav",
@@ -88,18 +88,18 @@ describe("useDronePluginContributions", () => {
   });
 
   it("sorts by manifest order ascending, then pluginId", () => {
-    // demo-drone-2 has FLIR Lepton thermal (order 70). demo-drone-3 has
+    // charlie-3 has FLIR Lepton thermal (order 70). delta-4 has
     // gimbal v2 (order 50). Validate the sort by checking drone-2 alone
     // first (one tab), then verifying drone-3 reports its tab.
     const { result: r2 } = renderHook(() =>
-      useDronePluginContributions("demo-drone-2"),
+      useDronePluginContributions("charlie-3"),
     );
     expect(r2.current.map((c) => c.pluginId)).toEqual([
       "com.flir.thermal",
     ]);
 
     const { result: r3 } = renderHook(() =>
-      useDronePluginContributions("demo-drone-3"),
+      useDronePluginContributions("delta-4"),
     );
     expect(r3.current.map((c) => c.pluginId)).toEqual([
       "com.altnautica.gimbal-v2",

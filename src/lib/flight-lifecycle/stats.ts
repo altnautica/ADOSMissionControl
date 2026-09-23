@@ -94,7 +94,8 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
         if (batteryStartV === undefined) batteryStartV = d.voltage;
         batteryEndV = d.voltage;
       }
-      if (typeof d.remaining === "number") {
+      // -1 is the autopilot's "remaining not measured".
+      if (typeof d.remaining === "number" && d.remaining >= 0) {
         if (batteryStartPct === undefined) batteryStartPct = d.remaining;
         batteryEndPct = d.remaining;
       }

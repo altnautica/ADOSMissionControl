@@ -92,9 +92,9 @@ export function buildSkillContextFor(droneId: string): SkillContext {
     previousMode: droneState.previousMode,
     supports,
     autonomousNav,
-    checklistReady: useChecklistStore.getState().isReadyToArm(),
+    checklistReady: useChecklistStore.getState().isReadyToArm(droneId),
     confirm: (policy: ConfirmPolicy) =>
-      useSkillConfirmStore.getState().request(policy),
+      useSkillConfirmStore.getState().request(policy, droneId),
     notify: (message, status) => notifier(message, status),
   };
 }

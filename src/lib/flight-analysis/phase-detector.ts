@@ -33,7 +33,7 @@ const CRUISE_GS_MS = 2.0;
 /** Hover ground speed ceiling for copters (m/s). */
 const HOVER_GS_MS = 1.0;
 
-/** Minimum altitude AGL (m) to be considered airborne at all. */
+/** Minimum height above home (m) to be considered airborne at all. */
 const AIRBORNE_ALT_M = 2.0;
 
 /** First-N-seconds window classified as takeoff after leaving the ground. */

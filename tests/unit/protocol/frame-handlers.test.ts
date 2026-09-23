@@ -251,7 +251,8 @@ describe('routeFrame — Heartbeat (ID 0)', () => {
 describe('routeFrame — AUTOPILOT_VERSION (ID 148)', () => {
   function makeAutopilotVersionPayload(boardVersion: number): DataView {
     const dv = makeDataView(78);
-    dv.setUint32(8, 0x04050000, true); // flight_sw_version 4.5.0
+    // Wire order: capabilities u64 @0, uid u64 @8, flight_sw_version u32 @16, board_version u32 @28.
+    dv.setUint32(16, 0x04050000, true); // flight_sw_version 4.5.0
     dv.setUint32(28, boardVersion, true);
     return dv;
   }

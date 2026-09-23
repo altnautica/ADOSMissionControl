@@ -32,17 +32,3 @@ export function generateAlert(droneId: string, droneName: string): Alert {
     acknowledged: false,
   };
 }
-
-/** Generate a specific battery alert. */
-export function batteryAlert(droneId: string, droneName: string, pct: number): Alert {
-  const severity: AlertSeverity = pct <= 20 ? "critical" : "warning";
-  return {
-    id: randomId(),
-    droneId,
-    droneName,
-    severity,
-    message: `Battery at ${Math.round(pct)}%${pct <= 20 ? " — initiating RTL" : ""}`,
-    timestamp: Date.now(),
-    acknowledged: false,
-  };
-}

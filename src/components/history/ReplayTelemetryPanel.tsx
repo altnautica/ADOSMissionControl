@@ -74,7 +74,7 @@ export function ReplayTelemetryPanel() {
       </Section>
 
       <Section title="Battery">
-        <Row label="BAT" value={bat ? Math.round(bat.remaining) : "—"} unit="%" />
+        <Row label="BAT" value={bat && bat.remaining >= 0 ? Math.round(bat.remaining) : "—"} unit="%" />
         <Row label="VOLT" value={formatDecimal(bat?.voltage, 1, locale)} unit="V" />
         <Row label="AMP" value={formatDecimal(bat?.current, 1, locale)} unit="A" />
       </Section>
@@ -92,7 +92,7 @@ export function ReplayTelemetryPanel() {
       </Section>
 
       <Section title="Flight">
-        <Row label="THR" value={vfr ? Math.round(vfr.throttle) : "—"} unit="%" />
+        <Row label="THR" value={vfr?.throttle !== undefined ? Math.round(vfr.throttle) : "—"} unit="%" />
       </Section>
     </div>
   );

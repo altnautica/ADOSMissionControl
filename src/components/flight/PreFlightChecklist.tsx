@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { RotateCcw, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,149 +7,27 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useChecklistStore } from "@/stores/checklist-store";
-import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useSensorHealthStore } from "@/stores/sensor-health-store";
-import { useMissionStore } from "@/stores/mission-store";
-import { useGeofenceStore } from "@/stores/geofence-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { cn } from "@/lib/utils";
 import { CATEGORY_ORDER, CATEGORY_LABEL_KEYS, ChecklistRow } from "./checklist-helpers";
 
-/** MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` label key. */
-const GPS_FIX_KEYS: Record<number, string> = {
-  0: "noGps",
-  1: "noFix",
-  2: "fix2d",
-  3: "fix3d",
-  4: "dgps",
-  5: "rtkFloat",
-  6: "rtk",
-};
-
+/**
+ * The checklist for the selected drone. Auto items are kept current by
+ * `ChecklistAutoRunner` (mounted by the shell), so what this shows, and what
+ * the Arm and Take-off confirms read, does not depend on this view being open.
+ */
 export function PreFlightChecklist({ className }: { className?: string }) {
   const t = useTranslations("checklist");
-  const tFix = useTranslations("indicators.gpsFix");
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
   const items = useChecklistStore((s) => s.items);
-  const sessionId = useChecklistStore((s) => s.sessionId);
   const startSession = useChecklistStore((s) => s.startSession);
-  const resetSession = useChecklistStore((s) => s.resetSession);
-  const updateAutoItem = useChecklistStore((s) => s.updateAutoItem);
   const isReadyToArm = useChecklistStore((s) => s.isReadyToArm);
   const getProgress = useChecklistStore((s) => s.getProgress);
   const getCategoryProgress = useChecklistStore((s) => s.getCategoryProgress);
 
-  // Telemetry subscriptions for auto-checks
-  const battery = useTelemetryStore((s) => s.battery);
-  const gps = useTelemetryStore((s) => s.gps);
-  const ekf = useTelemetryStore((s) => s.ekf);
-  const _version = useTelemetryStore((s) => s._version);
-  const healthyCount = useSensorHealthStore((s) => s.getHealthySensorCount());
-  const totalPresent = useSensorHealthStore((s) => s.getTotalPresentCount());
-  const getSensorByName = useSensorHealthStore((s) => s.getSensorByName);
-  const waypoints = useMissionStore((s) => s.waypoints);
-  const geofenceEnabled = useGeofenceStore((s) => s.enabled);
-
-  // Auto-check runner: updates auto items based on current telemetry
-  const runAutoChecks = useCallback(() => {
-    // Battery checks
-    const latestBattery = battery.latest();
-    if (latestBattery) {
-      updateAutoItem(
-        "battery-level",
-        latestBattery.remaining > 20 ? "pass" : "fail",
-        `${Math.round(latestBattery.remaining)}%`,
-      );
-      updateAutoItem(
-        "battery-voltage",
-        latestBattery.voltage > 10.5 ? "pass" : "fail",
-        `${latestBattery.voltage.toFixed(1)}V`,
-      );
-    }
-
-    // GPS checks
-    const latestGps = gps.latest();
-    if (latestGps) {
-      // The pass gate stays on fix type >= 3; only the reported value is
-      // translated. Types above 6 (STATIC, PPP) have no key entry and report
-      // as 3D, which is what the old `>= 3` branch showed for them.
-      updateAutoItem(
-        "gps-fix",
-        latestGps.fixType >= 3 ? "pass" : "fail",
-        tFix(GPS_FIX_KEYS[latestGps.fixType] ?? "fix3d"),
-      );
-      updateAutoItem(
-        "gps-sats",
-        latestGps.satellites >= 8 ? "pass" : "fail",
-        `${latestGps.satellites} sats`,
-      );
-    }
-
-    // EKF check
-    const latestEkf = ekf.latest();
-    if (latestEkf) {
-      // EKF flags: check velocity and position variance flags are OK
-      const ekfOk = latestEkf.velocityVariance < 1.0 && latestEkf.posHorizVariance < 1.0;
-      updateAutoItem("ekf-ok", ekfOk ? "pass" : "fail");
-    }
-
-    // Sensor health
-    if (totalPresent > 0) {
-      const allHealthy = healthyCount === totalPresent;
-      updateAutoItem(
-        "sensors-healthy",
-        allHealthy ? "pass" : "fail",
-        `${healthyCount}/${totalPresent}`,
-      );
-    }
-
-    // Pre-arm: the FLIGHT CONTROLLER's own verdict, SYS_STATUS sensor bit 28
-    // (`MAV_SYS_STATUS_PREARM_CHECK`). The item is declared "No PreArm
-    // failures from FC", and it used to be derived from `totalPresent` /
-    // `healthyCount` — exactly the inputs already driving the separate
-    // `sensors-healthy` item — so the FC's real prearm status was never read.
-    // A flight controller actively emitting PreArm failures showed a green
-    // tick, and `isReadyToArm()` then returned true, which suppresses the
-    // checklist-aware OVERRIDE escalation for Arm and Takeoff.
-    //
-    // A vehicle that does not publish the bit leaves the item UNSET (manual),
-    // rather than inheriting an unrelated check's verdict.
-    const prearmSensor = getSensorByName("pre_arm_check");
-    if (prearmSensor?.present) {
-      updateAutoItem(
-        "prearm-pass",
-        prearmSensor.healthy ? "pass" : "fail",
-        prearmSensor.healthy ? undefined : "FC reports pre-arm failures",
-      );
-    }
-
-    // Mission checks
-    updateAutoItem(
-      "flight-plan",
-      waypoints.length > 0 ? "pass" : "fail",
-      waypoints.length > 0 ? `${waypoints.length} wpts` : "None",
-    );
-    updateAutoItem(
-      "geofence-set",
-      geofenceEnabled ? "pass" : "fail",
-      geofenceEnabled ? "Enabled" : "Disabled",
-    );
-  }, [battery, gps, ekf, healthyCount, totalPresent, getSensorByName, waypoints.length, geofenceEnabled, updateAutoItem, tFix]);
-
-  // Run auto-checks on telemetry updates (debounced by _version)
-  useEffect(() => {
-    if (!sessionId) return;
-    runAutoChecks();
-  }, [sessionId, _version, runAutoChecks, waypoints.length, geofenceEnabled, healthyCount]);
-
-  // Auto-start session on mount if none active
-  useEffect(() => {
-    if (!sessionId) {
-      startSession();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const progress = getProgress();
   const progressPct = progress.total > 0 ? (progress.checked / progress.total) * 100 : 0;
-  const ready = isReadyToArm();
+  const ready = isReadyToArm(selectedId);
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -164,9 +41,9 @@ export function PreFlightChecklist({ className }: { className?: string }) {
           <Button
             size="sm"
             variant="ghost"
+            disabled={!selectedId}
             onClick={() => {
-              resetSession();
-              startSession();
+              if (selectedId) startSession(selectedId);
             }}
           >
             <RotateCcw size={10} />

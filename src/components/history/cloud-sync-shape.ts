@@ -11,6 +11,7 @@
  */
 
 import type { FlightRecord } from "@/lib/types";
+import type { Doc } from "../../../convex/_generated/dataModel";
 
 /** Fields that never leave the device. */
 type LocalOnlyKey =
@@ -102,17 +103,17 @@ export function toCloudShape(record: FlightRecord): CloudFlightRow {
 }
 
 /**
- * Translate a cloud row (`clientId` + `_id` + `_creationTime` + `userId`)
- * back into the local FlightRecord shape. `date` is not stored in the cloud,
- * so it is rebuilt from `startTime`.
+ * Translate a cloud row back into the local FlightRecord shape. `date` is not
+ * stored in the cloud, so it is rebuilt from `startTime`; the row's Convex
+ * bookkeeping and the retired `suiteType` column are dropped.
  */
-export function fromCloudShape(row: Record<string, unknown>): FlightRecord {
-  const { _id, _creationTime, userId, clientId, ...rest } = row as Record<string, unknown> & {
-    clientId: string;
-  };
+export function fromCloudShape(row: Doc<"cmd_flightLogs">): FlightRecord {
+  const { _id, _creationTime, userId, clientId, suiteType, ...rest } = row;
   void _id;
   void _creationTime;
   void userId;
-  const record = { ...rest, id: clientId } as unknown as FlightRecord;
-  return { ...record, date: record.startTime };
+  void suiteType;
+  // The validator spells coordinate pairs as number[][]; every row was written
+  // from a FlightRecord by toCloudShape, so the pairs narrow back as written.
+  return { ...rest, id: clientId, date: rest.startTime } as FlightRecord;
 }

@@ -24,6 +24,7 @@ import {
   mspStartCalibration,
   mspCommitParamsToFlash,
   mspSendManualControl,
+  mspDoPreArmCheck,
   type MspCommandContext,
 } from '@/lib/protocol/msp-adapter-commands';
 import type { MspSerialQueue } from '@/lib/protocol/msp/msp-serial-queue';
@@ -33,6 +34,8 @@ import { MspRcOverride } from '@/lib/protocol/msp/msp-rc-override';
 import { RC_THROTTLE_CUT } from '@/lib/protocol/msp/msp-rc-channels';
 import { encodeMsp } from '@/lib/protocol/msp/msp-codec';
 import { MspParser } from '@/lib/protocol/msp/msp-parser';
+import { INAV_MSP } from '@/lib/protocol/msp/decoders/inav/constants';
+import type { FirmwareType } from '@/lib/protocol/types';
 
 // ── Capturing fake queue ───────────────────────────────────
 
@@ -605,5 +608,72 @@ describe('not-connected guard', () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe('Not connected');
     }
+  });
+});
+
+// ── Pre-arm verdict ────────────────────────────────────────
+
+/** A queue that answers each command with a fixed response payload. */
+function respondingCtx(firmwareType: FirmwareType, responses: Record<number, Uint8Array>): MspCommandContext {
+  const queue = {
+    send(command: number) {
+      const payload = responses[command];
+      if (!payload) return Promise.reject(new Error(`unexpected command ${command}`));
+      return Promise.resolve({ version: 1 as const, command, payload, direction: 'response' as const });
+    },
+  };
+  return { queue: queue as unknown as MspSerialQueue, modeRanges: [], rc: null, firmwareType };
+}
+
+/**
+ * Betaflight MSP_STATUS_EX: u16 cycle, u16 i2c, u16 sensors, u32 mode flags,
+ * u8 pid profile, u16 load, u8 pid profile count (13), u8 rate profile (14),
+ * u8 extra mode-flag byte count (15), the extra bytes, u8 arming flag count,
+ * u32 arming-disable flags, u8 config state.
+ */
+function bfStatusEx(armingDisableFlags: number, extraModeBytes = 1): Uint8Array {
+  const buf = new Uint8Array(16 + extraModeBytes + 6);
+  const dv = new DataView(buf.buffer);
+  dv.setUint8(13, 4); // PID_PROFILE_COUNT
+  dv.setUint8(14, 1); // rate profile index
+  dv.setUint8(15, extraModeBytes);
+  dv.setUint8(16 + extraModeBytes, 26); // arming flag count
+  dv.setUint32(16 + extraModeBytes + 1, armingDisableFlags, true);
+  return buf;
+}
+
+/** iNav MSP2_INAV_STATUS: the full 32-bit arming flags at byte 9. */
+function inavStatus(armingFlags: number): Uint8Array {
+  const buf = new Uint8Array(17);
+  new DataView(buf.buffer).setUint32(9, armingFlags, true);
+  return buf;
+}
+
+describe('mspDoPreArmCheck', () => {
+  it('passes a Betaflight FC whose arming-disable word is clear', async () => {
+    const ctx = respondingCtx('betaflight', { [MSP.MSP_STATUS_EX]: bfStatusEx(0) });
+    expect((await mspDoPreArmCheck(ctx)).success).toBe(true);
+  });
+
+  it('names every Betaflight blocker read after the extra mode-flag bytes', async () => {
+    const RX_FAILSAFE = 1 << 2;
+    const ANGLE = 1 << 8;
+    const ctx = respondingCtx('betaflight', { [MSP.MSP_STATUS_EX]: bfStatusEx(RX_FAILSAFE | ANGLE, 2) });
+    const result = await mspDoPreArmCheck(ctx);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('RX failsafe');
+    expect(result.message).toContain('Craft not level');
+  });
+
+  it('reads iNav blockers from the full status word and ignores informational bits', async () => {
+    const WAS_EVER_ARMED = 1 << 3;
+    const RC_LINK = 1 << 18;
+    const clear = respondingCtx('inav', { [INAV_MSP.MSP2_INAV_STATUS]: inavStatus(WAS_EVER_ARMED) });
+    expect((await mspDoPreArmCheck(clear)).success).toBe(true);
+
+    const blocked = respondingCtx('inav', { [INAV_MSP.MSP2_INAV_STATUS]: inavStatus(WAS_EVER_ARMED | RC_LINK) });
+    const result = await mspDoPreArmCheck(blocked);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('RC link');
   });
 });

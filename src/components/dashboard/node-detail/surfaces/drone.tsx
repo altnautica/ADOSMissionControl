@@ -103,7 +103,7 @@ export const DRONE_SURFACES: SurfaceSpec[] = [
     labelKey: "rcElrsLink.tabLabel",
     group: VEHICLE_GROUP,
     when: (ctx) => ctx.crsfPresent === "present",
-    render: () => <RcElrsLinkTab />,
+    render: (ctx) => <RcElrsLinkTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     // Top level on every profile: "what happened on this node" is a first

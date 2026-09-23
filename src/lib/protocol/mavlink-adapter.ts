@@ -34,11 +34,15 @@ import * as msn from './mavlink-adapter-missions'
 import * as logOps from './mavlink-adapter-logs'
 import * as ftpOps from './mavlink-adapter-ftp'
 import * as ftpWriteOps from './mavlink-adapter-ftp-ops'
+import { SigningTransport } from './signing-transport'
+import type { MavlinkSigner } from './mavlink-signer'
 
 /** Per-link state for multi-link support. Each link is a Transport that can reach this drone. */
 interface LinkState {
   id: string
   transport: Transport
+  /** `transport` as seen by senders: signs each v2 frame while a signer is set. */
+  outbound: SigningTransport
   label: string
   connectionMeta?: import('@/stores/drone-manager').ConnectionMeta
   connectedAt: number
@@ -73,6 +77,8 @@ export class MAVLinkAdapter implements DroneProtocol {
   private _disconnected = false
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null
   private streamRequestInterval: ReturnType<typeof setInterval> | null = null
+  /** Signs every outbound v2 frame when set; null sends unsigned. */
+  private signer: MavlinkSigner | null = null
 
   /**
    * The "primary" transport — the link with the most recent byte activity.
@@ -108,11 +114,21 @@ export class MAVLinkAdapter implements DroneProtocol {
   private get commandTransport(): Transport | null {
     if (this.links.size === 0) return null
     let best: LinkState | null = null
+    let primary: LinkState | null = null
     for (const link of this.links.values()) {
+      if (!primary || link.lastByteAt > primary.lastByteAt) primary = link
       if (!link.transport.canCommand || !link.transport.isConnected) continue
       if (!best || link.lastByteAt > best.lastByteAt) best = link
     }
-    return best?.transport ?? this.transport
+    return (best ?? primary)?.outbound ?? null
+  }
+
+  /**
+   * Sign every outbound MAVLink v2 frame with `signer`, or send unsigned
+   * with null. Takes effect on the next frame on every link.
+   */
+  setSigner(signer: MavlinkSigner | null): void {
+    this.signer = signer
   }
   private cbs = createCallbackStore()
   private cbm = bindCallbackMethods(this.cbs)
@@ -199,6 +215,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     const link: LinkState = {
       id,
       transport,
+      outbound: new SigningTransport(transport, () => this.signer),
       label,
       connectionMeta: meta,
       connectedAt: Date.now(),
@@ -426,7 +443,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.frameUnsub?.(); this.frameUnsub = null
     this.componentMetadataUri = null
     if (this.logListDownload) { clearTimeout(this.logListDownload.timer); this.logListDownload.resolve(Array.from(this.logListDownload.entries.values())); this.logListDownload = null }
-    if (this.logDataDownload) { if (this.logDataDownload.inactivityTimer) clearTimeout(this.logDataDownload.inactivityTimer); clearTimeout(this.logDataDownload.hardTimer); this.logDataDownload.reject(new Error('Disconnected during log download')); this.logDataDownload = null }
+    if (this.logDataDownload) { logOps.cancelLogDownload(this.lc, 'Disconnected during log download'); this.logDataDownload = null }
     if (this.ftpDownload) { if (this.ftpDownload.inactivityTimer) clearTimeout(this.ftpDownload.inactivityTimer); clearTimeout(this.ftpDownload.hardTimer); this.ftpDownload.reject(new Error('Disconnected during FTP download')); this.ftpDownload = null }
     if (this.parameterDownload) { prm.finishParamDownload(this.pc); this.parameterDownload = null }
     ftpWriteOps.cancelFtpOp(this._ftpCtx, 'Disconnected during FTP operation')

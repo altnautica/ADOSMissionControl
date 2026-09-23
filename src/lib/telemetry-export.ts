@@ -30,12 +30,14 @@ interface FlattenedRow {
   climb_ms: number;
   battery_v: number;
   battery_pct: number;
-  battery_current_a: number;
-  battery_consumed_mah: number;
+  /** Empty when the monitor does not measure it. */
+  battery_current_a: number | "";
+  battery_consumed_mah: number | "";
   gps_fix: number;
   gps_satellites: number;
   gps_hdop: number;
-  throttle_pct: number;
+  /** Empty when the link does not report throttle. */
+  throttle_pct: number | "";
 }
 
 const CSV_COLUMNS: (keyof FlattenedRow)[] = [
@@ -121,12 +123,12 @@ export async function exportTelemetryAsCSV(
         climb_ms: pos.climbRate,
         battery_v: bat?.voltage ?? 0,
         battery_pct: bat?.remaining ?? 0,
-        battery_current_a: bat?.current ?? 0,
-        battery_consumed_mah: bat?.consumed ?? 0,
+        battery_current_a: bat?.current ?? "",
+        battery_consumed_mah: bat?.consumed ?? "",
         gps_fix: gps?.fixType ?? 0,
         gps_satellites: gps?.satellites ?? 0,
         gps_hdop: gps?.hdop ?? 0,
-        throttle_pct: vfr?.throttle ?? 0,
+        throttle_pct: vfr?.throttle ?? "",
       };
 
       rows.push(CSV_COLUMNS.map((col) => String(row[col])).join(","));

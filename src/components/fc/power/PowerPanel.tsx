@@ -76,7 +76,7 @@ export function PowerPanel() {
           icon={<Battery size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
-        <LiveBatteryDisplay batteryCapacity={Number(params.get("BATT_CAPACITY") ?? 0)} />
+        <LiveBatteryDisplay />
 
         {isPx4 && (
           <Px4PowerSections params={params} setLocalValue={setLocalValue} lbl={lbl} enumValues={enumValues} />

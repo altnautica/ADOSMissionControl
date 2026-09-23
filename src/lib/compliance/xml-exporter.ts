@@ -18,7 +18,7 @@ import type {
   AircraftRecord,
 } from "@/lib/types";
 import type { JurisdictionSpec, FieldRef } from "./jurisdictions";
-import { readField, refLabel, formatFieldValue } from "./field-reader";
+import { readField, refLabel, formatFieldValue, resolvePilot, commonPilot } from "./field-reader";
 
 const NS = "https://altnautica.com/compliance/v1";
 const SCHEMA_VERSION = 1;
@@ -67,10 +67,14 @@ export function exportComplianceXml(
   const flightsXml = records
     .map((record) => {
       const aircraft = aircraftIndex[record.droneId];
+      const flightPilot = resolvePilot(record, operator);
       return [
         `    <flight id="${xmlEscape(record.id)}">`,
         tag("droneId", record.droneId, 3),
         tag("droneName", record.droneName, 3),
+        tag("pilotFirstName", flightPilot.firstName, 3),
+        tag("pilotLastName", flightPilot.lastName, 3),
+        tag("pilotLicenseNumber", flightPilot.licenseNumber, 3),
         `      <required>`,
         buildFieldElements(spec.requiredFields, record, operator, aircraft, 4),
         `      </required>`,
@@ -87,14 +91,18 @@ export function exportComplianceXml(
     })
     .join("\n");
 
+  // The pilot fields name the pilot who flew these flights (their arm-time
+  // snapshot), and stay empty when the flights were flown by different
+  // pilots: each <flight> then carries its own.
+  const pilot = commonPilot(records, operator);
   const operatorXml = [
     tag("name", operator.operatorName, 3),
     tag("certNumber", operator.operatorCertNumber, 3),
     tag("certIssuer", operator.operatorCertIssuer, 3),
-    tag("pilotFirstName", operator.pilotFirstName, 3),
-    tag("pilotLastName", operator.pilotLastName, 3),
-    tag("pilotLicenseNumber", operator.pilotLicenseNumber, 3),
-    tag("pilotLicenseIssuer", operator.pilotLicenseIssuer, 3),
+    tag("pilotFirstName", pilot?.firstName, 3),
+    tag("pilotLastName", pilot?.lastName, 3),
+    tag("pilotLicenseNumber", pilot?.licenseNumber, 3),
+    tag("pilotLicenseIssuer", pilot?.licenseIssuer, 3),
   ].join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>

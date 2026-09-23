@@ -33,6 +33,7 @@ import {
   type PluginSlotContribution,
 } from "@/components/plugins/PluginHostProvider";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
   useVisionDetectionsStore,
   type VisionDetectionBatch,
@@ -172,8 +173,11 @@ export function VideoOverlayHost({
 
   // When the cockpit does not hand explicit contributions, resolve the
   // live `video.overlay` set from this drone's installed plugins. Tests
-  // pass `contributions` directly to skip the producer + Convex.
-  const produced = usePluginContributions(droneId, "video.overlay");
+  // pass `contributions` directly to skip the producer + Convex. Plugin
+  // install rows are keyed by the node's bare device id, not the
+  // `node:<deviceId>` selection id the detection stores use.
+  const pluginDeviceId = deviceIdFromNodeId(droneId) ?? droneId;
+  const produced = usePluginContributions(pluginDeviceId, "video.overlay");
   const resolved = contributions ?? produced;
 
   // ── Geometry: measure on resize + resolution change, not per frame ──
@@ -334,7 +338,7 @@ export function VideoOverlayHost({
       // passive plugin overlays.
       className={className ?? "absolute inset-0 z-10 pointer-events-none"}
     >
-      <PluginHostProvider deviceId={droneId} contributions={resolved}>
+      <PluginHostProvider deviceId={pluginDeviceId} contributions={resolved}>
         <PluginSlot
           name="video.overlay"
           contributions={resolved}

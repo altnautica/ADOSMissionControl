@@ -36,6 +36,7 @@ import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 import { useDroneManager } from "@/stores/drone-manager";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import {
@@ -95,11 +96,14 @@ export function CockpitQuickSettings({
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const droneId = useDroneManager((s) => s.selectedDroneId);
+  // Plugin install rows, the LAN plugin client and the config writer are keyed
+  // by the node's bare device id, not the `node:<deviceId>` selection id.
+  const pluginDeviceId = droneId ? (deviceIdFromNodeId(droneId) ?? droneId) : null;
 
   // The per-drone plugin contributions carry each plugin's declarative
   // parameters (the same source the per-drone tab body reads). We render a
   // card for each plugin that contributes at least one parameter.
-  const contributions = useDronePluginContributions(droneId ?? undefined);
+  const contributions = useDronePluginContributions(pluginDeviceId ?? undefined);
 
   const paramPlugins = useMemo(
     () =>
@@ -111,10 +115,7 @@ export function CockpitQuickSettings({
 
   // Plugin-contributed cockpit.panel iframes for the active drone. Narrowed to
   // the focused plugin when the drawer was opened from a per-skill affordance.
-  const cockpitPanels = usePluginContributions(
-    droneId ?? null,
-    "cockpit.panel",
-  );
+  const cockpitPanels = usePluginContributions(pluginDeviceId, "cockpit.panel");
   const visiblePanels = useMemo<
     ReadonlyArray<PluginSlotContribution & { slot: "cockpit.panel" }>
   >(() => {
@@ -222,7 +223,7 @@ export function CockpitQuickSettings({
               {paramPlugins.map((c) => (
                 <PluginQuickCard
                   key={c.installId}
-                  droneId={droneId}
+                  droneId={pluginDeviceId ?? droneId}
                   contribution={c}
                 />
               ))}
@@ -234,7 +235,7 @@ export function CockpitQuickSettings({
                     {t("pluginPanelsSection")}
                   </h4>
                   <PluginHostProvider
-                    deviceId={droneId}
+                    deviceId={pluginDeviceId}
                     contributions={visiblePanels}
                   >
                     <PluginSlot

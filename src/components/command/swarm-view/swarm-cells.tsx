@@ -31,6 +31,7 @@ import {
   Chip,
   NEUTRAL_CHIP,
   UnknownValue,
+  fcReading,
   staleClass,
   type ReadingFreshness,
 } from "@/components/command/nodes-view/cell-primitives";
@@ -89,20 +90,30 @@ export function PrecedenceCell({
   );
 }
 
-export function BatteryCell({
-  row,
-  freshness,
-}: {
-  row: SwarmSlotRow;
-  freshness: ReadingFreshness;
-}) {
+/**
+ * Battery is not a beacon field: it comes from the node's own status, whose
+ * age is unrelated to the beacon's. It is gated on that status's FC reading
+ * (node liveness plus FC reachability), so a slot that went quiet, or whose
+ * telemetry lane died while it keeps beaconing, shows no battery rather than
+ * its last percentage at full strength.
+ */
+export function BatteryCell({ row }: { row: SwarmSlotRow }) {
   const t = useTranslations("swarmView.table");
-  const remaining = row.summary?.telemetry.batteryRemaining ?? null;
+  const tNodes = useTranslations("nodesView");
+  const reading = row.summary ? fcReading(row.summary) : null;
+  const remaining =
+    reading?.absentKey === null
+      ? (row.summary?.telemetry.batteryRemaining ?? null)
+      : null;
   // The operator's configured thresholds — the same resolver the nodes board,
   // the grid and the alert pipeline read, so no two surfaces disagree on when a
   // battery has become a problem.
   const band = useBatteryBand(remaining);
 
+  if (reading === null) return <UnknownValue title={t("noTelemetry")} />;
+  if (reading.absentKey !== null) {
+    return <UnknownValue title={tNodes(reading.absentKey)} />;
+  }
   if (remaining == null || band === undefined) {
     return <UnknownValue title={t("noTelemetry")} />;
   }
@@ -123,7 +134,7 @@ export function BatteryCell({
           : band === "warning"
             ? "text-status-warning"
             : "text-text-secondary",
-        staleClass(freshness),
+        staleClass(reading.freshness),
       )}
     >
       <Icon size={12} />

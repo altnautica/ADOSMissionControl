@@ -276,6 +276,17 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
 
   const selectedHere = selected && selected.droneId === droneId ? selected : null;
 
+  // Keyed by track so a box keeps its DOM node across detection batches
+  // (10-15 Hz). A per-frame key replaced the node between mousedown and
+  // mouseup, and the browser then fires no click. An untracked box, or a
+  // repeat of a track id within one batch, falls back to its camera + index.
+  const seenTracks = new Set<number>();
+  const boxKey = (d: BoxedDetection, i: number): string => {
+    if (d.trackId == null || seenTracks.has(d.trackId)) return `i:${batch?.cameraId}:${i}`;
+    seenTracks.add(d.trackId);
+    return `t:${d.trackId}`;
+  };
+
   return (
     <div
       ref={wrapperRef}
@@ -295,7 +306,7 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
           const label = `${d.classLabel} ${Math.round(d.confidence * 100)}%`;
           return (
             <button
-              key={`${batch.frameId}-${i}`}
+              key={boxKey(d, i)}
               type="button"
               data-target-interactive
               onClick={() =>

@@ -161,16 +161,32 @@ export function usePairingFlow({
     startCountdown();
   }, [preGenerate, startCountdown, onCodeReset]);
 
+  // The deep-link code claimed in this open dialog. A code is claimed once;
+  // a retry clears this and claims it again.
+  const claimedCodeRef = useRef<string | null>(null);
+  const [claimAttempt, setClaimAttempt] = useState(0);
+  const retryDeepLinkClaim = useCallback(() => {
+    claimedCodeRef.current = null;
+    setClaimAttempt((n) => n + 1);
+  }, []);
+
   // Auto-generate code when dialog opens, unless the user still needs to sign in.
   // When an initialCode is supplied (deep-link entry), skip the auto-generate
   // path entirely and try to claim the supplied code.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      claimedCodeRef.current = null;
+      return;
+    }
     if (requiresSignIn) return;
     initialDroneIdsRef.current = new Set(
       pairedDrones.map((drone) => drone._id)
     );
     if (initialCode && initialCode.length === 6) {
+      // The claim needs a settled, signed-in session: until auth resolves
+      // there is no claim mutation, and claiming then fails for nothing.
+      if (!claimCode || claimedCodeRef.current === initialCode) return;
+      claimedCodeRef.current = initialCode;
       // Treat the URL-supplied code as a synthetic discovered agent so the
       // existing claim path runs, including all the error mapping. The
       // claim runs against the controller's signal so closing the dialog
@@ -194,7 +210,7 @@ export function usePairingFlow({
     }
     return () => stopCountdown();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, requiresSignIn, initialCode, autoGenerate]);
+  }, [open, requiresSignIn, initialCode, autoGenerate, claimCode, claimAttempt]);
 
   // Watch for new drones appearing (zero-touch flow)
   useEffect(() => {
@@ -365,5 +381,6 @@ export function usePairingFlow({
     canPairLocally,
     generateCode,
     claimDiscovered,
+    retryDeepLinkClaim,
   };
 }

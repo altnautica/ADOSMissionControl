@@ -22,7 +22,7 @@ import type {
   AircraftRecord,
 } from "@/lib/types";
 import type { JurisdictionSpec } from "../../jurisdictions";
-import { resolvePilot, resolveAircraftIdentity, type ResolvedPilot } from "../../field-reader";
+import { commonPilot, resolvePilot, resolveAircraftIdentity, type ResolvedPilot } from "../../field-reader";
 
 const tableStyles = StyleSheet.create({
   table: {
@@ -112,28 +112,6 @@ function pilotName(p: ResolvedPilot): string {
   return [p.firstName, p.lastName].filter(Boolean).join(" ");
 }
 
-/**
- * Pilot block for the cover: the pilot who flew these records. Each record
- * carries its own arm-time pilot snapshot, so when the records disagree the
- * block defers to the per-flight Pilot column instead of naming one of them.
- */
-function coverPilot(records: FlightRecord[], operator: OperatorProfile): ResolvedPilot | null {
-  if (records.length === 0) {
-    return {
-      firstName: operator.pilotFirstName,
-      lastName: operator.pilotLastName,
-      licenseNumber: operator.pilotLicenseNumber,
-      licenseIssuer: operator.pilotLicenseIssuer,
-    };
-  }
-  const pilots = records.map((r) => resolvePilot(r, operator));
-  const first = pilots[0];
-  const same = pilots.every(
-    (p) => pilotName(p) === pilotName(first) && p.licenseNumber === first.licenseNumber,
-  );
-  return same ? first : null;
-}
-
 export function GenericLogbookTemplate({
   spec,
   records,
@@ -143,7 +121,7 @@ export function GenericLogbookTemplate({
 }: GenericLogbookProps) {
   const totalSeconds = records.reduce((acc, r) => acc + (r.duration ?? 0), 0);
   const totalMeters = records.reduce((acc, r) => acc + (r.distance ?? 0), 0);
-  const pilot = coverPilot(records, operator);
+  const pilot = commonPilot(records, operator);
 
   return (
     <Document

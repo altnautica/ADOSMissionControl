@@ -5,8 +5,6 @@ import { useVideoStore } from "@/stores/video-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useCommandFleetStore } from "@/stores/command-fleet-store";
-import { resolveAgentVideoUrl } from "@/lib/agent/video-url";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { CAMERA_RECOVERY_ACTIVE_STATES } from "@/lib/agent/camera-recovery";
@@ -17,6 +15,7 @@ import {
   captureScreenshot,
 } from "@/lib/video/webrtc-client";
 import { useSingletonAgentVideo } from "@/hooks/use-singleton-agent-video";
+import { useResolvedAgentVideo } from "@/hooks/use-resolved-agent-video";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -76,31 +75,23 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
   const resolution = useVideoStore((s) => s.resolution);
 
   // Auto-discovered agent video. The LAN poll (/api/status/full) and the
-  // cloud heartbeat (cmd_droneStatus) both populate these via
-  // setAgentVideoStatus, so the focused drone's stream URL is already known
-  // here — no manual configuration needed.
-  const agentWhepUrl = useVideoStore((s) => s.agentWhepUrl);
+  // cloud heartbeat (cmd_droneStatus) both populate the singleton video store
+  // via setAgentVideoStatus, so the focused drone's stream URL is already
+  // known here — no manual configuration needed.
   // The stream switcher's active concurrent leg (wins over the poller-owned
-  // default `agentWhepUrl` so a leg selection survives status polls).
+  // default agent URL so a leg selection survives status polls).
   const whepUrlOverride = useVideoStore((s) => s.whepUrlOverride);
-  const agentVideoState = useVideoStore((s) => s.agentVideoState);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
-  // The singleton video store is filled by the LAN poll or a cloud
-  // heartbeat. A relayed-only drone (reached through a ground station's WFB
-  // link, no direct/cloud pairing) has neither, so the store stays empty
-  // even though the ground station already decoded the drone's downlink
-  // into its own mediamtx `main` path and published that playable URL onto
-  // the drone's funneled fleet-status row (relayed-peers.ts::funneledStatusFor).
-  // Fall back to it — same pattern as VideoFeedCard — so the Cockpit pane
-  // shows the funneled feed instead of a permanent NO SIGNAL.
-  const funneledNodeStatus = useCommandFleetStore((s) =>
-    droneId ? s.cloudStatuses[droneId] : undefined,
-  );
-  const funneledWhepUrl = resolveAgentVideoUrl(funneledNodeStatus);
-  const resolvedAgentVideoState =
-    agentVideoState && agentVideoState !== "unknown"
-      ? agentVideoState
-      : (funneledNodeStatus?.videoState ?? agentVideoState);
+  // A relayed-only drone (reached through a ground station's WFB link, no
+  // direct/cloud pairing) has an empty singleton store; the shared resolver
+  // falls back to the funnelled feed on the drone's fleet-status row, for
+  // the URL and for the reported state the retry and stall gates read.
+  const {
+    whepUrl: agentWhepUrl,
+    funneledWhepUrl,
+    videoState: agentVideoState,
+  } = useResolvedAgentVideo(droneId);
+  const singletonWhepUrl = useVideoStore((s) => s.agentWhepUrl);
   const agentConnected = useAgentConnectionStore((s) => s.connected);
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
   // Live air-side camera state for the focused drone (distinct from the
@@ -137,14 +128,13 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
   // Manual override wins, then the stream switcher's selected concurrent leg,
   // then the auto-discovered default agent URL, then a ground station's
   // funneled republish of this drone's downlink.
-  const effectiveWhepUrl =
-    manualUrl || whepUrlOverride || agentWhepUrl || funneledWhepUrl;
+  const effectiveWhepUrl = manualUrl || whepUrlOverride || agentWhepUrl;
 
   // Which of those won, so the surface can NAME the producer instead of
   // implying every feed is equivalent. Same precedence, one branch per rung.
   const videoSource: VideoSource = manualUrl
     ? "manual"
-    : whepUrlOverride || agentWhepUrl
+    : whepUrlOverride || singletonWhepUrl
       ? agentConnected
         ? "direct"
         : "cloud"
@@ -202,6 +192,7 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
     transportMode,
     videoEl,
     forceEnabled: Boolean(manualUrl),
+    agentVideoState,
   });
 
   const handleRecordToggle = useCallback(() => {
@@ -261,7 +252,7 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
             ? videoSource === "relayed"
               ? "NO SIGNAL FROM GROUND RELAY"
               : "NO SIGNAL"
-            : resolvedAgentVideoState === "running"
+            : agentVideoState === "running"
               ? "NO SIGNAL"
               : agentPresent
                 ? "VIDEO OFFLINE"

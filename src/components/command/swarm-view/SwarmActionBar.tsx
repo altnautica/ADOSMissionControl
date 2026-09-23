@@ -19,6 +19,9 @@
  * Formation is not a flight command — the agent's command catalog is closed and
  * would reject it — so it rides the config path instead, with the same
  * "N of M ready" pre-commit count over transports rather than flight gates.
+ * Each drone's swarm controller re-reads its config within a few seconds, so
+ * the result says the formation was saved and when it is flown, not that the
+ * fleet has already changed shape.
  *
  * @license GPL-3.0-only
  */

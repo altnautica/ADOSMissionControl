@@ -151,16 +151,15 @@ const defaultStructureScan: Partial<StructureScanConfig> = {
   direction: "bottom-up",
 };
 
+// No default approach heading: the final is flown along it, so the operator
+// chooses it and no landing is generated until they do.
 const defaultFixedWingLanding: Partial<FixedWingLandingConfig> = {
-  approachHeading: -1,
-  approachDistance: 400,
   glideSlopeAngle: 5,
   loiterAltitude: 60,
   speed: 15,
 };
 
 const defaultVtolLanding: Partial<VtolLandingConfig> = {
-  approachHeading: -1,
   transitionDistance: 150,
   approachAltitude: 50,
   descentSpeed: 2,

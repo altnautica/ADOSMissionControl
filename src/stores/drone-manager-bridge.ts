@@ -21,6 +21,7 @@ import { notifyArmed } from "@/lib/flight-lifecycle";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { asFlightMode } from "@/lib/flight-mode";
 import { useMissionStore } from "./mission-store";
+import { createFleetAlertProducer } from "@/lib/fleet-alerts";
 
 /**
  * Bridge protocol telemetry callbacks into the Zustand stores
@@ -59,6 +60,9 @@ export function bridgeTelemetry(
   /** Record a frame to the recorder slot for this drone. Noop if no recording is active. */
   const rec = (channel: string, data: unknown) => recordFrameFor(droneId, channel, data);
 
+  /** Fleet alerts (Dashboard counts and feed) raised from this drone's frames. */
+  const alerts = createFleetAlertProducer(droneId, droneName);
+
   return [
     protocol.onAttitude((data) => {
       if (isSelected()) telemetry.pushAttitude(data);
@@ -82,7 +86,15 @@ export function bridgeTelemetry(
       rec("position", data);
     }),
 
-    protocol.onBattery((data) => {
+    protocol.onBattery(({ id, ...data }) => {
+      // Every configured monitor sends its own BATTERY_STATUS. Only the
+      // primary pack (id 0) feeds the single-battery surfaces and the
+      // "battery" record channel; other monitors record under their own
+      // channel so packs never interleave into one stream.
+      if (id !== 0) {
+        rec(`battery${id + 1}`, data);
+        return;
+      }
       if (isSelected()) telemetry.pushBattery(data);
       registry.updateFcTelemetry(droneId, { battery: data });
       rec("battery", data);
@@ -117,6 +129,7 @@ export function bridgeTelemetry(
     protocol.onSysStatus((data) => {
       if (isSelected()) telemetry.pushSysStatus(data);
       rec("sysStatus", data);
+      alerts.batteryRemaining(data.batteryRemaining);
 
       const settings = useSettingsStore.getState();
       if (settings.audioEnabled && settings.alertLowBattery) {
@@ -253,6 +266,7 @@ export function bridgeTelemetry(
     // ring buffer that the flight lifecycle drains on arm.
     protocol.onStatusText((data) => {
       usePrearmBufferStore.getState().push(droneId, data.text);
+      alerts.statusText(data.severity, data.text);
 
       const settings = useSettingsStore.getState();
       if (settings.audioEnabled && settings.alertFailsafe && isFailsafeAnnouncement(data.severity, data.text)) {
@@ -369,6 +383,7 @@ export function bridgeTelemetry(
       }
       registry.updateFcTelemetry(droneId, { status: "offline", armState: "unknown" });
       useDiagnosticsStore.getState().logEvent("link_lost", `Link lost: ${droneName}`);
+      alerts.linkLost();
     })] : []),
 
     ...(protocol.onLinkRestored ? [protocol.onLinkRestored(() => {
@@ -377,6 +392,7 @@ export function bridgeTelemetry(
       }
       registry.updateFcTelemetry(droneId, { status: "online" });
       useDiagnosticsStore.getState().logEvent("link_restored", `Link restored: ${droneName}`);
+      alerts.linkRestored();
     })] : []),
   ];
 }

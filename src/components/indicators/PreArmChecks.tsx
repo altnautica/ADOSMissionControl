@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSensorHealthStore } from "@/stores/sensor-health-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { cn } from "@/lib/utils";
-import { Check, X, AlertTriangle, RefreshCw, Wrench } from "lucide-react";
+import { isFresh } from "@/lib/telemetry/freshness";
+import { cn, formatErrorMessage } from "@/lib/utils";
+import { Check, X, AlertTriangle, RefreshCw, Wrench, CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ── Quick-fix types ─────────────────────────────────────────
@@ -218,8 +219,27 @@ function BulkTrimFix({ channels, onFixed }: { channels: number[]; onFixed: () =>
 // ── Main component ──────────────────────────────────────────
 
 /**
- * Pre-arm check checklist with pass/fail status and fix suggestions.
- * Captures STATUSTEXT messages with "PreArm:" prefix.
+ * Failure-bearing STATUSTEXT prefixes: ArduPilot "PreArm:" / "Arm:", PX4
+ * "Preflight Fail:" / "Arming denied:".
+ */
+const PREARM_FAILURE_PREFIX = /^(PreArm|Arm|Preflight Fail|Arming denied):\s*/;
+
+/** How long MAVLink failures are collected after the FC accepts the request. */
+const STATUSTEXT_WINDOW_MS = 3000;
+
+/** Append a failure row unless the same text is already listed. */
+function appendFailure(prev: PreArmMessage[], text: string): PreArmMessage[] {
+  if (prev.some((f) => f.text === text)) return prev;
+  return [...prev, { text, suggestion: findSuggestion(text), quickFix: findQuickFix(text) }];
+}
+
+/**
+ * Pre-arm check with pass/fail status and fix suggestions.
+ *
+ * "All passed" needs evidence: over MSP the arming-disable word the protocol
+ * decodes, over MAVLink the FC's fresh SYS_STATUS pre-arm bit. A refused or
+ * failed request is itself a failure. When the FC sends no verdict and no
+ * failures, the panel says exactly that instead of claiming a pass.
  */
 export function PreArmChecks({ className }: { className?: string }) {
   const t = useTranslations("preArm");
@@ -229,27 +249,20 @@ export function PreArmChecks({ className }: { className?: string }) {
   const [failures, setFailures] = useState<PreArmMessage[]>([]);
   const [checking, setChecking] = useState(false);
   const [lastChecked, setLastChecked] = useState<number | null>(null);
-  const unsubRef = useRef<(() => void) | null>(null);
+  /** Whether the finished check carries a positive verdict from the FC. */
+  const [verdictPass, setVerdictPass] = useState(false);
 
-  // Subscribe to STATUSTEXT for PreArm messages
+  const addFailure = (text: string) => setFailures((prev) => appendFailure(prev, text));
+
+  // Subscribe to STATUSTEXT for pre-arm failures
   useEffect(() => {
     if (!protocol) return;
 
     const unsub = protocol.onStatusText?.((data) => {
-      if (data.text.startsWith("PreArm:") || data.text.startsWith("Arm:")) {
-        const cleanText = data.text.replace(/^(PreArm:|Arm:)\s*/, "");
-        setFailures((prev) => {
-          // Deduplicate
-          if (prev.some((f) => f.text === cleanText)) return prev;
-          return [...prev, {
-            text: cleanText,
-            suggestion: findSuggestion(cleanText),
-            quickFix: findQuickFix(cleanText),
-          }];
-        });
-      }
+      if (!PREARM_FAILURE_PREFIX.test(data.text)) return;
+      const cleanText = data.text.replace(PREARM_FAILURE_PREFIX, "").trim();
+      setFailures((prev) => appendFailure(prev, cleanText));
     });
-    unsubRef.current = unsub;
 
     return () => {
       unsub?.();
@@ -260,15 +273,40 @@ export function PreArmChecks({ className }: { className?: string }) {
     if (!protocol) return;
     setChecking(true);
     setFailures([]);
-    await protocol.doPreArmCheck();
-    // Wait a bit for STATUSTEXT messages to arrive
-    setTimeout(() => {
+    setVerdictPass(false);
+    try {
+      const result = await protocol.doPreArmCheck();
+      if (!result.success) {
+        addFailure(result.message);
+        return;
+      }
+      if (protocol.protocolName === "msp") {
+        // The MSP result is the decoded arming-disable word: a real verdict.
+        setVerdictPass(true);
+        return;
+      }
+      // MAVLink: the FC accepted the request; failures follow on STATUSTEXT
+      // and the verdict is the SYS_STATUS pre-arm bit.
+      const windowClosed = Promise.withResolvers<void>();
+      setTimeout(windowClosed.resolve, STATUSTEXT_WINDOW_MS);
+      await windowClosed.promise;
+      const health = useSensorHealthStore.getState();
+      const prearm = health.getSensorByName("pre_arm_check");
+      if (prearm && isFresh(health.lastUpdate, Date.now())) {
+        if (prearm.healthy) setVerdictPass(true);
+        else if (prearm.present) addFailure(t("fcReportsFailures"));
+      }
+    } catch (err) {
+      addFailure(formatErrorMessage(err));
+    } finally {
       setChecking(false);
       setLastChecked(Date.now());
-    }, 3000);
+    }
   }
 
-  const allClear = failures.length === 0 && lastChecked !== null && !checking;
+  const finished = lastChecked !== null && !checking && failures.length === 0;
+  const allClear = finished && verdictPass;
+  const unconfirmed = finished && !verdictPass;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -297,6 +335,13 @@ export function PreArmChecks({ className }: { className?: string }) {
         <div className="flex items-center gap-1.5 text-status-success text-xs">
           <Check size={14} />
           <span>{t("allPassed")}</span>
+        </div>
+      )}
+
+      {unconfirmed && (
+        <div className="flex items-center gap-1.5 text-text-secondary text-xs">
+          <CircleHelp size={14} />
+          <span>{t("noFailuresReported")}</span>
         </div>
       )}
 

@@ -17,7 +17,7 @@ import {
   type DemoDroneConfig,
 } from "./drones";
 import { FLIGHT_PATHS, interpolatePath } from "./flight-paths";
-import { generateAlert, batteryAlert } from "./alerts";
+import { generateAlert } from "./alerts";
 import { MockProtocol } from "./mock-protocol";
 import { INavMockProtocol } from "./inav-mock-protocol";
 
@@ -65,7 +65,6 @@ interface DroneSimState {
   battery: number;
   tickCount: number;
   lastAlertTick: number;
-  batteryAlertSent: boolean;
   protocol: DemoProtocol;
   transport: MockTransport;
   bootMessageIndex: number;
@@ -105,7 +104,6 @@ class MockFlightEngine {
       return {
         config: cfg, pathProgress: 0, currentWaypointIdx: 0,
         battery: cfg.batteryStart, tickCount: 0, lastAlertTick: 0,
-        batteryAlertSent: false,
         protocol,
         transport: new MockTransport(),
         bootMessageIndex: 0, statusMessageTick: 0, segmentDistances,
@@ -515,11 +513,6 @@ class MockFlightEngine {
           const idx = Math.floor(state.tickCount / 40) % DEMO_PX4_EVENT_FRAMES.length;
           state.protocol.emitEvent(DEMO_PX4_EVENT_FRAMES[idx]);
         }
-      }
-
-      if (state.battery <= 30 && !state.batteryAlertSent) {
-        fleetStore.addAlert(batteryAlert(cfg.id, cfg.name, state.battery));
-        state.batteryAlertSent = true;
       }
 
       if (state.tickCount - state.lastAlertTick > 300 && Math.random() < 0.02) {

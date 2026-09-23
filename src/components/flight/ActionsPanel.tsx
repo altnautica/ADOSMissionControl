@@ -14,7 +14,7 @@ import { FlightModeSelector } from "@/components/shared/flight-mode-selector";
 import { ChecklistModal } from "./action-dialogs";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useChecklistStore } from "@/stores/checklist-store";
+import { useChecklistStore, checklistReadyFor } from "@/stores/checklist-store";
 import { useFollowMeStore } from "@/stores/follow-me-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useFlightShortcuts } from "@/hooks/use-flight-shortcuts";
@@ -45,9 +45,7 @@ export function ActionsPanel() {
 
   const [takeoffAlt, setTakeoffAlt] = useState("10");
   const [showChecklist, setShowChecklist] = useState(false);
-  const checklistReady = useChecklistStore(
-    (s) => s.items.every((item) => item.status === "pass" || item.status === "skipped")
-  );
+  const checklistReady = useChecklistStore((s) => checklistReadyFor(s, selectedId));
   const checklistProgress = useChecklistStore(
     useShallow((s) => {
       const items = s.items;

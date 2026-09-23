@@ -193,13 +193,12 @@ export function ForgeJobs({
   const onRetry = client
     ? (job: ComputeJob) => {
         void (async () => {
+          // The original params, verbatim: dropping device_id or
+          // generation leaves the re-run unattributed and unpublished.
           const result = await client.submitJob({
             kind: job.kind,
             datasetId: job.datasetId ?? undefined,
-            params: {
-              ...(job.sessionId ? { session_id: job.sessionId } : {}),
-              ...(job.steps !== null ? { steps: job.steps } : {}),
-            },
+            params: job.params,
           });
           toast(
             result === null ? t("forgeRetryFailed") : t("forgeRetryQueued"),

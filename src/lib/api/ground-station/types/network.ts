@@ -12,6 +12,10 @@ export interface ApStatus {
   passphrase: string;
   channel: number;
   connected_clients?: number | null;
+  /** Set by the AP write route: whether the SSID/channel also reached the
+   * node's config, so they survive a restart. Absent on reads. */
+  persisted?: boolean;
+  persist_error?: string;
 }
 
 export interface WifiClientStatus {

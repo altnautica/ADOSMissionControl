@@ -97,7 +97,7 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
   // ── Drone 1: enabled vision-nav plugin + enabled telemetry logger ──
   {
     installId: "demo-install-001",
-    agentId: "demo-drone-1",
+    agentId: "alpha-1",
     pluginId: "com.altnautica.vision-nav",
     name: "ADOS Vision Nav (OpenVINS)",
     version: "0.1.0",
@@ -113,7 +113,7 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
   },
   {
     installId: "demo-install-002",
-    agentId: "demo-drone-1",
+    agentId: "alpha-1",
     pluginId: "com.altnautica.telemetry-logger",
     name: "Telemetry Logger",
     version: "0.3.2",
@@ -125,7 +125,7 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
   // ── Drone 2: thermal cam enabled, geofence disabled ──
   {
     installId: "demo-install-003",
-    agentId: "demo-drone-2",
+    agentId: "charlie-3",
     pluginId: "com.flir.thermal",
     name: "FLIR Lepton Thermal Camera",
     version: "1.0.0",
@@ -140,7 +140,7 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
   },
   {
     installId: "demo-install-004",
-    agentId: "demo-drone-2",
+    agentId: "charlie-3",
     pluginId: "com.altnautica.geofence-watchdog",
     name: "Geofence Watchdog",
     version: "0.3.0",
@@ -152,7 +152,7 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
   // ── Drone 3: gimbal v2 enabled ──
   {
     installId: "demo-install-005",
-    agentId: "demo-drone-3",
+    agentId: "delta-4",
     pluginId: "com.altnautica.gimbal-v2",
     name: "MAVLink Gimbal v2 Controller",
     version: "0.5.1",
@@ -228,7 +228,7 @@ export function getDemoDronePluginContributions(
  * cockpit Skill Bar shows a plugin-contributed slot without a real agent.
  */
 const DEMO_SKILL_CONTRIBUTIONS: Record<string, DroneSkillContribution[]> = {
-  "demo-drone-1": [
+  "alpha-1": [
     {
       installId: "demo-install-001",
       pluginId: "com.altnautica.vision-nav",

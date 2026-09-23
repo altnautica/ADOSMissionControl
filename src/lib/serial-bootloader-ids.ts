@@ -33,18 +33,24 @@ export interface BootloaderId {
 export const PX4_BOOTLOADER_IDS: readonly BootloaderId[] = [
   { vendorId: 0x26ac, label: "PX4 / 3DR bootloader" },
   { vendorId: 0x3185, label: "Auterion bootloader" },
-  { vendorId: 0x2dae, label: "Holybro / CubePilot bootloader" },
-  { vendorId: 0x3612, label: "Holybro bootloader" },
-  { vendorId: 0x27ac, label: "CubePilot bootloader" },
+  { vendorId: 0x2dae, label: "CubePilot bootloader" },
+  { vendorId: 0x3162, label: "Holybro bootloader" },
 ];
 
 /**
  * ArduPilot serial bootloaders. Vendor 0x1209 is a shared open-source-hardware
  * vendor, so it MUST be matched by exact product id to avoid false positives.
+ * CubePilot boards keep their own vendor in the bootloader (0x2DAE with a
+ * per-model bootloader product id), and older boards still ship a bootloader
+ * under the 3DR vendor.
  */
 export const ARDUPILOT_BOOTLOADER_IDS: readonly BootloaderId[] = [
   { vendorId: 0x1209, productId: 0x5740, label: "ArduPilot bootloader" },
   { vendorId: 0x1209, productId: 0x5741, label: "ArduPilot bootloader" },
+  { vendorId: 0x2dae, productId: 0x1001, label: "CubeBlack bootloader" },
+  { vendorId: 0x2dae, productId: 0x1002, label: "CubeYellow bootloader" },
+  { vendorId: 0x2dae, productId: 0x1005, label: "CubePurple bootloader" },
+  { vendorId: 0x26ac, label: "3DR-vendor bootloader" },
 ];
 
 /** Union table for the generic serial flash path. */

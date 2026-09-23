@@ -48,18 +48,18 @@ function HotkeyHarness() {
 const W = 1280;
 const H = 720;
 
-function seedBatch(droneId: string) {
+function seedBatch(droneId: string, frameId = 1, x = 100) {
   act(() => {
     useVisionDetectionsStore.getState().setBatch(droneId, {
       modelId: "yolo",
       cameraId: "cam0",
-      frameId: 1,
-      tsMs: 1,
+      frameId,
+      tsMs: frameId,
       frameWidth: 640,
       frameHeight: 480,
       detections: [
         {
-          bbox: { x: 100, y: 80, width: 120, height: 200 },
+          bbox: { x, y: 80, width: 120, height: 200 },
           classLabel: "person",
           confidence: 0.91,
           trackId: 7,
@@ -121,6 +121,21 @@ describe("CockpitTargetOverlay", () => {
 
     // The popup lists the built-in Designate action.
     expect(getByText("Designate target")).toBeTruthy();
+  });
+
+  it("keeps a tracked box's element across batches, so a press spanning a frame still selects", () => {
+    seedBatch("drone-1", 1);
+    const { container } = render(<CockpitTargetOverlay droneId="drone-1" />);
+    const box = container.querySelector("button[data-target-interactive]") as HTMLElement;
+
+    fireEvent.mouseDown(box);
+    // The next detection batch (same track, moved a little) lands before mouseup.
+    seedBatch("drone-1", 2, 104);
+    expect(box.isConnected).toBe(true);
+    fireEvent.mouseUp(box);
+    fireEvent.click(box);
+
+    expect(useSelectedTargetStore.getState().selected?.trackId).toBe(7);
   });
 
   it("fires a target action by its hotkey on the selected target", async () => {

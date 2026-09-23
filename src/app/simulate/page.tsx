@@ -6,8 +6,10 @@
  * whatever is currently in the shared mission store: if waypoints exist it
  * renders the 3D CesiumJS simulation of them (regardless of whether a saved plan
  * is active), and if the mission is empty it shows a calm empty state that links
- * back to the Plan tab. This page never edits or clears the shared mission — only
- * the playback state (simulation-store) is reset on unmount.
+ * back to the Plan tab. The page itself never edits or clears the shared
+ * mission; loading a saved plan (library or run history) asks before it
+ * replaces unsaved work. Only the playback state (simulation-store) is reset on
+ * unmount.
  * @license GPL-3.0-only
  */
 
@@ -36,6 +38,7 @@ const SimulationPanel = dynamic(
 export default function SimulatePage() {
   const waypoints = useMissionStore((s) => s.waypoints);
   const defaultSpeed = usePlannerStore((s) => s.defaultSpeed);
+  const defaultFrame = usePlannerStore((s) => s.defaultFrame);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const router = useRouter();
 
@@ -59,7 +62,7 @@ export default function SimulatePage() {
       {hasMission ? (
         <>
           {/* 3D Viewer (the mission-warning banner mounts inside it, top-center) */}
-          <SimulationViewer waypoints={waypoints} defaultSpeed={defaultSpeed} />
+          <SimulationViewer waypoints={waypoints} defaultSpeed={defaultSpeed} defaultFrame={defaultFrame} />
 
           {/* Right panel */}
           {!panelCollapsed && (

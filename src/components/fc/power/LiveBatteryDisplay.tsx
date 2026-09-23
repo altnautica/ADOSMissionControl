@@ -1,9 +1,31 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import { useTelemetryStore } from "@/stores/telemetry-store";
-import { Battery, Thermometer, Clock, AlertTriangle } from "lucide-react";
+/**
+ * @module fc/power/LiveBatteryDisplay
+ * @description Live battery readout on the Power panel.
+ *
+ * Reads the battery channel through the telemetry freshness gate, so it
+ * follows every new sample and blanks once the link goes quiet instead of
+ * holding the last value under a "Live" label. A field the FC does not report
+ * (current, consumed, an unknown remaining) reads "—". The per-cell view shows
+ * measured cells only: a single whole-pack value in voltages[0] is not a cell,
+ * and a cell count is never inferred from the pack voltage.
+ *
+ * @license GPL-3.0-only
+ */
+
+import { useMemo } from "react";
+import { Battery, Thermometer, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { useKnownCellCount } from "@/hooks/use-known-cell-count";
+import { useDroneManager } from "@/stores/drone-manager";
+import {
+  plausibleCellVoltages,
+  resolveCellCount,
+} from "@/lib/telemetry/battery-cells";
+
+const NOT_MEASURED = "—";
 
 function cellVoltageColor(v: number): string {
   if (v >= 3.7) return "text-status-success";
@@ -23,117 +45,90 @@ function LiveStat({ label, value, unit }: { label: string; value: string; unit: 
       <span className="text-[10px] text-text-tertiary block">{label}</span>
       <span className="text-sm font-mono text-text-primary">
         {value}
-        <span className="text-[10px] text-text-tertiary ml-0.5">{unit}</span>
+        {value !== NOT_MEASURED && (
+          <span className="text-[10px] text-text-tertiary ml-0.5">{unit}</span>
+        )}
       </span>
     </div>
   );
 }
 
-export function LiveBatteryDisplay({ batteryCapacity }: { batteryCapacity: number }) {
-  const batteryBuffer = useTelemetryStore((s) => s.battery);
-  const latestBattery = batteryBuffer.latest();
-  const voltage = latestBattery?.voltage ?? 0;
-  const current = latestBattery?.current ?? 0;
-  const remaining = latestBattery?.remaining ?? 0;
-  const consumed = latestBattery?.consumed ?? 0;
-  const temperature = latestBattery?.temperature;
-  const cellVoltages = latestBattery?.cellVoltages;
+export function LiveBatteryDisplay() {
+  const battery = useFreshTelemetry("battery");
+  const droneId = useDroneManager((s) => s.selectedDroneId);
+  const knownCellCount = useKnownCellCount(droneId, battery?.cellCount);
 
-  const connectTimeRef = useRef<number | null>(null);
-  if (voltage > 0 && connectTimeRef.current === null) {
-    connectTimeRef.current = Date.now();
-  } else if (voltage === 0) {
-    connectTimeRef.current = null;
-  }
-
-  const cellCount = useMemo(() => {
-    if (cellVoltages && cellVoltages.length > 0) return cellVoltages.length;
-    if (voltage <= 0) return 0;
-    return Math.round(voltage / 4.2);
-  }, [voltage, cellVoltages]);
-
-  const displayCellVoltages = useMemo(() => {
-    if (cellVoltages && cellVoltages.length > 0) return cellVoltages;
-    if (cellCount <= 0) return [];
-    const avg = voltage / cellCount;
-    return Array.from({ length: cellCount }, () => avg);
-  }, [voltage, cellCount, cellVoltages]);
+  const cells = plausibleCellVoltages(battery?.cellVoltages);
+  const cellCount = resolveCellCount(battery?.cellVoltages, knownCellCount);
 
   const cellImbalance = useMemo(() => {
-    if (displayCellVoltages.length < 2) return null;
-    const min = Math.min(...displayCellVoltages);
-    const max = Math.max(...displayCellVoltages);
-    const delta = max - min;
+    if (!cells || cells.length < 2) return null;
+    const delta = Math.max(...cells) - Math.min(...cells);
     if (delta < 0.05) return null;
-    return { delta, severity: delta > 0.3 ? "error" as const : "warning" as const };
-  }, [displayCellVoltages]);
+    return { delta, severity: delta > 0.3 ? ("error" as const) : ("warning" as const) };
+  }, [cells]);
 
-  const estimatedMinutes = useMemo(() => {
-    if (!connectTimeRef.current || consumed <= 0 || remaining <= 0) return null;
-    const elapsedMs = Date.now() - connectTimeRef.current;
-    if (elapsedMs < 30_000) return null;
-    const ratePerMs = consumed / elapsedMs;
-    if (ratePerMs <= 0) return null;
-    const remainingMah = batteryCapacity > 0
-      ? batteryCapacity - consumed
-      : (consumed / (1 - remaining / 100)) * (remaining / 100);
-    if (remainingMah <= 0) return null;
-    return remainingMah / ratePerMs / 60_000;
-  }, [consumed, remaining, batteryCapacity]);
+  const averageCell =
+    battery && !cells && cellCount !== null ? battery.voltage / cellCount : null;
 
   return (
     <div className="border border-border-default bg-bg-secondary p-4">
       <div className="flex items-center gap-2 mb-3">
         <Battery size={14} className="text-accent-primary" />
         <h2 className="text-sm font-medium text-text-primary">Live Battery</h2>
-        {voltage > 0 && (
+        {battery && cellCount !== null && (
           <span className="text-[10px] font-mono text-text-tertiary ml-auto">
-            {cellCount}S detected
+            {cellCount}S
           </span>
         )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <LiveStat label="Voltage" value={voltage.toFixed(2)} unit="V" />
-        <LiveStat label="Current" value={current.toFixed(1)} unit="A" />
-        <LiveStat label="Remaining" value={`${Math.round(remaining)}`} unit="%" />
-        <LiveStat label="Consumed" value={Math.round(consumed).toString()} unit="mAh" />
+        <LiveStat
+          label="Voltage"
+          value={battery ? battery.voltage.toFixed(2) : NOT_MEASURED}
+          unit="V"
+        />
+        <LiveStat
+          label="Current"
+          value={battery?.current !== undefined ? battery.current.toFixed(1) : NOT_MEASURED}
+          unit="A"
+        />
+        <LiveStat
+          label="Remaining"
+          value={battery && battery.remaining >= 0 ? `${Math.round(battery.remaining)}` : NOT_MEASURED}
+          unit="%"
+        />
+        <LiveStat
+          label="Consumed"
+          value={battery?.consumed !== undefined ? Math.round(battery.consumed).toString() : NOT_MEASURED}
+          unit="mAh"
+        />
       </div>
 
-      {voltage > 0 && (
-        <div className="flex items-center gap-4 mb-3">
-          {estimatedMinutes !== null && (
-            <div className="flex items-center gap-1">
-              <Clock size={10} className="text-text-tertiary" />
-              <span className={cn(
-                "text-[10px] font-mono",
-                estimatedMinutes < 3 ? "text-status-error" : estimatedMinutes < 8 ? "text-status-warning" : "text-text-secondary"
-              )}>
-                ~{Math.round(estimatedMinutes)} min remaining
-              </span>
-            </div>
-          )}
-          {temperature !== undefined && (
-            <div className="flex items-center gap-1">
-              <Thermometer size={10} className="text-text-tertiary" />
-              <span className={cn(
-                "text-[10px] font-mono",
-                temperature > 60 ? "text-status-error" : temperature > 45 ? "text-status-warning" : "text-text-secondary"
-              )}>
-                {temperature.toFixed(1)}&deg;C
-              </span>
-            </div>
-          )}
+      {battery?.temperature !== undefined && (
+        <div className="flex items-center gap-1 mb-3">
+          <Thermometer size={10} className="text-text-tertiary" />
+          <span
+            className={cn(
+              "text-[10px] font-mono",
+              battery.temperature > 60
+                ? "text-status-error"
+                : battery.temperature > 45
+                  ? "text-status-warning"
+                  : "text-text-secondary",
+            )}
+          >
+            {battery.temperature.toFixed(1)}&deg;C
+          </span>
         </div>
       )}
 
-      {displayCellVoltages.length > 0 && (
+      {cells && (
         <div>
-          <span className="text-[10px] text-text-tertiary mb-1.5 block">
-            {cellVoltages ? "Cell Voltages" : "Cell Voltage Estimate"}
-          </span>
+          <span className="text-[10px] text-text-tertiary mb-1.5 block">Cell Voltages</span>
           <div className="flex gap-1.5">
-            {displayCellVoltages.map((cv, i) => (
+            {cells.map((cv, i) => (
               <div key={i} className="flex-1">
                 <div className="h-8 bg-bg-tertiary relative overflow-hidden">
                   <div
@@ -160,8 +155,17 @@ export function LiveBatteryDisplay({ batteryCapacity }: { batteryCapacity: numbe
         </div>
       )}
 
-      {voltage === 0 && (
-        <p className="text-[10px] text-text-tertiary">No battery data — connect a drone to view live telemetry</p>
+      {averageCell !== null && (
+        <p className="text-[10px] text-text-tertiary">
+          Average per cell:{" "}
+          <span className={cn("font-mono", cellVoltageColor(averageCell))}>
+            {averageCell.toFixed(2)} V
+          </span>
+        </p>
+      )}
+
+      {!battery && (
+        <p className="text-[10px] text-text-tertiary">No live battery data from the flight controller</p>
       )}
     </div>
   );

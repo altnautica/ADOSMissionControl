@@ -20,6 +20,27 @@ function u32(buf: Uint8Array, offset: number): number { return (buf[offset] | (b
 function i16(buf: Uint8Array, offset: number): number { const val = u16(buf, offset); return val >= 0x8000 ? val - 0x10000 : val }
 function i32(buf: Uint8Array, offset: number): number { return buf[offset] | (buf[offset + 1] << 8) | (buf[offset + 2] << 16) | (buf[offset + 3] << 24) }
 
+/** MAVLink GPS_FIX_TYPE values the rest of the app reads fixType in. */
+const GPS_FIX_TYPE_NO_FIX = 1
+const GPS_FIX_TYPE_2D = 2
+const GPS_FIX_TYPE_3D = 3
+
+/**
+ * Translate MSP_RAW_GPS byte 0 into MAVLink GPS_FIX_TYPE.
+ *
+ * iNav writes gpsFixType_e (0 NO_FIX, 1 FIX_2D, 2 FIX_3D). Betaflight writes
+ * STATE(GPS_FIX), the raw state bit (0 or 2), and only sets it on a valid 3D
+ * fix, so any non-zero value is a 3D fix.
+ */
+export function mspGpsFixToMavlink(raw: number, firmwareType: VehicleInfo['firmwareType'] | undefined): number {
+  if (firmwareType === 'inav') {
+    if (raw >= 2) return GPS_FIX_TYPE_3D
+    if (raw === 1) return GPS_FIX_TYPE_2D
+    return GPS_FIX_TYPE_NO_FIX
+  }
+  return raw !== 0 ? GPS_FIX_TYPE_3D : GPS_FIX_TYPE_NO_FIX
+}
+
 export function dispatchMspTelemetry(
   command: number,
   payload: Uint8Array,
@@ -48,7 +69,7 @@ export function dispatchMspTelemetry(
       const rssi = u16(payload, 3)
       const amps = i16(payload, 5) / 100
       for (const cb of cbs.batteryCallbacks) {
-        cb({ voltage, current: amps, remaining: -1, consumed: mah, timestamp: ts })
+        cb({ id: 0, voltage, current: amps, remaining: -1, consumed: mah, timestamp: ts })
       }
       for (const cb of cbs.rcCallbacks) {
         cb({ channels: [], rssi: Math.round(rssi / 1023 * 255), timestamp: ts })
@@ -70,7 +91,7 @@ export function dispatchMspTelemetry(
         ? Math.max(0, Math.min(100, Math.round((perCell - 3.3) / (4.2 - 3.3) * 100)))
         : -1
       for (const cb of cbs.batteryCallbacks) {
-        cb({ voltage: voltage2, current: amps2, remaining, consumed: mahDrawn, timestamp: ts })
+        cb({ id: 0, voltage: voltage2, current: amps2, remaining, consumed: mahDrawn, timestamp: ts })
       }
       break
     }
@@ -165,15 +186,18 @@ export function dispatchMspTelemetry(
           altitudeLocal: altM, altitudeRelative: altM, altitudeTerrain: 0, bottomClearance: 0,
         })
       }
+      // MSP_ALTITUDE carries altitude and vario only. Speed, heading and
+      // throttle stay absent so readouts fall back to the GPS ground speed
+      // and course or show no data, never a made-up zero.
       for (const cb of cbs.vfrCallbacks) {
-        cb({ timestamp: ts, airspeed: 0, groundspeed: 0, heading: 0, throttle: 0, alt: altM, climb: climbRate })
+        cb({ timestamp: ts, alt: altM, climb: climbRate })
       }
       break
     }
 
     case MSP.MSP_RAW_GPS: {
       if (payload.length < 16) break
-      const fixType = u8(payload, 0)
+      const fixType = mspGpsFixToMavlink(u8(payload, 0), vehicleInfo?.firmwareType)
       const numSat = u8(payload, 1)
       const lat = i32(payload, 2) / 1e7
       const lon = i32(payload, 6) / 1e7
@@ -220,7 +244,7 @@ export function dispatchMspTelemetry(
       //   U8 activeWpNumber (3), U8 error (4), U16 headingHoldTarget (5)
       // This is the message that actually carries nav state.
       if (payload.length < 3) break
-      useTelemetryStore.getState().setNavStatus(u8(payload, 1), u8(payload, 2))
+      useTelemetryStore.getState().setNavStatus(u8(payload, 0), u8(payload, 1), u8(payload, 2))
       break
     }
 

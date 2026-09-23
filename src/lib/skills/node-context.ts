@@ -27,16 +27,17 @@
  *    the firmware family itself is unidentified, which reports mode presets as
  *    unavailable rather than offering a mode the vehicle lacks.
  *
- * Two fields have no honest per-node source, and both resolve toward LESS
+ * One field has no honest per-node source, and it resolves toward LESS
  * capability, never more:
  *
  *  - `supports`  capability flags come from a protocol handshake this node has
  *    not had, so every capability reads false. Mission-aware behaviour degrades
  *    to the plain mode change it falls back to.
- *  - `checklistReady`  the pre-flight checklist is app-wide and carries no node
- *    association, so it reads false. Arm and take-off then require the operator
- *    to type the override phrase instead of silently accepting a checklist that
- *    was completed for a different vehicle.
+ *
+ * `checklistReady` reads the pre-flight checklist session only when it was
+ * started for this node (the selected drone's session carries its id). For
+ * any other node it reads false, so arm and take-off require the override
+ * phrase instead of accepting a checklist completed for a different vehicle.
  *
  * Above all: with no telemetry snapshot proving the node's arm state, there is
  * no protocol at all — and a snapshot from a node that is no longer being
@@ -57,6 +58,7 @@ import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
+import { useChecklistStore } from "@/stores/checklist-store";
 import {
   resolveNodeCommandSink,
   type CommandTargetNode,
@@ -244,9 +246,9 @@ export function buildSkillContextForNode(
       // truthful (unlike the sink-backed branch below).
       supports: (cap) => Boolean(liveFc.getCapabilities()?.[cap]),
       autonomousNav: autonomousNavFromCapabilities(liveFc.getCapabilities()),
-      checklistReady: false,
+      checklistReady: useChecklistStore.getState().isReadyToArm(node._id),
       confirm: (policy: ConfirmPolicy) =>
-        useSkillConfirmStore.getState().request(policy),
+        useSkillConfirmStore.getState().request(policy, node._id),
       notify: notifySkill,
     };
   }
@@ -302,9 +304,9 @@ export function buildSkillContextForNode(
     // sink-backed ArduPilot / PX4 / iNav node keeps RTL / Land / Takeoff while
     // an acro flight controller drops them — a truthful answer, not a guess.
     autonomousNav: autonomousNavForNode(node.fcFirmware, node.frameType),
-    checklistReady: false,
+    checklistReady: useChecklistStore.getState().isReadyToArm(node._id),
     confirm: (policy: ConfirmPolicy) =>
-      useSkillConfirmStore.getState().request(policy),
+      useSkillConfirmStore.getState().request(policy, node._id),
     notify: notifySkill,
   };
 }

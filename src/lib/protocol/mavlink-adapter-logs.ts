@@ -21,19 +21,38 @@ export interface LogListState {
   timer: ReturnType<typeof setTimeout>
 }
 
+/** LOG_DATA payload size; a shorter packet marks the end of the log. */
+const LOG_DATA_CHUNK = 90
+/** Silence before the missing range is requested again. */
+const LOG_DATA_IDLE_MS = 3000
+/** Consecutive silent re-requests before the download is declared incomplete. */
+const LOG_DATA_MAX_RETRIES = 5
+
+/** A byte range below the received frontier that no LOG_DATA has covered yet. */
+interface LogDataGap {
+  start: number
+  end: number
+}
+
 export interface LogDataState {
   logId: number
-  /** LOG_DATA carries no total, so the adapter never knows it: always 0 (unknown). */
-  totalSize: number
   data: Uint8Array
+  /** Highest byte offset seen (end of the furthest packet). */
   receivedBytes: number
-  lastReceivedOfs: number
+  /** Ranges below `receivedBytes` lost in transit, in offset order. */
+  gaps: LogDataGap[]
+  /** Log length, known once the short end-of-log packet has arrived. */
+  endBytes: number | null
+  /** The lost range last requested again, while it is being served. */
+  pendingGap: LogDataGap | null
   onProgress?: LogDownloadProgressCallback
   resolve: (data: Uint8Array) => void
   reject: (err: Error) => void
   inactivityTimer: ReturnType<typeof setTimeout> | null
-  hardTimer: ReturnType<typeof setTimeout>
+  /** Consecutive re-requests with no data in between. */
   retryCount: number
+  /** Set once resolved, rejected or cancelled; later frames and timers are ignored. */
+  settled: boolean
 }
 
 export interface LogContext {
@@ -70,45 +89,103 @@ export async function getLogList(ctx: LogContext): Promise<LogEntry[]> {
   })
 }
 
+/**
+ * Download one onboard log over LOG_REQUEST_DATA / LOG_DATA.
+ *
+ * LOG_DATA carries no total and no end marker other than a short packet, so
+ * the download resolves only once that packet has arrived AND every range a
+ * lost packet left behind has been requested again and filled. A stall with
+ * no data for {@link LOG_DATA_MAX_RETRIES} re-requests rejects as incomplete:
+ * a truncated or holed log is never handed on as a whole one. A download that
+ * keeps receiving data has no wall-clock limit.
+ */
 export async function downloadLog(ctx: LogContext, logId: number, onProgress?: LogDownloadProgressCallback): Promise<Uint8Array> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
+  if (ctx.logDataDownload) {
+    settleLogDataDownload(ctx, ctx.logDataDownload, new Error('Log download superseded by another download'))
+  }
 
-  return new Promise<Uint8Array>((resolve, reject) => {
-    // LOG_DATA has no end marker other than a short packet, so a download
-    // that has not seen one when a timer fires is incomplete and rejects.
-    const hardTimer = setTimeout(() => {
-      finishLogDataDownload(ctx, true)
-    }, 5 * 60 * 1000)
+  const { promise, resolve, reject } = Promise.withResolvers<Uint8Array>()
+  const dl: LogDataState = {
+    logId, data: new Uint8Array(0),
+    receivedBytes: 0, gaps: [], endBytes: null, pendingGap: null,
+    onProgress, resolve, reject,
+    inactivityTimer: null, retryCount: 0, settled: false,
+  }
+  ctx.logDataDownload = dl
+  requestMissing(ctx, dl)
+  armInactivityTimer(ctx, dl)
+  return promise
+}
 
-    const createInactivityTimer = () => setTimeout(() => {
-      if (!ctx.logDataDownload || !ctx.transport?.isConnected) return
-      ctx.logDataDownload.retryCount++
-      if (ctx.logDataDownload.retryCount > 5) {
-        finishLogDataDownload(ctx, true)
-        return
-      }
-      ctx.transport.send(encodeLogRequestData(
-        ctx.targetSysId, ctx.targetCompId,
-        ctx.logDataDownload.logId,
-        ctx.logDataDownload.receivedBytes,
-        0xffffffff, ctx.sysId, ctx.compId,
-      ))
-      ctx.logDataDownload.inactivityTimer = createInactivityTimer()
-    }, 3000)
+/**
+ * Ask for what is still missing: past the frontier while the end is unknown,
+ * then each lost range in turn once the end-of-log packet has arrived.
+ */
+function requestMissing(ctx: LogContext, dl: LogDataState): void {
+  const gap = dl.endBytes !== null ? dl.gaps[0] : undefined
+  dl.pendingGap = gap ? { ...gap } : null
+  if (!ctx.transport?.isConnected) return
+  ctx.transport.send(encodeLogRequestData(
+    ctx.targetSysId, ctx.targetCompId, dl.logId,
+    gap ? gap.start : dl.receivedBytes,
+    gap ? gap.end - gap.start : 0xffffffff,
+    ctx.sysId, ctx.compId,
+  ))
+}
 
-    ctx.logDataDownload = {
-      logId, totalSize: 0, data: new Uint8Array(0),
-      receivedBytes: 0, lastReceivedOfs: -1,
-      onProgress, resolve, reject,
-      inactivityTimer: createInactivityTimer(),
-      hardTimer, retryCount: 0,
+function armInactivityTimer(ctx: LogContext, dl: LogDataState): void {
+  clearTimeout(dl.inactivityTimer ?? undefined)
+  dl.inactivityTimer = setTimeout(() => {
+    if (dl.settled) return
+    dl.retryCount++
+    if (dl.retryCount > LOG_DATA_MAX_RETRIES) {
+      settleLogDataDownload(ctx, dl, new Error(incompleteMessage(dl)))
+      return
     }
+    requestMissing(ctx, dl)
+    armInactivityTimer(ctx, dl)
+  }, LOG_DATA_IDLE_MS)
+}
 
-    ctx.transport!.send(encodeLogRequestData(
-      ctx.targetSysId, ctx.targetCompId,
-      logId, 0, 0xffffffff, ctx.sysId, ctx.compId,
-    ))
-  })
+function incompleteMessage(dl: LogDataState): string {
+  if (dl.endBytes === null) {
+    return `Log ${dl.logId} download incomplete: the flight controller stopped sending after ${dl.receivedBytes} bytes`
+  }
+  const missing = dl.gaps.reduce((sum, g) => sum + (g.end - g.start), 0)
+  return `Log ${dl.logId} download incomplete: ${missing} of ${dl.endBytes} bytes never arrived`
+}
+
+/** Remove [start, end) from the gap list, splitting a gap it lands inside. */
+function fillGaps(gaps: LogDataGap[], start: number, end: number): LogDataGap[] {
+  const out: LogDataGap[] = []
+  for (const g of gaps) {
+    if (g.end <= start || g.start >= end) {
+      out.push(g)
+      continue
+    }
+    if (g.start < start) out.push({ start: g.start, end: start })
+    if (end < g.end) out.push({ start: end, end: g.end })
+  }
+  return out
+}
+
+/**
+ * Settle the download once: resolve with the complete log, or reject with
+ * `error`. Later frames and timers see `settled` and do nothing, whichever
+ * context object they hold.
+ */
+function settleLogDataDownload(ctx: LogContext, dl: LogDataState, error: Error | null): void {
+  if (dl.settled) return
+  dl.settled = true
+  clearTimeout(dl.inactivityTimer ?? undefined)
+  dl.inactivityTimer = null
+  if (ctx.logDataDownload === dl) ctx.logDataDownload = null
+  if (error) dl.reject(error)
+  else dl.resolve(dl.data.slice(0, dl.endBytes ?? dl.receivedBytes))
+  if (ctx.transport?.isConnected) {
+    ctx.transport.send(encodeLogRequestEnd(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
+  }
 }
 
 export async function eraseAllLogs(ctx: LogContext): Promise<CommandResult> {
@@ -119,14 +196,14 @@ export async function eraseAllLogs(ctx: LogContext): Promise<CommandResult> {
   return { success: true, resultCode: 0, message: 'Erase command sent' }
 }
 
-/** Abort the active log download; its promise rejects with "Log download cancelled". */
-export function cancelLogDownload(ctx: LogContext): void {
-  if (ctx.logDataDownload) {
-    clearTimeout(ctx.logDataDownload.inactivityTimer ?? undefined)
-    clearTimeout(ctx.logDataDownload.hardTimer)
-    ctx.logDataDownload.reject(new Error('Log download cancelled'))
-    ctx.logDataDownload = null
+/** Abort the active log download; its promise rejects with `reason`. */
+export function cancelLogDownload(ctx: LogContext, reason = 'Log download cancelled'): void {
+  const dl = ctx.logDataDownload
+  if (dl && !dl.settled) {
+    settleLogDataDownload(ctx, dl, new Error(reason))
+    return
   }
+  ctx.logDataDownload = null
   if (ctx.transport?.isConnected) {
     ctx.transport.send(encodeLogRequestEnd(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
   }
@@ -155,65 +232,43 @@ export function handleLogEntry(ctx: LogContext, frame: MAVLinkFrame): void {
 }
 
 export function handleLogData(ctx: LogContext, frame: MAVLinkFrame): void {
-  if (!ctx.logDataDownload) return
+  const dl = ctx.logDataDownload
+  if (!dl || dl.settled) return
   const data = decodeLogData(frame.payload)
-  if (data.id !== ctx.logDataDownload.logId) return
+  if (data.id !== dl.logId) return
 
   const endOfs = data.ofs + data.count
-  if (endOfs > ctx.logDataDownload.data.length) {
-    const newBuf = new Uint8Array(Math.max(endOfs, ctx.logDataDownload.data.length * 2))
-    newBuf.set(ctx.logDataDownload.data)
-    ctx.logDataDownload.data = newBuf
+  if (endOfs > dl.data.length) {
+    const newBuf = new Uint8Array(Math.max(endOfs, dl.data.length * 2))
+    newBuf.set(dl.data)
+    dl.data = newBuf
   }
+  dl.data.set(data.data, data.ofs)
 
-  ctx.logDataDownload.data.set(data.data, data.ofs)
-  if (endOfs > ctx.logDataDownload.receivedBytes) {
-    ctx.logDataDownload.receivedBytes = endOfs
+  // A packet beyond the frontier means the ones between were lost; a packet
+  // behind it fills (part of) such a hole.
+  if (data.ofs > dl.receivedBytes) dl.gaps.push({ start: dl.receivedBytes, end: data.ofs })
+  else if (data.ofs < dl.receivedBytes) dl.gaps = fillGaps(dl.gaps, data.ofs, endOfs)
+  if (endOfs >= dl.receivedBytes) {
+    dl.receivedBytes = endOfs
+    if (data.count < LOG_DATA_CHUNK) dl.endBytes = endOfs
   }
-  ctx.logDataDownload.lastReceivedOfs = data.ofs
+  dl.retryCount = 0
 
-  // totalSize is 0 (unknown): the caller scales progress against the
+  // LOG_DATA carries no total: the caller scales progress against the
   // LOG_ENTRY size it listed.
-  ctx.logDataDownload.onProgress?.(ctx.logDataDownload.receivedBytes, ctx.logDataDownload.totalSize)
+  dl.onProgress?.(dl.receivedBytes, 0)
 
-  if (ctx.logDataDownload.inactivityTimer) clearTimeout(ctx.logDataDownload.inactivityTimer)
-  ctx.logDataDownload.inactivityTimer = setTimeout(() => {
-    if (!ctx.logDataDownload || !ctx.transport?.isConnected) return
-    ctx.logDataDownload.retryCount++
-    if (ctx.logDataDownload.retryCount > 5) {
-      finishLogDataDownload(ctx, true)
+  if (dl.endBytes !== null) {
+    if (dl.gaps.length === 0) {
+      settleLogDataDownload(ctx, dl, null)
       return
     }
-    ctx.transport.send(encodeLogRequestData(
-      ctx.targetSysId, ctx.targetCompId,
-      ctx.logDataDownload.logId,
-      ctx.logDataDownload.receivedBytes,
-      0xffffffff, ctx.sysId, ctx.compId,
-    ))
-  }, 3000)
-
-  if (data.count < 90) {
-    finishLogDataDownload(ctx, false)
+    // Ask for the next hole once the one last requested has been filled.
+    const pending = dl.pendingGap
+    if (!pending || !dl.gaps.some((g) => g.start < pending.end && g.end > pending.start)) {
+      requestMissing(ctx, dl)
+    }
   }
-}
-
-/**
- * End the active download. A complete download (short final packet)
- * resolves with the bytes; an incomplete one (hard timer or retries
- * exhausted) rejects, so a truncated log is never handed on as a whole one.
- */
-export function finishLogDataDownload(ctx: LogContext, partial: boolean): void {
-  if (!ctx.logDataDownload) return
-  const dl = ctx.logDataDownload
-  clearTimeout(dl.inactivityTimer ?? undefined)
-  clearTimeout(dl.hardTimer)
-  ctx.logDataDownload = null
-  if (partial) {
-    dl.reject(new Error(`Log ${dl.logId} download incomplete: the flight controller stopped sending after ${dl.receivedBytes} bytes`))
-  } else {
-    dl.resolve(dl.data.slice(0, dl.receivedBytes))
-  }
-  if (ctx.transport?.isConnected) {
-    ctx.transport.send(encodeLogRequestEnd(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
-  }
+  armInactivityTimer(ctx, dl)
 }

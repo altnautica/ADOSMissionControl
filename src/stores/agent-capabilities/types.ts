@@ -231,6 +231,12 @@ export interface AgentCapabilitiesState {
   /** True once we've received at least one capabilities payload. */
   loaded: boolean;
   /**
+   * Epoch ms this slice was last written from a node payload; null before the
+   * first one. A per-device slice outlives its node's reachability, so a
+   * reader ages it against this rather than trusting it as current.
+   */
+  receivedAt: number | null;
+  /**
    * The node the flat slice above describes, when a writer named it. Null
    * before the first identified payload.
    */

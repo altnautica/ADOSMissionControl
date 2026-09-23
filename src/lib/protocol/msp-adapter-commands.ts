@@ -11,6 +11,11 @@ import { MODE_TO_INAV_BOX, INAV_BOX_LABELS } from './firmware/inav'
 import { formatErrorMessage } from '@/lib/utils'
 import type { MspSerialQueue } from './msp/msp-serial-queue'
 import { MSP } from './msp/msp-constants'
+import { INAV_MSP } from './msp/decoders/inav/constants'
+import { decodeMspINavStatus } from './msp/decoders/inav/nav'
+import { decodeMspStatusEx } from './msp/msp-decoders-status'
+import { decodeArmingFlags, type DecodeArmingFlagsResult } from './msp/inav-arming-flags'
+import { decodeBetaflightArmingFlags } from './msp/betaflight-arming-flags'
 import { findModeRange, type ModeRange } from './msp/msp-mode-map'
 import type { MspRcOverride } from './msp/msp-rc-override'
 
@@ -297,17 +302,36 @@ export async function mspKillSwitch(ctx: MspCommandContext): Promise<CommandResu
   return { success: true, resultCode: 0, message: 'Motor cut latched — held until the aircraft is armed again' }
 }
 
+/**
+ * MSP has no pre-arm command: the FC's arming-disable word is the verdict, so
+ * `success` here means no blocker is set, and a refusal names every blocker.
+ *
+ * Betaflight writes that word in MSP_STATUS_EX after the variable-length
+ * flight-mode-flags block. iNav's MSP_STATUS_EX carries only the low 16 bits of
+ * its arming flags, so the full 32-bit word is read from MSP2_INAV_STATUS.
+ */
 export async function mspDoPreArmCheck(ctx: MspCommandContext): Promise<CommandResult> {
   if (!ctx.queue) return NOT_CONNECTED
+  const invalid: CommandResult = { success: false, resultCode: -1, message: 'Invalid status response' }
   try {
-    const frame = await ctx.queue.send(MSP.MSP_STATUS_EX)
-    const payload = frame.payload
-    if (payload.length < 15) return { success: false, resultCode: -1, message: 'Invalid status response' }
-    const armingDisableFlags = payload.length >= 17
-      ? (payload[13] | (payload[14] << 8) | (payload[15] << 16) | (payload[16] << 24)) >>> 0
-      : payload[13] | (payload[14] << 8)
-    if (armingDisableFlags === 0) return { success: true, resultCode: 0, message: 'Pre-arm checks passed' }
-    return { success: false, resultCode: -1, message: `Arming disabled: flags=0x${armingDisableFlags.toString(16)}` }
+    let decoded: DecodeArmingFlagsResult
+    if (ctx.firmwareType === 'inav') {
+      const { payload } = await ctx.queue.send(INAV_MSP.MSP2_INAV_STATUS)
+      if (payload.length < 13) return invalid
+      const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
+      decoded = decodeArmingFlags(decodeMspINavStatus(dv).armingFlags)
+    } else if (ctx.firmwareType === 'betaflight') {
+      const { payload } = await ctx.queue.send(MSP.MSP_STATUS_EX)
+      // Arming flags follow the extra flight-mode bytes (count at 15) and a
+      // one-byte flag count.
+      if (payload.length < 16 || payload.length < 16 + payload[15] + 5) return invalid
+      const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
+      decoded = decodeBetaflightArmingFlags(decodeMspStatusEx(dv).armDisableFlags)
+    } else {
+      return { success: false, resultCode: -1, message: 'This firmware reports no arming status over MSP' }
+    }
+    if (decoded.okToArm) return { success: true, resultCode: 0, message: 'Pre-arm checks passed' }
+    return { success: false, resultCode: -1, message: `Arming blocked: ${decoded.blockers.join(', ')}` }
   } catch (err) {
     return { success: false, resultCode: -1, message: `Pre-arm check failed: ${formatErrorMessage(err)}` }
   }

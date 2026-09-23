@@ -190,9 +190,15 @@ export function applyFullStatus(
   if (typeof full.cameraState !== "undefined") {
     statusExtras.cameraState = full.cameraState;
   }
-  if (typeof full.cameraUsbRecovery !== "undefined") {
-    statusExtras.cameraUsbRecovery = full.cameraUsbRecovery;
-  }
+  // The agent omits a supervisor verdict (camera recovery, and every
+  // reconciler key below) when its sidecar is absent or stale: a stopped
+  // supervisor must not render its last verdict as live. This response is
+  // the complete status, so an omitted verdict is withdrawn, and an explicit
+  // null tells setCapabilities to clear it rather than keep the prior value.
+  statusExtras.cameraUsbRecovery =
+    typeof full.cameraUsbRecovery !== "undefined"
+      ? full.cameraUsbRecovery
+      : null;
   // Reconciler verdicts the agent folds in beside the camera keys:
   // management-link health, reach-back mode, USB rehome, WiFi
   // power-save. Each has a normalizer clamp and a card already; the
@@ -215,9 +221,7 @@ export function applyFullStatus(
   ] as const;
   for (const key of reconcilerKeys) {
     const value = full[key];
-    if (typeof value !== "undefined") {
-      statusExtras[key] = value;
-    }
+    statusExtras[key] = typeof value !== "undefined" ? value : null;
   }
   // Per-leg video streams: re-point each leg's WHEP host to the one we
   // poll successfully (proven reachable, dodging an unreachable mDNS
@@ -293,7 +297,7 @@ export function applyFullStatus(
         },
         nodeDeviceId,
       );
-    } else if (Object.keys(statusExtras).length > 0) {
+    } else if (Object.values(statusExtras).some((v) => v !== null)) {
       useAgentCapabilitiesStore
         .getState()
         .setCapabilities(statusExtras, nodeDeviceId);

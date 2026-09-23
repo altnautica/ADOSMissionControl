@@ -9,32 +9,27 @@
  * offload target are read from the heartbeat (honest status, never fabricated);
  * the pinned workstation is the persisted `perception.offload.compute_node_addr`
  * config link (the same value the node Settings tab edits — two views of one
- * link), so the choice survives unmount. "Run now" submits a real
- * perception_offload job to the chosen workstation's compute engine and
- * surfaces its actual reply.
+ * link), so the choice survives unmount. The node's own offload reconciler
+ * reads that pin and opens the streaming session itself; the card only sets
+ * the pin and reports what the node says.
  * @license GPL-3.0-only
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Cpu, Layers, SendHorizontal } from "lucide-react";
+import { Cpu, Layers } from "lucide-react";
 
 import { Select, type SelectOption } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import { perceptionFeedState } from "@/lib/vision/perception-health";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
-import { ComputeAgentClient } from "@/lib/agent/compute-client";
 import {
   useNodeConfig,
   readConfigPath,
 } from "@/components/command/settings/use-node-config";
-import {
-  nodeToOffloadAddr,
-  workstationForOffloadAddr,
-} from "@/lib/vision/offload-target";
+import { nodeToOffloadAddr } from "@/lib/vision/offload-target";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 /** The config key holding this node's pinned offload workstation address. */
@@ -101,10 +96,8 @@ export function PerceptionTierCard({
   );
   const storedAddr =
     (readConfigPath(config, PIN_KEY) as string | undefined) ?? "";
-  // A local override while a write is in flight (and the only selectable value
-  // over the read-only cloud relay, where "Run now" still reaches the LAN box).
+  // A local override while a write is in flight.
   const [pendingAddr, setPendingAddr] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   const effectiveAddr = pendingAddr ?? storedAddr;
 
@@ -129,40 +122,15 @@ export function PerceptionTierCard({
     })),
   ];
 
-  const chosen = workstationForOffloadAddr(workstations, effectiveAddr);
-
   const onPick = async (addr: string) => {
+    if (readOnly) return;
     setPendingAddr(addr);
-    if (readOnly) return; // cloud relay — the pin is local-only this session.
     try {
       await setValue(PIN_KEY, addr);
     } catch (err) {
-      setPendingAddr(null);
       toast(err instanceof Error ? err.message : t("offloadFailed"), "error");
-    }
-  };
-
-  const onRunNow = async () => {
-    if (!chosen || submitting) return;
-    setSubmitting(true);
-    try {
-      const client = new ComputeAgentClient(chosen.hostname, chosen.apiKey);
-      const res = await client.submitJob({
-        kind: "perception_offload",
-        params: { drone_id: droneId },
-      });
-      if (res) {
-        toast(
-          t("offloadRequested", { node: chosen.name || chosen.hostname, id: res.jobId }),
-          "success",
-        );
-      } else {
-        toast(t("offloadFailed"), "error");
-      }
-    } catch {
-      toast(t("offloadFailed"), "error");
     } finally {
-      setSubmitting(false);
+      setPendingAddr(null);
     }
   };
 
@@ -234,29 +202,19 @@ export function PerceptionTierCard({
           {t("offloadNoWorkstation")}
         </p>
       ) : (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="min-w-[200px] flex-1">
-            <Select
-              label={t("offloadTarget")}
-              options={options}
-              value={effectiveAddr}
-              onChange={(v) => void onPick(v)}
-              placeholder={t("offloadTargetPlaceholder")}
-            />
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<SendHorizontal size={14} />}
-            onClick={() => void onRunNow()}
-            disabled={!chosen || submitting}
-          >
-            {submitting ? t("offloadRequesting") : t("runNow")}
-          </Button>
+        <div className="min-w-[200px]">
+          <Select
+            label={t("offloadTarget")}
+            options={options}
+            value={effectiveAddr}
+            onChange={(v) => void onPick(v)}
+            placeholder={t("offloadTargetPlaceholder")}
+            disabled={readOnly}
+          />
         </div>
       )}
       <p className="mt-2 text-[11px] text-text-tertiary">
-        {t("offloadTargetHint")}
+        {t("offloadPinHint")}
       </p>
     </section>
   );

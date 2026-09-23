@@ -1148,7 +1148,8 @@ export class INavMockProtocol implements DroneProtocol {
   /** Last attitude setpoint handed to this mock, or null if none. */
   getLastAttitudeTarget(): AttitudeTargetSample | null { return this._lastAttitudeTarget; }
 
-  async doPreArmCheck(): Promise<CommandResult> { setTimeout(() => this._emit("statusText", 6, "PreArm: Ready to arm"), 200); return ok("Pre-arm check"); }
+  /** MSP semantics: the arming-disable word is the verdict, and the mock has no blockers. */
+  async doPreArmCheck(): Promise<CommandResult> { return ok("Pre-arm checks passed"); }
 
   // ── Fence / Rally ───────────────────────────────────────────
 
@@ -1265,6 +1266,7 @@ export class INavMockProtocol implements DroneProtocol {
       for (const cb of this.cbs.batteryCbs) {
         const cellV = (16.8 * (this.battery / 100)) / 4;
         cb({
+          id: 0,
           voltage: 16.8 * (this.battery / 100),
           current: 8 + Math.random() * 3,
           remaining: this.battery,
@@ -1290,11 +1292,13 @@ export class INavMockProtocol implements DroneProtocol {
       // NavStatePill, TrafficPill, and the PreArmPanel arming breakdown render
       // against demo drones just like they would against a real FC.
       const store = useTelemetryStore.getState();
-      // Cycle nav state every 15 s across IDLE, POSHOLD, RTH for visual variety.
-      const stateCycle = [0, 4, 13];
-      const actionCycle = [0, 2, 4];
+      // Cycle every 15 s through idle, a waypoint leg and RTH en route, using
+      // the MSP_NAV_STATUS mode/state/action values the firmware sends.
+      const modeCycle = [0, 3, 2]; // MW_GPS_MODE NONE, NAV, RTH
+      const stateCycle = [0, 5, 2]; // MW_NAV_STATE NONE, WP_ENROUTE, RTH_ENROUTE
+      const actionCycle = [0, 1, 0]; // NAV_WP_ACTION none, WAYPOINT, none
       const cycleIdx = Math.floor(ts / 15000) % stateCycle.length;
-      store.setNavStatus(stateCycle[cycleIdx], actionCycle[cycleIdx]);
+      store.setNavStatus(modeCycle[cycleIdx], stateCycle[cycleIdx], actionCycle[cycleIdx]);
       // Arming flags: iNav's word carries ONLY the reasons arming is disabled,
       // and its enum starts at ARMED = 1<<2 — bits 0 and 1 are undefined and
       // the firmware never sets them. So "ready to arm" is the empty word, not

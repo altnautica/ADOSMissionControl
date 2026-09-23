@@ -1,9 +1,23 @@
 "use client";
 
+/**
+ * @module dashboard/FleetTelemetryCard
+ * @description Per-aircraft FC readout (sats, voltage, mode, arm state).
+ *
+ * Lists only drones with a flight controller attached: a ground station,
+ * workstation or FC-less companion has no FC readings to show. A field the FC
+ * has not reported (no GPS, no battery, an unknown remaining) renders "—", and
+ * mode and arm state show only once a heartbeat has been heard.
+ *
+ * @license GPL-3.0-only
+ */
+
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
+import { hasLiveFcReading } from "@/stores/node-registry/select-fleet-drones";
+import { batteryBand, useBatteryThresholds } from "@/lib/battery-bands";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-constants";
@@ -13,26 +27,38 @@ export function FleetTelemetryCard() {
   const t = useTranslations("status");
   const drones = useFleetStore((s) => s.drones);
   const profiles = useDroneMetadataStore((s) => s.profiles);
+  const thresholds = useBatteryThresholds();
 
-  const connected = drones.filter((d) => d.connectionState !== "disconnected");
+  const connected = drones.filter(
+    (d) =>
+      d.profile === "drone" &&
+      d.fcAttached === true &&
+      d.connectionState !== "disconnected",
+  );
   const armed = connected.filter((d) => d.armState === "armed");
   const linkLost = connected.filter((d) => d.fcLinkLost === true).length;
 
   // GPS health, from FCs that are still talking
-  const withGps = connected.filter((d) => d.gps && d.fcLinkLost !== true);
+  const withGps = connected.filter((d) => d.gps && hasLiveFcReading(d));
   const gps3d = withGps.filter((d) => d.gps!.fixType >= 3).length;
   const lowSats = withGps.filter((d) => d.gps!.satellites < 6 && d.gps!.fixType > 0).length;
 
-  // Per-drone telemetry rows (connected only)
   const droneRows = connected.map((d) => {
-    const name = profiles[d.id]?.displayName ?? d.name;
-    const sats = d.gps?.satellites ?? 0;
-    const fix = d.gps?.fixType ?? 0;
-    const voltage = d.battery?.voltage ?? 0;
-    const pct = d.battery?.remaining ?? 0;
+    const remaining =
+      d.battery && d.battery.remaining >= 0 ? d.battery.remaining : null;
     return {
-      id: d.id, name, sats, fix, voltage, pct, mode: d.flightMode,
-      armState: d.armState, linkLost: d.fcLinkLost === true,
+      id: d.id,
+      name: profiles[d.id]?.displayName ?? d.name,
+      sats: d.gps?.satellites ?? null,
+      fix: d.gps?.fixType ?? null,
+      voltage: d.battery?.voltage ?? null,
+      band: batteryBand(remaining, thresholds),
+      // Arm state is "unknown" until the FC's first heartbeat, and the mode
+      // arrives with that heartbeat: before it, neither is a reading.
+      heard: d.armState !== "unknown",
+      mode: d.flightMode,
+      armState: d.armState,
+      linkLost: d.fcLinkLost === true,
     };
   });
 
@@ -85,13 +111,31 @@ export function FleetTelemetryCard() {
               <Badge variant="error" size="sm">LINK LOST</Badge>
             ) : (
               <div className="flex items-center gap-2">
-                <span className={`font-mono tabular-nums ${d.sats < 6 && d.fix > 0 ? "text-status-warning" : "text-text-tertiary"}`}>
-                  {d.sats}sat
+                <span
+                  className={`font-mono tabular-nums ${
+                    d.sats !== null && d.sats < 6 && d.fix !== null && d.fix > 0
+                      ? "text-status-warning"
+                      : "text-text-tertiary"
+                  }`}
+                >
+                  {d.sats !== null ? `${d.sats}sat` : "—"}
                 </span>
-                <span className={`font-mono tabular-nums ${d.pct < 25 ? "text-status-error" : "text-text-tertiary"}`}>
-                  {d.voltage.toFixed(1)}V
+                <span
+                  className={`font-mono tabular-nums ${
+                    d.band === "critical"
+                      ? "text-status-error"
+                      : d.band === "warning"
+                        ? "text-status-warning"
+                        : "text-text-tertiary"
+                  }`}
+                >
+                  {d.voltage !== null ? `${d.voltage.toFixed(1)}V` : "—"}
                 </span>
-                <FleetModeLabel mode={d.mode} />
+                {d.heard ? (
+                  <FleetModeLabel mode={d.mode} />
+                ) : (
+                  <span className="font-mono text-text-tertiary w-14 text-right">—</span>
+                )}
                 <Badge variant={d.armState === "armed" ? "warning" : "neutral"} size="sm">
                   {d.armState === "armed" ? "ARM" : d.armState === "disarmed" ? "DIS" : "—"}
                 </Badge>

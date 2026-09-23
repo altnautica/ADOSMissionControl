@@ -43,7 +43,7 @@ export function MissionExecutionOverlay() {
     const xtrack = nav.xtrackError; // meters cross-track error
 
     let etaSeconds: number | null = null;
-    if (groundspeed > 0.5 && dist > 0) {
+    if (groundspeed !== undefined && groundspeed > 0.5 && dist > 0) {
       etaSeconds = dist / groundspeed;
     }
 

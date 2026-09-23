@@ -2,9 +2,12 @@
 
 /**
  * @module ProximityRadar
- * @description Proximity radar — a faithful port of the reference artifact's
- * `.zone.br .radar` (rings + cardinal lines + N + a nearest-range label) with
- * live OBSTACLE_DISTANCE sectors painted over it (amber caution / red danger).
+ * @description Proximity radar — rings + cardinal lines + a top reference
+ * label + a nearest-range label, with live OBSTACLE_DISTANCE sectors painted
+ * over it (amber caution / red danger).
+ * Sectors are placed with the sample's own angular step and offset, and the
+ * top of the dial is labelled with what the sample's frame puts there: N for
+ * north-aligned data, FWD for body-aligned data (the vehicle's nose).
  * The frame is always shown when the sensor has data; hidden when there is no
  * proximity sensor (an empty ring would falsely read as "all clear").
  * @license GPL-3.0-only
@@ -14,16 +17,15 @@ import { useMemo } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { freshOnly } from "@/lib/telemetry/freshness";
+import { obstacleSweep } from "@/lib/telemetry/obstacle-sweep";
 
 const CENTER = 60;
 const OUTER_R = 52;
 const INNER_R = 16;
-const INVALID_DISTANCE = 65535;
 const DANGER_CM = 200; // <2m = red
 const CAUTION_CM = 500; // 2-5m = amber
 
 function sectorColor(distCm: number): { fill: string; stroke: string } | null {
-  if (distCm >= INVALID_DISTANCE) return null;
   if (distCm > CAUTION_CM) return null;
   if (distCm < DANGER_CM) return { fill: "rgba(255,90,82,.30)", stroke: "var(--crit)" };
   return { fill: "rgba(245,181,68,.28)", stroke: "var(--warn)" };
@@ -60,28 +62,15 @@ export function ProximityRadar() {
   const obstacleBuffer = useTelemetryStore.getState().obstacle;
   const latest = freshOnly(obstacleBuffer.latest(), Date.now());
 
-  const { hasData, sectors, closestM } = useMemo(() => {
-    if (!latest || !latest.distances || latest.distances.length === 0) {
-      return { hasData: false, sectors: [] as { d: string; fill: string; stroke: string }[], closestM: null as string | null };
+  const view = useMemo(() => {
+    const sweep = latest ? obstacleSweep(latest) : null;
+    if (!sweep) return null;
+    const sectors: { d: string; fill: string; stroke: string }[] = [];
+    for (const s of sweep.sectors) {
+      const c = sectorColor(s.distanceCm);
+      if (c) sectors.push({ d: arcPath(s.startDeg, s.endDeg), fill: c.fill, stroke: c.stroke });
     }
-    const inc = latest.increment || 5;
-    const count = Math.min(latest.distances.length, Math.floor(360 / inc));
-    const off = latest.angleOffset || 0;
-    const paths: { d: string; fill: string; stroke: string }[] = [];
-    let closest = INVALID_DISTANCE;
-    for (let i = 0; i < count; i++) {
-      const dist = latest.distances[i];
-      if (dist < closest) closest = dist;
-      const c = sectorColor(dist);
-      if (!c) continue;
-      const s = off + i * inc;
-      paths.push({ d: arcPath(s, s + inc), fill: c.fill, stroke: c.stroke });
-    }
-    return {
-      hasData: true,
-      sectors: paths,
-      closestM: closest < INVALID_DISTANCE ? (closest / 100).toFixed(1) : null,
-    };
+    return { reference: sweep.reference, sectors, closestCm: sweep.closestCm };
     // `latest` is the whole dependency: it is a stable object reference while
     // the sample stands, and becomes `undefined` the moment it goes stale, so
     // the memo recomputes exactly when the answer changes. The version and
@@ -89,10 +78,11 @@ export function ProximityRadar() {
     // inputs to the arc geometry.
   }, [latest]);
 
-  if (!hasData) return null;
+  if (!view) return null;
 
-  const nearest = closestM ? parseFloat(closestM) : null;
-  const labelColor = nearest === null ? "var(--good)" : nearest < 2 ? "var(--crit)" : "var(--warn)";
+  const { reference, sectors, closestCm } = view;
+  const labelColor =
+    closestCm === null ? "var(--good)" : closestCm < DANGER_CM ? "var(--crit)" : "var(--warn)";
 
   // No positioning wrapper: the cockpit zone container places this. It used to
   // carry `zone br d-std`, anchoring it to the same bottom-right coordinates
@@ -114,11 +104,11 @@ export function ProximityRadar() {
         ))}
         <circle cx={CENTER} cy={CENTER} r={3} fill="var(--hud)" />
         <text x={CENTER} y={18} fill="var(--muted)" fontSize={8} textAnchor="middle" fontFamily="var(--mono)">
-          N
+          {reference === "forward" ? "FWD" : "N"}
         </text>
       </svg>
       <div className="rlabel lbl" style={{ color: labelColor }}>
-        {closestM ? `nearest ${closestM} m` : "clear"}
+        {closestCm === null ? "clear" : `nearest ${(closestCm / 100).toFixed(1)} m`}
       </div>
     </div>
   );

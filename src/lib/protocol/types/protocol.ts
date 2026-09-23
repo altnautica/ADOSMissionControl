@@ -203,6 +203,13 @@ export interface DroneProtocol {
   setServo(servoNumber: number, pwm: number): Promise<CommandResult>;
   cameraTrigger(): Promise<CommandResult>;
   setGimbalAngle(pitch: number, roll: number, yaw: number): Promise<CommandResult>;
+  /**
+   * Ask the FC for its pre-arm verdict. Over MAVLink, success means the FC
+   * accepted MAV_CMD_RUN_PREARM_CHECKS and ran them; any failures arrive
+   * afterwards as STATUSTEXT, and the SYS_STATUS pre-arm bit carries the
+   * verdict. Over MSP the arming-disable word is read directly, so success
+   * means no blocker is set and a failure message names the blockers.
+   */
   doPreArmCheck(): Promise<CommandResult>;
 
   // ── Fence Operations ──────────────────────────────────────

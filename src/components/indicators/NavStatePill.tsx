@@ -9,64 +9,13 @@
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { Tooltip } from "@/components/ui/tooltip";
-
-// ── Nav state label map ──────────────────────────────────────
-
-const NAV_STATE_LABELS: Record<number, string> = {
-  0:  "IDLE",
-  1:  "ALT_HOLD_INITIALIZE",
-  2:  "ALT_HOLD_IN_PROGRESS",
-  3:  "POSHOLD_3D_INITIALIZE",
-  4:  "POSHOLD_3D_IN_PROGRESS",
-  5:  "COURSE_HOLD_INITIALIZE",
-  6:  "COURSE_HOLD_IN_PROGRESS",
-  7:  "COURSE_HOLD_ADJUSTING",
-  8:  "CRUISE_INITIALIZE",
-  9:  "CRUISE_IN_PROGRESS",
-  10: "CRUISE_ADJUSTING",
-  11: "RTH_INITIALIZE",
-  12: "RTH_CLIMB_TO_SAFE_ALT",
-  13: "RTH_HEAD_HOME",
-  14: "RTH_HOVER_PRIOR_TO_LANDING",
-  15: "RTH_HOVER_ABOVE_HOME",
-  16: "RTH_LANDING",
-  17: "RTH_FINISHING",
-  18: "RTH_FINISHED",
-  19: "WAYPOINT_INITIALIZE",
-  20: "WAYPOINT_PRE_ACTION",
-  21: "WAYPOINT_IN_PROGRESS",
-  22: "WAYPOINT_REACHED",
-  23: "WAYPOINT_NEXT",
-  24: "WAYPOINT_FINISHED",
-  25: "WAYPOINT_RTH_LAND",
-  26: "EMERGENCY_LANDING_INITIALIZE",
-  27: "EMERGENCY_LANDING_IN_PROGRESS",
-  28: "EMERGENCY_LANDING_FINISHED",
-  29: "LAUNCH_INITIALIZE",
-  30: "LAUNCH_WAIT",
-  31: "LAUNCH_IN_PROGRESS",
-  32: "LANDING_INITIALIZE",
-  33: "LANDING_IN_PROGRESS",
-  34: "LANDING_FINISHED",
-};
-
-const NAV_ACTION_LABELS: Record<number, string> = {
-  0: "NONE",
-  1: "WAYPOINT",
-  2: "HOLD_POS",
-  3: "HOLD_HEADING",
-  4: "RTH",
-  5: "WAYPOINT_NEXT",
-  6: "CLIMB_ABOVE_HOME",
-};
-
-function navStateLabel(state: number): string {
-  return NAV_STATE_LABELS[state] ?? `State ${state}`;
-}
-
-function navActionLabel(action: number): string {
-  return NAV_ACTION_LABELS[action] ?? `Action ${action}`;
-}
+import { useClockTick } from "@/lib/agent/freshness";
+import { isFresh } from "@/lib/telemetry/freshness";
+import {
+  inavNavActionLabel,
+  inavNavModeLabel,
+  inavNavStateLabel,
+} from "@/lib/protocol/msp/inav-nav-status";
 
 // ── Component ────────────────────────────────────────────────
 
@@ -75,20 +24,30 @@ export function NavStatePill() {
   const protocol = getProtocol();
   const firmwareType = protocol?.getVehicleInfo()?.firmwareType;
 
+  const navMode = useTelemetryStore((s) => s.navMode);
   const navState = useTelemetryStore((s) => s.navState);
   const navAction = useTelemetryStore((s) => s.navAction);
+  const updatedAt = useTelemetryStore((s) => s.navStatusUpdated);
+  // Re-render as time passes so a nav status that stops arriving hides.
+  useClockTick();
 
   if (firmwareType !== "inav" || navState === null) return null;
+  // A stale MSP_NAV_STATUS says nothing about what navigation is doing now.
+  if (!isFresh(updatedAt, Date.now())) return null;
 
-  const isActive = navState > 0;
+  const isActive = navState > 0 || (navMode !== null && navMode > 0);
   const showAction = navAction !== null && navAction > 0;
 
-  const stateLabel = navStateLabel(navState);
-  const actionLabel = navAction !== null ? navActionLabel(navAction) : "";
+  const modeLabel = navMode !== null ? inavNavModeLabel(navMode) : null;
+  const stateLabel = inavNavStateLabel(navState);
+  const actionLabel = navAction !== null ? inavNavActionLabel(navAction) : "";
 
-  const tooltipText = showAction
-    ? `Nav state: ${stateLabel}, Nav action: ${actionLabel}`
-    : `Nav state: ${stateLabel}`;
+  const parts = [
+    modeLabel !== null ? `Nav mode: ${modeLabel}` : null,
+    `Nav state: ${stateLabel}`,
+    showAction ? `Nav action: ${actionLabel}` : null,
+  ].filter((p): p is string => p !== null);
+  const tooltipText = parts.join(", ");
 
   return (
     <Tooltip content={tooltipText}>

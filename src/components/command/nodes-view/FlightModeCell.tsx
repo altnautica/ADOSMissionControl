@@ -27,7 +27,8 @@ import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { safeTranslate } from "@/hooks/use-skill-toast-bridge";
 import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
-import { ModeReadout, type FcReading } from "./StateCells";
+import { ModeReadout } from "./StateCells";
+import type { FcReading } from "./cell-primitives";
 import {
   BOARD_MODE_SKILLS,
   type NodeSkills,

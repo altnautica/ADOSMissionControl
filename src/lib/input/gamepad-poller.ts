@@ -232,9 +232,30 @@ export function startGamepadPolling(): void {
  * chain outright so nothing is even attempted.
  */
 function onVisibilityChange(): void {
-  if (typeof document !== "undefined" && document.hidden) {
-    stopManualControlStream();
+  if (typeof document === "undefined") return;
+  if (document.hidden) {
+    // Pause only the timer: the operator's request to stream still stands.
+    if (manualControlTimer !== null) {
+      clearTimeout(manualControlTimer);
+      manualControlTimer = null;
+    }
+  } else if (manualControlRequested) {
+    scheduleManualControl();
   }
+}
+
+/** Whether a caller asked for the stream and has not stopped it. */
+let manualControlRequested = false;
+
+function scheduleManualControl(): void {
+  if (manualControlTimer) return;
+  const run = () => {
+    const wait = manualControlTick();
+    // A tick that stopped the stream must not schedule another pass.
+    if (manualControlTimer === null) return;
+    manualControlTimer = setTimeout(run, wait);
+  };
+  manualControlTimer = setTimeout(run, 0);
 }
 
 /**
@@ -331,27 +352,22 @@ export function manualControlTick(): number {
  * rate is not an ArduPilot link's.
  */
 export function startManualControlStream(): void {
-  if (manualControlTimer) return;
+  if (manualControlRequested) return;
+  manualControlRequested = true;
 
   // Hidden-tab guard: RAF (the stick reader) stops, `setTimeout` (this
-  // chain) does not.
+  // chain) does not. The listener lives as long as the request, so the
+  // stream pauses while hidden and resumes when the tab is visible again.
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", onVisibilityChange);
     if (document.hidden) return;
   }
-
-  const run = () => {
-    const wait = manualControlTick();
-    // A tick that stopped the stream must not schedule another pass.
-    if (manualControlTimer === null) return;
-    manualControlTimer = setTimeout(run, wait);
-  };
-
-  manualControlTimer = setTimeout(run, 0);
+  scheduleManualControl();
 }
 
 /** Stop transmitting sticks. Leaves gamepad reading running. */
 export function stopManualControlStream(): void {
+  manualControlRequested = false;
   if (typeof document !== "undefined") {
     document.removeEventListener("visibilitychange", onVisibilityChange);
   }

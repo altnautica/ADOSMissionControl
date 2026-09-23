@@ -75,8 +75,8 @@ type FrameCallback = (frame: MAVLinkFrame) => void;
 
 /**
  * Observer called each time a MAVLink v2 frame with the signed bit set
- * is accepted (CRC valid). Nothing registers one today. A signer-backed
- * validator can wrap this observer to add async HMAC verification.
+ * is accepted (CRC valid). `MavlinkSigner.verifyFrame` over
+ * `signedRegion` + `sigTail` checks the signature.
  */
 export type SignedFrameObserver = (ctx: {
   msgId: number;
@@ -86,7 +86,7 @@ export type SignedFrameObserver = (ctx: {
   /** The 13-byte signature tail (link_id + timestamp + sig). */
   sigTail: Uint8Array;
   /**
-   * The signed region that was hashed: header excluding STX, payload, CRC.
+   * The signed region that was hashed: header from STX, payload, CRC.
    * A copy, safe to retain past the callback return.
    */
   signedRegion: Uint8Array;
@@ -289,7 +289,7 @@ export class MAVLinkParser {
       // can retain them past this tick without aliasing into our rolling
       // parse buffer.
       if (signatureLen === 13 && this.signedObservers.length > 0) {
-        const signedStart = readPos + 1;
+        const signedStart = readPos;
         const signedEnd = readPos + HEADER_SIZE + payloadLen + CRC_SIZE;
         const signedRegion = this.buffer.slice(signedStart, signedEnd);
         const sigTail = this.buffer.slice(signedEnd, signedEnd + 13);

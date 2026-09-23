@@ -14,16 +14,22 @@
  * itself, never "connected"; a MAVLink-over-ELRS lane whose command path is
  * gated shows that commands are NOT reaching the flight controller; an
  * unavailable PIC arbiter says so; and an unmeasured value reads "…", never a
- * fabricated zero. When no lane is advertised the tab renders an explicit empty
- * state (the surface registry also gates the tab off, but the component never
- * blanks on a null block).
+ * fabricated zero. The tab reads the rendered node's own capability slice and
+ * ages it: a node that stopped answering shows its last reading dimmed with
+ * its age, never as current, and a node never heard from reads "not read"
+ * rather than "not configured". A fresh reading with no lane renders an
+ * explicit empty state.
  * @license GPL-3.0-only
  */
 
 import { useTranslations } from "next-intl";
 import { RadioTower, ShieldAlert, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  selectDeviceCapabilities,
+  useAgentCapabilitiesStore,
+} from "@/stores/agent-capabilities-store";
+import { getFreshness, useClockTick } from "@/lib/agent/freshness";
 import type {
   CrsfLinkState,
   CrsfState,
@@ -137,31 +143,59 @@ function StatRow({ label, value, valueClass }: StatRowProps) {
 }
 
 interface RcElrsLinkTabProps {
-  /** Test seam: render against an explicit snapshot instead of the store. */
+  /** The node whose lane this tab describes. */
+  nodeDeviceId?: string | null;
+  /** Test seam: render against an explicit current snapshot instead of the store. */
   crsf?: CrsfState | null;
 }
 
-export function RcElrsLinkTab({ crsf: crsfProp }: RcElrsLinkTabProps = {}) {
-  const t = useTranslations("rcElrsLink");
-  const crsfFromStore = useAgentCapabilitiesStore((s) => s.crsf);
-  const crsf = crsfProp !== undefined ? crsfProp : crsfFromStore;
-
-  // No lane advertised: an explicit empty state, never a blank body and never
-  // fabricated data. The surface registry also gates the tab off when the node
-  // has no crsf block, so this path is the defensive fallback.
-  if (!crsf) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border-default bg-bg-secondary text-text-tertiary">
-          <RadioTower size={24} />
-        </div>
-        <h2 className="text-sm font-display font-semibold text-text-primary">
-          {t("empty.title")}
-        </h2>
-        <p className="mt-2 max-w-sm text-xs text-text-tertiary">
-          {t("empty.body")}
-        </p>
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border-default bg-bg-secondary text-text-tertiary">
+        <RadioTower size={24} />
       </div>
+      <h2 className="text-sm font-display font-semibold text-text-primary">
+        {title}
+      </h2>
+      <p className="mt-2 max-w-sm text-xs text-text-tertiary">{body}</p>
+    </div>
+  );
+}
+
+export function RcElrsLinkTab({
+  nodeDeviceId = null,
+  crsf: crsfProp,
+}: RcElrsLinkTabProps = {}) {
+  const t = useTranslations("rcElrsLink");
+  const snapshot = useAgentCapabilitiesStore((s) =>
+    selectDeviceCapabilities(s, nodeDeviceId),
+  );
+  // Re-derive the reading's age every second so a node that stops answering
+  // turns stale on screen without waiting for another write.
+  useClockTick();
+  const seam = crsfProp !== undefined;
+  const crsf = seam ? crsfProp : (snapshot?.crsf ?? null);
+  const freshness = seam
+    ? null
+    : getFreshness(snapshot?.receivedAt ?? null);
+  const stale =
+    freshness !== null &&
+    (freshness.state === "stale" || freshness.state === "offline");
+
+  if (freshness?.state === "unknown") {
+    return <EmptyState title={t("notRead.title")} body={t("notRead.body")} />;
+  }
+  if (!crsf) {
+    // A last reading with no lane says nothing about the lane now if the node
+    // has stopped answering.
+    return stale ? (
+      <EmptyState
+        title={t("unreachable.title")}
+        body={t("unreachable.body", { age: freshness.label })}
+      />
+    ) : (
+      <EmptyState title={t("empty.title")} body={t("empty.body")} />
     );
   }
 
@@ -184,7 +218,21 @@ export function RcElrsLinkTab({ crsf: crsfProp }: RcElrsLinkTabProps = {}) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
-      <section className="rounded border border-border-default bg-bg-secondary p-5">
+      {stale ? (
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-xs text-status-warning"
+        >
+          <AlertTriangle size={14} className="mt-px shrink-0" />
+          <span>{t("staleBanner", { age: freshness.label })}</span>
+        </p>
+      ) : null}
+      <section
+        className={cn(
+          "rounded border border-border-default bg-bg-secondary p-5",
+          stale && "opacity-60",
+        )}
+      >
         <div className="mb-1 flex items-center gap-2">
           <RadioTower size={16} className="text-accent-primary" />
           <h2 className="text-sm font-semibold text-text-primary">

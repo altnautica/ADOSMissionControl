@@ -58,6 +58,23 @@ describe("CommandSpecificEditors slot routing", () => {
   });
 });
 
+describe("CommandSpecificEditors truthful fields", () => {
+  it("offers a hold time where the flight controller waits, never on an unlimited loiter", () => {
+    for (const cmd of ["WAYPOINT", "LOITER_TIME", "SPLINE_WAYPOINT"]) {
+      const { unmount } = renderWithIntl(<CommandSpecificEditors {...cmdProps(cmd, noop)} />);
+      expect(screen.queryByLabelText(/Hold Time/i)).not.toBeNull();
+      unmount();
+    }
+    renderWithIntl(<CommandSpecificEditors {...cmdProps("LOITER", noop)} />);
+    expect(screen.queryByLabelText(/Hold Time/i)).toBeNull();
+  });
+
+  it("shows a fence action with no param1 (a downloaded fence-disable) as Disable", () => {
+    renderWithIntl(<CommandSpecificEditors {...cmdProps("DO_FENCE_ENABLE", noop)} />);
+    expect(screen.getByRole("combobox", { name: /Fence/i }).textContent).toBe("Disable");
+  });
+});
+
 describe("INavCommandEditors slot routing", () => {
   it("LAND site elevation commits to param1, which expands to MAVLink param2 (iNav p2)", () => {
     const commit = vi.fn();

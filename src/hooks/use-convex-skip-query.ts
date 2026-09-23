@@ -76,12 +76,20 @@ function logOnce(message: string): void {
   );
 }
 
-export function useConvexSkipQuery<
+/** What a skip-guarded query is doing: skipped (no deployment, demo mode, or
+ * disabled), still loading, failed on the server, or answered. */
+export type ConvexSkipQueryState = "skipped" | "loading" | "error" | "ready";
+
+/**
+ * `useConvexSkipQuery` plus the reason the data is absent, for a caller that
+ * must not read a skipped or failed query as "still loading".
+ */
+export function useConvexSkipQueryState<
   Query extends FunctionReference<"query">,
 >(
   query: Query,
   options?: UseConvexSkipQueryOptions<Query["_args"]>,
-): Query["_returnType"] | undefined {
+): { data: Query["_returnType"] | undefined; state: ConvexSkipQueryState } {
   const convexAvailable = useConvexAvailable();
   const demo = isDemoMode();
 
@@ -93,20 +101,41 @@ export function useConvexSkipQuery<
   const shouldSkip = !convexAvailable || (!skipDemoCheck && demo) || !enabled;
   const queryArgs = shouldSkip ? ("skip" as unknown) : ((args ?? {}) as unknown);
 
-  // `useQuery` throws synchronously during render when the deployment is
-  // missing the function, the args fail validation, or the handler threw.
-  // We catch that throw here so the calling page sees `undefined` (the
-  // same shape it sees while loading) instead of black-screening to the
-  // nearest error.tsx. The skip path never throws, so wrapping it in
-  // try/catch is a no-op for that case.
+  const { data, failed } = useGuardedQuery(query, queryArgs, throwOnError);
+  if (failed) return { data: undefined, state: "error" };
+  if (shouldSkip) return { data: undefined, state: "skipped" };
+  return { data, state: data === undefined ? "loading" : "ready" };
+}
+
+/**
+ * `useQuery`, but a server-side failure reads as `failed` instead of throwing.
+ * `useQuery` throws synchronously during render when the deployment is
+ * missing the function, the args fail validation, or the handler threw; the
+ * calling page then sees "no data" instead of black-screening to the nearest
+ * error.tsx. The skip path never throws.
+ */
+function useGuardedQuery<Query extends FunctionReference<"query">>(
+  query: Query,
+  queryArgs: unknown,
+  throwOnError: boolean,
+): { data: Query["_returnType"] | undefined; failed: boolean } {
   try {
-    return useQuery(query, queryArgs as never);
+    return { data: useQuery(query, queryArgs as never), failed: false };
   } catch (err) {
     if (throwOnError) throw err;
     const message = err instanceof Error ? err.message : String(err);
     logOnce(message);
-    return undefined;
+    return { data: undefined, failed: true };
   }
+}
+
+export function useConvexSkipQuery<
+  Query extends FunctionReference<"query">,
+>(
+  query: Query,
+  options?: UseConvexSkipQueryOptions<Query["_args"]>,
+): Query["_returnType"] | undefined {
+  return useConvexSkipQueryState(query, options).data;
 }
 
 // Re-export the empty-object type alias for callers that build options

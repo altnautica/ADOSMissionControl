@@ -88,10 +88,10 @@ export function TemplatesPanel() {
         toast(t("empty", { name: t(tpl.nameKey) }), "warning");
         return;
       }
-      // Terrain-relative altitudes need a ground sample under every waypoint to
-      // mean anything; eager, so the chart and validator see it immediately.
-      if (defaultFrame === "terrain") sampleGroundElevations(waypoints);
       useMissionStore.getState().setWaypoints(waypoints);
+      // Same as a pattern apply: terrain under every waypoint, so the terrain
+      // clearance check and the chart have something to compare against.
+      sampleGroundElevations(waypoints);
       toast(t("applied", { name: t(tpl.nameKey), count: waypoints.length }), "success");
     },
     [hasCenter, mapCenter, boundary, defaultAlt, defaultSpeed, defaultFrame, t, toast],

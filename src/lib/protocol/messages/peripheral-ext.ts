@@ -64,20 +64,33 @@ export interface ObstacleDistanceMsg {
   maxDistance: number;
   sensorType: number;
   increment: number;
+  /** Sector width in degrees (extension); when non-zero it replaces `increment`. */
+  incrementF: number;
+  /** Angle of element 0 in degrees, clockwise (extension). */
+  angleOffset: number;
+  /** MAV_FRAME of the angles (extension); 0 = GLOBAL, north aligned. */
+  frame: number;
 }
 
 /**
  * Decode OBSTACLE_DISTANCE (msg ID 330).
  *
- * Wire order (uint64 → uint16[72] → uint16 → uint8):
+ * Wire order (uint64 → uint16[72] → uint16 → uint8, then the extensions in
+ * declaration order):
  * | Offset | Type       | Field        |
  * |--------|------------|--------------|
  * | 0      | uint64     | timeUsec     |
  * | 8      | uint16[72] | distances    |
- * | 152    | uint16     | minDistance   |
- * | 154    | uint16     | maxDistance   |
+ * | 152    | uint16     | minDistance  |
+ * | 154    | uint16     | maxDistance  |
  * | 156    | uint8      | sensorType   |
  * | 157    | uint8      | increment    |
+ * | 158    | float      | incrementF   |
+ * | 162    | float      | angleOffset  |
+ * | 166    | uint8      | frame        |
+ *
+ * A sender that omits the extensions (or trims trailing zeros) reads as zero:
+ * `incrementF` 0 falls back to `increment`, and frame 0 is the spec default.
  */
 export function decodeObstacleDistance(dv: DataView): ObstacleDistanceMsg {
   const low = dv.getUint32(0, true);
@@ -93,6 +106,9 @@ export function decodeObstacleDistance(dv: DataView): ObstacleDistanceMsg {
     maxDistance: dv.getUint16(154, true),
     sensorType: dv.getUint8(156),
     increment: dv.getUint8(157),
+    incrementF: dv.byteLength >= 162 ? dv.getFloat32(158, true) : 0,
+    angleOffset: dv.byteLength >= 166 ? dv.getFloat32(162, true) : 0,
+    frame: dv.byteLength >= 167 ? dv.getUint8(166) : 0,
   };
 }
 

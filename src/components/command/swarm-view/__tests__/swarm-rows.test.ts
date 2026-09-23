@@ -269,10 +269,19 @@ describe("swarmHeadingDeg", () => {
 describe("swarmConditionCounts", () => {
   const thresholds = { warningPct: 30, criticalPct: 15 };
 
-  function withBattery(slot: number, remaining: number | null): SwarmSlotRow {
+  function withBattery(
+    slot: number,
+    remaining: number | null,
+    over: Partial<Pick<CommandAgentSummary, "liveness">> & {
+      fcReachable?: boolean;
+    } = {},
+  ): SwarmSlotRow {
     return {
       ...row(slot, {}),
       summary: {
+        liveness: over.liveness ?? "live",
+        profile: "drone",
+        system: { fcReachable: over.fcReachable ?? true },
         telemetry: { batteryRemaining: remaining },
       } as CommandAgentSummary,
     };
@@ -302,5 +311,16 @@ describe("swarmConditionCounts", () => {
       hardSeparation: 0,
       weakLink: 0,
     });
+  });
+
+  it("counts a low battery only while the node's status still carries an FC reading", () => {
+    // The slot keeps beaconing, but its node went silent or lost its FC link:
+    // its last 12% is not a low battery now.
+    const rows = [
+      withBattery(1, 12, { liveness: "offline" }),
+      withBattery(2, 12, { fcReachable: false }),
+      withBattery(3, 12, { liveness: "stale" }),
+    ];
+    expect(swarmConditionCounts(rows, thresholds).lowBattery).toBe(1);
   });
 });

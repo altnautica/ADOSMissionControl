@@ -85,9 +85,9 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
   const hdop = gps?.hdop;
   // -1 is the FC's "capacity unknown", not an empty pack.
   const remainingPct = bat !== undefined && bat.remaining >= 0 ? bat.remaining : undefined;
-  const powerWatts = bat !== undefined ? bat.voltage * bat.current : undefined;
+  const powerWatts = bat?.current !== undefined ? bat.voltage * bat.current : undefined;
   const estimatedMinutes =
-    bat !== undefined && remainingPct !== undefined
+    bat?.current !== undefined && bat.consumed !== undefined && remainingPct !== undefined
       ? estimateFlightMinutes(remainingPct, bat.consumed, bat.current)
       : undefined;
   const cellCount = resolveCellCount(bat?.cellVoltages, knownCellCount);

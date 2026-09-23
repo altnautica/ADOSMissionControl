@@ -142,6 +142,25 @@ describe("translateToInavWaypoints", () => {
     expect(wps[0].p2).toBe(2);
   });
 
+  it("carries a DO_CHANGE_SPEED as the leg speed (cm/s) of each following WAYPOINT and renumbers jumps", () => {
+    const items = [
+      missionItem({ seq: 0, command: 178, param1: 1, param2: 3, param3: -1, x: 0, y: 0, z: 0 }),
+      missionItem({ seq: 1 }),
+      missionItem({ seq: 2 }),
+      missionItem({ seq: 3, command: 178, param1: 1, param2: 6.5, param3: -1, x: 0, y: 0, z: 0 }),
+      missionItem({ seq: 4 }),
+      missionItem({ seq: 5, command: 177, param1: 2, param2: 1 }),
+    ];
+    const wps = translateToInavWaypoints(items);
+    expect(wps.map((w) => w.action)).toEqual([
+      INAV_WP_ACTION.WAYPOINT, INAV_WP_ACTION.WAYPOINT, INAV_WP_ACTION.WAYPOINT, INAV_WP_ACTION.JUMP,
+    ]);
+    expect(wps.slice(0, 3).map((w) => w.p1)).toEqual([300, 300, 650]);
+    // MAVLink seq 2 is the second waypoint once the speed item is folded away.
+    expect(wps[3].p1).toBe(2);
+    expect(wps[3].flag).toBe(INAV_WP_FLAG_LAST);
+  });
+
   it("maps MAV_CMD_DO_SET_ROI (201) to INAV_WP_ACTION.SET_POI", () => {
     const wps = translateToInavWaypoints([missionItem({ command: 201 })]);
     expect(wps[0].action).toBe(INAV_WP_ACTION.SET_POI);

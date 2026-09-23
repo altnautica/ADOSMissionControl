@@ -138,7 +138,7 @@ export function SwarmBoardRow({
         <UnknownValue title={t("pendingSwarmRuntime")} />
       </td>
       <td className={CELL}>
-        <BatteryCell row={row} freshness={freshness} />
+        <BatteryCell row={row} />
       </td>
       <td className={CELL}>
         <RssiCell row={row} freshness={freshness} />

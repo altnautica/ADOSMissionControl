@@ -7,15 +7,22 @@
 import { describe, it, expect } from "vitest";
 import { generateFixedWingLanding } from "../landing-generator";
 import { generateVtolLanding } from "../vtol-landing-generator";
+import { patternToMission } from "../pattern-to-mission";
+import { expandToItems } from "@/lib/mission/mission-expand";
+import { cmdMap } from "@/lib/mission-io-formats";
+import { haversineDistance } from "@/lib/drawing/geo-utils";
+import { bearing } from "@/lib/telemetry-utils";
 import type { FixedWingLandingConfig, VtolLandingConfig } from "../types";
 
 const LANDING: [number, number] = [12.95, 77.668];
+
+/** The pattern store holds no heading until the operator enters one. */
+const UNSET_HEADING = undefined as unknown as number;
 
 describe("generateFixedWingLanding", () => {
   const config: FixedWingLandingConfig = {
     landingPoint: LANDING,
     approachHeading: 90,
-    approachDistance: 400,
     glideSlopeAngle: 5,
     loiterAltitude: 60,
     speed: 15,
@@ -37,19 +44,38 @@ describe("generateFixedWingLanding", () => {
     expect(last.alt).toBe(0);
   });
 
-  it("projects the approach start away from the landing point and previews it", () => {
-    const result = generateFixedWingLanding(config);
-    const start = result.waypoints[0];
-    expect(start.alt).toBe(config.loiterAltitude);
-    // Approach start is offset from the landing point, not coincident with it.
-    expect(start.lat !== LANDING[0] || start.lon !== LANDING[1]).toBe(true);
-    expect(result.previewLines?.length).toBeGreaterThanOrEqual(1);
-    expect(result.stats.totalDistance).toBeGreaterThan(0);
+  it("places the approach waypoint so the descent follows the configured glide slope", () => {
+    for (const glideSlopeAngle of [3, 5, 8]) {
+      for (const loiterAltitude of [60, 150]) {
+        const result = generateFixedWingLanding({ ...config, glideSlopeAngle, loiterAltitude });
+        const start = result.waypoints[0];
+        const run = haversineDistance(start.lat, start.lon, LANDING[0], LANDING[1]);
+        const flownSlope = (Math.atan(start.alt / run) * 180) / Math.PI;
+        expect(start.alt).toBe(loiterAltitude);
+        expect(flownSlope).toBeCloseTo(glideSlopeAngle, 1);
+        expect(result.stats.totalDistance).toBeCloseTo(run, 0);
+      }
+    }
   });
 
-  it("returns no waypoints when the geometry is invalid", () => {
-    const result = generateFixedWingLanding({ ...config, approachDistance: 0 });
-    expect(result.waypoints).toHaveLength(0);
+  it("flies the final along the configured approach heading", () => {
+    for (const approachHeading of [0, 90, 225, 315]) {
+      const result = generateFixedWingLanding({ ...config, approachHeading });
+      const start = result.waypoints[0];
+      const course = bearing(start.lat, start.lon, LANDING[0], LANDING[1]);
+      const error = Math.abs(((course - approachHeading + 540) % 360) - 180);
+      expect(error).toBeLessThan(0.5);
+    }
+  });
+
+  it("generates no landing until a final-approach heading is chosen", () => {
+    expect(generateFixedWingLanding({ ...config, approachHeading: UNSET_HEADING }).waypoints).toHaveLength(0);
+    expect(generateFixedWingLanding({ ...config, approachHeading: -1 }).waypoints).toHaveLength(0);
+  });
+
+  it("returns no waypoints when the glide slope cannot describe a descent", () => {
+    expect(generateFixedWingLanding({ ...config, glideSlopeAngle: 0 }).waypoints).toHaveLength(0);
+    expect(generateFixedWingLanding({ ...config, loiterAltitude: 0 }).waypoints).toHaveLength(0);
   });
 });
 
@@ -63,22 +89,40 @@ describe("generateVtolLanding", () => {
     speed: 8,
   };
 
-  it("produces a cruise-approach descent ending in a vertical land", () => {
-    const result = generateVtolLanding(config);
-    const commands = result.waypoints.map((wp) => wp.command);
-    expect(commands[0]).toBe("WAYPOINT");
-    expect(commands[commands.length - 1]).toBe("VTOL_LAND");
+  /** The uploaded wire items of an applied VTOL landing. */
+  function uploadedItems(cfg: VtolLandingConfig) {
+    const waypoints = patternToMission(generateVtolLanding(cfg).waypoints, "relative");
+    return expandToItems(waypoints, { defaultFrame: "relative", defaultSpeed: 5 });
+  }
+
+  it("lands vertically straight from the approach waypoint, never flying a low waypoint first", () => {
+    const items = uploadedItems(config);
+    const nav = items.filter((it) => it.command !== cmdMap.DO_SET_SPEED);
+    expect(nav.map((it) => it.command)).toEqual([cmdMap.TAKEOFF, cmdMap.WAYPOINT, cmdMap.VTOL_LAND]);
+    // Everything flown before the vertical landing is at the approach altitude.
+    for (const it of nav.slice(0, -1)) expect(it.z).toBe(config.approachAltitude);
+    const land = nav[nav.length - 1];
+    expect(land.x).toBe(Math.round(LANDING[0] * 1e7));
+    expect(land.y).toBe(Math.round(LANDING[1] * 1e7));
   });
 
-  it("descends toward the ground at the configured landing point", () => {
-    const result = generateVtolLanding(config);
-    const first = result.waypoints[0];
-    const last = result.waypoints[result.waypoints.length - 1];
-    expect(first.alt).toBe(config.approachAltitude);
-    expect(last.lat).toBeCloseTo(LANDING[0], 6);
-    expect(last.lon).toBeCloseTo(LANDING[1], 6);
-    expect(last.alt).toBe(0);
-    expect(result.previewLines?.length).toBeGreaterThanOrEqual(1);
+  it("does not send the vertical descent speed as a ground speed for the approach leg", () => {
+    const speeds = uploadedItems(config)
+      .filter((it) => it.command === cmdMap.DO_SET_SPEED)
+      .map((it) => it.param2);
+    expect(speeds).not.toContain(config.descentSpeed);
+  });
+
+  it("approaches along the configured heading", () => {
+    const [approach] = generateVtolLanding(config).waypoints;
+    const course = bearing(approach.lat, approach.lon, LANDING[0], LANDING[1]);
+    expect(Math.abs(((course - config.approachHeading + 540) % 360) - 180)).toBeLessThan(0.5);
+    expect(haversineDistance(approach.lat, approach.lon, LANDING[0], LANDING[1])).toBeCloseTo(config.transitionDistance, 0);
+  });
+
+  it("generates no landing until a final-approach heading is chosen", () => {
+    expect(generateVtolLanding({ ...config, approachHeading: UNSET_HEADING }).waypoints).toHaveLength(0);
+    expect(generateVtolLanding({ ...config, approachHeading: -1 }).waypoints).toHaveLength(0);
   });
 
   it("returns no waypoints when the geometry is invalid", () => {

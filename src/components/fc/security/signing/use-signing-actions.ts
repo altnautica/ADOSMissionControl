@@ -243,8 +243,8 @@ export function useSigningActions(droneId: string): SigningActions {
         return;
       }
 
-      // Cloud sync upload happens while the hex string is still in scope; the
-      // stored CryptoKey is non-extractable and cannot hand the bytes back.
+      // Cloud sync upload uses the hex the enrollment just produced, so the
+      // cloud copy is exactly the key that went to the FC.
       if (cloudSyncIntent && convexClient && isAuthenticated) {
         try {
           await uploadKey(convexClient, {

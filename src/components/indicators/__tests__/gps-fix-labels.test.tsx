@@ -19,9 +19,11 @@ import { cleanup } from "@testing-library/react";
 import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 import { GpsSkyView } from "@/components/indicators/GpsSkyView";
 import { PreFlightChecklist } from "@/components/flight/PreFlightChecklist";
+import { ChecklistAutoRunner } from "@/components/flight/ChecklistAutoRunner";
 import { ReplayTelemetryPanel } from "@/components/history/ReplayTelemetryPanel";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useChecklistStore } from "@/stores/checklist-store";
+import { useDroneManager } from "@/stores/drone-manager";
 
 /**
  * clear() swaps in fresh ring buffers, so re-read the state before pushing or
@@ -70,15 +72,27 @@ describe("GpsSkyView fix quality labels", () => {
 });
 
 describe("PreFlightChecklist GPS fix reading", () => {
+  // The auto items are written by the shell-mounted runner for the selected
+  // drone; the checklist view only renders them.
+  function renderChecklist() {
+    useDroneManager.setState({ selectedDroneId: "drone-1" });
+    return renderWithIntl(
+      <>
+        <ChecklistAutoRunner />
+        <PreFlightChecklist />
+      </>,
+    );
+  }
+
   it("reports an RTK fixed solution on the auto-checked GPS item", () => {
     seedGpsFix(6);
-    const { container } = renderWithIntl(<PreFlightChecklist />);
+    const { container } = renderChecklist();
     expect(container.textContent).toContain("RTK Fixed");
   });
 
   it("reports no fix for GPS_FIX_TYPE 1", () => {
     seedGpsFix(1);
-    const { container } = renderWithIntl(<PreFlightChecklist />);
+    const { container } = renderChecklist();
     expect(container.textContent).toContain("No Fix");
     expect(container.textContent).not.toContain("3D Fix");
   });

@@ -245,18 +245,22 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // liveness: a node can be online and uncommandable at the same time.
   const authority = useNodeControlAuthorityNotice(droneId);
 
+  // The node's bare agent device id. `droneId` is the drone-manager selection
+  // id (`node:<deviceId>`); every per-node store and install table below
+  // (Atlas readiness, feature opt-ins, plugin install rows) is keyed by the
+  // bare id the node reports on the wire.
+  const bareDeviceId = deviceIdFromNodeId(droneId) ?? droneId;
   // Atlas gating, sourced reactively so enabling the World Model feature or a
   // capture start/stop re-renders the tab strip live. The World Model tab shows
   // when the per-node feature is on; the Live World tab shows only while the
   // focused drone is capturing (one drone tab idle, two capturing).
-  const atlasDeviceId = deviceIdFromNodeId(droneId) ?? droneId;
   const atlasCapturing = useAtlasReadinessStore((s) =>
-    s.isCapturing(atlasDeviceId),
+    s.isCapturing(bareDeviceId),
   );
   // Per-node first-party feature opt-in state (reactive), keyed by the bare
   // device id. Gates the drone World Model + Live World surfaces: a feature is
   // off until the operator turns it on in the Status-tab Features toggle.
-  const nodeFeatureIds = useNodeFeaturesStore((s) => s.enabled[atlasDeviceId]);
+  const nodeFeatureIds = useNodeFeaturesStore((s) => s.enabled[bareDeviceId]);
   // Populate the per-drone Atlas readiness from the panel level so the Live
   // World tab can auto-reveal while capturing regardless of which tab is open
   // (or after a refresh mid-capture — the readiness store is not persisted). The
@@ -312,7 +316,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // node's profile narrows a profile-scoped node.detail.tab so an off-profile
   // tab's iframe never mounts (e.g. a ground-station-only tab on a drone).
   const pluginContributions = usePluginContributions(
-    droneId,
+    bareDeviceId,
     undefined,
     drone?.profile,
   );
@@ -321,7 +325,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // memoized per (node, profile), so the second call is a cache read rather
   // than a second query.
   const nodeDetailTabContributions = useDronePluginContributions(
-    droneId,
+    bareDeviceId,
     drone?.profile,
   );
 
@@ -500,7 +504,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   };
 
   return (
-    <PluginHostProvider deviceId={droneId} contributions={pluginContributions}>
+    <PluginHostProvider deviceId={bareDeviceId} contributions={pluginContributions}>
       {agentSubpage && <AgentSubpageHandoff subpage={agentSubpage} />}
       <ImmersiveGuard visibleTab={visibleTab} />
       <TabMemory
@@ -637,7 +641,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
                   with no keyboard path is an entire third-party surface that
                   a gloved or keyboard-only operator cannot reach. */}
               <DroneDetailTabHeaders
-                agentId={droneId}
+                agentId={bareDeviceId}
                 activeTabId={visibleTab}
                 onSelectPluginTab={setActiveTab}
                 nodeProfile={drone.profile}
@@ -716,7 +720,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             retryLabel={t("surfaceErrorRetry")}
           >
             <DroneDetailTabBody
-              agentId={droneId}
+              agentId={bareDeviceId}
               activeTabId={visibleTab}
               nodeProfile={drone.profile}
             />

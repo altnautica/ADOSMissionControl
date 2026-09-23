@@ -16,6 +16,8 @@ export interface PendingConfirm {
   /** Monotonic, identifies this request. */
   id: number;
   policy: ConfirmPolicy;
+  /** The drone the confirmed action targets; null when the request names none. */
+  droneId: string | null;
   resolve: (confirmed: boolean) => void;
 }
 
@@ -26,9 +28,10 @@ interface SkillConfirmState {
   /**
    * Pushed by the dispatcher's ctx.confirm. Returns a promise the gate awaits.
    * If a confirm is already pending, the prior one resolves(false) first
-   * (re-entrancy guard / no stacked dialogs).
+   * (re-entrancy guard / no stacked dialogs). `droneId` names the target so
+   * checklist-aware policies read that drone's checklist.
    */
-  request: (policy: ConfirmPolicy) => Promise<boolean>;
+  request: (policy: ConfirmPolicy, droneId?: string) => Promise<boolean>;
   /** Resolves the pending request with the operator's decision + clears it. */
   resolvePending: (confirmed: boolean) => void;
 }
@@ -37,7 +40,7 @@ export const useSkillConfirmStore = create<SkillConfirmState>((set, get) => ({
   pending: null,
   _nextId: 1,
 
-  request: (policy) =>
+  request: (policy, droneId) =>
     new Promise<boolean>((resolve) => {
       // Re-entrancy guard: a new request cancels any prior pending one so two
       // dialogs never render at once.
@@ -46,7 +49,7 @@ export const useSkillConfirmStore = create<SkillConfirmState>((set, get) => ({
         prior.resolve(false);
       }
       const id = get()._nextId;
-      set({ pending: { id, policy, resolve }, _nextId: id + 1 });
+      set({ pending: { id, policy, droneId: droneId ?? null, resolve }, _nextId: id + 1 });
     }),
 
   resolvePending: (confirmed) => {

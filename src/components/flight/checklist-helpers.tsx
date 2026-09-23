@@ -32,6 +32,11 @@ export function ChecklistRow({ item }: { item: ChecklistItem }) {
 
   const isManual = item.type === "manual";
   const isClickable = isManual;
+  // A manual item can be skipped until it is ticked; an auto item only while it
+  // has no verdict (telemetry absent or not reported), never over a measured one.
+  const canSkip = isManual
+    ? item.status !== "pass"
+    : item.status === "pending" || item.status === "skipped";
 
   return (
     <div
@@ -74,8 +79,8 @@ export function ChecklistRow({ item }: { item: ChecklistItem }) {
           {item.displayValue}
         </span>
       )}
-      {/* Skip button for manual items */}
-      {isManual && item.status !== "pass" && (
+      {/* Skip button: manual items, and auto items with no verdict */}
+      {canSkip && (
         <Tooltip content="Skip this check" position="left">
           <button
             onClick={(e) => {

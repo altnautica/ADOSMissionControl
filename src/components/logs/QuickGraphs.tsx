@@ -53,7 +53,7 @@ function BatteryChart() {
     const arr = batteryRing.toArray() as BatteryData[];
     return {
       voltageData: arr.map((b) => ({ t: b.timestamp, v: b.voltage })),
-      currentData: arr.map((b) => ({ t: b.timestamp, v: b.current })),
+      currentData: arr.flatMap((b) => (b.current !== undefined ? [{ t: b.timestamp, v: b.current }] : [])),
     };
   }, [batteryRing, version]);
 

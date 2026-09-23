@@ -14,11 +14,26 @@
  * @license GPL-3.0-only
  */
 
-import type { ArmRequirement, ConfirmPolicy, Skill, SkillCategory, SkillState } from "./types";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import type {
+  ArmRequirement,
+  ConfirmPolicy,
+  Skill,
+  SkillCategory,
+  SkillContext,
+  SkillState,
+} from "./types";
 import {
   usePluginSkillHostStore,
   writePluginConfig,
 } from "./plugin-skill-host-store";
+
+/** The node a skill context addresses, as its bare device id. The skill bar
+ * hands the drone-manager selection id (`node:<deviceId>`); plugin state and
+ * the plugin config writer are keyed by the bare id the node reports. */
+function pluginDeviceId(ctx: Pick<SkillContext, "droneId">): string {
+  return deviceIdFromNodeId(ctx.droneId) ?? ctx.droneId;
+}
 
 /** One resolved plugin-skill contribution for a drone. Manifest-derived. */
 export interface DroneSkillContribution {
@@ -129,10 +144,10 @@ export function buildPluginSkill(c: DroneSkillContribution): Skill {
     pluginId: c.pluginId,
     toggle: c.toggle,
     armRequirement,
-    getState: (ctx) => readPluginState(ctx.droneId, c.stateTopic),
+    getState: (ctx) => readPluginState(pluginDeviceId(ctx), c.stateTopic),
     activate: async (ctx) => {
       const ok = await writePluginConfig({
-        droneId: ctx.droneId,
+        droneId: pluginDeviceId(ctx),
         pluginId: c.pluginId,
         configKey: c.configKey,
         value: true,
@@ -148,7 +163,7 @@ export function buildPluginSkill(c: DroneSkillContribution): Skill {
   if (c.toggle) {
     skill.deactivate = async (ctx) => {
       const ok = await writePluginConfig({
-        droneId: ctx.droneId,
+        droneId: pluginDeviceId(ctx),
         pluginId: c.pluginId,
         configKey: c.configKey,
         value: false,

@@ -38,17 +38,17 @@ function useLiveTelemetryPreview(): Record<string, string> {
     return {
       ALTITUDE: v ? `${v.alt.toFixed(0)}m` : "ALT",
       BAT_VOLT: b ? `${b.voltage.toFixed(1)}V` : "BATT",
-      CURRENT: b ? `${b.current.toFixed(1)}A` : "AMP",
+      CURRENT: b?.current !== undefined ? `${b.current.toFixed(1)}A` : "AMP",
       SATS: g ? `${g.satellites}` : "SAT",
-      GSPEED: v ? `${v.groundspeed.toFixed(1)}` : "GS",
+      GSPEED: v?.groundspeed !== undefined ? `${v.groundspeed.toFixed(1)}` : "GS",
       COMPASS: p ? `${p.heading.toFixed(0)}°` : "CMP",
-      ASPEED: v ? `${v.airspeed.toFixed(1)}` : "AS",
+      ASPEED: v?.airspeed !== undefined ? `${v.airspeed.toFixed(1)}` : "AS",
       VSPEED: v ? `${v.climb.toFixed(1)}` : "VS",
-      THROTTLE: v ? `${v.throttle}%` : "THR",
+      THROTTLE: v?.throttle !== undefined ? `${v.throttle}%` : "THR",
       HEADING: p ? `${p.heading.toFixed(0)}°` : "HDG",
-      POWER: b ? `${(b.voltage * b.current).toFixed(0)}W` : "PWR",
+      POWER: b?.current !== undefined ? `${(b.voltage * b.current).toFixed(0)}W` : "PWR",
       BATTBAR: b && b.remaining >= 0 ? `${b.remaining}%` : "BAR",
-      BATUSED: b ? `${b.consumed.toFixed(0)}` : "mAh",
+      BATUSED: b?.consumed !== undefined ? `${b.consumed.toFixed(0)}` : "mAh",
       CLK: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

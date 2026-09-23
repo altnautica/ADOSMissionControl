@@ -567,6 +567,7 @@ export function NetworkUplinkSection({
             not read by the AP, so they are never written from here. */}
         {isGroundStation ? (
           <HotspotApFields
+            key={nodeDeviceId ?? ""}
             api={api}
             liveSsid={typeof ap?.ssid === "string" ? ap.ssid : null}
             readOnly={readOnly}

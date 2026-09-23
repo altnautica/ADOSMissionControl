@@ -1,10 +1,11 @@
 /**
  * IndexedDB keystore for MAVLink v2 signing keys.
  *
- * Stores non-extractable CryptoKey handles plus metadata. Keys never
- * leave the browser (except in the one-shot enrollment POST that happens
- * before the raw bytes are imported as non-extractable; see
- * `mavlink-signer.ts` / `signing-api.ts`).
+ * Stores each drone's 32-byte signing key as raw bytes plus metadata.
+ * MAVLink v2 signatures are SHA-256 over the key and the frame, which Web
+ * Crypto cannot compute from a non-extractable key, so the bytes themselves
+ * live in this browser's IndexedDB. Script running on the page can read
+ * them; the key is as safe as the origin it is stored under.
  *
  * Records are tagged with the owning `userId` at import time. On every
  * auth state change the keystore purges records that do not match the
@@ -18,7 +19,6 @@ import { createStore, get, set, del, keys as idbKeys } from "idb-keyval";
 
 import {
   MavlinkSigner,
-  importNonExtractableKey,
   keyFingerprint,
   zeroize,
 } from "./mavlink-signer";
@@ -40,14 +40,12 @@ function signingStore() {
 }
 
 /**
- * On-disk shape for each droneId. The CryptoKey is non-extractable;
- * structured-clone serializes it as an opaque reference that only
- * Web Crypto knows how to use.
+ * On-disk shape for each droneId. `keyBytes` is the raw 32-byte secret.
  */
 export interface SigningKeyRecord {
   droneId: string;
   userId: string | null;
-  cryptoKey: CryptoKey;
+  keyBytes: Uint8Array;
   keyId: string;
   linkId: number;
   enrolledAt: string;
@@ -68,7 +66,7 @@ export interface SigningKeyRecord {
 
 /** A superseded key kept until the FC's state is confirmed. */
 export interface RetainedKey {
-  cryptoKey: CryptoKey;
+  keyBytes: Uint8Array;
   keyId: string;
   linkId: number;
   enrolledAt: string;
@@ -89,10 +87,10 @@ export type EnrollmentState = SigningKeyRecord["enrollmentState"];
 // ──────────────────────────────────────────────────────────────
 
 /**
- * Import raw key bytes as a non-extractable CryptoKey and store the
- * record. The caller MUST treat `keyBytes` as sensitive; this function
- * zeroizes the buffer in place before returning so any further reads
- * through the same reference see zeros.
+ * Store a copy of the raw key bytes as this drone's record. The caller MUST
+ * treat `keyBytes` as sensitive; this function zeroizes the caller's buffer
+ * in place before returning so any further reads through the same reference
+ * see zeros.
  */
 export async function importAndStore(opts: {
   droneId: string;
@@ -106,23 +104,24 @@ export async function importAndStore(opts: {
   const { droneId, userId, keyBytes, linkId } = opts;
   const enrollmentState = opts.enrollmentState ?? "enrolled";
 
+  if (keyBytes.length !== 32) {
+    throw new Error(`signing key must be 32 bytes, got ${keyBytes.length}`);
+  }
   const keyId = await keyFingerprint(keyBytes);
-  const cryptoKey = await importNonExtractableKey(keyBytes);
-
-  // Zeroize now that the CryptoKey holds the material browser-side.
+  const stored = new Uint8Array(keyBytes);
   zeroize(keyBytes);
 
   const current = opts.keepPrevious ? await getRecord(droneId) : null;
   const record: SigningKeyRecord = {
     droneId,
     userId,
-    cryptoKey,
+    keyBytes: stored,
     keyId,
     linkId,
     enrolledAt: new Date().toISOString(),
     enrollmentState,
     previous: current
-      ? { cryptoKey: current.cryptoKey, keyId: current.keyId, linkId: current.linkId, enrolledAt: current.enrolledAt }
+      ? { keyBytes: current.keyBytes, keyId: current.keyId, linkId: current.linkId, enrolledAt: current.enrolledAt }
       : null,
   };
   await set(droneId, record, await signingStore());
@@ -154,12 +153,22 @@ export async function settleUnconfirmedKey(
 
 /**
  * Fetch a drone's signer record, if any. Returns null when no key is
- * stored for the given droneId. Does not decrypt or expose raw bytes
- * (the CryptoKey stays non-extractable).
+ * stored for the given droneId.
+ *
+ * A record without raw key bytes predates spec-correct signing (it held
+ * only an HMAC CryptoKey whose signatures no autopilot accepts). It cannot
+ * sign, so it is deleted and reported as absent: the drone reads as having
+ * no browser key and the operator re-enrolls.
  */
 export async function getRecord(droneId: string): Promise<SigningKeyRecord | null> {
-  const rec = (await get(droneId, await signingStore())) as SigningKeyRecord | undefined;
-  return rec ?? null;
+  const store = await signingStore();
+  const rec = (await get(droneId, store)) as Partial<SigningKeyRecord> | undefined;
+  if (!rec) return null;
+  if (!(rec.keyBytes instanceof Uint8Array) || rec.keyBytes.length !== 32) {
+    await del(droneId, store);
+    return null;
+  }
+  return rec as SigningKeyRecord;
 }
 
 /**
@@ -180,7 +189,7 @@ export async function getSigner(droneId: string): Promise<MavlinkSigner | null> 
   ) {
     return null;
   }
-  return new MavlinkSigner(rec.droneId, rec.linkId, rec.keyId, rec.cryptoKey);
+  return new MavlinkSigner(rec.droneId, rec.linkId, rec.keyId, rec.keyBytes);
 }
 
 /**
@@ -197,10 +206,7 @@ export async function updateEnrollmentState(
   await set(droneId, rec, await signingStore());
 }
 
-/**
- * Remove a single drone's key. Garbage collection releases the
- * non-extractable CryptoKey; raw bytes were never stored.
- */
+/** Remove a single drone's key record from IndexedDB. */
 export async function clear(droneId: string): Promise<void> {
   await del(droneId, await signingStore());
 }

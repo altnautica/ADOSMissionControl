@@ -91,14 +91,17 @@ export function normalizeTopicData(
 
     // `relativeAlt` (height above home) is not a field of this topic; the
     // flight builder derives it from `alt` and the home altitude.
-    case "vehicle_global_position":
+    case "vehicle_global_position": {
+      // PositionData.heading is degrees 0..360; the topic's yaw is radians.
+      const yaw = num(row.yaw);
       return {
         lat: num(row.lat),
         lon: num(row.lon),
         alt: num(row.alt),
         groundSpeed: Math.sqrt((num(row.vel_n) ?? 0) ** 2 + (num(row.vel_e) ?? 0) ** 2),
-        heading: num(row.yaw),
+        heading: yaw === undefined ? undefined : ((yaw * RAD_TO_DEG) % 360 + 360) % 360,
       };
+    }
 
     // Recorded attitude is in degrees, the same contract as live AttitudeData.
     case "vehicle_attitude": {
@@ -133,15 +136,10 @@ export function normalizeTopicData(
         alt: num(row.alt) !== undefined ? num(row.alt)! / 1e3 : undefined,
       };
 
+    // Barometric altitude only: the topic carries no throttle, airspeed,
+    // groundspeed or heading, so none is reported.
     case "vehicle_air_data":
-      return {
-        alt: num(row.baro_alt_meter),
-        climb: num(row.baro_alt_meter) !== undefined ? 0 : undefined, // No direct climb from airdata
-        throttle: 0,
-        airspeed: 0,
-        groundspeed: 0,
-        heading: 0,
-      };
+      return { alt: num(row.baro_alt_meter) };
 
     case "wind_estimate":
     case "wind":

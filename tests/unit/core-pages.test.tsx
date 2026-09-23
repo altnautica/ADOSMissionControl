@@ -11,7 +11,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
 import {
@@ -59,8 +59,18 @@ describe("AdvancedPage board override", () => {
   });
 });
 
-function renderCloud(config: Record<string, unknown>) {
-  renderWithIntl(<CloudPage nodeDeviceId="node-1" config={config} />);
+function renderCloud(
+  config: Record<string, unknown>,
+  setValue: (key: string, value: string) => Promise<void> = async () => {},
+) {
+  renderWithIntl(
+    <CloudPage
+      nodeDeviceId="node-1"
+      config={config}
+      readOnly={false}
+      setValue={setValue}
+    />,
+  );
 }
 
 describe("CloudPage backend URL", () => {
@@ -112,15 +122,34 @@ describe("CloudPage backend URL", () => {
 });
 
 describe("CloudPage remote access", () => {
-  it("offers no control that claims to start or stop the tunnel", () => {
+  it("turns the tunnel off only after a confirmation, through the node's config", async () => {
+    const setValue = vi.fn(async () => {});
+    renderCloud(
+      {
+        server: { mode: "local" },
+        remote_access: { provider: "cloudflare", cloudflare: { enabled: true } },
+      },
+      setValue,
+    );
+    fireEvent.click(screen.getByRole("switch", { name: "Cloudflare tunnel active" }));
+    // Taking the node off the internet can cut a session that reaches it
+    // through the tunnel, so nothing is written before the operator confirms.
+    expect(setValue).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Turn off" }));
+    await waitFor(() =>
+      expect(setValue).toHaveBeenCalledWith(
+        "remote_access.cloudflare.enabled",
+        "false",
+      ),
+    );
+  });
+
+  it("says the tunnel state is not measured without a connection to the node", () => {
     renderCloud({
       server: { mode: "local" },
       remote_access: { provider: "cloudflare", cloudflare: { enabled: true } },
     });
-    expect(screen.getByText("Remote access")).toBeTruthy();
-    expect(screen.queryByText("Cloudflare tunnel active")).toBeNull();
-    expect(screen.queryByRole("switch")).toBeNull();
-    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.getByText("Not measured")).toBeTruthy();
   });
 
   it("reports the node's own tunnel service state", async () => {

@@ -91,6 +91,7 @@ const INITIAL_STATE: AgentCapabilitiesState = {
   npuTops: undefined,
   hasAccelerator: undefined,
   loaded: false,
+  receivedAt: null,
   focusedDeviceId: null,
   byDevice: {},
 };
@@ -116,6 +117,22 @@ export function selectDeviceCapabilities(
 ): AgentCapabilitySnapshot | null {
   if (!deviceId) return null;
   return state.byDevice[deviceId] ?? null;
+}
+
+/**
+ * Merge a verdict a sender may omit. A payload without the key is sparse and
+ * keeps the prior value; an explicit null is the sender saying the verdict's
+ * source went stale or stopped, which clears it rather than leaving the last
+ * verdict on screen as current.
+ */
+function mergeWithdrawable<T>(
+  raw: Record<string, unknown>,
+  key: string,
+  next: T | undefined,
+  prior: T | undefined,
+): T | undefined {
+  if (next !== undefined) return next;
+  return raw[key] === null ? undefined : prior;
 }
 
 /** Tri-state read of a capability off a possibly-unknown device slice. */
@@ -174,6 +191,7 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
       const cloudflareUrl = deriveCloudflareUrl(caps);
       const wfbFailoverState = deriveWfbFailoverState(caps);
 
+      const raw = caps as Record<string, unknown>;
       set((state) => {
         const patch = {
         tier: normalized.tier,
@@ -229,42 +247,60 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
           normalized.radioStackState === undefined
             ? state.radioStackState
             : normalized.radioStackState,
-        macStability:
-          normalized.macStability === undefined
-            ? state.macStability
-            : normalized.macStability,
-        managementLink:
-          normalized.managementLink === undefined
-            ? state.managementLink
-            : normalized.managementLink,
-        wifiPowersave:
-          normalized.wifiPowersave === undefined
-            ? state.wifiPowersave
-            : normalized.wifiPowersave,
-        mgmtLinkMode:
-          normalized.mgmtLinkMode === undefined
-            ? state.mgmtLinkMode
-            : normalized.mgmtLinkMode,
-        mgmtFailoverIface:
-          normalized.mgmtFailoverIface === undefined
-            ? state.mgmtFailoverIface
-            : normalized.mgmtFailoverIface,
-        mgmtFailoverReason:
-          normalized.mgmtFailoverReason === undefined
-            ? state.mgmtFailoverReason
-            : normalized.mgmtFailoverReason,
-        usbRehomeState:
-          normalized.usbRehomeState === undefined
-            ? state.usbRehomeState
-            : normalized.usbRehomeState,
-        usbRehomeAttempts:
-          normalized.usbRehomeAttempts === undefined
-            ? state.usbRehomeAttempts
-            : normalized.usbRehomeAttempts,
-        usbRehomeLastResult:
-          normalized.usbRehomeLastResult === undefined
-            ? state.usbRehomeLastResult
-            : normalized.usbRehomeLastResult,
+        macStability: mergeWithdrawable(
+          raw,
+          "macStability",
+          normalized.macStability,
+          state.macStability,
+        ),
+        managementLink: mergeWithdrawable(
+          raw,
+          "managementLink",
+          normalized.managementLink,
+          state.managementLink,
+        ),
+        wifiPowersave: mergeWithdrawable(
+          raw,
+          "wifiPowersave",
+          normalized.wifiPowersave,
+          state.wifiPowersave,
+        ),
+        mgmtLinkMode: mergeWithdrawable(
+          raw,
+          "mgmtLinkMode",
+          normalized.mgmtLinkMode,
+          state.mgmtLinkMode,
+        ),
+        mgmtFailoverIface: mergeWithdrawable(
+          raw,
+          "mgmtFailoverIface",
+          normalized.mgmtFailoverIface,
+          state.mgmtFailoverIface,
+        ),
+        mgmtFailoverReason: mergeWithdrawable(
+          raw,
+          "mgmtFailoverReason",
+          normalized.mgmtFailoverReason,
+          state.mgmtFailoverReason,
+        ),
+        usbRehomeState: mergeWithdrawable(
+          raw,
+          "usbRehomeState",
+          normalized.usbRehomeState,
+          state.usbRehomeState,
+        ),
+        usbRehomeAttempts: mergeWithdrawable(
+          raw,
+          "usbRehomeAttempts",
+          normalized.usbRehomeAttempts,
+          state.usbRehomeAttempts,
+        ),
+        usbRehomeLastResult: mergeWithdrawable(
+          raw,
+          "usbRehomeLastResult",
+          normalized.usbRehomeLastResult,
+          state.usbRehomeLastResult,
+        ),
         // Forward-permissive merges: keep the prior value when the
         // payload omits the field. CloudStatusBridge always sets these
         // explicitly, so prior values only carry over when an
@@ -318,14 +354,15 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
             ? state.cameraState
             : normalized.cameraState,
         // Forward-permissive: a sparse heartbeat that omits the camera
-        // recovery block keeps whatever the store had on the prior tick.
-        // CloudStatusBridge passes the freshest block when the agent
-        // emits one, so the prior value only survives across an
-        // /api/capabilities call that lands without it.
-        cameraUsbRecovery:
-          normalized.cameraUsbRecovery === undefined
-            ? state.cameraUsbRecovery
-            : normalized.cameraUsbRecovery,
+        // recovery block keeps whatever the store had on the prior tick; an
+        // explicit null (the recovery supervisor's sidecar went stale) clears
+        // it.
+        cameraUsbRecovery: mergeWithdrawable(
+          raw,
+          "cameraUsbRecovery",
+          normalized.cameraUsbRecovery,
+          state.cameraUsbRecovery,
+        ),
         // Forward-permissive: a sparse heartbeat that omits the
         // canBuses block keeps whatever the store had on the prior
         // tick. The agent only emits the field once it has cached at
@@ -368,6 +405,7 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
             ? state.hasAccelerator
             : normalized.hasAccelerator,
         loaded: true,
+        receivedAt: Date.now(),
         };
         // File the reading under the node it describes. A node switch then
         // paints the target node's own gates on the first frame instead of the

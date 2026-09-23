@@ -100,6 +100,32 @@ describe('manual-control stream gating', () => {
     expect(sendManualControl).toHaveBeenCalled();
   });
 
+  it('pauses while the tab is hidden and resumes when it is visible again', () => {
+    let hidden = false;
+    const spy = vi.spyOn(document, 'hidden', 'get').mockImplementation(() => hidden);
+    try {
+      startManualControlStream();
+      allowEverything();
+      vi.advanceTimersByTime(100);
+      expect(sendManualControl).toHaveBeenCalled();
+
+      hidden = true;
+      document.dispatchEvent(new Event('visibilitychange'));
+      sendManualControl.mockClear();
+      vi.advanceTimersByTime(500);
+      expect(sendManualControl).not.toHaveBeenCalled();
+
+      hidden = false;
+      document.dispatchEvent(new Event('visibilitychange'));
+      // A fresh stick sample, as the reader produces once the tab is back.
+      useInputStore.getState().setAxes([0, 0, 0, 0]);
+      vi.advanceTimersByTime(100);
+      expect(sendManualControl).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('holds off until the operator opts in', () => {
     startManualControlStream();
     allowEverything();

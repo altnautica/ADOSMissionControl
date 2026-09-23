@@ -12,8 +12,8 @@
  *   2. Operator is restoring a signing key from a backup (clipboard
  *      paste after an ExportKeyModal rotation on another device).
  *
- * The key is imported as a non-extractable Web Crypto key and stored in
- * IndexedDB. No FC enrollment happens here because the key is assumed
+ * The key is stored as raw bytes in this browser's IndexedDB, where script
+ * running on the page can read it. No FC enrollment happens here because the key is assumed
  * to already be on the FC. The next signed command to the FC will either
  * succeed (confirming the paste was correct) or be rejected (the FC holds a
  * different key); the FC sends no signal either way.

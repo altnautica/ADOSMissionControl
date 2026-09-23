@@ -28,9 +28,9 @@ export interface PositionData {
 export interface BatteryData {
   timestamp: number;
   voltage: number;     // volts
-  current: number;     // amps
+  current?: number;    // amps; absent when not measured
   remaining: number;   // percentage 0-100
-  consumed: number;    // mAh
+  consumed?: number;   // mAh; absent when not measured
   temperature?: number; // celsius (from BATTERY_STATUS temperature field)
   cellVoltages?: number[]; // per-cell voltages in volts (from BATTERY_STATUS voltages[10])
   cellCount?: number; // series cells the FC reports for the pack; absent when unknown
@@ -48,10 +48,12 @@ export interface GpsData {
 
 export interface VfrData {
   timestamp: number;
-  airspeed: number;    // m/s
-  groundspeed: number; // m/s
-  heading: number;     // degrees
-  throttle: number;    // percentage 0-100
+  // Absent when the link's source message does not carry the quantity
+  // (an MSP altitude sample reports only alt and climb).
+  airspeed?: number;    // m/s
+  groundspeed?: number; // m/s
+  heading?: number;     // degrees
+  throttle?: number;    // percentage 0-100
   alt: number;         // meters
   climb: number;       // m/s
 }

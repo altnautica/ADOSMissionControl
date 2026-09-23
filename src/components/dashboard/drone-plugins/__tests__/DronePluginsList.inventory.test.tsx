@@ -10,8 +10,30 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import messages from "../../../../../locales/en.json";
+
+// The persisted stores capture localStorage at import; install a working one
+// before they load.
+vi.hoisted(() => {
+  const map = new Map<string, string>();
+  const storage = {
+    get length() {
+      return map.size;
+    },
+    clear: () => map.clear(),
+    getItem: (k: string) => (map.has(k) ? map.get(k)! : null),
+    key: (i: number) => Array.from(map.keys())[i] ?? null,
+    removeItem: (k: string) => {
+      map.delete(k);
+    },
+    setItem: (k: string, v: string) => {
+      map.set(k, String(v));
+    },
+  };
+  Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true, writable: true });
+  Object.defineProperty(window, "localStorage", { value: storage, configurable: true, writable: true });
+});
 
 vi.mock("lucide-react", () =>
   new Proxy(
@@ -30,8 +52,25 @@ vi.mock("lucide-react", () =>
 // Convex query returns an empty install list so the only cards rendered
 // come from the inventory store.
 let convexRows: unknown[] = [];
+let convexState: "skipped" | "loading" | "error" | "ready" = "ready";
 vi.mock("@/hooks/use-convex-skip-query", () => ({
-  useConvexSkipQuery: () => convexRows,
+  useConvexSkipQuery: () => (convexState === "ready" ? convexRows : undefined),
+  useConvexSkipQueryState: () => ({
+    data: convexState === "ready" ? convexRows : undefined,
+    state: convexState,
+  }),
+}));
+
+// The node's own install list over the LAN.
+const lanList = vi.fn(async () => ({ installs: [] as unknown[] }));
+vi.mock("@/lib/agent/plugin-client", () => ({
+  PluginAgentClient: class {
+    constructor(
+      public baseUrl: string,
+      public apiKey: string,
+    ) {}
+    list = lanList;
+  },
 }));
 
 // Stub the card so the merge contract is observable without rendering
@@ -66,6 +105,7 @@ vi.mock("../DronePluginCard", () => ({
 
 import { DronePluginsList } from "../DronePluginsList";
 import { useAgentPluginInventoryStore } from "@/stores/agent-plugin-inventory-store";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
 
 function renderList(agentId: string) {
   return render(
@@ -78,6 +118,10 @@ function renderList(agentId: string) {
 describe("DronePluginsList inventory merge", () => {
   beforeEach(() => {
     convexRows = [];
+    convexState = "ready";
+    lanList.mockReset();
+    lanList.mockImplementation(async () => ({ installs: [] }));
+    useLocalNodesStore.setState({ nodes: [] });
     useAgentPluginInventoryStore.getState().clear();
   });
 
@@ -198,5 +242,91 @@ describe("DronePluginsList inventory merge", () => {
     useAgentPluginInventoryStore.getState().setForDevice("drone-1", entries);
     renderList("drone-1");
     expect(screen.getAllByTestId("card")).toHaveLength(50);
+  });
+});
+
+describe("DronePluginsList without a Convex answer", () => {
+  beforeEach(() => {
+    convexRows = [];
+    lanList.mockReset();
+    lanList.mockImplementation(async () => ({ installs: [] }));
+    useLocalNodesStore.setState({ nodes: [] });
+    useAgentPluginInventoryStore.getState().clear();
+  });
+
+  it("shows the empty state, not Loading, when Convex is not configured", () => {
+    convexState = "skipped";
+    renderList("drone-1");
+    expect(screen.queryByText("Loading...")).toBeNull();
+    expect(screen.getByText("empty")).toBeTruthy();
+  });
+
+  it("shows the empty state when the install query failed", () => {
+    convexState = "error";
+    renderList("drone-1");
+    expect(screen.getByText("empty")).toBeTruthy();
+  });
+
+  it("lists the plugins a LAN-paired node reports it has installed", async () => {
+    convexState = "skipped";
+    useLocalNodesStore.setState({
+      nodes: [
+        { deviceId: "drone-1", hostname: "http://192.168.1.50:8080", apiKey: "k" },
+      ],
+    } as never);
+    lanList.mockImplementation(async () => ({
+      installs: [
+        {
+          plugin_id: "com.example.lan-install",
+          version: "1.2.0",
+          source: "local_file",
+          signer_id: null,
+          status: "enabled",
+        },
+      ],
+    }));
+    renderList("drone-1");
+    await waitFor(() =>
+      expect(screen.getByTestId("card").textContent).toBe(
+        "com.example.lan-install|local_file|enabled",
+      ),
+    );
+  });
+
+  it("keeps the Convex row when the LAN list reports the same plugin", async () => {
+    convexState = "ready";
+    convexRows = [
+      {
+        _id: "row-1",
+        pluginId: "com.example.both",
+        name: "Both",
+        version: "1.0.0",
+        source: "registry",
+        status: "running",
+        halves: ["agent"],
+        deviceId: "drone-1",
+      },
+    ];
+    useLocalNodesStore.setState({
+      nodes: [
+        { deviceId: "drone-1", hostname: "http://192.168.1.50:8080", apiKey: "k" },
+      ],
+    } as never);
+    lanList.mockImplementation(async () => ({
+      installs: [
+        {
+          plugin_id: "com.example.both",
+          version: "1.0.0",
+          source: "local_file",
+          signer_id: null,
+          status: "enabled",
+        },
+      ],
+    }));
+    renderList("drone-1");
+    await waitFor(() => expect(lanList).toHaveBeenCalled());
+    const cards = screen.getAllByTestId("card");
+    expect(cards).toHaveLength(1);
+    expect(cards[0].textContent).toBe("com.example.both|registry|running");
   });
 });

@@ -89,9 +89,9 @@ export function handleObstacleDistance(payload: DataView, callbacks: ObstacleDis
       minDistance: data.minDistance,
       maxDistance: data.maxDistance,
       increment: data.increment,
-      incrementF: 0,
-      angleOffset: 0,
-      frame: 0,
+      incrementF: data.incrementF,
+      angleOffset: data.angleOffset,
+      frame: data.frame,
     })
   }
 }

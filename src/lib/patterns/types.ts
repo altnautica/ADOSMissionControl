@@ -83,13 +83,17 @@ export type { StructureScanConfig } from "./structure-scan-generator";
 export interface FixedWingLandingConfig {
   /** Landing point as [lat, lon]. */
   landingPoint: [number, number];
-  /** Approach heading in degrees (0-360). -1 = auto from previous waypoint. */
+  /**
+   * Final-approach heading in degrees true (0-360), the direction the aircraft
+   * flies on final. Required: no landing is generated without one.
+   */
   approachHeading: number;
-  /** Distance from landing point to approach start, in meters. */
-  approachDistance: number;
-  /** Glide slope angle in degrees (2-15). */
+  /**
+   * Glide slope angle in degrees (2-15). Sets the approach distance, which is
+   * `loiterAltitude / tan(glideSlopeAngle)`.
+   */
   glideSlopeAngle: number;
-  /** Loiter/approach altitude in meters AGL. */
+  /** Approach altitude in meters, in the mission altitude frame. */
   loiterAltitude: number;
   /** Approach speed in m/s. */
   speed: number;
@@ -100,13 +104,16 @@ export interface FixedWingLandingConfig {
 export interface VtolLandingConfig {
   /** Landing point as [lat, lon]. */
   landingPoint: [number, number];
-  /** Approach heading in degrees (0-360). -1 = auto. */
+  /**
+   * Final-approach heading in degrees true (0-360). Required: no landing is
+   * generated without one.
+   */
   approachHeading: number;
   /** Distance from landing to transition start, in meters. */
   transitionDistance: number;
-  /** Approach altitude in meters AGL. */
+  /** Approach altitude in meters, in the mission altitude frame. */
   approachAltitude: number;
-  /** Vertical descent speed in m/s. */
+  /** Expected vertical descent speed in m/s, for the time estimate only. */
   descentSpeed: number;
   /** Cruise approach speed in m/s. */
   speed: number;

@@ -105,13 +105,13 @@ describe("resolveAGLToAbsolute — frame-aware placement", () => {
     const lon = 77.0;
     const waypoints: Waypoint[] = [
       { id: "a", lat, lon, alt: 500, frame: "absolute" },
-      // Undefined frame == relative. Kept close so no intermediate sub-samples
-      // are inserted (waypointIndices stays [0, 1]).
+      // Frameless in a relative-default mission. Kept close so no intermediate
+      // sub-samples are inserted (waypointIndices stays [0, 1]).
       { id: "b", lat: lat + 0.0001, lon: lon + 0.0001, alt: 100 },
     ];
     const provider = {} as unknown as TerrainProvider;
 
-    const result = await resolveAGLToAbsolute(waypoints, provider);
+    const result = await resolveAGLToAbsolute(waypoints, provider, "relative");
     expect(result.waypointIndices).toEqual([0, 1]);
 
     const absHeight = heightOf(result.positions[result.waypointIndices[0]]);
@@ -132,7 +132,7 @@ describe("resolveAGLToAbsolute — frame-aware placement", () => {
     const waypoints: Waypoint[] = [{ id: "a", lat, lon, alt: 100, frame: "absolute" }];
     const provider = {} as unknown as TerrainProvider;
 
-    const result = await resolveAGLToAbsolute(waypoints, provider);
+    const result = await resolveAGLToAbsolute(waypoints, provider, "relative");
     const h = heightOf(result.positions[0]);
     // Shifted up by the (positive) undulation, not left at raw 100 and not at
     // terrain+100.

@@ -97,14 +97,15 @@ interface TelemetryStoreState {
   pushFlowDistance: (ts: number, d: number | null) => void;
   pushVioQuality: (ts: number, q: number) => void;
 
-  // iNav-specific fields
+  // iNav-specific fields (MSP_NAV_STATUS mode/state/activeWpAction)
+  navMode: number | null;
   navState: number | null;
   navAction: number | null;
   navStatusUpdated: number;
   armingFlags: number | null;
   adsbVehicles: INavAdsbVehicle[];
 
-  setNavStatus: (state: number, action: number) => void;
+  setNavStatus: (mode: number, state: number, action: number) => void;
   setArmingFlags: (flags: number) => void;
   setAdsbVehicles: (vehicles: INavAdsbVehicle[]) => void;
 
@@ -212,13 +213,15 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
   pushFlowDistance: (ts, d) => { get().flowDistance.push({ ts, value: d }); scheduleVersionBump(); },
   pushVioQuality: (ts, q) => { get().vioQuality.push({ ts, value: q }); scheduleVersionBump(); },
 
+  navMode: null,
   navState: null,
   navAction: null,
   navStatusUpdated: 0,
   armingFlags: null,
   adsbVehicles: [],
 
-  setNavStatus: (state, action) => set({ navState: state, navAction: action, navStatusUpdated: Date.now() }),
+  setNavStatus: (mode, state, action) =>
+    set({ navMode: mode, navState: state, navAction: action, navStatusUpdated: Date.now() }),
   setArmingFlags: (flags) => set({ armingFlags: flags }),
   setAdsbVehicles: (vehicles) => set({ adsbVehicles: vehicles.slice(0, 32) }),
 
@@ -286,6 +289,7 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
       flowQuality: new RingBuffer<TelemetrySample>(1000),
       flowDistance: new RingBuffer<NullableTelemetrySample>(1000),
       vioQuality: new RingBuffer<TelemetrySample>(1000),
+      navMode: null,
       navState: null,
       navAction: null,
       navStatusUpdated: 0,

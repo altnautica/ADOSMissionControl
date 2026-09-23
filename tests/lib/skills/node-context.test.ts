@@ -266,8 +266,9 @@ describe("state that cannot be sourced per node", () => {
     expect(ctx.supports("supportsGeoFence")).toBe(false);
   });
 
-  it("reports the checklist as not ready even when the app-wide one is", () => {
+  it("reports the checklist as not ready when it was completed for another drone", () => {
     useChecklistStore.setState({
+      droneId: "some-other-drone",
       items: useChecklistStore
         .getState()
         .items.map((item) => ({ ...item, status: "pass" as const })),
@@ -276,9 +277,9 @@ describe("state that cannot be sourced per node", () => {
 
     const ctx = buildSkillContextForNode(NODE, { originIsHttps: false });
 
-    // The checklist carries no node association, so it cannot vouch for this
-    // vehicle; arm and take-off ask for the override phrase instead.
-    expect(useChecklistStore.getState().isReadyToArm()).toBe(true);
+    // The session vouches only for the drone it was started for; arm and
+    // take-off on this node ask for the override phrase instead.
+    expect(useChecklistStore.getState().isReadyToArm("some-other-drone")).toBe(true);
     expect(ctx.checklistReady).toBe(false);
   });
 

@@ -267,8 +267,8 @@ export interface MissionAdherence {
 
 /**
  * One segment of the flight classified by motion state. Derived by
- * {@link detectPhases} from recorded position + VFR frames and frozen
- * into FlightRecord at disarm.
+ * {@link detectPhases} from the recorded position frames (height above home)
+ * and frozen into FlightRecord at disarm.
  */
 export interface FlightPhase {
   type:

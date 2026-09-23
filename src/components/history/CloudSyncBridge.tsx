@@ -80,9 +80,7 @@ function CloudSyncBridgeInner() {
   // ── Reactive merge: any cloud-side change flows in here ──────────
   useEffect(() => {
     if (cloudList.length === 0) return;
-    const records = (cloudList as unknown as Record<string, unknown>[]).map(
-      fromCloudShape,
-    );
+    const records = cloudList.map(fromCloudShape);
     const updated = useHistoryStore.getState().mergeCloudRecords(records);
     if (updated > 0) {
       void useHistoryStore.getState().persistToIDB();

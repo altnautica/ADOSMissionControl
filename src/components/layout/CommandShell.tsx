@@ -1,25 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Settings, AlertTriangle, LogOut, CloudOff, Zap, Minimize2, X, Star, BookOpen } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CommandNav } from "./CommandNav";
 import { RightRail } from "./RightRail";
-/**
- * Demo mode pulls in the whole 11.8k-LOC `src/mock/` tree — the mock
- * protocol, the iNav mock and a 1427-line parameter table. A static import
- * here put every byte of it in the shared chunk of every production page,
- * for a feature gated behind a persisted settings boolean that is off by
- * default. `next/dynamic` with `ssr: false` moves it to its own chunk,
- * fetched only when demo mode is actually on.
- */
-const DemoProvider = dynamic(
-  () => import("./DemoProvider").then((m) => m.DemoProvider),
-  { ssr: false },
-);
+import { ShellBridges } from "./ShellBridges";
 import { CommandPalette } from "@/components/shared/command-palette";
 import { FailsafeAlertBanner } from "@/components/flight/FailsafeAlertBanner";
 import { PluginCrashBanner } from "@/components/plugins/PluginCrashBanner";
@@ -35,7 +23,6 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { ConnectDialog } from "@/components/connect/ConnectDialog";
 import { WelcomeModal, DisclaimerGate } from "@/components/onboarding/WelcomeModal";
 import { formatSyncTime } from "@/lib/sync";
-import { useAutoReconnect } from "@/hooks/use-auto-reconnect";
 import { useGcsLocation } from "@/hooks/use-gcs-location";
 import { usePlatform } from "@/hooks/use-platform";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
@@ -47,26 +34,16 @@ import { ChangelogNotificationGate } from "@/components/changelog/ChangelogNotif
 import { ChangelogBadge } from "@/components/changelog/ChangelogBadge";
 import Link from "next/link";
 
-// MAVLink bridge persists across all tabs — direct import (renders null, no hydration issue)
-import { AgentMavlinkBridge } from "@/components/command/AgentMavlinkBridge";
 import { MeshToastBridge } from "@/components/command/MeshToastBridge";
 import { Px4EventsBridge } from "@/components/command/Px4EventsBridge";
 import { RoleBadge } from "@/components/command/RoleBadge";
-// Agent state bridges + fleet projectors run shell-wide so a drone selected on
-// the Dashboard shows live companion-computer data in place (the Command page
-// is retired). PairingDialog lives here too so pairing opens from anywhere.
-import { AgentBridges } from "@/components/command/AgentBridges";
-import { CloudDroneBridge } from "@/components/dashboard/CloudDroneBridge";
-import { LocalDroneBridge } from "@/components/dashboard/LocalDroneBridge";
-import { RelayedDroneBridge } from "@/components/dashboard/RelayedDroneBridge";
-import { RelayedMavlinkBridge } from "@/components/dashboard/RelayedMavlinkBridge";
-import { FleetProjectionBridge } from "@/components/dashboard/FleetProjectionBridge";
 import { SwarmBeaconBridge } from "@/components/command/SwarmBeaconBridge";
 // Cockpit skill platform — register the built-in skills once and keep the
 // selected drone's skill state fresh, shell-wide, so the Skill Bar + the
 // keyboard/gamepad dispatcher have a live registry wherever the operator flies.
 import { registerBuiltins, initSkillSubscriptions } from "@/lib/skills";
 import { SkillConfirmHost } from "@/components/cockpit/SkillConfirmHost";
+import { ChecklistAutoRunner } from "@/components/flight/ChecklistAutoRunner";
 // Single operator-confirm host for safety-critical plugin RPCs
 // (command.send / mission.write). Mounted shell-wide so any plugin iframe can
 // raise a confirm; when absent, requestPluginConfirm denies (safe default).
@@ -137,22 +114,24 @@ function ConvexUserMenu() {
 }
 
 export function CommandShell({ children }: { children: React.ReactNode }) {
-  // HDMI kiosk / HUD route opts out of the full GCS chrome (navbar, sidebar,
-  // auto-reconnect, global dialogs). Root providers (Convex, Locale, Toast)
-  // still wrap via app/layout.tsx.
+  // The HDMI kiosk HUD route opts out of the full GCS chrome (navbar, sidebar,
+  // global dialogs) and renders its own full-bleed layer stack. It still needs
+  // the headless connection bridges, or its stores never fill. Root providers
+  // (Convex, Locale, Toast) wrap both branches via app/layout.tsx.
   const pathname = usePathname();
-  // The HDMI kiosk HUD route opts out of the full GCS chrome — it renders its
-  // own full-bleed layer stack and mounts its own bridges. (The cockpit is now a
-  // dashboard node-detail tab, not a chromeless route.)
   const isChromeless = pathname?.startsWith("/hud") ?? false;
   if (isChromeless) {
-    return <>{children}</>;
+    return (
+      <>
+        <ShellBridges />
+        {children}
+      </>
+    );
   }
   return <CommandShellInner>{children}</CommandShellInner>;
 }
 
 function CommandShellInner({ children }: { children: React.ReactNode }) {
-  useAutoReconnect();
   useGcsLocation();
 
   // Register the built-in skills + start the registry subscriptions once.
@@ -403,7 +382,7 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
       {/* Body — the primary content column plus a global right-hand rail
           (MCP activity watch + flight logs) that persists across routes. */}
       <main className="flex-1 flex overflow-hidden">
-        <DemoProvider />
+        <ShellBridges />
         <CommandPalette />
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <FailsafeAlertBanner />
@@ -412,24 +391,8 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
           {children}
         </div>
         {!immersiveMode && <RightRail />}
-        <AgentMavlinkBridge />
         <MeshToastBridge />
         <Px4EventsBridge />
-        <AgentBridges />
-        {/* The presence bridges WRITE the node registry (local + cloud
-            presence, plus relayed presence for a WFB-linked drone reached
-            through a directly-paired ground node); FleetProjectionBridge
-            projects the registry into the fleet store, so a node seen on any
-            transport renders once and an FC-less node never shows fabricated
-            telemetry. */}
-        <CloudDroneBridge />
-        <LocalDroneBridge />
-        <RelayedDroneBridge />
-        {/* Opens the actual MAVLink session for a relay-only drone against its
-            ground station's republish endpoint, so its Setup/Parameters tabs
-            render real UI instead of the offline placeholder. */}
-        <RelayedMavlinkBridge />
-        <FleetProjectionBridge />
         {/* Feeds the fleet-slot beacon table the Swarm tab renders. Polls the
             ground station's swarm-bus snapshot at the 2 Hz bus rate and evicts
             a slot the moment its beacon ages out. */}
@@ -439,6 +402,10 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
             cockpit's Skill Bar, keyboard, or gamepad) can open a confirm dialog
             from anywhere. The Skill Bar itself lives in the Cockpit tab. */}
         <SkillConfirmHost />
+        {/* Keeps the selected drone's pre-flight checklist live from telemetry,
+            so the readiness the confirm host reads never depends on the
+            checklist view being open. */}
+        <ChecklistAutoRunner />
 
         {/* Operator-confirm host for safety-critical plugin RPCs. */}
         <PluginConfirmHost />

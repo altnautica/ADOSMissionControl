@@ -20,12 +20,14 @@ import { useVideoStore } from "@/stores/video-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useSingletonAgentVideo } from "@/hooks/use-singleton-agent-video";
+import { useResolvedAgentVideo } from "@/hooks/use-resolved-agent-video";
 
 export function VideoBackground() {
-  const agentWhepUrl = useVideoStore((s) => s.agentWhepUrl);
-  const agentVideoState = useVideoStore((s) => s.agentVideoState);
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
+  // Singleton store, else the funnelled feed a paired ground station relays.
+  const { whepUrl: agentWhepUrl, videoState: agentVideoState } =
+    useResolvedAgentVideo(cloudDeviceId);
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
 
   // Callback ref so the cascade hook re-runs once the <video> mounts.
@@ -39,6 +41,7 @@ export function VideoBackground() {
     cloudDeviceId,
     transportMode,
     videoEl,
+    agentVideoState,
   });
 
   const hasVideo = isStreaming;

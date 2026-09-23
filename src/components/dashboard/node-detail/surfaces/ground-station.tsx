@@ -103,7 +103,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     labelKey: "rcElrsLink.tabLabel",
     group: LINK_GROUP,
     when: (ctx) => ctx.crsfPresent === "present",
-    render: () => <RcElrsLinkTab />,
+    render: (ctx) => <RcElrsLinkTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     id: "display",

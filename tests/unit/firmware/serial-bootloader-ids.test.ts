@@ -29,6 +29,26 @@ describe("matchesBootloader", () => {
   });
 });
 
+// USB vendor ids: 0x2DAE is CubePilot, 0x3162 Holybro, 0x27AC VRBrain.
+describe("vendor tables", () => {
+  it("finds a CubeBlack in the ArduPilot bootloader (0x2DAE:0x1001)", () => {
+    expect(matchesBootloader({ vendorId: 0x2dae, productId: 0x1001 }, ARDUPILOT_BOOTLOADER_IDS)).toBe(true);
+    expect(matchesBootloader({ vendorId: 0x2dae, productId: 0x1002 }, ARDUPILOT_BOOTLOADER_IDS)).toBe(true);
+    expect(matchesBootloader({ vendorId: 0x2dae, productId: 0x1005 }, ARDUPILOT_BOOTLOADER_IDS)).toBe(true);
+  });
+
+  it("finds a Holybro board (0x3162) in the PX4 bootloader", () => {
+    expect(matchesBootloader({ vendorId: 0x3162, productId: 0x004b }, PX4_BOOTLOADER_IDS)).toBe(true);
+  });
+
+  it("offers the CubePilot and Holybro vendors in the PX4 picker, not the VRBrain vendor", () => {
+    const vendors = toSerialFilters(PX4_BOOTLOADER_IDS).map((f) => f.usbVendorId);
+    expect(vendors).toEqual(expect.arrayContaining([0x2dae, 0x3162]));
+    expect(vendors).not.toContain(0x27ac);
+    expect(vendors).not.toContain(0x3612);
+  });
+});
+
 describe("toSerialFilters", () => {
   it("emits vendor-only and vendor+product filters", () => {
     const filters = toSerialFilters([

@@ -69,6 +69,28 @@ export function saveActivePlanFromWorkspace(): void {
 }
 
 /**
+ * Whether loading a plan now would discard work: the active plan differs from
+ * its saved snapshot, or no plan is active and the workspace holds a path,
+ * fence, rally points or POIs that were never saved. Computed from the live
+ * stores rather than the planner's `isDirty` flag, which only the Plan page
+ * keeps current.
+ */
+export function workspaceHasUnsavedChanges(): boolean {
+  const lib = usePlanLibraryStore.getState();
+  const { waypoints } = useMissionStore.getState();
+  const extras = capturePlanExtras();
+  if (!lib.activePlanId) {
+    return (
+      waypoints.length > 0 ||
+      extras.geofence !== undefined ||
+      extras.rally !== undefined ||
+      extras.pois !== undefined
+    );
+  }
+  return lib.isDirty || planSnapshotString(waypoints, extras) !== lib.savedSnapshot;
+}
+
+/**
  * Capture the current geofence + rally + POI geometry to persist alongside a
  * plan. Returns `undefined` for a domain with no meaningful content so plans
  * stay lean and `plan.geofence`/`plan.rally`/`plan.pois` presence is a truthful

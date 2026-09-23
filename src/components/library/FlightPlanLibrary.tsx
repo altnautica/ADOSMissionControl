@@ -14,7 +14,7 @@ import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useToast } from "@/components/ui/toast";
 import { filterPlans, sortPlans } from "@/lib/plan-library";
-import { applyPlanToWorkspace, saveActivePlanFromWorkspace } from "@/lib/plan-workspace";
+import { applyPlanToWorkspace, saveActivePlanFromWorkspace, workspaceHasUnsavedChanges } from "@/lib/plan-workspace";
 import { importMissionFile } from "@/lib/mission-io";
 import { PlanLibraryHeader } from "./PlanLibraryHeader";
 import { PlanSearchBar } from "./PlanSearchBar";
@@ -96,8 +96,8 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
       // Clicking the already-active plan is a no-op
       if (planId === activePlanId) return;
 
-      // If current plan has unsaved changes, show dialog
-      if (isDirty && activePlanId) {
+      // Unsaved edits to the active plan, or a never-saved workspace: ask.
+      if (workspaceHasUnsavedChanges()) {
         setPendingPlanId(planId);
         setShowUnsavedDialog(true);
         return;
@@ -105,7 +105,7 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
 
       loadPlan(planId);
     },
-    [activePlanId, isDirty, loadPlan]
+    [activePlanId, loadPlan]
   );
 
   /** Save current plan, then switch to pending. The save goes straight from

@@ -39,8 +39,7 @@ import { VideoTransportSwitcher } from "./VideoTransportSwitcher";
 import { VideoLatencyBreakdown } from "./VideoLatencyBreakdown";
 import { useVideoLatencyPoll } from "@/hooks/use-video-latency-poll";
 import { useDroneClockOffset } from "@/hooks/use-drone-clock-offset";
-import { resolveAgentVideoUrl } from "@/lib/agent/video-url";
-import { useCommandFleetStore } from "@/stores/command-fleet-store";
+import { useResolvedAgentVideo } from "@/hooks/use-resolved-agent-video";
 
 interface VideoFeedCardProps {
   className?: string;
@@ -48,8 +47,6 @@ interface VideoFeedCardProps {
 }
 
 export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
-  const singletonWhepUrl = useVideoStore((s) => s.agentWhepUrl);
-  const singletonVideoState = useVideoStore((s) => s.agentVideoState);
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
@@ -64,24 +61,11 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
   const trueG2GMs = useVideoStore((s) => s.latency.trueG2GMs);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
 
-  // The singleton video store is filled by the LAN poll or a cloud heartbeat.
-  // A node reached through another node (a drone linked to a paired ground
-  // station over the radio) has neither, so the store stays empty and the pane
-  // rendered "AGENT VIDEO STOPPED" over a feed that was in fact already on the
-  // ground: the ground station decodes the drone's downlink into its own
-  // mediamtx, and the per-node status row carries that playable URL. Fall back
-  // to it so the funneled feed reaches this pane, not just the fleet grid.
-  const nodeStatus = useCommandFleetStore((s) =>
-    cloudDeviceId ? s.cloudStatuses[cloudDeviceId] : undefined,
-  );
-  const funneledWhepUrl = resolveAgentVideoUrl(nodeStatus);
-  const agentWhepUrl = singletonWhepUrl ?? funneledWhepUrl;
-  // Same for the reported state: "unknown" from an unpopulated store would
-  // otherwise read as stopped even while the funneled feed is running.
-  const agentVideoState =
-    singletonVideoState && singletonVideoState !== "unknown"
-      ? singletonVideoState
-      : (nodeStatus?.videoState ?? singletonVideoState);
+  // A drone reached through a paired ground station has an empty singleton
+  // store; the shared resolver falls back to its funnelled fleet-status row
+  // for both the URL and the reported state.
+  const { whepUrl: agentWhepUrl, videoState: agentVideoState } =
+    useResolvedAgentVideo(cloudDeviceId);
   // Live air-side camera state for the focused drone (distinct from the
   // static capability catalog). "missing" means the agent's video
   // pipeline found no primary camera right now; the recovery block, when
@@ -202,6 +186,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
     cloudDeviceId,
     transportMode,
     videoEl,
+    agentVideoState,
   });
 
   const hasVideo = isStreaming;

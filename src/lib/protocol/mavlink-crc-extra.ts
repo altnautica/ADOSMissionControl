@@ -178,7 +178,7 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [254, 9],     // DEBUG
   [263, 255],   // CAMERA_IMAGE_CAPTURED
   [285, 49],    // GIMBAL_DEVICE_ATTITUDE_STATUS
-  [330, 158],   // OBSTACLE_DISTANCE
+  [330, 167],   // OBSTACLE_DISTANCE (158 base + increment_f/angle_offset/frame extensions)
   [160, 12],    // FENCE_POINT
   [161, 6],     // FENCE_FETCH_POINT
   [70, 18],     // RC_CHANNELS_OVERRIDE

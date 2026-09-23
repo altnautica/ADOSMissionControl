@@ -27,6 +27,7 @@
 import { useEffect, useRef } from "react";
 
 import { useDroneManager } from "@/stores/drone-manager";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSkillRegistry } from "@/lib/skills";
 import { buildPluginSkill } from "@/lib/skills/plugin-skills";
@@ -39,11 +40,16 @@ import { usePluginSkillEgress } from "@/hooks/use-plugin-skill-egress";
 
 export function PluginSkillHost() {
   const selectedId = useDroneManager((s) => s.selectedDroneId);
-  const contributions = useDroneSkillContributions(selectedId ?? undefined);
+  // Plugin install rows and the LAN plugin client are keyed by the node's
+  // bare device id, not the `node:<deviceId>` selection id.
+  const pluginDeviceId = selectedId
+    ? (deviceIdFromNodeId(selectedId) ?? selectedId)
+    : null;
+  const contributions = useDroneSkillContributions(pluginDeviceId ?? undefined);
 
   // Poll the selected drone's plugins for their published state over the LAN
   // and feed it to the Skill Bar store + the plugin event bus (live state ring).
-  usePluginSkillEgress(selectedId);
+  usePluginSkillEgress(pluginDeviceId);
 
   // Wire the live config writer for the whole skill surface: a skill toggle's
   // activate/deactivate flips the plugin's per-drone `active` through the LAN

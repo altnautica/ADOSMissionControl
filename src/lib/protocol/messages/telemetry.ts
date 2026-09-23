@@ -253,6 +253,8 @@ export interface BatteryStatusMsg {
   type: number;
   temperature: number;
   voltages: number[];
+  /** Cells 11-14 (extension field); 0 means no cell. */
+  voltagesExt: number[];
   currentBattery: number;
   currentConsumed: number;
   energyConsumed: number;
@@ -274,11 +276,21 @@ export interface BatteryStatusMsg {
  * | 33     | uint8       | batteryFunction  |
  * | 34     | uint8       | type             |
  * | 35     | int8        | batteryRemaining |
+ * | 36     | int32       | timeRemaining    | (extension)
+ * | 40     | uint8       | chargeState      | (extension)
+ * | 41     | uint16[4]   | voltagesExt (mV) | (extension)
+ *
+ * The parser zero-extends truncated payloads to the full 54-byte length, so
+ * extension fields read 0 when the sender omits them.
  */
 export function decodeBatteryStatus(dv: DataView): BatteryStatusMsg {
   const voltages: number[] = [];
   for (let i = 0; i < 10; i++) {
     voltages.push(dv.getUint16(10 + i * 2, true));
+  }
+  const voltagesExt: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    voltagesExt.push(dv.byteLength >= 43 + i * 2 ? dv.getUint16(41 + i * 2, true) : 0);
   }
 
   return {
@@ -287,6 +299,7 @@ export function decodeBatteryStatus(dv: DataView): BatteryStatusMsg {
     type: dv.getUint8(34),
     temperature: dv.getInt16(8, true),
     voltages,
+    voltagesExt,
     currentBattery: dv.getInt16(30, true),
     currentConsumed: dv.getInt32(0, true),
     energyConsumed: dv.getInt32(4, true),

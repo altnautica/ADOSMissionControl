@@ -99,7 +99,8 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
       lastPosT = t;
     } else if (frame.channel === "battery") {
       const d = frame.data as BatteryFrame;
-      if (typeof d.remaining === "number") {
+      // -1 is the autopilot's "remaining not measured", not an empty pack.
+      if (typeof d.remaining === "number" && d.remaining >= 0) {
         if (batteryStartPct === undefined) batteryStartPct = d.remaining;
         batteryEndPct = d.remaining;
 

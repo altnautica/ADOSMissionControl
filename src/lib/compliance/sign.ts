@@ -19,7 +19,9 @@ import type { FlightRecord } from "@/lib/types";
 /**
  * Fields excluded from the canonical form. They change after signing without
  * altering what the flight was: annotations, analysis output, soft-delete,
- * cloud-sync bookkeeping and linked media evidence.
+ * cloud-sync bookkeeping and linked media evidence. `date` is the local alias
+ * of the sealed `startTime`; the cloud does not store it and rebuilds it from
+ * `startTime`, so it cannot be part of a seal that survives a sync.
  */
 const VOLATILE_KEYS: Partial<Record<keyof FlightRecord, true>> = {
   updatedAt: true,
@@ -36,6 +38,7 @@ const VOLATILE_KEYS: Partial<Record<keyof FlightRecord, true>> = {
   deletedAt: true,
   cloudSynced: true,
   media: true,
+  date: true,
 };
 
 /** Rebuild a value with every object's keys in sorted order, at any depth. */
@@ -57,10 +60,9 @@ function sortKeysDeep(value: unknown): unknown {
  */
 export function canonicalizeRecord(record: FlightRecord): string {
   const filtered: Record<string, unknown> = {};
-  const indexed = record as unknown as Record<string, unknown>;
-  for (const key of Object.keys(record)) {
+  for (const [key, value] of Object.entries(record)) {
     if (VOLATILE_KEYS[key as keyof FlightRecord]) continue;
-    filtered[key] = indexed[key];
+    filtered[key] = value;
   }
   return JSON.stringify(sortKeysDeep(filtered));
 }

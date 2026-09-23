@@ -52,6 +52,11 @@ interface SingletonAgentVideoOpts {
   transportMode: TransportMode;
   /** The bound <video> element (callback-ref'd so the cascade re-runs on mount). */
   videoEl: HTMLVideoElement | null;
+  /** The agent's reported video state for the source being dialled, as
+   *  resolved by {@link useResolvedAgentVideo} (singleton store, else the
+   *  funnelled fleet-status row). The enable, retry and stall gates key off
+   *  it, so it must describe the same source as `whepUrl`. */
+  agentVideoState: string;
   /** Force the session enabled even when the agent does not report video
    *  running — used for a manual override (e.g. a SITL/Gazebo URL) that has no
    *  agent video state but must still connect. */
@@ -73,9 +78,9 @@ export function useSingletonAgentVideo({
   cloudDeviceId,
   transportMode,
   videoEl,
+  agentVideoState,
   forceEnabled = false,
 }: SingletonAgentVideoOpts): SingletonAgentVideoResult {
-  const agentVideoState = useVideoStore((s) => s.agentVideoState);
   const videoStallSignal = useVideoStore((s) => s.videoStallSignal);
 
   const [retryKey, setRetryKey] = useState(0);

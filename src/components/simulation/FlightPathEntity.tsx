@@ -27,7 +27,7 @@ import {
   type Viewer as CesiumViewer,
   type Entity,
 } from "cesium";
-import type { Waypoint, WaypointCommand } from "@/lib/types";
+import type { AltitudeFrame, Waypoint, WaypointCommand } from "@/lib/types";
 import { MAP_COLORS } from "@/lib/map-constants";
 import { haversineDistance } from "@/lib/telemetry-utils";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -46,6 +46,8 @@ const ROUNDED_TURNS_SAMPLES_PER_SEG = 8;
 interface FlightPathEntityProps {
   viewer: CesiumViewer | null;
   waypoints: Waypoint[];
+  /** Mission default frame for waypoints that carry none (the upload's). */
+  defaultFrame: AltitudeFrame;
   /** Terrain-resolved absolute positions (includes intermediate sub-samples). */
   resolvedPositions: Cartesian3[] | null;
   /** Indices into resolvedPositions for each original waypoint. */
@@ -103,12 +105,13 @@ function getSegmentColor(camTriggerActive: boolean, roiActive: boolean, cmd: Way
 function waypointAbsoluteAlt(
   i: number,
   waypoints: Waypoint[],
+  defaultFrame: AltitudeFrame,
   resolvedPositions: Cartesian3[] | null,
   waypointIndices: number[] | undefined,
   terrainHeights: number[] | undefined,
 ): number {
   const wp = waypoints[i];
-  const datum = altitudeDatumFor(wp.frame);
+  const datum = altitudeDatumFor(wp.frame ?? defaultFrame);
   if (datum === "absolute") return mslToEllipsoidal(wp.alt, wp.lat, wp.lon);
   const terrain = datum === "home" ? terrainHeights?.[0] : terrainHeights?.[i];
   if (terrain !== undefined) return terrain + wp.alt;
@@ -138,6 +141,7 @@ function hasSpecialCommands(waypoints: Waypoint[]): boolean {
 export function FlightPathEntity({
   viewer,
   waypoints,
+  defaultFrame,
   resolvedPositions,
   waypointIndices,
   terrainHeights,
@@ -170,6 +174,7 @@ export function FlightPathEntity({
           alt: waypointAbsoluteAlt(
             i,
             waypoints,
+            defaultFrame,
             resolvedPositions,
             waypointIndices,
             terrainHeights,
@@ -385,7 +390,7 @@ export function FlightPathEntity({
       }
       if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
-  }, [viewer, waypoints, resolvedPositions, waypointIndices, terrainHeights, showLabels, isResolving, roundedTurnsPreview]);
+  }, [viewer, waypoints, defaultFrame, resolvedPositions, waypointIndices, terrainHeights, showLabels, isResolving, roundedTurnsPreview]);
 
   return null;
 }

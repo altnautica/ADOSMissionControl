@@ -22,6 +22,7 @@ import { ReplayTelemetryPanel } from "./ReplayTelemetryPanel";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
 import type { FlightRecord } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { useDroneManager } from "@/stores/drone-manager";
 
 const SPEED_LADDER: PlaybackSpeed[] = [0.25, 0.5, 1, 2, 4, 8];
 
@@ -74,7 +75,11 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
     };
   }, [recording.id]);
 
-  const ready = !loading && error === null;
+  // A vehicle managed after playback started owns the stores: the player
+  // pauses itself, and the controls give way to the reason until it is gone.
+  const vehicleManaged = useDroneManager((s) => s.selectedDroneId !== null || s.drones.size > 0);
+  const shownError = error ?? (vehicleManaged && !loading ? replayBlockedReason() : null);
+  const ready = !loading && shownError === null;
 
   // Keyboard shortcuts. Mounted only while a recording is loaded and playing,
   // so no shortcut can drive the player from the loading or error state.
@@ -196,10 +201,10 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
             <span className="text-xs text-text-tertiary font-mono">Loading recording...</span>
           </div>
         </div>
-      ) : error ? (
+      ) : shownError ? (
         <div className="flex-1 flex items-center justify-center bg-bg-tertiary">
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs text-status-error font-mono">{error}</span>
+            <span className="text-xs text-status-error font-mono">{shownError}</span>
             <button
               onClick={onExit}
               className="text-xs text-accent-primary hover:underline cursor-pointer"

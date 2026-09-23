@@ -3,10 +3,17 @@
  * @description Zustand store for pre-flight checklist state. Manages auto-verified
  * telemetry checks and manual pilot confirmation items. Provides go/no-go status
  * for arming.
+ *
+ * A session belongs to one drone. Readiness is only ever reported for the drone
+ * the session was started for, and `selectDrone` resets the session, so a
+ * checklist completed on one aircraft never vouches for another. Auto items are
+ * written by `ChecklistAutoRunner` from fresh telemetry whether or not the
+ * checklist modal is open.
  * @license GPL-3.0-only
  */
 
 import { create } from "zustand";
+import type { AutoCheckId, AutoCheckVerdicts } from "@/lib/checklist/auto-checks";
 
 export type ChecklistCategory = "hardware" | "software" | "environment" | "mission";
 export type ChecklistItemType = "auto" | "manual";
@@ -27,7 +34,7 @@ export interface ChecklistItem {
 const DEFAULT_ITEMS: Omit<ChecklistItem, "status" | "displayValue">[] = [
   // Hardware
   { id: "battery-level", category: "hardware", label: "Battery charged", description: "Battery remaining > 20%", type: "auto" },
-  { id: "battery-voltage", category: "hardware", label: "Battery voltage OK", description: "Voltage > 10.5V (3S minimum)", type: "auto" },
+  { id: "battery-voltage", category: "hardware", label: "Battery voltage OK", description: "At least 3.7 V per cell", type: "auto" },
   { id: "props-secured", category: "hardware", label: "Props secured", description: "All propellers tightened and undamaged", type: "manual" },
   { id: "frame-intact", category: "hardware", label: "Frame intact", description: "No visible cracks or loose parts", type: "manual" },
   { id: "motors-free", category: "hardware", label: "Motors free to spin", description: "No obstructions on any motor", type: "manual" },
@@ -54,29 +61,59 @@ const DEFAULT_ITEMS: Omit<ChecklistItem, "status" | "displayValue">[] = [
 
 interface ChecklistStoreState {
   items: ChecklistItem[];
+  /** The drone this session was started for; null when no session is open. */
+  droneId: string | null;
   sessionId: string | null;
   startedAt: number | null;
   completedAt: number | null;
 
-  startSession: () => void;
+  /** Open a fresh session (every item pending) for `droneId`. */
+  startSession: (droneId: string) => void;
   resetSession: () => void;
   toggleManualItem: (id: string) => void;
-  updateAutoItem: (id: string, status: "pass" | "fail", displayValue?: string) => void;
+  /**
+   * Write the auto items' verdicts. A pending verdict keeps an operator skip; a
+   * measured pass or fail always replaces it.
+   */
+  applyAutoVerdicts: (verdicts: AutoCheckVerdicts) => void;
+  /** Skip a manual item, or an auto item while it has no verdict. Toggles. */
   skipItem: (id: string) => void;
-  isReadyToArm: () => boolean;
+  /** Whether the open session belongs to `droneId` and every item is done. */
+  isReadyToArm: (droneId: string | null) => boolean;
   getProgress: () => { total: number; checked: number; failed: number };
   getCategoryProgress: (category: ChecklistCategory) => { total: number; checked: number; failed: number };
 }
 
+function isDone(item: ChecklistItem): boolean {
+  return item.status === "pass" || item.status === "skipped";
+}
+
+/**
+ * Selector-friendly readiness: true only when the session was started for
+ * `droneId` and every item is passed or skipped.
+ */
+export function checklistReadyFor(
+  state: Pick<ChecklistStoreState, "droneId" | "items">,
+  droneId: string | null,
+): boolean {
+  return droneId !== null && state.droneId === droneId && state.items.every(isDone);
+}
+
+function freshItems(): ChecklistItem[] {
+  return DEFAULT_ITEMS.map((item) => ({ ...item, status: "pending" as const }));
+}
+
 export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
-  items: DEFAULT_ITEMS.map((item) => ({ ...item, status: "pending" as const })),
+  items: freshItems(),
+  droneId: null,
   sessionId: null,
   startedAt: null,
   completedAt: null,
 
-  startSession: () => {
+  startSession: (droneId) => {
     set({
-      items: DEFAULT_ITEMS.map((item) => ({ ...item, status: "pending" as const })),
+      items: freshItems(),
+      droneId,
       sessionId: crypto.randomUUID(),
       startedAt: Date.now(),
       completedAt: null,
@@ -85,7 +122,8 @@ export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
 
   resetSession: () => {
     set({
-      items: DEFAULT_ITEMS.map((item) => ({ ...item, status: "pending" as const })),
+      items: freshItems(),
+      droneId: null,
       sessionId: null,
       startedAt: null,
       completedAt: null,
@@ -104,34 +142,42 @@ export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
     }));
   },
 
-  updateAutoItem: (id, status, displayValue) => {
-    set((state) => ({
-      items: state.items.map((item) => {
-        if (item.id !== id || item.type !== "auto") return item;
-        return { ...item, status, displayValue };
-      }),
-    }));
+  applyAutoVerdicts: (verdicts) => {
+    const { items } = get();
+    let changed = false;
+    const next = items.map((item): ChecklistItem => {
+      if (item.type !== "auto") return item;
+      const verdict = verdicts[item.id as AutoCheckId];
+      if (!verdict) return item;
+      const status: ChecklistItemStatus =
+        verdict.status === "pending" && item.status === "skipped" ? "skipped" : verdict.status;
+      if (status === item.status && verdict.displayValue === item.displayValue) return item;
+      changed = true;
+      return { ...item, status, displayValue: verdict.displayValue };
+    });
+    if (changed) set({ items: next });
   },
 
   skipItem: (id) => {
     set((state) => ({
       items: state.items.map((item) => {
         if (item.id !== id) return item;
+        // A measured auto verdict is not the operator's to override.
+        if (item.type === "auto" && item.status !== "pending" && item.status !== "skipped") {
+          return item;
+        }
         return { ...item, status: item.status === "skipped" ? "pending" : "skipped" };
       }),
     }));
   },
 
-  isReadyToArm: () => {
-    const { items } = get();
-    return items.every((item) => item.status === "pass" || item.status === "skipped");
-  },
+  isReadyToArm: (droneId) => checklistReadyFor(get(), droneId),
 
   getProgress: () => {
     const { items } = get();
     return {
       total: items.length,
-      checked: items.filter((i) => i.status === "pass" || i.status === "skipped").length,
+      checked: items.filter(isDone).length,
       failed: items.filter((i) => i.status === "fail").length,
     };
   },
@@ -140,7 +186,7 @@ export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
     const items = get().items.filter((i) => i.category === category);
     return {
       total: items.length,
-      checked: items.filter((i) => i.status === "pass" || i.status === "skipped").length,
+      checked: items.filter(isDone).length,
       failed: items.filter((i) => i.status === "fail").length,
     };
   },

@@ -34,10 +34,17 @@ export type PositionCallback = (data: {
 
 export type BatteryCallback = (data: {
   timestamp: number;
+  /**
+   * Battery instance (BATTERY_STATUS.id). 0 is the primary pack; further
+   * monitors (a second pack, an avionics rail) report their own ids.
+   */
+  id: number;
   voltage: number;
-  current: number;
+  /** Amps; absent when the monitor does not measure current. */
+  current?: number;
   remaining: number;
-  consumed: number;
+  /** mAh; absent when the monitor does not count consumption. */
+  consumed?: number;
   temperature?: number;
   cellVoltages?: number[];
   /** Series cell count the FC reports for the pack; absent when unknown. */
@@ -56,10 +63,11 @@ export type GpsCallback = (data: {
 
 export type VfrCallback = (data: {
   timestamp: number;
-  airspeed: number;
-  groundspeed: number;
-  heading: number;
-  throttle: number;
+  /** Absent when the source message does not carry it (MSP altitude samples). */
+  airspeed?: number;
+  groundspeed?: number;
+  heading?: number;
+  throttle?: number;
   alt: number;
   climb: number;
 }) => void;

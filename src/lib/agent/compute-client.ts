@@ -92,6 +92,11 @@ export interface ComputeJob {
    * `params.steps`), or null for a job that carries none. Lets the GCS label a
    * reconstruction with its detail level. */
   steps: number | null;
+  /** The job's params as the engine stored them. A re-run submits them
+   * verbatim: an ingest-created reconstruct job carries backend, session_id,
+   * steps, generation and device_id, and the worker publishes nothing without
+   * device_id. */
+  params: Record<string, unknown>;
   createdMs: number;
   updatedMs: number;
 }
@@ -180,6 +185,7 @@ function coerceJob(raw: unknown): ComputeJob | null {
       params && typeof params.steps === "number" && params.steps > 0
         ? params.steps
         : null,
+    params: params ?? {},
     createdMs: num(e.created_ms),
     updatedMs: num(e.updated_ms),
   };

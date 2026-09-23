@@ -179,7 +179,7 @@ export function JobsPanel({ nodeId }: { nodeId?: string }) {
           className="w-40"
         />
         <div className="ml-auto">
-          <SubmitJobButton client={client} datasetIds={datasetIds} />
+          <SubmitJobButton client={client} datasetIds={datasetIds} jobs={jobs} />
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">{table()}</div>
@@ -195,12 +195,20 @@ export function JobsPanel({ nodeId }: { nodeId?: string }) {
  * but never start any — including re-running the dataset of a job that failed
  * before this list existed.
  */
+/** The keys that attribute a reconstruction to its drone and session. The
+ * worker publishes a world model only with a device_id. */
+const ATTRIBUTION_KEYS = ["device_id", "session_id", "generation", "backend"] as const;
+
 function SubmitJobButton({
   client,
   datasetIds,
+  jobs,
 }: {
   client: ComputeAgentClient;
   datasetIds: string[];
+  /** Jobs already on this node; a reconstruct job on the same dataset carries
+   * the drone and session the dataset came from. */
+  jobs: readonly ComputeJob[];
 }) {
   const t = useTranslations("atlas");
   const { toast } = useToast();
@@ -215,10 +223,20 @@ function SubmitJobButton({
     if (!effectiveDataset) return;
     setBusy(true);
     const parsed = Number.parseInt(steps, 10);
+    const sibling = jobs.find(
+      (j) => j.datasetId === effectiveDataset && j.kind === "reconstruct",
+    );
+    const attribution = Object.fromEntries(
+      ATTRIBUTION_KEYS.filter((k) => sibling?.params[k] !== undefined).map((k) => [
+        k,
+        sibling?.params[k],
+      ]),
+    );
     const result = await client.submitJob({
       kind: "reconstruct",
       datasetId: effectiveDataset,
       params: {
+        ...attribution,
         steps: Number.isFinite(parsed) ? parsed : DEFAULT_RECONSTRUCT_STEPS,
       },
     });

@@ -19,12 +19,15 @@ import { useDiagnosticsStore } from "./diagnostics-store";
 import { usePanelCacheStore } from "./panel-cache-store";
 import { useUploadReceiptsStore } from "./upload-receipts-store";
 import { useMissionStore } from "./mission-store";
+import { useChecklistStore } from "./checklist-store";
+import { useSensorHealthStore } from "./sensor-health-store";
 import {
   startRecordingFor,
   stopRecordingFor,
   isRecordingFor,
 } from "@/lib/telemetry-recorder";
 import { bridgeTelemetry } from "./drone-manager-bridge";
+import { bindSigning } from "@/lib/protocol/signing-binding";
 import { useNodeRegistryStore } from "./node-registry";
 import { invalidateParamCache } from "@/components/fc/parameters/ParametersPanel";
 import { bindInavConfigStores, forgetInavConfigStores } from "./inav-config-binding";
@@ -166,6 +169,8 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     });
 
     const unsubscribers = bridgeTelemetry(id, name, protocol);
+    // Outbound frames carry the drone's signature whenever a key is stored.
+    unsubscribers.push(bindSigning(id, protocol));
 
     const drone: ManagedDrone = {
       id,
@@ -394,6 +399,11 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       // newly selected drone inherits the previous one's track and its "home"
       // fix.
       useTrailStore.getState().clear();
+      // SYS_STATUS sensor health is the same single-slot state; the checklist
+      // session is per drone, so the leaving drone's ticks and verdicts must
+      // not read as the new drone's readiness.
+      useSensorHealthStore.getState().clear();
+      useChecklistStore.getState().resetSession();
       const droneStore = useDroneStore.getState();
       droneStore.setConnectionState("disconnected");
       // The previous drone's heartbeat must not age into a LINK STALE (or back
@@ -469,6 +479,8 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     // without the other leaves a track on the map with no vehicle behind it.
     useTrailStore.getState().clear();
     usePrearmBufferStore.getState().clearAll();
+    useSensorHealthStore.getState().clear();
+    useChecklistStore.getState().resetSession();
     // Latched breach state: nothing else lowers it once the FC stops sending
     // FENCE_STATUS, so a teardown that leaves it set keeps the alarm lit with
     // no vehicle behind it.

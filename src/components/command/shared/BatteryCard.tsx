@@ -48,7 +48,7 @@ export function BatteryCard({ className }: BatteryCardProps) {
             {!latest ? "--%" : hasRealBattery ? `${pct.toFixed(0)}%` : "—"}
           </span>
           <span className="text-[10px] text-text-tertiary">
-            {hasRealBattery && latest ? `${latest.consumed.toFixed(0)} mAh` : "no battery"}
+            {!hasRealBattery || !latest ? "no battery" : latest.consumed !== undefined ? `${latest.consumed.toFixed(0)} mAh` : "— mAh"}
           </span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-white/5">
@@ -70,7 +70,7 @@ export function BatteryCard({ className }: BatteryCardProps) {
         <div className="text-[10px] text-text-tertiary">
           A{" "}
           <span className="text-text-primary font-mono text-xs">
-            {hasRealBattery && latest ? `${latest.current.toFixed(1)}` : "--.-"}
+            {hasRealBattery && latest?.current !== undefined ? `${latest.current.toFixed(1)}` : "--.-"}
           </span>
         </div>
       </div>

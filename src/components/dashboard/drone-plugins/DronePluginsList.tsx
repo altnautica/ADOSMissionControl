@@ -3,25 +3,33 @@
 /**
  * @module DronePluginsList
  * @description The list body of the per-drone Plugins tab. Renders one
- * `<DronePluginCard>` per install row scoped to this drone. Reads from
- * `cmdPlugins:listForDevice` in connected operation; in demo mode it
- * surfaces fixture installs from `mock-plugins.ts`.
+ * `<DronePluginCard>` per install row scoped to this drone. Three sources
+ * merge by plugin id, first wins: the Convex install table
+ * (`cmdPlugins:listForDevice`), the node's own install list over the LAN
+ * (`GET /api/plugins`) when it is LAN-paired, and the heartbeat inventory.
+ * In demo mode it surfaces fixture installs from `mock-plugins.ts`.
  *
- * Empty-state, loading, and disconnected states render inline. The
- * Convex query is wrapped in the skip guard so a missing deployment,
- * demo mode, or a query that 404s at runtime never crashes the host
- * panel; the operator simply sees the empty state.
+ * "Loading" renders only while the Convex query is genuinely in flight and no
+ * other source has produced a card. A skipped query (no deployment, local-only
+ * mode) or a failed one counts as an empty Convex list, so a LAN-only GCS
+ * lists what the node has installed instead of loading forever.
  *
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { makeFunctionReference } from "convex/server";
 
 import { isDemoMode } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
-import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
+import {
+  PluginAgentClient,
+  type PluginAgentManifestDetail,
+} from "@/lib/agent/plugin-client";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
 import {
   getDemoDronePluginSummaries,
   getDemoDronePluginInstalls,
@@ -80,6 +88,60 @@ const INVENTORY_RENDER_CAP = 50;
  *  rendered name. */
 const PLUGIN_ID_RE = /^[a-z0-9][a-z0-9._-]{1,127}$/;
 
+const PLUGIN_SOURCES: readonly PluginSource[] = [
+  "local_file",
+  "git_url",
+  "registry",
+  "builtin",
+  "agent_webapp",
+];
+
+type LanInstall = PluginAgentManifestDetail["install"];
+
+const NO_LAN_INSTALLS: LanInstall[] = [];
+
+/** The node's own install list over the LAN, when it is LAN-paired. Empty
+ * until it answers, on a failed read, or for a node with no LAN pairing.
+ * Re-read when a local install for this node lands. */
+function useLanInstalls(deviceId: string): LanInstall[] {
+  const node = useLocalNodesStore((s) =>
+    s.nodes.find((n) => n.deviceId === deviceId),
+  );
+  const agentUrl = node?.hostname ?? null;
+  const apiKey = node?.apiKey ?? null;
+  const localInstalls = useLocalPluginInstallsStore((s) => s.installs);
+  const installKey = useMemo(
+    () =>
+      localInstalls
+        .filter((i) => i.deviceId === deviceId)
+        .map((i) => i.pluginId)
+        .sort()
+        .join(","),
+    [localInstalls, deviceId],
+  );
+  const [read, setRead] = useState<{ key: string; rows: LanInstall[] } | null>(
+    null,
+  );
+  const key = `${deviceId}|${agentUrl ?? ""}`;
+
+  useEffect(() => {
+    if (isDemoMode() || !agentUrl || !apiKey) return;
+    let current = true;
+    new PluginAgentClient(agentUrl, apiKey)
+      .list()
+      .then(({ installs }) => {
+        if (current) setRead({ key, rows: installs });
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [key, agentUrl, apiKey, installKey]);
+
+  // A list read from another node never renders here.
+  return read !== null && read.key === key ? read.rows : NO_LAN_INSTALLS;
+}
+
 export function DronePluginsList({
   agentId,
   className,
@@ -94,10 +156,14 @@ export function DronePluginsList({
   // the empty-state to surface instead of a perpetual loading spinner.
   // Cloud-relay sessions with a real auth identity still get their
   // proper install list.
-  const installs = useConvexSkipQuery(listForDeviceRef, {
-    args: { deviceId: agentId },
-    enabled: Boolean(agentId) && !isDemoMode(),
-  });
+  const { data: installs, state: installsState } = useConvexSkipQueryState(
+    listForDeviceRef,
+    {
+      args: { deviceId: agentId },
+      enabled: Boolean(agentId) && !isDemoMode(),
+    },
+  );
+  const lanInstalls = useLanInstalls(agentId);
 
   // Webapp-side installs the agent reported via heartbeat. The Convex
   // table stays the authority; this surfaces only entries that the
@@ -141,6 +207,27 @@ export function DronePluginsList({
     // match the canonical reverse-DNS plugin namespace gets dropped
     // before it reaches the render path.
     const seen = new Set(fromConvex.map((c) => c.pluginId));
+    // The node's own install list: authoritative for what is on the node,
+    // but carries none of the GCS-side install metadata.
+    const fromLan: DronePluginCardData[] = [];
+    for (const install of lanInstalls) {
+      if (!PLUGIN_ID_RE.test(install.plugin_id) || seen.has(install.plugin_id)) {
+        continue;
+      }
+      seen.add(install.plugin_id);
+      const source = PLUGIN_SOURCES.find((s) => s === install.source);
+      fromLan.push({
+        pluginId: install.plugin_id,
+        version: install.version,
+        name: install.plugin_id,
+        source: source ?? "agent_webapp",
+        signerId: install.signer_id ?? undefined,
+        status: install.status as PluginInstallStatus,
+        halves: ["agent"],
+        installId: `lan:${install.plugin_id}`,
+        deviceId: agentId,
+      });
+    }
     const fromAgent: DronePluginCardData[] = (inventory ?? [])
       .filter(
         (entry) =>
@@ -169,10 +256,12 @@ export function DronePluginsList({
         // declared services (ready / not-ready with a reason).
         serviceStatus: entry.service_status ?? undefined,
       }));
-    return [...fromConvex, ...fromAgent];
-  }, [agentId, installs, inventory]);
+    return [...fromConvex, ...fromLan, ...fromAgent];
+  }, [agentId, installs, lanInstalls, inventory]);
 
-  if (!isDemoMode() && installs === undefined) {
+  // Loading only while the Convex query is in flight and nothing else has
+  // produced a card: a skipped or failed query is an empty Convex list.
+  if (installsState === "loading" && cards.length === 0) {
     return (
       <p className="py-8 text-center text-xs text-text-tertiary">
         {t("loading")}

@@ -18,9 +18,10 @@ import type { ConfirmPolicy } from "@/lib/skills/types";
 
 function resetStores() {
   useSkillConfirmStore.setState({ pending: null, _nextId: 1 });
-  // Mark every checklist item ready so the default path is the non-escalated
-  // confirm; individual tests override.
+  // Mark every checklist item ready for drone-1 so the default path is the
+  // non-escalated confirm; individual tests override.
   useChecklistStore.setState((s) => ({
+    droneId: "drone-1",
     items: s.items.map((item) => ({ ...item, status: "skipped" as const })),
   }));
 }
@@ -64,7 +65,7 @@ describe("SkillConfirmHost", () => {
     act(() => {
       void useSkillConfirmStore
         .getState()
-        .request(ARM_POLICY)
+        .request(ARM_POLICY, "drone-1")
         .then((v) => {
           resolved = v;
         });
@@ -88,7 +89,7 @@ describe("SkillConfirmHost", () => {
     act(() => {
       void useSkillConfirmStore
         .getState()
-        .request(ARM_POLICY)
+        .request(ARM_POLICY, "drone-1")
         .then((v) => {
           resolved = v;
         });
@@ -111,7 +112,7 @@ describe("SkillConfirmHost", () => {
 
     renderWithIntl(<SkillConfirmHost />);
     act(() => {
-      void useSkillConfirmStore.getState().request(ARM_POLICY);
+      void useSkillConfirmStore.getState().request(ARM_POLICY, "drone-1");
     });
 
     // The OVERRIDE phrase is required, not the normal ARM phrase.
@@ -122,6 +123,16 @@ describe("SkillConfirmHost", () => {
       (screen.getByRole("button", { name: /^Arm$/ }) as HTMLButtonElement)
         .disabled,
     ).toBe(false);
+  });
+
+  it("escalates to OVERRIDE when the checklist was completed for another drone", async () => {
+    renderWithIntl(<SkillConfirmHost />);
+    act(() => {
+      void useSkillConfirmStore.getState().request(ARM_POLICY, "drone-2");
+    });
+
+    await screen.findByLabelText(/type/i);
+    expect(screen.getByText("OVERRIDE")).toBeTruthy();
   });
 
   it("gates the two-stage kill confirm behind a countdown", async () => {

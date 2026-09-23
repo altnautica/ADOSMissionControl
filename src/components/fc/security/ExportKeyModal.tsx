@@ -4,12 +4,13 @@
  * @module components/fc/security/ExportKeyModal
  * @description Rotate-and-reveal flow for exporting a signing key.
  *
- * The CryptoKey held in IndexedDB is non-extractable by design. We cannot
- * read its raw bytes back even from the same JavaScript context. The only
- * moment raw bytes exist in the browser is the split second between
- * generation and the non-extractable import. We reuse that window here:
- * "exporting" means rotating to a fresh key, copying the new bytes to
- * the clipboard, and replacing the stored key with the new one.
+ * "Exporting" means rotating to a fresh key, copying the new bytes to the
+ * clipboard, and replacing the stored key with the new one. The stored key
+ * is raw bytes in this browser's IndexedDB (MAVLink signing hashes the key
+ * itself, so it cannot live in a non-extractable Web Crypto handle), and
+ * script on the page can read it. Export still rotates so every copy that
+ * leaves the browser is a new key with its own enrollment record, and the
+ * previously deployed key stops working on the FC.
  *
  * Security posture vs a "reveal current key" UX:
  *   - Clipboard-only, never rendered on screen. Screen recordings,
@@ -139,10 +140,9 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
       enrollmentState: outcome.kind === "enrolled" ? "enrolled" : "unconfirmed",
       previousKeyId: outcome.kind === "unconfirmed" ? outcome.previousKeyId : null,
     });
-    // If this drone was opt-in for cloud sync, upload the new key now while
-    // the hex is still in scope. The non-extractable CryptoKey cannot be
-    // exported again, so this is the one window. An unconfirmed key is not
-    // uploaded: other browsers must not replace a key the FC may still hold.
+    // If this drone was opt-in for cloud sync, upload the new key now so the
+    // cloud copy matches the FC. An unconfirmed key is not uploaded: other
+    // browsers must not replace a key the FC may still hold.
     if (outcome.kind === "enrolled" && isAuthenticated && convexClient) {
       try {
         const existingRow = await getCloudKeyForDrone(convexClient, droneId);
@@ -288,8 +288,8 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
               <AlertTriangle size={14} className="mt-0.5" aria-hidden="true" />
               <span>
                 The new key is enrolled and stored in this browser, but the clipboard refused it
-                ({errorMsg || "copy failed"}). Copy it again before closing: once this window closes the
-                key cannot be exported without another rotation.
+                ({errorMsg || "copy failed"}). Copy it again before closing: this dialog only exports by
+                rotating, so exporting after it closes replaces the key again.
               </span>
             </div>
             <div className="flex gap-2 justify-end">

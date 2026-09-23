@@ -119,8 +119,8 @@ export async function releaseCloudLinkId(
 /**
  * Export the raw key for one drone. The only path that returns key
  * material, and it is audited server-side as an `export` signing event.
- * The caller owns the returned buffer and must zeroize it immediately
- * after `importNonExtractableKey`.
+ * The caller owns the returned buffer and must zeroize it once the
+ * keystore has taken its copy (`importAndStore` does this).
  *
  * `deviceFingerprint` is the same short opaque browser hash the signing
  * event log takes — never a userId, never PII.

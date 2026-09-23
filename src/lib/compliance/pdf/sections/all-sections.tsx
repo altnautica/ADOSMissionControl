@@ -106,7 +106,7 @@ export function FlightCoreSection({ record }: SectionProps) {
         </View>
         <View style={styles.col}>
           <Row label="Distance" value={`${(record.distance / 1000).toFixed(2)} km`} />
-          <Row label="Max altitude" value={`${record.maxAlt.toFixed(0)} m AGL`} />
+          <Row label="Max altitude" value={`${record.maxAlt.toFixed(0)} m above home`} />
           <Row label="Max speed" value={`${record.maxSpeed.toFixed(1)} m/s`} />
           {record.avgSpeed !== undefined && <Row label="Avg speed" value={`${record.avgSpeed.toFixed(1)} m/s`} />}
           <Row label="Battery used" value={`${record.batteryUsed.toFixed(0)}%`} />

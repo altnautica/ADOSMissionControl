@@ -42,15 +42,15 @@ export interface PluginBatterySample {
 }
 
 /** Normalize the adapter's battery frame for the `battery` topic. */
-export function toBatterySample(b: BatteryData): PluginBatterySample {
-  // MAVLink reports -1 for current, consumed and remaining when unknown.
+export function toBatterySample(b: BatteryData & { id: number }): PluginBatterySample {
+  // current/consumed are absent when unmeasured; remaining is -1 when not estimated.
   return {
     timestampMs: b.timestamp,
-    packId: 0,
+    packId: b.id,
     cellVoltagesV: b.cellVoltages ?? [],
     totalVoltageV: b.voltage,
-    currentA: b.current < 0 ? null : b.current,
-    consumedAh: b.consumed < 0 ? null : b.consumed / 1000,
+    currentA: b.current ?? null,
+    consumedAh: b.consumed === undefined ? null : b.consumed / 1000,
     remainingPercent: b.remaining < 0 ? null : b.remaining,
     temperatureC: b.temperature ?? null,
     cellCount: b.cellCount ?? null,

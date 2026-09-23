@@ -62,20 +62,21 @@ function makeCircle(id = "circ-1"): DrawnCircle {
  * the live stores directly (mode, pattern, geofence, drawing) and only needs the
  * toast callback off the deps, so the rest are stubs.
  */
-function buildActions() {
+function buildActions(activeTool = "polygon") {
   const toast = vi.fn();
+  const addWaypoint = vi.fn();
   const { result } = renderHook(() =>
     usePlannerActions({
       waypoints: [],
       activePlanId: "plan-1",
       isDirty: false,
-      activeTool: "polygon",
+      activeTool,
       defaultAlt: 50,
       defaultSpeed: 5,
       selectedDroneId: "",
       missionName: "",
       contextMenu: null,
-      addWaypoint: vi.fn(),
+      addWaypoint,
       removeWaypoint: vi.fn(),
       insertWaypoint: vi.fn(),
       clearMission: vi.fn(),
@@ -93,7 +94,12 @@ function buildActions() {
       toast,
     }),
   );
-  return { handleDrawingComplete: result.current.handleDrawingComplete, toast };
+  return {
+    handleDrawingComplete: result.current.handleDrawingComplete,
+    handleMapClick: result.current.handleMapClick,
+    addWaypoint,
+    toast,
+  };
 }
 
 /** Arm the planner into a draw mode with the given destination tag. */
@@ -358,5 +364,14 @@ describe("handleDrawingComplete routing", () => {
 
     expect(useGeofenceStore.getState().enabled).toBe(false);
     expect(toast).toHaveBeenCalledWith(expect.stringContaining("Polygon drawn"), "success");
+  });
+});
+
+describe("handleMapClick waypoint tools", () => {
+  it("the loiter tool places a timed loiter the flight controller leaves on its own", () => {
+    const { handleMapClick, addWaypoint } = buildActions("loiter");
+    handleMapClick(12.97, 77.59);
+    expect(addWaypoint).toHaveBeenCalledTimes(1);
+    expect(addWaypoint.mock.calls[0][0].command).toBe("LOITER_TIME");
   });
 });

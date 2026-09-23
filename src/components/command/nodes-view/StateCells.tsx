@@ -22,38 +22,7 @@ import { BatteryLow, BatteryMedium, BatteryFull } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import { useBatteryBand } from "@/lib/battery-bands";
-import {
-  UnknownValue,
-  readingFreshness,
-  staleClass,
-  type ReadingFreshness,
-} from "./cell-primitives";
-
-/** How much a row's flight-controller readings are worth, and if nothing, why. */
-export interface FcReading {
-  freshness: ReadingFreshness;
-  /** `nodesView` key naming why there is nothing to show; null when there is. */
-  absentKey: "noLiveReading" | "fc.notReachable" | "fc.notFlightNode" | null;
-}
-
-/**
- * Resolve a row's FC reading. A ground station or workstation flies nothing;
- * an offline node has no reading; a live node whose agent reports no reachable
- * FC has an agent reading but no flight-controller one.
- */
-export function fcReading(
-  summary: Pick<CommandAgentSummary, "liveness" | "profile" | "system">,
-): FcReading {
-  if (summary.profile !== "drone") {
-    return { freshness: "none", absentKey: "fc.notFlightNode" };
-  }
-  const freshness = readingFreshness(summary.liveness);
-  if (freshness === "none") return { freshness, absentKey: "noLiveReading" };
-  if (!summary.system.fcReachable) {
-    return { freshness: "none", absentKey: "fc.notReachable" };
-  }
-  return { freshness, absentKey: null };
-}
+import { UnknownValue, staleClass, type FcReading } from "./cell-primitives";
 
 export function BatteryCell({
   telemetry,

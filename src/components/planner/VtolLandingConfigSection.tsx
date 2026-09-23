@@ -1,8 +1,8 @@
 /**
  * @module VtolLandingConfigSection
  * @description VTOL landing pattern configuration UI.
- * Exposes the landing point, cruise-approach geometry, transition distance, and
- * descent speed for the cruise -> transition -> vertical-landing sequence.
+ * Exposes the landing point, final-approach heading, transition distance and
+ * approach altitude for the cruise -> transition -> vertical-landing sequence.
  * @license GPL-3.0-only
  */
 "use client";
@@ -10,6 +10,7 @@
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { usePatternStore } from "@/stores/pattern-store";
+import { landingApproachHeading } from "@/lib/patterns/landing-generator";
 import { LandingPointPicker } from "./LandingPointPicker";
 
 export function VtolLandingConfig() {
@@ -22,12 +23,15 @@ export function VtolLandingConfig() {
         landingPoint={config.landingPoint}
         onChange={(landingPoint) => update({ landingPoint })}
       />
-      <Input label={t("approachHeading")} type="number" unit="deg" placeholder="-1 = auto"
-        value={String(config.approachHeading ?? -1)}
+      <Input label={t("approachHeading")} type="number" unit="deg" placeholder="0-360"
+        value={config.approachHeading === undefined ? "" : String(config.approachHeading)}
         onChange={(e) => {
           const v = parseFloat(e.target.value);
-          update({ approachHeading: Number.isFinite(v) ? v : -1 });
+          update({ approachHeading: Number.isFinite(v) ? v : undefined });
         }} />
+      {landingApproachHeading(config.approachHeading) === null && (
+        <p className="text-[10px] text-status-warning">{t("approachHeadingRequired")}</p>
+      )}
       <Input label={t("transitionDistance")} type="number" unit="m" value={String(config.transitionDistance ?? 150)}
         onChange={(e) => update({ transitionDistance: parseFloat(e.target.value) || 150 })} />
       <Input label={t("approachAltitude")} type="number" unit="m" value={String(config.approachAltitude ?? 50)}

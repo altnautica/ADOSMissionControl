@@ -19,6 +19,8 @@ import { cmdPairingApi } from "@/lib/community-api-drones";
 import { useAuthStore } from "@/stores/auth-store";
 import { AgentConnectPanel } from "./AgentConnectPanel";
 import { PairingResult } from "./pairing/PairingResult";
+import { PairingPrompt } from "./pairing/PairingPrompt";
+import { SignInModal } from "@/components/auth/SignInModal";
 import {
   usePairingFlow,
   type ClaimCodeMutation,
@@ -103,20 +105,15 @@ function PairingDialogTabbed({ open, onClose, onPaired }: PairingDialogProps) {
 }
 
 /** Deep-link path: claim the supplied code via the cloud flow, with a
- *  "Pair on this network" fallback that reveals the tabbed body. */
+ *  "Pair on this network" fallback that reveals the tabbed body. A build
+ *  with no cloud backend cannot claim a code at all, so it opens the LAN
+ *  pairing body directly. */
 function PairingDialogDeepLink(props: PairingDialogProps) {
   const convexAvailable = useConvexAvailable();
   if (convexAvailable) {
     return <PairingDialogDeepLinkWithConvex {...props} />;
   }
-  return (
-    <PairingDialogDeepLinkBase
-      {...props}
-      claimCode={null}
-      preGenerate={null}
-      requiresSignIn={false}
-    />
-  );
+  return <PairingDialogTabbed {...props} />;
 }
 
 function PairingDialogDeepLinkWithConvex(props: PairingDialogProps) {
@@ -152,6 +149,7 @@ function PairingDialogDeepLinkBase({
   // Add-a-Node body (LAN pairing).
   const [revealTabs, setRevealTabs] = useState(false);
   const pairLocally = useCallback(() => setRevealTabs(true), []);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   const flow = usePairingFlow({
     open,
@@ -175,6 +173,9 @@ function PairingDialogDeepLinkBase({
   return (
     <PairingShell onClose={onClose}>
       <div className="space-y-5">
+        {requiresSignIn && (
+          <PairingPrompt variant="sign-in" onSignIn={() => setSignInOpen(true)} />
+        )}
         {flow.state === "success" && flow.pairedInfo && (
           <PairingResult variant="success" info={flow.pairedInfo} />
         )}
@@ -182,12 +183,13 @@ function PairingDialogDeepLinkBase({
           <PairingResult
             variant="error"
             message={flow.errorMessage}
-            onRetry={flow.generateCode}
+            onRetry={flow.retryDeepLinkClaim}
             canPairLocally={flow.canPairLocally}
             onPairLocally={pairLocally}
           />
         )}
       </div>
+      <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
     </PairingShell>
   );
 }

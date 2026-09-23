@@ -326,6 +326,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
       <CloudPage
         nodeDeviceId={ctx.nodeDeviceId}
         config={ctx.config}
+        readOnly={ctx.readOnly}
+        setValue={ctx.setValue}
       />
     ),
   },

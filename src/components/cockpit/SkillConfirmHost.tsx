@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
-import { useChecklistStore } from "@/stores/checklist-store";
+import { useChecklistStore, checklistReadyFor } from "@/stores/checklist-store";
 
 const OVERRIDE_LOG_KEY = "ados:flight-safety-overrides";
 
@@ -63,9 +63,10 @@ export function SkillConfirmHost() {
   const pending = useSkillConfirmStore((s) => s.pending);
   const resolvePending = useSkillConfirmStore((s) => s.resolvePending);
 
-  const checklistReady = useChecklistStore((s) =>
-    s.items.every((item) => item.status === "pass" || item.status === "skipped"),
-  );
+  // Readiness for the drone the request targets: a checklist completed for any
+  // other aircraft, or a request that names no drone, does not count.
+  const targetDroneId = pending?.droneId ?? null;
+  const checklistReady = useChecklistStore((s) => checklistReadyFor(s, targetDroneId));
 
   // Kill two-stage state. The two-stage state is keyed to the pending request
   // id so a fresh request starts at the first dialog with a full countdown,

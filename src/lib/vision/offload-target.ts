@@ -2,10 +2,10 @@
  * @module vision/offload-target
  * @description Maps a LAN-paired workstation node to the `host:port` address a
  * drone agent stores as its perception-offload target
- * (`perception.offload.compute_node_addr`), and back. One helper so the node
- * Settings "Pin workstation" control and the Vision-tab tier card read and write
- * the SAME stored value — two views of one link. An empty string means
- * auto-discover (the agent picks any serving workstation on the LAN).
+ * (`perception.offload.compute_node_addr`). One helper so the node Settings
+ * "Pin workstation" control and the Vision-tab tier card write the SAME stored
+ * value — two views of one link. An empty string means auto-discover (the
+ * agent picks any serving workstation on the LAN).
  * @license GPL-3.0-only
  */
 
@@ -29,21 +29,4 @@ export function nodeToOffloadAddr(node: Pick<LocalNode, "hostname">): string {
   } catch {
     return raw;
   }
-}
-
-/**
- * The workstation whose offload address equals `addr`, or null (auto / no
- * match). Lets a stored `compute_node_addr` resolve back to the paired node so
- * the tier card can submit a run to its compute engine.
- */
-export function workstationForOffloadAddr(
-  nodes: LocalNode[],
-  addr: string,
-): LocalNode | null {
-  if (!addr) return null;
-  return (
-    nodes.find(
-      (n) => n.profile === "workstation" && nodeToOffloadAddr(n) === addr,
-    ) ?? null
-  );
 }

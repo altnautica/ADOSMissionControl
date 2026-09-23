@@ -26,13 +26,13 @@ import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import { NodeIdentityCell } from "./NodeIdentityCell";
 import { ReachCell } from "./ReachCell";
 import { LinkCell } from "./LinkCell";
-import { BatteryCell, fcReading } from "./StateCells";
+import { BatteryCell } from "./StateCells";
 import { FlightModeCell } from "./FlightModeCell";
 import { RelayModeCell } from "./RelayModeCell";
 import { FeaturesCell } from "./FeaturesCell";
 import { NodeActionsMenu } from "./NodeActionsMenu";
 import { useNodeSkills } from "./use-node-skills";
-import { readingFreshness } from "./cell-primitives";
+import { fcReading, readingFreshness } from "./cell-primitives";
 
 const CELL = "px-2 py-2 align-middle";
 

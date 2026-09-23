@@ -88,10 +88,7 @@ export function HotspotApFields({
     if (!canApply) return;
     setSaving(true);
     try {
-      const view = (await api.setAp(update)) as unknown as Record<
-        string,
-        unknown
-      >;
+      const view = await api.setAp(update);
       setPassphrase("");
       setSsid("");
       setChannel("");

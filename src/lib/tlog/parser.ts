@@ -178,13 +178,14 @@ export function tlogToFlightRecord(
     ? path.filter((_, i) => i % Math.ceil(path.length / 1000) === 0)
     : path;
 
+  const importedAt = Date.now();
   const record: FlightRecord = {
     id,
     droneId: `tlog-${startUs}`,
     droneName: sourceFilename?.replace(/\.tlog$/i, "") ?? "MAVLink Import",
-    date: Date.now(),
-    startTime: Date.now(),
-    endTime: Date.now() + duration * 1000,
+    date: importedAt,
+    startTime: importedAt,
+    endTime: importedAt + duration * 1000,
     duration,
     distance: 0, // Would need haversine sum
     maxAlt,

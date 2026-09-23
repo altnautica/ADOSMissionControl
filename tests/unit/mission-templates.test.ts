@@ -3,6 +3,7 @@ import {
   MISSION_TEMPLATES,
   type MissionTemplateContext,
 } from "@/lib/templates/mission-templates";
+import { validateMission } from "@/lib/validation/mission-validator";
 
 const BANGALORE: [number, number] = [12.9716, 77.5946];
 const LONDON: [number, number] = [51.5074, -0.1278];
@@ -72,6 +73,14 @@ describe("MISSION_TEMPLATES", () => {
         const cruise = waypoints.filter((w) => w.command === "WAYPOINT");
         expect(cruise.length).toBeGreaterThan(0);
         expect(cruise.some((w) => w.alt === 60)).toBe(true);
+      });
+
+      it("builds a mission the validator accepts, in the mission frame", () => {
+        const ctx: MissionTemplateContext = { ...ctxAt(BANGALORE), frame: "terrain" };
+        const waypoints = tpl.build(ctx);
+        const result = validateMission(waypoints, { defaultFrame: ctx.frame });
+        expect(result.errors.map((e) => `${e.code}: ${e.message}`)).toEqual([]);
+        expect(waypoints.every((w) => w.frame === "terrain")).toBe(true);
       });
     });
   }

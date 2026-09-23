@@ -4,8 +4,9 @@
  * @module components/fc/security/SigningPanel
  * @description MAVLink v2 message signing management for the selected drone.
  *
- * Key material lives in the browser as a non-extractable CryptoKey. The
- * agent is a transparent pipe plus a one-shot enrollment helper; it
+ * Key material lives in this browser's IndexedDB as raw bytes (MAVLink
+ * signing hashes the key itself), readable by script running on the page.
+ * The agent is a transparent pipe plus a one-shot enrollment helper; it
  * never persists a key.
  *
  * This file is a thin composition. State and action handlers live in

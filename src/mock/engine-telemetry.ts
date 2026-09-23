@@ -14,9 +14,9 @@ import type { MockProtocol } from "./mock-protocol";
 import type { FleetDrone } from "@/lib/types";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 
-/** Core sensor bitmask: gyro | accel | compass | baro | GPS | motors | RC | AHRS | battery */
+/** Core sensor bitmask: gyro | accel | compass | baro | GPS | motors | RC | AHRS | battery | pre-arm check */
 export const SENSOR_MASK = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 5)
-  | (1 << 15) | (1 << 16) | (1 << 21) | (1 << 25);
+  | (1 << 15) | (1 << 16) | (1 << 21) | (1 << 25) | (1 << 28);
 
 interface TelemetryTickContext {
   tickCount: number;
@@ -88,7 +88,7 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
       sensorsEnabled: SENSOR_MASK,
       sensorsHealthy: SENSOR_MASK,
       voltageMv: Math.round(ctx.droneUpdate.battery!.voltage * 1000),
-      currentCa: Math.round(ctx.droneUpdate.battery!.current * 100),
+      currentCa: Math.round((ctx.droneUpdate.battery!.current ?? 0) * 100),
       batteryRemaining: Math.round(ctx.battery),
       dropRateComm: 0,
       errorsComm: 0,

@@ -1,14 +1,15 @@
 /**
  * @module SimulationControls
  * @description Camera mode buttons, quick actions, history, and keyboard
- * shortcuts reference for the simulation panel. Pure presentational; receives
- * data and callbacks from the parent.
+ * shortcuts reference for the simulation panel. A history row replays a past
+ * run by loading its saved plan; unsaved work in the shared workspace is
+ * offered a save or an explicit discard first.
  * @license GPL-3.0-only
  */
 
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   ChevronRight,
@@ -26,9 +27,10 @@ import { timeAgo } from "@/lib/plan-library";
 import { computeFlightPlan } from "@/lib/simulation-utils";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { usePlannerStore } from "@/stores/planner-store";
-import { applyPlanToWorkspace } from "@/lib/plan-workspace";
+import { applyPlanToWorkspace, saveActivePlanFromWorkspace, workspaceHasUnsavedChanges } from "@/lib/plan-workspace";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useToast } from "@/components/ui/toast";
+import { UnsavedChangesDialog } from "@/components/library/UnsavedChangesDialog";
 
 interface ShortcutEntry {
   key: string;
@@ -63,11 +65,13 @@ export function SimulationControls({
   const t = useTranslations("simulate");
   const { toast } = useToast();
 
+  // A history row whose replay waits on the unsaved-changes decision.
+  const [pendingReplay, setPendingReplay] = useState<SimHistoryEntry | null>(null);
+
   // Load a past run's plan back into the workspace and restart playback.
-  const handleReplay = useCallback(
+  const startReplay = useCallback(
     (entry: SimHistoryEntry) => {
-      const lib = usePlanLibraryStore.getState();
-      const plan = lib.plans.find((p) => p.id === entry.planId);
+      const plan = usePlanLibraryStore.getState().plans.find((p) => p.id === entry.planId);
       if (!plan || plan.waypoints.length < 2) {
         toast(t("planNotFound"), "error");
         return;
@@ -100,6 +104,33 @@ export function SimulationControls({
     },
     [toast, t],
   );
+
+  // Replaying replaces the mission and restores or clears the fence, rally
+  // points and POIs, so unsaved work is offered a save or an explicit discard
+  // first, the same choice the plan library gives when switching plans.
+  const handleReplay = useCallback(
+    (entry: SimHistoryEntry) => {
+      const plan = usePlanLibraryStore.getState().plans.find((p) => p.id === entry.planId);
+      if (!plan || plan.waypoints.length < 2) {
+        toast(t("planNotFound"), "error");
+        return;
+      }
+      if (workspaceHasUnsavedChanges()) {
+        setPendingReplay(entry);
+        return;
+      }
+      startReplay(entry);
+    },
+    [startReplay, toast, t],
+  );
+
+  const replayPending = (save: boolean) => {
+    const entry = pendingReplay;
+    setPendingReplay(null);
+    if (!entry) return;
+    if (save) saveActivePlanFromWorkspace();
+    startReplay(entry);
+  };
 
   return (
     <>
@@ -206,6 +237,13 @@ export function SimulationControls({
           </div>
         )}
       </div>
+
+      <UnsavedChangesDialog
+        open={pendingReplay !== null}
+        onSaveAndSwitch={() => replayPending(true)}
+        onDiscardAndSwitch={() => replayPending(false)}
+        onCancel={() => setPendingReplay(null)}
+      />
     </>
   );
 }

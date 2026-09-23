@@ -56,12 +56,26 @@ export function handleGlobalPosition(payload: DataView, callbacks: PositionCallb
   }
 }
 
+/** BATTERY_STATUS.voltages: UINT16_MAX marks a cell that is not present. */
+const CELL_ABSENT_MV = 0xffff
+/** Largest value one voltages[] slot can carry; a pack above it spills into the next slot. */
+const CELL_MAX_MV = 0xfffe
+
 export function handleBattery(payload: DataView, callbacks: BatteryCallback[]): void {
   const data = decodeBatteryStatus(payload)
-  // Filter valid cell voltages (0xFFFF = cell not used)
-  const validCells = data.voltages.filter(v => v !== 0xFFFF)
-  const totalVoltage = validCells.reduce((sum, v) => sum + v, 0) / 1000 // mV → V
-  const cellVoltages = validCells.length > 0 ? validCells.map(v => v / 1000) : undefined // mV → V
+  // voltages[0..9]: UINT16_MAX = no cell. voltages_ext[0..3]: 0 = no cell.
+  // Some senders zero-fill unused base slots, so 0 is never a measured cell.
+  const baseCells = data.voltages.filter((v) => v !== CELL_ABSENT_MV && v > 0)
+  const extCells = data.voltagesExt.filter((v) => v !== CELL_ABSENT_MV && v > 0)
+  const allSlots = [...baseCells, ...extCells]
+  // The pack voltage is the sum of every populated slot, whether the slots are
+  // cells or a pack total split into UINT16_MAX-1 chunks.
+  const totalVoltage = allSlots.reduce((sum, v) => sum + v, 0) / 1000 // mV → V
+  // A monitor without per-cell sensing puts the pack total in slot 0 (and any
+  // excess above 65.534 V in slot 1). Only two or more slots that are not a
+  // split total are real per-cell readings.
+  const perCell = allSlots.length >= 2 && allSlots[0] !== CELL_MAX_MV
+  const cellVoltages = perCell ? allSlots.map((v) => v / 1000) : undefined // mV → V
 
   // Temperature: centi-degrees to degrees, INT16_MAX (32767) = unavailable
   const temperature = data.temperature !== 32767 && data.temperature !== 0
@@ -71,12 +85,15 @@ export function handleBattery(payload: DataView, callbacks: BatteryCallback[]): 
   for (const cb of callbacks) {
     cb({
       timestamp: Date.now(),
+      id: data.id,
       voltage: totalVoltage,
-      current: data.currentBattery / 100,      // cA → A
-      remaining: data.batteryRemaining,          // already %
-      consumed: data.currentConsumed,            // mAh
+      // -1 marks a quantity the monitor does not measure.
+      current: data.currentBattery === -1 ? undefined : data.currentBattery / 100, // cA → A
+      remaining: data.batteryRemaining,          // already %, -1 = not estimated
+      consumed: data.currentConsumed === -1 ? undefined : data.currentConsumed, // mAh
       temperature,
       cellVoltages,
+      ...(perCell ? { cellCount: allSlots.length } : {}),
     })
   }
 }

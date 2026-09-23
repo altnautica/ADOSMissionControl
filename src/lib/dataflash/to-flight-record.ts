@@ -28,8 +28,10 @@ const EV_AUTO_ARMED = 15;
 interface FlightSlice {
   /** ArduPilot TimeUS at the arm event. */
   startUs: number;
-  /** ArduPilot TimeUS at the disarm event. */
+  /** ArduPilot TimeUS at the disarm event, or the log's last TimeUS. */
   endUs: number;
+  /** The log ended with the vehicle still armed: no disarm closed the flight. */
+  endedArmed: boolean;
 }
 
 interface BuiltFlight {
@@ -105,16 +107,16 @@ export function detectFlightSlices(log: DataflashLog): FlightSlice[] {
     if (c.armed && currentStartUs === null) {
       currentStartUs = c.us;
     } else if (!c.armed && currentStartUs !== null) {
-      slices.push({ startUs: currentStartUs, endUs: c.us });
+      slices.push({ startUs: currentStartUs, endUs: c.us, endedArmed: false });
       currentStartUs = null;
     }
   }
   if (currentStartUs !== null) {
-    slices.push({ startUs: currentStartUs, endUs: Math.max(currentStartUs, lastUs) });
+    slices.push({ startUs: currentStartUs, endUs: Math.max(currentStartUs, lastUs), endedArmed: true });
   }
 
   if (slices.length === 0 && stampedRows >= 2) {
-    slices.push({ startUs: firstUs, endUs: lastUs });
+    slices.push({ startUs: firstUs, endUs: lastUs, endedArmed: false });
   }
 
   return slices;
@@ -424,7 +426,9 @@ function buildFlight(
     batteryEndV: battEndV,
     batteryUsed,
     waypointCount: 0,
-    status: "completed",
+    // A log that stops while armed (brown-out, battery ejection, crash) did
+    // not end in a normal disarm.
+    status: slice.endedArmed ? "aborted" : "completed",
     path: path.length >= 2 ? path : undefined,
     takeoffLat: path[0]?.[0],
     takeoffLon: path[0]?.[1],

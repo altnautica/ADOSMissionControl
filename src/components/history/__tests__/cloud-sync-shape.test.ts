@@ -12,6 +12,7 @@ import { describe, it, expect } from "vitest";
 import { upsert } from "../../../../convex/cmdFlightLogs";
 import { toCloudShape, fromCloudShape, SYNCED_FLIGHT_KEYS } from "../cloud-sync-shape";
 import type { FlightRecord } from "@/lib/types";
+import type { Doc } from "../../../../convex/_generated/dataModel";
 
 type Validator =
   | { type: "string" | "number" | "boolean" | "any" | "null" | "int64" | "bytes" }
@@ -20,9 +21,8 @@ type Validator =
   | { type: "union"; value: Validator[] }
   | { type: "object"; value: Record<string, { fieldType: Validator; optional: boolean }> };
 
-/** The upsert mutation's `record` argument validator, as Convex exports it. */
-const recordValidator = (() => {
-  const fn: unknown = upsert;
+/** A Convex mutation's `record` argument validator, as Convex exports it. */
+function recordValidatorOf(fn: unknown): Validator {
   if (
     (typeof fn !== "function" && typeof fn !== "object") ||
     fn === null ||
@@ -34,7 +34,9 @@ const recordValidator = (() => {
   // Convex's own serialisation of the validator, parsed into its documented shape.
   const args: { value: { record: { fieldType: Validator } } } = JSON.parse(String(fn.exportArgs()));
   return args.value.record.fieldType;
-})();
+}
+
+const recordValidator = recordValidatorOf(upsert);
 
 /** Violations of `validator` by `value`, as dotted paths. Empty when it matches. */
 function check(validator: Validator, value: unknown, path: string): string[] {
@@ -106,7 +108,7 @@ function liveFlight(): FlightRecord {
     events: [{ t: 0, type: "takeoff", severity: "info", label: "Takeoff" }],
     flags: [],
     health: { avgSatellites: 14 },
-    pilotFirstName: "Sam",
+    pilotFirstName: "TestPilot",
     pilotLicenseNumber: "LIC-42",
     aircraftRegistration: "REG-001",
     aircraftMtomKg: 2.4,
@@ -135,7 +137,8 @@ describe("flight-log cloud payload", () => {
 
   it("round-trips a cloud row back into a record with its local date", () => {
     const record = liveFlight();
-    const back = fromCloudShape({ ...toCloudShape(record), _id: "x", _creationTime: 1, userId: "u" });
+    const row = { ...toCloudShape(record), _id: "x", _creationTime: 1, userId: "u" };
+    const back = fromCloudShape(row as unknown as Doc<"cmd_flightLogs">);
     expect(back.id).toBe(record.id);
     expect(back.date).toBe(record.startTime);
     expect(back.maxAlt).toBe(record.maxAlt);

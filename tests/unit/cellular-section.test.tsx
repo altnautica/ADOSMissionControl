@@ -206,6 +206,26 @@ describe("CellularSection on a ground station", () => {
     fireEvent.click(applyButtons[1]);
     expect(puts.length).toBe(0);
   });
+
+  it("never reads or writes the modem of a different node that is still attached", async () => {
+    // The focused connection still belongs to another ground station while
+    // this page renders node-1.
+    useAgentConnectionStore.setState({
+      agentUrl: "http://gs-other.local:8080",
+      apiKey: "KEY",
+      nodeDeviceId: "gs-other",
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderSection("ground-station");
+
+    expect(
+      screen.getByText(/Live network status needs a direct connection/),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("APN")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("CellularSection on other profiles", () => {

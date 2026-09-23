@@ -781,7 +781,8 @@
       "average": "Average",
       "lowCount": "{count} low",
       "reportingCount": "{count} reporting",
-      "lowestLabel": "Lowest: {name}"
+      "lowestLabel": "Lowest: {name}",
+      "noneReporting": "No flight controller is reporting a battery"
     },
     "alertFeed": {
       "title": "Recent Alerts",
@@ -830,8 +831,8 @@
       "confirmMessage": "{action} will be sent to {ready} of {total} selected slots.",
       "formationConfirmTitle": "Set formation to {formation}",
       "formationConfirmMessage": "{formation} will be written to {ready} of {total} selected slots: {names}",
-      "formationDone": "{formation} set on {count} slots.",
-      "formationPartial": "Formation set on {done} of {total} slots."
+      "formationDone": "{formation} saved on {count} slots. Each drone's swarm controller picks it up within a few seconds and flies it while in formation mode.",
+      "formationPartial": "Formation saved on {done} of {total} slots."
     },
     "broadcast": {
       "arm": "Broadcast",
@@ -1366,13 +1367,9 @@
     "acceleratorNone": "No local accelerator — offloading to a workstation is the path to run a detector.",
     "offloadTarget": "Offload target",
     "offloadTargetPlaceholder": "Pick a workstation",
-    "offloadTargetHint": "Requesting an offload starts a perception job on the chosen workstation for this node.",
     "offloadTargetActive": "Currently offloading to {target}.",
     "offloadNoWorkstation": "No paired workstation. Pair a workstation node to offload perception to it.",
-    "offloadRequesting": "Requesting…",
-    "offloadRequested": "Offload requested on {node} (job {id})",
     "offloadFailed": "Offload request failed",
-    "runNow": "Run now",
     "offloadAutoAny": "Auto (any on LAN)",
     "perceptionSession": "Perception session",
     "sessionState_opening": "Opening",
@@ -1407,7 +1404,8 @@
       "dismiss": "Dismiss",
       "none": "No actions for this target",
       "pluginBadge": "plugin"
-    }
+    },
+    "offloadPinHint": "The node starts offloading to the pinned workstation on its own when it has no accelerator and its camera is up. Auto uses any workstation serving on the LAN."
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",
@@ -1496,15 +1494,19 @@
       "shareLabel": "Share uplink with access-point clients",
       "shareHint": "Route internet traffic for devices connected to this node's access point out over the active uplink.",
       "sharePersistedNotApplied": "Saved, but not applied to a live uplink: {reason}",
-      "liveRequiresLan": "Live network status needs a direct connection to this node's agent — it is not carried over the cloud relay.",
       "loadFailed": "Could not read the node's network status.",
       "uplinkUnsupportedProfile": "This node's agent exposes the uplink matrix on ground station nodes only.",
       "hotspotSsidLabel": "Hotspot SSID",
-      "hotspotSsidHint": "The network name the setup access point broadcasts.",
       "hotspotChannelLabel": "Hotspot channel",
-      "hotspotChannelHint": "The 2.4 GHz Wi-Fi channel (1–13) the access point uses.",
       "hotspotPasswordLabel": "Hotspot password",
-      "hotspotPasswordHint": "The WPA2 passphrase for the access point. Enter a new value to change it; the current one is never shown."
+      "liveRequiresLan": "Live network status needs a direct connection to this node's agent.",
+      "hotspotApRequiresLan": "The access point's name, channel and passphrase are changed over a direct connection to this ground station.",
+      "hotspotApCurrent": "Access point: {ssid}, channel {channel}",
+      "hotspotApHint": "A name, channel or passphrase change restarts the access point, which drops its clients for a few seconds. The passphrase is never shown; enter a new one to change it.",
+      "hotspotApAppliedNotPersisted": "Applied to the running access point, but not saved to the node's config: it reverts at the next restart.",
+      "hotspotChannelRange": "Enter a channel from 1 to 13.",
+      "hotspotPasswordLength": "The passphrase must be 8 to 63 characters.",
+      "hotspotPasswordCharset": "The passphrase may use printable ASCII characters only."
     },
     "cloud": {
       "title": "Cloud relay",
@@ -1519,20 +1521,23 @@
       "remoteOptionNone": "None",
       "remoteOptionCloudflare": "Cloudflare tunnel",
       "remoteEnabledLabel": "Cloudflare tunnel active",
-      "remoteEnabledHint": "Bring up the tunnel service on this node. Needs a tunnel token installed on the node.",
       "remoteSetupUrlLabel": "Setup URL",
       "remoteApiUrlLabel": "API URL",
       "remoteVideoUrlLabel": "Video (WHEP) URL",
       "remoteMavlinkUrlLabel": "MAVLink WebSocket URL",
       "remoteStatusLabel": "Tunnel status",
-      "remoteStatusNeedsLan": "Read over the local network only",
       "remoteStatusUnknown": "Not reported by this node",
       "remoteStatus_disabled": "Disabled",
       "remoteStatus_configured": "Configured, not started",
       "remoteStatus_running": "Running",
       "remoteStatus_stopped": "Stopped",
       "remoteStatus_error": "Error",
-      "remoteManagedOnNode": "The tunnel is set up and started on the node itself; this page shows its state."
+      "remoteActiveHint": "Starts this node's tunnel service and keeps it running across restarts; turning it off stops it. Runs only while Remote access is set to Cloudflare tunnel, and needs a tunnel token installed on the node.",
+      "remoteOffConfirmTitle": "Turn the tunnel off?",
+      "remoteOffConfirmMessage": "This node stops being reachable beyond its local network. A session that reaches it through the tunnel disconnects.",
+      "remoteOffConfirmAction": "Turn off",
+      "remoteStatusNotMeasured": "Not measured",
+      "remoteStatusHint": "The node's own report of its tunnel service. After a change it updates within a few seconds."
     },
     "advanced": {
       "title": "Advanced",
@@ -1600,7 +1605,6 @@
     "swarm": {
       "title": "Swarm",
       "blurb": "This drone's place in the fleet, the formation it defaults to, and the flocking and separation envelopes it flies inside.",
-      "runtimeNotice": "These values drive the node's onboard swarm runtime. It commands the flight controller only while Enabled is on and the aircraft reports GUIDED, so saving here applies the setting without by itself putting the node under swarm control.",
       "identityTitle": "Identity",
       "slotLabel": "Fleet slot",
       "slotHint": "Issued by the ground station at pair time. Formation offsets are indexed by it, so it is reported here and edited nowhere.",
@@ -1654,7 +1658,8 @@
       "precedenceOperator": "Operator direct command",
       "precedenceFormation": "Formation",
       "precedenceFlocking": "Flocking",
-      "precedenceHold": "Hold"
+      "precedenceHold": "Hold",
+      "runtimeNotice": "These values drive the node's onboard swarm runtime, which picks up a saved change within a few seconds. It commands the flight controller only while Enabled is on and the aircraft reports GUIDED, so saving here does not by itself put the node under swarm control."
     },
     "wifi": {
       "title": "Wi-Fi",
@@ -1988,11 +1993,9 @@
       "rendererBlurb": "Which renderer this ground station brings up at boot. The display service gates its startup on this, and the on-box display is how you recover a node whose network is down, so only renderers the node reports as attached can be selected.",
       "kioskTitle": "HDMI kiosk",
       "kioskBlurb": "The full-screen browser the HDMI output runs. Applies when the renderer resolves to HDMI.",
-      "kioskEnabled": "Run the kiosk browser",
-      "kioskEnabledHint": "Starts the full-screen browser on the HDMI output at boot. Takes effect when the kiosk service next starts.",
       "kioskTargetUrl": "Kiosk page",
       "kioskTargetUrlHint": "The page the kiosk opens. Leave empty to use this node's own console.",
-      "kioskAlwaysOn": "The kiosk browser runs whenever a display is attached; it has no on/off switch."
+      "kioskAlwaysOn": "The kiosk runs whenever the renderer above resolves to HDMI and a display is attached. To take it off the screen, choose a different renderer."
     },
     "pageUnavailableHere": "{page} is not available on this node. Showing the first page this node offers.",
     "segmentLive": "Live",
@@ -2922,7 +2925,8 @@
         "DO_FENCE_ENABLE": "Fence Enable/Disable",
         "DO_SET_HOME": "Set Home"
       }
-    }
+    },
+    "approachHeadingRequired": "Set the final-approach heading (0-360°) to generate the landing."
   },
   "geofence": {
     "autoFence": "Auto-fence",
@@ -3605,7 +3609,9 @@
     "fixAllTrims": "Fix All RC Trims",
     "allTrimsFixed": "All trims fixed — re-checking...",
     "rcChannelsOutside": "{count} RC channels outside trim deadzone",
-    "trimSetTo": "Trim set to {value} — re-checking..."
+    "trimSetTo": "Trim set to {value} — re-checking...",
+    "noFailuresReported": "No failures reported. This flight controller sent no pre-arm verdict, so a pass is not confirmed.",
+    "fcReportsFailures": "The flight controller reports pre-arm failures"
   },
   "indicators": {
     "connectionQuality": "Connection Quality",
@@ -7364,7 +7370,16 @@
     "empty": {
       "title": "RC / ELRS lane not configured",
       "body": "This node advertises no ExpressLRS control lane. Attach an ELRS transmitter and enable the RC / ELRS lane to command or relay over it."
-    }
+    },
+    "notRead": {
+      "title": "No reading from this node yet",
+      "body": "The RC / ELRS lane state appears once this node reports its status."
+    },
+    "unreachable": {
+      "title": "Node not answering",
+      "body": "Last reading {age}. The lane state is unknown until the node reports again."
+    },
+    "staleBanner": "Last reading {age}. The node is not answering, so these values are not current."
   },
   "nodeDetail": {
     "groups": {

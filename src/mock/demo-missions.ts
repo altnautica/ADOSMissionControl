@@ -107,7 +107,7 @@ const grandCanyon = buildPlan({
     { lat: 36.0602, lon: -112.1155, alt: 30, command: "DO_SET_SPEED", param1: 1, param2: 7, param3: -1 },
     { lat: 36.0602, lon: -112.1155, alt: 60, command: "CONDITION_YAW", param1: 0, param2: 15, param3: 1 },
     ...fromPattern(canyonCorridor),
-    { lat: 36.0625, lon: -112.1010, alt: 45, speed: 7, holdTime: 20, command: "LOITER" },
+    { lat: 36.0625, lon: -112.1010, alt: 45, speed: 7, holdTime: 20, command: "LOITER_TIME" },
     { lat: 36.0625, lon: -112.1010, alt: 45, command: "DELAY", param1: 10, holdTime: 10 },
     { lat: 36.0602, lon: -112.1155, alt: 60, command: "RTL" },
   ],
@@ -212,7 +212,7 @@ const sydney = buildPlan({
     { lat: -33.8538, lon: 151.2112, alt: 80, speed: 7, holdTime: 2, command: "LOITER_TURNS", param2: 40 },
     { lat: -33.8538, lon: 151.2112, alt: 80, command: "DO_SET_ROI_NONE" },
     { lat: -33.8558, lon: 151.2135, alt: 60, speed: 8, command: "SPLINE_WAYPOINT" },
-    ...fromPattern(generateVtolLanding({ landingPoint: [-33.8575, 151.2160], approachHeading: -1, transitionDistance: 150, approachAltitude: 60, descentSpeed: 2, speed: 8 })),
+    ...fromPattern(generateVtolLanding({ landingPoint: [-33.8575, 151.2160], approachHeading: 130, transitionDistance: 150, approachAltitude: 60, descentSpeed: 2, speed: 8 })),
   ],
   geofence: {
     enabled: false, fenceType: "circle", maxAltitude: 120, minAltitude: 0, breachAction: "RTL",

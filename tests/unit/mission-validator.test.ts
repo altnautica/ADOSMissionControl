@@ -216,6 +216,19 @@ describe('validateMission', () => {
     expect(result.errors.some((e) => e.code === 'INVALID_ACTION_COORDS')).toBe(true);
   });
 
+  it('blocks an ROI or set-home action that has no location, which would upload at 0,0', () => {
+    for (const command of ['ROI', 'DO_SET_HOME'] as const) {
+      const result = validateMission([
+        wp({ lat: 12.97, lon: 77.59, command: 'TAKEOFF' }),
+        wp({ lat: 12.98, lon: 77.60, actions: [{ id: 'a1', command }] }),
+        wp({ lat: 12.99, lon: 77.61, command: 'LAND' }),
+      ]);
+      const issue = result.errors.find((e) => e.code === 'ACTION_NO_LOCATION');
+      expect(issue?.severity).toBe('blocking');
+      expect(issue?.waypointIndex).toBe(1);
+    }
+  });
+
   it('returns TERRAIN_CLEARANCE error for terrain clearance violation', () => {
     // Absolute-frame waypoint at 103m MSL over 100m-MSL ground = 3m clearance
     // < 5m. A mid-mission WAYPOINT, because TAKEOFF / LAND rows are
@@ -395,6 +408,20 @@ describe('validateMission — altitude frame correctness', () => {
     expect(unchecked).toHaveLength(2);
     expect(unchecked[0].severity).toBe('advisory');
     expect(result.warnings.some((w) => w.code === 'HOME_NOT_SET')).toBe(true);
+  });
+
+  it('never takes a later waypoint\'s terrain as the home datum while the launch point is unsampled', () => {
+    // Launch on 100 m ground (sample still pending), then 60 m above home over
+    // a 300 m ridge: the vehicle is 140 m below the ridge. Measuring from the
+    // ridge would call it 60 m clear.
+    const result = validateMission([
+      wp({ lat: 12.97, lon: 77.59, alt: 0, command: 'TAKEOFF', frame: 'relative' }),
+      wp({ lat: 12.98, lon: 77.60, alt: 60, command: 'WAYPOINT', frame: 'relative', groundElevation: 300 }),
+      wp({ lat: 12.99, lon: 77.61, alt: 0, command: 'LAND', frame: 'relative' }),
+    ], { minTerrainClearance: 5 });
+    expect(result.warnings.some((w) => w.code === 'HOME_NOT_SET')).toBe(true);
+    // The ridge waypoint is reported unchecked, never passed as 60 m clear.
+    expect(result.warnings.some((w) => w.code === 'TERRAIN_UNCHECKED' && w.waypointIndex === 1)).toBe(true);
   });
 
   it('normalises the fence ceiling to the above-home datum for an absolute-frame waypoint', () => {

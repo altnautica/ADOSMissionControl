@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Viewer as CesiumViewer } from "cesium";
-import type { Waypoint } from "@/lib/types";
+import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import {
   computeFlightPlan,
   createSimulationMissionSignature,
@@ -67,6 +67,8 @@ function ConvexCesiumToken({ onToken }: { onToken: (token: string | null) => voi
 interface SimulationViewerProps {
   waypoints: Waypoint[];
   defaultSpeed: number;
+  /** Planner default frame: the frame the upload gives a frameless waypoint. */
+  defaultFrame: AltitudeFrame;
 }
 
 interface TerrainResultState {
@@ -75,7 +77,7 @@ interface TerrainResultState {
   failed: boolean;
 }
 
-export function SimulationViewer({ waypoints, defaultSpeed }: SimulationViewerProps) {
+export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: SimulationViewerProps) {
   const t = useTranslations("simulate");
   const [viewer, setViewer] = useState<CesiumViewer | null>(null);
   const [viewerError, setViewerError] = useState<string | null>(null);
@@ -96,8 +98,8 @@ export function SimulationViewer({ waypoints, defaultSpeed }: SimulationViewerPr
   const showCameraTriggers = useSettingsStore((s) => s.showCameraTriggers);
 
   const missionSignature = useMemo(
-    () => createSimulationMissionSignature(waypoints, defaultSpeed),
-    [waypoints, defaultSpeed]
+    () => createSimulationMissionSignature(waypoints, defaultSpeed, defaultFrame),
+    [waypoints, defaultSpeed, defaultFrame]
   );
 
   const flightPlan = useMemo(
@@ -135,7 +137,7 @@ export function SimulationViewer({ waypoints, defaultSpeed }: SimulationViewerPr
     const terrainProvider = viewer.scene.globe.terrainProvider;
     const signature = missionSignature;
 
-    resolveAGLToAbsolute(waypoints, terrainProvider)
+    resolveAGLToAbsolute(waypoints, terrainProvider, defaultFrame)
       .then((result) => {
         if (!cancelled) {
           setTerrainResult({ signature, path: result, failed: false });
@@ -149,7 +151,7 @@ export function SimulationViewer({ waypoints, defaultSpeed }: SimulationViewerPr
       });
 
     return () => { cancelled = true; };
-  }, [viewer, missionSignature, waypoints, terrainReady, terrainVersion]);
+  }, [viewer, missionSignature, waypoints, defaultFrame, terrainReady, terrainVersion]);
 
   // Extract waypoint-only resolved positions for WaypointEntities + camera
   const waypointPositions = useMemo(() => {
@@ -218,6 +220,7 @@ export function SimulationViewer({ waypoints, defaultSpeed }: SimulationViewerPr
       <FlightPathEntity
         viewer={viewer}
         waypoints={waypoints}
+        defaultFrame={defaultFrame}
         resolvedPositions={resolvedPath?.positions ?? null}
         waypointIndices={resolvedPath?.waypointIndices}
         terrainHeights={resolvedPath?.terrainHeights}

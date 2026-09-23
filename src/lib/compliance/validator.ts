@@ -3,7 +3,8 @@
  * a jurisdiction's required/optional fields and produces a list of issues.
  *
  * Covers field-presence rules (required → error, optional → warning)
- * for every jurisdiction. DGCA gets one extra rule for the 120 m AGL limit.
+ * for every jurisdiction. DGCA gets one extra rule for the 120 m AGL limit,
+ * checked against the flight's maximum height above its launch point.
  *
  * @module compliance/validator
  * @license GPL-3.0-only
@@ -74,12 +75,13 @@ export function validateForJurisdiction(
     }
   }
 
-  // DGCA-specific rule: max altitude > 120 m AGL requires authorization ref.
+  // DGCA-specific rule: over 120 m requires an authorisation reference.
+  // record.maxAlt is height above home, the only frame every flight records.
   if (code === "IN_DGCA" && record.maxAlt > 120) {
     issues.push({
       field: "record.maxAlt",
       severity: "warning",
-      message: `DGCA Drone Rules 2021 limit Micro/Small operations to 120 m AGL. This flight reached ${record.maxAlt} m. Add an authorisation reference to the notes.`,
+      message: `DGCA Drone Rules 2021 limit Micro/Small operations to 120 m AGL. This flight reached ${record.maxAlt} m above its launch point. Add an authorisation reference to the notes.`,
       fixTab: "notes",
     });
   }

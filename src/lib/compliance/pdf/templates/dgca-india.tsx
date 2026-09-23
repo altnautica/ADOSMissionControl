@@ -102,7 +102,7 @@ export function DgcaIndiaTemplate({ record, operator, aircraft, generatedAt }: D
             <View style={styles.col}>
               <Row label="Takeoff coords" value={fmtCoord(record.takeoffLat, record.takeoffLon)} />
               <Row label="Landing coords" value={fmtCoord(record.landingLat, record.landingLon)} />
-              <Row label="Max altitude (AGL)" value={`${record.maxAlt} m`} />
+              <Row label="Max altitude (above home)" value={`${record.maxAlt} m`} />
               <Row label="Max speed" value={`${record.maxSpeed} m/s`} />
               <Row label="Battery used" value={`${record.batteryUsed}%`} />
               <Row label="Status" value={record.status} />
@@ -111,8 +111,9 @@ export function DgcaIndiaTemplate({ record, operator, aircraft, generatedAt }: D
           {record.maxAlt > 120 && (
             <View style={styles.warningBox}>
               <Text>
-                ⚠ Max altitude exceeded 120 m AGL. DGCA Drone Rules 2021 require an authorisation
-                reference for operations above this limit. Add it to the flight notes before signing.
+                ⚠ Max altitude above the launch point exceeded 120 m. DGCA Drone Rules 2021 limit
+                operations to 120 m AGL and require an authorisation reference above it. Add it to
+                the flight notes before signing.
               </Text>
             </View>
           )}

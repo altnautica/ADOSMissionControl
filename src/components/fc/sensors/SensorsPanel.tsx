@@ -7,7 +7,7 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
@@ -38,10 +38,10 @@ export function SensorsPanel() {
   const scrollRef = usePanelScroll("sensors");
   const [saving, setSaving] = useState(false);
 
-  const vfrBuffer = useTelemetryStore((s) => s.vfr);
-  const latestVfr = vfrBuffer.latest();
-  const distanceBuffer = useTelemetryStore((s) => s.distanceSensor);
-  const latestDistance = distanceBuffer.latest();
+  // Live readouts follow every sample and disappear once the link goes quiet,
+  // rather than holding the last value under a "Live" label.
+  const latestVfr = useFreshTelemetry("vfr");
+  const latestDistance = useFreshTelemetry("distanceSensor");
 
   const {
     params, loading, error, dirtyParams, hasRamWrites,
@@ -240,7 +240,13 @@ export function SensorsPanel() {
                 <div className="mt-2 p-2 bg-bg-tertiary/50 rounded">
                   <span className="text-[10px] text-text-tertiary">Live Airspeed</span>
                   <span className="text-sm font-mono text-text-primary ml-2">
-                    {latestVfr.airspeed.toFixed(1)} <span className="text-[10px] text-text-tertiary">m/s</span>
+                    {latestVfr.airspeed !== undefined ? (
+                      <>
+                        {latestVfr.airspeed.toFixed(1)} <span className="text-[10px] text-text-tertiary">m/s</span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </span>
                 </div>
               )}

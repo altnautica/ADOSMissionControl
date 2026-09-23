@@ -113,6 +113,23 @@ describe("DiscoverySection advertised reach", () => {
     expect(screen.getByText("primary")).toBeTruthy();
   });
 
+  it("never shows the names of a different node that is still attached", async () => {
+    const getSetupStatus = vi.fn(async () => reportWith());
+    useAgentConnectionStore.setState({
+      agentUrl: "http://192.168.1.51:8080",
+      nodeDeviceId: "other-node",
+      client: { getSetupStatus },
+    } as never);
+
+    renderSection();
+
+    expect(
+      screen.getByText(/can only be read over the node's LAN connection/),
+    ).toBeTruthy();
+    expect(screen.queryByText("benchnode")).toBeNull();
+    expect(getSetupStatus).not.toHaveBeenCalled();
+  });
+
   it("reads 'not reported' for an empty advertised name, never a guess", async () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://192.168.1.50:8080",

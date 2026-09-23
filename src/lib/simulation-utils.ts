@@ -5,7 +5,7 @@
  * @license GPL-3.0-only
  */
 
-import type { Waypoint } from "@/lib/types";
+import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import { haversineDistance, bearing, normalizeHeading } from "@/lib/telemetry-utils";
 
 export interface FlightSegment {
@@ -37,15 +37,18 @@ export interface InterpolatedPosition {
 /** Stable identity for the mission inputs that affect simulation playback. */
 export function createSimulationMissionSignature(
   waypoints: Waypoint[],
-  defaultSpeed: number
+  defaultSpeed: number,
+  defaultFrame: AltitudeFrame,
 ): string {
   return JSON.stringify({
     defaultSpeed,
+    defaultFrame,
     waypoints: waypoints.map((wp) => [
       wp.id,
       wp.lat,
       wp.lon,
       wp.alt,
+      wp.frame ?? null,
       wp.speed ?? null,
       wp.holdTime ?? null,
       wp.command ?? null,
@@ -62,6 +65,13 @@ function distance3D(wp1: Waypoint, wp2: Waypoint): number {
   const dAlt = wp2.alt - wp1.alt;
   return Math.sqrt(hDist * hDist + dAlt * dAlt);
 }
+
+/**
+ * The navigation commands that wait `holdTime` seconds at the waypoint. An
+ * unlimited LOITER never advances on its own, and LOITER_TURNS / PAYLOAD_PLACE
+ * keep turns and a descent distance in that slot.
+ */
+const HOLDING_COMMANDS: Record<string, true> = { WAYPOINT: true, SPLINE_WAYPOINT: true, LOITER_TIME: true };
 
 /** Compute flight plan from waypoints. */
 export function computeFlightPlan(waypoints: Waypoint[], defaultSpeed: number): FlightPlan {
@@ -80,12 +90,7 @@ export function computeFlightPlan(waypoints: Waypoint[], defaultSpeed: number): 
     // The uploaded speed of a leg: the destination's own speed, else the
     // mission default (see the speed note in mission/mission-expand).
     const speed = to.speed ?? defaultSpeed;
-    // Only these commands hold for `holdTime` seconds. An unlimited LOITER
-    // never advances on its own, and LOITER_TURNS / PAYLOAD_PLACE keep turns
-    // and a descent distance in that slot.
-    const holds = from.command === undefined || from.command === "WAYPOINT"
-      || from.command === "SPLINE_WAYPOINT" || from.command === "LOITER_TIME";
-    const holdTime = holds ? from.holdTime ?? 0 : 0;
+    const holdTime = HOLDING_COMMANDS[from.command ?? "WAYPOINT"] ? from.holdTime ?? 0 : 0;
     const duration = holdTime + (speed > 0 ? dist / speed : 0);
     const hdg = bearing(from.lat, from.lon, to.lat, to.lon);
 
@@ -103,9 +108,9 @@ export function computeFlightPlan(waypoints: Waypoint[], defaultSpeed: number): 
     });
   }
 
-  // Add final waypoint hold time if present
+  // Add the final waypoint's hold, when its command holds at all
   const lastWp = waypoints[waypoints.length - 1];
-  const finalHold = lastWp.holdTime ?? 0;
+  const finalHold = HOLDING_COMMANDS[lastWp.command ?? "WAYPOINT"] ? lastWp.holdTime ?? 0 : 0;
   const totalDuration = cumDuration + finalHold;
 
   return { segments, totalDuration, totalDistance };

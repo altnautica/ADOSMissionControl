@@ -224,18 +224,20 @@ export class MockProtocol implements DroneProtocol {
   /** Last attitude setpoint handed to this mock, or null if none. */
   getLastAttitudeTarget(): AttitudeTargetSample | null { return this._lastAttitudeTarget; }
 
+  /**
+   * MAV_CMD_RUN_PREARM_CHECKS semantics: the command is accepted, failures are
+   * reported as STATUSTEXT, and a pass is carried by the SYS_STATUS pre-arm bit
+   * the demo engine publishes. Nothing is sent when every check passes.
+   */
   async doPreArmCheck(): Promise<CommandResult> {
     const names = ["Roll", "Pitch", "Throttle", "Yaw"];
-    let fail = false;
     for (let ch = 1; ch <= 4; ch++) {
       const trim = this.params.get(`RC${ch}_TRIM`)?.value ?? 1500;
       const dz = this.params.get(`RC${ch}_DZ`)?.value ?? 30;
       if (Math.abs((this._rcChannelValues[ch - 1] ?? 1500) - trim) > dz) {
-        fail = true;
         setTimeout(() => this.emitStatusText(4, `Arm: ${names[ch - 1]} (RC${ch}) is not neutral`), 100 * ch);
       }
     }
-    if (!fail) setTimeout(() => this.emitStatusText(6, "PreArm: Ready to arm"), 200);
     return ok("Pre-arm check");
   }
 

@@ -24,7 +24,10 @@ import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { batteryBand, type BatteryThresholds } from "@/lib/battery-bands";
 import type { StatusLevel } from "@/components/ui/status-dot";
-import type { ReadingFreshness } from "@/components/command/nodes-view/cell-primitives";
+import {
+  fcReading,
+  type ReadingFreshness,
+} from "@/components/command/nodes-view/cell-primitives";
 import {
   SWARM_BEACON_STALE_MS,
   type SwarmBeaconRow,
@@ -289,10 +292,14 @@ export function swarmConditionCounts(
     weakLink: 0,
   };
   for (const row of rows) {
-    const band = batteryBand(
-      row.summary?.telemetry.batteryRemaining ?? null,
-      thresholds,
-    );
+    // Battery comes from the node's status, not the beacon, so it counts only
+    // while that status still carries a flight-controller reading. A silent
+    // node's last percentage is not a low battery now, nor a healthy one.
+    const remaining =
+      row.summary && fcReading(row.summary).absentKey === null
+        ? row.summary.telemetry.batteryRemaining
+        : null;
+    const band = batteryBand(remaining, thresholds);
     if (band === "warning" || band === "critical") counts.lowBattery += 1;
     if (row.beacon?.modePrecedence === "hard-separation") {
       counts.hardSeparation += 1;

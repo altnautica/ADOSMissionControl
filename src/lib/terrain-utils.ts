@@ -47,13 +47,16 @@ export interface ResolvedPath {
  *  - `terrain` is height above the ground below the point, so it is
  *    `terrainHeight + alt` — the only frame that follows the contour.
  *
- * A segment's sub-samples inherit the frame of its start waypoint. The geoid
- * grid is warmed here so the MSL conversion is correct on the first resolve
- * (absent grid -> honest MSL-as-ellipsoidal passthrough).
+ * A waypoint without its own frame is in the mission default frame, the same
+ * one the upload encodes it in. A segment's sub-samples inherit the frame of
+ * its start waypoint. The geoid grid is warmed here so the MSL conversion is
+ * correct on the first resolve (absent grid -> honest MSL-as-ellipsoidal
+ * passthrough).
  */
 export async function resolveAGLToAbsolute(
   waypoints: Waypoint[],
-  terrainProvider: TerrainProvider
+  terrainProvider: TerrainProvider,
+  defaultFrame: AltitudeFrame,
 ): Promise<ResolvedPath> {
   if (waypoints.length === 0) {
     return { positions: [], waypointIndices: [], terrainHeights: [] };
@@ -75,7 +78,7 @@ export async function resolveAGLToAbsolute(
 
   for (let i = 0; i < waypoints.length; i++) {
     const wp = waypoints[i];
-    const frame: AltitudeFrame = wp.frame ?? "relative";
+    const frame: AltitudeFrame = wp.frame ?? defaultFrame;
 
     // Record this index as an original waypoint
     waypointIndices.push(cartographics.length);

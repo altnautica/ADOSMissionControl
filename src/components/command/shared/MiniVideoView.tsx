@@ -29,14 +29,16 @@ import { communityApi } from "@/lib/community-api";
 import { cmdVideoRelayTokensApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useSingletonAgentVideo } from "@/hooks/use-singleton-agent-video";
+import { useResolvedAgentVideo } from "@/hooks/use-resolved-agent-video";
 
 export function MiniVideoView() {
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   const cloudStreaming = useVideoStore((s) => s.cloudStreaming);
   const setCloudStreaming = useVideoStore((s) => s.setCloudStreaming);
-  const agentWhepUrl = useVideoStore((s) => s.agentWhepUrl);
-  const agentVideoState = useVideoStore((s) => s.agentVideoState);
+  // Singleton store, else the funnelled feed a paired ground station relays.
+  const { whepUrl: agentWhepUrl, videoState: agentVideoState } =
+    useResolvedAgentVideo(cloudDeviceId);
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
   const mintRelayToken = useAction(cmdVideoRelayTokensApi.mint);
@@ -60,6 +62,7 @@ export function MiniVideoView() {
     cloudDeviceId,
     transportMode,
     videoEl,
+    agentVideoState,
   });
   const directStreaming = session.state === "connected";
   const connecting = session.state === "connecting";

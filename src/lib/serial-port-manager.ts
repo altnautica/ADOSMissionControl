@@ -238,9 +238,20 @@ const USB_DEVICES: Record<number, { name: string; products?: Record<number, stri
   0x1209: { name: "Open Source Hardware", products: {
     0x5740: "ArduPilot ChibiOS",
   }},
-  0x2DAE: { name: "Holybro" },
-  0x27AC: { name: "CubePilot" },
-  0x3162: { name: "mRo" },
+  0x2DAE: { name: "CubePilot", products: {
+    0x1001: "CubeBlack bootloader",
+    0x1002: "CubeYellow bootloader",
+    0x1005: "CubePurple bootloader",
+    0x1011: "CubeBlack",
+    0x1012: "CubeYellow",
+    0x1015: "CubePurple",
+    0x1016: "CubeOrange",
+    0x1101: "CubeBlack+",
+  }},
+  0x27AC: { name: "VRBrain" },
+  0x3162: { name: "Holybro", products: {
+    0x004B: "Durandal",
+  }},
   0x26AC: { name: "3DR / PX4", products: {
     0x0001: "PX4 FMU v2",
     0x0011: "PX4 ChibiOS",

@@ -1,24 +1,29 @@
 /**
- * Browser-side MAVLink v2 message signer.
+ * MAVLink v2 message signing.
  *
- * Every outgoing v2 frame gains a 13-byte signature tail:
+ * A signed frame sets MAVLINK_IFLAG_SIGNED (0x01) in incompat_flags, carries
+ * a CRC computed with that flag set, and gains a 13-byte tail after the CRC:
  *     [link_id: 1B] [timestamp: 6B LE] [signature: 6B]
  *
  * The signature is the first 6 bytes of
- *     HMAC-SHA256(secret_key, header || payload || CRC || link_id || timestamp)
+ *     SHA-256(secret_key || frame[STX .. end of CRC] || link_id || timestamp)
+ * a plain hash over the 32-byte key and the frame, not an HMAC.
  *
  * Timestamp is unsigned 48-bit little-endian, counts 10-microsecond units
  * since 2015-01-01 00:00:00 UTC. It MUST strictly increase per (sender,
  * link_id) pair. The signer tracks the last emitted timestamp in memory
  * and clamps forward-only: a system clock that jumps backward (or two
- * sign() calls arriving within the same millisecond) never causes a
- * regression.
+ * frames signed within the same 10 us) never causes a regression.
  *
- * The CryptoKey is non-extractable. JS cannot read its raw bytes back
- * even if an XSS payload gains same-origin execution.
+ * The hash needs the raw key bytes, so the signer holds them in memory and
+ * the keystore persists them in this browser's IndexedDB. Script running
+ * on the page can read them.
  *
  * @module protocol/mavlink-signer
  */
+
+import { CRC_EXTRA, crc16, crc16Accumulate } from "./mavlink-parser";
+import { Sha256 } from "./sha256";
 
 const EPOCH_2015_MS = Date.UTC(2015, 0, 1);
 const SIGNATURE_TAIL_LEN = 13;
@@ -64,6 +69,13 @@ function tabId(): string {
   return _tabId;
 }
 
+/** MAVLink v2 start-of-frame marker. */
+const STX_V2 = 0xfd;
+/** incompat_flags bit that marks a signed frame. */
+const MAVLINK_IFLAG_SIGNED = 0x01;
+const HEADER_LEN = 10;
+const CRC_LEN = 2;
+
 /**
  * One signer instance per (droneId, linkId). The outgoing-timestamp counter
  * is per-instance.
@@ -72,23 +84,26 @@ export class MavlinkSigner {
   readonly droneId: string;
   readonly linkId: number;
   readonly keyId: string;
-  private readonly cryptoKey: CryptoKey;
+  readonly #key: Uint8Array;
   private lastTimestamp: bigint = BIG_ZERO;
 
-  constructor(droneId: string, linkId: number, keyId: string, cryptoKey: CryptoKey) {
+  /** `keyBytes` is copied; the caller keeps ownership of its buffer. */
+  constructor(droneId: string, linkId: number, keyId: string, keyBytes: Uint8Array) {
     if (linkId < 0 || linkId > 255) {
       throw new Error(`linkId must fit in one byte (0..255), got ${linkId}`);
+    }
+    if (keyBytes.length !== 32) {
+      throw new Error(`signing key must be 32 bytes, got ${keyBytes.length}`);
     }
     this.droneId = droneId;
     this.linkId = linkId;
     this.keyId = keyId;
-    this.cryptoKey = cryptoKey;
+    this.#key = new Uint8Array(keyBytes);
   }
 
   /**
-   * Seed the monotonic counter from persisted state. Called on construction
-   * when IndexedDB has a cached last-timestamp value for this drone/link.
-   * Never lets the counter go backward.
+   * Seed the monotonic counter from persisted state. Never lets the counter
+   * go backward.
    */
   seedTimestamp(persisted: bigint): void {
     if (persisted > this.lastTimestamp) {
@@ -96,80 +111,73 @@ export class MavlinkSigner {
     }
   }
 
-  /**
-   * Read the current monotonic counter for persistence. Does not advance.
-   */
+  /** Read the current monotonic counter for persistence. Does not advance. */
   currentTimestamp(): bigint {
     return this.lastTimestamp;
   }
 
   /**
-   * Compute the 13-byte signature tail for a frame whose header + payload
-   * + CRC has already been written. The caller appends the returned bytes
-   * after the 2-byte CRC.
+   * Sign one complete, unsigned MAVLink v2 frame (STX through CRC). Returns
+   * a new buffer: the signed flag set, the CRC recomputed over the flagged
+   * header, and the 13-byte signature tail appended.
    *
-   * `frameBytesThroughCrc` must be a contiguous byte slice starting at
-   * byte 1 of the v2 frame (not the STX) through the end of the CRC. That
-   * matches what the MAVLink spec defines as the signed region:
-   *     header (9 bytes excluding STX) + payload + CRC (2 bytes).
-   *
-   * NOTE: the caller is also responsible for setting the
-   * MAVLINK_IFLAG_SIGNED bit (0x01) in the INC_FLAGS byte of the frame
-   * BEFORE passing the bytes here. The flag is part of the header that
-   * gets hashed, so flipping it after signing would invalidate the tag.
+   * MAVLink v1 frames cannot carry a signature and frames that are already
+   * signed are left alone; both are returned unchanged.
    */
-  async sign(frameBytesThroughCrc: Uint8Array): Promise<Uint8Array> {
-    // Web Locks serialize sign() across tabs of the same browser that open
-    // the same drone. Without this, two tabs would each read/advance the
-    // persisted timestamp counter independently, and the flight controller
-    // would reject whichever frame arrives with the lower timestamp as a
-    // replay.
-    const lockName = `ados-signing:${this.droneId}:${this.linkId}`;
-    return this.withSigningLock(lockName, () => this.signLocked(frameBytesThroughCrc));
-  }
+  signFrame(frame: Uint8Array): Uint8Array {
+    if (frame.length < HEADER_LEN + CRC_LEN || frame[0] !== STX_V2) return frame;
+    if ((frame[2] & MAVLINK_IFLAG_SIGNED) !== 0) return frame;
+    const payloadLen = frame[1];
+    const unsignedLen = HEADER_LEN + payloadLen + CRC_LEN;
+    if (frame.length !== unsignedLen) {
+      throw new Error(`signFrame: expected one ${unsignedLen}-byte frame, got ${frame.length} bytes`);
+    }
+    const msgId = frame[7] | (frame[8] << 8) | (frame[9] << 16);
+    const extra = CRC_EXTRA.get(msgId);
+    if (extra === undefined) {
+      throw new Error(`signFrame: no CRC_EXTRA seed for message id ${msgId}`);
+    }
 
-  private async signLocked(frameBytesThroughCrc: Uint8Array): Promise<Uint8Array> {
-    const timestamp = this.nextTimestamp();
-    const tail = new Uint8Array(SIGNATURE_TAIL_LEN);
-    tail[0] = this.linkId;
-    writeUint48LE(tail, 1, timestamp);
+    const out = new Uint8Array(unsignedLen + SIGNATURE_TAIL_LEN);
+    out.set(frame);
+    // The flag is inside the CRC and the hash, so it goes in first.
+    out[2] |= MAVLINK_IFLAG_SIGNED;
+    const crc = crc16Accumulate(extra, crc16(out, 1, HEADER_LEN - 1 + payloadLen));
+    out[HEADER_LEN + payloadLen] = crc & 0xff;
+    out[HEADER_LEN + payloadLen + 1] = (crc >> 8) & 0xff;
 
-    // hmac_input = frameBytesThroughCrc || link_id || timestamp
-    const hmacInput = new Uint8Array(frameBytesThroughCrc.length + 7);
-    hmacInput.set(frameBytesThroughCrc, 0);
-    hmacInput[frameBytesThroughCrc.length] = this.linkId;
-    writeUint48LE(hmacInput, frameBytesThroughCrc.length + 1, timestamp);
+    out[unsignedLen] = this.linkId;
+    writeUint48LE(out, unsignedLen + 1, this.nextTimestamp());
+    const sig = this.signature(out.subarray(0, unsignedLen + 7));
+    out.set(sig, unsignedLen + 7);
 
-    const sigBuf = await crypto.subtle.sign("HMAC", this.cryptoKey, hmacInput);
-    tail.set(new Uint8Array(sigBuf).subarray(0, 6), 7);
-
-    // Announce liveness so sibling tabs can render a "signing in another
-    // tab" hint. Non-blocking, best-effort.
     this.announceActive();
-    return tail;
+    return out;
   }
 
   /**
-   * Acquire the exclusive Web Lock for this drone+linkId, run the callback,
-   * release the lock. Falls back to a plain await when Web Locks API is
-   * not available (older Safari, test runners without the polyfill).
+   * Check the signature of a signed v2 frame (STX through the 13-byte tail)
+   * against this key. Timestamp freshness is the caller's policy.
    */
-  private async withSigningLock<T>(
-    lockName: string,
-    fn: () => Promise<T>,
-  ): Promise<T> {
-    const locks = (globalThis as unknown as { navigator?: { locks?: LockManager } }).navigator?.locks;
-    if (!locks || typeof locks.request !== "function") {
-      return fn();
-    }
-    return locks.request(lockName, { mode: "exclusive" }, fn) as Promise<T>;
+  verifyFrame(frame: Uint8Array): boolean {
+    if (frame.length < HEADER_LEN + CRC_LEN || frame[0] !== STX_V2) return false;
+    if ((frame[2] & MAVLINK_IFLAG_SIGNED) === 0) return false;
+    const unsignedLen = HEADER_LEN + frame[1] + CRC_LEN;
+    if (frame.length !== unsignedLen + SIGNATURE_TAIL_LEN) return false;
+    const expected = this.signature(frame.subarray(0, unsignedLen + 7));
+    return constantTimeEquals(expected, frame.subarray(unsignedLen + 7, unsignedLen + SIGNATURE_TAIL_LEN));
+  }
+
+  /** First 6 bytes of SHA-256(key || signedBytes), signedBytes = frame..link_id..timestamp. */
+  private signature(signedBytes: Uint8Array): Uint8Array {
+    return new Sha256().update(this.#key).update(signedBytes).digest().subarray(0, 6);
   }
 
   private _lastAnnouncedAt = 0;
   private announceActive(): void {
     const now = Date.now();
     // Throttle to once per second per signer instance. BroadcastChannel is
-    // cheap but the sign() path runs at frame rate.
+    // cheap but the sign path runs at frame rate.
     if (now - this._lastAnnouncedAt < 1000) return;
     this._lastAnnouncedAt = now;
     const ch = broadcastChannel();
@@ -189,29 +197,8 @@ export class MavlinkSigner {
   }
 
   /**
-   * Validate the signature on an incoming v2 frame.
-   *
-   * `frameBytesThroughCrc` is the same signed region as in sign().
-   * `sigTail` is the 13 bytes that followed the CRC in the wire frame.
-   */
-  async verify(frameBytesThroughCrc: Uint8Array, sigTail: Uint8Array): Promise<boolean> {
-    if (sigTail.length !== SIGNATURE_TAIL_LEN) return false;
-    const rxLinkId = sigTail[0];
-    const hmacInput = new Uint8Array(frameBytesThroughCrc.length + 7);
-    hmacInput.set(frameBytesThroughCrc, 0);
-    hmacInput[frameBytesThroughCrc.length] = rxLinkId;
-    hmacInput.set(sigTail.subarray(1, 7), frameBytesThroughCrc.length + 1);
-
-    const full = await crypto.subtle.sign("HMAC", this.cryptoKey, hmacInput);
-    const expected = new Uint8Array(full).subarray(0, 6);
-    const received = sigTail.subarray(7, 13);
-    return constantTimeEquals(expected, received);
-  }
-
-  /**
-   * Forward-only timestamp. Never reads system clock after the first call
-   * in a way that could regress: subsequent calls take max(Date.now(), last+1).
-   * A clock that jumps forward then back therefore never regresses it.
+   * Forward-only timestamp: max(now in 10 us units, last + 1). A clock that
+   * jumps forward then back therefore never regresses it.
    */
   private nextTimestamp(): bigint {
     const now10us = BigInt(Math.max(0, Date.now() - EPOCH_2015_MS)) * BIG_100;
@@ -231,7 +218,7 @@ function writeUint48LE(buf: Uint8Array, offset: number, value: bigint): void {
 }
 
 /**
- * Constant-time byte comparison. HMAC tag comparisons must not leak
+ * Constant-time byte comparison. Signature comparisons must not leak
  * timing information.
  */
 function constantTimeEquals(a: Uint8Array, b: Uint8Array): boolean {
@@ -269,29 +256,6 @@ export async function keyFingerprint(keyBytes: Uint8Array): Promise<string> {
     out += view[i].toString(16).padStart(2, "0");
   }
   return out;
-}
-
-/**
- * Import raw bytes as a non-extractable HMAC-SHA256 key. The returned
- * CryptoKey cannot be exported back to raw bytes: `crypto.subtle.exportKey`
- * will throw `InvalidAccessError`. The caller should zeroize `keyBytes`
- * immediately after this call returns.
- */
-export async function importNonExtractableKey(keyBytes: Uint8Array): Promise<CryptoKey> {
-  if (keyBytes.length !== 32) {
-    throw new Error(`signing key must be 32 bytes, got ${keyBytes.length}`);
-  }
-  // Copy into a fresh ArrayBuffer. Narrow Uint8Array<ArrayBufferLike> ->
-  // Uint8Array<ArrayBuffer> so the importKey overload resolves cleanly.
-  const copy = new Uint8Array(keyBytes.length);
-  copy.set(keyBytes);
-  return crypto.subtle.importKey(
-    "raw",
-    copy,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
 }
 
 /**
