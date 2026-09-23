@@ -21,6 +21,8 @@ export const GEOZONE_VERTEX_MAX = 10
 export const GEOZONE_TYPE = { EXCLUSIVE: 0, INCLUSIVE: 1 } as const
 /** Zone shape values. */
 export const GEOZONE_SHAPE = { CIRCULAR: 0, POLYGON: 1 } as const
+/** Breach action, iNav `fenceAction_e` (settings table `fence_action`). */
+export const GEOZONE_FENCE_ACTION = { NONE: 0, AVOID: 1, POS_HOLD: 2, RTH: 3 } as const
 /** Vertex slots a circular zone occupies on the FC: its centre and its radius. */
 const CIRCLE_VERTEX_SLOTS = 2
 
@@ -104,7 +106,7 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
       shape: GEOZONE_SHAPE.POLYGON,
       minAlt: 0,
       maxAlt: 12000, // 120 m in cm
-      fenceAction: 1, // AVOID
+      fenceAction: GEOZONE_FENCE_ACTION.AVOID,
       vertexCount: 0,
       isSeaLevelRef: false,
       ...partial,

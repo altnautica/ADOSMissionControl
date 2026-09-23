@@ -26,9 +26,10 @@ const PROFILE_OPTIONS = [
   { value: "2", label: "Profile 3" },
 ];
 
+/** iNav `bat_capacity_unit`: MAH = 0, MWH = 1. */
 const CAPACITY_UNIT_OPTIONS = [
   { value: "0", label: "mAh" },
-  { value: "1", label: "% remaining" },
+  { value: "1", label: "mWh" },
 ];
 
 const VOLTAGE_SOURCE_OPTIONS = [
@@ -45,9 +46,10 @@ const DEFAULT_CFG: INavBatteryConfig = {
   voltageSource: 0,
   cells: 0,
   cellDetect: 1,
-  cellMin: 3300,
-  cellMax: 4200,
-  cellWarning: 3500,
+  // iNav stores cell voltages in 0.01 V.
+  cellMin: 330,
+  cellMax: 420,
+  cellWarning: 350,
   currentScale: 400,
   currentOffset: 0,
 };
@@ -75,10 +77,12 @@ export function BatteryProfilePanel() {
 
   const handleRead = useCallback(async () => {
     const protocol = getSelectedProtocol();
-    if (!protocol?.getBatteryConfig) { setError("Battery config not supported"); return; }
+    if (!protocol?.getBatteryConfig || !protocol.getActiveProfiles) { setError("Battery config not supported"); return; }
     setLoading(true); setError(null);
     try {
-      const data = await protocol.getBatteryConfig();
+      // The FC edits the battery profile it is flying, so both are read together.
+      const [profiles, data] = await Promise.all([protocol.getActiveProfiles(), protocol.getBatteryConfig()]);
+      setActiveProfile(profiles.batteryProfile);
       setCfg(data); setHasLoaded(true); setDirty(false);
     } catch (err) {
       setError(String(err));
@@ -104,12 +108,18 @@ export function BatteryProfilePanel() {
 
   const handleSwitchProfile = useCallback(async (idx: number) => {
     const protocol = getSelectedProtocol();
-    if (!protocol?.selectBatteryProfile) { setError("Profile switch not supported"); return; }
+    if (!protocol?.selectBatteryProfile || !protocol.getActiveProfiles || !protocol.getBatteryConfig) {
+      setError("Profile switch not supported");
+      return;
+    }
     setLoading(true); setError(null);
     try {
-      await protocol.selectBatteryProfile(idx);
-      setActiveProfile(idx);
-      const data = await protocol.getBatteryConfig!();
+      const result = await protocol.selectBatteryProfile(idx);
+      if (!result.success) { setError(result.message); return; }
+      // Show the profile the FC reports, not the one requested.
+      const [profiles, data] = await Promise.all([protocol.getActiveProfiles(), protocol.getBatteryConfig()]);
+      setActiveProfile(profiles.batteryProfile);
+      if (profiles.batteryProfile !== idx) setError(`The flight controller stayed on profile ${profiles.batteryProfile + 1}`);
       setCfg(data); setHasLoaded(true); setDirty(false);
     } catch (err) {
       setError(String(err));
@@ -117,6 +127,8 @@ export function BatteryProfilePanel() {
       setLoading(false);
     }
   }, [getSelectedProtocol]);
+
+  const capacityUnit = cfg.capacityUnit === 1 ? "mWh" : "mAh";
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -161,12 +173,13 @@ export function BatteryProfilePanel() {
                 label=""
                 options={PROFILE_OPTIONS}
                 value={String(activeProfile)}
+                disabled={!connected || loading || isArmed}
                 onChange={(v) => handleSwitchProfile(parseInt(v))}
               />
             </div>
 
             <div className="border border-border-default rounded p-3 space-y-3">
-              <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">Cell voltages (mV)</p>
+              <p className="text-[10px] font-mono text-text-tertiary uppercase tracking-wide">Cell voltages (0.01 V)</p>
               <div className="grid grid-cols-3 gap-2">
                 {(["cellMin", "cellMax", "cellWarning"] as const).map((key) => (
                   <label key={key} className="flex flex-col gap-1">
@@ -190,7 +203,7 @@ export function BatteryProfilePanel() {
                 {(["capacityMah", "capacityWarningMah", "capacityCriticalMah"] as const).map((key) => (
                   <label key={key} className="flex flex-col gap-1">
                     <span className="text-[10px] text-text-tertiary font-mono">
-                      {key === "capacityMah" ? "Total (mAh)" : key === "capacityWarningMah" ? "Warning (mAh)" : "Critical (mAh)"}
+                      {key === "capacityMah" ? `Total (${capacityUnit})` : key === "capacityWarningMah" ? `Warning (${capacityUnit})` : `Critical (${capacityUnit})`}
                     </span>
                     <input
                       type="number"

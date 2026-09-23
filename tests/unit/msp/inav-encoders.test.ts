@@ -8,6 +8,7 @@ import {
   encodeMspINavSetMisc,
   encodeMspINavSelectBatteryProfile,
   encodeMspINavSelectMixerProfile,
+  encodeMspINavSetBatteryConfig,
 } from '@/lib/protocol/msp/msp-encoders-inav'
 import type { INavWaypoint, INavSafehome } from '@/lib/protocol/msp/msp-decoders-inav'
 
@@ -177,5 +178,26 @@ describe('encodeMspINavSelectMixerProfile', () => {
     const buf = encodeMspINavSelectMixerProfile(1)
     expect(buf.byteLength).toBe(1)
     expect(buf[0]).toBe(1)
+  })
+})
+
+// ── encodeMspINavSetBatteryConfig ─────────────────────────────
+
+describe('encodeMspINavSetBatteryConfig', () => {
+  it('writes the 29-byte frame the firmware requires, in its field order', () => {
+    const buf = encodeMspINavSetBatteryConfig({
+      voltageScale: 1100, voltageSource: 1, cells: 4, cellDetect: 430,
+      cellMin: 330, cellMax: 420, cellWarning: 350, currentOffset: 25, currentScale: 400,
+      capacityMah: 2200, capacityWarningMah: 440, capacityCriticalMah: 220, capacityUnit: 1,
+    })
+    // MSP2_INAV_SET_BATTERY_CONFIG is refused unless dataSize is exactly 29.
+    expect(buf.length).toBe(29)
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
+    expect(readU16LE(buf, 0)).toBe(1100)
+    expect(readU8(buf, 2)).toBe(1)
+    expect(readU8(buf, 3)).toBe(4)
+    expect([4, 6, 8, 10, 12, 14].map((o) => readU16LE(buf, o))).toEqual([430, 330, 420, 350, 25, 400])
+    expect([16, 20, 24].map((o) => dv.getUint32(o, true))).toEqual([2200, 440, 220])
+    expect(readU8(buf, 28)).toBe(1)
   })
 })

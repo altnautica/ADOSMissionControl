@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useProgrammingStore, PROGRAMMING_PID_MAX } from "@/stores/programming-store";
 import { PanelHeader } from "../../shared/PanelHeader";
@@ -19,18 +19,10 @@ import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { Sliders, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LOGIC_OPERAND_TYPE_OPTIONS } from "./programming-constants";
 
-const OPERAND_TYPE_LABELS: Record<number, string> = {
-  0: "VALUE",
-  1: "RC_CHANNEL",
-  2: "FLIGHT",
-  3: "FLIGHT_MODE",
-  4: "LC",
-  5: "TIMER",
-  6: "GVAR",
-};
-
-const OPERAND_TYPE_OPTIONS = Object.entries(OPERAND_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }));
+// The setpoint and measurement are logic operands (logicOperandType_e).
+const OPERAND_TYPE_OPTIONS = LOGIC_OPERAND_TYPE_OPTIONS;
 
 // ── Component ─────────────────────────────────────────────────
 
@@ -48,9 +40,20 @@ export function ProgrammingPidPanel() {
   const setPid = useProgrammingStore((s) => s.setPid);
   const loadFromFc = useProgrammingStore((s) => s.loadFromFc);
   const uploadPids = useProgrammingStore((s) => s.uploadPids);
+  const startPolling = useProgrammingStore((s) => s.startPolling);
+  const stopPolling = useProgrammingStore((s) => s.stopPolling);
 
   const connected = !!getSelectedProtocol();
   const hasLoaded = useProgrammingStore((s) => s.loaded);
+
+  // The live output is MSP2_INAV_PROGRAMMING_PID_STATUS, polled while armed.
+  useEffect(() => {
+    const protocol = getSelectedProtocol();
+    if (!protocol) return;
+    if (isArmed && connected) startPolling(protocol, 500);
+    else stopPolling();
+    return () => stopPolling();
+  }, [isArmed, connected, getSelectedProtocol, startPolling, stopPolling]);
 
   const handleRead = useCallback(async () => {
     const protocol = getSelectedProtocol();

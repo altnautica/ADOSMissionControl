@@ -158,7 +158,7 @@ export interface INavMixer {
   motorDirectionInverted: boolean;
   /** motorstop_on_low. */
   motorstopOnLow: boolean;
-  /** Platform type: 0=MULTIROTOR, 1=AIRPLANE, 2=TRICOPTER, 3=ROVER, 4=BOAT, 5=HELICOPTER. */
+  /** flyingPlatformType_e: 0 MULTIROTOR, 1 AIRPLANE, 2 HELICOPTER, 3 TRICOPTER, 4 ROVER, 5 BOAT. */
   platformType: number;
   hasFlaps: boolean;
   appliedMixerPreset: number;

@@ -39,7 +39,7 @@ import { INAV_WP_FLAG_LAST, INAV_WP_ACTION, INAV_LIMITS } from "@/lib/protocol/m
 import type {
   INavWaypoint, INavSafehome, MotorMixerRule, INavServoMixerRule,
   INavEzTune, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
-  INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavGvarStatus,
+  INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavGvarStatus,
   INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry,
   INavCustomOsdElement, INavCustomOsdElementsInfo,
 } from "@/lib/protocol/msp/msp-decoders-inav";
@@ -112,6 +112,9 @@ export interface INavGeozone {
 interface SettingEntry {
   type: number;
   value: number | string;
+  /** The firmware range (settings.yaml), reported through SETTING_INFO. */
+  min?: number;
+  max?: number;
 }
 
 /** Last DShot special command handed to the mock, for tests and debug panels. */
@@ -167,6 +170,37 @@ function seedSettings(vehicleClass: "copter" | "plane"): Map<string, SettingEntr
   set("vbat_min_cell_voltage",                SettingType.UINT16, 330);
   set("vbat_max_cell_voltage",                SettingType.UINT16, 420);
   set("vbat_warning_cell_voltage",            SettingType.UINT16, 350);
+
+  // Settings the iNav configuration panels read, with the defaults and ranges
+  // of iNav's settings.yaml, so demo mode shows what a real FC reports.
+  const ranged = (k: string, t: number, v: number, min: number, max: number) =>
+    m.set(k, { type: t, value: v, min, max });
+  ranged("failsafe_procedure",                  SettingType.UINT8,  0,   0, 3);
+  ranged("failsafe_min_distance",               SettingType.UINT16, 0,   0, 65000);
+  ranged("failsafe_min_distance_procedure",     SettingType.UINT8,  1,   0, 3);
+  ranged("nav_auto_speed",                      SettingType.UINT16, 500, 10, 2000);
+  ranged("nav_manual_speed",                    SettingType.UINT16, 750, 10, 2000);
+  ranged("nav_position_timeout",                SettingType.UINT8,  5,   0, 10);
+  ranged("nav_user_control_mode",               SettingType.UINT8,  0,   0, 1);
+  ranged("nav_mc_bank_angle",                   SettingType.UINT8,  35,  15, 45);
+  ranged("nav_fw_bank_angle",                   SettingType.UINT8,  35,  5, 80);
+  const pid: Array<[string, number]> = vehicleClass === "plane"
+    ? [["nav_fw_pos_z_p", 30], ["nav_fw_pos_z_i", 5], ["nav_fw_pos_z_d", 10],
+       ["nav_fw_pos_xy_p", 75], ["nav_fw_pos_xy_i", 5], ["nav_fw_pos_xy_d", 8],
+       ["nav_fw_pos_hdg_p", 30], ["nav_fw_pos_hdg_i", 2], ["nav_fw_pos_hdg_d", 0]]
+    : [];
+  for (const [k, v] of [
+    ["nav_mc_pos_z_p", 50], ["nav_mc_vel_z_p", 100], ["nav_mc_vel_z_i", 50], ["nav_mc_vel_z_d", 10],
+    ["nav_mc_pos_xy_p", 65], ["nav_mc_vel_xy_p", 40], ["nav_mc_vel_xy_i", 15], ["nav_mc_vel_xy_d", 100],
+    ["nav_mc_vel_xy_ff", 40], ["nav_mc_heading_p", 60], ...pid,
+  ] as Array<[string, number]>) {
+    ranged(k, SettingType.UINT8, v, 0, 255);
+  }
+  for (const end of ["center", "end"]) {
+    ranged(`rate_dynamics_${end}_sensitivity`,  SettingType.UINT8,  100, 25, 175);
+    ranged(`rate_dynamics_${end}_correction`,   SettingType.UINT8,  10,  10, 95);
+    ranged(`rate_dynamics_${end}_weight`,       SettingType.UINT8,  0,   0, 95);
+  }
 
   return m;
 }
@@ -558,7 +592,8 @@ export class INavMockProtocol implements DroneProtocol {
     const type = entry?.type ?? SettingType.UINT8;
     return {
       name, pgId: 0, type, section: 0, mode: 0,
-      min: 0, max: type === SettingType.STRING ? 0 : 0xffffffff,
+      min: entry?.min ?? 0,
+      max: entry?.max ?? (type === SettingType.STRING ? 0 : 0xffffffff),
       index, profileCurrent: 0, profileCount: 1,
       value: entry ? Number(entry.value) : 0,
     };
@@ -583,7 +618,10 @@ export class INavMockProtocol implements DroneProtocol {
       const existing = this.settingStore.get(name);
       const type = existing?.type ?? SettingType.UINT8;
       const coerced = type === SettingType.STRING ? String(value) : Number(value);
-      this.settingStore.set(name, { type, value: coerced });
+      if (typeof coerced === "number" && existing?.max !== undefined && coerced > existing.max) {
+        return { success: false, resultCode: 1, message: `${name} is above its maximum ${existing.max}` };
+      }
+      this.settingStore.set(name, { ...existing, type, value: coerced });
       return ok(`${name} set`);
     },
     getSettingInfo: async (name) => this.synthSettingInfo(name),
@@ -766,6 +804,7 @@ export class INavMockProtocol implements DroneProtocol {
 
   private batteryProfiles: INavBatteryConfig[] = BATTERY_PROFILE_SEED.map((p) => ({ ...p }));
   private activeBatteryProfile = 0;
+  private activeControlProfile = 0;
   private mixerProfiles: INavMixer[];
   private activeMixerProfile = 0;
   /** iNav nav_mc_braking_* defaults. */
@@ -814,6 +853,18 @@ export class INavMockProtocol implements DroneProtocol {
     this.activeBatteryProfile = idx;
     this._syncBatterySettings();
     return ok(`Battery profile ${idx} selected`);
+  }
+
+  async getActiveProfiles(): Promise<INavActiveProfiles> {
+    return { controlProfile: this.activeControlProfile, batteryProfile: this.activeBatteryProfile };
+  }
+
+  async selectControlProfile(idx: number): Promise<CommandResult> {
+    if (!Number.isInteger(idx) || idx < 0 || idx > 2) {
+      return { success: false, resultCode: 1, message: "Control profile out of range (0-2)" };
+    }
+    this.activeControlProfile = idx;
+    return ok(`Control profile ${idx + 1} selected`);
   }
 
   /**

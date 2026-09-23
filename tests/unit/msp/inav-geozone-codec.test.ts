@@ -123,4 +123,16 @@ describe('geozone download and upload over the link', () => {
     const vertexFrames = sent.filter((f) => f.command === INAV_MSP.MSP2_INAV_SET_GEOZONE_VERTEX)
     expect(vertexFrames.map((f) => f.payload)).toEqual([CIRCLE_FRAME])
   })
+
+  it('writes every FC slot, emptying the ones with no zone', async () => {
+    const { queue, sent } = fakeFc()
+    const zone: INavGeozone = { ...ZONE, number: 4, shape: 0, vertexCount: 2 }
+    const centre = { geozoneId: 4, vertexIdx: 0, lat: -33.8688197, lon: 151.2092955, radius: 15000 }
+    await inavUploadGeozones(queue, [zone], [centre])
+    const zoneFrames = sent.filter((f) => f.command === INAV_MSP.MSP2_INAV_SET_GEOZONE)
+    // A zone deleted in the editor still has geometry in its FC slot until it is overwritten.
+    expect(zoneFrames.map((f) => f.payload[0])).toEqual(Array.from({ length: 63 }, (_, i) => i))
+    const emptied = zoneFrames.filter((f) => f.payload[0] !== 4)
+    expect(emptied.every((f) => f.payload[13] === 0)).toBe(true)
+  })
 })

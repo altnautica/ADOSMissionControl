@@ -11,8 +11,10 @@ import type { MotorMixerRule, INavServoMixerRule } from '@/lib/protocol/msp/msp-
 import { formatErrorMessage } from '@/lib/utils'
 import { droneSlices, type DroneKeyed } from './drone-slices'
 
-export const MOTOR_MIXER_MAX = 16
-export const SERVO_MIXER_MAX = 32
+/** iNav's default MAX_SUPPORTED_MOTORS; the upload checks the FC's own figure. */
+export const MOTOR_MIXER_MAX = 12
+/** iNav's default MAX_SERVO_RULES (2 x MAX_SUPPORTED_SERVOS); the upload checks the FC's own figure. */
+export const SERVO_MIXER_MAX = 36
 
 interface MixerSlice {
   motorRules: MotorMixerRule[]
@@ -132,6 +134,12 @@ export const useMixerStore = create<MixerState>((set, get) => ({
     const unusedAt = motorRules.findIndex((r) => r.throttle === 0)
     if (unusedAt >= 0) {
       set({ error: `Motor rule ${unusedAt} has throttle 0, which the flight controller reads as the end of the motor table` })
+      return
+    }
+    // Likewise the FC stops loading servo rules at the first rate-0 rule.
+    const emptyServoAt = servoRules.findIndex((r) => r.rate === 0)
+    if (emptyServoAt >= 0) {
+      set({ error: `Servo rule ${emptyServoAt} has rate 0, which the flight controller reads as the end of the servo table` })
       return
     }
     const droneId = get().droneId

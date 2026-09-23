@@ -31,6 +31,15 @@ const INPUT_SOURCE_OPTIONS = [
   { value: "11", label: "RC AUX 4" },
 ];
 
+/** iNav MAX_LOGIC_CONDITIONS. */
+const LOGIC_CONDITION_COUNT = 64;
+
+/** -1 gates the rule on nothing (iNav's default); 0..63 gate it on that logic condition. */
+const CONDITION_OPTIONS = [
+  { value: "-1", label: "Always" },
+  ...Array.from({ length: LOGIC_CONDITION_COUNT }, (_, i) => ({ value: String(i), label: `Logic condition ${i}` })),
+];
+
 interface ServoMixerTableProps {
   isArmed: boolean;
   lockMessage: string;
@@ -100,8 +109,8 @@ export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) 
                   <td className="py-1 pr-2">
                     <input
                       type="number"
-                      min={-100}
-                      max={100}
+                      min={-1000}
+                      max={1000}
                       value={rule.rate}
                       disabled={isArmed}
                       className={INPUT_CLASS}
@@ -111,8 +120,8 @@ export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) 
                       onBlur={(e) =>
                         setServoRule(idx, {
                           rate: Math.min(
-                            100,
-                            Math.max(-100, parseInt(e.target.value) || 0),
+                            1000,
+                            Math.max(-1000, parseInt(e.target.value) || 0),
                           ),
                         })
                       }
@@ -139,27 +148,14 @@ export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) 
                       }
                     />
                   </td>
-                  <td className="py-1 pr-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={15}
-                      value={rule.conditionId}
+                  <td className="py-1 pr-2 min-w-[150px]">
+                    <Select
+                      label=""
+                      options={CONDITION_OPTIONS}
+                      value={String(rule.conditionId)}
                       disabled={isArmed}
-                      className={INPUT_CLASS}
-                      onChange={(e) =>
-                        setServoRule(idx, {
-                          conditionId: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      onBlur={(e) =>
-                        setServoRule(idx, {
-                          conditionId: Math.min(
-                            15,
-                            Math.max(0, parseInt(e.target.value) || 0),
-                          ),
-                        })
-                      }
+                      searchable
+                      onChange={(v) => setServoRule(idx, { conditionId: parseInt(v, 10) })}
                     />
                   </td>
                   <td className="py-1">
@@ -191,7 +187,7 @@ export function ServoMixerTable({ isArmed, lockMessage }: ServoMixerTableProps) 
               inputSource: 0,
               rate: 100,
               speed: 0,
-              conditionId: 0,
+              conditionId: -1,
             })
           }
         >

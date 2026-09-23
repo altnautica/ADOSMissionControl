@@ -15,37 +15,7 @@ import { Sliders, Upload } from "lucide-react";
 import { useSettingsParams } from "@/hooks/use-settings-params";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import type { INavEzTune } from "@/lib/protocol/msp/msp-decoders-inav";
-
-// ── Defaults ──────────────────────────────────────────────────
-
-const DEFAULTS: INavEzTune = {
-  enabled: false,
-  filterHz: 110,
-  axisRatio: 100,
-  response: 50,
-  damping: 50,
-  stability: 50,
-  aggressiveness: 50,
-  rate: 50,
-  expo: 50,
-  snappiness: 50,
-};
-
-// ── Slider fields ─────────────────────────────────────────────
-
-type SliderKey = Exclude<keyof INavEzTune, "enabled">;
-
-const SLIDER_FIELDS: Array<{ key: SliderKey; label: string; min: number; max: number; hint: string }> = [
-  { key: "filterHz", label: "Filter cutoff", min: 10, max: 200, hint: "Gyro low-pass filter cutoff in Hz" },
-  { key: "axisRatio", label: "Axis ratio", min: 0, max: 150, hint: "Roll-to-pitch rate ratio" },
-  { key: "response", label: "Response", min: 0, max: 150, hint: "Overall stick response" },
-  { key: "damping", label: "Damping", min: 0, max: 150, hint: "Oscillation suppression" },
-  { key: "stability", label: "Stability", min: 0, max: 150, hint: "Position-hold authority" },
-  { key: "aggressiveness", label: "Aggressiveness", min: 0, max: 150, hint: "Flip and roll authority" },
-  { key: "rate", label: "Rate", min: 0, max: 100, hint: "Maximum rotation rate" },
-  { key: "expo", label: "Expo", min: 0, max: 100, hint: "Stick expo curve" },
-  { key: "snappiness", label: "Snappiness", min: 0, max: 100, hint: "Quick-stop precision" },
-];
+import { EZ_TUNE_DEFAULTS, EZ_TUNE_FIELDS, ezTuneRangeError, type EzTuneSliderKey } from "./ez-tune-fields";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -56,6 +26,8 @@ async function readEzTune(protocol: DroneProtocol): Promise<INavEzTune> {
 }
 
 async function writeEzTune(protocol: DroneProtocol, values: INavEzTune): Promise<void> {
+  const problem = ezTuneRangeError(values);
+  if (problem) throw new Error(problem);
   const result = await protocol.setEzTune!(values);
   if (!result.success) throw new Error(result.message);
 }
@@ -68,14 +40,14 @@ export function EzTunePanel() {
     connected, isArmed, lockMessage, read, write,
   } = useSettingsParams<INavEzTune>({
     panelId: "inav-ez-tune",
-    initial: DEFAULTS,
+    initial: EZ_TUNE_DEFAULTS,
     read: readEzTune,
     write: writeEzTune,
     supported: ezTuneSupported,
     unsupportedMessage: "EZ Tune not available on this firmware",
   });
 
-  function handleSlider(key: SliderKey, raw: string) {
+  function handleSlider(key: EzTuneSliderKey, raw: string) {
     setValues((prev) => ({ ...prev, [key]: parseInt(raw, 10) }));
   }
 
@@ -133,7 +105,7 @@ export function EzTunePanel() {
               </button>
             </div>
 
-            {SLIDER_FIELDS.map((f) => (
+            {EZ_TUNE_FIELDS.map((f) => (
               <div key={f.key} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-text-secondary">{f.label}</span>

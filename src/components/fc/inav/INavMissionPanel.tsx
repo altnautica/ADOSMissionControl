@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useMissionStore } from "@/stores/mission-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { PanelHeader } from "../shared/PanelHeader";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Route, ArrowRight } from "lucide-react";
 
 // ── Action label map ──────────────────────────────────────────
@@ -67,7 +68,9 @@ export function INavMissionPanel() {
     return { counts: tally, itemCount: total };
   }, [waypoints]);
 
-  const handleRead = useCallback(async () => {
+  const [confirmReplace, setConfirmReplace] = useState(false);
+
+  const readFromFc = useCallback(async () => {
     if (!getSelectedProtocol()) {
       setError("No drone connected");
       return;
@@ -76,12 +79,19 @@ export function INavMissionPanel() {
     setError(null);
     await downloadMission();
     if (useMissionStore.getState().downloadState === "error") {
-      setError("Mission download failed");
+      // The plan is left as it was; nothing from a failed read replaces it.
+      setError("Mission download failed; the current plan is unchanged");
     } else {
       setHasRead(true);
     }
     setLoading(false);
   }, [getSelectedProtocol, downloadMission]);
+
+  // A read replaces the plan in the Plan tab, so a non-empty plan is confirmed first.
+  const handleRead = useCallback(() => {
+    if (useMissionStore.getState().waypoints.length > 0) setConfirmReplace(true);
+    else void readFromFc();
+  }, [readFromFc]);
 
   const handleOpenPlanner = useCallback(() => {
     router.push("/plan");
@@ -139,6 +149,17 @@ export function INavMissionPanel() {
             </button>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={confirmReplace}
+          title="Replace the current plan?"
+          message={`Reading from the flight controller replaces the ${waypoints.length}-waypoint plan in the Plan tab with the mission stored on the FC.`}
+          confirmLabel="Replace plan"
+          cancelLabel="Cancel"
+          variant="primary"
+          onConfirm={() => { setConfirmReplace(false); void readFromFc(); }}
+          onCancel={() => setConfirmReplace(false)}
+        />
 
         <div className="border border-border-default rounded p-4 space-y-2">
           <span className="text-[10px] text-text-tertiary font-mono">iNav waypoint actions</span>

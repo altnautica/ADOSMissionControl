@@ -35,7 +35,7 @@ import type { FirmwareHandler } from './firmware';
 // iNav-specific types : optional so MAVLink adapter needs no changes
 import type {
   INavSafehome, INavGeozone, INavGeozoneVertex,
-  INavBatteryConfig, INavMixer, INavServoConfig,
+  INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig,
   INavMcBraking, INavRateDynamics, INavTimerOutputModeEntry, INavOutputMappingExt2Entry,
   INavTempSensorConfigEntry, INavLogicCondition, INavLogicConditionsStatus,
   INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus,
@@ -231,6 +231,10 @@ export interface DroneProtocol {
   getBatteryConfig?(): Promise<INavBatteryConfig>;
   setBatteryConfig?(cfg: INavBatteryConfig): Promise<CommandResult>;
   selectBatteryProfile?(idx: number): Promise<CommandResult>;
+  /** The control and battery profiles the FC is flying (MSP2_INAV_STATUS byte 8). */
+  getActiveProfiles?(): Promise<INavActiveProfiles>;
+  /** Switch the control profile (MSP_SELECT_SETTING); the FC refuses while armed. */
+  selectControlProfile?(idx: number): Promise<CommandResult>;
   getMixerConfig?(): Promise<INavMixer>;
   selectMixerProfile?(idx: number): Promise<CommandResult>;
   getOutputMapping?(): Promise<INavOutputMappingExt2Entry[]>;

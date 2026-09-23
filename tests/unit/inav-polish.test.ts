@@ -20,6 +20,7 @@ import {
 } from "@/lib/protocol/msp/msp-encoders-inav";
 import type { INavFwApproach, INavOsdAlarms, INavOsdPreferences, INavCustomOsdElement, INavCustomOsdField, INavCustomOsdElementsInfo } from "@/lib/protocol/msp/msp-decoders-inav";
 import type { INavEzTune } from "@/lib/protocol/msp/msp-decoders-inav";
+import { decodeMspINavCustomOsdElement } from "@/lib/protocol/msp/msp-decoders-inav";
 
 // ── EzTune encoder ────────────────────────────────────────────
 
@@ -255,5 +256,28 @@ describe("encodeMspINavSetCustomOsdElement", () => {
     // Bytes 4..17 hold the first 14 chars; no overflow
     const decoded = Array.from(buf.slice(4)).map((b) => (b === 0 ? "" : String.fromCharCode(b))).join("");
     expect(decoded).toBe("ABCDEFGHIJKLMN");
+  });
+});
+
+// ── Custom OSD element read-back ──────────────────────────────
+
+describe("decodeMspINavCustomOsdElement", () => {
+  it("reads back what the SET frame wrote (the reply is the frame without its index)", () => {
+    const info: INavCustomOsdElementsInfo = { maxElements: 8, partCount: 3, textLength: 15 };
+    const element: INavCustomOsdElement = {
+      index: 4,
+      parts: [{ type: 1, value: 0x0102 }, { type: 3, value: 7 }, { type: 0, value: 0 }],
+      visibility: { type: 2, value: 5 },
+      text: "HELLO",
+    };
+    const frame = encodeMspINavSetCustomOsdElement(element, info);
+    const reply = frame.slice(1);
+    const decoded = decodeMspINavCustomOsdElement(new DataView(reply.buffer, reply.byteOffset, reply.byteLength), 4, info);
+    expect(decoded).toEqual(element);
+  });
+
+  it("refuses a reply shorter than the reported geometry", () => {
+    const info: INavCustomOsdElementsInfo = { maxElements: 8, partCount: 3, textLength: 15 };
+    expect(() => decodeMspINavCustomOsdElement(new DataView(new ArrayBuffer(10)), 0, info)).toThrow(RangeError);
   });
 });

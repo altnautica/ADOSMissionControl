@@ -20,29 +20,7 @@ import type {
   INavOutputMappingExt2Entry,
   INavTimerOutputModeEntry,
 } from "@/lib/protocol/msp/msp-decoders-inav";
-
-// ── Constants ─────────────────────────────────────────────────
-
-const TIMER_MODE_OPTIONS = [
-  { value: "0", label: "Auto" },
-  { value: "1", label: "PWM" },
-  { value: "2", label: "Oneshot125" },
-  { value: "3", label: "Oneshot42" },
-  { value: "4", label: "Multishot" },
-  { value: "5", label: "DSHOT150" },
-  { value: "6", label: "DSHOT300" },
-  { value: "7", label: "DSHOT600" },
-];
-
-function usageFlagsLabel(flags: number): string {
-  if (flags === 0) return "NONE";
-  const parts: string[] = [];
-  if (flags & 1) parts.push("MOTOR");
-  if (flags & 2) parts.push("SERVO");
-  if (flags & 4) parts.push("LED");
-  if (flags & 8) parts.push("SERIAL");
-  return parts.join("+") || `0x${flags.toString(16)}`;
-}
+import { TIMER_OUTPUT_MODE_OPTIONS, timerUsageLabel } from "./inav-output-mapping";
 
 // ── Component ─────────────────────────────────────────────────
 
@@ -148,7 +126,7 @@ export function OutputMappingPanel() {
                     <div className="flex-1">
                       <Select
                         label=""
-                        options={TIMER_MODE_OPTIONS}
+                        options={TIMER_OUTPUT_MODE_OPTIONS}
                         value={String(entry.mode)}
                         onChange={(v) => updateTimerMode(entry.timerId, parseInt(v))}
                       />
@@ -165,7 +143,7 @@ export function OutputMappingPanel() {
                   {mapping.map((entry, i) => (
                     <div key={i} className="flex items-center gap-1 text-[10px] font-mono">
                       <span className="text-text-tertiary w-6">O{i + 1}</span>
-                      <span className="text-text-primary">{usageFlagsLabel(entry.usageFlags)}</span>
+                      <span className="text-text-primary">{timerUsageLabel(entry.usageFlags)}</span>
                     </div>
                   ))}
                 </div>

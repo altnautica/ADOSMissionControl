@@ -1,8 +1,8 @@
 /**
  * @module ControlProfilePanel
- * @description iNav control profile switcher via the settings system.
- * Allows selecting the active rate/control profile (0-2) and reading
- * a few profile-specific settings.
+ * @description iNav control profile switcher. Reads the profile the FC is
+ * flying from MSP2_INAV_STATUS and switches with MSP_SELECT_SETTING, showing
+ * the profile the FC reports afterwards rather than the one requested.
  * @license GPL-3.0-only
  */
 
@@ -15,7 +15,6 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Gauge } from "lucide-react";
-import { settingNumber } from "@/lib/protocol/types";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -29,8 +28,6 @@ const PROFILE_OPTIONS = [
   { value: "1", label: "Control profile 2" },
   { value: "2", label: "Control profile 3" },
 ];
-
-const SETTING = "current_control_rate_profile";
 
 // ── Component ─────────────────────────────────────────────────
 
@@ -47,12 +44,12 @@ export function ControlProfilePanel() {
   const { isArmed } = useArmedLock();
 
   const handleRead = useCallback(async () => {
-    const settings = getSelectedProtocol()?.settings;
-    if (!settings) { setError("Settings not available on this firmware"); return; }
+    const protocol = getSelectedProtocol();
+    if (!protocol?.getActiveProfiles) { setError("Control profiles are not available on this firmware"); return; }
     setLoading(true); setError(null);
     try {
-      const value = await settings.getSetting(SETTING);
-      setInfo({ activeProfile: settingNumber(value), profileCount: 3 });
+      const { controlProfile } = await protocol.getActiveProfiles();
+      setInfo({ activeProfile: controlProfile, profileCount: 3 });
       setHasLoaded(true);
     } catch (err) {
       setError(String(err));
@@ -70,12 +67,18 @@ export function ControlProfilePanel() {
     const idx = pendingProfile;
     setPendingProfile(null);
     if (idx === null) return;
-    const settings = getSelectedProtocol()?.settings;
-    if (!settings) { setError("Settings not available on this firmware"); return; }
+    const protocol = getSelectedProtocol();
+    if (!protocol?.selectControlProfile || !protocol.getActiveProfiles) {
+      setError("Control profiles are not available on this firmware");
+      return;
+    }
     setLoading(true); setError(null);
     try {
-      await settings.setSetting(SETTING, idx);
-      setInfo((prev) => ({ ...prev, activeProfile: idx }));
+      const result = await protocol.selectControlProfile(idx);
+      if (!result.success) { setError(result.message); return; }
+      const { controlProfile } = await protocol.getActiveProfiles();
+      setInfo((prev) => ({ ...prev, activeProfile: controlProfile }));
+      if (controlProfile !== idx) setError(`The flight controller stayed on control profile ${controlProfile + 1}`);
     } catch (err) {
       setError(String(err));
     } finally {

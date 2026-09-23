@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useGeozoneStore, GEOZONE_SHAPE, GEOZONE_TYPE } from "@/stores/geozone-store";
+import { useGeozoneStore, GEOZONE_FENCE_ACTION, GEOZONE_SHAPE, GEOZONE_TYPE } from "@/stores/geozone-store";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { GeozoneMapEditor } from "./GeozoneMapEditor";
@@ -28,11 +28,10 @@ const ZONE_SHAPE_OPTIONS = [
 ];
 
 const FENCE_ACTION_OPTIONS = [
-  { value: "0", label: "0 : None" },
-  { value: "1", label: "1 : Avoid" },
-  { value: "2", label: "2 : RTH on breach" },
-  { value: "3", label: "3 : Poshold indefinite" },
-  { value: "4", label: "4 : Poshold timed" },
+  { value: String(GEOZONE_FENCE_ACTION.NONE), label: "None" },
+  { value: String(GEOZONE_FENCE_ACTION.AVOID), label: "Avoid" },
+  { value: String(GEOZONE_FENCE_ACTION.POS_HOLD), label: "Position hold" },
+  { value: String(GEOZONE_FENCE_ACTION.RTH), label: "RTH" },
 ];
 
 const formatCoord = (val: number) => val.toFixed(7);

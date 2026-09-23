@@ -64,6 +64,10 @@ export function BfReceiverPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  // The provider the flight controller last booted with (the one read or saved
+  // before this session changed it). Betaflight opens the serial receiver at
+  // boot, so a saved change does nothing until the next reboot.
+  const [bootProvider, setBootProvider] = useState<number | null>(null);
 
   const read = useCallback(async () => {
     const p = getSelectedProtocol();
@@ -78,6 +82,7 @@ export function BfReceiverPanel() {
       setCfg(c);
       setRxMap(m);
       setBaseline(snapshot(c, m));
+      setBootProvider(c.serialrxProvider);
       setHasLoaded(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -176,6 +181,11 @@ export function BfReceiverPanel() {
               <Select options={USB_HID_OPTIONS} value={String(cfg.usbCdcHidType)} onChange={(v) => updateCfg({ usbCdcHidType: parseInt(v) })} disabled={disabled} />
             </div>
           </div>
+          {!dirty && bootProvider !== null && cfg.serialrxProvider !== bootProvider && (
+            <p className="text-[11px] text-status-warning max-w-2xl">
+              Saved. The flight controller switches to the new serial RX provider when it next reboots.
+            </p>
+          )}
 
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">RC Smoothing</h3>

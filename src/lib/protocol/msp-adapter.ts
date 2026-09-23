@@ -52,6 +52,7 @@ import type {
   INavSafehome,
   INavGeozone,
   INavGeozoneVertex,
+  INavActiveProfiles,
   INavBatteryConfig,
   INavMixer,
   INavServoConfig,
@@ -323,6 +324,8 @@ export class MSPAdapter implements DroneProtocol {
   async setBatteryConfig(cfg: INavBatteryConfig): Promise<CommandResult> { return this.persist(() => inav.inavSetBatteryConfig(this.queue, cfg)) }
   // Profile selects are saved to EEPROM by the FC itself.
   async selectBatteryProfile(idx: number): Promise<CommandResult> { return inav.inavSelectBatteryProfile(this.queue, idx) }
+  async getActiveProfiles(): Promise<INavActiveProfiles> { return inav.inavGetActiveProfiles(this.queue) }
+  async selectControlProfile(idx: number): Promise<CommandResult> { return inav.inavSelectControlProfile(this.queue, idx) }
   async getMixerConfig(): Promise<INavMixer> { return inav.inavGetMixerConfig(this.queue) }
   async selectMixerProfile(idx: number): Promise<CommandResult> { return inav.inavSelectMixerProfile(this.queue, idx) }
   async getOutputMapping(): Promise<INavOutputMappingExt2Entry[]> { return inav.inavGetOutputMapping(this.queue) }

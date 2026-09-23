@@ -16,16 +16,13 @@ import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { LiveBatteryDisplay } from "./LiveBatteryDisplay";
 import { Px4PowerSections, PX4_POWER_PARAMS, PX4_OPTIONAL_POWER_PARAMS } from "./Px4PowerSections";
+import { BF_POWER_PARAMS } from "./bf-power-constants";
 
 const POWER_PARAMS = [
   "BATT_MONITOR", "BATT_CAPACITY", "BATT_AMP_PERVLT", "BATT_AMP_OFFSET",
   "BATT_FS_LOW_VOLT", "BATT_FS_LOW_ACT", "BATT_FS_CRT_VOLT", "BATT_FS_CRT_ACT",
   "BATT_FS_LOW_MAH", "BATT_FS_CRT_MAH",
 ];
-
-const BF_POWER_PARAMS = [
-  'BF_BATT_MIN_CELL', 'BF_BATT_MAX_CELL', 'BF_BATT_WARNING_CELL', 'BF_BATT_CAPACITY',
-] as const;
 
 const OPTIONAL_POWER_PARAMS = [
   "BATT2_MONITOR", "BATT2_CAPACITY", "BATT2_AMP_PERVLT", "BATT2_AMP_OFFSET",

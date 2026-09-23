@@ -12,14 +12,9 @@ import { Gauge, Save, RotateCcw, HardDrive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { RateCurvePreview, calcBetaflightRate, type CurveData } from "./rate-curve-preview";
+import { BF_RATE_PARAM_NAMES } from "./bf-rate-constants";
 
-const PARAM_NAMES = [
-  "BF_RC_RATE", "BF_RC_EXPO", "BF_ROLL_RATE", "BF_PITCH_RATE",
-  "BF_YAW_RATE", "BF_RC_YAW_EXPO", "BF_RC_YAW_RATE",
-  "BF_THROTTLE_MID", "BF_THROTTLE_EXPO",
-] as const;
-
-const paramNames = [...PARAM_NAMES];
+const paramNames = [...BF_RATE_PARAM_NAMES];
 
 export function RateProfilePanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
