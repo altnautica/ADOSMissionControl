@@ -98,6 +98,23 @@ describe("cockpit safety band freshness", () => {
     renderBand();
     expect(screen.queryByText(/76/)).toBeNull();
   });
+
+  it("reads an FC-reported -1 battery percentage as no reading, not a low pack", () => {
+    // BATTERY_STATUS carries -1 when the FC has no capacity estimate, and the
+    // MSP analog sample always does. Neither is an empty battery.
+    seedTelemetry(0);
+    useTelemetryStore.getState().pushBattery({
+      timestamp: Date.now(),
+      voltage: 22.2,
+      current: 8.4,
+      remaining: -1,
+      consumed: 1200,
+    });
+    renderBand();
+    expect(screen.queryByText("-1%")).toBeNull();
+    const value = screen.getByText("--%");
+    expect(value.getAttribute("style") ?? "").not.toContain("--crit");
+  });
 });
 
 describe("cockpit flight clock", () => {

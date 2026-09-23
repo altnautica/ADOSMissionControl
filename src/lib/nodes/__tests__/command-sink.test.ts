@@ -57,7 +57,11 @@ vi.mock("@/lib/nodes/direct-fc-protocol", () => ({
   resolveDirectFcProtocol: () => directFcHolder.protocol,
 }));
 
-import { resolveNodeCommandReach, resolveNodeCommandSink } from "../command-sink";
+import {
+  CLOUD_FLIGHT_COMMAND_TTL_MS,
+  resolveNodeCommandReach,
+  resolveNodeCommandSink,
+} from "../command-sink";
 import type {
   CommandTargetNode,
   NodeQueuedCloudCommand,
@@ -113,7 +117,9 @@ describe("cloud command sink onQueued", () => {
     const result = await reach.sink!.arm();
 
     expect(enqueue).toHaveBeenCalledOnce();
-    expect(queued).toEqual([{ deviceId: "dev-1", commandId: "cmd-42" }]);
+    expect(queued).toEqual([
+      { deviceId: "dev-1", commandId: "cmd-42", ttlMs: CLOUD_FLIGHT_COMMAND_TTL_MS },
+    ]);
     // The synchronous answer is still only "queued" — never a fabricated ack.
     expect(result.success).toBe(true);
     expect(result.message).toContain("cmd-42");
@@ -162,6 +168,7 @@ describe("kill / pause / resume are carried, not refused", () => {
         deviceId: "dev-1",
         command: "send_command",
         args: { cmd, args: [] },
+        ttlMs: CLOUD_FLIGHT_COMMAND_TTL_MS,
       });
       expect(result.success).toBe(true);
       expect(result.message).not.toContain("no equivalent");

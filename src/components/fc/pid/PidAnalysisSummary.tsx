@@ -8,7 +8,8 @@ interface PidAnalysisSummaryProps {
   result: PidAnalysisResult;
 }
 
-function scoreColor(score: number): string {
+function scoreColor(score: number | null): string {
+  if (score === null) return "text-text-tertiary";
   if (score >= 80) return "text-status-success";
   if (score >= 50) return "text-status-warning";
   return "text-status-error";
@@ -20,8 +21,9 @@ function scoreStrokeColor(score: number): string {
   return "#ef4444";
 }
 
-function noiseLabel(noiseFloorDb: number): { label: string; color: string } {
-  // Average noise floor across axes; lower is better
+function noiseLabel(noiseFloorDb: number | null): { label: string; color: string } {
+  // Average noise floor across the measured axes; lower is better
+  if (noiseFloorDb === null) return { label: "-", color: "text-text-tertiary" };
   if (noiseFloorDb < -40) return { label: "Good", color: "text-status-success" };
   if (noiseFloorDb < -25) return { label: "Moderate", color: "text-status-warning" };
   return { label: "High", color: "text-status-error" };
@@ -60,8 +62,10 @@ function ScoreRing({ score, size = 72, strokeWidth = 5 }: { score: number; size?
 }
 
 export function PidAnalysisSummary({ result }: PidAnalysisSummaryProps) {
-  const avgNoiseFloor =
-    (result.fft.roll.noiseFloorDb + result.fft.pitch.noiseFloorDb + result.fft.yaw.noiseFloorDb) / 3;
+  const floors = [result.fft.roll, result.fft.pitch, result.fft.yaw]
+    .map((axis) => axis.noiseFloorDb)
+    .filter((db): db is number => db !== null);
+  const avgNoiseFloor = floors.length > 0 ? floors.reduce((s, db) => s + db, 0) / floors.length : null;
   const noise = noiseLabel(avgNoiseFloor);
 
   const criticalCount = result.issues.filter((i) => i.severity === "critical").length;
@@ -74,10 +78,10 @@ export function PidAnalysisSummary({ result }: PidAnalysisSummaryProps) {
       <div className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center">
         <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-2">Tune Score</span>
         <div className="relative">
-          <ScoreRing score={result.tuneScore} />
+          <ScoreRing score={result.tuneScore ?? 0} />
           <div className="absolute inset-0 flex items-center justify-center">
             <span className={cn("text-lg font-bold font-mono", scoreColor(result.tuneScore))}>
-              {result.tuneScore}
+              {result.tuneScore ?? "-"}
             </span>
           </div>
         </div>
@@ -88,42 +92,28 @@ export function PidAnalysisSummary({ result }: PidAnalysisSummaryProps) {
         <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">Noise Level</span>
         <span className={cn("text-sm font-semibold", noise.color)}>{noise.label}</span>
         <span className="text-[9px] font-mono text-text-tertiary mt-0.5">
-          {avgNoiseFloor.toFixed(1)} dB avg
+          {avgNoiseFloor === null ? "no IMU data" : `${avgNoiseFloor.toFixed(1)} dB avg`}
         </span>
       </div>
 
-      {/* Roll Tracking */}
-      <div className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center justify-center">
-        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">Roll</span>
-        <span className={cn("text-lg font-bold font-mono", scoreColor(result.tracking.roll.score))}>
-          {result.tracking.roll.score}
-        </span>
-        <span className="text-[9px] font-mono text-text-tertiary mt-0.5">
-          {result.tracking.roll.rmsError.toFixed(2)} deg/s RMS
-        </span>
-      </div>
-
-      {/* Pitch Tracking */}
-      <div className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center justify-center">
-        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">Pitch</span>
-        <span className={cn("text-lg font-bold font-mono", scoreColor(result.tracking.pitch.score))}>
-          {result.tracking.pitch.score}
-        </span>
-        <span className="text-[9px] font-mono text-text-tertiary mt-0.5">
-          {result.tracking.pitch.rmsError.toFixed(2)} deg/s RMS
-        </span>
-      </div>
-
-      {/* Yaw Tracking */}
-      <div className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center justify-center">
-        <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">Yaw</span>
-        <span className={cn("text-lg font-bold font-mono", scoreColor(result.tracking.yaw.score))}>
-          {result.tracking.yaw.score}
-        </span>
-        <span className="text-[9px] font-mono text-text-tertiary mt-0.5">
-          {result.tracking.yaw.rmsError.toFixed(2)} deg/s RMS
-        </span>
-      </div>
+      {/* Per-axis tracking */}
+      {(["roll", "pitch", "yaw"] as const).map((axis) => {
+        const t = result.tracking[axis];
+        return (
+          <div
+            key={axis}
+            className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center justify-center"
+          >
+            <span className="text-[9px] text-text-tertiary uppercase tracking-wide mb-1">{axis}</span>
+            <span className={cn("text-lg font-bold font-mono", scoreColor(t.score))}>
+              {t.score ?? "-"}
+            </span>
+            <span className="text-[9px] font-mono text-text-tertiary mt-0.5">
+              {t.rmsError === null ? "no RATE data" : `${t.rmsError.toFixed(2)} deg/s RMS`}
+            </span>
+          </div>
+        );
+      })}
 
       {/* Issues */}
       <div className="border border-border-default bg-bg-secondary p-3 flex flex-col items-center justify-center">

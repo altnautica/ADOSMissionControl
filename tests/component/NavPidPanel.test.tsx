@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithIntl } from '../helpers/intl-wrapper'
 import { NavPidPanel } from '@/components/fc/inav/NavPidPanel'
 import { useDroneManager } from '@/stores/drone-manager'
-import type { SettingValue } from '@/lib/protocol/types'
+import { SettingsError } from '@/lib/protocol/msp/settings'
 
 vi.mock('@/hooks/use-armed-lock', () => ({
   useArmedLock: () => ({ isArmed: false, lockMessage: '' }),
@@ -13,13 +13,29 @@ vi.mock('@/hooks/use-unsaved-guard', () => ({
   useUnsavedGuard: () => undefined,
 }))
 
-/** Build a protocol stub exposing the name-based settings capability. */
-function stubProtocol(getSetting: (name: string) => Promise<SettingValue>) {
+/** The navigation gains a multirotor iNav build defines; any other name is refused. */
+const REAL_SETTINGS = new Set([
+  'nav_mc_pos_z_p',
+  'nav_mc_vel_z_p', 'nav_mc_vel_z_i', 'nav_mc_vel_z_d',
+  'nav_mc_pos_xy_p',
+  'nav_mc_vel_xy_p', 'nav_mc_vel_xy_i', 'nav_mc_vel_xy_d', 'nav_mc_vel_xy_ff',
+  'nav_mc_heading_p',
+])
+
+/** A settings stub that refuses unknown names the way MSP2_COMMON_SETTING does. */
+function stubProtocol(requested: string[]) {
+  const known = (name: string) => {
+    requested.push(name)
+    if (!REAL_SETTINGS.has(name)) throw new SettingsError(`Failed to read setting "${name}"`, name)
+  }
   return {
     settings: {
-      getSetting: vi.fn(getSetting),
+      getSetting: vi.fn(async (name: string) => { known(name); return { type: 'uint8' as const, value: 42 } }),
       setSetting: vi.fn().mockResolvedValue({ success: true, resultCode: 0, message: 'OK' }),
-      getSettingInfo: vi.fn(),
+      getSettingInfo: vi.fn(async (name: string) => {
+        known(name)
+        return { name, pgId: 0, type: 0, section: 0, mode: 0, min: 0, max: 255, index: 0, profileCurrent: 0, profileCount: 1 }
+      }),
       enumerate: vi.fn().mockResolvedValue([]),
     },
   }
@@ -42,7 +58,7 @@ describe('NavPidPanel', () => {
 
   it('does not render PID inputs before Read is triggered', () => {
     renderWithIntl(<NavPidPanel />)
-    expect(screen.queryByText('Position XY')).toBeNull()
+    expect(screen.queryByText('Multirotor position XY')).toBeNull()
   })
 
   it('hides the Read from FC button when disconnected', () => {
@@ -50,34 +66,18 @@ describe('NavPidPanel', () => {
     expect(screen.queryByRole('button', { name: /read from fc/i })).toBeNull()
   })
 
-  it('shows Write to FC button only after data is loaded', async () => {
-    const mockAdapter = stubProtocol(async () => ({ type: 'uint8', value: 42 }))
-    useDroneManager.setState({
-      getSelectedProtocol: () => mockAdapter,
-    } as never)
+  it('loads against a firmware that only has the real navigation gains', async () => {
+    const requested: string[] = []
+    const mockAdapter = stubProtocol(requested)
+    useDroneManager.setState({ getSelectedProtocol: () => mockAdapter } as never)
 
-    const { container } = renderWithIntl(<NavPidPanel />)
-    const readBtn = container.querySelector('button')
-    expect(readBtn).toBeDefined()
-  })
+    renderWithIntl(<NavPidPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /read/i }))
 
-  it('reads the canonical iNav multicopter nav-PID setting keys', async () => {
-    const calls: string[] = []
-    const mockAdapter = stubProtocol((name: string) => {
-      calls.push(name)
-      return Promise.resolve({ type: 'uint8', value: 42 })
-    })
-    useDroneManager.setState({
-      getSelectedProtocol: () => mockAdapter,
-    } as never)
-
-    const { container } = renderWithIntl(<NavPidPanel />)
-    const readBtn = container.querySelector('button')
-    readBtn?.click()
-    await new Promise((r) => setTimeout(r, 20))
-
-    // At least one canonical nav_mc_* key must flow through the settings surface.
-    // Guards against a future rename that silently breaks real-FC reads.
-    expect(calls).toContain('nav_mc_pos_xy_p')
+    await waitFor(() => expect(screen.getByText('Multirotor position XY')).toBeDefined())
+    expect(screen.getByRole('button', { name: /write to fc/i })).toBeDefined()
+    expect(requested).toContain('nav_mc_vel_xy_ff')
+    expect(requested).not.toContain('nav_mc_pos_xy_i')
+    expect(requested).not.toContain('nav_mc_surface_p')
   })
 })

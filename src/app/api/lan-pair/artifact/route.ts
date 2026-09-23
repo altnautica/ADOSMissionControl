@@ -28,15 +28,20 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { normaliseAndCheckHost } from "@/lib/agent/host-validation";
-import { resolveIpv4 } from "../_ipv4";
+import {
+  agentUrl,
+  checkAgentHost,
+  isSafeSubPath,
+  proxyError,
+  readJsonEnvelope,
+} from "../_proxy";
 
 export const runtime = "nodejs";
 
 /** Generous budget: an artifact can be tens/hundreds of MB over the LAN. */
 const UPSTREAM_TIMEOUT_MS = 120000;
 /** The ados-compute engine's own artifact/job port. */
-const COMPUTE_JOB_PORT = "8092";
+const COMPUTE_JOB_PORT = 8092;
 
 /**
  * The only Content-Types this proxy will echo from a LAN node.
@@ -100,23 +105,14 @@ function readGrants(req: NextRequest): Grants {
  * forgotten drops its artifact authority without waiting out the TTL.
  */
 export async function POST(req: NextRequest) {
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "bad_json" }, { status: 400 });
-  }
-  const { host: rawHost, key } = (body ?? {}) as {
-    host?: unknown;
-    key?: unknown;
-  };
-  const target = normaliseAndCheckHost(String(rawHost ?? ""));
-  if ("error" in target) {
-    return NextResponse.json(
-      { error: target.error, message: target.message },
-      { status: 400 },
-    );
-  }
+  // Minting a grant is a state change: same-origin JSON only, so a cross-site
+  // form can neither plant nor revoke a key.
+  const env = await readJsonEnvelope(req);
+  if ("reject" in env) return env.reject;
+  const { host: rawHost, key } = env.payload;
+  const checked = checkAgentHost(rawHost);
+  if ("reject" in checked) return checked.reject;
+  const { target } = checked;
 
   const grants = readGrants(req);
   if (typeof key === "string" && key.trim()) {
@@ -140,22 +136,16 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
-  const target = normaliseAndCheckHost(q.get("host") ?? "");
-  if ("error" in target) {
-    return NextResponse.json(
-      { error: target.error, message: target.message },
-      { status: 400 },
-    );
-  }
+  const checked = checkAgentHost(q.get("host") ?? "");
+  if ("reject" in checked) return checked.reject;
+  const { target } = checked;
 
   // Only artifact blobs are proxyable here — defence-in-depth over the engine's
-  // own path-jail. Strip a leading slash, reject traversal.
+  // own path-jail. Plain segments only (no %, dot or empty segment), so the
+  // path can never leave artifacts/.
   const path = String(q.get("path") ?? "").replace(/^\/+/, "");
-  if (!path.startsWith("artifacts/") || path.includes("..")) {
-    return NextResponse.json(
-      { error: "bad_path", message: "path must be an artifacts/ blob" },
-      { status: 400 },
-    );
+  if (!path.startsWith("artifacts/") || !isSafeSubPath(path)) {
+    return proxyError(400, "bad_path", "path must be an artifacts/ blob");
   }
 
   // From the HttpOnly grant cookie, never the query string. A key in a URL
@@ -167,19 +157,26 @@ export async function GET(req: NextRequest) {
   try {
     // Resolve to IPv4 first so a .local host doesn't stall on the AAAA lookup,
     // then force the engine port.
-    const ipv4 = await resolveIpv4(target.host);
-    const u = new URL(target.url);
-    u.hostname = ipv4 ?? target.host;
-    u.port = COMPUTE_JOB_PORT;
+    const url = await agentUrl(target, `/${path}`, COMPUTE_JOB_PORT);
+    if (typeof url !== "string") return url.reject;
 
-    const upstream = await fetch(`${u.origin}/${path}`, {
+    const upstream = await fetch(url, {
       method: "GET",
       headers: {
         ...(apiKey ? { "X-ADOS-Key": apiKey } : {}),
         ...(range ? { Range: range } : {}),
       },
+      redirect: "manual",
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
+    if (upstream.status >= 300 && upstream.status < 400) {
+      await upstream.body?.cancel();
+      return proxyError(
+        502,
+        "upstream_redirect",
+        "The node answered with a redirect",
+      );
+    }
 
     // Stream the body through (200 full or 206 partial), preserving the
     // headers the loaders need — but NEVER the upstream's own Content-Type

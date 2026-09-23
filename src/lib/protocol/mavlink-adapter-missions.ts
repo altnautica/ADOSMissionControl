@@ -402,7 +402,7 @@ function fetchFencePoints(
 }
 
 export async function downloadFence(ctx: MissionContext): Promise<Array<{ idx: number; lat: number; lon: number }>> {
-  if (!ctx.transport?.isConnected) return []
+  if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
   let fenceTotal: number
   try {
@@ -477,7 +477,7 @@ export async function uploadFenceMission(ctx: MissionContext, elements: FenceEle
  * fence as a mission plan.
  */
 export async function downloadFenceMission(ctx: MissionContext): Promise<FenceElement[]> {
-  if (!ctx.transport?.isConnected) return []
+  if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
   const { promise, resolve, reject } = Promise.withResolvers<FenceElement[]>()
 
@@ -531,7 +531,7 @@ export async function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat
 }
 
 export async function downloadRallyPoints(ctx: MissionContext): Promise<Array<{ lat: number; lon: number; alt: number }>> {
-  if (!ctx.transport?.isConnected) return []
+  if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
   const { promise, resolve, reject } =
     Promise.withResolvers<Array<{ lat: number; lon: number; alt: number }>>()

@@ -50,7 +50,7 @@ export function ProgrammingPidPanel() {
   const uploadPids = useProgrammingStore((s) => s.uploadPids);
 
   const connected = !!getSelectedProtocol();
-  const hasLoaded = pids.some((p) => p.enabled);
+  const hasLoaded = useProgrammingStore((s) => s.loaded);
 
   const handleRead = useCallback(async () => {
     const protocol = getSelectedProtocol();

@@ -22,6 +22,7 @@ export const useLinkSlice = <T,>(selector: (slice: LinkSlice) => T): T =>
       loading: s.loading,
       lastError: s.lastError,
       lastFetchedAt: s.lastFetchedAt,
+      statusFetchedAt: s.statusFetchedAt,
       loadStatus: s.loadStatus,
       loadWfb: s.loadWfb,
       setWfbConfig: s.setWfbConfig,

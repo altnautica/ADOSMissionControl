@@ -47,6 +47,11 @@ import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import type { ConfigWriteResult } from "@/lib/agent/config-write";
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import {
+  CONFIG_PROXY_CLIENT_MARGIN_MS,
+  CONFIG_PROXY_RELAY_UPSTREAM_TIMEOUT_MS,
+  CONFIG_PROXY_UPSTREAM_TIMEOUT_MS,
+} from "@/lib/agent/config-proxy-budget";
 
 /** The slice of the agent client the config surface needs. Structural, so
  * tests (and any future transport) can satisfy it without the full client
@@ -233,19 +238,29 @@ async function proxyConfigRequest(
   method: "GET" | "PUT" | "POST",
   body?: Record<string, unknown>,
 ): Promise<unknown> {
-  const res = await timedFetch("/api/lan-pair/config", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      host: envelope.target.host,
-      ...(envelope.target.apiKey ? { apiKey: envelope.target.apiKey } : {}),
-      method,
-      ...(envelope.peerDeviceId !== undefined
-        ? { peerDeviceId: envelope.peerDeviceId }
-        : {}),
-      ...(body !== undefined ? { body } : {}),
-    }),
-  });
+  // The route waits up to its own upstream deadline (longer on the relay
+  // lane); the browser waits past it so the route's answer always arrives.
+  const timeoutMs =
+    (envelope.peerDeviceId !== undefined
+      ? CONFIG_PROXY_RELAY_UPSTREAM_TIMEOUT_MS
+      : CONFIG_PROXY_UPSTREAM_TIMEOUT_MS) + CONFIG_PROXY_CLIENT_MARGIN_MS;
+  const res = await timedFetch(
+    "/api/lan-pair/config",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        host: envelope.target.host,
+        ...(envelope.target.apiKey ? { apiKey: envelope.target.apiKey } : {}),
+        method,
+        ...(envelope.peerDeviceId !== undefined
+          ? { peerDeviceId: envelope.peerDeviceId }
+          : {}),
+        ...(body !== undefined ? { body } : {}),
+      }),
+    },
+    timeoutMs,
+  );
   const text = await res.text().catch(() => "");
   let json: unknown = null;
   try {

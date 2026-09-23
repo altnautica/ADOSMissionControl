@@ -24,9 +24,10 @@ vi.mock("@/stores/mission-store", () => ({
 }));
 
 vi.mock("@/lib/telemetry-recorder", () => ({
-  startRecordingFor: vi.fn(() => "rec-1"),
+  startMirrorRecording: vi.fn(() => "rec-1"),
   stopRecordingFor: vi.fn(async () => ({ id: "rec-1" })),
   markRecording: vi.fn(() => true),
+  isRecordingFor: vi.fn(() => false),
 }));
 
 vi.mock("@/lib/plugins/notifier", () => ({
@@ -45,9 +46,10 @@ vi.mock("@/stores/drone-manager", () => ({
 import { buildPluginHandlers } from "@/lib/plugins/handlers";
 import { pluginNotify } from "@/lib/plugins/notifier";
 import {
-  startRecordingFor,
+  startMirrorRecording,
   stopRecordingFor,
   markRecording,
+  isRecordingFor,
 } from "@/lib/telemetry-recorder";
 
 function makeCtx(capability: string | null = null): {
@@ -65,18 +67,19 @@ const DEPS = { translate: vi.fn((key: string) => `t:${key}`) };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(isRecordingFor).mockReturnValue(false);
   droneManagerState = { drones: new Map(), getSelectedProtocol: () => null };
 });
 
 describe("buildPluginHandlers", () => {
   it("ping returns { ok: true }", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();
     expect(await handlers.ping({}, ctx)).toEqual({ ok: true });
   });
 
   it("i18n.t delegates to deps.translate", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();
     const out = await handlers["i18n.t"]({ key: "a.b", params: { n: 1 } }, ctx);
     expect(DEPS.translate).toHaveBeenCalledWith("a.b", { n: 1 });
@@ -84,14 +87,14 @@ describe("buildPluginHandlers", () => {
   });
 
   it("notify raises an info toast", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();
     expect(await handlers.notify({ message: "hi" }, ctx)).toEqual({ ok: true });
     expect(pluginNotify).toHaveBeenCalledWith("hi", "info");
   });
 
   it("notification.publish maps severity onto a toast status", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();
     await handlers["notification.publish"](
       { channelId: "alerts", severity: "critical", title: "Boom" },
@@ -101,7 +104,7 @@ describe("buildPluginHandlers", () => {
   });
 
   it("mission.read returns a copy that cannot mutate store state", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();
     const read = (await handlers["mission.read"]({}, ctx)) as {
       waypoints: Array<{ id: string }>;
@@ -117,31 +120,41 @@ describe("buildPluginHandlers", () => {
     expect(missionState.waypoints).toHaveLength(1);
   });
 
-  it("recording.start / mark / stop thread the device slot", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+  it("recording runs in the plugin's own slot, never the operator's flight recording", async () => {
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();
+    const slot = "plugin:p:node:d1";
 
     const started = await handlers["recording.start"]({ name: "flight A" }, ctx);
-    expect(startRecordingFor).toHaveBeenCalledWith("d1", "flight A");
+    expect(startMirrorRecording).toHaveBeenCalledWith(slot, "node:d1", expect.any(String));
     expect(started).toEqual({ ok: true, recordingId: "rec-1" });
 
+    // While the plugin's recording runs, marks land on it.
+    vi.mocked(isRecordingFor).mockImplementation((id: string) => id === slot);
     const marked = await handlers["recording.mark"](
       { label: "event", meta: { k: 1 } },
       ctx,
     );
-    expect(markRecording).toHaveBeenCalledWith("d1", "event", { k: 1 });
+    expect(markRecording).toHaveBeenCalledWith(slot, "event", { k: 1 });
     expect(marked).toEqual({ ok: true });
 
     const stopped = await handlers["recording.stop"]({}, ctx);
-    expect(stopRecordingFor).toHaveBeenCalledWith("d1");
+    expect(stopRecordingFor).toHaveBeenCalledWith(slot);
+    expect(stopRecordingFor).not.toHaveBeenCalledWith("node:d1");
     expect(stopped).toEqual({ ok: true, recording: { id: "rec-1" } });
   });
 
+  it("refuses a second start while the plugin's recording runs", async () => {
+    vi.mocked(isRecordingFor).mockReturnValue(true);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
+    const out = await handlers["recording.start"]({}, makeCtx().ctx);
+    expect(out).toEqual({ ok: false, error: "already recording" });
+    expect(startMirrorRecording).not.toHaveBeenCalled();
+  });
+
   it("recording.mark reports not-recording when nothing is active", async () => {
-    (markRecording as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(
-      false,
-    );
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    vi.mocked(markRecording).mockReturnValueOnce(false);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();
     const out = await handlers["recording.mark"]({ label: "x" }, ctx);
     expect(out).toEqual({ ok: false, error: "not recording" });
@@ -158,11 +171,11 @@ describe("buildPluginHandlers", () => {
       getSelectedProtocol: undefined,
     };
     droneManagerState = {
-      drones: new Map([["d1", { protocol }]]),
+      drones: new Map([["node:d1", { protocol }]]),
       getSelectedProtocol: () => protocol,
     };
 
-    const { handlers, dispose } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers, dispose } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx, postEvent } = makeCtx("telemetry.subscribe.mavlink.attitude");
 
     const ack = await handlers["telemetry.subscribe"](
@@ -195,7 +208,7 @@ describe("buildPluginHandlers", () => {
       drones: new Map(),
       getSelectedProtocol: () => ({}),
     };
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx("telemetry.subscribe.bogus");
     // The handler throws synchronously; the bridge's `await handler()` turns
     // that into a handler_error response.
@@ -208,10 +221,10 @@ describe("buildPluginHandlers", () => {
     const unsub = vi.fn();
     const protocol = { onBattery: vi.fn(() => unsub) };
     droneManagerState = {
-      drones: new Map([["d1", { protocol }]]),
+      drones: new Map([["node:d1", { protocol }]]),
       getSelectedProtocol: () => protocol,
     };
-    const { handlers, dispose } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers, dispose } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx("telemetry.subscribe.battery");
     await handlers["telemetry.subscribe"]({ topic: "battery" }, ctx);
     dispose();
@@ -219,7 +232,7 @@ describe("buildPluginHandlers", () => {
   });
 
   it("the control / event / cloud methods are now wired", () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     // Adversarial coverage for each gate lives in handlers-control.test.ts;
     // here we only assert the surface is registered (it was previously unwired).
     expect(handlers["command.send"]).toBeTypeOf("function");

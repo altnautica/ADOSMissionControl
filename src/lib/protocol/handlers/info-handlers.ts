@@ -8,7 +8,7 @@
 import type {
   ExtendedSysStateCallback, SystemTimeCallback,
   StatusTextCallback, EventCallback, SerialDataCallback,
-  AutopilotVersionCallback,
+  AutopilotVersionCallback, AutopilotVersionData, FirmwareType,
 } from '../types'
 import {
   decodeExtendedSysState, decodeSystemTime,
@@ -47,20 +47,32 @@ export function handleSerialControl(payload: DataView, callbacks: SerialDataCall
   }
 }
 
+/**
+ * AP_FW_BOARD_ID carried in AUTOPILOT_VERSION.board_version. ArduPilot puts the
+ * board's APJ_BOARD_ID in the upper 16 bits; other firmware does not encode a
+ * board id there, so it yields undefined.
+ */
+export function decodeBoardId(boardVersion: number, firmwareType: FirmwareType | undefined): number | undefined {
+  if (!firmwareType?.startsWith('ardupilot-')) return undefined
+  const id = boardVersion >>> 16
+  return id > 0 ? id : undefined
+}
+
 export function handleAutopilotVersion(
   payload: DataView,
   callbacks: AutopilotVersionCallback[],
-): { flightSwVersion: number; middlewareSwVersion: number; osSwVersion: number; boardVersion: number; uid: number; capabilities: number } {
-  const data = decodeAutopilotVersion(payload)
-  for (const cb of callbacks) {
-    cb({
-      capabilities: data.capabilities,
-      flightSwVersion: data.flightSwVersion,
-      middlewareSwVersion: data.middlewareSwVersion,
-      osSwVersion: data.osSwVersion,
-      boardVersion: data.boardVersion,
-      uid: data.uid,
-    })
+  firmwareType: FirmwareType | undefined,
+): AutopilotVersionData {
+  const raw = decodeAutopilotVersion(payload)
+  const data: AutopilotVersionData = {
+    capabilities: raw.capabilities,
+    flightSwVersion: raw.flightSwVersion,
+    middlewareSwVersion: raw.middlewareSwVersion,
+    osSwVersion: raw.osSwVersion,
+    boardVersion: raw.boardVersion,
+    boardId: decodeBoardId(raw.boardVersion, firmwareType),
+    uid: raw.uid,
   }
+  for (const cb of callbacks) cb(data)
   return data
 }

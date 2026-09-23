@@ -3,27 +3,33 @@
  * @description The HUD corner badges must describe the aircraft now, and the
  * stale badge must actually be reachable.
  *
- * Two inversions are pinned:
+ * Pinned:
  *
  * - The battery and fence badges read `latest()` raw, so "FENCE BREACH" or
  *   "BATT CRIT" stayed on screen for as long as the tab was open after a link
  *   loss, asserting a vehicle state nobody had heard about since.
+ * - A battery percentage of -1 is the FC saying "capacity unknown", not an
+ *   empty pack, and must not raise BATT CRIT.
  * - "LINK STALE" is the one badge whose entire job is to appear when
- *   telemetry stops, and it was the one that could not: its age check sat in a
- *   memo with no time-passing dependency, so once the link died nothing
- *   re-rendered and the badge never showed.
+ *   telemetry stops. It keys on the selected drone's heartbeat age. The link
+ *   tests drive the real drone-manager bridge: an armed heartbeat leaves the
+ *   connection state at "armed" and a declared link loss turns it
+ *   "disconnected", so a badge gated on "connected" never fired.
  *
  * @license GPL-3.0-only
  */
 
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { act, cleanup, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 
 import messages from "../../../../locales/en.json";
 import { CornerAlerts } from "@/components/hud/CornerAlerts";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
+import { MockProtocol } from "@/mock/mock-protocol";
+import type { Transport } from "@/lib/protocol/types";
 import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 
 function renderAlerts() {
@@ -33,6 +39,46 @@ function renderAlerts() {
     </NextIntlClientProvider>,
   );
 }
+
+function fakeTransport(): Transport {
+  return {
+    type: "websocket",
+    connect: async () => {},
+    disconnect: async () => {},
+    send: () => {},
+    on: () => {},
+    off: () => {},
+    isConnected: true,
+    canCommand: true,
+  };
+}
+
+/**
+ * Connect one drone through drone-manager (auto-selected, so the bridge
+ * writes the single-slot drone store) and return a handle to fire its
+ * heartbeat and declared link loss.
+ */
+async function connectDrone(id: string) {
+  const protocol = new MockProtocol();
+  let fireLinkLost: (() => void) | undefined;
+  const subscribe = protocol.onLinkLost;
+  protocol.onLinkLost = (cb) => {
+    fireLinkLost = cb;
+    return subscribe(cb);
+  };
+  const transport = fakeTransport();
+  const vehicleInfo = await protocol.connect(transport);
+  useDroneManager
+    .getState()
+    .addDrone(id, "Copter", protocol, transport, vehicleInfo, { type: "websocket" });
+  return {
+    heartbeat: (armed: boolean) => protocol.emitHeartbeat(armed, "AUTO"),
+    linkLost: () => fireLinkLost?.(),
+  };
+}
+
+const hasBadge = (container: HTMLElement, key: string) =>
+  container.querySelector(`[data-testid='hud-alert-${key}']`) !== null;
 
 function pushBattery(remaining: number, ageMs: number) {
   useTelemetryStore.getState().pushBattery({
@@ -56,9 +102,12 @@ function pushFenceBreach(ageMs: number) {
 describe("HUD corner alerts", () => {
   beforeEach(() => {
     cleanup();
-    useDroneStore.setState({ connectionState: "disconnected", lastHeartbeat: 0 });
+    useDroneManager.getState().clear();
   });
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   it("raises a critical battery badge from a fresh reading", () => {
     pushBattery(9, 0);
@@ -94,40 +143,83 @@ describe("HUD corner alerts", () => {
     expect(stale.container.querySelector("[data-testid='hud-alert-fenceBreach']")).toBeNull();
   });
 
-  it("raises the stale badge on a link that has gone quiet", () => {
-    useDroneStore.setState({
-      connectionState: "connected",
-      lastHeartbeat: Date.now() - (TELEMETRY_STALE_MS + 2_000),
-    });
+  it("reads an FC-reported -1 battery percentage as unknown, not critical", () => {
+    pushBattery(-1, 0);
     const { container } = renderAlerts();
-    expect(container.querySelector("[data-testid='hud-alert-linkStale']")).not.toBeNull();
-    expect(container.textContent).toContain(messages.cockpit.alerts.linkStale);
+    expect(hasBadge(container, "battCrit")).toBe(false);
+    expect(hasBadge(container, "battLow")).toBe(false);
   });
 
-  it("stays quiet on a healthy link", () => {
-    useDroneStore.setState({ connectionState: "connected", lastHeartbeat: Date.now() });
+  it("raises the stale badge for an armed drone whose heartbeats stop", async () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const drone = await connectDrone("drone-armed");
+    drone.heartbeat(true);
+    expect(useDroneStore.getState().connectionState).toBe("armed");
+
+    const fresh = renderAlerts();
+    expect(hasBadge(fresh.container, "linkStale")).toBe(false);
+    fresh.unmount();
+
+    // Heartbeats stop; the adapter has not declared the link lost yet.
+    vi.setSystemTime(1_000_000 + TELEMETRY_STALE_MS + 500);
+    const quiet = renderAlerts();
+    expect(hasBadge(quiet.container, "linkStale")).toBe(true);
+    expect(quiet.container.textContent).toContain(messages.cockpit.alerts.linkStale);
+    quiet.unmount();
+
+    // The adapter declares the link lost: connection state goes
+    // "disconnected" and the badge must stay up.
+    act(() => drone.linkLost());
+    expect(useDroneStore.getState().connectionState).toBe("disconnected");
+    const lost = renderAlerts();
+    expect(hasBadge(lost.container, "linkStale")).toBe(true);
+  });
+
+  it("stays quiet on a healthy armed link", async () => {
+    const drone = await connectDrone("drone-healthy");
+    drone.heartbeat(true);
     pushBattery(80, 0);
     const { container } = renderAlerts();
     expect(container.textContent).toBe("");
   });
 
   it("says nothing about staleness on a link that never connected", () => {
-    useDroneStore.setState({ connectionState: "disconnected", lastHeartbeat: 0 });
     const { container } = renderAlerts();
-    expect(container.querySelector("[data-testid='hud-alert-linkStale']")).toBeNull();
+    expect(hasBadge(container, "linkStale")).toBe(false);
   });
 
-  it("reports the stale link instead of an obsolete battery claim", () => {
+  it("drops the stale badge once the drone is disconnected and deselected", async () => {
+    vi.useFakeTimers({ now: 2_000_000 });
+    const drone = await connectDrone("drone-gone");
+    drone.heartbeat(false);
+    vi.setSystemTime(2_000_000 + TELEMETRY_STALE_MS + 500);
+    useDroneManager.getState().disconnectDrone("drone-gone");
+    const { container } = renderAlerts();
+    expect(hasBadge(container, "linkStale")).toBe(false);
+  });
+
+  it("does not age the previous drone's heartbeat into a stale badge for a newly selected drone", async () => {
+    vi.useFakeTimers({ now: 4_000_000 });
+    const first = await connectDrone("drone-first");
+    first.heartbeat(true);
+    await connectDrone("drone-second");
+    useDroneManager.getState().selectDrone("drone-second");
+    vi.setSystemTime(4_000_000 + TELEMETRY_STALE_MS + 500);
+    const { container } = renderAlerts();
+    expect(hasBadge(container, "linkStale")).toBe(false);
+  });
+
+  it("reports the stale link instead of an obsolete battery claim", async () => {
     // The realistic link loss: the last battery sample said critical, and then
     // the link died. The operator must be told the link is stale, not shown a
     // battery assertion the GCS can no longer stand behind.
-    pushBattery(9, TELEMETRY_STALE_MS + 5_000);
-    useDroneStore.setState({
-      connectionState: "connected",
-      lastHeartbeat: Date.now() - (TELEMETRY_STALE_MS + 5_000),
-    });
+    vi.useFakeTimers({ now: 3_000_000 });
+    const drone = await connectDrone("drone-battery");
+    drone.heartbeat(true);
+    pushBattery(9, 0);
+    vi.setSystemTime(3_000_000 + TELEMETRY_STALE_MS + 5_000);
     const { container } = renderAlerts();
-    expect(container.querySelector("[data-testid='hud-alert-linkStale']")).not.toBeNull();
-    expect(container.querySelector("[data-testid='hud-alert-battCrit']")).toBeNull();
+    expect(hasBadge(container, "linkStale")).toBe(true);
+    expect(hasBadge(container, "battCrit")).toBe(false);
   });
 });

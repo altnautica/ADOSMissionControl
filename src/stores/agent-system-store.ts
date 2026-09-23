@@ -58,7 +58,14 @@ interface AgentSystemActions {
   /** Append one GPU-utilisation sample to `gpuHistory` (capped, ring-buffered).
    * Non-finite values are ignored. Fed by the compute-status poll. */
   pushGpuUtilization: (pct: number) => void;
-  restartService: (name: string) => Promise<void>;
+  /** Restart one agent unit. Resolves with the agent's confirmation, or null
+   * when the request was queued over the cloud relay (its outcome arrives as
+   * a command result). Rejects with the agent's reason on a failed, refused
+   * or unconfirmed restart. */
+  restartService: (name: string) => Promise<string | null>;
+  /** Restart the supervisor, cycling every agent service. Needs a direct
+   * client; rejects with the agent's reason when it cannot be scheduled. */
+  restartAll: () => Promise<string>;
   sendCommand: (cmd: string, args?: unknown[]) => Promise<CommandResult | null>;
   clear: () => void;
 }
@@ -200,13 +207,23 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     const { client, cloudMode } = useAgentConnectionStore.getState();
     if (cloudMode) {
       useAgentConnectionStore.getState().sendCloudCommand("restart_service", { name });
-      return;
+      return null;
     }
-    if (!client) return;
+    if (!client) throw new Error("Agent not connected");
     try {
-      await client.restartService(name);
-      await get().fetchServices();
-    } catch { /* silent */ }
+      const res = await client.restartService(name);
+      return res.message;
+    } finally {
+      // A failed restart can still leave the unit in a new state.
+      void get().fetchServices();
+    }
+  },
+
+  async restartAll() {
+    const { client, cloudMode } = useAgentConnectionStore.getState();
+    if (cloudMode || !client) throw new Error("Agent not connected");
+    const res = await client.restartSupervisor();
+    return res.message;
   },
 
   async sendCommand(cmd: string, args?: unknown[]) {

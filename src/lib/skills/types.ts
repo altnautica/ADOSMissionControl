@@ -49,6 +49,8 @@ export interface ConfirmPolicy {
    * checklist + override recording; the policy only opts in.
    */
   checklistAware?: boolean;
+  /** Interpolation values for `title` and `message`, set per request. */
+  values?: Record<string, string | number>;
 }
 
 export interface SkillState {
@@ -138,6 +140,12 @@ export interface Skill {
   pluginId?: string;
   toggle: boolean;
   confirm?: ConfirmPolicy;
+  /**
+   * Interpolation values for the confirm title/message, computed from the
+   * activation args so the dialog names what will actually be commanded (the
+   * take-off altitude, for example).
+   */
+  confirmValues?: (args?: SkillActivateArgs) => Record<string, string | number>;
   /**
    * False for a skill that carries no meaning without an argument — the
    * parameterised mode change is the only one today. Such a skill is dispatched

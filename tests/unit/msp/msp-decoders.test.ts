@@ -111,6 +111,41 @@ describe('MSP Decoders', () => {
       expect(result.boardId).toBe('S405');
       expect(result.hwRevision).toBe(2);
       expect(result.boardType).toBe(1);
+      expect(result.gyroSampleRateHz).toBeUndefined();
+    });
+
+    it('walks the Betaflight 1.43 tail and reads the gyro sample rate', () => {
+      const payload = buildMspBoardInfoPayload({
+        boardId: 'MATE',
+        hwRevision: 0x0010,
+        boardType: 1,
+        extended: {
+          targetName: 'MATEKF405',
+          boardName: 'MATEKF405',
+          manufacturerId: 'MTKS',
+          gyroSampleRateHz: 8000,
+        },
+      });
+      const result = decodeMspBoardInfo(toDataView(payload));
+      expect(result.boardId).toBe('MATE');
+      expect(result.targetName).toBe('MATEKF405');
+      expect(result.gyroSampleRateHz).toBe(8000);
+    });
+
+    it('leaves gyro rate undefined on a reply that ends after the target name', () => {
+      // An iNav-style reply: 4 id, U16 hw, U8 board type, osd byte, caps
+      // byte, pstring name, then EOF — no signature, no gyro word.
+      const name = 'MATEKF405';
+      const payload = new Uint8Array(7 + 2 + 1 + name.length);
+      payload.set([0x49, 0x4e, 0x41, 0x56], 0); // 'INAV'
+      payload[6] = 2;
+      payload[7] = 2; // OSD chip
+      payload[8] = 0; // comm capabilities
+      payload[9] = name.length;
+      for (let i = 0; i < name.length; i++) payload[10 + i] = name.charCodeAt(i);
+      const result = decodeMspBoardInfo(toDataView(payload));
+      expect(result.targetName).toBe('MATEKF405');
+      expect(result.gyroSampleRateHz).toBeUndefined();
     });
   });
 
@@ -584,24 +619,53 @@ describe('MSP Decoders', () => {
       expect(result.items).toEqual([]);
     });
 
-    it('decodes OSD items from remaining bytes', () => {
-      const payload = new Uint8Array(10); // 6 header + 2 items (2 bytes each)
-      const dv = new DataView(payload.buffer);
-      dv.setUint8(0, 1); // flags
-      dv.setUint8(1, 2); // videoSystem
-      dv.setUint8(2, 0); // units
-      dv.setUint8(3, 50); // rssiAlarm
-      dv.setUint16(4, 1500, true); // capacityWarning
-      dv.setUint16(6, 0x0801, true); // item 0
-      dv.setUint16(8, 0x0402, true); // item 1
-      const result = decodeMspOsdConfig(toDataView(payload));
-      expect(result.flags).toBe(1);
-      expect(result.videoSystem).toBe(2);
-      expect(result.rssiAlarm).toBe(50);
+    // Byte-for-byte what Betaflight's MSP_OSD_CONFIG writer emits: header,
+    // item_pos[OSD_ITEM_COUNT] from byte 10, stats, timers, then warnings and
+    // the OSD profile block.
+    const bfOsdConfigPayload = (positions: number[]): Uint8Array => {
+      const bytes: number[] = [];
+      const u8 = (v: number) => bytes.push(v & 0xff);
+      const u16 = (v: number) => { u8(v); u8(v >> 8); };
+      const u32 = (v: number) => { u16(v); u16(v >>> 16); };
+      u8(0x11); u8(3); u8(1); u8(40); u16(1500); // flags, HD, imperial, rssi 40, cap 1500
+      u8(0); u8(positions.length); u16(120);       // 0, OSD_ITEM_COUNT, alt alarm 120
+      positions.forEach(u16);
+      u8(3); u8(1); u8(0); u8(1);                  // 3 stats
+      u8(2); u16(0x0a01); u16(0x0b02);             // 2 timers
+      u16(0x5678);                                 // warnings, low 16
+      u8(19); u32(0x0004_5678);                    // warning count, 32-bit warnings
+      u8(3); u8(2);                                // 3 profiles, profile 2 selected
+      u8(0); u8(24); u8(10); u16(50); u16(-90);   // overlay, camera frame, LQ, dBm alarms
+      return new Uint8Array(bytes);
+    };
+
+    it('reads element positions from byte 10, exactly OSD_ITEM_COUNT of them', () => {
+      const positions = [0x0821, 0x1842, 0x0000, 0xc863];
+      const result = decodeMspOsdConfig(toDataView(bfOsdConfigPayload(positions)));
+      expect(result.flags).toBe(0x11);
+      expect(result.videoSystem).toBe(3);
+      expect(result.units).toBe(1);
+      expect(result.rssiAlarm).toBe(40);
       expect(result.capacityWarning).toBe(1500);
-      expect(result.items.length).toBe(2);
-      expect(result.items[0].position).toBe(0x0801);
-      expect(result.items[1].position).toBe(0x0402);
+      expect(result.altAlarm).toBe(120);
+      expect(result.itemCount).toBe(4);
+      expect(result.items.map((i) => i.position)).toEqual(positions);
+    });
+
+    it('reads the 32-bit warnings and the OSD profile block past stats and timers', () => {
+      const result = decodeMspOsdConfig(toDataView(bfOsdConfigPayload([0x0821, 0x1842])));
+      expect(result.enabledWarnings).toBe(0x0004_5678);
+      expect(result.osdProfileCount).toBe(3);
+      expect(result.osdProfileIndex).toBe(2);
+    });
+
+    it('keeps the low-16 warnings when the firmware predates the 32-bit field', () => {
+      const full = bfOsdConfigPayload([0x0821]);
+      // header 10 + 1 item + stats 4 + timers 5 + warnings16 2
+      const legacy = full.slice(0, 10 + 2 + 4 + 5 + 2);
+      const result = decodeMspOsdConfig(toDataView(legacy));
+      expect(result.enabledWarnings).toBe(0x5678);
+      expect(result.osdProfileCount).toBe(1);
     });
   });
 

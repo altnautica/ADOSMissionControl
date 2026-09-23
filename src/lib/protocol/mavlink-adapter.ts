@@ -21,6 +21,7 @@ import { MAVLinkParser, type MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat, MAV_CMD_SET_EKF_SOURCE_SET } from './mavlink-encoder'
 import { MAV_CMD_CAN_FORWARD, encodeCanFrame, encodeCanFdFrame } from './encoders/can-forward'
 import { decodeHeartbeat } from './mavlink-messages'
+import { isAutopilotHeartbeat } from './heartbeat-source'
 import { CommandQueue, MAV_RESULT } from './command-queue'
 import { TELEMETRY_STALE_MS } from '@/lib/telemetry/freshness'
 import { createFirmwareHandler } from './firmware/ardupilot'
@@ -258,7 +259,9 @@ export class MAVLinkAdapter implements DroneProtocol {
     const unsub = this.parser.onFrame((frame) => {
       if (frame.msgId === 0) {
         const hb = decodeHeartbeat(frame.payload)
-        if (hb.type === 6) return
+        // A companion computer, gimbal or camera on the vehicle's sysid must
+        // not win the lock: every command would target it instead of the FC.
+        if (!isAutopilotHeartbeat(hb)) return
         this.targetSysId = frame.systemId; this.targetCompId = frame.componentId
         this.firmwareHandler = createFirmwareHandler(hb.autopilot, hb.type)
         const info: VehicleInfo = {
@@ -339,7 +342,7 @@ export class MAVLinkAdapter implements DroneProtocol {
       const unsub = this.parser.onFrame((frame) => {
         if (frame.msgId !== 0) return
         const hb = decodeHeartbeat(frame.payload)
-        if (hb.type === 6) return
+        if (!isAutopilotHeartbeat(hb)) return
         // Only a heartbeat that arrived on *this* link says anything about
         // where this link reaches.
         if (this.feedingLinkId !== link.id) return

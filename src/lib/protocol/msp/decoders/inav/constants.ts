@@ -166,3 +166,15 @@ export const INAV_WP_ACTION = {
 
 /** Flag value indicating last waypoint in mission. */
 export const INAV_WP_FLAG_LAST = 0xa5;
+
+/** Fixed table sizes compiled into iNav, which MSP does not report. */
+export const INAV_LIMITS = {
+  /** MAX_SAFE_HOMES: MSP2_INAV_SET_SAFEHOME refuses any higher index. */
+  SAFEHOMES: 8,
+  /** MAX_GEOZONES_IN_CONFIG. */
+  GEOZONES: 63,
+  /** MAX_FW_LAND_APPOACH_SETTINGS (safehome slots plus nine more). */
+  FW_APPROACHES: 17,
+  /** MAX_LOGIC_CONDITIONS. */
+  LOGIC_CONDITIONS: 64,
+} as const;

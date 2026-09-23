@@ -102,6 +102,9 @@ export function CommandFleetMqttBridge({
       cancelled = true;
       clientRef.current?.end(true);
       clientRef.current = null;
+      // The stream this effect fed is closed, so its last readings describe
+      // nothing live any more. Drop them rather than let them outlive the link.
+      useCommandFleetStore.getState().clearTelemetry(deviceIds);
     };
     // The credential epoch belongs here for the same reason the broker URL does:
     // both arrive after the first render, and an effect that ignored them would

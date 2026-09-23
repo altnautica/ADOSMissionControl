@@ -222,7 +222,7 @@ describe("cloud relay authorization helpers", () => {
       readFile(path.join(process.cwd(), "convex/cmdDrones.ts"), "utf8"),
     ]);
 
-    expect(commands).toContain("export const getPendingCommands = internalQuery");
+    expect(commands).toContain("export const takeDeliverableCommands = internalMutation");
     expect(commands).toContain("export const ackCommand = internalMutation");
     expect(status).toContain("export const pushStatus = internalMutation");
     expect(drones).toContain("export const getDroneByDeviceId = internalQuery");

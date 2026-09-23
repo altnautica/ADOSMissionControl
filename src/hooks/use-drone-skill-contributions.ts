@@ -92,13 +92,15 @@ const listForDeviceRef = makeFunctionReference<
 
 /**
  * Per-drone `flight.skill` contributions for `agentId`. Returns a stable,
- * memoized array. Empty when `agentId` is falsy, in demo mode without
- * matching mock data, before the query resolves, or when no install
- * contributes a flight skill.
+ * memoized array once the source has resolved: empty when `agentId` is falsy,
+ * in demo mode without matching mock data, or when no install contributes a
+ * flight skill. Returns `null` while the active source (the Convex query when
+ * signed in, the LAN agent detail when signed out) has not resolved, so the
+ * host can tell "not loaded yet" from "nothing installed".
  */
 export function useDroneSkillContributions(
   agentId: string | undefined,
-): DroneSkillContribution[] {
+): DroneSkillContribution[] | null {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const installs = useConvexSkipQuery(listForDeviceRef, {
@@ -118,6 +120,8 @@ export function useDroneSkillContributions(
       return sortSkills(getDemoDroneSkillContributions(agentId));
     }
 
+    if (isAuthenticated ? !installs : !localDetail) return null;
+
     // Both sources land in the same row shape so the projection is shared.
     const rows: InstallRowForDevice[] = isAuthenticated
       ? (installs ?? [])
@@ -130,8 +134,6 @@ export function useDroneSkillContributions(
           grantedCapabilities: r.grantedCaps,
           flightSkills: r.flightSkills,
         }));
-
-    if (isAuthenticated ? !installs : !localDetail) return [];
 
     const out: DroneSkillContribution[] = [];
     for (const row of rows) {
@@ -169,7 +171,7 @@ export function useDroneSkillContributions(
     }
 
     return sortSkills(out);
-  }, [agentId, installs]);
+  }, [agentId, isAuthenticated, installs, localDetail]);
 }
 
 /**

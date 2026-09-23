@@ -67,16 +67,20 @@ export interface MeshConfigUpdate {
   channel?: number;
 }
 
+/** `GET .../wfb/relay/status` (ados-control `gs_status.rs`
+ * get_wfb_relay_status). With no current snapshot the agent nulls every key
+ * under `stale: true`, so every reading is nullable. */
 export interface WfbRelayStatus {
-  role: "relay";
-  drone_iface: string;
+  role: "relay" | null;
+  drone_iface: string | null;
   receiver_ip: string | null;
-  receiver_port: number;
-  receiver_last_seen_ms: number;
-  fragments_seen: number;
-  fragments_forwarded: number;
-  up: boolean;
-  mesh_iface: string;
+  receiver_port: number | null;
+  receiver_last_seen_ms: number | null;
+  fragments_seen: number | null;
+  fragments_forwarded: number | null;
+  up: boolean | null;
+  mesh_iface: string | null;
+  stale: boolean;
 }
 
 export interface WfbReceiverRelay {
@@ -85,11 +89,21 @@ export interface WfbReceiverRelay {
   fragments: number;
 }
 
+/** `GET .../wfb/receiver/relays`. `relays` is null (not the empty list) under
+ * `stale: true`: the receive loop has no current snapshot, so "no relays" is
+ * a reading this node cannot make. */
+export interface WfbReceiverRelays {
+  relays: WfbReceiverRelay[] | null;
+  stale: boolean;
+}
+
+/** `GET .../wfb/receiver/combined`. Every counter is null under `stale: true`. */
 export interface WfbReceiverCombined {
-  fragments_after_dedup: number;
-  fec_repaired: number;
-  output_kbps: number;
-  up: boolean;
+  fragments_after_dedup: number | null;
+  fec_repaired: number | null;
+  output_kbps: number | null;
+  up: boolean | null;
+  stale: boolean;
 }
 
 /** Event envelope from /api/v1/ground-station/ws/mesh. */

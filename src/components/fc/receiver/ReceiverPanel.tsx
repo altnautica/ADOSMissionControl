@@ -8,7 +8,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useLiveRc } from "./use-live-rc";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -30,9 +30,9 @@ export function ReceiverPanel() {
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
 
-  // Live RC data from telemetry store
-  const rcBuffer = useTelemetryStore((s) => s.rc);
-  const latestRc = rcBuffer.latest();
+  // Live RC data: re-read on every telemetry push and dropped once stale, so
+  // the bars and the calibration capture never work from a frozen frame.
+  const latestRc = useLiveRc();
   const channels = latestRc?.channels ?? Array.from({ length: RC_CHANNEL_COUNT }, () => 0);
   // Absent until an RC frame arrives. "RSSI 0" reads as a receiver reporting a
   // dead link, which is a stronger claim than having heard nothing yet.
@@ -97,13 +97,6 @@ export function ReceiverPanel() {
   );
 
   const hasDirty = dirtyParams.size > 0;
-
-  // ── Protocol setParameter callback for calibration ─────────
-  const onSetParameter = async (name: string, value: number) => {
-    if (protocol) {
-      await protocol.setParameter(name, value);
-    }
-  };
 
   if (!protocol) {
     return (<div className="flex-1 p-6"><div className="max-w-3xl space-y-4">
@@ -322,13 +315,12 @@ export function ReceiverPanel() {
         <ReceiverBindingUI
           channels={channels}
           hasRcData={hasRcData}
-          setLocalValue={setLocalValue}
           getChannelTrim={getChannelTrim}
-          getChannelDz={getChannelDz}
           rollCh={rollCh}
           pitchCh={pitchCh}
           yawCh={yawCh}
-          onSetParameter={onSetParameter}
+          currentParams={params}
+          onWritten={refresh}
         />
       </div>
 

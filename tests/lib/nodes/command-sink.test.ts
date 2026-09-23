@@ -293,6 +293,8 @@ describe("cloud dispatch", () => {
       deviceId: DEVICE_ID,
       command: "send_command",
       args: { cmd: "rtl", args: [] },
+      // A flight command carries a delivery window so it cannot run late.
+      ttlMs: 10_000,
     });
     // Accepted onto the queue — and the message says only that.
     expect(result.success).toBe(true);

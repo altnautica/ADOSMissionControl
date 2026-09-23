@@ -84,6 +84,17 @@ describe("PluginParametersPanel — status honesty", () => {
     toastMock.mockReset();
   });
 
+  it("writes nothing when a field is focused and left without an edit", () => {
+    renderPanel([numberParam()]);
+    const input = screen.getByLabelText("Follow distance");
+    fireEvent.focus(input);
+    fireEvent.blur(input);
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(writeMock).not.toHaveBeenCalled();
+    // The value is still an unconfirmed default.
+    expect(screen.getByText(DEFAULT_NOTE)).toBeTruthy();
+  });
+
   it("badges a plugin.config value as a default when no confirmed value exists", () => {
     renderPanel([numberParam()]);
     // The input shows the schema default...

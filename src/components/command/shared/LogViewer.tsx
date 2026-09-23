@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { hasClientPath } from "@/lib/agent/config-access";
 import type { LogEntry } from "@/lib/agent/types";
-import type { LoggingRow } from "@/lib/agent/agent-client/logging";
+import type { LogTail, LoggingRow } from "@/lib/agent/agent-client/logging";
 
 interface LogViewerProps {
   logs: LogEntry[];
@@ -125,16 +125,7 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
     const logging = client?.logging;
     if (!hasClientPath(logging)) return;
 
-    let es: EventSource | null = null;
     let cancelled = false;
-    try {
-      es = logging.tail({ replay: 100, level: levelFilterRef.current });
-    } catch {
-      // No EventSource / no host — fall back to polling.
-      onRefresh(levelFilterRef.current);
-      return;
-    }
-    const stream = es;
     // Batch arrivals. The agent can burst hundreds of rows a second during
     // a boot or a fault cascade, and one `setLiveLogs` per row is one full
     // copy of a `MAX_LIVE_LINES`-long array plus one React commit each.
@@ -156,39 +147,39 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
         return next;
       });
     };
-    const onMessage = (ev: MessageEvent) => {
+    const onRow = (row: LoggingRow) => {
       if (cancelled) return;
-      try {
-        const row = JSON.parse(ev.data) as LoggingRow;
-        if (!row || typeof row.message !== "string") return;
-        pending.push(rowToEntry(row));
-        // Never let the pending buffer outgrow the window it feeds.
-        if (pending.length > MAX_LIVE_LINES) {
-          pending.splice(0, pending.length - MAX_LIVE_LINES);
-        }
-        if (flushHandle === null) {
-          flushHandle = requestAnimationFrame(flush);
-        }
-      } catch {
-        /* tolerate a malformed frame */
+      pending.push(rowToEntry(row));
+      // Never let the pending buffer outgrow the window it feeds.
+      if (pending.length > MAX_LIVE_LINES) {
+        pending.splice(0, pending.length - MAX_LIVE_LINES);
+      }
+      if (flushHandle === null) {
+        flushHandle = requestAnimationFrame(flush);
       }
     };
     const onError = () => {
-      // Stream dropped: close, fall back to the polled feed, and refresh
+      // Stream refused or dropped: fall back to the polled feed and refresh
       // once so the prop shows current data immediately.
-      stream.close();
       if (cancelled) return;
       setLiveActive(false);
       onRefresh(levelFilterRef.current);
     };
-    stream.addEventListener("message", onMessage);
-    stream.addEventListener("error", onError);
+    let stream: LogTail;
+    try {
+      stream = logging.tail(
+        { replay: 100, level: levelFilterRef.current },
+        { onRow, onError },
+      );
+    } catch {
+      // No host / relayed agent — fall back to polling.
+      onRefresh(levelFilterRef.current);
+      return;
+    }
 
     return () => {
       cancelled = true;
       if (flushHandle !== null) cancelAnimationFrame(flushHandle);
-      stream.removeEventListener("message", onMessage);
-      stream.removeEventListener("error", onError);
       stream.close();
     };
   }, [client, levelFilter, onRefresh]);

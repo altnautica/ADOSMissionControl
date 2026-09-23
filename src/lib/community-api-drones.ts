@@ -69,6 +69,11 @@ export const cmdMqttControlGrantsApi = {
   // accepting it from the caller.
 };
 
+export const cmdVideoRelayTokensApi = {
+  // Owner-gated, five-minute viewer token for the cloud video relay.
+  mint: api.cmdVideoRelayTokens.mint,
+};
+
 export const cmdRadioPairingApi = {
   enqueueWfbPairInit: api.cmdRadioPairing.enqueueWfbPairInit,
   enqueueWfbPairApply: api.cmdRadioPairing.enqueueWfbPairApply,

@@ -41,22 +41,25 @@ export async function resolveIpv4(hostname: string): Promise<string | null> {
   }
 }
 
-/** Build the upstream fetch base for a validated target, preferring the
- * resolved IPv4 address over the `.local` hostname so the upstream fetch never
- * eats the IPv6-first resolution delay. Falls back to the original hostname URL
- * when IPv4 resolution fails (the agent's :8080 API is host-agnostic, so the
- * swapped Host needs no preservation). */
-export async function ipv4FetchBase(target: {
-  url: string;
-  host: string;
-}): Promise<string> {
-  const ip = await resolveIpv4(target.host);
-  if (!ip || ip === target.host) return target.url;
-  try {
-    const u = new URL(target.url);
+/** Build the upstream fetch origin for a validated target: the resolved
+ * private IPv4 address in place of the hostname (so the upstream fetch never
+ * eats the IPv6-first resolution delay), with `port` in place of the host's
+ * own port when the route pins one. A bracketed IPv6 literal has already been
+ * classified private by `normaliseAndCheckHost` and is used as-is.
+ *
+ * Returns null when a name does not resolve to a private IPv4 address. There
+ * is no fallback to the hostname URL: that would let `fetch` resolve the name
+ * again on its own and skip the rebinding guard above. */
+export async function agentFetchBase(
+  target: { url: string; host: string },
+  port?: number,
+): Promise<string | null> {
+  const u = new URL(target.url);
+  if (!target.host.startsWith("[")) {
+    const ip = await resolveIpv4(target.host);
+    if (!ip) return null;
     u.hostname = ip;
-    return u.origin;
-  } catch {
-    return target.url;
   }
+  if (port !== undefined) u.port = String(port);
+  return u.origin;
 }

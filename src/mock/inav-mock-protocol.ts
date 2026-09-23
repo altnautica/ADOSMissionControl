@@ -30,17 +30,18 @@ import type {
   GimbalManagerStatusCallback, CanFrameCallback,
   OpticalFlowCallback, OpticalFlowRadCallback, OdometryCallback,
   VisionPositionEstimateCallback, VisionPositionDeltaCallback,
-  MspSerialPort, MspOsdConfig, HsvColor, BfLedModeColor,
+  MspSerialPort, MspOsdConfig, MspOsdGeneralConfig, HsvColor, BfLedModeColor,
 } from "@/lib/protocol/types";
 import { inavHandler } from "@/lib/protocol/firmware/inav";
 import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
 import { SettingsError } from "@/lib/protocol/msp/settings";
-import { INAV_WP_FLAG_LAST, INAV_WP_ACTION } from "@/lib/protocol/msp/msp-decoders-inav";
+import { INAV_WP_FLAG_LAST, INAV_WP_ACTION, INAV_LIMITS } from "@/lib/protocol/msp/msp-decoders-inav";
 import type {
   INavWaypoint, INavSafehome, MotorMixerRule, INavServoMixerRule,
   INavEzTune, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
   INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavGvarStatus,
   INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry,
+  INavCustomOsdElement, INavCustomOsdElementsInfo,
 } from "@/lib/protocol/msp/msp-decoders-inav";
 import type { SettingValue, SettingInfo } from "@/lib/protocol/msp/settings";
 import { SettingType } from "@/lib/protocol/msp/settings";
@@ -163,9 +164,9 @@ function seedSettings(vehicleClass: "copter" | "plane"): Map<string, SettingEntr
   set("safehome_max_distance",                SettingType.UINT32, 20000);
   set("battery_capacity",                     SettingType.UINT16, 2200);
   set("bat_cells",                            SettingType.UINT8,  4);
-  set("vbat_min_cell_voltage",                SettingType.UINT8,  330);
-  set("vbat_max_cell_voltage",                SettingType.UINT8,  420);
-  set("vbat_warning_cell_voltage",            SettingType.UINT8,  350);
+  set("vbat_min_cell_voltage",                SettingType.UINT16, 330);
+  set("vbat_max_cell_voltage",                SettingType.UINT16, 420);
+  set("vbat_warning_cell_voltage",            SettingType.UINT16, 350);
 
   return m;
 }
@@ -187,18 +188,18 @@ const MIXER_PRESET_AIRPLANE = 14;
 const BATTERY_PROFILE_SEED: readonly INavBatteryConfig[] = [
   {
     capacityMah: 2200, capacityWarningMah: 440, capacityCriticalMah: 220,
-    capacityUnit: 0, voltageSource: 0, cells: 4, cellDetect: 1,
-    cellMin: 3300, cellMax: 4200, cellWarning: 3500, currentScale: 400, currentOffset: 0,
+    capacityUnit: 0, voltageScale: 1100, voltageSource: 0, cells: 4, cellDetect: 425,
+    cellMin: 330, cellMax: 420, cellWarning: 350, currentScale: 400, currentOffset: 0,
   },
   {
     capacityMah: 1500, capacityWarningMah: 300, capacityCriticalMah: 150,
-    capacityUnit: 0, voltageSource: 0, cells: 4, cellDetect: 1,
-    cellMin: 3300, cellMax: 4200, cellWarning: 3500, currentScale: 400, currentOffset: 0,
+    capacityUnit: 0, voltageScale: 1100, voltageSource: 0, cells: 4, cellDetect: 425,
+    cellMin: 330, cellMax: 420, cellWarning: 350, currentScale: 400, currentOffset: 0,
   },
   {
     capacityMah: 3000, capacityWarningMah: 600, capacityCriticalMah: 300,
-    capacityUnit: 0, voltageSource: 0, cells: 4, cellDetect: 1,
-    cellMin: 3300, cellMax: 4200, cellWarning: 3500, currentScale: 400, currentOffset: 0,
+    capacityUnit: 0, voltageScale: 1100, voltageSource: 0, cells: 4, cellDetect: 425,
+    cellMin: 330, cellMax: 420, cellWarning: 350, currentScale: 400, currentOffset: 0,
   },
 ];
 
@@ -477,12 +478,19 @@ export class INavMockProtocol implements DroneProtocol {
     leftSidebarScroll: 0, rightSidebarScroll: 0, sidebarScrollArrows: 0,
     units: 1, statsEnergyUnit: 0, adsbWarningStyle: 0,
   };
+  private osdWarnings = 0;
+  private customOsdElements: INavCustomOsdElement[] = Array.from({ length: 8 }, (_, i) => ({
+    index: i,
+    parts: [],
+    visibility: { type: 1, value: 0 },
+    text: "",
+  }));
   private waypoints: INavWaypoint[] = [];
   private _lastManualControl: ManualControlSample | null = null;
   private _lastPositionTarget: PositionTargetSample | null = null;
   private _lastAttitudeTarget: AttitudeTargetSample | null = null;
-  private safehomeSlots: Array<INavSafehome | null> = Array(16).fill(null);
-  private geozoneSlots: Array<INavGeozone | null> = Array(15).fill(null);
+  private safehomeSlots: Array<INavSafehome | null> = Array(INAV_LIMITS.SAFEHOMES).fill(null);
+  private geozoneSlots: Array<INavGeozone | null> = Array(INAV_LIMITS.GEOZONES).fill(null);
 
   // Telemetry drift state ────────────────────────────────────
   private lat: number;
@@ -504,12 +512,12 @@ export class INavMockProtocol implements DroneProtocol {
     if (config.missionWaypoints) this.waypoints = [...config.missionWaypoints];
     if (config.safehomes) {
       for (const sh of config.safehomes) {
-        if (sh.index >= 0 && sh.index < 16) this.safehomeSlots[sh.index] = { ...sh };
+        if (sh.index >= 0 && sh.index < INAV_LIMITS.SAFEHOMES) this.safehomeSlots[sh.index] = { ...sh };
       }
     }
     if (config.geozones) {
       for (const gz of config.geozones) {
-        if (gz.index >= 0 && gz.index < 15) this.geozoneSlots[gz.index] = { ...gz };
+        if (gz.index >= 0 && gz.index < INAV_LIMITS.GEOZONES) this.geozoneSlots[gz.index] = { ...gz };
       }
     }
 
@@ -595,7 +603,29 @@ export class INavMockProtocol implements DroneProtocol {
   async setOsdAlarms(a: INavOsdAlarms): Promise<CommandResult> { this.osdAlarms = { ...a }; return ok("OSD alarms saved"); }
   async getOsdPreferences(): Promise<INavOsdPreferences> { return { ...this.osdPreferences }; }
   async setOsdPreferences(p: INavOsdPreferences): Promise<CommandResult> { this.osdPreferences = { ...p }; return ok("OSD preferences saved"); }
-  async setCustomOsdElement(): Promise<CommandResult> { return ok("Custom OSD element saved"); }
+  async getCustomOsdElements(): Promise<{ info: INavCustomOsdElementsInfo; elements: INavCustomOsdElement[] }> {
+    return {
+      info: { maxElements: this.customOsdElements.length, textLength: 16, partCount: 0 },
+      elements: this.customOsdElements.map((el) => ({
+        index: el.index,
+        parts: el.parts.map((p) => ({ ...p })),
+        visibility: { ...el.visibility },
+        text: el.text,
+      })),
+    };
+  }
+
+  async setCustomOsdElement(el: INavCustomOsdElement): Promise<CommandResult> {
+    if (el.index >= 0 && el.index < this.customOsdElements.length) {
+      this.customOsdElements[el.index] = {
+        index: el.index,
+        parts: el.parts.map((p) => ({ ...p })),
+        visibility: { ...el.visibility },
+        text: el.text,
+      };
+    }
+    return ok(`Custom OSD element ${el.index} saved`);
+  }
 
   // ── Mission (iNav 60-slot, multi-mission) ──────────────────
 
@@ -675,7 +705,7 @@ export class INavMockProtocol implements DroneProtocol {
   // iNav-only surface; formal DroneProtocol extension follows in the mission and geozone module.
 
   getSafehome(index: number): INavSafehome | null {
-    if (index < 0 || index >= 16) return null;
+    if (index < 0 || index >= INAV_LIMITS.SAFEHOMES) return null;
     return this.safehomeSlots[index] ? { ...this.safehomeSlots[index]! } : null;
   }
 
@@ -684,16 +714,16 @@ export class INavMockProtocol implements DroneProtocol {
   }
 
   setSafehome(safehome: INavSafehome): CommandResult {
-    if (safehome.index < 0 || safehome.index >= 16) {
-      return { success: false, resultCode: 1, message: "Index out of range (0-15)" };
+    if (safehome.index < 0 || safehome.index >= INAV_LIMITS.SAFEHOMES) {
+      return { success: false, resultCode: 1, message: `Index out of range (0-${INAV_LIMITS.SAFEHOMES - 1})` };
     }
     this.safehomeSlots[safehome.index] = { ...safehome };
     return ok(`Safehome ${safehome.index} saved`);
   }
 
   clearSafehome(index: number): CommandResult {
-    if (index < 0 || index >= 16) {
-      return { success: false, resultCode: 1, message: "Index out of range (0-15)" };
+    if (index < 0 || index >= INAV_LIMITS.SAFEHOMES) {
+      return { success: false, resultCode: 1, message: `Index out of range (0-${INAV_LIMITS.SAFEHOMES - 1})` };
     }
     this.safehomeSlots[index] = null;
     return ok(`Safehome ${index} cleared`);
@@ -703,7 +733,7 @@ export class INavMockProtocol implements DroneProtocol {
   // iNav-only surface; formal DroneProtocol extension follows in the mission and geozone module.
 
   getGeozone(index: number): INavGeozone | null {
-    if (index < 0 || index >= 15) return null;
+    if (index < 0 || index >= INAV_LIMITS.GEOZONES) return null;
     return this.geozoneSlots[index] ? { ...this.geozoneSlots[index]! } : null;
   }
 
@@ -712,16 +742,16 @@ export class INavMockProtocol implements DroneProtocol {
   }
 
   setGeozone(zone: INavGeozone): CommandResult {
-    if (zone.index < 0 || zone.index >= 15) {
-      return { success: false, resultCode: 1, message: "Index out of range (0-14)" };
+    if (zone.index < 0 || zone.index >= INAV_LIMITS.GEOZONES) {
+      return { success: false, resultCode: 1, message: `Index out of range (0-${INAV_LIMITS.GEOZONES - 1})` };
     }
     this.geozoneSlots[zone.index] = { ...zone, vertices: zone.vertices ? [...zone.vertices] : undefined };
     return ok(`Geozone ${zone.index} saved`);
   }
 
   clearGeozone(index: number): CommandResult {
-    if (index < 0 || index >= 15) {
-      return { success: false, resultCode: 1, message: "Index out of range (0-14)" };
+    if (index < 0 || index >= INAV_LIMITS.GEOZONES) {
+      return { success: false, resultCode: 1, message: `Index out of range (0-${INAV_LIMITS.GEOZONES - 1})` };
     }
     this.geozoneSlots[index] = null;
     return ok(`Geozone ${index} cleared`);
@@ -788,16 +818,16 @@ export class INavMockProtocol implements DroneProtocol {
 
   /**
    * The named settings and the battery parameter group are one store on a real
-   * FC, so a profile write or switch has to move both. Cell voltages are mV in
-   * the config block and tens of mV in the named settings.
+   * FC, so a profile write or switch has to move both. Cell voltages are in
+   * 0.01 V in both.
    */
   private _syncBatterySettings(): void {
     const cfg = this.batteryProfiles[this.activeBatteryProfile];
     this.settingStore.set("battery_capacity", { type: SettingType.UINT16, value: cfg.capacityMah });
     this.settingStore.set("bat_cells", { type: SettingType.UINT8, value: cfg.cells });
-    this.settingStore.set("vbat_min_cell_voltage", { type: SettingType.UINT8, value: Math.round(cfg.cellMin / 10) });
-    this.settingStore.set("vbat_max_cell_voltage", { type: SettingType.UINT8, value: Math.round(cfg.cellMax / 10) });
-    this.settingStore.set("vbat_warning_cell_voltage", { type: SettingType.UINT8, value: Math.round(cfg.cellWarning / 10) });
+    this.settingStore.set("vbat_min_cell_voltage", { type: SettingType.UINT16, value: cfg.cellMin });
+    this.settingStore.set("vbat_max_cell_voltage", { type: SettingType.UINT16, value: cfg.cellMax });
+    this.settingStore.set("vbat_warning_cell_voltage", { type: SettingType.UINT16, value: cfg.cellWarning });
   }
 
   // Mixer profiles ─────────────────────────────────────────────
@@ -842,15 +872,15 @@ export class INavMockProtocol implements DroneProtocol {
     return this.servoConfigs.map((s) => ({ ...s }));
   }
 
-  async setServoConfig(idx: number, cfg: INavServoConfig): Promise<CommandResult> {
-    if (!Number.isInteger(idx) || idx < 0 || idx >= this.servoConfigs.length) {
+  async setServoConfigs(cfgs: INavServoConfig[]): Promise<CommandResult> {
+    if (cfgs.length > this.servoConfigs.length) {
       return {
         success: false, resultCode: 1,
-        message: `Servo index out of range (0-${this.servoConfigs.length - 1})`,
+        message: `This flight controller has ${this.servoConfigs.length} servos; ${cfgs.length} configs do not fit`,
       };
     }
-    this.servoConfigs[idx] = { ...cfg };
-    return ok(`Servo ${idx} config saved`);
+    cfgs.forEach((cfg, i) => { this.servoConfigs[i] = { ...cfg }; });
+    return ok(`${cfgs.length} servo configs saved`);
   }
 
   async getTempSensorConfigs(): Promise<INavTempSensorConfigEntry[]> {
@@ -913,12 +943,27 @@ export class INavMockProtocol implements DroneProtocol {
       units: this.osdPreferences.units,
       rssiAlarm: this.osdAlarms.rssi,
       capacityWarning: this.batteryProfiles[this.activeBatteryProfile].capacityWarningMah,
+      altAlarm: this.osdAlarms.maxAltitude,
+      enabledWarnings: this.osdWarnings,
+      itemCount: this.osdItems.length,
+      osdProfileCount: 1,
+      osdProfileIndex: 1,
       items: this.osdItems.map((i) => ({ ...i })),
     };
   }
 
-  async writeOsdLayout(items: Array<{ index: number; position: number }>, videoSystem?: number): Promise<CommandResult> {
-    if (videoSystem !== undefined) this.osdPreferences.videoSystem = videoSystem;
+  async writeOsdLayout(items: Array<{ index: number; position: number }>, general?: MspOsdGeneralConfig): Promise<CommandResult> {
+    if (general !== undefined) {
+      this.osdPreferences.videoSystem = general.videoSystem;
+      this.osdPreferences.units = general.units;
+      this.osdAlarms.rssi = general.rssiAlarm;
+      this.osdAlarms.maxAltitude = general.altAlarm;
+      this.osdWarnings = general.enabledWarnings;
+      this.batteryProfiles[this.activeBatteryProfile] = {
+        ...this.batteryProfiles[this.activeBatteryProfile],
+        capacityWarningMah: general.capacityWarning,
+      };
+    }
     for (const item of items) {
       if (item.index >= 0 && item.index < this.osdItems.length) {
         this.osdItems[item.index] = { position: item.position };
@@ -961,11 +1006,13 @@ export class INavMockProtocol implements DroneProtocol {
     return this.ledModeColors.map((m) => ({ ...m }));
   }
 
-  async setLedStripModeColor(mode: number, fun: number, color: number): Promise<CommandResult> {
-    const slot = this.ledModeColors.find((m) => m.mode === mode && m.fun === fun);
-    if (slot) slot.color = color;
-    else this.ledModeColors.push({ mode, fun, color });
-    return ok(`Mode colour ${mode}/${fun} saved`);
+  async setLedStripModeColors(entries: BfLedModeColor[]): Promise<CommandResult> {
+    for (const { mode, fun, color } of entries) {
+      const slot = this.ledModeColors.find((m) => m.mode === mode && m.fun === fun);
+      if (slot) slot.color = color;
+      else this.ledModeColors.push({ mode, fun, color });
+    }
+    return ok(`${entries.length} mode colours saved`);
   }
 
   // Programming global variables ───────────────────────────────

@@ -23,7 +23,7 @@ describe("plugin event bus", () => {
     publishPluginEvent("plugin.foo.result", { v: 1 }, "pub-a");
 
     expect(cb).toHaveBeenCalledTimes(1);
-    expect(cb).toHaveBeenCalledWith({ v: 1 }, "plugin.foo.result");
+    expect(cb).toHaveBeenCalledWith({ v: 1 }, "plugin.foo.result", "pub-a");
   });
 
   it("does not deliver to a non-matching exact subscriber", () => {
@@ -44,8 +44,8 @@ describe("plugin event bus", () => {
     publishPluginEvent("plugin.other.bar", "z", "pub-a");
 
     expect(cb).toHaveBeenCalledTimes(2);
-    expect(cb).toHaveBeenNthCalledWith(1, "x", "plugin.foo.bar");
-    expect(cb).toHaveBeenNthCalledWith(2, "y", "plugin.foo.bar.baz");
+    expect(cb).toHaveBeenNthCalledWith(1, "x", "plugin.foo.bar", "pub-a");
+    expect(cb).toHaveBeenNthCalledWith(2, "y", "plugin.foo.bar.baz", "pub-a");
   });
 
   it("the bare `*` wildcard matches every topic", () => {
@@ -79,7 +79,7 @@ describe("plugin event bus", () => {
     publishPluginEvent("plugin.foo.result", 2, "pub-a");
 
     expect(cb).toHaveBeenCalledTimes(1);
-    expect(cb).toHaveBeenCalledWith(1, "plugin.foo.result");
+    expect(cb).toHaveBeenCalledWith(1, "plugin.foo.result", "pub-a");
   });
 
   it("unsubscribe is idempotent", () => {

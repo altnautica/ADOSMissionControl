@@ -69,13 +69,11 @@ export function ServosPanel() {
 
   const handleWrite = useCallback(async () => {
     const protocol = getSelectedProtocol();
-    if (!protocol?.setServoConfig) { setError("Servo write not supported"); return; }
+    if (!protocol?.setServoConfigs) { setError("Servo write not supported"); return; }
     setLoading(true); setError(null);
     try {
-      for (let i = 0; i < servos.length; i++) {
-        const result = await protocol.setServoConfig(i, servos[i]);
-        if (!result.success) { setError(result.message); return; }
-      }
+      const result = await protocol.setServoConfigs(servos);
+      if (!result.success) { setError(result.message); return; }
       setDirty(false);
     } catch (err) {
       setError(String(err));

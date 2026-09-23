@@ -103,17 +103,17 @@ export function OutputsPanel() {
   const { pwmWarnings, conflicts } = useMemo(() => validateOutputs(outputs), [outputs]);
 
   const motPwmType = params.get('MOT_PWM_TYPE') ?? 0;
-  const [boardVersion, setBoardVersion] = useState(0);
+  const [boardId, setBoardId] = useState(0);
   const [manualBoardOverride, setManualBoardOverride] = useState<BoardProfile | null>(null);
 
   useEffect(() => {
     if (!protocol?.onAutopilotVersion) return;
-    const unsub = protocol.onAutopilotVersion((data) => { setBoardVersion(data.boardVersion); });
+    const unsub = protocol.onAutopilotVersion((data) => { setBoardId(data.boardId ?? 0); });
     protocol.requestMessage?.(148).catch(() => {});
     return unsub;
   }, [protocol]);
 
-  const autoDetectedProfile = useMemo(() => detectBoardProfile(boardVersion), [boardVersion]);
+  const autoDetectedProfile = useMemo(() => detectBoardProfile(boardId), [boardId]);
   const boardProfile = (autoDetectedProfile !== UNKNOWN_BOARD) ? autoDetectedProfile : (manualBoardOverride ?? UNKNOWN_BOARD);
 
   const functionMap = useMemo(() => {

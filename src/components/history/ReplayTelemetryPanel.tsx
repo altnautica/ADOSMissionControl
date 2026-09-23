@@ -8,7 +8,6 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useDroneStore } from "@/stores/drone-store";
 import { formatDecimal } from "@/lib/i18n/format";
 
 function Row({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
@@ -46,12 +45,14 @@ const FIX_KEYS: Record<number, string> = {
 };
 
 export function ReplayTelemetryPanel() {
+  // The rings are mutated in place, so the buffer references never change;
+  // `_version` is what moves on every replayed push.
+  useTelemetryStore((s) => s._version);
   const posBuffer = useTelemetryStore((s) => s.position);
   const attBuffer = useTelemetryStore((s) => s.attitude);
   const batBuffer = useTelemetryStore((s) => s.battery);
   const gpsBuffer = useTelemetryStore((s) => s.gps);
   const vfrBuffer = useTelemetryStore((s) => s.vfr);
-  const flightMode = useDroneStore((s) => s.flightMode);
   const locale = useLocale();
   const t = useTranslations("indicators.gpsFix");
 
@@ -91,7 +92,6 @@ export function ReplayTelemetryPanel() {
       </Section>
 
       <Section title="Flight">
-        <Row label="MODE" value={flightMode || "—"} />
         <Row label="THR" value={vfr ? Math.round(vfr.throttle) : "—"} unit="%" />
       </Section>
     </div>

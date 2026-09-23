@@ -88,24 +88,50 @@ export const RELAY_COMMAND_SCOPE: Record<RelayCommandName, RelayScopeClass> = {
   wfb_pair_apply_remote: "admin",
   wfb_pair_unpair: "admin",
   restart_service: "admin",
-  send_command: "admin", // base class; escalates to "flight" via the classifier below
+  send_command: "flight", // base class; the verb in args decides, see requiredScopeForCommand
 };
 
 /**
- * `send_command` carries an arbitrary control command in `args` (`{ cmd, args }`),
- * so its scope depends on the payload: a flight-shaped `cmd` (arm/takeoff/mode/…)
- * requires the `flight` scope; anything else stays at the base `admin` class. A
- * non-string/absent `cmd` is inert at the agent, so it falls through to `admin`.
+ * `send_command` carries a control command in `args` (`{ cmd, args }`) that the
+ * agent posts verbatim to its `POST /api/command` route. That route acts on a
+ * closed set of verbs (the `match` in `build_command`,
+ * `crates/ados-control/src/routes/command.rs`, which lowercases `cmd` first) and
+ * answers anything else with a 400. Every one of those verbs moves the vehicle or
+ * changes what it is doing, so each requires the `flight` scope.
+ *
+ * An explicit allowlist rather than a name pattern: a pattern has to guess what a
+ * flight verb looks like and silently under-classifies a verb it did not foresee.
+ * Keep this map in lockstep with `build_command`.
  */
-const FLIGHT_CMD_PATTERN =
-  /(^|[._-])(arm|disarm|takeoff|land|rtl|loiter|guided|mode|set[_-]?mode|goto|nav[_-]|mission|waypoint|motor|throttle|terminate|emergenc|kill)/i;
+export const AGENT_CONTROL_VERB_SCOPE: Readonly<Record<string, RelayScopeClass>> = {
+  arm: "flight",
+  disarm: "flight",
+  takeoff: "flight",
+  land: "flight",
+  rtl: "flight",
+  killswitch: "flight",
+  pausemission: "flight",
+  resumemission: "flight",
+  mode: "flight",
+};
 
-/** The required scope class for a relay command given its arguments. */
-export function requiredScopeForCommand(command: RelayCommandName, args: unknown): RelayScopeClass {
+/**
+ * The required scope class for a relay command given its arguments, or `null`
+ * when the command must be refused outright: a `send_command` whose `cmd` is
+ * absent, not a string, or not a verb the agent's control route accepts. Such a
+ * row could only be rejected by the agent, so no credential may queue it.
+ */
+export function requiredScopeForCommand(
+  command: RelayCommandName,
+  args: unknown,
+): RelayScopeClass | null {
   if (command === "send_command") {
     const cmd = (args as { cmd?: unknown } | null | undefined)?.cmd;
-    if (typeof cmd === "string" && FLIGHT_CMD_PATTERN.test(cmd)) return "flight";
-    return "admin";
+    if (typeof cmd !== "string") return null;
+    const verb = cmd.toLowerCase();
+    // Own-key check so an inherited name ("constructor", "toString") is not a verb.
+    if (!Object.prototype.hasOwnProperty.call(AGENT_CONTROL_VERB_SCOPE, verb)) return null;
+    return AGENT_CONTROL_VERB_SCOPE[verb];
   }
   return RELAY_COMMAND_SCOPE[command];
 }

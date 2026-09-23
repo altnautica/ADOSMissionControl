@@ -17,6 +17,7 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { resolveLanAgentUrl } from "@/stores/agent-connection/cloud-state";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import { parseWireDetectionJson } from "@/lib/agent/vision-detections-ws";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 import {
   usePluginUpdateStore,
   type PluginUpdateReason,
@@ -223,15 +224,15 @@ export function MqttBridge({
           if (cancelled) return;
 
           // Vision detection batches arrive on a dedicated topic (the same
-          // contract JSON the LAN WebSocket forwards). Map + route into the
-          // SAME store `setBatch` the LAN bridge feeds, so the overlay, box
-          // smoothing, and perception-health surfaces all light up unchanged.
+          // contract JSON the LAN WebSocket forwards). Route them into the
+          // SAME store `setBatch` the LAN bridge feeds, under the node id the
+          // overlay, box smoothing and perception-health surfaces read with.
           if (topic.endsWith("/vision/detections")) {
             const batch = parseWireDetectionJson(payload.toString());
             if (batch) {
               useVisionDetectionsStore
                 .getState()
-                .setBatch(cloudDeviceId as string, batch);
+                .setBatch(nodeIdForDevice(cloudDeviceId as string), batch);
             }
             return;
           }
@@ -391,6 +392,10 @@ export function MqttBridge({
       // so that is one leaked listener set per switch.
       teardown?.();
       setMqttConnected(false);
+      // This stream fed the node's detections; none of them are live now.
+      if (cloudDeviceId) {
+        useVisionDetectionsStore.getState().clearBatch(nodeIdForDevice(cloudDeviceId));
+      }
     };
   }, [
     cloudDeviceId,

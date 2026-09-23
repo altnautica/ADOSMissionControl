@@ -100,6 +100,7 @@ function renderSection(profile: "drone" | "ground-station") {
   const setValue = vi.fn(async () => {});
   renderWithIntl(
     <CellularSection
+      nodeDeviceId="node-1"
       profile={profile}
       config={{ network: { cellular: { enabled: false, apn: "" } } }}
       readOnly={false}
@@ -114,6 +115,7 @@ describe("CellularSection on a ground station", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://gs.local:8080",
       apiKey: "KEY",
+      nodeDeviceId: "node-1",
     });
     stubGsFetch({ present: false, reason: "no_modem" });
 
@@ -140,6 +142,7 @@ describe("CellularSection on a ground station", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://gs.local:8080",
       apiKey: "KEY",
+      nodeDeviceId: "node-1",
     });
     stubGsFetch({ present: false, reason: "modemmanager_not_installed" });
 
@@ -156,6 +159,7 @@ describe("CellularSection on a ground station", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://gs.local:8080",
       apiKey: "KEY",
+      nodeDeviceId: "node-1",
     });
     const { puts } = stubGsFetch();
 
@@ -180,6 +184,7 @@ describe("CellularSection on a ground station", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://gs.local:8080",
       apiKey: "KEY",
+      nodeDeviceId: "node-1",
     });
     const { puts } = stubGsFetch();
 
@@ -208,6 +213,7 @@ describe("CellularSection on other profiles", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://drone.local:8080",
       apiKey: "KEY",
+      nodeDeviceId: "node-1",
     });
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

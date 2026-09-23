@@ -256,7 +256,7 @@ export function CloudStatusBridge() {
       role: gsState.role,
       uplink: gsState.uplink,
       peripherals: gsState.peripherals,
-    });
+    }, (cloudRecord.updatedAt as number) ?? 0);
     if (gsPatch) {
       useGroundStationStore.setState(gsPatch);
     }

@@ -30,14 +30,11 @@ export function useAutoReconnect() {
   if (!managerRef.current) {
     managerRef.current = new ReconnectManager(
       (id, name, protocol, transport, vehicleInfo, meta) => {
-        // A `node:<deviceId>` id is an FC attached through a paired agent; it
-        // must not re-own the fleet row on reconnect, or a later disconnect
-        // would delete the registry-projected card. A direct connect uses an
-        // `fc:<random>` id and owns its standalone row.
-        const ownsFleetRow = !id.startsWith("node:");
+        // The manager only re-dials direct connections (`fc:<random>` ids),
+        // each of which owns its standalone fleet row.
         useDroneManager
           .getState()
-          .addDrone(id, name, protocol, transport, vehicleInfo, meta, { ownsFleetRow });
+          .addDrone(id, name, protocol, transport, vehicleInfo, meta);
       },
     );
   }
@@ -49,15 +46,16 @@ export function useAutoReconnect() {
     const unsubDisconnect = onUnexpectedDisconnect((droneId, droneName, meta) => {
       const autoReconnect = useSettingsStore.getState().autoReconnect;
       if (!autoReconnect || !meta) return;
-      toast(`${droneName} disconnected — reconnecting...`, "warning");
-      manager.startReconnect(droneId, droneName, meta);
+      // An agent-attached FC is re-dialled by its agent bridge; only announce a
+      // reconnect this manager is actually going to run.
+      if (manager.startReconnect(droneId, droneName, meta)) {
+        toast(`${droneName} disconnected — reconnecting...`, "warning");
+      }
     });
 
     const unsubState = manager.onStateChange((entry: ReconnectEntry) => {
       if (entry.state === "connected") {
         toast(`Reconnected to ${entry.droneName}`, "success");
-      } else if (entry.state === "failed") {
-        toast(`Failed to reconnect to ${entry.droneName} after ${entry.maxAttempts} attempts`, "error");
       }
     });
 

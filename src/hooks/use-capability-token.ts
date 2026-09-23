@@ -29,7 +29,7 @@
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { usePairingStore } from "@/stores/pairing-store";
+import { resolveLanTarget } from "@/components/plugins/transports/resolve-lan-url";
 import { type TokenClaims } from "@/lib/plugins/capability-token-claims";
 import { api as convexApi } from "../../convex/_generated/api";
 import {
@@ -61,28 +61,28 @@ export interface UseCapabilityTokenResult {
   error: Error | null;
 }
 
+/**
+ * @param pluginInstallId Cloud install row id; keys the cloud mint.
+ * @param pluginId        Manifest (reverse-DNS) plugin id; the agent mint
+ *                        looks the install up by it.
+ * @param deviceId        Bare agent device id.
+ */
+/**
+ * Mint through the drone's agent, reached with the same local-nodes then
+ * pairing-store host/key resolution the install dialog uses.
+ */
+function mintLanFor(deviceId: string, pluginId: string): Promise<MintedToken> {
+  const lan = resolveLanTarget(deviceId);
+  return mintLan(lan?.url ?? null, lan?.apiKey ?? null, pluginId);
+}
+
 export function useCapabilityToken(
   pluginInstallId: string,
+  pluginId: string,
   deviceId: string,
   transport: CapabilityTokenTransport,
 ): UseCapabilityTokenResult {
   const cloudMint = useAction(convexApi.cmdPluginCapabilityTokens.mintToken);
-  const lanUrl = usePairingStore((s) => {
-    const paired = s.pairedDrones.find((d) => d.deviceId === deviceId);
-    if (!paired) return null;
-    const host = paired.mdnsHost ?? paired.lastIp ?? null;
-    return host ? `http://${host}:8080` : null;
-  });
-  // LAN mint key. Read from the mirrored fleet row, which is where a
-  // cloud-paired node's key lives (it was never paired on this network, so
-  // `local-nodes-store` has no record of it). The mint fires from an effect
-  // keyed on the cache key, so the key has to be present on the first render
-  // of this hook — an async per-device read would mint with no key and never
-  // retry. `cmdDrones.getAgentKey` is the right read for a caller that can
-  // await, such as the bridge's per-envelope secret resolver.
-  const lanKey = usePairingStore(
-    (s) => s.pairedDrones.find((d) => d.deviceId === deviceId)?.apiKey ?? null,
-  );
 
   const [state, setState] = useState<{
     token: string | null;
@@ -99,24 +99,22 @@ export function useCapabilityToken(
   // re-fires every render and floods the mint endpoint.
   const inputsRef = useRef({
     cloudMint,
-    lanUrl,
-    lanKey,
     pluginInstallId,
+    pluginId,
     deviceId,
     transport,
   });
   inputsRef.current = {
     cloudMint,
-    lanUrl,
-    lanKey,
     pluginInstallId,
+    pluginId,
     deviceId,
     transport,
   };
 
   const cacheKey = useMemo(
-    () => `${transport}|${pluginInstallId}|${deviceId}`,
-    [transport, pluginInstallId, deviceId],
+    () => `${transport}|${pluginInstallId}|${pluginId}|${deviceId}`,
+    [transport, pluginInstallId, pluginId, deviceId],
   );
 
   const doMint = useCallback(
@@ -135,7 +133,7 @@ export function useCapabilityToken(
               inputs.pluginInstallId,
               inputs.deviceId,
             )
-          : mintLan(inputs.lanUrl, inputs.lanKey, inputs.pluginInstallId);
+          : mintLanFor(inputs.deviceId, inputs.pluginId);
       writeInflight(cacheKey, promise);
       return promise;
     },

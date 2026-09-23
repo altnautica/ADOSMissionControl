@@ -12,10 +12,19 @@ import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamEnums } from "../shared/ParamEnumSelect";
 import { GnssConstellationEditor } from "./GnssConstellationEditor";
+import { AP_GPS_RENAMED, resolveApGpsName, type ApGpsRenamedField } from "./ap-gps-constants";
 
-const GPS_OFFSET_PARAMS = ["GPS_POS1_X", "GPS_POS1_Y", "GPS_POS1_Z"];
-const GPS_GNSS_PARAMS = ["GPS_GNSS_MODE"];
-const ALL_GPS_PARAMS = [...GPS_OFFSET_PARAMS, ...GPS_GNSS_PARAMS];
+const OFFSET_FIELDS: readonly { field: ApGpsRenamedField; label: string }[] = [
+  { field: "posX", label: "Forward (X)" },
+  { field: "posY", label: "Right (Y)" },
+  { field: "posZ", label: "Down (Z)" },
+];
+// Both the pre-4.6 and 4.6+ spellings are requested; each is optional because
+// a vehicle only ever has one of them.
+const GPS_CONFIG_PARAMS: readonly string[] = [
+  ...OFFSET_FIELDS.flatMap(({ field }) => AP_GPS_RENAMED[field]),
+  ...AP_GPS_RENAMED.gnssMode,
+];
 
 export function GpsConfigSection() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
@@ -28,13 +37,13 @@ export function GpsConfigSection() {
   const {
     params, loading, dirtyParams, hasRamWrites,
     hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash,
-  } = usePanelParams({ paramNames: ALL_GPS_PARAMS, panelId: "gps-config", autoLoad: false });
+  } = usePanelParams({ paramNames: GPS_CONFIG_PARAMS, optionalParams: GPS_CONFIG_PARAMS, panelId: "gps-config", autoLoad: false });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!getSelectedProtocol();
   const hasDirty = dirtyParams.size > 0;
 
-  const gnssMode = params.get("GPS_GNSS_MODE") ?? 0;
+  const gnssModeName = resolveApGpsName("gnssMode", params);
 
   async function handleSave() {
     setSaving(true);
@@ -74,20 +83,25 @@ export function GpsConfigSection() {
               Coordinate system: X = forward (positive), Y = right (positive), Z = down (positive). Meters.
             </p>
             <div className="grid grid-cols-3 gap-3">
-              {GPS_OFFSET_PARAMS.map((param) => {
-                const axis = param.slice(-1); // X, Y, Z
-                const axisLabel = axis === "X" ? "Forward (X)" : axis === "Y" ? "Right (Y)" : "Down (Z)";
+              {OFFSET_FIELDS.map(({ field, label }) => {
+                const param = resolveApGpsName(field, params);
                 return (
-                  <div key={param}>
-                    <label className="text-[10px] text-text-tertiary block mb-1">{axisLabel}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={params.get(param) ?? 0}
-                      onChange={(e) => setLocalValue(param, Number(e.target.value) || 0)}
-                      className="w-full h-7 px-2 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
-                    />
-                    <span className="text-[9px] text-text-tertiary font-mono">{param}</span>
+                  <div key={field}>
+                    <label className="text-[10px] text-text-tertiary block mb-1">{label}</label>
+                    {param ? (
+                      <>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={params.get(param) ?? 0}
+                          onChange={(e) => setLocalValue(param, Number(e.target.value) || 0)}
+                          className="w-full h-7 px-2 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
+                        />
+                        <span className="text-[9px] text-text-tertiary font-mono">{param}</span>
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-text-tertiary">Not on this firmware</span>
+                    )}
                   </div>
                 );
               })}
@@ -97,12 +111,16 @@ export function GpsConfigSection() {
           {/* GPS Constellation Selection */}
           <div>
             <h4 className="text-xs font-medium text-text-secondary mb-2">GNSS Constellation</h4>
-            <GnssConstellationEditor
-              paramName={paramName("GPS_GNSS_MODE")}
-              value={gnssMode}
-              bits={bitmaskBits("GPS_GNSS_MODE")}
-              onChange={(v) => setLocalValue("GPS_GNSS_MODE", v)}
-            />
+            {gnssModeName ? (
+              <GnssConstellationEditor
+                paramName={paramName(gnssModeName)}
+                value={params.get(gnssModeName) ?? 0}
+                bits={bitmaskBits(gnssModeName)}
+                onChange={(v) => setLocalValue(gnssModeName, v)}
+              />
+            ) : (
+              <p className="text-[10px] text-text-tertiary">Not on this firmware</p>
+            )}
           </div>
 
           <div className="flex gap-2">

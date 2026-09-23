@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useToast } from "@/components/ui/toast";
 import { slotToCapability, type PluginSlotName } from "@/lib/plugins/types";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 
 import {
   usePluginHost,
@@ -181,9 +182,13 @@ function PluginSlotMountValidated({
   hostEvent,
 }: PluginSlotMountValidatedProps) {
   const installId = c.pluginInstallId ?? c.pluginId;
+  // Tokens, verification keys and pairing keys are all keyed by the bare
+  // agent device id; the host provider carries the fleet selection id.
+  const agentDeviceId = deviceIdFromNodeId(deviceId) ?? deviceId;
   const { validator, token } = usePluginTokenValidator({
     pluginInstallId: installId,
-    deviceId,
+    pluginId: c.pluginId,
+    deviceId: agentDeviceId,
   });
   return (
     <PluginIframeHost

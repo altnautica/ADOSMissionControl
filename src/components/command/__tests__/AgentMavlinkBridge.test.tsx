@@ -1,10 +1,10 @@
 /**
  * @license GPL-3.0-only
  *
- * Tests for the AgentMavlinkBridge connection cascade. Authentication is
- * orthogonal to the URL: the bridge dials the raw MAVLink proxy URL for any
- * profile and, when a pairing key is held, attaches a freshly-minted ticket
- * as a WebSocket subprotocol.
+ * Tests for AgentMavlinkBridge, the owner of the agent FC session.
+ * Authentication is orthogonal to the URL: the bridge dials the raw MAVLink
+ * proxy URL for any profile and, when a pairing key is held, attaches a
+ * freshly-minted ticket as a WebSocket subprotocol.
  *   - a pairing key is held → a ticket is minted and the raw URL is dialed
  *     with the ticket subprotocol;
  *   - no pairing key → the agent is asked whether it is paired. An unpaired
@@ -12,7 +12,9 @@
  *     on an ordinary LAN the dial is skipped and the pair-this-node state is
  *     raised; on a lifeline (hotspot) address the raw URL is dialed bare, and
  *     a refused dial there raises the same state;
- *   - a WebSocket failure falls through to the MQTT relay.
+ *   - a WebSocket failure falls through to the MQTT relay;
+ *   - a missing session is re-dialled every 3 s with no cap, but a session the
+ *     operator disconnected on purpose stays down.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -58,8 +60,10 @@ const h = vi.hoisted(() => {
     probeAgent: vi.fn<(host: string) => Promise<{ paired: boolean }>>(),
     setMavlinkPairRequired: vi.fn<(required: boolean) => void>(),
     addDrone: vi.fn(),
-    removeDrone: vi.fn(),
+    disconnectDrone: vi.fn(),
     selectDrone: vi.fn(),
+    drones: new Map<string, { transport: { type: string } }>(),
+    dropListeners: new Set<(droneId: string) => void>(),
   };
 });
 
@@ -71,7 +75,9 @@ vi.mock("@/lib/protocol/transport/websocket", () => ({
     connect(url: string, protocols?: string | string[]) {
       return h.wsConnect(url, protocols);
     }
-    disconnect() {}
+    disconnect() {
+      return Promise.resolve();
+    }
   },
 }));
 vi.mock("@/lib/protocol/transport/mqtt-mavlink", () => ({
@@ -91,7 +97,9 @@ vi.mock("@/lib/protocol/mavlink-adapter", () => ({
     connect() {
       return h.adapterConnect();
     }
-    disconnect() {}
+    disconnect() {
+      return Promise.resolve();
+    }
   },
 }));
 
@@ -131,15 +139,28 @@ vi.mock("@/stores/agent-capabilities-store", () => {
 
 vi.mock("@/stores/drone-manager", () => {
   const state = {
-    drones: new Map(),
+    drones: h.drones,
     selectedDroneId: null,
-    addDrone: h.addDrone,
-    removeDrone: h.removeDrone,
+    addDrone: (id: string, ...rest: unknown[]) => {
+      const meta = rest[4] as { type: string };
+      h.drones.set(id, { transport: { type: meta.type } });
+      h.addDrone(id, ...rest);
+    },
+    disconnectDrone: (id: string) => {
+      h.drones.delete(id);
+      h.disconnectDrone(id);
+    },
     selectDrone: h.selectDrone,
   };
-  const hook = () => state;
+  const hook = (sel?: (s: typeof state) => unknown) => (sel ? sel(state) : state);
   hook.getState = () => state;
-  return { useDroneManager: hook };
+  return {
+    useDroneManager: hook,
+    onUnexpectedDisconnect: (listener: (droneId: string) => void) => {
+      h.dropListeners.add(listener);
+      return () => h.dropListeners.delete(listener);
+    },
+  };
 });
 
 vi.mock("@/stores/fleet-store", () => {
@@ -172,6 +193,7 @@ function holdGrant() {
 beforeEach(() => {
   vi.clearAllMocks();
   cleanup();
+  h.drones.clear();
   wsConnect.mockResolvedValue(undefined);
   mqttConnect.mockResolvedValue(undefined);
   mintWsTicket.mockResolvedValue("tok-xyz");
@@ -315,5 +337,67 @@ describe("AgentMavlinkBridge connection cascade", () => {
 
     await waitFor(() => expect(mqttConnect).toHaveBeenCalledTimes(1));
     expect(mqttConnect).toHaveBeenCalledWith("cloud-1", undefined, undefined);
+  });
+});
+
+describe("AgentMavlinkBridge session supervision", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("re-dials a failing link every 3 s and never gives up", async () => {
+    const at: number[] = [];
+    wsConnect.mockRejectedValue(new Error("refused"));
+    mqttConnect.mockImplementation(async () => {
+      at.push(Date.now());
+      throw new Error("broker down");
+    });
+    render(<AgentMavlinkBridge />);
+    await vi.waitFor(() => expect(at).toHaveLength(1));
+
+    // Two minutes of a dead link, stepped so each dial's awaits settle.
+    for (let t = 0; t < 120_000; t += 500) {
+      await vi.advanceTimersByTimeAsync(500);
+    }
+
+    expect(at.length).toBeGreaterThanOrEqual(40);
+    const gaps = at.slice(1).map((ts, i) => ts - at[i]);
+    // A fixed interval: never faster than 3 s, and no backoff stretching it.
+    for (const gap of gaps) {
+      expect(gap).toBeGreaterThanOrEqual(3_000);
+      expect(gap).toBeLessThan(3_600);
+    }
+    expect(addDrone).not.toHaveBeenCalled();
+  });
+
+  it("re-dials a session that dropped unexpectedly", async () => {
+    render(<AgentMavlinkBridge />);
+    await vi.waitFor(() => expect(addDrone).toHaveBeenCalledTimes(1));
+    const droneId = addDrone.mock.calls[0][0] as string;
+
+    // The transport closed on its own: drone-manager reports it, then drops it.
+    for (const listener of h.dropListeners) listener(droneId);
+    h.drones.delete(droneId);
+
+    await vi.advanceTimersByTimeAsync(3_000);
+    await vi.waitFor(() => expect(addDrone).toHaveBeenCalledTimes(2));
+    expect(addDrone.mock.calls[1][0]).toBe(droneId);
+  });
+
+  it("leaves a session the operator disconnected on purpose down", async () => {
+    render(<AgentMavlinkBridge />);
+    await vi.waitFor(() => expect(addDrone).toHaveBeenCalledTimes(1));
+    const droneId = addDrone.mock.calls[0][0] as string;
+
+    const { useDroneManager } = await import("@/stores/drone-manager");
+    useDroneManager.getState().disconnectDrone(droneId);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(wsConnect).toHaveBeenCalledTimes(1);
+    expect(addDrone).toHaveBeenCalledTimes(1);
   });
 });

@@ -16,6 +16,7 @@ import type {
   INavProgrammingPidStatus,
 } from '@/lib/protocol/msp/msp-decoders-inav'
 import { formatErrorMessage } from '@/lib/utils'
+import { droneSlices, type DroneKeyed } from './drone-slices'
 
 export const LOGIC_CONDITION_MAX = 64
 export const GVAR_MAX = 8
@@ -53,7 +54,7 @@ function defaultProgrammingPids(): INavProgrammingPid[] {
   return Array.from({ length: PROGRAMMING_PID_MAX }, () => defaultProgrammingPid())
 }
 
-interface ProgrammingStoreState {
+interface ProgrammingSlice {
   conditions: INavLogicCondition[]
   conditionsStatus: INavLogicConditionsStatus[]
   gvarStatus: INavGvarStatus
@@ -64,6 +65,33 @@ interface ProgrammingStoreState {
   error: string | null
   conditionsDirty: boolean
   pidsDirty: boolean
+  /** True once a read from the FC succeeded, even when every slot is unused. */
+  loaded: boolean
+}
+
+const emptySlice = (): ProgrammingSlice => ({
+  conditions: defaultLogicConditions(),
+  conditionsStatus: [],
+  gvarStatus: { values: [] },
+  pids: defaultProgrammingPids(),
+  pidStatus: [],
+  loading: false,
+  error: null,
+  conditionsDirty: false,
+  pidsDirty: false,
+  loaded: false,
+})
+
+const slices = droneSlices<ProgrammingSlice>(
+  ['conditions', 'conditionsStatus', 'gvarStatus', 'pids', 'pidStatus', 'loading', 'error', 'conditionsDirty', 'pidsDirty', 'loaded'],
+  emptySlice,
+)
+
+interface ProgrammingStoreState extends ProgrammingSlice, DroneKeyed<ProgrammingSlice> {
+  /** Show `droneId`'s programming (called when the selected drone changes). */
+  bindDrone: (droneId: string | null) => void
+  /** Drop a removed drone's programming. */
+  forgetDrone: (droneId: string) => void
 
   pollingTimer: ReturnType<typeof setInterval> | null
 
@@ -73,8 +101,10 @@ interface ProgrammingStoreState {
   clear: () => void
 
   loadFromFc: (protocol: DroneProtocol) => Promise<void>
-  uploadConditions: (protocol: DroneProtocol) => Promise<void>
-  uploadPids: (protocol: DroneProtocol) => Promise<void>
+  /** Resolves true only when every condition was written and saved. */
+  uploadConditions: (protocol: DroneProtocol) => Promise<boolean>
+  /** Resolves true only when every PID was written and saved. */
+  uploadPids: (protocol: DroneProtocol) => Promise<boolean>
   writeGvar: (protocol: DroneProtocol, index: number, value: number) => Promise<void>
 
   startPolling: (protocol: DroneProtocol, intervalMs?: number) => void
@@ -83,18 +113,24 @@ interface ProgrammingStoreState {
 }
 
 export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => ({
-  conditions: defaultLogicConditions(),
-  conditionsStatus: [],
-  gvarStatus: { values: [] },
-  pids: defaultProgrammingPids(),
-  pidStatus: [],
-
-  loading: false,
-  error: null,
-  conditionsDirty: false,
-  pidsDirty: false,
+  ...emptySlice(),
+  droneId: null,
+  byDrone: new Map(),
 
   pollingTimer: null,
+
+  bindDrone(droneId) {
+    const patch = slices.bind(get(), droneId)
+    if (!patch) return
+    // Status polling runs against one drone's protocol; the panel restarts it.
+    get().stopPolling()
+    set(patch)
+  },
+
+  forgetDrone(droneId) {
+    const patch = slices.forget(get(), droneId)
+    if (patch) set(patch)
+  },
 
   setCondition(index, partial) {
     const conditions = [...get().conditions]
@@ -118,17 +154,7 @@ export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => (
 
   clear() {
     get().stopPolling()
-    set({
-      conditions: defaultLogicConditions(),
-      conditionsStatus: [],
-      gvarStatus: { values: [] },
-      pids: defaultProgrammingPids(),
-      pidStatus: [],
-      loading: false,
-      error: null,
-      conditionsDirty: false,
-      pidsDirty: false,
-    })
+    set(emptySlice())
   },
 
   async loadFromFc(protocol) {
@@ -137,6 +163,7 @@ export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => (
       set({ error: 'Programming framework not supported by this firmware' })
       return
     }
+    const droneId = get().droneId
     set({ loading: true, error: null })
     try {
       const [rawConditions, rawPids] = await Promise.all([
@@ -154,47 +181,49 @@ export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => (
         if (i < PROGRAMMING_PID_MAX) pids[i] = p
       })
 
-      set({ conditions, pids, loading: false, conditionsDirty: false, pidsDirty: false })
+      set((st) => slices.patchFor(st, droneId, { conditions, pids, loading: false, conditionsDirty: false, pidsDirty: false, loaded: true }))
     } catch (err) {
-      set({ loading: false, error: formatErrorMessage(err) })
+      set((st) => slices.patchFor(st, droneId, { loading: false, error: formatErrorMessage(err) }))
     }
   },
 
   async uploadConditions(protocol) {
-    if (get().loading) return
-    if (!protocol.uploadLogicCondition) {
+    if (get().loading) return false
+    if (!protocol.uploadLogicConditions) {
       set({ error: 'Logic condition upload not supported' })
-      return
+      return false
     }
+    const droneId = get().droneId
     set({ loading: true, error: null })
     try {
-      const { conditions } = get()
-      for (let i = 0; i < conditions.length; i++) {
-        if (!get().loading) break
-        await protocol.uploadLogicCondition(i, conditions[i])
-      }
-      set({ loading: false, conditionsDirty: false })
+      const result = await protocol.uploadLogicConditions(get().conditions)
+      set((st) => slices.patchFor(st, droneId, result.success
+        ? { loading: false, conditionsDirty: false }
+        : { loading: false, error: result.message }))
+      return result.success
     } catch (err) {
-      set({ loading: false, error: formatErrorMessage(err) })
+      set((st) => slices.patchFor(st, droneId, { loading: false, error: formatErrorMessage(err) }))
+      return false
     }
   },
 
   async uploadPids(protocol) {
-    if (get().loading) return
-    if (!protocol.uploadProgrammingPid) {
+    if (get().loading) return false
+    if (!protocol.uploadProgrammingPids) {
       set({ error: 'Programming PID upload not supported' })
-      return
+      return false
     }
+    const droneId = get().droneId
     set({ loading: true, error: null })
     try {
-      const { pids } = get()
-      for (let i = 0; i < pids.length; i++) {
-        if (!get().loading) break
-        await protocol.uploadProgrammingPid(i, pids[i])
-      }
-      set({ loading: false, pidsDirty: false })
+      const result = await protocol.uploadProgrammingPids(get().pids)
+      set((st) => slices.patchFor(st, droneId, result.success
+        ? { loading: false, pidsDirty: false }
+        : { loading: false, error: result.message }))
+      return result.success
     } catch (err) {
-      set({ loading: false, error: formatErrorMessage(err) })
+      set((st) => slices.patchFor(st, droneId, { loading: false, error: formatErrorMessage(err) }))
+      return false
     }
   },
 
@@ -220,6 +249,7 @@ export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => (
   },
 
   async pollStatus(protocol) {
+    const droneId = get().droneId
     try {
       const results = await Promise.allSettled([
         protocol.downloadLogicConditionsStatus?.() ?? Promise.resolve([]),
@@ -234,7 +264,7 @@ export const useProgrammingStore = create<ProgrammingStoreState>((set, get) => (
       const pidStatus =
         results[2].status === 'fulfilled' ? (results[2].value as INavProgrammingPidStatus[]) : get().pidStatus
 
-      set({ conditionsStatus, gvarStatus, pidStatus })
+      set((st) => slices.patchFor(st, droneId, { conditionsStatus, gvarStatus, pidStatus }))
     } catch {
       // status polling is best-effort
     }

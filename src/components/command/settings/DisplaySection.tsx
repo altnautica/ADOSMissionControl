@@ -18,8 +18,12 @@
  * only when the node reports it) and the danger confirmation, and
  * {@link HdmiKioskCard}, which already owns the kiosk target-URL write. One
  * key, one write path: a second picker is how the two drift and one of them
- * loses the guard. The only field added here is `ground_station.kiosk.enabled`,
- * which no surface exposed at all.
+ * loses the guard.
+ *
+ * There is no kiosk on/off switch: the node starts the kiosk on every ground
+ * station with an HDMI display and does not read `ground_station.kiosk.enabled`,
+ * so a switch would report a state the node never applies. The page says how
+ * the kiosk actually behaves instead.
  * @license GPL-3.0-only
  */
 
@@ -28,22 +32,13 @@ import { Monitor } from "lucide-react";
 
 import { HdmiKioskCard } from "@/components/hardware/HdmiKioskCard";
 import { LocalDisplayCard } from "@/components/hardware/LocalDisplayCard";
-import { ConfigToggleField } from "./ConfigFields";
 import { Section } from "./Section";
 
 export interface DisplaySectionProps {
   nodeDeviceId: string | null;
-  config: Record<string, unknown> | null;
-  readOnly: boolean;
-  setValue: (key: string, value: string) => Promise<void>;
 }
 
-export function DisplaySection({
-  nodeDeviceId,
-  config,
-  readOnly,
-  setValue,
-}: DisplaySectionProps) {
+export function DisplaySection({ nodeDeviceId }: DisplaySectionProps) {
   const t = useTranslations("nodeSettings.display");
 
   return (
@@ -54,14 +49,9 @@ export function DisplaySection({
       </Section>
 
       <Section title={t("kioskTitle")} blurb={t("kioskBlurb")}>
-        <ConfigToggleField
-          configKey="ground_station.kiosk.enabled"
-          label={t("kioskEnabled")}
-          hint={t("kioskEnabledHint")}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
+        <p className="text-[11px] text-text-tertiary">
+          {t("kioskAlwaysOn")}
+        </p>
         {/* The kiosk target URL's existing owner — reused, not re-implemented. */}
         <HdmiKioskCard nodeDeviceId={nodeDeviceId} />
       </Section>

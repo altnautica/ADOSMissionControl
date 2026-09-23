@@ -124,10 +124,14 @@ entries.push([
 
 
 // ── VTX Config (MSP_VTX_CONFIG=88, MSP_SET_VTX_CONFIG=89) ──
-// Read offsets from decodeMspVtxConfig. Write offsets from encodeMspSetVtxConfig.
+// Read offsets from decodeMspVtxConfig. Write offsets from encodeMspSetVtxConfig
+// (the write payload is rebuilt from the read payload by the registry's
+// write-layout table before any field is patched).
 entries.push([
   'BF_VTX_TYPE',
-  u8Param(MSP_VTX_CONFIG, MSP_SET_VTX_CONFIG, 0, 0, 'VTX Type', 0, 4),
+  // The device type is detected by the firmware; MSP_SET_VTX_CONFIG has no
+  // field for it.
+  { ...u8Param(MSP_VTX_CONFIG, MSP_SET_VTX_CONFIG, 0, 0, 'VTX Type', 0, 255), readOnly: true },
 ]);
 entries.push([
   'BF_VTX_BAND',
@@ -135,6 +139,7 @@ entries.push([
   {
     readCmd: MSP_VTX_CONFIG,
     writeCmd: MSP_SET_VTX_CONFIG,
+    readEnd: 2,
     decode: (p) => getU8(p, 1),
     encode: (v, p) => setU8(p, 7, v),
     type: 'uint8' as const,
@@ -148,6 +153,7 @@ entries.push([
   {
     readCmd: MSP_VTX_CONFIG,
     writeCmd: MSP_SET_VTX_CONFIG,
+    readEnd: 3,
     decode: (p) => getU8(p, 2),
     encode: (v, p) => setU8(p, 8, v),
     type: 'uint8' as const,
@@ -161,6 +167,7 @@ entries.push([
   {
     readCmd: MSP_VTX_CONFIG,
     writeCmd: MSP_SET_VTX_CONFIG,
+    readEnd: 4,
     decode: (p) => getU8(p, 3),
     encode: (v, p) => setU8(p, 2, v),
     type: 'uint8' as const,
@@ -174,6 +181,7 @@ entries.push([
   {
     readCmd: MSP_VTX_CONFIG,
     writeCmd: MSP_SET_VTX_CONFIG,
+    readEnd: 5,
     decode: (p) => getU8(p, 4),
     encode: (v, p) => setU8(p, 3, v),
     type: 'uint8' as const,
@@ -187,6 +195,7 @@ entries.push([
   {
     readCmd: MSP_VTX_CONFIG,
     writeCmd: MSP_SET_VTX_CONFIG,
+    readEnd: 7,
     decode: (p) => getU16(p, 5),
     encode: (v, p) => {
       let out = setU16(p, 0, v); // first frequency field
@@ -204,6 +213,7 @@ entries.push([
   {
     readCmd: MSP_VTX_CONFIG,
     writeCmd: MSP_SET_VTX_CONFIG,
+    readEnd: 9,
     decode: (p) => getU8(p, 8),
     encode: (v, p) => setU8(p, 4, v),
     type: 'uint8' as const,

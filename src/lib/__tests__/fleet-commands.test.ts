@@ -60,6 +60,47 @@ describe("returnFleetToLaunch", () => {
     expect(describeFleetOutcome(outcome, "RTH").variant).toBe("error");
   });
 
+  it("sends to every drone at once and reports a partial failure per drone", async () => {
+    // The first drone never answers until released; a sequential fan-out would
+    // not reach the other two until it settled.
+    const hung = Promise.withResolvers<never>();
+    const slowRtl = vi.fn(() => hung.promise);
+    const okRtl = vi.fn(async () => ({ success: true, resultCode: 0, message: "" }));
+    const deniedRtl = vi.fn(async () => ({ success: false, resultCode: 4, message: "denied" }));
+    const armed = { armState: "armed", connectionState: "armed", status: "in_mission" } as const;
+    useFleetStore.setState({
+      drones: [
+        fleetDrone({ id: "a-silent", ...armed }),
+        fleetDrone({ id: "b-ok", ...armed }),
+        fleetDrone({ id: "c-denied", ...armed }),
+        fleetDrone({ id: "d-nolink", ...armed }),
+      ],
+    });
+    useDroneManager.setState({
+      drones: new Map([
+        managed("a-silent", slowRtl),
+        managed("b-ok", okRtl),
+        managed("c-denied", deniedRtl),
+      ]),
+    });
+
+    const pending = returnFleetToLaunch();
+    await Promise.resolve();
+    expect(okRtl).toHaveBeenCalledTimes(1);
+    expect(deniedRtl).toHaveBeenCalledTimes(1);
+
+    hung.reject(new Error("timeout"));
+    const outcome = await pending;
+    expect(outcome.attempted).toBe(4);
+    expect(outcome.acknowledged).toEqual(["b-ok"]);
+    expect(outcome.failures).toEqual([
+      "a-silent: timeout",
+      "c-denied: denied",
+      "d-nolink: no command link",
+    ]);
+    expect(describeFleetOutcome(outcome, "RTH").variant).toBe("error");
+  });
+
   it("with nothing armed and nothing lost, reports a warning rather than success", async () => {
     useFleetStore.setState({ drones: [fleetDrone({ id: "parked", armState: "disarmed" })] });
     const outcome = await returnFleetToLaunch();

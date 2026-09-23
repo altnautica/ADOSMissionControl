@@ -16,36 +16,53 @@
 
 import type { FlightRecord } from "@/lib/types";
 
-/** Fields excluded from the canonical form (they change after signing). */
-const VOLATILE_KEYS: ReadonlyArray<keyof FlightRecord> = [
-  "updatedAt",
-  "pilotSignedAt",
-  "pilotSignatureHash",
-  "events",
-  "flags",
-  "health",
-  "notes",
-  "tags",
-  "favorite",
-  "customName",
-  "deleted",
-  "deletedAt",
-];
+/**
+ * Fields excluded from the canonical form. They change after signing without
+ * altering what the flight was: annotations, analysis output, soft-delete,
+ * cloud-sync bookkeeping and linked media evidence.
+ */
+const VOLATILE_KEYS: Partial<Record<keyof FlightRecord, true>> = {
+  updatedAt: true,
+  pilotSignedAt: true,
+  pilotSignatureHash: true,
+  events: true,
+  flags: true,
+  health: true,
+  notes: true,
+  tags: true,
+  favorite: true,
+  customName: true,
+  deleted: true,
+  deletedAt: true,
+  cloudSynced: true,
+  media: true,
+};
+
+/** Rebuild a value with every object's keys in sorted order, at any depth. */
+function sortKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeysDeep);
+  if (value === null || typeof value !== "object") return value;
+  const src = value as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(src).sort()) out[key] = sortKeysDeep(src[key]);
+  return out;
+}
 
 /**
  * Canonicalize a record into a deterministic JSON string.
  *
- * Stripped fields: see {@link VOLATILE_KEYS}. Object keys are sorted so
- * `JSON.stringify` produces stable output regardless of insertion order.
+ * Stripped fields: see {@link VOLATILE_KEYS}. Object keys are sorted at every
+ * depth so the output does not depend on insertion order, which a storage or
+ * sync round trip is free to change.
  */
 export function canonicalizeRecord(record: FlightRecord): string {
   const filtered: Record<string, unknown> = {};
   const indexed = record as unknown as Record<string, unknown>;
-  for (const key of Object.keys(record).sort()) {
-    if ((VOLATILE_KEYS as ReadonlyArray<string>).includes(key)) continue;
+  for (const key of Object.keys(record)) {
+    if (VOLATILE_KEYS[key as keyof FlightRecord]) continue;
     filtered[key] = indexed[key];
   }
-  return JSON.stringify(filtered);
+  return JSON.stringify(sortKeysDeep(filtered));
 }
 
 /** Web-Crypto SHA-256 of an arbitrary UTF-8 string → hex digest. */

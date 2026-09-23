@@ -15,12 +15,11 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Signal } from "lucide-react";
 
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { ModemDetailStatus, ModemView } from "@/lib/api/ground-station/types";
 import { Button } from "@/components/ui/button";
@@ -28,11 +27,15 @@ import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { ConfigTextField, ConfigToggleField } from "./ConfigFields";
+import { useNodeDirectAgent } from "./use-node-direct-agent";
 import { Section } from "./Section";
 
 const POLL_MS = 10000;
 
 interface SectionProps {
+  /** The node this page is rendered for; live reads and writes go only to a
+   * connection attached to it. */
+  nodeDeviceId: string | null;
   profile: NodeProfile;
   config: Record<string, unknown> | null;
   readOnly: boolean;
@@ -146,6 +149,7 @@ function ApplyField({
 }
 
 export function CellularSection({
+  nodeDeviceId,
   profile,
   config,
   readOnly,
@@ -153,14 +157,23 @@ export function CellularSection({
 }: SectionProps) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const agent = useNodeDirectAgent(nodeDeviceId);
 
   const isGroundStation = profile === "ground-station";
   const api = useMemo(
-    () => (isGroundStation ? groundStationApiFromAgent(agentUrl, apiKey) : null),
-    [isGroundStation, agentUrl, apiKey],
+    () =>
+      isGroundStation && agent
+        ? groundStationApiFromAgent(agent.agentUrl, agent.apiKey)
+        : null,
+    [isGroundStation, agent],
   );
+  // Answers belong to the client they were requested on; a poll or write
+  // reply from the previously attached node that lands after a switch is
+  // dropped.
+  const apiRef = useRef(api);
+  useEffect(() => {
+    apiRef.current = api;
+  }, [api]);
 
   const [modem, setModem] = useState<ModemView | null>(null);
   const [detail, setDetail] = useState<ModemDetailStatus | null>(null);
@@ -170,29 +183,31 @@ export function CellularSection({
   const refresh = useCallback(async () => {
     if (!api) return;
     try {
-      // The declared ModemStatus type predates the wire shape; the route
-      // serves the flat modem view (config + usage + sentinel connectivity
-      // legs) documented on ModemView.
-      const view = (await api.getModem()) as unknown as ModemView;
+      const view = await api.getModem();
+      if (apiRef.current !== api) return;
       setModem(view);
       setLoadFailed(false);
     } catch {
+      if (apiRef.current !== api) return;
       setLoadFailed(true);
     }
     try {
-      setDetail(await api.getModemDetail());
+      const next = await api.getModemDetail();
+      if (apiRef.current !== api) return;
+      setDetail(next);
     } catch {
+      if (apiRef.current !== api) return;
       setDetail(null);
     }
   }, [api]);
 
   useEffect(() => {
-    if (!api) {
-      setModem(null);
-      setDetail(null);
-      setLoadFailed(false);
-      return;
-    }
+    // A new client (or none) starts from nothing: the previous node's modem
+    // view never renders under this node's name while the first poll runs.
+    setModem(null);
+    setDetail(null);
+    setLoadFailed(false);
+    if (!api) return;
     let cancelled = false;
     const tick = () => {
       if (!cancelled) void refresh();
@@ -210,8 +225,8 @@ export function CellularSection({
   const writeModem = useCallback(
     async (update: { apn?: string; cap_gb?: number; enabled?: boolean }) => {
       if (!api) throw new Error(t("network.liveRequiresLan"));
-      const view = (await api.setModem(update)) as unknown as ModemView;
-      setModem(view);
+      const view = await api.setModem(update);
+      if (apiRef.current === api) setModem(view);
     },
     [api, t],
   );

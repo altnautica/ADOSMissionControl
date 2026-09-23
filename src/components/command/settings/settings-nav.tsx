@@ -62,9 +62,11 @@ import { SecuritySection } from "./SecuritySection";
  *
  * `nodeDeviceId` / `relayReach` identify the node the page is rendered for. A
  * page that resolves its own transport (the operating-region panel, the
- * security page's PIN posture read) MUST resolve it from these and never from
- * `agent-connection-store`, which tracks the focused node and lags this
- * render — that is how a write lands on the previously connected drone. */
+ * security page's PIN posture read, the Wi-Fi / cellular / uplink / discovery
+ * / signing reads and writes through `useNodeDirectAgent`) MUST resolve it
+ * from these and never from `agent-connection-store` directly, which tracks
+ * the focused node and lags this render — that is how a write lands on the
+ * previously connected drone. */
 export interface SettingsPageContext {
   droneId: string;
   /** The node's agent device id (direct reach), or the relayed drone's own
@@ -130,6 +132,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     render: (ctx) => (
       <NetworkUplinkSection
+        nodeDeviceId={ctx.nodeDeviceId}
         profile={ctx.profile}
         config={ctx.config}
         readOnly={ctx.readOnly}
@@ -144,7 +147,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     // Scans and joins networks over the agent's own Wi-Fi endpoints; it never
     // reads the persisted config, so the config banners do not apply.
     readsConfig: false,
-    render: () => <WifiClientSection />,
+    render: (ctx) => <WifiClientSection nodeDeviceId={ctx.nodeDeviceId} />,
   },
   {
     id: "cellular",
@@ -153,6 +156,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     render: (ctx) => (
       <CellularSection
+        nodeDeviceId={ctx.nodeDeviceId}
         profile={ctx.profile}
         config={ctx.config}
         readOnly={ctx.readOnly}
@@ -180,6 +184,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     render: (ctx) => (
       <DiscoverySection
+        nodeDeviceId={ctx.nodeDeviceId}
         config={ctx.config}
         readOnly={ctx.readOnly}
         setValue={ctx.setValue}
@@ -197,6 +202,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     when: isDroneProfile,
     render: (ctx) => (
       <MavlinkRoutingSection
+        nodeDeviceId={ctx.nodeDeviceId}
         profile={ctx.profile}
         config={ctx.config}
         readOnly={ctx.readOnly}
@@ -318,9 +324,8 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     render: (ctx) => (
       <CloudPage
+        nodeDeviceId={ctx.nodeDeviceId}
         config={ctx.config}
-        readOnly={ctx.readOnly}
-        setValue={ctx.setValue}
       />
     ),
   },
@@ -351,12 +356,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     readsConfig: true,
     when: (ctx) => ctx.profile === "ground-station",
     render: (ctx) => (
-      <DisplaySection
-        nodeDeviceId={ctx.nodeDeviceId}
-        config={ctx.config}
-        readOnly={ctx.readOnly}
-        setValue={ctx.setValue}
-      />
+      <DisplaySection nodeDeviceId={ctx.nodeDeviceId} />
     ),
   },
   {

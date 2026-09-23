@@ -25,6 +25,7 @@ import {
   AP_GPS_AUTO_CONFIG_OPTIONS,
   AP_GPS_NAVFILTER_OPTIONS,
   AP_GPS_MB_TYPE_OPTIONS,
+  resolveApGpsName,
 } from "./ap-gps-constants";
 
 /**
@@ -61,6 +62,21 @@ export function ArduPilotGpsPanel() {
   const has = (name: string) => params.has(name);
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
+  // Per-receiver params carry a different name before and after ArduPilot
+  // 4.6; each resolves to the spelling this vehicle reported, or null.
+  const type1 = resolveApGpsName("type1", params);
+  const type2 = resolveApGpsName("type2", params);
+  const rateMs = resolveApGpsName("rateMs", params);
+  const gnssMode = resolveApGpsName("gnssMode", params);
+  const mbType = resolveApGpsName("mbType", params);
+  const posNames = [
+    resolveApGpsName("posX", params),
+    resolveApGpsName("posY", params),
+    resolveApGpsName("posZ", params),
+  ];
+  const notOnFirmware = (what: string) => (
+    <p className="text-xs text-text-tertiary">{what} is not on this firmware.</p>
+  );
 
   return (
     <ArmedLockOverlay>
@@ -85,20 +101,22 @@ export function ArduPilotGpsPanel() {
             <Satellite size={14} className="text-accent-primary" />
             <h2 className="text-sm font-medium text-text-primary">Receivers</h2>
           </div>
-          <Select
-            label="GPS 1 Type"
-            searchable
-            options={AP_GPS_TYPE_OPTIONS}
-            value={p("GPS_TYPE", "1")}
-            onChange={(v) => set("GPS_TYPE", v)}
-          />
-          {has("GPS_TYPE2") && (
+          {type1 ? (
+            <Select
+              label="GPS 1 Type"
+              searchable
+              options={AP_GPS_TYPE_OPTIONS}
+              value={p(type1)}
+              onChange={(v) => set(type1, v)}
+            />
+          ) : hasLoaded && notOnFirmware("GPS 1 type")}
+          {type2 && (
             <Select
               label="GPS 2 Type"
               searchable
               options={AP_GPS_TYPE_OPTIONS}
-              value={p("GPS_TYPE2")}
-              onChange={(v) => set("GPS_TYPE2", v)}
+              value={p(type2)}
+              onChange={(v) => set(type2, v)}
             />
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -140,12 +158,14 @@ export function ArduPilotGpsPanel() {
             <h2 className="text-sm font-medium text-text-primary">Constellations &amp; Rate</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Select
-              label="Update Rate"
-              options={AP_GPS_RATE_OPTIONS}
-              value={p("GPS_RATE_MS", "200")}
-              onChange={(v) => set("GPS_RATE_MS", v)}
-            />
+            {rateMs ? (
+              <Select
+                label="Update Rate"
+                options={AP_GPS_RATE_OPTIONS}
+                value={p(rateMs)}
+                onChange={(v) => set(rateMs, v)}
+              />
+            ) : hasLoaded && notOnFirmware("GPS update rate")}
             <Select
               label="SBAS Mode"
               options={AP_GPS_SBAS_OPTIONS}
@@ -177,37 +197,44 @@ export function ArduPilotGpsPanel() {
               onChange={(e) => set("GPS_MIN_ELEV", e.target.value)}
             />
           </div>
-          <div className="space-y-1">
-            <span className="text-xs text-text-secondary">GNSS Constellations</span>
-            <GnssConstellationEditor
-              paramName="GPS_GNSS_MODE"
-              value={Number(p("GPS_GNSS_MODE"))}
-              bits={bitmaskBits("GPS_GNSS_MODE")}
-              onChange={(v) => setLocalValue("GPS_GNSS_MODE", v)}
-            />
-          </div>
+          {gnssMode ? (
+            <div className="space-y-1">
+              <span className="text-xs text-text-secondary">GNSS Constellations</span>
+              <GnssConstellationEditor
+                paramName={gnssMode}
+                value={Number(p(gnssMode))}
+                bits={bitmaskBits(gnssMode)}
+                onChange={(v) => setLocalValue(gnssMode, v)}
+              />
+            </div>
+          ) : hasLoaded && notOnFirmware("GNSS constellation mask")}
         </div>
 
         {/* GPS for yaw + antenna offsets */}
-        {(has("GPS_MB1_TYPE") || has("GPS_POS1_X") || has("GPS_DRV_OPTIONS")) && (
+        {(mbType || posNames.some(Boolean) || has("GPS_DRV_OPTIONS")) && (
           <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <Compass size={14} className="text-accent-primary" />
               <h2 className="text-sm font-medium text-text-primary">GPS for Yaw &amp; Antenna Offsets</h2>
             </div>
-            {has("GPS_MB1_TYPE") && (
+            {mbType && (
               <Select
                 label="Moving Baseline Type"
                 options={AP_GPS_MB_TYPE_OPTIONS}
-                value={p("GPS_MB1_TYPE")}
-                onChange={(v) => set("GPS_MB1_TYPE", v)}
+                value={p(mbType)}
+                onChange={(v) => set(mbType, v)}
               />
             )}
-            {(has("GPS_POS1_X") || has("GPS_POS1_Y") || has("GPS_POS1_Z")) && (
+            {posNames.some(Boolean) && (
               <div className="grid grid-cols-3 gap-3">
-                <Input label="Antenna X" type="number" step="0.01" min="-5" max="5" unit="m" value={p("GPS_POS1_X")} onChange={(e) => set("GPS_POS1_X", e.target.value)} />
-                <Input label="Antenna Y" type="number" step="0.01" min="-5" max="5" unit="m" value={p("GPS_POS1_Y")} onChange={(e) => set("GPS_POS1_Y", e.target.value)} />
-                <Input label="Antenna Z" type="number" step="0.01" min="-5" max="5" unit="m" value={p("GPS_POS1_Z")} onChange={(e) => set("GPS_POS1_Z", e.target.value)} />
+                {posNames.map((name, i) => {
+                  const axis = ["X", "Y", "Z"][i];
+                  return name ? (
+                    <Input key={axis} label={`Antenna ${axis}`} type="number" step="0.01" min="-5" max="5" unit="m" value={p(name)} onChange={(e) => set(name, e.target.value)} />
+                  ) : (
+                    <div key={axis} />
+                  );
+                })}
               </div>
             )}
             {has("GPS_DRV_OPTIONS") && (

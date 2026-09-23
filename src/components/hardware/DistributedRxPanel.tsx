@@ -75,9 +75,12 @@ export function DistributedRxPanel() {
       <CombinedStreamStats />
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wider">
-          {t("relays")} ({distRx.receiverRelays.length})
+          {t("relays")}
+          {distRx.receiverRelays !== null && ` (${distRx.receiverRelays.length})`}
         </h3>
-        {distRx.receiverRelays.length === 0 ? (
+        {distRx.receiverRelays === null ? (
+          <div className="text-sm text-status-warning">{t("staleSnapshot")}</div>
+        ) : distRx.receiverRelays.length === 0 ? (
           <div className="text-sm text-text-tertiary italic">{t("noRelays")}</div>
         ) : (
           <div className="flex flex-col gap-2">

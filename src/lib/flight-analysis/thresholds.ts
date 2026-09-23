@@ -24,4 +24,11 @@ export const THRESHOLDS = {
   gpsGlitchSatDrop: 4,
   /** Battery voltage drop (V) within ~1 s to trigger a sag flag. */
   batterySagVolts: 1.0,
+  /**
+   * EKF_STATUS_REPORT variance (velocity / horizontal position / vertical
+   * position / compass), reported as a test ratio where 1.0 is the innovation
+   * gate. These match the autopilot's own EKF check levels.
+   */
+  ekfVarianceWarn: 0.5,
+  ekfVarianceError: 0.8,
 } as const;

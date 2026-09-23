@@ -22,12 +22,16 @@ export interface FlightStats {
   landingLon?: number;
 }
 
-interface PositionFrameData { lat: number; lon: number; relativeAlt?: number; alt?: number; groundSpeed?: number }
+interface PositionFrameData { lat: number; lon: number; relativeAlt?: number; groundSpeed?: number }
 interface BatteryFrameData { voltage: number; remaining: number }
-interface VfrFrameData { groundspeed: number; alt?: number }
+interface VfrFrameData { groundspeed: number }
 
 /**
  * Walk recorded frames once and derive flight stats.
+ *
+ * `maxAlt` is height above home, taken only from the position frames'
+ * `relativeAlt`. VFR_HUD `alt` and GLOBAL_POSITION_INT `alt` are AMSL on
+ * ArduPilot and would report the field elevation as flight altitude.
  *
  * Pure function — no I/O.
  */
@@ -64,8 +68,7 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
         landingLat = d.lat;
         landingLon = d.lon;
 
-        const altCandidate = typeof d.relativeAlt === "number" ? d.relativeAlt : d.alt ?? 0;
-        if (altCandidate > maxAlt) maxAlt = altCandidate;
+        if (typeof d.relativeAlt === "number" && d.relativeAlt > maxAlt) maxAlt = d.relativeAlt;
 
         if (typeof d.groundSpeed === "number" && d.groundSpeed > 0) {
           if (d.groundSpeed > maxSpeed) maxSpeed = d.groundSpeed;
@@ -85,7 +88,6 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
         speedSum += d.groundspeed;
         speedCount += 1;
       }
-      if (typeof d.alt === "number" && d.alt > maxAlt) maxAlt = d.alt;
     } else if (frame.channel === "battery") {
       const d = frame.data as BatteryFrameData;
       if (typeof d.voltage === "number") {

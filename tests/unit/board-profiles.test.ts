@@ -28,13 +28,34 @@ describe('BOARD_PROFILES', () => {
     expect(found).toBeDefined();
     expect(found!.vendor).toBe('SpeedyBee');
   });
+
+  it('never claims one board id for two boards', () => {
+    const owner = new Map<number, string>();
+    for (const profile of BOARD_PROFILES) {
+      for (const id of profile.boardIds) {
+        expect(owner.get(id), `board id ${id}`).toBeUndefined();
+        owner.set(id, profile.name);
+      }
+    }
+  });
 });
 
 describe('detectBoardProfile', () => {
-  it('returns a matching profile for a known boardId', () => {
-    // SpeedyBee F405 Wing has boardId 1032
-    const profile = detectBoardProfile(1032);
-    expect(profile.name).toContain('SpeedyBee F405 Wing');
+  it.each<[number, string]>([
+    [1106, 'SpeedyBee F405 Wing'],
+    [1082, 'SpeedyBee F405 V3'],
+    [50, 'Pixhawk 4'],
+    [53, 'Pixhawk 6X'],
+    [1063, 'CubeOrange+'],
+  ])('resolves board id %i to %s', (id, name) => {
+    expect(detectBoardProfile(id).name).toBe(name);
+  });
+
+  it('does not resolve ids that belong to other boards', () => {
+    // 1032 and 1045 are not SpeedyBee boards; 1054 is a Matek F405-TE.
+    expect(detectBoardProfile(1032)).toBe(UNKNOWN_BOARD);
+    expect(detectBoardProfile(1045)).toBe(UNKNOWN_BOARD);
+    expect(detectBoardProfile(1054)).toBe(UNKNOWN_BOARD);
   });
 
   it('returns UNKNOWN_BOARD for an unrecognized boardId', () => {

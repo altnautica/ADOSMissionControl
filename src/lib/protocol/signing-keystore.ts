@@ -51,7 +51,27 @@ export interface SigningKeyRecord {
   keyId: string;
   linkId: number;
   enrolledAt: string;
-  enrollmentState: "enrolled" | "pending_fc_online" | "fc_rejected";
+  enrollmentState:
+    | "enrolled"
+    | "pending_fc_online"
+    | "fc_rejected"
+    // A new key went (or may have gone) to the FC with no confirmation: an
+    // interrupted enrollment or rotation. The key before it is kept in
+    // `previous` until the operator confirms which one the FC holds.
+    | "unconfirmed"
+    // A disable was sent to the FC, which never acknowledges SETUP_SIGNING.
+    // The key is kept until the operator confirms unsigned commands work.
+    | "disable_unconfirmed";
+  /** The key this record replaced while `enrollmentState` is "unconfirmed". */
+  previous?: RetainedKey | null;
+}
+
+/** A superseded key kept until the FC's state is confirmed. */
+export interface RetainedKey {
+  cryptoKey: CryptoKey;
+  keyId: string;
+  linkId: number;
+  enrolledAt: string;
 }
 
 /**
@@ -59,6 +79,8 @@ export interface SigningKeyRecord {
  *   pending_fc_online -> enrolled  (drone came online, SETUP_SIGNING accepted)
  *   pending_fc_online -> fc_rejected (drone came online, FC rejected our key)
  *   enrolled         -> fc_rejected (later mismatch detected at runtime)
+ *   unconfirmed      -> enrolled  (operator confirmed the new key, or restored the previous one)
+ *   enrolled         -> disable_unconfirmed -> (record cleared once unsigned commands are confirmed)
  */
 export type EnrollmentState = SigningKeyRecord["enrollmentState"];
 
@@ -78,6 +100,8 @@ export async function importAndStore(opts: {
   keyBytes: Uint8Array;
   linkId: number;
   enrollmentState?: EnrollmentState;
+  /** Keep the key being replaced in `previous` (only for "unconfirmed"). */
+  keepPrevious?: boolean;
 }): Promise<SigningKeyRecord> {
   const { droneId, userId, keyBytes, linkId } = opts;
   const enrollmentState = opts.enrollmentState ?? "enrolled";
@@ -88,6 +112,7 @@ export async function importAndStore(opts: {
   // Zeroize now that the CryptoKey holds the material browser-side.
   zeroize(keyBytes);
 
+  const current = opts.keepPrevious ? await getRecord(droneId) : null;
   const record: SigningKeyRecord = {
     droneId,
     userId,
@@ -96,9 +121,35 @@ export async function importAndStore(opts: {
     linkId,
     enrolledAt: new Date().toISOString(),
     enrollmentState,
+    previous: current
+      ? { cryptoKey: current.cryptoKey, keyId: current.keyId, linkId: current.linkId, enrolledAt: current.enrolledAt }
+      : null,
   };
   await set(droneId, record, await signingStore());
   return record;
+}
+
+/**
+ * Settle an "unconfirmed" record: keep the new key (`use: "current"`) or put
+ * the retained previous key back (`use: "previous"`). Either way the record
+ * becomes "enrolled" and nothing is retained. Returns the settled record, or
+ * null when there is no record (or no previous key to restore).
+ */
+export async function settleUnconfirmedKey(
+  droneId: string,
+  use: "current" | "previous",
+): Promise<SigningKeyRecord | null> {
+  const rec = await getRecord(droneId);
+  if (!rec) return null;
+  let settled: SigningKeyRecord;
+  if (use === "previous") {
+    if (!rec.previous) return null;
+    settled = { ...rec, ...rec.previous, enrollmentState: "enrolled", previous: null };
+  } else {
+    settled = { ...rec, enrollmentState: "enrolled", previous: null };
+  }
+  await set(droneId, settled, await signingStore());
+  return settled;
 }
 
 /**
@@ -117,7 +168,9 @@ export async function getRecord(droneId: string): Promise<SigningKeyRecord | nul
  */
 export async function getSigner(droneId: string): Promise<MavlinkSigner | null> {
   const rec = await getRecord(droneId);
-  if (!rec || rec.enrollmentState !== "enrolled") {
+  // An unconfirmed record signs with the new key: any SETUP_SIGNING frame
+  // that reached the FC installed it.
+  if (!rec || (rec.enrollmentState !== "enrolled" && rec.enrollmentState !== "unconfirmed")) {
     return null;
   }
   return new MavlinkSigner(rec.droneId, rec.linkId, rec.keyId, rec.cryptoKey);

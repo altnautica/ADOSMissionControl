@@ -11,6 +11,7 @@ import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { styles } from "../styles";
 import { Row } from "../_shared/Row";
 import type { FlightRecord, OperatorProfile, AircraftRecord } from "@/lib/types";
+import { resolvePilot, resolveAircraftIdentity } from "../../field-reader";
 
 interface DgcaTemplateProps {
   record: FlightRecord;
@@ -35,6 +36,8 @@ function fmtDuration(seconds: number): string {
 }
 
 export function DgcaIndiaTemplate({ record, operator, aircraft, generatedAt }: DgcaTemplateProps) {
+  const pilot = resolvePilot(record, operator);
+  const identity = resolveAircraftIdentity(record, aircraft);
   return (
     <Document title={`DGCA Flight Report ${record.id}`} author={operator.operatorName ?? "ADOS Mission Control"}>
       <Page size="A4" style={styles.page}>
@@ -52,10 +55,10 @@ export function DgcaIndiaTemplate({ record, operator, aircraft, generatedAt }: D
           <Text style={styles.sectionTitle}>Pilot</Text>
           <View style={styles.twoCol}>
             <View style={styles.col}>
-              <Row label="First name" value={operator.pilotFirstName ?? record.pilotFirstName} />
-              <Row label="Last name" value={operator.pilotLastName ?? record.pilotLastName} />
-              <Row label="License (RPC) no." value={operator.pilotLicenseNumber ?? record.pilotLicenseNumber} />
-              <Row label="License issuer" value={operator.pilotLicenseIssuer ?? record.pilotLicenseIssuer ?? "DGCA"} />
+              <Row label="First name" value={pilot.firstName} />
+              <Row label="Last name" value={pilot.lastName} />
+              <Row label="License (RPC) no." value={pilot.licenseNumber} />
+              <Row label="License issuer" value={pilot.licenseIssuer ?? "DGCA"} />
             </View>
             <View style={styles.col}>
               <Row label="License class" value={operator.pilotLicenseClass} />
@@ -72,15 +75,15 @@ export function DgcaIndiaTemplate({ record, operator, aircraft, generatedAt }: D
           <View style={styles.twoCol}>
             <View style={styles.col}>
               <Row label="Drone name" value={record.droneName} />
-              <Row label="UIN / Reg" value={aircraft?.registrationNumber ?? record.aircraftRegistration} />
+              <Row label="UIN / Reg" value={identity.registration} />
               <Row label="Manufacturer" value={aircraft?.manufacturer} />
               <Row label="Model" value={aircraft?.model} />
             </View>
             <View style={styles.col}>
-              <Row label="Serial number" value={aircraft?.serialNumber ?? record.aircraftSerial} />
+              <Row label="Serial number" value={identity.serial} />
               <Row label="Vehicle type" value={aircraft?.vehicleType} />
               <Row label="Category" value={aircraft?.category} />
-              <Row label="MTOM" value={aircraft?.mtomKg !== undefined ? `${aircraft.mtomKg} kg` : (record.aircraftMtomKg !== undefined ? `${record.aircraftMtomKg} kg` : undefined)} />
+              <Row label="MTOM" value={identity.mtomKg !== undefined ? `${identity.mtomKg} kg` : undefined} />
             </View>
           </View>
         </View>
@@ -124,7 +127,7 @@ export function DgcaIndiaTemplate({ record, operator, aircraft, generatedAt }: D
           </Text>
           <View style={styles.signatureBox}>
             <Text style={styles.signatureLabel}>
-              Signature · {operator.pilotFirstName ?? "—"} {operator.pilotLastName ?? ""}
+              Signature · {pilot.firstName ?? "—"} {pilot.lastName ?? ""}
             </Text>
           </View>
         </View>

@@ -1,7 +1,7 @@
 /**
  * @module SafehomePanel
  * @description iNav safehome slot editor.
- * Reads up to 16 safehome positions from the FC, allows in-place editing,
+ * Reads every safehome slot the FC has, allows in-place editing,
  * and writes all slots back via the protocol layer.
  * @license GPL-3.0-only
  */
@@ -10,7 +10,7 @@
 
 import { useCallback } from "react";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useSafehomeStore } from "@/stores/safehome-store";
+import { useSafehomeStore, SAFEHOME_MAX } from "@/stores/safehome-store";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -39,7 +39,7 @@ export function SafehomePanel() {
   const { isArmed, lockMessage } = useArmedLock();
   useUnsavedGuard(dirty);
 
-  const hasLoaded = safehomes.some((sh) => sh.lat !== 0 || sh.lon !== 0 || sh.enabled);
+  const hasLoaded = useSafehomeStore((s) => s.loaded);
   const connected = !!getSelectedProtocol();
 
   const handleRead = useCallback(async () => {
@@ -79,7 +79,7 @@ export function SafehomePanel() {
       <div className="max-w-2xl space-y-4">
         <PanelHeader
           title="Safehome Slots"
-          subtitle="Up to 16 return-to-home positions for iNav"
+          subtitle={`Up to ${SAFEHOME_MAX} return-to-home positions for iNav`}
           icon={<Home size={16} />}
           loading={loading}
           loadProgress={null}

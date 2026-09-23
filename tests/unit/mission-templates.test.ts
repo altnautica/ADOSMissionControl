@@ -8,7 +8,7 @@ const BANGALORE: [number, number] = [12.9716, 77.5946];
 const LONDON: [number, number] = [51.5074, -0.1278];
 
 function ctxAt(center: [number, number], boundary?: [number, number][]): MissionTemplateContext {
-  return { center, boundary, altitude: 60, speed: 6 };
+  return { center, boundary, altitude: 60, speed: 6, frame: "relative" };
 }
 
 /** Every generated waypoint sits within `tol` degrees of the context center. */

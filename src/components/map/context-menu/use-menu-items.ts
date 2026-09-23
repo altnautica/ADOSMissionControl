@@ -10,6 +10,7 @@
 import { useMemo } from "react";
 import { useDroneStore } from "@/stores/drone-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { GUIDED_MODES } from "../map-context-menu-icons";
 import type { MenuItemDef } from "./types";
 
@@ -19,6 +20,8 @@ export interface MenuContext {
   canNavigate: boolean;
   isCopter: boolean;
   flightMode: string;
+  /** The selected FC accepts a rally-point upload. */
+  canRally: boolean;
 }
 
 export function useMenuContext(): MenuContext {
@@ -26,6 +29,7 @@ export function useMenuContext(): MenuContext {
   const flightMode = useDroneStore((s) => s.flightMode);
   const armState = useDroneStore((s) => s.armState);
   const frameType = useDroneStore((s) => s.frameType);
+  const canRally = useDroneManager((s) => !!s.getSelectedProtocol()?.uploadRallyPoints);
 
   const isConnected =
     connectionState === "connected" ||
@@ -35,7 +39,7 @@ export function useMenuContext(): MenuContext {
   const canNavigate = isConnected && isArmed && GUIDED_MODES.has(flightMode);
   const isCopter = frameType === "copter" || frameType === "heli";
 
-  return { isConnected, isArmed, canNavigate, isCopter, flightMode };
+  return { isConnected, isArmed, canNavigate, isCopter, flightMode, canRally };
 }
 
 export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
@@ -43,7 +47,7 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
   const latestPos = posBuffer.latest();
   const hasDronePos = !!(latestPos && latestPos.lat !== 0);
 
-  const { canNavigate, isConnected, isArmed, isCopter, flightMode } = ctx;
+  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally } = ctx;
 
   return useMemo<MenuItemDef[]>(() => {
     const items: MenuItemDef[] = [];
@@ -75,7 +79,7 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
     }
 
     // Group 3: Markers
-    if (isConnected) {
+    if (isConnected && canRally) {
       items.push({ id: "add-rally", label: "Add Rally Point", icon: "rally", group: 3 });
     }
     items.push({ id: "add-poi", label: "Add POI Marker", icon: "poi", group: 3 });
@@ -90,5 +94,5 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
     }
 
     return items;
-  }, [canNavigate, isConnected, isArmed, isCopter, flightMode, hasDronePos]);
+  }, [canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, hasDronePos]);
 }

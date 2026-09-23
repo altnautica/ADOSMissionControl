@@ -51,7 +51,7 @@ export function subscribeCompassCalibration(
         ...prev,
         status: "cal_warning",
         waitingForConfirm: true,
-        message: (failInfo?.message ?? `Compass calibration reported errors (status ${failResult.calStatus})`) + " — review offsets and Force Save if acceptable, or Retry.",
+        message: (failInfo?.message ?? `Compass calibration reported errors (status ${failResult.calStatus})`) + " — no compass produced a usable fit. Retry the calibration.",
         failureFixes: failInfo?.fixes ?? [],
       };
     }

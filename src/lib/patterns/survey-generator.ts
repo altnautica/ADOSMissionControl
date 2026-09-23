@@ -301,22 +301,6 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
     const previewEnd = toGeo(pex, pey, refLat, refLon, cosRef);
     previewLines.push([previewStart, previewEnd]);
 
-    // Camera trigger at transect start (inside polygon)
-    if (cameraTriggerDistance > 0) {
-      const trigGeo = toGeo(
-        ...rotateXY(t.startX, t.y, reverseAngle),
-        refLat, refLon, cosRef
-      );
-      waypoints.push({
-        lat: trigGeo[0],
-        lon: trigGeo[1],
-        alt: altitude,
-        speed,
-        command: "DO_SET_CAM_TRIGG",
-        param1: cameraTriggerDistance,
-      });
-    }
-
     // Start waypoint
     waypoints.push({
       lat: startGeo[0],
@@ -325,6 +309,20 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
       speed,
       command: "WAYPOINT",
     });
+
+    // Camera trigger on for this transect. An action fires after the
+    // navigation point it follows, so it rides the start waypoint and the
+    // camera runs only along the transect, not across the turnaround.
+    if (cameraTriggerDistance > 0) {
+      waypoints.push({
+        lat: startGeo[0],
+        lon: startGeo[1],
+        alt: altitude,
+        speed,
+        command: "DO_SET_CAM_TRIGG",
+        param1: cameraTriggerDistance,
+      });
+    }
 
     // End waypoint
     waypoints.push({
@@ -335,7 +333,7 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
       command: "WAYPOINT",
     });
 
-    // Disable camera trigger at transect end
+    // Camera trigger off at the transect end
     if (cameraTriggerDistance > 0) {
       waypoints.push({
         lat: endGeo[0],

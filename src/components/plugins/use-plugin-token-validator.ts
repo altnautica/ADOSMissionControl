@@ -11,8 +11,10 @@
  *
  * Composition:
  *
- *   1. `useCapabilityToken(installId, deviceId, transport)` mints and
- *      refreshes the operator's token for this (plugin, drone) pair.
+ *   1. `useCapabilityToken(installId, pluginId, deviceId, transport)` mints
+ *      and refreshes the operator's token for this (plugin, drone) pair. The
+ *      cloud mint keys on the install row id; the agent mint keys on the
+ *      manifest plugin id.
  *      Both halves of the mint are returned: `validator` for the bridge
  *      and `token` for the caller to publish into the iframe. The two
  *      MUST come from one hook call — a second `useCapabilityToken` for
@@ -70,9 +72,12 @@ import { api as convexApi } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 interface UsePluginTokenValidatorOptions {
+  /** Cloud install row id (cloud mint + operator verification key). */
   pluginInstallId: string;
-  /** Drone device id this iframe is bound to. Required; the caller
-   * gates on its presence before mounting this hook. */
+  /** Manifest (reverse-DNS) plugin id (agent mint). */
+  pluginId: string;
+  /** Bare agent device id this iframe is bound to (token `agentId`). The
+   * caller gates on its presence before mounting this hook. */
   deviceId: string;
 }
 
@@ -101,7 +106,7 @@ export interface PluginTokenValidator {
 export function usePluginTokenValidator(
   opts: UsePluginTokenValidatorOptions,
 ): PluginTokenValidator {
-  const { pluginInstallId, deviceId } = opts;
+  const { pluginInstallId, pluginId, deviceId } = opts;
 
   // Transport picks between cloud-issuer and LAN-direct-issuer minting
   // for the current connection. The verifier accepts whichever issuer
@@ -146,6 +151,7 @@ export function usePluginTokenValidator(
   // would let the published token and the verified token diverge.
   const capabilityToken = useCapabilityToken(
     pluginInstallId,
+    pluginId,
     deviceId,
     transport,
   );

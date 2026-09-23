@@ -5,57 +5,16 @@ import {
   Layers, HardDrive, Copy, ClipboardPaste,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export interface OsdElement {
-  id: string;
-  label: string;
-  shortLabel: string;
-  enabled: boolean;
-  row: number;
-  col: number;
-}
-
-export type VideoFormat = "PAL" | "NTSC";
-
-export const PRESETS: Record<string, Partial<Record<string, { enabled: boolean; row: number; col: number }>>> = {
-  Racing: {
-    ALTITUDE: { enabled: true, row: 1, col: 1 },
-    BATTVOLT: { enabled: true, row: 1, col: 24 },
-    RSSI: { enabled: true, row: 0, col: 26 },
-    FLTMODE: { enabled: true, row: 14, col: 12 },
-    THROTTLE: { enabled: true, row: 8, col: 24 },
-    ARMING: { enabled: true, row: 7, col: 12 },
-  },
-  Cruise: {
-    ALTITUDE: { enabled: true, row: 1, col: 1 },
-    BATTVOLT: { enabled: true, row: 1, col: 23 },
-    RSSI: { enabled: true, row: 0, col: 26 },
-    SATS: { enabled: true, row: 0, col: 1 },
-    FLTMODE: { enabled: true, row: 14, col: 12 },
-    GSPEED: { enabled: true, row: 8, col: 1 },
-    HEADING: { enabled: true, row: 0, col: 12 },
-    HOMEDIST: { enabled: true, row: 14, col: 23 },
-    HORIZON: { enabled: true, row: 7, col: 12 },
-    COMPASS: { enabled: true, row: 14, col: 1 },
-    VSPEED: { enabled: true, row: 10, col: 1 },
-    CURRENT: { enabled: true, row: 2, col: 23 },
-    BATUSED: { enabled: true, row: 3, col: 23 },
-    MESSAGES: { enabled: true, row: 13, col: 1 },
-    ARMING: { enabled: true, row: 7, col: 12 },
-  },
-  Minimal: {
-    BATTVOLT: { enabled: true, row: 0, col: 24 },
-    FLTMODE: { enabled: true, row: 14, col: 12 },
-    ARMING: { enabled: true, row: 7, col: 12 },
-  },
-};
+import { OSD_SCREENS, PRESETS, type OsdElement, type VideoFormat } from "./ap-osd-elements";
 
 interface OsdElementGridProps {
   elements: OsdElement[];
   activeScreen: number;
   saving: boolean;
   selectedDroneId: string | null;
-  showCommitButton: boolean;
+  hasRamWrites: boolean;
+  /** False when the screen's OSDn_ENABLE is 0 on the vehicle. */
+  screenEnabled: boolean | null;
   clipboard: OsdElement[] | null;
   videoFormat: VideoFormat;
   onToggleElement: (id: string) => void;
@@ -74,7 +33,8 @@ export function OsdElementGrid({
   activeScreen,
   saving,
   selectedDroneId,
-  showCommitButton,
+  hasRamWrites,
+  screenEnabled,
   clipboard,
   videoFormat,
   onToggleElement,
@@ -98,7 +58,7 @@ export function OsdElementGrid({
 
       {/* Screen selector */}
       <div className="flex border-b border-border-default">
-        {[1, 2, 3, 4].map((screen) => (
+        {OSD_SCREENS.map((screen) => (
           <button
             key={screen}
             onClick={() => onScreenChange(screen)}
@@ -112,6 +72,11 @@ export function OsdElementGrid({
           </button>
         ))}
       </div>
+      {screenEnabled === false && (
+        <p className="px-3 py-2 text-[10px] text-status-warning border-b border-border-default">
+          OSD{activeScreen}_ENABLE is off on the vehicle; this screen is not shown in flight.
+        </p>
+      )}
 
       {/* Copy/Paste + Format */}
       <div className="flex items-center gap-1 p-2 border-b border-border-default">
@@ -197,7 +162,7 @@ export function OsdElementGrid({
           <Save size={12} />
           {saving ? "Saving..." : "Save to FC"}
         </button>
-        {showCommitButton && (
+        {hasRamWrites && (
           <button
             onClick={onCommitFlash}
             className="flex items-center justify-center gap-2 w-full px-3 py-1.5 text-xs font-semibold text-text-secondary border border-accent-primary/50 hover:text-accent-primary hover:bg-accent-primary/10 cursor-pointer"

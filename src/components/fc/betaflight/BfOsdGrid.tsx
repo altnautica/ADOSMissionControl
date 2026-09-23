@@ -2,35 +2,36 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BfOsdElement, VideoSystem } from "./bf-osd-constants";
-import { VIDEO_COLS, VIDEO_ROWS, CELL_WIDTH, CELL_HEIGHT } from "./bf-osd-constants";
+import { VIDEO_COLS, VIDEO_ROWS, CELL_WIDTH, CELL_HEIGHT, isVisibleInProfile } from "./bf-osd-constants";
 
 interface BfOsdGridProps {
   elements: BfOsdElement[];
-  activePage: number;
+  /** 1-based OSD profile the grid shows and edits. */
+  activeProfile: number;
+  /** Profiles the firmware supports (1 when compiled out, else 3). */
+  profileCount: number;
   videoSystem: VideoSystem;
   selectedId: number | null;
   onSelectElement: (id: number | null) => void;
   onUpdateElement: (id: number, updates: Partial<BfOsdElement>) => void;
-  onToggleVisibility: (id: number) => void;
 }
 
 export function BfOsdGrid({
-  elements, activePage, videoSystem, selectedId,
-  onSelectElement, onUpdateElement, onToggleVisibility,
+  elements, activeProfile, profileCount, videoSystem, selectedId,
+  onSelectElement, onUpdateElement,
 }: BfOsdGridProps) {
   const [dragging, setDragging] = useState<number | null>(null);
   const [dragGhost, setDragGhost] = useState<{ x: number; y: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const rows = VIDEO_ROWS[videoSystem];
+  const cols = VIDEO_COLS[videoSystem];
 
   const pageElements = useMemo(
-    () => elements.filter((el) => el.visible && el.page === activePage),
-    [elements, activePage],
+    () => elements.filter((el) => isVisibleInProfile(el, activeProfile)),
+    [elements, activeProfile],
   );
 
   const selectedElement = useMemo(
@@ -44,10 +45,10 @@ export function BfOsdGrid({
       const rect = gridRef.current.getBoundingClientRect();
       const x = Math.floor((clientX - rect.left) / CELL_WIDTH);
       const y = Math.floor((clientY - rect.top) / CELL_HEIGHT);
-      if (x < 0 || x >= VIDEO_COLS || y < 0 || y >= rows) return null;
+      if (x < 0 || x >= cols || y < 0 || y >= rows) return null;
       return { x, y };
     },
-    [rows],
+    [rows, cols],
   );
 
   const handleGridMouseDown = useCallback(
@@ -95,9 +96,9 @@ export function BfOsdGrid({
         ref={gridRef}
         className="relative border border-border-default bg-bg-tertiary overflow-auto select-none"
         style={{
-          width: VIDEO_COLS * CELL_WIDTH,
+          width: cols * CELL_WIDTH,
           height: rows * CELL_HEIGHT,
-          minWidth: VIDEO_COLS * CELL_WIDTH,
+          minWidth: cols * CELL_WIDTH,
           minHeight: rows * CELL_HEIGHT,
         }}
         onMouseMove={handleGridMouseMove}
@@ -107,7 +108,7 @@ export function BfOsdGrid({
       >
         {/* Grid lines */}
         {Array.from({ length: rows }, (_, r) =>
-          Array.from({ length: VIDEO_COLS }, (_, c) => (
+          Array.from({ length: cols }, (_, c) => (
             <div
               key={`cell-${r}-${c}`}
               className="absolute border-r border-b border-border-default/30"
@@ -178,11 +179,11 @@ export function BfOsdGrid({
                 label="X"
                 type="number"
                 min={0}
-                max={VIDEO_COLS - 1}
+                max={cols - 1}
                 value={selectedElement.x}
                 onChange={(e) =>
                   onUpdateElement(selectedElement.id, {
-                    x: Math.min(VIDEO_COLS - 1, Math.max(0, parseInt(e.target.value) || 0)),
+                    x: Math.min(cols - 1, Math.max(0, parseInt(e.target.value) || 0)),
                   })
                 }
               />
@@ -201,31 +202,22 @@ export function BfOsdGrid({
                 }
               />
             </div>
-            <div className="w-20">
-              <Select
-                label="Page"
-                options={[
-                  { value: "0", label: "Page 1" },
-                  { value: "1", label: "Page 2" },
-                  { value: "2", label: "Page 3" },
-                  { value: "3", label: "Page 4" },
-                ]}
-                value={String(selectedElement.page)}
-                onChange={(v) => onUpdateElement(selectedElement.id, { page: parseInt(v) })}
-              />
+            <div className="flex items-center gap-2" role="group" aria-label="Visible in OSD profiles">
+              {Array.from({ length: profileCount }, (_, i) => {
+                const bit = 1 << i;
+                return (
+                  <label key={i} className="flex items-center gap-1 text-[11px] text-text-secondary cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="accent-accent-primary w-3.5 h-3.5"
+                      checked={(selectedElement.profiles & bit) !== 0}
+                      onChange={() => onUpdateElement(selectedElement.id, { profiles: selectedElement.profiles ^ bit })}
+                    />
+                    Profile {i + 1}
+                  </label>
+                );
+              })}
             </div>
-            <button
-              onClick={() => onToggleVisibility(selectedElement.id)}
-              className={cn(
-                "p-1.5 transition-colors",
-                selectedElement.visible
-                  ? "text-accent-primary hover:text-accent-primary-hover"
-                  : "text-text-tertiary hover:text-text-secondary",
-              )}
-              title={selectedElement.visible ? "Hide" : "Show"}
-            >
-              {selectedElement.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-            </button>
           </div>
         </div>
       )}

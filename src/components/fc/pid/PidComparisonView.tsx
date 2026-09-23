@@ -9,18 +9,19 @@ interface PidComparisonViewProps {
   current: PidAnalysisResult;
 }
 
-function DeltaBadge({ before, after, label, lowerIsBetter = false }: { before: number; after: number; label: string; lowerIsBetter?: boolean }) {
-  const delta = after - before;
-  const improved = lowerIsBetter ? delta < 0 : delta > 0;
-  const unchanged = Math.abs(delta) < 0.5;
+/** A null value was not measured in that analysis; it shows as "-" and no delta is drawn. */
+function DeltaBadge({ before, after, label, lowerIsBetter = false }: { before: number | null; after: number | null; label: string; lowerIsBetter?: boolean }) {
+  const delta = before !== null && after !== null ? after - before : null;
+  const improved = delta !== null && (lowerIsBetter ? delta < 0 : delta > 0);
+  const unchanged = delta === null || Math.abs(delta) < 0.5;
 
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-border-default/50">
       <span className="text-[10px] text-text-secondary">{label}</span>
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-mono text-text-tertiary">{before.toFixed(1)}</span>
+        <span className="text-[10px] font-mono text-text-tertiary">{before?.toFixed(1) ?? "-"}</span>
         <ArrowRight size={10} className="text-text-tertiary" />
-        <span className="text-[10px] font-mono text-text-primary">{after.toFixed(1)}</span>
+        <span className="text-[10px] font-mono text-text-primary">{after?.toFixed(1) ?? "-"}</span>
         {!unchanged && (
           <span
             className={cn(
@@ -28,7 +29,7 @@ function DeltaBadge({ before, after, label, lowerIsBetter = false }: { before: n
               improved ? "bg-status-success/20 text-status-success" : "bg-status-error/20 text-status-error",
             )}
           >
-            {delta > 0 ? "+" : ""}{delta.toFixed(1)}
+            {delta !== null && delta > 0 ? "+" : ""}{delta?.toFixed(1)}
           </span>
         )}
       </div>

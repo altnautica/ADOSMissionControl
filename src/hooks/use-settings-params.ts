@@ -55,7 +55,7 @@ export interface SettingsPanelResult<T> {
   lockMessage: string;
   /** Read values from the FC, retrying transient failures. */
   read: () => Promise<void>;
-  /** Write the current values to the FC (armed-write confirm gated). */
+  /** Write the current values to the FC and save them to EEPROM (armed-write confirm gated). */
   write: () => Promise<void>;
 }
 
@@ -142,6 +142,14 @@ export function useSettingsParams<T>(options: SettingsPanelOptions<T>): Settings
     setError(null);
     try {
       await writeFn(protocol, values);
+      // Named-setting and MSP2 config writes only change the FC's RAM; the
+      // EEPROM write is what makes them survive a power cycle, so the panel
+      // stays dirty until it succeeds.
+      const saved = await protocol.commitParamsToFlash();
+      if (!saved.success) {
+        setError(`Written to the flight controller's RAM but not saved: ${saved.message}`);
+        return;
+      }
       setDirty(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

@@ -9,7 +9,7 @@
  *   Routes through `openLocalBind()` against whichever rig the user
  *   is acting on; the agent runs the upstream wfb-ng bind protocol
  *   over the radio itself with a separate `*_bind` profile + L3
- *   tunnel + socat. Synchronous (≤60s) — the GCS just renders the
+ *   tunnel + socat. Synchronous (up to 300 s) — the GCS just renders the
  *   returned `LocalBindSession` terminal state.
  *
  * - **Cloud-relay** (secondary, used when the rigs cannot reach each

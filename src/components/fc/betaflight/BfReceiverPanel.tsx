@@ -1,7 +1,7 @@
 /**
  * @module BfReceiverPanel
  * @description Betaflight receiver page: live RC channel bars plus the receiver
- * config over MSP (serial-RX provider, stick min/mid/max, RSSI checks) and the
+ * config over MSP (serial-RX provider, valid pulse window, stick checks) and the
  * RC channel map. Writes echo the raw MSP_RX_CONFIG payload with the edited
  * leading fields patched, so version-dependent trailing bytes round-trip.
  * @license GPL-3.0-only
@@ -26,13 +26,24 @@ const ONOFF_OPTIONS = [{ value: "0", label: "OFF" }, { value: "1", label: "ON" }
 const USB_HID_OPTIONS = [{ value: "0", label: "Default (CDC)" }, { value: "1", label: "Composite (CDC + HID)" }];
 const snapshot = (cfg: BfRxConfig, map: number[]) => JSON.stringify({ c: { ...cfg, raw: Array.from(cfg.raw) }, m: map });
 
+// Betaflight accepts rx_min_usec / rx_max_usec in PWM_PULSE_MIN..PWM_PULSE_MAX;
+// pulses outside the window mark the channel invalid (RX loss / failsafe).
+const PULSE_LIMIT_MIN = 750;
+const PULSE_LIMIT_MAX = 2250;
+// Firmware defaults: a window at least this wide keeps a normal 988-2012 TX valid.
+const DEFAULT_RX_MIN_USEC = 885;
+const DEFAULT_RX_MAX_USEC = 2115;
+const clampPulse = (v: number) => Math.min(PULSE_LIMIT_MAX, Math.max(PULSE_LIMIT_MIN, v));
+
 /** A labelled U16 number input. */
-function NumField({ label, value, disabled, onChange }: { label: string; value: number; disabled: boolean; onChange: (v: number) => void }) {
+function NumField({ label, value, disabled, onChange, min = 0, max = 2500 }: {
+  label: string; value: number; disabled: boolean; onChange: (v: number) => void; min?: number; max?: number;
+}) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-[10px] text-text-tertiary font-mono">{label}</span>
       <input
-        type="number" min={0} max={2500} value={value} disabled={disabled}
+        type="number" min={min} max={max} value={value} disabled={disabled}
         onChange={(e) => onChange(parseInt(e.target.value) || 0)}
         className="bg-bg-tertiary border border-border-default px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary disabled:opacity-50"
       />
@@ -81,10 +92,13 @@ export function BfReceiverPanel() {
     setLoading(true);
     setError(null);
     try {
-      const r1 = await p.setRxConfig(cfg);
+      const out = { ...cfg, rxMinUsec: clampPulse(cfg.rxMinUsec), rxMaxUsec: clampPulse(cfg.rxMaxUsec) };
+      const r1 = await p.setRxConfig(out);
       const r2 = await p.setRxMap(rxMap);
-      if (r1.success && r2.success) setBaseline(snapshot(cfg, rxMap));
-      else setError(r1.message || r2.message);
+      if (r1.success && r2.success) {
+        setCfg(out);
+        setBaseline(snapshot(out, rxMap));
+      } else setError(r1.message || r2.message);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -95,6 +109,7 @@ export function BfReceiverPanel() {
   const updateCfg = (patch: Partial<BfRxConfig>) => setCfg((prev) => (prev ? { ...prev, ...patch } : prev));
   const dirty = hasLoaded && cfg !== null && snapshot(cfg, rxMap) !== baseline;
   const disabled = loading || isArmed;
+  const narrowPulseWindow = cfg !== null && (cfg.rxMinUsec > DEFAULT_RX_MIN_USEC || cfg.rxMaxUsec < DEFAULT_RX_MAX_USEC);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5">
@@ -128,7 +143,7 @@ export function BfReceiverPanel() {
           <p className="text-[11px] text-text-tertiary">No RC data — arm the transmitter and connect.</p>
         ) : (
           channels.slice(0, 18).map((v, i) => (
-            <RcChannelBar key={i} index={i} value={v} min={cfg?.rxMinUsec ?? 1000} max={cfg?.rxMaxUsec ?? 2000} trim={cfg?.midrc ?? 1500} dz={0} />
+            <RcChannelBar key={i} index={i} value={v} min={1000} max={2000} trim={cfg?.midrc ?? 1500} dz={0} />
           ))
         )}
       </div>
@@ -142,15 +157,20 @@ export function BfReceiverPanel() {
               <Select options={PROVIDER_OPTIONS} value={String(cfg.serialrxProvider)} onChange={(v) => updateCfg({ serialrxProvider: parseInt(v) })} disabled={disabled} searchable />
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-2xl">
-              <NumField label="Stick min (µs)" value={cfg.rxMinUsec} disabled={disabled} onChange={(v) => updateCfg({ rxMinUsec: v })} />
-              <NumField label="Stick mid (µs)" value={cfg.midrc} disabled={disabled} onChange={(v) => updateCfg({ midrc: v })} />
-              <NumField label="Stick max (µs)" value={cfg.rxMaxUsec} disabled={disabled} onChange={(v) => updateCfg({ rxMaxUsec: v })} />
+              <NumField label="Valid pulse min (µs)" value={cfg.rxMinUsec} min={PULSE_LIMIT_MIN} max={PULSE_LIMIT_MAX} disabled={disabled} onChange={(v) => updateCfg({ rxMinUsec: v })} />
+              <NumField label="Stick center (µs)" value={cfg.midrc} disabled={disabled} onChange={(v) => updateCfg({ midrc: v })} />
+              <NumField label="Valid pulse max (µs)" value={cfg.rxMaxUsec} min={PULSE_LIMIT_MIN} max={PULSE_LIMIT_MAX} disabled={disabled} onChange={(v) => updateCfg({ rxMaxUsec: v })} />
               <NumField label="Min check (µs)" value={cfg.mincheck} disabled={disabled} onChange={(v) => updateCfg({ mincheck: v })} />
               <NumField label="Max check (µs)" value={cfg.maxcheck} disabled={disabled} onChange={(v) => updateCfg({ maxcheck: v })} />
               <NumField label="Spektrum sat bind" value={cfg.spektrumSatBind} disabled={disabled} onChange={(v) => updateCfg({ spektrumSatBind: v })} />
               <NumField label="FPV cam angle (°)" value={cfg.fpvCamAngle} disabled={disabled} onChange={(v) => updateCfg({ fpvCamAngle: v })} />
               <NumField label="Air-mode threshold (%)" value={cfg.airModeThresholdPct} disabled={disabled} onChange={(v) => updateCfg({ airModeThresholdPct: v })} />
             </div>
+            <p className={narrowPulseWindow ? "text-[11px] text-status-warning max-w-2xl" : "text-[11px] text-text-tertiary max-w-2xl"}>
+              Pulses outside the valid pulse window are treated as signal loss and can trigger failsafe or block arming.
+              These are not stick endpoints (use Min/Max check for those). Values are limited to {PULSE_LIMIT_MIN}–{PULSE_LIMIT_MAX} µs on write
+              {narrowPulseWindow ? `; this window is narrower than the ${DEFAULT_RX_MIN_USEC}–${DEFAULT_RX_MAX_USEC} µs default` : ""}.
+            </p>
             <div className="w-56">
               <span className="text-[10px] text-text-tertiary font-mono">USB HID type</span>
               <Select options={USB_HID_OPTIONS} value={String(cfg.usbCdcHidType)} onChange={(v) => updateCfg({ usbCdcHidType: parseInt(v) })} disabled={disabled} />

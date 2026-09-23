@@ -6,22 +6,13 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
+import type { MspModeBox, MspModeRange } from "@/lib/protocol/types";
 import { PanelHeader } from "../shared/PanelHeader";
-import { ToggleRight, Save, HardDrive, Plus, Trash2, Radio } from "lucide-react";
+import { ToggleRight, Save, Plus, Trash2, Radio } from "lucide-react";
 import { AuxRangeSlider, AuxCard, stepToPwm, pwmToStep } from "./AuxRangeSlider";
-
-// ── Types ─────────────────────────────────────────────────────
-
-interface ModeRange {
-  boxId: number;
-  auxChannel: number;
-  rangeStart: number;
-  rangeEnd: number;
-}
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -30,47 +21,36 @@ const AUX_CHANNEL_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
   label: `AUX ${i + 1}`,
 }));
 
-const DEFAULT_MODE_NAMES = [
-  "ARM", "ANGLE", "HORIZON", "ANTI GRAVITY", "MAG", "HEADFREE",
-  "HEADADJ", "CAMSTAB", "PASSTHRU", "BEEPERON", "LEDLOW",
-  "CALIB", "OSD", "TELEMETRY", "SERVO1", "SERVO2", "SERVO3",
-  "BLACKBOX", "FAILSAFE", "AIRMODE", "3D", "FPV ANGLE MIX",
-  "BLACKBOX ERASE", "CAMERA CONTROL 1", "CAMERA CONTROL 2",
-  "CAMERA CONTROL 3", "FLIPOVERAFTERCRASH", "PREARM",
-  "BEEP GPS SATELLITE COUNT", "VTX PIT MODE", "USER1", "USER2",
-  "USER3", "USER4", "PID AUDIO", "PARALYZE", "GPS RESCUE",
-  "ACRO TRAINER", "VTX CONTROL DISABLE", "LAUNCH CONTROL",
-  "MSP OVERRIDE", "STICK COMMANDS DISABLE", "BEEPER MUTE",
-];
-
 const MAX_RANGES = 20;
+
+/** A slot is in use when it has a PWM window or follows another mode. */
+const isConfigured = (r: MspModeRange) => r.rangeStart < r.rangeEnd || (r.linkedTo ?? 0) > 0;
 
 // ── Component ─────────────────────────────────────────────────
 
 export function AuxModesPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
-  const { firmwareType } = useFirmwareCapabilities();
   const scrollRef = usePanelScroll("aux-modes");
 
-  const [modeNames] = useState<string[]>(DEFAULT_MODE_NAMES);
-  const [ranges, setRanges] = useState<ModeRange[]>([]);
-  const [originalRanges, setOriginalRanges] = useState<ModeRange[]>([]);
+  // Modes the FC offers, keyed by permanent box id (MSP_BOXNAMES + MSP_BOXIDS).
+  const [boxes, setBoxes] = useState<MspModeBox[]>([]);
+  const [ranges, setRanges] = useState<MspModeRange[]>([]);
+  const [originalRanges, setOriginalRanges] = useState<MspModeRange[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showFlash, setShowFlash] = useState(false);
 
   const connected = !!getSelectedProtocol();
+  const protocolCanSave = !!getSelectedProtocol()?.setModeRanges;
 
-  const isDirty = useMemo(() => {
-    if (ranges.length !== originalRanges.length) return true;
-    return ranges.some((r, i) => {
-      const o = originalRanges[i];
-      return r.boxId !== o.boxId || r.auxChannel !== o.auxChannel || r.rangeStart !== o.rangeStart || r.rangeEnd !== o.rangeEnd;
-    });
-  }, [ranges, originalRanges]);
+  const modeName = useCallback(
+    (boxId: number) => boxes.find((b) => b.id === boxId)?.name ?? `Mode ${boxId}`,
+    [boxes],
+  );
+
+  const isDirty = useMemo(() => JSON.stringify(ranges) !== JSON.stringify(originalRanges), [ranges, originalRanges]);
 
   useUnsavedGuard(isDirty);
 
@@ -80,36 +60,23 @@ export function AuxModesPanel() {
   const readFromFc = useCallback(async () => {
     const protocol = getSelectedProtocol();
     if (!protocol || !protocol.isConnected) { setError("Not connected to flight controller"); return; }
+    if (!protocol.getModeBoxes || !protocol.getModeRanges) {
+      setError("Mode ranges are not available on this connection");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const boxNamesResult = await protocol.getParameter("BF_BOX_NAMES");
-      void boxNamesResult;
-      const rangeResult = await protocol.getParameter("BF_MODE_RANGE_COUNT");
-      const rangeCount = rangeResult.value >= 0 ? rangeResult.value : MAX_RANGES;
-      const loadedRanges: ModeRange[] = [];
-      for (let i = 0; i < rangeCount; i++) {
-        try {
-          const boxIdResult = await protocol.getParameter(`BF_MODE_RANGE_${i}_BOX_ID`);
-          const auxResult = await protocol.getParameter(`BF_MODE_RANGE_${i}_AUX`);
-          const startResult = await protocol.getParameter(`BF_MODE_RANGE_${i}_START`);
-          const endResult = await protocol.getParameter(`BF_MODE_RANGE_${i}_END`);
-          if (boxIdResult.value >= 0 && startResult.value < endResult.value) {
-            loadedRanges.push({ boxId: boxIdResult.value, auxChannel: auxResult.value, rangeStart: startResult.value, rangeEnd: endResult.value });
-          }
-        } catch { /* Skip unreadable ranges */ }
-      }
-      setRanges(loadedRanges);
-      setOriginalRanges(loadedRanges.map((r) => ({ ...r })));
+      const [fcBoxes, slots] = await Promise.all([protocol.getModeBoxes(), protocol.getModeRanges()]);
+      const loaded = slots.filter(isConfigured);
+      setBoxes(fcBoxes);
+      setRanges(loaded);
+      setOriginalRanges(loaded.map((r) => ({ ...r })));
       setHasLoaded(true);
       toast("Loaded auxiliary mode configuration", "success");
     } catch {
-      // A read failure leaves the panel EMPTY and unloaded. It used to install
-      // four hardcoded ranges — including `boxId: 0` (ARM) on AUX1 1700-2100 —
-      // mark them `hasLoaded` and adopt them as `originalRanges`. `saveToFc`
-      // then writes all 20 slots, so one MSP timeout plus one edit relocated
-      // the vehicle's ARM switch and zeroed every other mode. The fallback was
-      // not even gated on demo mode.
+      // A read failure leaves the panel empty and unloaded; nothing is
+      // adopted as the vehicle's configuration.
       setError("Could not read mode ranges from the flight controller");
       toast("Could not read mode ranges — nothing loaded", "error");
     } finally { setLoading(false); }
@@ -121,75 +88,56 @@ export function AuxModesPanel() {
 
   const saveToFc = useCallback(async () => {
     const protocol = getSelectedProtocol();
-    if (!protocol || !protocol.isConnected) return;
+    if (!protocol || !protocol.isConnected || !protocol.setModeRanges) return;
     setSaving(true);
     try {
-      for (let i = 0; i < MAX_RANGES; i++) {
-        const range = ranges[i];
-        if (range) {
-          await protocol.setParameter(`BF_MODE_RANGE_${i}_BOX_ID`, range.boxId);
-          await protocol.setParameter(`BF_MODE_RANGE_${i}_AUX`, range.auxChannel);
-          await protocol.setParameter(`BF_MODE_RANGE_${i}_START`, range.rangeStart);
-          await protocol.setParameter(`BF_MODE_RANGE_${i}_END`, range.rangeEnd);
-        } else {
-          await protocol.setParameter(`BF_MODE_RANGE_${i}_BOX_ID`, 0);
-          await protocol.setParameter(`BF_MODE_RANGE_${i}_AUX`, 0);
-          await protocol.setParameter(`BF_MODE_RANGE_${i}_START`, 0);
-          await protocol.setParameter(`BF_MODE_RANGE_${i}_END`, 0);
-        }
+      const result = await protocol.setModeRanges(ranges);
+      if (result.success) {
+        setOriginalRanges(ranges.map((r) => ({ ...r })));
+        toast("Mode ranges saved to the flight controller", "success");
+      } else {
+        toast(result.message || "Failed to save mode ranges", "error");
       }
-      setOriginalRanges(ranges.map((r) => ({ ...r })));
-      setShowFlash(true);
-      toast("Saved to flight controller", "success");
-    } catch { toast("Failed to save mode ranges", "error"); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Failed to save mode ranges", "error");
+    } finally { setSaving(false); }
   }, [getSelectedProtocol, ranges, toast]);
 
-  const commitFlash = useCallback(async () => {
-    const protocol = getSelectedProtocol();
-    if (!protocol || !protocol.isConnected) return;
-    try {
-      const result = await protocol.commitParamsToFlash();
-      if (result.success) { setShowFlash(false); toast("Written to flash", "success"); }
-      else { toast("Failed to write to flash", "error"); }
-    } catch { toast("Failed to write to flash", "error"); }
-  }, [getSelectedProtocol, toast]);
-
   const addRange = useCallback((boxId: number) => {
-    if (ranges.length >= MAX_RANGES) { toast("Maximum ranges reached (20)", "warning"); return; }
-    setRanges((prev) => [...prev, { boxId, auxChannel: 0, rangeStart: pwmToStep(1700), rangeEnd: pwmToStep(2100) }]);
+    if (ranges.length >= MAX_RANGES) { toast(`Maximum ranges reached (${MAX_RANGES})`, "warning"); return; }
+    setRanges((prev) => [...prev, { boxId, auxChannel: 0, rangeStart: 1700, rangeEnd: 2100, modeLogic: 0, linkedTo: 0 }]);
   }, [ranges.length, toast]);
 
   const removeRange = useCallback((index: number) => { setRanges((prev) => prev.filter((_, i) => i !== index)); }, []);
 
-  const updateRange = useCallback((index: number, partial: Partial<ModeRange>) => {
+  const updateRange = useCallback((index: number, partial: Partial<MspModeRange>) => {
     setRanges((prev) => { const next = [...prev]; next[index] = { ...next[index], ...partial }; return next; });
   }, []);
 
   const rangesByMode = useMemo(() => {
-    const map = new Map<number, { range: ModeRange; index: number }[]>();
-    for (let i = 0; i < ranges.length; i++) {
-      const r = ranges[i];
-      const list = map.get(r.boxId) ?? [];
-      list.push({ range: r, index: i });
-      map.set(r.boxId, list);
-    }
+    const map = new Map<number, { range: MspModeRange; index: number }[]>();
+    ranges.forEach((range, index) => {
+      const list = map.get(range.boxId) ?? [];
+      list.push({ range, index });
+      map.set(range.boxId, list);
+    });
     return map;
   }, [ranges]);
 
   const allModes = useMemo(() => {
     const activeBoxIds = new Set(ranges.map((r) => r.boxId));
     const active = Array.from(activeBoxIds).sort((a, b) => a - b);
-    const inactive = modeNames.map((_, i) => i).filter((i) => !activeBoxIds.has(i));
+    const inactive = boxes.filter((b) => !activeBoxIds.has(b.id));
     return { active, inactive };
-  }, [ranges, modeNames]);
+  }, [ranges, boxes]);
 
   const addModeOptions = useMemo(
-    () => allModes.inactive.map((id) => ({ value: String(id), label: modeNames[id] ?? `Mode ${id}` })),
-    [allModes.inactive, modeNames],
+    () => allModes.inactive.map((b) => ({ value: String(b.id), label: b.name })),
+    [allModes.inactive],
   );
 
-  const [addModeId, setAddModeId] = useState("0");
+  const [addModeId, setAddModeId] = useState<string>("");
+  const selectedAddMode = addModeOptions.some((o) => o.value === addModeId) ? addModeId : addModeOptions[0]?.value ?? "";
 
   return (
     <ArmedLockOverlay>
@@ -226,28 +174,34 @@ export function AuxModesPanel() {
             <div className="space-y-3">
               {allModes.active.map((boxId) => {
                 const modeRanges = rangesByMode.get(boxId) ?? [];
-                const modeName = modeNames[boxId] ?? `Mode ${boxId}`;
                 return (
-                  <AuxCard key={boxId} icon={<ToggleRight size={14} />} title={modeName} description={`Box ID ${boxId}`}>
+                  <AuxCard key={boxId} icon={<ToggleRight size={14} />} title={modeName(boxId)} description={`Box ID ${boxId}`}>
                     <div className="space-y-3">
                       {modeRanges.map(({ range, index }) => (
                         <div key={index} className="space-y-2">
-                          <div className="flex items-center gap-3">
-                            <div className="w-28">
-                              <Select label="Channel" options={AUX_CHANNEL_OPTIONS} value={String(range.auxChannel)}
-                                onChange={(v) => updateRange(index, { auxChannel: Number(v) })} />
+                          {(range.linkedTo ?? 0) > 0 ? (
+                            <div className="flex items-center gap-3 text-xs text-text-secondary">
+                              <span className="flex-1">Follows {modeName(range.linkedTo ?? 0)}</span>
+                              <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => removeRange(index)} />
                             </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex justify-between text-[10px] text-text-secondary">
-                                <span>{stepToPwm(range.rangeStart)} \u00B5s</span>
-                                <span>{stepToPwm(range.rangeEnd)} \u00B5s</span>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <div className="w-28">
+                                <Select label="Channel" options={AUX_CHANNEL_OPTIONS} value={String(range.auxChannel)}
+                                  onChange={(v) => updateRange(index, { auxChannel: Number(v) })} />
                               </div>
-                              <AuxRangeSlider start={range.rangeStart} end={range.rangeEnd}
-                                onChange={(start, end) => updateRange(index, { rangeStart: start, rangeEnd: end })}
-                                activePwm={latestRc ? latestRc.channels[range.auxChannel + 4] ?? 0 : 0} />
+                              <div className="flex-1 space-y-1">
+                                <div className="flex justify-between text-[10px] text-text-secondary">
+                                  <span>{range.rangeStart} µs</span>
+                                  <span>{range.rangeEnd} µs</span>
+                                </div>
+                                <AuxRangeSlider start={pwmToStep(range.rangeStart)} end={pwmToStep(range.rangeEnd)}
+                                  onChange={(start, end) => updateRange(index, { rangeStart: stepToPwm(start), rangeEnd: stepToPwm(end) })}
+                                  activePwm={latestRc ? latestRc.channels[range.auxChannel + 4] ?? 0 : 0} />
+                              </div>
+                              <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => removeRange(index)} />
                             </div>
-                            <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => removeRange(index)} />
-                          </div>
+                          )}
                         </div>
                       ))}
                       <Button variant="ghost" size="sm" icon={<Plus size={12} />} onClick={() => addRange(boxId)}
@@ -263,9 +217,9 @@ export function AuxModesPanel() {
             <AuxCard icon={<Plus size={14} />} title="Add Mode" description="Assign a new mode to an AUX channel">
               <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <Select label="Mode" options={addModeOptions} value={addModeId} onChange={setAddModeId} searchable searchPlaceholder="Search modes..." />
+                  <Select label="Mode" options={addModeOptions} value={selectedAddMode} onChange={setAddModeId} searchable searchPlaceholder="Search modes..." />
                 </div>
-                <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={() => addRange(Number(addModeId))}
+                <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={() => addRange(Number(selectedAddMode))}
                   disabled={ranges.length >= MAX_RANGES}>Add</Button>
               </div>
             </AuxCard>
@@ -276,12 +230,10 @@ export function AuxModesPanel() {
           )}
 
           <div className="flex items-center gap-3 pt-2 pb-4">
-            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!isDirty || !connected} loading={saving} onClick={saveToFc}>
+            <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!isDirty || !connected || !protocolCanSave} loading={saving} onClick={saveToFc}>
               Save to Flight Controller
             </Button>
-            {showFlash && (
-              <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={commitFlash}>Write to Flash</Button>
-            )}
+            {!protocolCanSave && connected && <span className="text-[10px] text-text-tertiary">This connection cannot write mode ranges</span>}
             {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
             {isDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
           </div>

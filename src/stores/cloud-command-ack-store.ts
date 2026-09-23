@@ -23,12 +23,45 @@ export interface OutstandingCloudCommand {
   commandId: string;
   /** The device the command was queued for, for a node-specific message. */
   deviceId: string;
+  /** The delivery window the row was queued with. */
+  ttlMs: number;
   /** Epoch ms when the command was queued; used to sweep lost commands. */
   queuedAt: number;
 }
 
 /** A queued command still awaiting a terminal status as handed into `watch`. */
 export type NewOutstandingCloudCommand = Omit<OutstandingCloudCommand, "queuedAt">;
+
+/**
+ * Slack past the delivery window before a still-queued row is called expired.
+ * Covers a poll that took the row right at the boundary whose `deliveredAt`
+ * stamp has not yet reached this subscription.
+ */
+export const DELIVERY_WINDOW_GRACE_MS = 2_000;
+
+/** The fields of a queue row the expiry verdict reads. */
+export interface QueueRowSnapshot {
+  status: "pending" | "delivering" | "completed" | "failed";
+  deliveredAt?: number;
+}
+
+/**
+ * True when a queued command's delivery window has closed and the node never
+ * took it. The queue never hands such a row out, so the command can no longer
+ * run and is reported failed. The server stamped the window before the enqueue
+ * returned, so measuring from the local `queuedAt` never ends it early.
+ */
+export function expiredBeforeDelivery(
+  command: OutstandingCloudCommand,
+  row: QueueRowSnapshot | undefined,
+  now: number,
+): boolean {
+  return (
+    now >= command.queuedAt + command.ttlMs + DELIVERY_WINDOW_GRACE_MS &&
+    row?.status === "pending" &&
+    row.deliveredAt === undefined
+  );
+}
 
 /**
  * Sweep horizon: a cloud command that has not resolved within 5 minutes is

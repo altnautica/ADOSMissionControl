@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
-import { useTelemetryFreshness } from "@/hooks/use-telemetry-freshness";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { mpsToKph, normalizeHeading } from "@/lib/telemetry-utils";
 import { MODE_DESCRIPTIONS } from "@/components/fc/flight-modes/flight-mode-constants";
@@ -35,58 +35,59 @@ function FlightCell({ label, value }: { label: string; value: string }) {
 }
 
 export function TelemetryReadout() {
-  const pos = useTelemetryLatest("position");
-  const vfr = useTelemetryLatest("vfr");
-  const bat = useTelemetryLatest("battery");
-  const gps = useTelemetryLatest("gps");
+  // Each channel is its fresh sample or undefined. The ring buffers keep their
+  // last sample when the link dies, so each readout takes its value only from
+  // a source that is itself fresh: a stale position must never win over a
+  // live VFR_HUD just because it comes first in a fallback chain.
+  const pos = useFreshTelemetry("position");
+  const vfr = useFreshTelemetry("vfr");
+  const bat = useFreshTelemetry("battery");
+  const gps = useFreshTelemetry("gps");
   const mode = useDroneStore((s) => s.flightMode);
   const { controls: deckControls, panel: deckPanel } = useTelemetryDeck();
-  const freshness = useTelemetryFreshness();
 
-  // The ring buffers keep their last sample when the link dies. Gate the
-  // flight + battery readouts on channel freshness so a dead link blanks to
-  // placeholders instead of freezing 0.0m / 000deg / 0% as if live. ALT / SPD
-  // / HDG / VS are sourced from either POSITION or VFR_HUD, so they stay live
-  // while either channel is fresh.
-  const isChannelLive = (level: string) =>
-    level === "fresh" || level === "stale";
-  const flightLive =
-    isChannelLive(freshness.getFreshness("position")) ||
-    isChannelLive(freshness.getFreshness("vfr"));
-  const batLive = isChannelLive(freshness.getFreshness("battery"));
-  const gpsLive = isChannelLive(freshness.getFreshness("gps"));
-  // Buffered flight data exists but has gone stale — the link is silent.
-  const flightStale = (pos !== undefined || vfr !== undefined) && !flightLive;
-
-  const alt = pos?.alt ?? vfr?.alt ?? 0;
-  const speedKph = mpsToKph(vfr?.groundspeed ?? pos?.groundSpeed ?? 0);
-  const heading = normalizeHeading(pos?.heading ?? vfr?.heading ?? 0);
-  const vs = vfr?.climb ?? pos?.climbRate ?? 0;
-  const batteryPct = bat?.remaining ?? 0;
-  const batteryLabel = batLive ? `${Math.round(batteryPct)}%` : "--%";
+  // Height above home (relative_alt). GLOBAL_POSITION_INT.alt and VFR_HUD.alt
+  // are MSL, which reads as the site elevation with the aircraft on the ground.
+  const alt = pos?.relativeAlt;
+  const speedMps = vfr?.groundspeed ?? pos?.groundSpeed;
+  const headingDeg = pos?.heading ?? vfr?.heading;
+  const vs = vfr?.climb ?? pos?.climbRate;
+  // -1 is the FC's "capacity unknown", not an empty pack.
+  const batteryPct =
+    bat !== undefined && Number.isFinite(bat.remaining) && bat.remaining >= 0
+      ? bat.remaining
+      : null;
+  const batteryLabel = batteryPct !== null ? `${Math.round(batteryPct)}%` : "--%";
+  // Buffered flight data exists but none of it is fresh: the link is silent.
+  const buffers = useTelemetryStore.getState();
+  const flightStale =
+    pos === undefined &&
+    vfr === undefined &&
+    (buffers.position.latest() !== undefined || buffers.vfr.latest() !== undefined);
   // Left absent rather than defaulted so the readout cannot render "0 SAT" for
-  // a receiver that has reported nothing. The freshness gate below already
-  // blanks a silent link; keeping the value optional means a future change to
-  // that gate cannot quietly reintroduce a fabricated zero.
+  // a receiver that has reported nothing.
   const satellites = gps?.satellites;
   const fixType = gps?.fixType;
-  const gpsKnown = gpsLive && satellites != null && fixType != null;
+  const gpsKnown = satellites != null && fixType != null;
 
   return (
     <div className="bg-bg-secondary border-y border-border-default">
       {/* Primary flight metrics — 4 columns */}
       <div className="grid grid-cols-4 divide-x divide-border-default">
-        <FlightCell label="ALT" value={flightLive ? `${alt.toFixed(1)}m` : "--.-m"} />
-        <FlightCell label="SPD" value={flightLive ? `${speedKph.toFixed(1)}` : "--.-"} />
+        <FlightCell label="ALT" value={alt !== undefined ? `${alt.toFixed(1)}m` : "--.-m"} />
+        <FlightCell
+          label="SPD"
+          value={speedMps !== undefined ? `${mpsToKph(speedMps).toFixed(1)}` : "--.-"}
+        />
         <FlightCell
           label="HDG"
           value={
-            flightLive
-              ? `${String(Math.round(heading)).padStart(3, "0")}\u00B0`
+            headingDeg !== undefined
+              ? `${String(Math.round(normalizeHeading(headingDeg))).padStart(3, "0")}\u00B0`
               : "---\u00B0"
           }
         />
-        <FlightCell label="VS" value={flightLive ? `${vs.toFixed(1)}` : "--.-"} />
+        <FlightCell label="VS" value={vs !== undefined ? `${vs.toFixed(1)}` : "--.-"} />
       </div>
 
       {/* Status bar — GPS, battery, mode, deck controls */}
@@ -105,15 +106,15 @@ export function TelemetryReadout() {
             <div
               className={cn(
                 "h-full rounded-full transition-all",
-                batLive ? batteryBarColor(batteryPct) : "bg-bg-tertiary",
+                batteryPct !== null ? batteryBarColor(batteryPct) : "bg-bg-tertiary",
               )}
-              style={{ width: batLive ? `${Math.max(batteryPct, 2)}%` : "0%" }}
+              style={{ width: batteryPct !== null ? `${Math.max(batteryPct, 2)}%` : "0%" }}
             />
           </div>
           <span
             className={cn(
               "tabular-nums",
-              !batLive
+              batteryPct === null
                 ? "text-text-tertiary"
                 : batteryPct <= 25
                   ? "text-status-error"

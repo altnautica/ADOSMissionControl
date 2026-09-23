@@ -9,6 +9,7 @@
 
 import {
   type DataFlashLog,
+  type DataFlashMessage,
   getTimeSeries,
   getMessages,
 } from "@/lib/dataflash-parser";
@@ -34,8 +35,8 @@ export interface ExtractedLogData {
   gyro: AxisTimeSeries;
   /** Motor PWM outputs (from RCOU messages). */
   motors: MotorTimeSeries;
-  /** Vibration summary (from VIBE messages). */
-  vibration: VibrationSummary;
+  /** Vibration summary (from VIBE messages); null when the log has none. */
+  vibration: VibrationSummary | null;
   /** Log metadata. */
   metadata: LogMetadata;
   /** PID-related parameters from PARM messages. */
@@ -97,6 +98,51 @@ function estimateSampleRate(samples: TimeSample[], maxSamples = 200): number {
   return avgDtUs > 0 ? 1e6 / avgDtUs : 0;
 }
 
+/**
+ * Rows of the lowest sensor instance present for a message type.
+ *
+ * Current ArduPilot logs write one IMU/VIBE row per sensor instance per tick,
+ * all sharing the same TimeUS and tagged by an instance field. Mixing them
+ * would interleave several sensors into one series. Older logs carry no
+ * instance field and hold a single instance, so every row is kept.
+ */
+function primaryInstanceRows(
+  log: DataFlashLog,
+  type: string,
+  instanceField: string,
+): DataFlashMessage[] {
+  const msgs = getMessages(log, type);
+  let primary = Infinity;
+  for (const msg of msgs) {
+    const inst = msg.fields[instanceField];
+    if (typeof inst === "number" && inst < primary) primary = inst;
+  }
+  if (primary === Infinity) return msgs;
+  return msgs.filter((msg) => msg.fields[instanceField] === primary);
+}
+
+/** Time series of one numeric field over a set of rows. */
+function seriesOf(rows: DataFlashMessage[], field: string): TimeSample[] {
+  const series: TimeSample[] = [];
+  for (const msg of rows) {
+    if (msg.timestamp == null) continue;
+    const value = msg.fields[field];
+    if (typeof value !== "number") continue;
+    series.push({ timeUs: msg.timestamp, value });
+  }
+  return series;
+}
+
+/** Gyro series of the primary IMU instance. */
+function extractGyro(log: DataFlashLog): AxisTimeSeries {
+  const rows = primaryInstanceRows(log, "IMU", "I");
+  return {
+    roll: seriesOf(rows, "GyrX"),
+    pitch: seriesOf(rows, "GyrY"),
+    yaw: seriesOf(rows, "GyrZ"),
+  };
+}
+
 /** Compute mean of an array of numbers. */
 function mean(arr: number[]): number {
   if (arr.length === 0) return 0;
@@ -143,16 +189,8 @@ export function extractLogData(
     yaw: yawAct,
   };
 
-  // --- Gyro data (IMU messages) ---
-  const gyroX = getTimeSeries(log, "IMU", "GyrX");
-  const gyroY = getTimeSeries(log, "IMU", "GyrY");
-  const gyroZ = getTimeSeries(log, "IMU", "GyrZ");
-
-  const gyro: AxisTimeSeries = {
-    roll: gyroX,
-    pitch: gyroY,
-    yaw: gyroZ,
-  };
+  // --- Gyro data (IMU messages, primary instance) ---
+  const gyro = extractGyro(log);
 
   // --- Motor outputs (RCOU messages) ---
   const motors = extractMotors(log);
@@ -164,7 +202,7 @@ export function extractLogData(
   const params = extractParams(log);
 
   // --- Sample rates ---
-  const gyroRate = estimateSampleRate(gyroX);
+  const gyroRate = estimateSampleRate(gyro.roll);
   const rateRate = estimateSampleRate(rollDes);
   const motorRate = estimateSampleRate(motors.motors[0] ?? []);
 
@@ -234,20 +272,34 @@ function extractParams(log: DataFlashLog): Record<string, number> {
 }
 
 /**
- * Extract vibration summary from VIBE messages.
+ * Total clip count: the last value of every clip counter, summed. Current
+ * logs carry one cumulative `Clip` per IMU instance (instance field `IMU`);
+ * older logs carry `Clip0`..`Clip2` on a single row.
  */
-export function extractVibration(log: DataFlashLog): VibrationSummary {
-  const vibeX = getTimeSeries(log, "VIBE", "VibeX");
-  const vibeY = getTimeSeries(log, "VIBE", "VibeY");
-  const vibeZ = getTimeSeries(log, "VIBE", "VibeZ");
+function extractClipCount(log: DataFlashLog): number {
+  const last = new Map<string, number>();
+  for (const msg of getMessages(log, "VIBE")) {
+    const inst = msg.fields["IMU"];
+    for (const key of ["Clip", "Clip0", "Clip1", "Clip2"]) {
+      const value = msg.fields[key];
+      if (typeof value === "number") last.set(`${key}:${inst ?? 0}`, value);
+    }
+  }
+  let total = 0;
+  for (const value of last.values()) total += value;
+  return total;
+}
 
-  const clip0 = getTimeSeries(log, "VIBE", "Clip0");
-  const clip1 = getTimeSeries(log, "VIBE", "Clip1");
-  const clip2 = getTimeSeries(log, "VIBE", "Clip2");
-
-  const xVals = vibeX.map((s) => s.value);
-  const yVals = vibeY.map((s) => s.value);
-  const zVals = vibeZ.map((s) => s.value);
+/**
+ * Extract vibration summary from VIBE messages of the primary IMU instance.
+ * Returns null when the log holds no VIBE data.
+ */
+export function extractVibration(log: DataFlashLog): VibrationSummary | null {
+  const rows = primaryInstanceRows(log, "VIBE", "IMU");
+  const xVals = seriesOf(rows, "VibeX").map((s) => s.value);
+  const yVals = seriesOf(rows, "VibeY").map((s) => s.value);
+  const zVals = seriesOf(rows, "VibeZ").map((s) => s.value);
+  if (xVals.length === 0 && yVals.length === 0 && zVals.length === 0) return null;
 
   const avgX = mean(xVals);
   const avgY = mean(yVals);
@@ -257,11 +309,7 @@ export function extractVibration(log: DataFlashLog): VibrationSummary {
   const maxY = yVals.length > 0 ? Math.max(...yVals) : 0;
   const maxZ = zVals.length > 0 ? Math.max(...zVals) : 0;
 
-  // Total clip count is the max of the last clip counter values
-  const lastClip0 = clip0.length > 0 ? clip0[clip0.length - 1].value : 0;
-  const lastClip1 = clip1.length > 0 ? clip1[clip1.length - 1].value : 0;
-  const lastClip2 = clip2.length > 0 ? clip2[clip2.length - 1].value : 0;
-  const clipCount = lastClip0 + lastClip1 + lastClip2;
+  const clipCount = extractClipCount(log);
 
   // Level classification based on max vibration across axes
   const maxVibe = Math.max(avgX, avgY, avgZ);
@@ -305,7 +353,7 @@ export function extractLogMetadata(
     minTime < Infinity ? (maxTime - minTime) / 1e6 : 0;
 
   // Sample rates
-  const gyroX = getTimeSeries(log, "IMU", "GyrX");
+  const gyroX = extractGyro(log).roll;
   const rateDes = getTimeSeries(log, "RATE", "RDes");
   const rcouMsgs = getMessages(log, "RCOU");
 

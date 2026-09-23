@@ -72,23 +72,6 @@ exports[`iNav decoder parity > decodeMspINavAnalog 1`] = `
 }
 `;
 
-exports[`iNav decoder parity > decodeMspINavBatteryConfig 1`] = `
-{
-  "capacityCriticalMah": 1751078477,
-  "capacityMah": 538381829,
-  "capacityUnit": 113,
-  "capacityWarningMah": 1144730153,
-  "cellDetect": 140,
-  "cellMax": 45223,
-  "cellMin": 40597,
-  "cellWarning": 49849,
-  "cells": 131,
-  "currentOffset": 59101,
-  "currentScale": 54475,
-  "voltageSource": 122,
-}
-`;
-
 exports[`iNav decoder parity > decodeMspINavEzTune 1`] = `
 {
   "aggressiveness": 90,
@@ -102,29 +85,6 @@ exports[`iNav decoder parity > decodeMspINavEzTune 1`] = `
   "snappiness": 120,
   "stability": 80,
 }
-`;
-
-exports[`iNav decoder parity > decodeMspINavFwApproach (two entries) 1`] = `
-[
-  {
-    "approachAlt": 5000,
-    "approachDirection": 2,
-    "isSeaLevelRef": true,
-    "landAlt": 1500,
-    "landHeading1": 90,
-    "landHeading2": -90,
-    "number": 1,
-  },
-  {
-    "approachAlt": 5000,
-    "approachDirection": 2,
-    "isSeaLevelRef": true,
-    "landAlt": 1500,
-    "landHeading1": 90,
-    "landHeading2": -90,
-    "number": 2,
-  },
-]
 `;
 
 exports[`iNav decoder parity > decodeMspINavGvarStatus 1`] = `
@@ -288,26 +248,6 @@ exports[`iNav decoder parity > decodeMspINavOsdPreferences 1`] = `
 }
 `;
 
-exports[`iNav decoder parity > decodeMspINavOutputMappingExt2 (three entries) 1`] = `
-[
-  {
-    "specialLabels": 16,
-    "timerId": 0,
-    "usageFlags": 1,
-  },
-  {
-    "specialLabels": 32,
-    "timerId": 1,
-    "usageFlags": 2,
-  },
-  {
-    "specialLabels": 64,
-    "timerId": 2,
-    "usageFlags": 4,
-  },
-]
-`;
-
 exports[`iNav decoder parity > decodeMspINavPid (four axes) 1`] = `
 [
   {
@@ -337,37 +277,6 @@ exports[`iNav decoder parity > decodeMspINavPid (four axes) 1`] = `
     "I": 15,
     "P": 20,
     "axis": 3,
-  },
-]
-`;
-
-exports[`iNav decoder parity > decodeMspINavProgrammingPid (one rule) 1`] = `
-[
-  {
-    "enabled": true,
-    "gains": {
-      "D": 30,
-      "FF": 20,
-      "I": 40,
-      "P": 50,
-    },
-    "measurementType": 1,
-    "measurementValue": 500,
-    "setpointType": 0,
-    "setpointValue": 1000,
-  },
-]
-`;
-
-exports[`iNav decoder parity > decodeMspINavProgrammingPidStatus (two rules) 1`] = `
-[
-  {
-    "id": 0,
-    "output": 500,
-  },
-  {
-    "id": 1,
-    "output": -750,
   },
 ]
 `;

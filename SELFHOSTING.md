@@ -240,9 +240,12 @@ Edit `.env`:
 RTSP_URL_PATTERN=rtsp://host.docker.internal:8554/{deviceId}
 PORT=3001
 CLOUDFLARE_TUNNEL_TOKEN=<your-token>    # optional
+VIDEO_RELAY_SECRET=<openssl rand -hex 32>
 ```
 
 The `{deviceId}` placeholder is replaced at runtime with the drone's device ID. The drone agent must be publishing RTSP at this URL pattern.
+
+`VIDEO_RELAY_SECRET` is required: the relay refuses to start without it. Every viewer presents a token scoped to one device and valid for five minutes, which Convex mints for the signed-in owner of that drone using the same secret. Set the identical value on Convex in Step 4.
 
 ### 3b. Start
 
@@ -272,6 +275,9 @@ npx convex env set MQTT_BROKER_URL "wss://mqtt.your.domain/mqtt" \
   --url https://convex.your.domain --admin-key <your-key>
 
 npx convex env set VIDEO_RELAY_URL "wss://video.your.domain" \
+  --url https://convex.your.domain --admin-key <your-key>
+
+npx convex env set VIDEO_RELAY_SECRET "<same value as the relay's .env>" \
   --url https://convex.your.domain --admin-key <your-key>
 ```
 
@@ -359,6 +365,7 @@ See `tools/selfhost/README.md` for the full runbook. The minimal MQTT + video-re
 **Video not playing**
 - The video relay needs ffmpeg. Check `docker compose logs video-relay` for ffmpeg errors.
 - The relay spawns ffmpeg on the first viewer connection. If no RTSP source is available, ffmpeg exits immediately.
+- "Cloud video relay is not configured" means `VIDEO_RELAY_SECRET` is unset on Convex. A viewer that reports the relay refused the connection usually means the Convex and relay secrets differ.
 - Browser must support MediaSource Extensions (all modern browsers except iOS Safari).
 
 **Bridge not forwarding to Convex**

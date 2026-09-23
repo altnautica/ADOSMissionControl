@@ -45,35 +45,7 @@ export interface EthernetConfig {
 
 export type EthernetConfigUpdate = Partial<EthernetConfig>;
 
-export type ModemConnState =
-  | "disconnected"
-  | "searching"
-  | "registered"
-  | "connected"
-  | "error";
-
 export type DataCapState = "ok" | "warn_80" | "throttle_95" | "blocked_100";
-
-export interface ModemDataCap {
-  state: DataCapState;
-  percent: number;
-  used_mb: number;
-  cap_mb: number;
-}
-
-export interface ModemStatus {
-  available: boolean;
-  enabled?: boolean;
-  state?: ModemConnState;
-  carrier?: string | null;
-  operator?: string | null;
-  apn?: string | null;
-  signal_bars?: number | null;
-  signal_dbm?: number | null;
-  iface?: string | null;
-  ip?: string | null;
-  data_cap?: ModemDataCap | null;
-}
 
 export interface ModemUpdate {
   apn?: string;
@@ -82,26 +54,28 @@ export interface ModemUpdate {
 }
 
 /**
- * The modem view the agent's network/modem read AND write routes serve:
- * config legs (`enabled`, `apn`, `cap_mb`) plus cumulative usage
- * (`data_used_mb`, `percent`) plus connectivity legs that report the
- * manager's no-modem defaults (`signal_quality: -1`, `technology:
- * "unknown"`, `operator: ""`) when no live modem is driving them — a
- * consumer must treat those sentinels as unknown, never as facts.
+ * The modem view the agent's network/modem read AND write routes serve, and
+ * the `modem_4g` leg of the network snapshot (ados-control `gs_network.rs`
+ * modem_body): config legs (`enabled`, `apn`, `cap_mb`), cumulative usage
+ * (`data_used_mb`, `percent`) from the data-cap tracker, and connectivity legs
+ * (`connected`, `iface`, `ip`, `signal_quality`, `technology`, `operator`,
+ * `state`) that are null whenever nothing has probed them. A null is "not
+ * reported", never a reading. Whether a modem is present at all is the
+ * separate `ModemDetailStatus`.
  */
 export interface ModemView {
-  enabled?: boolean;
-  connected?: boolean;
-  iface?: string | null;
-  ip?: string | null;
-  signal_quality?: number | null;
-  technology?: string | null;
-  apn?: string | null;
-  operator?: string | null;
-  data_used_mb?: number | null;
-  cap_mb?: number | null;
-  percent?: number | null;
-  state?: string | null;
+  enabled: boolean;
+  apn: string | null;
+  cap_mb: number | null;
+  connected: boolean | null;
+  iface: string | null;
+  ip: string | null;
+  signal_quality: number | null;
+  technology: string | null;
+  operator: string | null;
+  state: string | null;
+  data_used_mb: number | null;
+  percent: number | null;
 }
 
 /** The cellular detail snapshot (`GET .../modem-status`): whether a modem is
@@ -118,9 +92,9 @@ export interface NetworkStatus {
   ap: ApStatus;
   wifi_client: WifiClientStatus;
   ethernet?: EthernetStatus;
-  modem_4g?: ModemStatus;
+  modem_4g?: ModemView;
   // legacy field
-  modem?: ModemStatus;
+  modem?: ModemView;
   active_uplink?: string | null;
   priority?: string[];
   share_uplink?: boolean;
@@ -179,11 +153,13 @@ export interface UplinkFailoverEntry {
   timestamp: number;
 }
 
-export type UplinkEvent =
-  | { type: "active"; iface: string; timestamp?: number }
-  | { type: "priority"; priority: string[] }
-  | { type: "health"; health: UplinkHealth; iface?: string }
-  | { type: "failover"; from: string | null; to: string; reason: string; timestamp?: number }
-  | { type: "data_cap"; state: DataCapState; percent: number; used_mb: number; cap_mb: number }
-  | { type: "state"; active: string | null; priority: string[]; health: UplinkHealth }
-  | { type: string; [key: string]: unknown };
+/** The one frame `/ws/uplink` emits (ados-control `gs_ws.rs`
+ * uplink_ws_payload), sent whenever the uplink snapshot changes. */
+export interface UplinkEvent {
+  kind: "health_changed";
+  active_uplink: string | null;
+  available: string[];
+  internet_reachable: boolean;
+  data_cap_state: DataCapState | null;
+  timestamp_ms: number | null;
+}

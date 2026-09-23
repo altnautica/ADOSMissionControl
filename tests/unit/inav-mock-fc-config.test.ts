@@ -40,8 +40,8 @@ describe("battery config", () => {
     const cfg = await makeCopter().getBatteryConfig();
     expect(cfg.cells).toBe(4);
     expect(cfg.capacityMah).toBe(2200);
-    expect(cfg.cellMin).toBe(3300);
-    expect(cfg.cellMax).toBe(4200);
+    expect(cfg.cellMin).toBe(330);
+    expect(cfg.cellMax).toBe(420);
   });
 
   it("agrees with the named battery settings", async () => {
@@ -54,7 +54,7 @@ describe("battery config", () => {
       type: "uint8", value: cfg.cells,
     });
     expect(await proto.settings.getSetting("vbat_max_cell_voltage")).toEqual({
-      type: "uint8", value: cfg.cellMax / 10,
+      type: "uint16", value: cfg.cellMax,
     });
   });
 
@@ -62,23 +62,23 @@ describe("battery config", () => {
     const proto = makeCopter();
     const before = await proto.getBatteryConfig();
     const result = await proto.setBatteryConfig({
-      ...before, capacityMah: 1800, capacityWarningMah: 360, cellWarning: 3600,
+      ...before, capacityMah: 1800, capacityWarningMah: 360, cellWarning: 360,
     });
     expect(result.success).toBe(true);
 
     const after = await proto.getBatteryConfig();
     expect(after.capacityMah).toBe(1800);
     expect(after.capacityWarningMah).toBe(360);
-    expect(after.cellWarning).toBe(3600);
+    expect(after.cellWarning).toBe(360);
   });
 
   it("a write moves the named settings the FC shares with the battery group", async () => {
     const proto = makeCopter();
     const before = await proto.getBatteryConfig();
-    await proto.setBatteryConfig({ ...before, capacityMah: 1800, cellWarning: 3600 });
+    await proto.setBatteryConfig({ ...before, capacityMah: 1800, cellWarning: 360 });
 
     expect(await proto.settings.getSetting("battery_capacity")).toEqual({ type: "uint16", value: 1800 });
-    expect(await proto.settings.getSetting("vbat_warning_cell_voltage")).toEqual({ type: "uint8", value: 360 });
+    expect(await proto.settings.getSetting("vbat_warning_cell_voltage")).toEqual({ type: "uint16", value: 360 });
   });
 
   it("a profile switch swaps the reported config and keeps the other profile's edits", async () => {
@@ -201,12 +201,11 @@ describe("servo config", () => {
     expect(servos[0]).toEqual({ min: 1000, max: 2000, middle: 1500, rate: 100 });
   });
 
-  it("a per-slot write is visible to the next read", async () => {
+  it("a batch write is visible to the next read", async () => {
     const proto = makePlane();
     const before = await proto.getServoConfigs();
-    const result = await proto.setServoConfig(2, {
-      ...before[2], rate: 80, min: 1100, max: 1900, middle: 1520,
-    });
+    const next = before.map((s, i) => (i === 2 ? { ...s, rate: 80, min: 1100, max: 1900, middle: 1520 } : s));
+    const result = await proto.setServoConfigs(next);
     expect(result.success).toBe(true);
 
     const after = await proto.getServoConfigs();
@@ -214,11 +213,10 @@ describe("servo config", () => {
     expect(after[3]).toEqual(before[3]);
   });
 
-  it("refuses a slot index the FC does not have", async () => {
+  it("refuses more configs than the FC has servos", async () => {
     const proto = makePlane();
     const cfg: INavServoConfig = (await proto.getServoConfigs())[0];
-    expect((await proto.setServoConfig(8, cfg)).success).toBe(false);
-    expect((await proto.setServoConfig(-1, cfg)).success).toBe(false);
+    expect((await proto.setServoConfigs(Array.from({ length: 9 }, () => cfg))).success).toBe(false);
   });
 });
 
@@ -318,7 +316,7 @@ describe("led strip config", () => {
     const before = await proto.getLedStripModeColors();
     expect(before.length).toBe(48);
 
-    expect((await proto.setLedStripModeColor(2, 3, 9)).success).toBe(true);
+    expect((await proto.setLedStripModeColors([{ mode: 2, fun: 3, color: 9 }])).success).toBe(true);
     const after = await proto.getLedStripModeColors();
     expect(after.length).toBe(48);
     expect(after.find((m) => m.mode === 2 && m.fun === 3)?.color).toBe(9);
@@ -361,9 +359,19 @@ describe("osd config", () => {
     expect(after.items[7].position).toBe(before.items[7].position);
   });
 
-  it("a layout write carrying a video system moves the OSD preference too", async () => {
+  it("a layout write carrying the video system moves the OSD preference too", async () => {
     const proto = makeCopter();
-    await proto.writeOsdLayout([{ index: 0, position: osdPosition(2, 2) }], 2);
+    await proto.writeOsdLayout(
+      [{ index: 0, position: osdPosition(2, 2) }],
+      {
+        videoSystem: 2,
+        units: 1,
+        rssiAlarm: 30,
+        capacityWarning: 440,
+        altAlarm: 100,
+        enabledWarnings: 0,
+      },
+    );
     expect((await proto.getOsdConfig()).videoSystem).toBe(2);
     expect((await proto.getOsdPreferences()).videoSystem).toBe(2);
   });
@@ -420,8 +428,8 @@ describe("instance isolation", () => {
 
     await edited.setLedStripConfig([0xdeadbeef]);
     await edited.setTimerOutputMode([{ timerId: 0, mode: 3 }]);
-    await edited.setServoConfig(0, { ...(await edited.getServoConfigs())[0], min: 1200 });
-    await edited.setLedStripModeColor(0, 0, 12);
+    await edited.setServoConfigs([{ ...(await edited.getServoConfigs())[0], min: 1200 }]);
+    await edited.setLedStripModeColors([{ mode: 0, fun: 0, color: 12 }]);
 
     expect((await untouched.getLedStripConfig())[0]).not.toBe(0xdeadbeef);
     expect((await untouched.getTimerOutputModes()).find((m) => m.timerId === 0)?.mode).toBe(1);

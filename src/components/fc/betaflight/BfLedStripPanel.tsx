@@ -89,15 +89,11 @@ export function BfLedStripPanel() {
         if (!r.success) { setError(r.message); return; }
         setColorsBaseline(JSON.stringify(colors));
       }
-      if (protocol.setLedStripModeColor && modeColors.length > 0 && JSON.stringify(modeColors) !== modeColorsBaseline) {
+      if (protocol.setLedStripModeColors && modeColors.length > 0 && JSON.stringify(modeColors) !== modeColorsBaseline) {
         const base: BfLedModeColor[] = modeColorsBaseline ? JSON.parse(modeColorsBaseline) : [];
-        for (const mc of modeColors) {
-          const prev = base.find((b) => b.mode === mc.mode && b.fun === mc.fun);
-          if (!prev || prev.color !== mc.color) {
-            const r = await protocol.setLedStripModeColor(mc.mode, mc.fun, mc.color);
-            if (!r.success) { setError(r.message); return; }
-          }
-        }
+        const changed = modeColors.filter((mc) => base.find((b) => b.mode === mc.mode && b.fun === mc.fun)?.color !== mc.color);
+        const r = await protocol.setLedStripModeColors(changed);
+        if (!r.success) { setError(r.message); return; }
         setModeColorsBaseline(JSON.stringify(modeColors));
       }
     } catch (e) {

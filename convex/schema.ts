@@ -1319,6 +1319,12 @@ fullName: v.optional(v.string()),
     // Delivery attempt count, incremented on each claim. Bounds re-execution
     // of a non-idempotent command when an ack never arrives.
     attempts: v.optional(v.number()),
+    // End of the delivery window (server clock), set when the enqueue carried
+    // a TTL. A row the agent has not taken by then is failed, never delivered.
+    expiresAt: v.optional(v.number()),
+    // When the agent's poll first took the row. Set means the node has it and
+    // its ack is pending; absent means it is still only queued.
+    deliveredAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
   })
     .index("by_deviceId_status", ["deviceId", "status"])

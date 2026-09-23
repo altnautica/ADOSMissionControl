@@ -14,7 +14,7 @@ import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useToast } from "@/components/ui/toast";
 import { filterPlans, sortPlans } from "@/lib/plan-library";
-import { applyPlanToWorkspace } from "@/lib/plan-workspace";
+import { applyPlanToWorkspace, saveActivePlanFromWorkspace } from "@/lib/plan-workspace";
 import { importMissionFile } from "@/lib/mission-io";
 import { PlanLibraryHeader } from "./PlanLibraryHeader";
 import { PlanSearchBar } from "./PlanSearchBar";
@@ -108,15 +108,17 @@ export function FlightPlanLibrary({ context, onPlanLoaded, onSave, onPlanRenamed
     [activePlanId, isDirty, loadPlan]
   );
 
-  /** Save current plan, then switch to pending. */
+  /** Save current plan, then switch to pending. The save goes straight from
+   *  the workspace, so it works on every surface (Simulate has no page-level
+   *  save handler) and completes before the switch overwrites the workspace. */
   const handleSaveAndSwitch = useCallback(() => {
-    onSave?.();
+    saveActivePlanFromWorkspace();
     if (pendingPlanId) {
       loadPlan(pendingPlanId);
     }
     setShowUnsavedDialog(false);
     setPendingPlanId(null);
-  }, [onSave, pendingPlanId, loadPlan]);
+  }, [pendingPlanId, loadPlan]);
 
   /** Discard current changes and switch to pending. */
   const handleDiscardAndSwitch = useCallback(() => {

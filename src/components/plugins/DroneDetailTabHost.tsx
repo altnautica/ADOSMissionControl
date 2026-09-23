@@ -33,8 +33,11 @@
  * @license GPL-3.0-only
  */
 
+import { useMemo } from "react";
+
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
 import { PluginSlot } from "@/components/plugins/PluginSlot";
+import { useSlotContributions } from "@/components/plugins/PluginHostProvider";
 import { PluginParametersPanel } from "@/components/plugins/parameters/PluginParametersPanel";
 import {
   PER_DRONE_SLOTS,
@@ -191,10 +194,22 @@ export function DroneDetailTabBody({
   className,
 }: DroneDetailTabBodyProps) {
   const contributions = useDronePluginContributions(agentId, nodeProfile);
-  if (contributions.length === 0) return null;
-
+  // The provider carries every plugin's node.detail.tab iframe; the body
+  // mounts only the active tab's own contribution.
+  const slotContributions = useSlotContributions(NODE_DETAIL_TAB_SLOT);
   const active = contributions.find(
     (c) => pluginTabId(c.installId) === activeTabId,
+  );
+  const activeSlot = useMemo(
+    () =>
+      active
+        ? slotContributions.filter(
+            (c) =>
+              (c.pluginInstallId ?? c.pluginId) === active.installId &&
+              c.panelId === active.panelId,
+          )
+        : [],
+    [slotContributions, active],
   );
   if (!active) return null;
 
@@ -234,6 +249,7 @@ export function DroneDetailTabBody({
           whole body. */}
       <PluginSlot
         name={NODE_DETAIL_TAB_SLOT}
+        contributions={activeSlot}
         className={cn(
           "flex flex-col",
           // Let the iframe own the remaining space only when there is one;

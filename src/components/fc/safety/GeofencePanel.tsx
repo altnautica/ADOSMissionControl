@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -11,11 +12,12 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useGeofenceStore } from "@/stores/geofence-store";
-import { Shield, HardDrive, Save, MapPin, ArrowUp, Circle, Download, Upload, Plus, Trash2, ToggleLeft } from "lucide-react";
+import { useFenceUploadStatus } from "@/hooks/use-upload-status";
+import { Shield, HardDrive, Save, MapPin, ArrowUp, Circle, Download, Upload, Plus, Trash2, ToggleLeft, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
-import { Card, FenceTypeChip, ParamInput, AltitudeBandViz } from "./geofence-components";
+import { Card, FenceEnableToggle, FenceTypeBits, FENCE_TYPE_BITS, ParamInput, AltitudeBandViz } from "./geofence-components";
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -24,15 +26,32 @@ const FENCE_PARAMS = [
   "FENCE_RADIUS", "FENCE_MARGIN", "FENCE_ACTION", "FENCE_TOTAL",
 ];
 
-const FENCE_TYPE_BITS = {
-  ALT_MAX: 1 << 0,
-  CIRCLE: 1 << 1,
-  POLYGON: 1 << 2,
-} as const;
-
 // ── Component ────────────────────────────────────────────────
 
+/**
+ * ArduPilot geofence. PX4 has none of these params: its canonical FENCE_ENABLE
+ * maps to GF_ACTION (the breach ACTION enum), so an enable toggle here would
+ * rewrite a Return action to Warning. PX4's fence is set in the Failsafe
+ * panel's PX4 geofence card instead.
+ */
 export function GeofencePanel() {
+  const { firmwareType } = useFirmwareCapabilities();
+  if (firmwareType === "px4") {
+    return (
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-2xl flex items-start gap-2 p-3 border border-border-default bg-bg-secondary">
+          <Info size={14} className="text-accent-primary shrink-0 mt-0.5" />
+          <p className="text-xs text-text-secondary">
+            PX4 geofence action and limits (GF_ACTION, GF_MAX_HOR_DIST, GF_MAX_VER_DIST) are set in the Failsafe panel.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return <ArduPilotGeofencePanel />;
+}
+
+function ArduPilotGeofencePanel() {
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
@@ -60,6 +79,8 @@ export function GeofencePanel() {
   const downloadFence = useGeofenceStore((s) => s.downloadFence);
   const uploadState = useGeofenceStore((s) => s.uploadState);
   const downloadState = useGeofenceStore((s) => s.downloadState);
+  // "Uploaded" only while this drone holds exactly the fence shown here.
+  const fenceStatus = useFenceUploadStatus();
   const breachStatus = useGeofenceStore((s) => s.breachStatus);
   const breachCount = useGeofenceStore((s) => s.breachCount);
   const breachType = useGeofenceStore((s) => s.breachType);
@@ -73,15 +94,10 @@ export function GeofencePanel() {
   const fenceMargin = params.get("FENCE_MARGIN") ?? 2;
   const fenceTotal = params.get("FENCE_TOTAL") ?? 0;
 
-  const hasAltFence = (fenceType & FENCE_TYPE_BITS.ALT_MAX) !== 0;
+  const hasAltFence = (fenceType & (FENCE_TYPE_BITS.ALT_MAX | FENCE_TYPE_BITS.ALT_MIN)) !== 0;
   const hasCircleFence = (fenceType & FENCE_TYPE_BITS.CIRCLE) !== 0;
   const hasPolygonFence = (fenceType & FENCE_TYPE_BITS.POLYGON) !== 0;
   const hasDirty = dirtyParams.size > 0;
-
-  const toggleFenceTypeBit = useCallback((bit: number) => {
-    const current = params.get("FENCE_TYPE") ?? 0;
-    setLocalValue("FENCE_TYPE", current ^ bit);
-  }, [params, setLocalValue]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -118,23 +134,11 @@ export function GeofencePanel() {
             hasLoaded={hasLoaded} onRead={refresh} connected={true} error={error} />
 
           <Card icon={<Shield size={14} />} title="Geofence Enable" description="Master enable for fence enforcement">
-            <div className="flex items-center gap-3">
-              <label className="text-xs text-text-secondary">{pl("FENCE_ENABLE")}</label>
-              <button onClick={() => setLocalValue("FENCE_ENABLE", fenceEnable ? 0 : 1)}
-                className={cn("w-10 h-5 rounded-full relative transition-colors", fenceEnable ? "bg-accent-primary" : "bg-bg-tertiary border border-border-default")}>
-                <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform", fenceEnable ? "translate-x-5" : "translate-x-0.5")} />
-              </button>
-              <span className="text-[10px] font-mono text-text-tertiary">{fenceEnable ? "ENABLED" : "DISABLED"}</span>
-            </div>
+            <FenceEnableToggle label={pl("FENCE_ENABLE")} enabled={fenceEnable !== 0} onChange={(v) => setLocalValue("FENCE_ENABLE", v)} />
           </Card>
 
           <Card icon={<MapPin size={14} />} title="Fence Type" description="Select which fence boundaries to enforce (bitmask)">
-            <div className="flex gap-2">
-              <FenceTypeChip label="Altitude" icon={<ArrowUp size={10} />} active={hasAltFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.ALT_MAX)} />
-              <FenceTypeChip label="Circle" icon={<Circle size={10} />} active={hasCircleFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.CIRCLE)} />
-              <FenceTypeChip label="Polygon" icon={<MapPin size={10} />} active={hasPolygonFence} onClick={() => toggleFenceTypeBit(FENCE_TYPE_BITS.POLYGON)} />
-            </div>
-            <p className="text-[10px] font-mono text-text-tertiary mt-1">FENCE_TYPE = {fenceType} (0x{fenceType.toString(16).padStart(2, "0")})</p>
+            <FenceTypeBits value={fenceType} onChange={(v) => setLocalValue("FENCE_TYPE", v)} />
           </Card>
 
           {hasCircleFence && (
@@ -164,7 +168,8 @@ export function GeofencePanel() {
                   <Download size={10} />{downloadState === "downloading" ? "Downloading..." : "Download Points"}
                 </button>
               </div>
-              {uploadState === "uploaded" && <p className="text-[10px] font-mono text-status-success mt-1">Fence points uploaded</p>}
+              {fenceStatus === "on-aircraft" && <p className="text-[10px] font-mono text-status-success mt-1">Fence points uploaded</p>}
+              {fenceStatus === "older-on-aircraft" && <p className="text-[10px] font-mono text-status-warning mt-1">Aircraft holds an older fence</p>}
               {downloadState === "downloaded" && <p className="text-[10px] font-mono text-status-success mt-1">Fence points downloaded</p>}
             </Card>
           )}

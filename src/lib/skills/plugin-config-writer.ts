@@ -23,6 +23,7 @@
 
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
+import { usePluginConfigCache } from "@/lib/plugins/config-cache";
 
 import {
   usePluginSkillHostStore,
@@ -42,6 +43,7 @@ const localConfigWriter: PluginConfigWriter = async ({
   }
   const client = new PluginAgentClient(agent.agentUrl, agent.apiKey);
   await client.setConfig(pluginId, configKey, value, "drone");
+  usePluginConfigCache.getState().record(droneId, pluginId, configKey, value);
 };
 
 /** Install the live config writer into the host store. Idempotent. Call at the
@@ -73,5 +75,8 @@ export async function writePluginConfigValue(input: {
   if (!agent) return false;
   const client = new PluginAgentClient(agent.agentUrl, agent.apiKey);
   await client.setConfig(input.pluginId, input.key, input.value, "drone");
+  usePluginConfigCache
+    .getState()
+    .record(input.droneId, input.pluginId, input.key, input.value);
   return true;
 }

@@ -19,7 +19,6 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { Mission, Waypoint, MissionState } from "@/lib/types";
 import type { DroneProtocol, MissionItem } from "@/lib/protocol/types";
 import { useDroneManager } from "./drone-manager";
-import { usePlannerStore } from "./planner-store";
 import { useTelemetryStore } from "./telemetry-store";
 import { indexedDBStorage } from "@/lib/storage";
 import {
@@ -35,14 +34,16 @@ import {
 // module's top-level registration runs mid-cycle. The leaf module imports
 // nothing, so its bindings are always ready.
 import { registerWaypointAdapter } from "@/lib/planner-history-adapter";
-// The pure mission ⇄ wire expander/collapser: the single source of truth for how
-// the waypoint model (with attached actions) maps onto the MAVLink mission wire
-// format on upload/download.
+// The pure mission ⇄ wire collapser: re-nests a downloaded flat item list into
+// the waypoint model. The upload side goes through `mission-upload`, which also
+// owns the receipt hash and the seq → waypoint mapping, so the three agree.
+import { collapseFromItems, type HomeSlot } from "@/lib/mission/mission-expand";
 import {
-  expandToItems,
-  collapseFromItems,
-  type HomeSlot,
-} from "@/lib/mission/mission-expand";
+  missionUploadItems,
+  missionContentHash,
+  missionSeqToWaypointIndex,
+} from "@/lib/mission-upload";
+import { useUploadReceiptsStore, receiptFor } from "./upload-receipts-store";
 import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
 import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
 import { droppedItemWarning } from "@/lib/mission-io-formats";
@@ -158,8 +159,17 @@ export function uploadHome(protocol: DroneProtocol, waypoints: readonly Waypoint
 interface MissionStoreState {
   activeMission: Mission | null;
   waypoints: Waypoint[];
+  /** Mission progress 0-100 from the FC's current item; 0 when unknown. */
   progress: number;
-  currentWaypoint: number;
+  /**
+   * Planner index of the waypoint the FC is flying, from MISSION_CURRENT.
+   * `null` when unknown: no MISSION_CURRENT yet, or the FC holds a mission this
+   * planner did not upload (no receipt, or the plan was edited since), so its
+   * seq cannot be mapped onto these waypoints.
+   */
+  currentWaypoint: number | null;
+  /** Transfer status of the last upload attempt. Whether the aircraft holds
+   *  THIS plan is a separate question, answered by the upload receipt. */
   uploadState: "idle" | "uploading" | "uploaded" | "error";
   downloadState: "idle" | "downloading" | "downloaded" | "error";
   /** Items the last download could not keep, named for the operator. */
@@ -178,7 +188,12 @@ interface MissionStoreState {
    */
   batchUpdateWaypoints: (ids: string[], update: Partial<Waypoint>) => void;
   reorderWaypoints: (fromIndex: number, toIndex: number) => void;
-  setProgress: (progress: number, currentWaypoint: number) => void;
+  /**
+   * Feed the FC's MISSION_CURRENT seq for `droneId`. The seq maps onto a
+   * planner waypoint only when that drone's upload receipt matches the current
+   * plan; otherwise progress reads as unknown.
+   */
+  applyMissionCurrent: (droneId: string, seq: number) => void;
   setMissionState: (state: MissionState) => void;
   setUploadState: (state: "idle" | "uploading" | "uploaded" | "error") => void;
   setDownloadState: (state: "idle" | "downloading" | "downloaded" | "error") => void;
@@ -189,9 +204,20 @@ interface MissionStoreState {
    *  drone MUST pass `target` — the selection fallback sent a plugin's mission
    *  write to whichever aircraft the operator happened to be watching. */
   uploadMission: (target?: DroneProtocol) => Promise<boolean>;
+  /** Download the selected drone's mission and replace the plan with it. A
+   *  failed or unsupported download sets `downloadState: "error"` and leaves
+   *  the plan untouched. */
   downloadMission: () => Promise<Waypoint[]>;
   undo: () => void;
   redo: () => void;
+}
+
+/** The drone id a protocol instance belongs to, if it is still managed. */
+function droneIdOf(protocol: DroneProtocol): string | null {
+  for (const [id, drone] of useDroneManager.getState().drones) {
+    if (drone.protocol === protocol) return id;
+  }
+  return null;
 }
 
 export const useMissionStore = create<MissionStoreState>()(
@@ -200,7 +226,7 @@ export const useMissionStore = create<MissionStoreState>()(
   activeMission: null,
   waypoints: [],
   progress: 0,
-  currentWaypoint: 0,
+  currentWaypoint: null,
   uploadState: "idle",
   downloadState: "idle",
   downloadWarnings: [],
@@ -208,8 +234,8 @@ export const useMissionStore = create<MissionStoreState>()(
   setMission: (activeMission) => set({
     activeMission,
     waypoints: activeMission?.waypoints ?? [],
-    progress: activeMission?.progress ?? 0,
-    currentWaypoint: activeMission?.currentWaypoint ?? 0,
+    progress: 0,
+    currentWaypoint: null,
   }),
 
   setWaypoints: (waypoints) => {
@@ -266,8 +292,19 @@ export const useMissionStore = create<MissionStoreState>()(
     });
   },
 
-  setProgress: (progress, currentWaypoint) =>
-    set({ progress, currentWaypoint }),
+  applyMissionCurrent: (droneId, seq) => {
+    const { waypoints } = get();
+    const receipt = receiptFor("mission", droneId);
+    const matches =
+      receipt !== undefined && receipt.contentHash === missionContentHash(waypoints);
+    const index = matches
+      ? missionSeqToWaypointIndex(waypoints, seq, receipt.homeSlot ?? false)
+      : null;
+    set({
+      currentWaypoint: index,
+      progress: index === null ? 0 : Math.round(((index + 1) / waypoints.length) * 100),
+    });
+  },
 
   setMissionState: (state) =>
     set((s) =>
@@ -295,7 +332,7 @@ export const useMissionStore = create<MissionStoreState>()(
       },
       waypoints: [],
       progress: 0,
-      currentWaypoint: 0,
+      currentWaypoint: null,
       uploadState: "idle",
     });
   },
@@ -306,7 +343,7 @@ export const useMissionStore = create<MissionStoreState>()(
       activeMission: null,
       waypoints: [],
       progress: 0,
-      currentWaypoint: 0,
+      currentWaypoint: null,
       uploadState: "idle",
     });
   },
@@ -326,30 +363,43 @@ export const useMissionStore = create<MissionStoreState>()(
 
     set({ uploadState: "uploading" });
 
-    // Each waypoint carries its own altitude frame; fall back to the mission's
-    // default frame when a waypoint does not specify one. This matches what
-    // mission file export/import preserve, so a mixed-frame mission uploads the
-    // same frames it was saved with rather than coercing them all to one.
-    const defaultFrame = usePlannerStore.getState().defaultFrame;
-
     // Flatten the waypoint model (NAV waypoints + their attached actions) into
-    // the FC's contiguous `seq` item list. All wire-mapping and DO_JUMP target
-    // resolution lives in this one pure module. ArduPilot keeps home in slot 0
-    // and starts the mission at slot 1, so the home slot is reserved there.
+    // the FC's contiguous `seq` item list, with each frame-less waypoint taking
+    // the mission's default frame. ArduPilot keeps home in slot 0 and starts
+    // the mission at slot 1, so the home slot is reserved there.
     const isArduPilot = protocol.getVehicleInfo()?.firmwareType.startsWith("ardupilot-") ?? false;
-    const items: MissionItem[] = expandToItems(waypoints, {
-      defaultFrame,
-      reserveHomeSlot: isArduPilot ? uploadHome(protocol, waypoints) : undefined,
-    });
+    const items: MissionItem[] = missionUploadItems(
+      waypoints,
+      isArduPilot ? uploadHome(protocol, waypoints) : undefined,
+    );
+    // Hash what is being sent now: an edit made while the transfer runs must
+    // not be vouched for by this upload's receipt.
+    const uploadedHash = missionContentHash(waypoints);
+    const droneId = droneIdOf(protocol);
+    const receipts = useUploadReceiptsStore.getState();
 
+    let success = false;
     try {
-      const result = await protocol.uploadMission(items);
-      set({ uploadState: result.success ? "uploaded" : "error" });
-      return result.success;
+      success = (await protocol.uploadMission(items)).success;
     } catch {
-      set({ uploadState: "error" });
-      return false;
+      success = false;
     }
+    set({ uploadState: success ? "uploaded" : "error" });
+    if (droneId) {
+      // A failed transfer may have left the FC with a partial or cleared
+      // mission, so what it holds is no longer known.
+      if (success) {
+        receipts.record("mission", {
+          droneId,
+          contentHash: uploadedHash,
+          at: Date.now(),
+          homeSlot: isArduPilot,
+        });
+      } else {
+        receipts.clearKindForDrone("mission", droneId);
+      }
+    }
+    return success;
   },
 
   downloadMission: async () => {

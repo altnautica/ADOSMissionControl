@@ -119,12 +119,7 @@ export async function inavUploadProgrammingPid(
 ): Promise<CommandResult> {
   if (!queue) return NOT_CONNECTED
   try {
-    const idxBuf = new Uint8Array(1)
-    idxBuf[0] = idx
-    const payload = new Uint8Array(1 + 15)
-    payload.set(idxBuf, 0)
-    payload.set(encodeMspINavSetProgrammingPid(rule), 1)
-    await queue.send(INAV_MSP.MSP2_INAV_SET_PROGRAMMING_PID, payload)
+    await queue.send(INAV_MSP.MSP2_INAV_SET_PROGRAMMING_PID, encodeMspINavSetProgrammingPid(idx, rule))
     return { success: true, resultCode: 0, message: 'Programming PID saved' }
   } catch (err) {
     return { success: false, resultCode: -1, message: formatErrorMessage(err) }

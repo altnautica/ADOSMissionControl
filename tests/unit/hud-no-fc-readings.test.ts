@@ -222,4 +222,43 @@ describe("HUD readings with a live FC", () => {
     ).toBeNull();
     expect(signalBarsFromRssi(undefined)).toBeNull();
   });
+
+  it("reads altitude as height above home, never MSL", () => {
+    // A site 300 m above sea level, the aircraft 20 m above home.
+    useTelemetryStore.getState().pushPosition({
+      timestamp: NOW,
+      lat: 12.97,
+      lon: 77.59,
+      alt: 320,
+      relativeAlt: 20,
+      heading: 90,
+      groundSpeed: 4,
+      airSpeed: 4,
+      climbRate: 0,
+    });
+    useTelemetryStore.getState().pushVfr({
+      timestamp: NOW,
+      airspeed: 4,
+      groundspeed: 4,
+      heading: 90,
+      throttle: 40,
+      alt: 320,
+      climb: 0,
+    });
+    expect(readHudFrame().alt).toBe(20);
+
+    // Position goes stale while VFR_HUD keeps arriving: its MSL altitude is
+    // not a substitute for height above home.
+    vi.setSystemTime(NOW + 10_000);
+    useTelemetryStore.getState().pushVfr({
+      timestamp: NOW + 10_000,
+      airspeed: 4,
+      groundspeed: 4,
+      heading: 90,
+      throttle: 40,
+      alt: 320,
+      climb: 0,
+    });
+    expect(readHudFrame().alt).toBeNull();
+  });
 });

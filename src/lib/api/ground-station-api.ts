@@ -72,7 +72,7 @@ export class GroundStationApi {
   forgetBluetooth = (mac: string) => p.forgetBluetooth(this.ctx, mac);
   getPairedBluetooth = () => p.getPairedBluetooth(this.ctx);
   listGamepads = () => p.listGamepads(this.ctx);
-  setPrimaryGamepad = (deviceId: string | null) => p.setPrimaryGamepad(this.ctx, deviceId);
+  setPrimaryGamepad = (deviceId: string) => p.setPrimaryGamepad(this.ctx, deviceId);
   listPeripherals = () => p.listPeripherals(this.ctx);
   getPeripheral = (id: string) => p.getPeripheral(this.ctx, id);
   configurePeripheral = (id: string, config: Record<string, unknown>) => p.configurePeripheral(this.ctx, id, config);

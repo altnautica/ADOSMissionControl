@@ -27,9 +27,16 @@ export interface SigningEnrollResult {
   enrolled_at: string;
 }
 
+/** `GET /api/mavlink/signing/counters`. An agent with no signed-frame observer
+ * reports `observed: false` with every count null: the counts were not
+ * measured, which is not the same as zero. An agent that predates the flag
+ * sends no `observed` key and hard-coded zeros, so only `observed === true`
+ * makes the counts meaningful. */
 export interface SigningCounters {
-  tx_signed_count: number;
-  rx_signed_count: number;
+  observed: boolean;
+  tx_signed_count: number | null;
+  rx_signed_count: number | null;
+  /** Unix seconds of the last signed frame received from the FC. */
   last_signed_rx_at: number | null;
 }
 

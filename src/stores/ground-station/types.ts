@@ -15,7 +15,6 @@ import type {
   MeshHealth,
   MeshNeighbor,
   MeshRoute,
-  ModemStatus,
   NetworkStatus,
   PairingPendingRequest,
   PairResult,
@@ -124,7 +123,8 @@ export interface UplinkCloudRelay {
 export interface UplinkSlice {
   active: string | null;
   priority: string[];
-  health: UplinkHealth;
+  /** Null until the node has reported a health verdict. */
+  health: UplinkHealth | null;
   failover_log: UplinkFailoverEntry[];
   data_cap: UplinkDataCap | null;
   cloud_relay: UplinkCloudRelay | null;
@@ -139,6 +139,9 @@ export interface UplinkSlice {
   shareUplinkAppliedReason: string | null;
   loading: boolean;
   error: string | null;
+  /** Epoch ms the uplink slice was last refreshed from the node (LAN network
+   * read, uplink event, or cloud heartbeat). Null until the first reading. */
+  fetchedAt: number | null;
 }
 
 export interface PeripheralsSlice {
@@ -155,11 +158,14 @@ export interface RoleSlice {
   loading: boolean;
   switching: boolean;
   error: string | null;
+  /** Epoch ms `info` was last read from the node. Null until the first read. */
+  fetchedAt: number | null;
 }
 
 export interface DistributedRxSlice {
-  /** Receiver view of remote relays; empty on relay/direct nodes. */
-  receiverRelays: WfbReceiverRelay[];
+  /** Receiver view of remote relays; empty on relay/direct nodes, null when
+   * the receiver's snapshot is stale (no current reading of the relay set). */
+  receiverRelays: WfbReceiverRelay[] | null;
   /** Receiver combined FEC output; null on relay/direct nodes. */
   combined: WfbReceiverCombined | null;
   /** Relay view of its local forwarder state; null on receiver/direct nodes. */
@@ -196,4 +202,7 @@ export interface MeshSlice {
   wsDisconnectedAt: number | null;
   loading: boolean;
   error: string | null;
+  /** Epoch ms the mesh state was last read from the node. Null until the
+   * first read. */
+  fetchedAt: number | null;
 }

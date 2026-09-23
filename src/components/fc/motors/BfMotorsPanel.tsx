@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Cog, Save, HardDrive, AlertTriangle, Gauge, Timer, Zap, Radio } from "lucide-react";
 import { BfMotorTest } from "./BfMotorTest";
 import { BfDshotCommands } from "../betaflight/BfDshotCommands";
+import { ESC_PROTOCOLS, isDshotProtocol, usesPwmRate } from "./bf-motor-protocols";
 
 // ── Param Names ──────────────────────────────────────────────
 
@@ -23,14 +24,6 @@ const PARAM_NAMES = [
   "BF_MOTOR_IDLE_PCT", "BF_MOTOR_PWM_PROTOCOL", "BF_MOTOR_PWM_RATE",
   "BF_GYRO_SYNC_DENOM", "BF_PID_PROCESS_DENOM",
 ] as const;
-
-const ESC_PROTOCOLS = [
-  { value: "0", label: "PWM" }, { value: "1", label: "OneShot125" },
-  { value: "2", label: "OneShot42" }, { value: "3", label: "MultiShot" },
-  { value: "4", label: "Brushed" }, { value: "5", label: "DShot150" },
-  { value: "6", label: "DShot300" }, { value: "7", label: "DShot600" },
-  { value: "8", label: "DShot1200" }, { value: "9", label: "ProShot1000" },
-];
 
 // ── Card Component ───────────────────────────────────────────
 
@@ -73,19 +66,19 @@ export function BfMotorsPanel() {
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
 
   const escProtocol = params.get("BF_MOTOR_PWM_PROTOCOL") ?? 0;
-  const isDshot = escProtocol >= 5 && escProtocol <= 8;
-  const isPwmLike = escProtocol <= 3;
+  const isDshot = isDshotProtocol(escProtocol);
+  const isPwmLike = usesPwmRate(escProtocol);
 
   const idleRaw = params.get("BF_MOTOR_IDLE_PCT") ?? 0;
   const idleDisplay = (idleRaw / 100).toFixed(2);
 
-  const gyroSyncDenom = params.get("BF_GYRO_SYNC_DENOM") ?? 1;
   const pidDenom = params.get("BF_PID_PROCESS_DENOM") ?? 1;
-  const baseGyroRate = 8000;
-  const effectiveGyroRate = baseGyroRate / Math.max(1, gyroSyncDenom);
-  const effectivePidRate = effectiveGyroRate / Math.max(1, pidDenom);
+  // The FC reports its gyro sample rate in MSP_BOARD_INFO (API 1.43+); without
+  // it the loop rates are unknown rather than assumed.
+  const gyroRateHz = getSelectedProtocol()?.getVehicleInfo()?.gyroSampleRateHz;
+  const effectivePidRate = gyroRateHz ? gyroRateHz / Math.max(1, pidDenom) : undefined;
 
-  const formatRate = (hz: number) => hz >= 1000 ? `${(hz / 1000).toFixed(1)}kHz` : `${hz}Hz`;
+  const formatRate = (hz: number) => hz >= 1000 ? `${(hz / 1000).toFixed(1)}kHz` : `${Math.round(hz)}Hz`;
 
   async function handleSave() {
     setSaving(true);
@@ -145,9 +138,9 @@ export function BfMotorsPanel() {
               <Input label="PID Process Denom" type="number" step="1" min="1" max="16" value={p("BF_PID_PROCESS_DENOM", "1")} onChange={(e) => set("BF_PID_PROCESS_DENOM", e.target.value)} />
             </div>
             <div className="mt-3 p-2 bg-bg-tertiary rounded space-y-1">
-              <div className="flex justify-between text-xs"><span className="text-text-secondary">Base gyro rate</span><span className="font-mono text-text-primary">{formatRate(baseGyroRate)}</span></div>
-              <div className="flex justify-between text-xs"><span className="text-text-secondary">Effective gyro rate</span><span className="font-mono text-accent-primary">{formatRate(effectiveGyroRate)}</span></div>
-              <div className="flex justify-between text-xs"><span className="text-text-secondary">Effective PID loop</span><span className="font-mono text-accent-primary font-bold">{formatRate(effectivePidRate)}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-text-secondary">Gyro sample rate (FC)</span><span className="font-mono text-text-primary">{gyroRateHz ? formatRate(gyroRateHz) : "\u2014"}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-text-secondary">Effective PID loop</span><span className="font-mono text-accent-primary font-bold">{effectivePidRate ? formatRate(effectivePidRate) : "\u2014"}</span></div>
+              {!gyroRateHz && <p className="text-[10px] text-text-tertiary">The flight controller did not report its gyro rate (needs MSP API 1.43+).</p>}
             </div>
           </Card>
 

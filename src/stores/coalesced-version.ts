@@ -27,8 +27,17 @@ export interface VersionedState {
   _version: number;
 }
 
-/** SSR / Node fallback interval, one 60 Hz frame. */
+/** SSR / Node / hidden-document fallback interval, one 60 Hz frame. */
 const FALLBACK_FRAME_MS = 16;
+
+/**
+ * Browsers suspend `requestAnimationFrame` in a hidden document. A detached
+ * HUD or telemetry popup is still on screen when the main window is minimized
+ * or backgrounded, so a hidden opener schedules the bump on a timer instead.
+ */
+function documentHidden(): boolean {
+  return typeof document !== "undefined" && document.visibilityState === "hidden";
+}
 
 /**
  * Cancels a scheduled bump. Storing the canceller rather than the raw handle
@@ -63,21 +72,32 @@ export interface VersionBumper {
  */
 export function createVersionBumper(bump: () => void): VersionBumper {
   let cancel: Canceller | null = null;
+  let pendingFrame = false;
 
   const apply = () => {
     cancel = null;
+    pendingFrame = false;
     bump();
   };
 
   return {
     scheduleVersionBump: () => {
-      if (cancel !== null) return;
-      if (typeof requestAnimationFrame !== "undefined") {
+      const hidden = documentHidden();
+      if (cancel !== null) {
+        // A frame requested before the document was hidden never fires while
+        // hidden; move it to the timer so notification does not stall.
+        if (!(pendingFrame && hidden)) return;
+        cancel();
+        cancel = null;
+      }
+      if (typeof requestAnimationFrame !== "undefined" && !hidden) {
         const handle = requestAnimationFrame(apply);
         cancel = () => cancelAnimationFrame(handle);
+        pendingFrame = true;
       } else {
         const handle = setTimeout(apply, FALLBACK_FRAME_MS);
         cancel = () => clearTimeout(handle);
+        pendingFrame = false;
       }
     },
     cancelVersionBump: () => {

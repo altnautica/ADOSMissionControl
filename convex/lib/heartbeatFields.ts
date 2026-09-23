@@ -12,7 +12,7 @@
  * sat in that file the only "tests" covering them read the source with
  * `readFileSync` and asserted on substrings — which pins the spelling of
  * an identifier and proves nothing about behaviour. Every one of the
- * CRITICAL defects the audit found in this layer survived a green suite
+ * CRITICAL defects in this layer survived a green suite
  * for exactly that reason. As pure exports they are directly callable,
  * and it takes `http.ts` well down from its 1334 lines.
  *

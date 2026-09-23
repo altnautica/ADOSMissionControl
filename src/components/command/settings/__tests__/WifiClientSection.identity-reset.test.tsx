@@ -3,12 +3,15 @@
  * @description The Wi-Fi Join form holds a write-only passphrase and an SSID.
  * The section renders the same field instances in place when the focused agent
  * changes, so without a reset a credential typed for node A could be submitted
- * to node B. This pins that the form clears when the agent identity changes.
+ * to node B. This pins that the form clears when the agent identity changes,
+ * that the page reads and writes only through a connection attached to the
+ * node it is rendered for, and that a late answer from the previous node is
+ * dropped.
  * @license GPL-3.0-only
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, waitFor } from "@testing-library/react";
+import { render, fireEvent, screen, waitFor, act } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (k: string) => k,
@@ -18,23 +21,38 @@ vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+const net = vi.hoisted(() => ({
+  statusCalls: [] as string[],
+  leaveCalls: [] as string[],
+  /** When set, a status read started now waits for it before answering. */
+  hold: null as Promise<void> | null,
+}));
+
 vi.mock("@/lib/agent/network-client", () => ({
   AgentNetworkError: class extends Error {
     needsForce = false;
   },
   agentNetworkContext: (url: string | null, key: string | null) =>
     url && key ? { baseUrl: url, apiKey: key } : null,
-  getWifiStatus: async () => ({
-    connected: false,
-    ssid: null,
-    signal: null,
-    ip: null,
-    security: null,
-  }),
+  getWifiStatus: async (ctx: { baseUrl: string }) => {
+    net.statusCalls.push(ctx.baseUrl);
+    const hold = net.hold;
+    if (hold) await hold;
+    return {
+      connected: true,
+      ssid: `ssid-at-${ctx.baseUrl}`,
+      signal: null,
+      ip: null,
+      security: null,
+    };
+  },
   getConfiguredWifi: async () => [],
   scanWifi: async () => [],
   joinWifi: async () => ({ joined: true }),
-  leaveWifi: async () => ({}),
+  leaveWifi: async (ctx: { baseUrl: string }) => {
+    net.leaveCalls.push(ctx.baseUrl);
+    return {};
+  },
   forgetWifi: async () => {},
   setWifiAutoconnect: async () => {},
   isRouteUnexposed: () => false,
@@ -56,6 +74,9 @@ vi.mock("@/stores/agent-connection-store", () => ({
 import { WifiClientSection } from "../WifiClientSection";
 
 beforeEach(() => {
+  net.statusCalls = [];
+  net.leaveCalls = [];
+  net.hold = null;
   store.state = {
     agentUrl: "http://node-a.example:8080",
     apiKey: "key-A",
@@ -65,7 +86,7 @@ beforeEach(() => {
 
 describe("WifiClientSection — credentials do not leak across an agent switch", () => {
   it("clears the SSID and passphrase when the agent identity changes", async () => {
-    const { rerender } = render(<WifiClientSection />);
+    const { rerender } = render(<WifiClientSection nodeDeviceId="A" />);
     const ssid = () =>
       document.getElementById("wifi-join-ssid") as HTMLInputElement;
     const pass = () =>
@@ -83,12 +104,66 @@ describe("WifiClientSection — credentials do not leak across an agent switch",
       apiKey: "key-B",
       nodeDeviceId: "B",
     };
-    rerender(<WifiClientSection />);
+    rerender(<WifiClientSection nodeDeviceId="B" />);
 
     // Both fields clear so the credential cannot be submitted to node B.
     await waitFor(() => {
       expect(ssid().value).toBe("");
       expect(pass().value).toBe("");
     });
+  });
+});
+
+describe("WifiClientSection — acts only on the node it is rendered for", () => {
+  it("never reads or leaves through a connection attached to another node", async () => {
+    // The focused connection is still node A while the page renders node B.
+    render(<WifiClientSection nodeDeviceId="B" />);
+    await waitFor(() =>
+      expect(screen.getByText("network.liveRequiresLan")).toBeTruthy(),
+    );
+    expect(screen.queryByText("wifi.leaveAction")).toBeNull();
+    expect(net.statusCalls).toEqual([]);
+    expect(net.leaveCalls).toEqual([]);
+  });
+
+  it("reads through the connection when it is attached to this node", async () => {
+    render(<WifiClientSection nodeDeviceId="A" />);
+    await waitFor(() =>
+      expect(
+        screen.getByText("ssid-at-http://node-a.example:8080"),
+      ).toBeTruthy(),
+    );
+    expect(net.statusCalls[0]).toBe("http://node-a.example:8080");
+  });
+
+  it("drops a status answer from the previous node after a switch", async () => {
+    const gate: { release?: () => void } = {};
+    net.hold = new Promise<void>((resolve) => {
+      gate.release = resolve;
+    });
+    const { rerender } = render(<WifiClientSection nodeDeviceId="A" />);
+    await waitFor(() => expect(net.statusCalls.length).toBe(1));
+
+    // Node A's read is still in flight when the page moves to node B.
+    net.hold = null;
+    store.state = {
+      agentUrl: "http://node-b.example:8080",
+      apiKey: "key-B",
+      nodeDeviceId: "B",
+    };
+    rerender(<WifiClientSection nodeDeviceId="B" />);
+    await waitFor(() =>
+      expect(
+        screen.getByText("ssid-at-http://node-b.example:8080"),
+      ).toBeTruthy(),
+    );
+
+    await act(async () => {
+      gate.release!();
+    });
+    expect(screen.getByText("ssid-at-http://node-b.example:8080")).toBeTruthy();
+    expect(
+      screen.queryByText("ssid-at-http://node-a.example:8080"),
+    ).toBeNull();
   });
 });

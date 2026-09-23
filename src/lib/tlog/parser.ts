@@ -138,15 +138,17 @@ export function tlogToFlightRecord(
       }
     }
 
-    // ATTITUDE (30): roll, pitch, yaw
+    // ATTITUDE (30): roll, pitch, yaw in radians on the wire. Recorded
+    // attitude frames are degrees, the same contract as live AttitudeData.
     if (msgId === 30 && raw[1] >= 28) {
+      const toDeg = 180 / Math.PI;
       frames.push({
         offsetMs,
         channel: "attitude",
         data: {
-          roll: pdv.getFloat32(4, true),
-          pitch: pdv.getFloat32(8, true),
-          yaw: pdv.getFloat32(12, true),
+          roll: pdv.getFloat32(4, true) * toDeg,
+          pitch: pdv.getFloat32(8, true) * toDeg,
+          yaw: pdv.getFloat32(12, true) * toDeg,
         },
       });
     }

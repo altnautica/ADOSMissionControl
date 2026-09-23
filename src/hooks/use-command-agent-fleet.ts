@@ -12,6 +12,7 @@ import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import {
   useCommandFleetStore,
   type CommandCloudStatus,
+  type CommandTelemetrySnapshot,
 } from "@/stores/command-fleet-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
@@ -109,6 +110,32 @@ export function groundStationsFunneledUnderDrone(
   return funneled;
 }
 
+const numberOrNull = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
+/**
+ * One node's telemetry snapshot as the board renders it. The agent publishes a
+ * vehicle state before any FC has spoken, and keeps its sentinels in it: mode
+ * "" and battery remaining -1 mean "not reported", not a blank mode and a flat
+ * pack. They are normalised to null here, once, so no cell renders "-1%" or an
+ * empty mode chip and no counter folds an unknown pack into a low-battery tally.
+ */
+export function normalizeFleetTelemetry(
+  telemetry: CommandTelemetrySnapshot | undefined,
+): CommandAgentSummary["telemetry"] {
+  const remaining = numberOrNull(telemetry?.battery?.remaining);
+  return {
+    armed: typeof telemetry?.armed === "boolean" ? telemetry.armed : null,
+    mode: telemetry?.mode ? telemetry.mode : null,
+    batteryRemaining: remaining !== null && remaining >= 0 ? remaining : null,
+    batteryVoltage: numberOrNull(telemetry?.battery?.voltage),
+    gpsSatellites: numberOrNull(telemetry?.gps?.satellites),
+    gpsFixType: numberOrNull(telemetry?.gps?.fix_type),
+    altitudeRel: numberOrNull(telemetry?.position?.alt_rel),
+    groundspeed: numberOrNull(telemetry?.velocity?.groundspeed),
+  };
+}
+
 export function useCommandAgentFleet(
   pairedDrones: FleetNodeEntry[],
   activeVideoIds: Set<string>,
@@ -198,6 +225,7 @@ export function useCommandAgentFleet(
             fcConnected: status?.fcConnected ?? drone.fcConnected,
             fcVariant: status?.fcVariant,
             transportOpen: status?.transportOpen,
+            fcReachable: status?.fcReachable,
           }),
           serviceCount: services.length,
           runningServiceCount: countRunning(services),
@@ -218,34 +246,7 @@ export function useCommandAgentFleet(
           active,
           queued: canStream && !active,
         },
-        telemetry: {
-          armed: typeof telemetry?.armed === "boolean" ? telemetry.armed : null,
-          mode: telemetry?.mode ?? null,
-          batteryRemaining:
-            typeof telemetry?.battery?.remaining === "number"
-              ? telemetry.battery.remaining
-              : null,
-          batteryVoltage:
-            typeof telemetry?.battery?.voltage === "number"
-              ? telemetry.battery.voltage
-              : null,
-          gpsSatellites:
-            typeof telemetry?.gps?.satellites === "number"
-              ? telemetry.gps.satellites
-              : null,
-          gpsFixType:
-            typeof telemetry?.gps?.fix_type === "number"
-              ? telemetry.gps.fix_type
-              : null,
-          altitudeRel:
-            typeof telemetry?.position?.alt_rel === "number"
-              ? telemetry.position.alt_rel
-              : null,
-          groundspeed:
-            typeof telemetry?.velocity?.groundspeed === "number"
-              ? telemetry.velocity.groundspeed
-              : null,
-        },
+        telemetry: normalizeFleetTelemetry(telemetry),
       };
     });
 

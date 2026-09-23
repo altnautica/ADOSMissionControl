@@ -31,13 +31,17 @@ function envelope(data: unknown[], next: string | null = null, source = "logd") 
   };
 }
 
+// Shape of the store's `LogRow` (crates/ados-logd/src/query/rows.rs).
 const LOGD_ROW = {
-  ts: "2026-06-02T10:00:00+05:30",
+  id: 1,
   ts_us: 1_780_000_000_000_000,
-  id: "row-1",
-  level: "info",
-  message: "video started",
+  session: null,
   source: "ados-video",
+  level: "info",
+  target: null,
+  msg: "video started",
+  fields: {},
+  redacted: false,
 };
 
 describe("LoggingService transport resolution", () => {
@@ -192,13 +196,11 @@ describe("LoggingService over a ground station's relay-proxy", () => {
   });
 
   it("refuses to open a tail rather than tailing the ground station", () => {
-    // A live EventSource is available: the refusal must come from the relay
-    // guard, not from the runtime lacking the API.
-    const opened = vi.fn();
-    vi.stubGlobal("EventSource", opened);
     const svc = new LoggingService(RELAY_CTX);
-    expect(() => svc.tail()).toThrow(/relay/i);
-    expect(opened).not.toHaveBeenCalled();
+    expect(() =>
+      svc.tail({}, { onRow: vi.fn(), onError: vi.fn() }),
+    ).toThrow(/relay/i);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("pushes through the relay prefix, never a rebuilt origin", async () => {
@@ -227,12 +229,12 @@ describe("LoggingService pagination + aggregate + export", () => {
 
   it("walks every page of queryAll until the cursor is null", async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse(envelope([{ ...LOGD_ROW, id: "a" }], "cur1")))
-      .mockResolvedValueOnce(jsonResponse(envelope([{ ...LOGD_ROW, id: "b" }], null)));
+      .mockResolvedValueOnce(jsonResponse(envelope([{ ...LOGD_ROW, id: 11 }], "cur1")))
+      .mockResolvedValueOnce(jsonResponse(envelope([{ ...LOGD_ROW, id: 12 }], null)));
     const svc = new LoggingService(CTX);
     const ids: string[] = [];
     for await (const row of svc.queryAll()) ids.push(row.id);
-    expect(ids).toEqual(["a", "b"]);
+    expect(ids).toEqual(["11", "12"]);
     // Second page carried the cursor.
     const secondUrl = fetchMock.mock.calls[1][0] as string;
     expect(secondUrl).toContain("cursor=cur1");
@@ -242,7 +244,7 @@ describe("LoggingService pagination + aggregate + export", () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(
         envelope([
-          { ts: "t", ts_us: 1, metric: "system.cpu_percent", value: 33 },
+          { bucket_us: 1, metric: "system.cpu_percent", value: 33, count: 4 },
         ]),
       ),
     );
@@ -310,21 +312,17 @@ describe("LoggingService stats + healthz", () => {
 
   it("coerces a partial stats body with safe defaults", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(
-        envelopeStats({
-          db: { file_size_mb: 12.5, row_counts: { logs: 100 } },
-          ingest: { rows_per_sec: 9 },
-        }),
-      ),
+      jsonResponse({ data: { db_size_bytes: 1024, rows: { logs: 100 } } }),
     );
     const svc = new LoggingService(CTX);
     const stats = await svc.stats();
-    expect(stats.db.file_size_mb).toBe(12.5);
-    expect(stats.db.wal_size_mb).toBe(0);
+    expect(stats.db.size_bytes).toBe(1024);
+    expect(stats.db.wal_size_bytes).toBe(0);
     expect(stats.db.row_counts.logs).toBe(100);
-    expect(stats.ingest.rows_per_sec).toBe(9);
-    expect(stats.ingest.queue_depth).toBe(0);
-    expect(stats.sync.synced_rows).toBe(0);
+    expect(stats.db.integrity).toBe(false);
+    expect(stats.db.schema_version).toBeNull();
+    expect(stats.ingest.accepted).toBe(0);
+    expect(stats.sync.unsynced_rows).toEqual({});
     expect(stats.source).toBe("logd");
   });
 
@@ -338,8 +336,3 @@ describe("LoggingService stats + healthz", () => {
     expect(health.ok).toBe(false);
   });
 });
-
-// stats is not wrapped in the {data,page,meta} envelope, so build a raw body.
-function envelopeStats(body: Record<string, unknown>): Record<string, unknown> {
-  return body;
-}

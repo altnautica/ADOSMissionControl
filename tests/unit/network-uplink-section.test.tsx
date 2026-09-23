@@ -3,7 +3,9 @@
  * matrix renders the agent's OWN reports (active uplink, per-leg state,
  * priority ladder), the ladder write round-trips through the priority route
  * with the persisted order read back, and non-ground-station profiles get
- * the honest no-matrix note instead of an empty matrix.
+ * the honest no-matrix note instead of an empty matrix. The AP name, channel
+ * and passphrase go through the ground station's live AP route, never the
+ * config document, and the page acts only on the node it is rendered for.
  *
  * @license GPL-3.0-only
  */
@@ -97,6 +99,18 @@ function stubAgentFetch() {
       if (u.endsWith("/network/priority")) {
         return new Response(JSON.stringify(body), { status: 200 });
       }
+      if (u.endsWith("/network/ap")) {
+        const req = body as { ssid?: string; channel?: number };
+        return new Response(
+          JSON.stringify({
+            enabled: true,
+            ssid: req.ssid ?? "ADOS-GS-01AB",
+            channel: req.channel ?? 6,
+            persisted: true,
+          }),
+          { status: 200 },
+        );
+      }
       if (u.endsWith("/network/share_uplink")) {
         const req = body as { enabled?: boolean };
         return new Response(
@@ -123,6 +137,7 @@ function stubAgentFetch() {
 function renderSection(profile: "drone" | "ground-station" | "workstation") {
   return renderWithIntl(
     <NetworkUplinkSection
+      nodeDeviceId="node-1"
       profile={profile}
       config={{ network: { hotspot: { enabled: false } } }}
       readOnly={false}
@@ -136,6 +151,7 @@ describe("NetworkUplinkSection on a ground station", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://gs.local:8080",
       apiKey: "KEY",
+      nodeDeviceId: "node-1",
     });
     stubAgentFetch();
 
@@ -164,6 +180,7 @@ describe("NetworkUplinkSection on a ground station", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://gs.local:8080",
       apiKey: "KEY",
+      nodeDeviceId: "node-1",
     });
     const { puts } = stubAgentFetch();
 
@@ -202,6 +219,7 @@ describe("NetworkUplinkSection on other profiles", () => {
     useAgentConnectionStore.setState({
       agentUrl: "http://drone.local:8080",
       apiKey: "KEY",
+      nodeDeviceId: "node-1",
     });
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -217,12 +235,13 @@ describe("NetworkUplinkSection on other profiles", () => {
   });
 });
 
-describe("NetworkUplinkSection hotspot fields", () => {
-  function renderHotspot() {
+describe("NetworkUplinkSection hotspot AP settings", () => {
+  function renderHotspot(profile: "drone" | "ground-station") {
     const setValue = vi.fn(async () => {});
     renderWithIntl(
       <NetworkUplinkSection
-        profile="drone"
+        nodeDeviceId="node-1"
+        profile={profile}
         config={{
           network: {
             hotspot: {
@@ -240,52 +259,79 @@ describe("NetworkUplinkSection hotspot fields", () => {
     return { setValue };
   }
 
-  it("binds SSID and channel to the real config keys with read-back", () => {
-    renderHotspot();
-    // SSID + channel render the current emitted values in their inputs.
-    expect(screen.getByDisplayValue("ADOS-bench")).toBeTruthy();
-    expect(screen.getByDisplayValue("6")).toBeTruthy();
-  });
+  function connect(nodeDeviceId = "node-1") {
+    useAgentConnectionStore.setState({
+      agentUrl: "http://gs.local:8080",
+      apiKey: "KEY",
+      nodeDeviceId,
+    });
+  }
 
-  it("writes a new SSID to network.hotspot.ssid", async () => {
-    const { setValue } = renderHotspot();
-    const ssidInput = screen.getByDisplayValue("ADOS-bench");
-    fireEvent.change(ssidInput, { target: { value: "ADOS-field" } });
-    const applyBtn = within(
-      ssidInput.parentElement as HTMLElement,
-    ).getByRole("button");
-    fireEvent.click(applyBtn);
-    await waitFor(() =>
-      expect(setValue).toHaveBeenCalledWith(
-        "network.hotspot.ssid",
-        "ADOS-field",
-      ),
-    );
-  });
+  it("applies SSID, channel and passphrase through the live AP route", async () => {
+    connect();
+    const { puts } = stubAgentFetch();
+    const { setValue } = renderHotspot("ground-station");
+    await waitFor(() => expect(screen.getByText("Wi-Fi hotspot")).toBeTruthy());
 
-  it("never echoes the passphrase and writes a new one on Apply", async () => {
-    const { setValue } = renderHotspot();
-    const pwInput = screen.getByPlaceholderText(
-      "Enter a new value",
+    fireEvent.change(document.getElementById("hotspot-ap-ssid")!, {
+      target: { value: "ADOS-field" },
+    });
+    fireEvent.change(document.getElementById("hotspot-ap-channel")!, {
+      target: { value: "11" },
+    });
+    const pw = document.getElementById(
+      "hotspot-ap-passphrase",
     ) as HTMLInputElement;
-    // Write-only: the current passphrase is never rendered anywhere.
-    expect(pwInput.value).toBe("");
-    expect(pwInput.type).toBe("password");
-    expect(screen.queryByText("supersecret")).toBeNull();
+    expect(pw.type).toBe("password");
     expect(screen.queryByDisplayValue("supersecret")).toBeNull();
-    // A non-empty value is present → the field reads "Set" (never the value).
-    expect(screen.getByText("Set")).toBeTruthy();
+    fireEvent.change(pw, { target: { value: "newpass123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    fireEvent.change(pwInput, { target: { value: "newpass123" } });
-    const applyBtn = within(
-      pwInput.parentElement as HTMLElement,
-    ).getByRole("button");
-    fireEvent.click(applyBtn);
     await waitFor(() =>
-      expect(setValue).toHaveBeenCalledWith(
-        "network.hotspot.password",
-        "newpass123",
-      ),
+      expect(puts.some((p) => p.url.endsWith("/network/ap"))).toBe(true),
     );
+    const apPut = puts.find((p) => p.url.endsWith("/network/ap"))!;
+    expect(apPut.body).toEqual({
+      ssid: "ADOS-field",
+      channel: 11,
+      passphrase: "newpass123",
+    });
+    // The config document is never used for keys the running AP ignores.
+    expect(setValue).not.toHaveBeenCalled();
+    // The passphrase clears once the AP has it.
+    await waitFor(() => expect(pw.value).toBe(""));
+  });
+
+  it("refuses a passphrase outside the WPA2 length before any write", async () => {
+    connect();
+    const { puts } = stubAgentFetch();
+    renderHotspot("ground-station");
+    fireEvent.change(document.getElementById("hotspot-ap-passphrase")!, {
+      target: { value: "short" },
+    });
+    const apply = screen.getByRole("button", { name: "Apply" });
+    expect((apply as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(apply);
+    expect(puts.some((p) => p.url.endsWith("/network/ap"))).toBe(false);
+  });
+
+  it("offers only the on/off switch on a node with no AP route", () => {
+    connect();
+    stubAgentFetch();
+    renderHotspot("drone");
+    expect(screen.getByText("Wi-Fi hotspot")).toBeTruthy();
+    expect(document.getElementById("hotspot-ap-ssid")).toBeNull();
+    expect(screen.queryByDisplayValue("ADOS-bench")).toBeNull();
+  });
+
+  it("never writes the AP of a different node that is still attached", () => {
+    connect("other-node");
+    const { fetchMock } = stubAgentFetch();
+    renderHotspot("ground-station");
+    expect(document.getElementById("hotspot-ap-ssid")).toBeNull();
+    expect(
+      screen.getByText(/Live network status needs a direct connection/),
+    ).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -5,9 +5,12 @@
  *
  * The host is a render-null effect sibling of the Skill Bar. It reads the
  * per-drone `flight.skill` contributions, builds a registry Skill per
- * contribution keyed to the active drone, and registers them. On drone switch,
- * uninstall, or unmount it unregisters every skill it added (the registry
- * clean-stops an active toggle on every drone before dropping it).
+ * contribution, and registers them. Registrations are diffed by skill id: a
+ * changed definition re-registers in place and only ids that disappeared are
+ * dropped. Dropping a skill on drone switch or host unmount never commands a
+ * vehicle (a behavior keeps running on the drone it was started on); only a
+ * skill that vanishes from the same drone's resolved list (uninstalled or its
+ * grant revoked) is clean-stopped on that drone.
  *
  * Default-binding seeding is "first empty slot wins": the suggested key /
  * gamepad button drops into the lowest-index unbound slot of the active
@@ -51,36 +54,48 @@ export function PluginSkillHost() {
     return () => uninstallPluginConfigWriter();
   }, []);
 
-  // Track skill ids registered for the current drone so cleanup unregisters
-  // exactly what this host added (and nothing the registry owns elsewhere).
-  const registeredRef = useRef<string[]>([]);
+  // Skill ids registered by this host and the drone they were resolved for, so
+  // a re-run diffs against exactly what this host added.
+  const registeredRef = useRef<{ droneId: string | null; ids: Set<string> }>({
+    droneId: null,
+    ids: new Set(),
+  });
 
   useEffect(() => {
-    if (!selectedId || contributions.length === 0) {
-      // Nothing to register; existing registrations are torn down by the
-      // cleanup of the previous effect run.
-      registeredRef.current = [];
-      return;
+    const registry = useSkillRegistry.getState();
+    const prev = registeredRef.current;
+    const droneId = selectedId ?? null;
+    const sameDrone = droneId !== null && prev.droneId === droneId;
+
+    // Same drone, source still resolving: keep what is registered.
+    if (sameDrone && contributions === null) return;
+
+    const next = new Set<string>();
+    if (droneId !== null && contributions !== null) {
+      for (const contribution of contributions) {
+        const skill = buildPluginSkill(contribution);
+        registry.register(skill);
+        next.add(skill.id);
+        seedDefaultBinding(skill.id, contribution.defaultBinding);
+      }
     }
 
-    const register = useSkillRegistry.getState().register;
-    const ids: string[] = [];
-    for (const contribution of contributions) {
-      const skill = buildPluginSkill(contribution);
-      register(skill);
-      ids.push(skill.id);
-      seedDefaultBinding(skill.id, contribution.defaultBinding);
+    for (const id of prev.ids) {
+      if (next.has(id)) continue;
+      registry.unregister(id, sameDrone ? { deactivateOn: droneId } : undefined);
     }
-    registeredRef.current = ids;
-
-    return () => {
-      const unregister = useSkillRegistry.getState().unregister;
-      for (const id of ids) unregister(id);
-      registeredRef.current = [];
-    };
-    // Re-run on drone switch or when the contribution set changes; the
-    // contributions array is memoized by the hook so identity is stable.
+    registeredRef.current = { droneId, ids: next };
   }, [selectedId, contributions]);
+
+  // Host teardown drops the registrations without commanding any vehicle.
+  useEffect(
+    () => () => {
+      const registry = useSkillRegistry.getState();
+      for (const id of registeredRef.current.ids) registry.unregister(id);
+      registeredRef.current = { droneId: null, ids: new Set() };
+    },
+    [],
+  );
 
   return null;
 }

@@ -3,8 +3,8 @@
 /**
  * Betaflight OSD Editor Panel
  *
- * Character-cell grid editor for Betaflight MAX7456 OSD.
- * Supports PAL (30x16), NTSC (30x13), multi-page (4 pages),
+ * Character-cell grid editor for the Betaflight OSD: SD (PAL 30x16,
+ * NTSC 30x13) and HD (53x20) canvases, per-OSD-profile visibility,
  * drag-and-drop element positioning, and MSP OSD config read/write.
  *
  * @license GPL-3.0-only
@@ -17,36 +17,38 @@ import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Monitor, Save, HardDrive, Upload } from "lucide-react";
+import { Monitor, Save, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { MspOsdConfig } from "@/lib/protocol/types";
 import type { BfOsdElement, VideoSystem } from "./bf-osd-constants";
-import { VIDEO_SYSTEM_OPTIONS, buildDefaultElements, BF_OSD_ELEMENT_DEFS, encodePosition, decodePosition } from "./bf-osd-constants";
+import {
+  VIDEO_SYSTEM_OPTIONS, VIDEO_SYSTEM_CODES, OSD_PROFILE_COUNT, buildDefaultElements, encodePosition,
+  decodePosition, videoSystemFromCode,
+} from "./bf-osd-constants";
 import { parseMcmFont } from "./bf-osd-font";
 import { BfOsdGrid } from "./BfOsdGrid";
 import { BfOsdElementList } from "./BfOsdElementList";
-
-export { encodePosition, decodePosition } from "./bf-osd-constants";
-
-// Betaflight OSD video-system enum (MSP_OSD_CONFIG): 0=AUTO, 1=PAL, 2=NTSC.
-const VS_TO_CODE: Record<VideoSystem, number> = { AUTO: 0, PAL: 1, NTSC: 2 };
-const CODE_TO_VS = (code: number): VideoSystem => (code === 2 ? "NTSC" : code === 0 ? "AUTO" : "PAL");
 
 export function BfOsdEditorPanel() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
   const { toast } = useToast();
 
-  const [elements, setElements] = useState<BfOsdElement[]>(buildDefaultElements);
+  const [elements, setElements] = useState<BfOsdElement[]>(() => buildDefaultElements());
   const [videoSystem, setVideoSystem] = useState<VideoSystem>("PAL");
-  const [activePage, setActivePage] = useState(0);
+  const [profileCount, setProfileCount] = useState(OSD_PROFILE_COUNT);
+  const [activeProfile, setActiveProfile] = useState(1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showCommitButton, setShowCommitButton] = useState(false);
   const [fontProgress, setFontProgress] = useState<{ done: number; total: number } | null>(null);
   const fontInputRef = useRef<HTMLInputElement>(null);
+  // The config last read from (or written to) the FC. Saves diff against it:
+  // only changed elements are written, and the general block is round-tripped
+  // from it so units and alarm thresholds keep their FC values.
+  const fcConfig = useRef<MspOsdConfig | null>(null);
 
   // ── Element operations ──────────────────────────────────────
 
@@ -60,13 +62,14 @@ export function BfOsdEditorPanel() {
   );
 
   const toggleVisibility = useCallback((id: number) => {
+    const bit = 1 << (activeProfile - 1);
     setElements((prev) =>
-      prev.map((el) => (el.id === id ? { ...el, visible: !el.visible } : el)),
+      prev.map((el) => (el.id === id ? { ...el, profiles: el.profiles ^ bit } : el)),
     );
-  }, []);
+  }, [activeProfile]);
 
   const resetAll = useCallback(() => {
-    setElements(buildDefaultElements());
+    setElements((prev) => buildDefaultElements(prev.length));
     setSelectedId(null);
     toast("Reset all elements to defaults", "info");
   }, [toast]);
@@ -84,14 +87,12 @@ export function BfOsdEditorPanel() {
     setError(null);
     try {
       const cfg = await protocol.getOsdConfig();
-      // Element positions arrive in enum order — index maps to the element id.
-      setElements(BF_OSD_ELEMENT_DEFS.map((def, i) => {
-        const pos = cfg.items[i]?.position;
-        return pos !== undefined
-          ? decodePosition(pos, def)
-          : { id: def.id, name: def.name, shortLabel: def.shortLabel, x: def.defaultX, y: def.defaultY, page: 0, visible: false };
-      }));
-      setVideoSystem(CODE_TO_VS(cfg.videoSystem));
+      // Positions arrive in `osd_items_e` order: the index is the element id.
+      setElements(cfg.items.map((item, id) => decodePosition(item.position, id)));
+      setVideoSystem(videoSystemFromCode(cfg.videoSystem));
+      setProfileCount(Math.min(OSD_PROFILE_COUNT, cfg.osdProfileCount));
+      setActiveProfile(Math.min(OSD_PROFILE_COUNT, cfg.osdProfileCount, cfg.osdProfileIndex));
+      fcConfig.current = cfg;
       setHasLoaded(true);
       toast("OSD config loaded", "success");
     } catch (err) {
@@ -107,16 +108,35 @@ export function BfOsdEditorPanel() {
     const protocol = getSelectedDrone()?.protocol;
     if (!protocol?.writeOsdLayout) {
       toast("OSD layout saved (demo mode)", "success");
-      setShowCommitButton(true);
+      return;
+    }
+    const fc = fcConfig.current;
+    if (!fc) {
+      toast("Read the OSD config from the flight controller before saving", "error");
+      return;
+    }
+    const items = elements
+      .map((el) => ({ index: el.id, position: encodePosition(el) }))
+      .filter((it) => it.position !== fc.items[it.index]?.position);
+    const videoCode = VIDEO_SYSTEM_CODES[videoSystem];
+    const general = videoCode !== fc.videoSystem
+      ? {
+        videoSystem: videoCode, units: fc.units, rssiAlarm: fc.rssiAlarm,
+        capacityWarning: fc.capacityWarning, altAlarm: fc.altAlarm, enabledWarnings: fc.enabledWarnings,
+      }
+      : undefined;
+    if (items.length === 0 && !general) {
+      toast("No OSD changes to save", "info");
       return;
     }
     setSaving(true);
     try {
-      const items = elements.map((el) => ({ index: el.id, position: encodePosition(el) }));
-      const r = await protocol.writeOsdLayout(items, VS_TO_CODE[videoSystem]);
+      const r = await protocol.writeOsdLayout(items, general);
       if (r.success) {
-        setShowCommitButton(true);
-        toast("OSD layout saved to flight controller", "success");
+        const nextItems = fc.items.map((it) => ({ ...it }));
+        for (const it of items) nextItems[it.index] = { position: it.position };
+        fcConfig.current = { ...fc, items: nextItems, videoSystem: videoCode };
+        toast(`Saved ${items.length} OSD element${items.length === 1 ? "" : "s"} to flight controller`, "success");
       } else {
         toast(r.message, "error");
       }
@@ -147,29 +167,6 @@ export function BfOsdEditorPanel() {
     }
   }, [getSelectedDrone, toast]);
 
-  // ── Commit to EEPROM ────────────────────────────────────────
-
-  const handleCommitFlash = useCallback(async () => {
-    const drone = getSelectedDrone();
-    if (!drone) {
-      setShowCommitButton(false);
-      toast("Written to EEPROM (demo mode)", "success");
-      return;
-    }
-    try {
-      const result = await drone.protocol.commitParamsToFlash();
-      if (result.success) {
-        setShowCommitButton(false);
-        toast("Written to EEPROM — persists after reboot", "success");
-      } else {
-        toast("Failed to write to EEPROM", "error");
-      }
-    } catch (err) {
-      console.error("[BfOSD] commitParamsToFlash error:", err);
-      toast("Failed to write to EEPROM", "error");
-    }
-  }, [getSelectedDrone, toast]);
-
   // ── Render ────────────────────────────────────────────────
 
   return (
@@ -186,16 +183,9 @@ export function BfOsdEditorPanel() {
           error={error}
         >
           {hasLoaded && (
-            <div className="flex items-center gap-2">
-              <Button variant="primary" size="sm" icon={<Save size={12} />} onClick={handleSave} loading={saving} disabled={saving}>
-                Save
-              </Button>
-              {showCommitButton && (
-                <Button variant="secondary" size="sm" icon={<HardDrive size={12} />} onClick={handleCommitFlash}>
-                  Write to EEPROM
-                </Button>
-              )}
-            </div>
+            <Button variant="primary" size="sm" icon={<Save size={12} />} onClick={handleSave} loading={saving} disabled={saving}>
+              Save
+            </Button>
           )}
         </PanelHeader>
 
@@ -206,19 +196,19 @@ export function BfOsdEditorPanel() {
               <Select label="Video System" options={VIDEO_SYSTEM_OPTIONS} value={videoSystem} onChange={(v) => setVideoSystem(v as VideoSystem)} />
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-text-secondary mr-1">Page:</span>
-              {[0, 1, 2, 3].map((p) => (
+              <span className="text-xs text-text-secondary mr-1">OSD profile:</span>
+              {Array.from({ length: profileCount }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
-                  onClick={() => setActivePage(p)}
+                  onClick={() => setActiveProfile(p)}
                   className={cn(
                     "w-7 h-7 text-xs font-mono transition-colors",
-                    activePage === p
+                    activeProfile === p
                       ? "bg-accent-primary text-white"
                       : "bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary/80",
                   )}
                 >
-                  {p + 1}
+                  {p}
                 </button>
               ))}
             </div>
@@ -251,15 +241,16 @@ export function BfOsdEditorPanel() {
           <div className="flex gap-4 flex-1 min-h-0">
             <BfOsdGrid
               elements={elements}
-              activePage={activePage}
+              activeProfile={activeProfile}
+              profileCount={profileCount}
               videoSystem={videoSystem}
               selectedId={selectedId}
               onSelectElement={setSelectedId}
               onUpdateElement={updateElement}
-              onToggleVisibility={toggleVisibility}
             />
             <BfOsdElementList
               elements={elements}
+              activeProfile={activeProfile}
               selectedId={selectedId}
               onSelectElement={setSelectedId}
               onToggleVisibility={toggleVisibility}

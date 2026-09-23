@@ -1,91 +1,107 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
-import { SlidersHorizontal, Save, RotateCcw, HardDrive, Radio } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { SlidersHorizontal, Save, RotateCcw, Radio, Plus, Trash2 } from "lucide-react";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
-import { AdjustmentRangeSlider, stepToPwm, pwmToStep, TOTAL_STEPS } from "./AdjustmentRangeSlider";
-import { ADJUSTMENT_FUNCTIONS, AUX_CHANNELS, ADJUSTMENT_SLOT_COUNT, buildAdjustmentParamNames } from "./adjustment-constants";
+import type { MspAdjustmentRange } from "@/lib/protocol/types";
+import { AdjustmentRangeSlider, stepToPwm, pwmToStep } from "./AdjustmentRangeSlider";
+import { ADJUSTMENT_FUNCTIONS, AUX_CHANNELS, adjustmentFunctionLabel } from "./adjustment-constants";
 
-const paramNames = buildAdjustmentParamNames();
+/** Betaflight MAX_ADJUSTMENT_RANGE_COUNT. */
+const MAX_ADJUSTMENTS = 30;
+
+const clampPwm = (pwm: number) => Math.max(900, Math.min(2100, pwm));
 
 export function AdjustmentsPanel() {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
-  const [saving, setSaving] = useState(false);
   const scrollRef = usePanelScroll("adjustments");
 
-  const {
-    params, loading, error, dirtyParams, hasRamWrites,
-    loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
-  } = usePanelParams({ paramNames, panelId: "adjustments", autoLoad: true });
-  useUnsavedGuard(dirtyParams.size > 0);
+  const [ranges, setRanges] = useState<MspAdjustmentRange[]>([]);
+  const [original, setOriginal] = useState<MspAdjustmentRange[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const connected = !!getSelectedProtocol();
-  const hasDirty = dirtyParams.size > 0;
+  const canSave = !!getSelectedProtocol()?.setAdjustmentRanges;
+  const hasDirty = useMemo(() => JSON.stringify(ranges) !== JSON.stringify(original), [ranges, original]);
+  useUnsavedGuard(hasDirty);
 
   const rcBuffer = useTelemetryStore((s) => s.rc);
   const latestRc = rcBuffer.latest();
 
-  const p = (name: string, fallback = 0) => String(params.get(name) ?? fallback);
-  const pNum = (name: string, fallback = 0) => Number(params.get(name) ?? fallback);
-
-  const handleEnableToggle = useCallback((slotIndex: number, currentlyEnabled: boolean) => {
-    if (currentlyEnabled) {
-      setLocalValue(`BF_ADJ${slotIndex}_ENABLE`, 0);
-      setLocalValue(`BF_ADJ${slotIndex}_RANGE_LOW`, 900);
-      setLocalValue(`BF_ADJ${slotIndex}_RANGE_HIGH`, 900);
-    } else {
-      setLocalValue(`BF_ADJ${slotIndex}_ENABLE`, 1);
-      const low = pNum(`BF_ADJ${slotIndex}_RANGE_LOW`);
-      const high = pNum(`BF_ADJ${slotIndex}_RANGE_HIGH`);
-      if (low === high) {
-        setLocalValue(`BF_ADJ${slotIndex}_RANGE_LOW`, 1300);
-        setLocalValue(`BF_ADJ${slotIndex}_RANGE_HIGH`, 1700);
-      }
+  const read = useCallback(async () => {
+    const protocol = getSelectedProtocol();
+    if (!protocol?.getAdjustmentRanges) {
+      setError("Adjustment ranges are not available on this connection");
+      return;
     }
-  }, [setLocalValue, pNum]);
+    setLoading(true);
+    setError(null);
+    try {
+      const slots = (await protocol.getAdjustmentRanges()).filter((r) => r.rangeStart < r.rangeEnd);
+      setRanges(slots);
+      setOriginal(slots.map((r) => ({ ...r })));
+      setHasLoaded(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read adjustment ranges");
+    } finally {
+      setLoading(false);
+    }
+  }, [getSelectedProtocol]);
+
+  const readRef = useRef(read);
+  readRef.current = read;
+  useEffect(() => { readRef.current(); }, []);
 
   async function handleSave() {
+    const protocol = getSelectedProtocol();
+    if (!protocol?.setAdjustmentRanges) return;
     setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok);
+    try {
+      const result = await protocol.setAdjustmentRanges(ranges);
+      if (result.success) {
+        setOriginal(ranges.map((r) => ({ ...r })));
+        toast("Adjustment ranges saved to the flight controller", "success");
+      } else {
+        toast(result.message || "Failed to save adjustment ranges", "error");
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Failed to save adjustment ranges", "error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleRevert() {
-    revertAll();
+    setRanges(original.map((r) => ({ ...r })));
     toast("Reverted to FC values", "info");
   }
+
+  const update = (index: number, patch: Partial<MspAdjustmentRange>) =>
+    setRanges((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+
+  const addAdjustment = () => {
+    if (ranges.length >= MAX_ADJUSTMENTS) return;
+    setRanges((prev) => [...prev, {
+      slotIndex: 0, auxChannelIndex: 0, rangeStart: 1300, rangeEnd: 1700, adjustmentFunction: 0, auxSwitchChannelIndex: 0,
+    }]);
+  };
 
   const getAuxPwm = useCallback((auxChannelIndex: number): number => {
     if (!latestRc) return 0;
     return latestRc.channels[auxChannelIndex + 4] ?? 0;
   }, [latestRc]);
-
-  const sortedFunctions = useMemo(() => {
-    const copy = [...ADJUSTMENT_FUNCTIONS];
-    copy.sort((a, b) => a.label.localeCompare(b.label));
-    return copy;
-  }, []);
 
   return (
     <ArmedLockOverlay>
@@ -96,16 +112,16 @@ export function AdjustmentsPanel() {
           subtitle="In-flight parameter adjustment via RC channels"
           icon={<SlidersHorizontal size={16} />}
           loading={loading}
-          loadProgress={loadProgress}
+          loadProgress={null}
           hasLoaded={hasLoaded}
-          onRead={refresh}
+          onRead={read}
           connected={connected}
           error={error}
         />
 
         <p className="text-xs text-text-tertiary">
           Assign RC channel ranges to adjust PID, rate, and other parameters in flight.
-          Each slot maps a switch channel (enable range) and an adjustment channel (value).
+          Each adjustment maps a switch channel (activation range) and an adjustment channel (value).
         </p>
 
         {/* Live RC channel preview */}
@@ -126,15 +142,10 @@ export function AdjustmentsPanel() {
                   <div key={i} className="space-y-1">
                     <div className="flex justify-between text-[10px]">
                       <span className="text-text-secondary">AUX {i + 1}</span>
-                      <span className="font-mono text-accent-primary tabular-nums">
-                        {pwm > 0 ? pwm : "\u2014"}
-                      </span>
+                      <span className="font-mono text-accent-primary tabular-nums">{pwm > 0 ? pwm : "\u2014"}</span>
                     </div>
                     <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-accent-primary rounded-full transition-all"
-                        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-                      />
+                      <div className="h-full bg-accent-primary rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
                     </div>
                   </div>
                 );
@@ -143,125 +154,69 @@ export function AdjustmentsPanel() {
           </div>
         )}
 
-        {/* Adjustment slots */}
         {hasLoaded && (
           <div className="space-y-3">
-            {Array.from({ length: ADJUSTMENT_SLOT_COUNT }, (_, i) => {
-              const enabled = pNum(`BF_ADJ${i}_ENABLE`) === 1;
-              const rangeLow = pNum(`BF_ADJ${i}_RANGE_LOW`, 900);
-              const rangeHigh = pNum(`BF_ADJ${i}_RANGE_HIGH`, 2100);
-              const auxChannel = pNum(`BF_ADJ${i}_CHANNEL`);
-              const activePwm = getAuxPwm(auxChannel);
-
-              return (
-                <div
-                  key={i}
-                  className={cn(
-                    "border border-border-default bg-bg-secondary p-4 space-y-3 transition-opacity",
-                    !enabled && "opacity-50",
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={enabled}
-                        onChange={() => handleEnableToggle(i, enabled)}
-                        className="accent-accent-primary w-4 h-4"
-                      />
-                      <span className="text-xs font-medium text-text-primary">Slot {i}</span>
-                    </label>
-                    {enabled && (
-                      <span className="text-[10px] text-text-tertiary">
-                        {ADJUSTMENT_FUNCTIONS.find(f => f.value === p(`BF_ADJ${i}_FUNCTION`))?.label ?? "Unknown"}
-                      </span>
-                    )}
-                  </div>
-
-                  {enabled && (
-                    <>
-                      <div className="grid grid-cols-[1fr_1fr_1fr] gap-3">
-                        <div>
-                          <label className="text-[10px] text-text-tertiary block mb-1">When Channel</label>
-                          <Select
-                            options={AUX_CHANNELS}
-                            value={p(`BF_ADJ${i}_CHANNEL`)}
-                            onChange={(v) => setLocalValue(`BF_ADJ${i}_CHANNEL`, Number(v))}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-text-tertiary block mb-1">Apply Function</label>
-                          <Select
-                            options={sortedFunctions}
-                            value={p(`BF_ADJ${i}_FUNCTION`)}
-                            onChange={(v) => setLocalValue(`BF_ADJ${i}_FUNCTION`, Number(v))}
-                            searchable
-                            searchPlaceholder="Search functions..."
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-text-tertiary block mb-1">Via Channel</label>
-                          <Select
-                            options={AUX_CHANNELS}
-                            value={p(`BF_ADJ${i}_VIA_CHANNEL`)}
-                            onChange={(v) => setLocalValue(`BF_ADJ${i}_VIA_CHANNEL`, Number(v))}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] text-text-secondary">
-                          <span>{rangeLow} \u00B5s</span>
-                          <span className="text-text-tertiary">Activation Range</span>
-                          <span>{rangeHigh} \u00B5s</span>
-                        </div>
-                        <AdjustmentRangeSlider
-                          start={pwmToStep(Math.max(900, Math.min(2100, rangeLow)))}
-                          end={pwmToStep(Math.max(900, Math.min(2100, rangeHigh)))}
-                          activePwm={activePwm}
-                          onChange={(startStep, endStep) => {
-                            setLocalValue(`BF_ADJ${i}_RANGE_LOW`, stepToPwm(startStep));
-                            setLocalValue(`BF_ADJ${i}_RANGE_HIGH`, stepToPwm(endStep));
-                          }}
-                          dirty={
-                            dirtyParams.has(`BF_ADJ${i}_RANGE_LOW`) ||
-                            dirtyParams.has(`BF_ADJ${i}_RANGE_HIGH`)
-                          }
-                        />
-                      </div>
-                    </>
-                  )}
+            {ranges.length === 0 && (
+              <p className="text-center py-4 text-text-tertiary text-xs">No adjustments configured.</p>
+            )}
+            {ranges.map((r, i) => (
+              <div key={i} className="border border-border-default bg-bg-secondary p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-text-primary">Adjustment {i + 1}</span>
+                  <span className="text-[10px] text-text-tertiary">{adjustmentFunctionLabel(r.adjustmentFunction)}</span>
+                  <div className="flex-1" />
+                  <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => setRanges((prev) => prev.filter((_, j) => j !== i))} />
                 </div>
-              );
-            })}
+                <div className="grid grid-cols-[1fr_1fr_1fr] gap-3">
+                  <div>
+                    <label className="text-[10px] text-text-tertiary block mb-1">When Channel</label>
+                    <Select options={AUX_CHANNELS} value={String(r.auxChannelIndex)} onChange={(v) => update(i, { auxChannelIndex: Number(v) })} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-text-tertiary block mb-1">Apply Function</label>
+                    <Select
+                      options={ADJUSTMENT_FUNCTIONS}
+                      value={String(r.adjustmentFunction)}
+                      onChange={(v) => update(i, { adjustmentFunction: Number(v) })}
+                      searchable
+                      searchPlaceholder="Search functions..."
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-text-tertiary block mb-1">Via Channel</label>
+                    <Select options={AUX_CHANNELS} value={String(r.auxSwitchChannelIndex)} onChange={(v) => update(i, { auxSwitchChannelIndex: Number(v) })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] text-text-secondary">
+                    <span>{r.rangeStart} µs</span>
+                    <span className="text-text-tertiary">Activation Range</span>
+                    <span>{r.rangeEnd} µs</span>
+                  </div>
+                  <AdjustmentRangeSlider
+                    start={pwmToStep(clampPwm(r.rangeStart))}
+                    end={pwmToStep(clampPwm(r.rangeEnd))}
+                    activePwm={getAuxPwm(r.auxChannelIndex)}
+                    onChange={(startStep, endStep) => update(i, { rangeStart: stepToPwm(startStep), rangeEnd: stepToPwm(endStep) })}
+                    dirty={JSON.stringify(r) !== JSON.stringify(original[i])}
+                  />
+                </div>
+              </div>
+            ))}
+            <Button variant="secondary" size="sm" icon={<Plus size={12} />} onClick={addAdjustment} disabled={ranges.length >= MAX_ADJUSTMENTS}>
+              Add Adjustment
+            </Button>
           </div>
         )}
 
-        {/* Available functions reference */}
-        <div className="border border-border-default bg-bg-secondary p-4">
-          <h3 className="text-xs font-medium text-text-primary mb-2">Available Functions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-0.5">
-            {ADJUSTMENT_FUNCTIONS.map((f) => (
-              <span key={f.value} className="text-[10px] text-text-tertiary font-mono">
-                {f.value.padStart(2, "\u2007")}: {f.label}
-              </span>
-            ))}
-          </div>
-        </div>
-
         {/* Save / Revert */}
         <div className="flex items-center gap-3 pt-2 pb-4">
-          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected} loading={saving} onClick={handleSave}>
+          <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty || !connected || !canSave} loading={saving} onClick={handleSave}>
             Save to Flight Controller
           </Button>
           <Button variant="secondary" size="lg" icon={<RotateCcw size={14} />} disabled={!hasDirty} onClick={handleRevert}>
             Revert
           </Button>
-          {hasRamWrites && (
-            <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} onClick={handleFlash}>
-              Write to Flash
-            </Button>
-          )}
           {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
           {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
         </div>

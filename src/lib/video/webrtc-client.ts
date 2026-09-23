@@ -60,6 +60,18 @@ export {
   mungeForLowLatency,
 } from "./webrtc-helpers";
 
+/** One-shot hooks run when a connection is torn down through closePeerConnection. */
+const closeHooks = new WeakMap<RTCPeerConnection, () => void>();
+
+/**
+ * Run `hook` once when `pc` is torn down by {@link closePeerConnection}.
+ * `pc.close()` fires no event, so a per-connection resource on the server
+ * (the WHEP session at `Location`) is released from here.
+ */
+export function onPeerConnectionClose(pc: RTCPeerConnection, hook: () => void): void {
+  closeHooks.set(pc, hook);
+}
+
 /**
  * Tear down a PeerConnection cleanly across browsers.
  *
@@ -105,4 +117,9 @@ export function closePeerConnection(target: RTCPeerConnection | null): void {
   try {
     target.close();
   } catch { /* noop */ }
+  const hook = closeHooks.get(target);
+  if (hook) {
+    closeHooks.delete(target);
+    try { hook(); } catch { /* noop */ }
+  }
 }

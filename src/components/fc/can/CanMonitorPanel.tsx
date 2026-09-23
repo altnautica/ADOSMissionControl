@@ -11,10 +11,14 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo, useEffect, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { Activity, Power, Trash2, Cpu } from "lucide-react";
 import { cn, isDemoMode } from "@/lib/utils";
 import { useCanMonitorStore } from "@/stores/can-monitor-store";
+import { useDroneManager } from "@/stores/drone-manager";
+import { useClockTick } from "@/lib/agent/freshness";
+import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 import { getCanIdHint } from "@/lib/can/known-ids";
 // Type-only imports: the mock module itself is loaded lazily in the demo-gated
 // effect below so it is never statically bundled into production builds.
@@ -49,6 +53,67 @@ export function CanMonitorPanel() {
   const clear = useCanMonitorStore((s) => s.clear);
   const totalFrames = useCanMonitorStore((s) => s.totalFrames);
   const fps = useCanMonitorStore((s) => s.framesPerSecond);
+  const lastTallyAt = useCanMonitorStore((s) => s._lastTallyAt);
+  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const { toast } = useToast();
+  const [bus, setBus] = useState("1");
+  const [starting, setStarting] = useState(false);
+  // True while this panel holds CAN forwarding open on the FC, so Stop and
+  // unmount only turn off what this panel turned on.
+  const forwardingRef = useRef(false);
+
+  // The rate is recomputed only when a frame arrives; once frames stop, the
+  // last rate would stay on screen forever. Re-evaluate on the shared clock
+  // and show 0 after two seconds without a tally.
+  useClockTick();
+  const liveFps = Date.now() - lastTallyAt > 2000 ? 0 : fps;
+
+  // ArduPilot emits CAN_FRAME only while a GCS has forwarding enabled on a
+  // bus, so Start asks the FC for it and Capturing is shown only after the
+  // FC acknowledged.
+  const stopForwarding = useCallback(() => {
+    if (!forwardingRef.current) return;
+    forwardingRef.current = false;
+    void getSelectedProtocol()?.enableCanForward?.(0).catch(() => {});
+  }, [getSelectedProtocol]);
+
+  const toggleCapture = useCallback(async () => {
+    if (enabled) {
+      stopForwarding();
+      setEnabled(false);
+      return;
+    }
+    if (isDemoMode()) { setEnabled(true); return; }
+    const protocol = getSelectedProtocol();
+    if (!protocol?.enableCanForward) {
+      toast("This connection cannot forward CAN frames", "error");
+      return;
+    }
+    setStarting(true);
+    try {
+      const result = await protocol.enableCanForward(Number(bus));
+      if (!result.success) {
+        toast(`FC refused CAN forwarding on bus ${bus}: ${result.message}`, "error");
+        return;
+      }
+      forwardingRef.current = true;
+      setEnabled(true);
+    } catch {
+      toast("CAN forwarding request failed", "error");
+    } finally {
+      setStarting(false);
+    }
+  }, [enabled, bus, getSelectedProtocol, setEnabled, stopForwarding, toast]);
+
+  // Unmount only: a re-render must never tear forwarding down.
+  const stopForwardingRef = useRef(stopForwarding);
+  stopForwardingRef.current = stopForwarding;
+  useEffect(() => () => {
+    if (!forwardingRef.current) return;
+    stopForwardingRef.current();
+    useCanMonitorStore.getState().setEnabled(false);
+  }, []);
+
   const framesBuffer = useCanMonitorStore((s) => s.frames);
   const idCounts = useCanMonitorStore((s) => s.idCounts);
 
@@ -107,17 +172,28 @@ export function CanMonitorPanel() {
             <Trash2 size={12} />
             Clear
           </button>
+          {!demo && (
+            <div className="w-24">
+              <Select
+                value={bus}
+                onChange={setBus}
+                disabled={enabled || starting}
+                options={[{ value: "1", label: "Bus 1" }, { value: "2", label: "Bus 2" }]}
+              />
+            </div>
+          )}
           <button
-            onClick={() => setEnabled(!enabled)}
+            onClick={toggleCapture}
+            disabled={starting}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors",
+              "flex items-center gap-1.5 px-3 py-1 text-xs rounded transition-colors disabled:opacity-50",
               enabled
                 ? "bg-status-success/20 text-status-success hover:bg-status-success/30"
                 : "bg-bg-tertiary text-text-secondary hover:bg-bg-secondary",
             )}
           >
             <Power size={12} />
-            {enabled ? "Capturing" : "Start"}
+            {enabled ? "Capturing (Stop)" : starting ? "Starting..." : "Start"}
           </button>
         </div>
       </div>
@@ -136,7 +212,7 @@ export function CanMonitorPanel() {
             <Activity size={11} />
             <span className="text-[10px] uppercase tracking-wider font-medium">Frames/sec</span>
           </div>
-          <p className="text-lg font-mono font-semibold text-text-primary">{fps}</p>
+          <p className="text-lg font-mono font-semibold text-text-primary">{liveFps}</p>
         </div>
         <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
           <div className="flex items-center gap-1.5 text-text-tertiary mb-1">
@@ -219,7 +295,7 @@ export function CanMonitorPanel() {
             <div className="text-center py-12">
               <p className="text-xs text-text-tertiary">Waiting for CAN frames...</p>
               <p className="text-[10px] text-text-tertiary mt-1">
-                Requires a flight controller with CAN passthrough enabled (CAN_P1_DRIVER, CAN_D1_PROTOCOL = MAVLink)
+                Frames arrive only while forwarding is on. The selected bus needs a CAN driver enabled on the flight controller (CAN_P1_DRIVER / CAN_P2_DRIVER non-zero).
               </p>
             </div>
           ) : (

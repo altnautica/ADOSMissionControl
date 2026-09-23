@@ -5,7 +5,7 @@
  * Renders a multi-flight logbook A4 portrait with:
  *  - Cover (jurisdiction display name + regulator + regulation ref)
  *  - Pilot + operator block
- *  - Per-flight rows table (date, drone, reg, duration, distance, max alt, status)
+ *  - Per-flight rows table (date, drone, pilot, reg, duration, distance, max alt, status)
  *  - Per-period summary (total flights, total hours, total distance)
  *  - Retention banner footer
  *
@@ -22,6 +22,7 @@ import type {
   AircraftRecord,
 } from "@/lib/types";
 import type { JurisdictionSpec } from "../../jurisdictions";
+import { resolvePilot, resolveAircraftIdentity, type ResolvedPilot } from "../../field-reader";
 
 const tableStyles = StyleSheet.create({
   table: {
@@ -53,14 +54,15 @@ const tableStyles = StyleSheet.create({
     color: "#0a0a0f",
     fontFamily: "Courier",
   },
-  colDate: { width: "18%" },
-  colDrone: { width: "14%" },
-  colReg: { width: "14%" },
-  colDuration: { width: "10%" },
-  colDistance: { width: "12%" },
-  colAlt: { width: "10%" },
-  colStatus: { width: "12%" },
-  colTakeoff: { width: "10%" },
+  colDate: { width: "14%" },
+  colDrone: { width: "12%" },
+  colPilot: { width: "14%" },
+  colReg: { width: "12%" },
+  colDuration: { width: "8%" },
+  colDistance: { width: "10%" },
+  colAlt: { width: "8%" },
+  colStatus: { width: "10%" },
+  colTakeoff: { width: "12%" },
   summary: {
     marginTop: 12,
     flexDirection: "row",
@@ -106,6 +108,32 @@ function retentionLabel(months: number): string {
   return `Retain this record for ${months} months.`;
 }
 
+function pilotName(p: ResolvedPilot): string {
+  return [p.firstName, p.lastName].filter(Boolean).join(" ");
+}
+
+/**
+ * Pilot block for the cover: the pilot who flew these records. Each record
+ * carries its own arm-time pilot snapshot, so when the records disagree the
+ * block defers to the per-flight Pilot column instead of naming one of them.
+ */
+function coverPilot(records: FlightRecord[], operator: OperatorProfile): ResolvedPilot | null {
+  if (records.length === 0) {
+    return {
+      firstName: operator.pilotFirstName,
+      lastName: operator.pilotLastName,
+      licenseNumber: operator.pilotLicenseNumber,
+      licenseIssuer: operator.pilotLicenseIssuer,
+    };
+  }
+  const pilots = records.map((r) => resolvePilot(r, operator));
+  const first = pilots[0];
+  const same = pilots.every(
+    (p) => pilotName(p) === pilotName(first) && p.licenseNumber === first.licenseNumber,
+  );
+  return same ? first : null;
+}
+
 export function GenericLogbookTemplate({
   spec,
   records,
@@ -115,11 +143,12 @@ export function GenericLogbookTemplate({
 }: GenericLogbookProps) {
   const totalSeconds = records.reduce((acc, r) => acc + (r.duration ?? 0), 0);
   const totalMeters = records.reduce((acc, r) => acc + (r.distance ?? 0), 0);
+  const pilot = coverPilot(records, operator);
 
   return (
     <Document
       title={`${spec.displayName} Logbook`}
-      author={operator.operatorName ?? operator.pilotFirstName ?? "ADOS Mission Control"}
+      author={operator.operatorName ?? (pilot ? pilotName(pilot) : undefined) ?? "ADOS Mission Control"}
     >
       <Page size="A4" style={baseStyles.page}>
         {/* Cover */}
@@ -137,12 +166,12 @@ export function GenericLogbookTemplate({
               <View style={baseStyles.row}>
                 <Text style={baseStyles.rowLabel}>Pilot</Text>
                 <Text style={baseStyles.rowValue}>
-                  {[operator.pilotFirstName, operator.pilotLastName].filter(Boolean).join(" ") || "—"}
+                  {pilot ? pilotName(pilot) || "—" : "Per flight (see table)"}
                 </Text>
               </View>
               <View style={baseStyles.row}>
                 <Text style={baseStyles.rowLabel}>License</Text>
-                <Text style={baseStyles.rowValue}>{operator.pilotLicenseNumber ?? "—"}</Text>
+                <Text style={baseStyles.rowValue}>{pilot ? pilot.licenseNumber ?? "—" : "Per flight"}</Text>
               </View>
               <View style={baseStyles.row}>
                 <Text style={baseStyles.rowLabel}>Class</Text>
@@ -177,6 +206,7 @@ export function GenericLogbookTemplate({
             <View style={tableStyles.headerRow}>
               <Text style={[tableStyles.th, tableStyles.colDate]}>Date</Text>
               <Text style={[tableStyles.th, tableStyles.colDrone]}>Drone</Text>
+              <Text style={[tableStyles.th, tableStyles.colPilot]}>Pilot</Text>
               <Text style={[tableStyles.th, tableStyles.colReg]}>Reg</Text>
               <Text style={[tableStyles.th, tableStyles.colDuration]}>Duration</Text>
               <Text style={[tableStyles.th, tableStyles.colDistance]}>Distance</Text>
@@ -186,14 +216,16 @@ export function GenericLogbookTemplate({
             </View>
             {records.map((r) => {
               const aircraft = aircraftIndex[r.droneId];
+              const rowPilot = resolvePilot(r, operator);
               return (
                 <View key={r.id} style={tableStyles.bodyRow} wrap={false}>
                   <Text style={[tableStyles.td, tableStyles.colDate]}>
                     {fmtDate(r.startTime ?? r.date)}
                   </Text>
                   <Text style={[tableStyles.td, tableStyles.colDrone]}>{r.droneName}</Text>
+                  <Text style={[tableStyles.td, tableStyles.colPilot]}>{pilotName(rowPilot) || "—"}</Text>
                   <Text style={[tableStyles.td, tableStyles.colReg]}>
-                    {aircraft?.registrationNumber ?? r.aircraftRegistration ?? "—"}
+                    {resolveAircraftIdentity(r, aircraft).registration ?? "—"}
                   </Text>
                   <Text style={[tableStyles.td, tableStyles.colDuration]}>
                     {fmtDuration(r.duration)}
@@ -239,7 +271,7 @@ export function GenericLogbookTemplate({
           </Text>
           <View style={baseStyles.signatureBox}>
             <Text style={baseStyles.signatureLabel}>
-              Signature · {operator.pilotFirstName ?? "—"} {operator.pilotLastName ?? ""}
+              Signature · {pilot ? pilotName(pilot) || "—" : "—"}
             </Text>
           </View>
         </View>

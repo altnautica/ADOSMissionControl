@@ -9,12 +9,24 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
 import { useDroneManager } from "./drone-manager";
+import { useUploadReceiptsStore, contentHash } from "./upload-receipts-store";
 
 export interface RallyPoint {
   id: string;
   lat: number;
   lon: number;
   alt: number; // meters
+}
+
+/** Outcome of a rally transfer, with the reason on failure. */
+export interface RallyTransferResult {
+  success: boolean;
+  message: string;
+}
+
+/** Hash of the rally content an upload sends (ids are local handles). */
+export function rallyContentHash(points: readonly RallyPoint[]): string {
+  return contentHash(points.map((p) => [p.lat, p.lon, p.alt]));
 }
 
 /**
@@ -30,8 +42,16 @@ interface RallyStoreState {
   removePoint: (id: string) => void;
   updatePoint: (id: string, update: Partial<RallyPoint>) => void;
   clearPoints: () => void;
-  uploadRallyPoints: () => Promise<void>;
-  downloadRallyPoints: () => Promise<void>;
+  /** Upload every point to the selected drone and report what the FC
+   *  acknowledged; never resolves success for an unconfirmed upload. */
+  uploadRallyPoints: () => Promise<RallyTransferResult>;
+  /**
+   * Replace the local points with the selected drone's. A failed, disconnected
+   * or unsupported download leaves the local points untouched.
+   * `beforeReplace` runs just before the replacement (the caller records the
+   * undo step there, so a failed download adds none).
+   */
+  downloadRallyPoints: (beforeReplace?: () => void) => Promise<RallyTransferResult>;
 
   /** Capture rally state for the coordinated undo timeline. */
   snapshot: () => RallySnapshot;
@@ -58,27 +78,61 @@ export const useRallyStore = create<RallyStoreState>()(
   clearPoints: () => set({ points: [] }),
 
   uploadRallyPoints: async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol?.uploadRallyPoints) return;
+    const { drones, selectedDroneId } = useDroneManager.getState();
+    const protocol = selectedDroneId ? drones.get(selectedDroneId)?.protocol : undefined;
+    if (!protocol || !selectedDroneId) return { success: false, message: "No flight controller connected" };
+    if (!protocol.uploadRallyPoints) {
+      return { success: false, message: "This flight controller does not support rally points" };
+    }
     const { points } = get();
-    if (points.length === 0) return;
-    await protocol.uploadRallyPoints(
-      points.map((p) => ({ lat: p.lat, lon: p.lon, alt: p.alt })),
-    );
+    if (points.length === 0) return { success: false, message: "No rally points to upload" };
+    const hash = rallyContentHash(points);
+    let result: RallyTransferResult;
+    try {
+      const r = await protocol.uploadRallyPoints(
+        points.map((p) => ({ lat: p.lat, lon: p.lon, alt: p.alt })),
+      );
+      result = { success: r.success, message: r.message };
+    } catch (err) {
+      result = { success: false, message: err instanceof Error ? err.message : String(err) };
+    }
+    const receipts = useUploadReceiptsStore.getState();
+    if (result.success) {
+      receipts.record("rally", { droneId: selectedDroneId, contentHash: hash, at: Date.now() });
+    } else {
+      // A partial transfer leaves the FC's rally list unknown.
+      receipts.clearKindForDrone("rally", selectedDroneId);
+    }
+    return result;
   },
 
-  downloadRallyPoints: async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol?.downloadRallyPoints) return;
-    const downloaded = await protocol.downloadRallyPoints();
-    set({
-      points: downloaded.map((p, i) => ({
-        id: `rally-${Date.now()}-${i}`,
-        lat: p.lat,
-        lon: p.lon,
-        alt: p.alt,
-      })),
+  downloadRallyPoints: async (beforeReplace) => {
+    const { drones, selectedDroneId } = useDroneManager.getState();
+    const protocol = selectedDroneId ? drones.get(selectedDroneId)?.protocol : undefined;
+    if (!protocol || !selectedDroneId) return { success: false, message: "No flight controller connected" };
+    if (!protocol.downloadRallyPoints) {
+      return { success: false, message: "This flight controller does not support rally points" };
+    }
+    let downloaded: Array<{ lat: number; lon: number; alt: number }>;
+    try {
+      downloaded = await protocol.downloadRallyPoints();
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : String(err) };
+    }
+    beforeReplace?.();
+    const points = downloaded.map((p, i) => ({
+      id: `rally-${Date.now()}-${i}`,
+      lat: p.lat,
+      lon: p.lon,
+      alt: p.alt,
+    }));
+    set({ points });
+    useUploadReceiptsStore.getState().record("rally", {
+      droneId: selectedDroneId,
+      contentHash: rallyContentHash(points),
+      at: Date.now(),
     });
+    return { success: true, message: `Loaded ${points.length} rally points` };
   },
 
   snapshot: () => ({

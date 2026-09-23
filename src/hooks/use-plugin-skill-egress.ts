@@ -11,14 +11,15 @@
  * state sidecar the native control front serves at
  * `GET /api/plugins/{id}/state`. For the selected drone this hook reads the
  * locally-installed plugins (`useLocalAgentPlugins`), polls each plugin's
- * state over the LAN every {@link POLL_INTERVAL_MS}, and for every topic a
- * plugin's flight skills declare:
+ * state over the LAN every {@link POLL_INTERVAL_MS}, and:
  *
- *   1. maps the payload to a {@link PluginSkillReportedState} and pushes it to
+ *   1. for every topic a plugin's flight skills declare, maps the payload to a
+ *      {@link PluginSkillReportedState} and pushes it to
  *      `usePluginSkillHostStore` so the Skill Bar's `getState` reads the
  *      plugin's true state (never optimistic GCS state); and
- *   2. republishes the raw event on the GCS plugin event bus so the plugin's
- *      own iframe (`ctx.events.subscribe(topic)`) receives the live event.
+ *   2. republishes every published topic on the GCS plugin event bus under the
+ *      plugin's own agent-state origin, which the plugin's iframe host on this
+ *      drone forwards to the iframe (`ctx.events.subscribe(topic)`).
  *
  * Local-first only: the source hook is inert unless the operator is
  * signed out, not in demo, and holds a LAN key for the drone, so this hook
@@ -31,7 +32,7 @@ import { useEffect, useRef } from "react";
 
 import { useLocalAgentPlugins } from "@/hooks/use-local-agent-plugins";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
-import { publishPluginEvent } from "@/lib/plugins/event-bus";
+import { agentStateOrigin, publishPluginEvent } from "@/lib/plugins/event-bus";
 import {
   usePluginSkillHostStore,
   type PluginSkillReportedState,
@@ -39,11 +40,6 @@ import {
 
 /** How often to poll each plugin's published state, in ms. */
 export const POLL_INTERVAL_MS = 750;
-
-/** Synthetic source id for events this hook republishes onto the GCS event
- * bus, so a subscriber can tell a LAN-egressed event from a same-tab publish.
- * The bus does not route on it; it is bookkeeping only. */
-const EGRESS_SOURCE_ID = "agent-state-egress";
 
 /** A mapped state plus the optional badge / reason the bar overlays. */
 interface MappedState {
@@ -144,19 +140,16 @@ export function usePluginSkillEgress(droneId: string | null | undefined): void {
 
       await Promise.all(
         plugins.map(async (plugin) => {
-          // The set of topics this plugin's flight skills declare; a plugin
-          // with no state topic is skipped (nothing to feed).
-          const topics = new Set(
-            plugin.flightSkills
-              .map((s) => s.stateTopic)
-              .filter((t): t is string => typeof t === "string" && t.length > 0),
-          );
-          if (topics.size === 0) return;
-
           // State egress polls the LAN agent that hosts the plugin; only an
           // `agent`-kind bundle (a per-drone install) has one. A fleet /
           // archive plugin has no agent to poll, so it is skipped here.
           if (plugin.bundle?.kind !== "agent") return;
+          // The topics this plugin's flight skills declare feed the Skill Bar.
+          const skillTopics = new Set(
+            plugin.flightSkills
+              .map((s) => s.stateTopic)
+              .filter((t): t is string => typeof t === "string" && t.length > 0),
+          );
           const client = new PluginAgentClient(
             plugin.bundle.agentUrl,
             plugin.bundle.apiKey,
@@ -164,22 +157,24 @@ export function usePluginSkillEgress(droneId: string | null | undefined): void {
           const state = await client.getState(plugin.pluginId);
           if (cancelled || !state) return;
 
-          for (const topic of topics) {
-            const entry = state[topic];
-            if (!entry) continue;
+          const origin = agentStateOrigin(plugin.pluginId, id);
+          for (const [topic, entry] of Object.entries(state)) {
             const payload = entry.payload;
 
             // (1) Feed the Skill Bar store so getState reads the true state.
-            const mapped = mapReportedState(payload);
-            usePluginSkillHostStore.getState().pushPluginSkillState(id, topic, {
-              state: mapped.state,
-              ...(mapped.badge !== undefined ? { badge: mapped.badge } : {}),
-              ...(mapped.reason !== undefined ? { reason: mapped.reason } : {}),
-            });
+            if (skillTopics.has(topic)) {
+              const mapped = mapReportedState(payload);
+              usePluginSkillHostStore.getState().pushPluginSkillState(id, topic, {
+                state: mapped.state,
+                ...(mapped.badge !== undefined ? { badge: mapped.badge } : {}),
+                ...(mapped.reason !== undefined ? { reason: mapped.reason } : {}),
+              });
+            }
 
-            // (2) Republish onto the plugin event bus so the plugin's iframe
-            // (ctx.events.subscribe(topic)) receives the live event.
-            publishPluginEvent(topic, payload, EGRESS_SOURCE_ID);
+            // (2) Republish every topic onto the plugin event bus under the
+            // plugin's own agent-state origin; the plugin's iframe host on
+            // this drone forwards it (ctx.events.subscribe(topic)).
+            publishPluginEvent(topic, payload, origin);
           }
         }),
       );

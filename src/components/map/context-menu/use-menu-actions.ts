@@ -12,12 +12,11 @@ import { useCallback } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useGuidedStore } from "@/stores/guided-store";
-import { useRallyStore } from "@/stores/rally-store";
 import { handleFlyHere, handleLoiterHere } from "./actions/navigation";
 import { landAtPoint } from "@/lib/skills/guided-target";
 import { handlePointCamera, handleClearRoi, handleTriggerCamera } from "./actions/camera";
 import { handleSetEkfOrigin } from "./actions/home";
-import { handleAddRally, handleSetHeading } from "./actions/markers";
+import { handleSetHeading } from "./actions/markers";
 import { handleCopyCoords, handleMeasureFromDrone } from "./actions/utility";
 import type { MenuPosition, MenuReport } from "./types";
 
@@ -36,6 +35,7 @@ interface UseMenuActionsArgs {
   openOrbitPanel: () => void;
   openHomeConfirmPanel: () => void;
   openPoiInputPanel: () => void;
+  openRallyPanel: () => void;
   /** How a flight-affecting action reports what the vehicle actually did. */
   report: MenuReport;
 }
@@ -54,13 +54,12 @@ export function useMenuActions({
   openOrbitPanel,
   openHomeConfirmPanel,
   openPoiInputPanel,
+  openRallyPanel,
   report,
 }: UseMenuActionsArgs): MenuActionResult {
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const showConfirm = useGuidedStore((s) => s.showConfirm);
-  const addRally = useRallyStore((s) => s.addPoint);
-  const uploadRally = useRallyStore((s) => s.uploadRallyPoints);
 
   const dispatch = useCallback(
     (id: string): boolean => {
@@ -122,8 +121,8 @@ export function useMenuActions({
           return true;
         }
         case "add-rally": {
-          handleAddRally({ menuPos, relativeAlt, addRally, uploadRally });
-          return true;
+          openRallyPanel();
+          return false;
         }
         case "add-poi": {
           openPoiInputPanel();
@@ -160,11 +159,10 @@ export function useMenuActions({
       distLabel,
       bearingToDrone,
       showConfirm,
-      addRally,
-      uploadRally,
       openOrbitPanel,
       openHomeConfirmPanel,
       openPoiInputPanel,
+      openRallyPanel,
       report,
     ],
   );

@@ -12,6 +12,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  AGENT_CONTROL_VERB_SCOPE,
   RELAY_COMMAND_NAMES,
   RELAY_COMMAND_SCOPE,
   relayCommandValidator,
@@ -73,17 +74,51 @@ describe("relay command scope classes", () => {
     expect(requiredScopeForCommand("scan_peripherals", {})).toBe("safe_write");
   });
 
-  it("escalates a flight-shaped send_command to the flight scope", () => {
-    for (const cmd of ["arm", "takeoff", "set_mode", "flight.land", "goto", "nav_takeoff"]) {
-      expect(requiredScopeForCommand("send_command", { cmd })).toBe("flight");
+  // Every verb the agent's POST /api/command route accepts: the arms of the
+  // `match cmd` in `build_command` (crates/ados-control/src/routes/command.rs),
+  // each with the scope it must require. Update this list when that match changes.
+  const AGENT_COMMAND_VERBS: ReadonlyArray<readonly [string, string]> = [
+    ["arm", "flight"],
+    ["disarm", "flight"],
+    ["takeoff", "flight"],
+    ["land", "flight"],
+    ["rtl", "flight"],
+    ["killswitch", "flight"],
+    ["pausemission", "flight"],
+    ["resumemission", "flight"],
+    ["mode", "flight"],
+  ];
+
+  it("maps every agent control verb to its scope, and nothing more", () => {
+    for (const [cmd, scope] of AGENT_COMMAND_VERBS) {
+      expect(requiredScopeForCommand("send_command", { cmd, args: [] }), cmd).toBe(scope);
     }
+    expect(Object.keys(AGENT_CONTROL_VERB_SCOPE).sort()).toEqual(
+      AGENT_COMMAND_VERBS.map(([cmd]) => cmd).sort(),
+    );
   });
 
-  it("keeps a non-flight send_command at admin, and fails safe on a bad payload", () => {
-    expect(requiredScopeForCommand("send_command", { cmd: "get_battery" })).toBe("admin");
-    expect(requiredScopeForCommand("send_command", {})).toBe("admin");
-    expect(requiredScopeForCommand("send_command", { cmd: 123 })).toBe("admin");
-    expect(requiredScopeForCommand("send_command", null)).toBe("admin");
+  it("requires the flight scope to pause or resume a mission", () => {
+    expect(requiredScopeForCommand("send_command", { cmd: "resumemission" })).toBe("flight");
+    expect(requiredScopeForCommand("send_command", { cmd: "pausemission" })).toBe("flight");
+  });
+
+  it("matches verbs case-insensitively, as the agent lowercases them", () => {
+    expect(requiredScopeForCommand("send_command", { cmd: "ResumeMission" })).toBe("flight");
+    expect(requiredScopeForCommand("send_command", { cmd: "ARM" })).toBe("flight");
+  });
+
+  it("refuses an unknown verb or a malformed payload", () => {
+    for (const args of [
+      { cmd: "get_battery" },
+      { cmd: "constructor" },
+      { cmd: "" },
+      {},
+      { cmd: 123 },
+      null,
+    ]) {
+      expect(requiredScopeForCommand("send_command", args), JSON.stringify(args)).toBeNull();
+    }
   });
 });
 

@@ -26,6 +26,7 @@ function connectAgent() {
   useAgentConnectionStore.setState({
     agentUrl: "http://node.local:8080",
     apiKey: "KEY",
+    nodeDeviceId: "node-1",
   });
 }
 
@@ -92,7 +93,7 @@ describe("WifiClientSection without a transport", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    renderWithIntl(<WifiClientSection />);
+    renderWithIntl(<WifiClientSection nodeDeviceId="node-1" />);
 
     expect(
       screen.getByText(/Live network status needs a direct connection/),
@@ -106,7 +107,7 @@ describe("WifiClientSection with an agent attached", () => {
     connectAgent();
     stubRoutes();
 
-    renderWithIntl(<WifiClientSection />);
+    renderWithIntl(<WifiClientSection nodeDeviceId="node-1" />);
 
     await waitFor(() => expect(screen.getByText("BenchNet")).toBeTruthy());
     expect(screen.getByText("72%")).toBeTruthy();
@@ -118,7 +119,7 @@ describe("WifiClientSection with an agent attached", () => {
     connectAgent();
     stubRoutes({ status: { connected: false } });
 
-    renderWithIntl(<WifiClientSection />);
+    renderWithIntl(<WifiClientSection nodeDeviceId="node-1" />);
 
     await waitFor(() =>
       expect(
@@ -131,7 +132,7 @@ describe("WifiClientSection with an agent attached", () => {
     connectAgent();
     const { calls } = stubRoutes();
 
-    renderWithIntl(<WifiClientSection />);
+    renderWithIntl(<WifiClientSection nodeDeviceId="node-1" />);
     await waitFor(() => expect(screen.getByText("BenchNet")).toBeTruthy());
 
     fireEvent.click(screen.getByText("Scan for networks"));
@@ -163,7 +164,7 @@ describe("WifiClientSection with an agent attached", () => {
     connectAgent();
     stubRoutes({ scanStatus: 404, scanBody: { detail: "Not Found" } });
 
-    renderWithIntl(<WifiClientSection />);
+    renderWithIntl(<WifiClientSection nodeDeviceId="node-1" />);
     await waitFor(() => expect(screen.getByText("BenchNet")).toBeTruthy());
 
     fireEvent.click(screen.getByText("Scan for networks"));

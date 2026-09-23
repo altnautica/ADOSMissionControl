@@ -9,6 +9,7 @@ import type { MspSerialQueue } from '../../msp/msp-serial-queue'
 import { formatErrorMessage } from '@/lib/utils'
 import {
   INAV_MSP,
+  INAV_LIMITS,
   decodeMspWp,
   decodeMspINavSafehome,
   decodeMspINavGeozone,
@@ -29,38 +30,38 @@ import {
   translateToInavWaypoints,
   translateFromInavWaypoints,
 } from '@/lib/mission/inav-translator'
-import { NOT_CONNECTED, SAFEHOME_COUNT, GEOZONE_COUNT, decodeWpGetInfo } from './helpers'
+import { NOT_CONNECTED, decodeWpGetInfo, dv } from './helpers'
 
+/**
+ * Read the mission from the FC. Rejects when not connected or when any frame
+ * fails, so a partial or failed read never stands in for the FC's mission; an
+ * FC that holds no mission resolves `[]`.
+ */
 export async function inavDownloadMission(
   queue: MspSerialQueue | null,
   missionIndex = 0,
 ): Promise<MissionItem[]> {
-  if (!queue) return []
-  try {
-    // Switch multi-mission slot if requested
-    if (missionIndex > 0) {
-      const loadPayload = new Uint8Array([missionIndex])
-      await queue.send(INAV_MSP.MSP_WP_MISSION_LOAD, loadPayload)
-    }
-
-    // Query how many WPs are loaded
-    const infoFrame = await queue.send(INAV_MSP.MSP_WP_GETINFO)
-    const { waypointCount } = decodeWpGetInfo(infoFrame.payload)
-    if (waypointCount === 0) return []
-
-    const waypoints: INavWaypoint[] = []
-    for (let i = 0; i < waypointCount; i++) {
-      const reqPayload = new Uint8Array([i + 1]) // WP numbers are 1-based
-      const frame = await queue.send(INAV_MSP.MSP_WP, reqPayload)
-      const dv = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength)
-      waypoints.push(decodeMspWp(dv))
-    }
-
-    return translateFromInavWaypoints(waypoints)
-  } catch (err) {
-    console.warn('Mission download failed:', formatErrorMessage(err))
-    return []
+  if (!queue) throw new Error(NOT_CONNECTED.message)
+  // Switch multi-mission slot if requested
+  if (missionIndex > 0) {
+    const loadPayload = new Uint8Array([missionIndex])
+    await queue.send(INAV_MSP.MSP_WP_MISSION_LOAD, loadPayload)
   }
+
+  // Query how many WPs are loaded
+  const infoFrame = await queue.send(INAV_MSP.MSP_WP_GETINFO)
+  const { waypointCount } = decodeWpGetInfo(infoFrame.payload)
+  if (waypointCount === 0) return []
+
+  const waypoints: INavWaypoint[] = []
+  for (let i = 0; i < waypointCount; i++) {
+    const reqPayload = new Uint8Array([i + 1]) // WP numbers are 1-based
+    const frame = await queue.send(INAV_MSP.MSP_WP, reqPayload)
+    const dv = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength)
+    waypoints.push(decodeMspWp(dv))
+  }
+
+  return translateFromInavWaypoints(waypoints)
 }
 
 // ── Mission upload ───────────────────────────────────────────
@@ -102,58 +103,47 @@ export async function inavUploadMission(
 
 // ── Safehome download ─────────────────────────────────────────
 
-/** Maximum safehome slots in iNav. */
-
 /**
- * Download all safehome slots (0-15) from the FC.
- * Returns all 16 slots; disabled slots have enabled=false.
+ * Download every safehome slot the FC has (MAX_SAFE_HOMES). Disabled slots
+ * come back with enabled=false. Any failed frame fails the download, so a
+ * partial read never stands in for the FC's table.
  */
 export async function inavDownloadSafehomes(
   queue: MspSerialQueue | null,
 ): Promise<INavSafehome[]> {
-  if (!queue) return []
+  if (!queue) throw new Error('Not connected')
   const results: INavSafehome[] = []
-  try {
-    for (let i = 0; i < SAFEHOME_COUNT; i++) {
-      const payload = new Uint8Array([i])
-      const frame = await queue.send(INAV_MSP.MSP2_INAV_SAFEHOME, payload)
-      const dv = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength)
-      results.push(decodeMspINavSafehome(dv))
-    }
-    return results
-  } catch (err) {
-    console.warn('Safehome download failed:', formatErrorMessage(err))
-    return results
+  for (let i = 0; i < INAV_LIMITS.SAFEHOMES; i++) {
+    const frame = await queue.send(INAV_MSP.MSP2_INAV_SAFEHOME, new Uint8Array([i]))
+    results.push(decodeMspINavSafehome(dv(frame.payload)))
   }
+  return results
 }
 
 // ── Safehome upload ───────────────────────────────────────────
 
 /**
- * Upload all 16 safehome slots to the FC.
- * If fewer than 16 are provided the remaining slots are padded with disabled entries.
+ * Write every safehome slot the FC has. Slots past the provided list are
+ * written disabled. A failure part-way names the slots that did change.
  */
 export async function inavUploadSafehomes(
   queue: MspSerialQueue | null,
   safehomes: INavSafehome[],
 ): Promise<CommandResult> {
   if (!queue) return NOT_CONNECTED
-  try {
-    // Pad to 16 with disabled slots
-    const slots: INavSafehome[] = Array.from({ length: SAFEHOME_COUNT }, (_, i) => {
-      return safehomes[i] ?? { index: i, enabled: false, lat: 0, lon: 0 }
-    })
-
-    for (let i = 0; i < SAFEHOME_COUNT; i++) {
-      const sh = { ...slots[i], index: i }
-      const payload = encodeMspINavSetSafehome(sh)
-      await queue.send(INAV_MSP.MSP2_INAV_SET_SAFEHOME, payload)
-    }
-
-    return { success: true, resultCode: 0, message: `Uploaded ${SAFEHOME_COUNT} safehome slots` }
-  } catch (err) {
-    return { success: false, resultCode: -1, message: `Safehome upload failed: ${formatErrorMessage(err)}` }
+  if (safehomes.length > INAV_LIMITS.SAFEHOMES) {
+    return { success: false, resultCode: -1, message: `This flight controller has ${INAV_LIMITS.SAFEHOMES} safehome slots; ${safehomes.length} do not fit` }
   }
+  for (let i = 0; i < INAV_LIMITS.SAFEHOMES; i++) {
+    const sh = { ...(safehomes[i] ?? { enabled: false, lat: 0, lon: 0 }), index: i }
+    try {
+      await queue.send(INAV_MSP.MSP2_INAV_SET_SAFEHOME, encodeMspINavSetSafehome(sh))
+    } catch (err) {
+      const written = i === 0 ? 'no slots were written' : `slots 0-${i - 1} were written`
+      return { success: false, resultCode: -1, message: `Safehome slot ${i} failed (${formatErrorMessage(err)}); ${written}` }
+    }
+  }
+  return { success: true, resultCode: 0, message: `Wrote ${INAV_LIMITS.SAFEHOMES} safehome slots` }
 }
 
 // ── Geozone download ──────────────────────────────────────────
@@ -173,7 +163,7 @@ export async function inavDownloadGeozones(
   if (!queue) return { zones: [], vertices: [] }
   const zones: INavGeozone[] = []
   const vertices: INavGeozoneVertex[] = []
-  for (let i = 0; i < GEOZONE_COUNT; i++) {
+  for (let i = 0; i < INAV_LIMITS.GEOZONES; i++) {
     const zoneFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE, new Uint8Array([i]))
     const zone = decodeMspINavGeozone(new DataView(zoneFrame.payload.buffer, zoneFrame.payload.byteOffset, zoneFrame.payload.byteLength))
     if (zone.vertexCount === 0) continue
@@ -190,10 +180,17 @@ export async function inavDownloadGeozones(
 
 // ── Geozone upload ────────────────────────────────────────────
 
+/** Frame that clears a geozone slot: no vertices, so the FC treats it as unused. */
+function emptyGeozone(number: number): INavGeozone {
+  return { number, type: 0, shape: 0, minAlt: 0, maxAlt: 0, isSeaLevelRef: false, fenceAction: 0, vertexCount: 0 }
+}
+
 /**
- * Upload zones and their vertices to the FC. Each zone frame resets that
- * zone's vertices on the FC, so its vertices follow it. A circular zone sends
- * only its centre vertex, which carries the radius.
+ * Write every geozone slot the FC has. Each zone frame resets that zone's
+ * vertices on the FC, so its vertices follow it; a circular zone sends only
+ * its centre vertex, which carries the radius. Slots with no zone get an empty
+ * frame, so a zone deleted or renumbered in the editor cannot keep its old
+ * geometry on the FC.
  */
 export async function inavUploadGeozones(
   queue: MspSerialQueue | null,
@@ -201,13 +198,19 @@ export async function inavUploadGeozones(
   vertices: INavGeozoneVertex[],
 ): Promise<CommandResult> {
   if (!queue) return NOT_CONNECTED
-  if (zones.length > GEOZONE_COUNT) {
-    return { success: false, resultCode: -1, message: `Maximum ${GEOZONE_COUNT} geozones supported` }
+  const outOfRange = zones.find((z) => z.number < 0 || z.number >= INAV_LIMITS.GEOZONES)
+  if (outOfRange) {
+    return { success: false, resultCode: -1, message: `Geozone ${outOfRange.number} is outside the ${INAV_LIMITS.GEOZONES} slots this flight controller has` }
   }
+  const bySlot = new Map(zones.map((z) => [z.number, z]))
   try {
-    for (const zone of zones) {
+    for (let slot = 0; slot < INAV_LIMITS.GEOZONES; slot++) {
+      const zone = bySlot.get(slot)
+      if (!zone) {
+        await queue.send(INAV_MSP.MSP2_INAV_SET_GEOZONE, encodeMspINavSetGeozone(emptyGeozone(slot)))
+        continue
+      }
       await queue.send(INAV_MSP.MSP2_INAV_SET_GEOZONE, encodeMspINavSetGeozone(zone))
-
       const zoneVerts = vertices.filter((v) => v.geozoneId === zone.number)
       const toSend = zone.shape === GEOZONE_SHAPE_CIRCULAR ? zoneVerts.slice(0, 1) : zoneVerts
       for (const vert of toSend) {

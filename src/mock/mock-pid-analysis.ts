@@ -118,6 +118,7 @@ function buildStepEvent(
     axis,
     riseTimeMs,
     overshootPercent,
+    undershootPercent: 0,
     settlingTimeMs,
     dampingRatio,
     desired,

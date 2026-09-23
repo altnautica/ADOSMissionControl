@@ -20,6 +20,7 @@ import { ChevronDown, ChevronRight, ClipboardCopy, Bug } from "lucide-react";
 import { useState } from "react";
 
 import { useSigningStore } from "@/stores/signing-store";
+import type { SigningCounters } from "@/lib/agent/client";
 import { getOrCreateDeviceId } from "@/lib/protocol/link-id-allocator";
 
 interface Props {
@@ -112,7 +113,7 @@ interface SigningStateSubset {
   txSignedCount: number;
   rxSignedCount: number;
   lastSignedFrameAt: number | null;
-  agentCounters: { tx_signed_count: number; rx_signed_count: number; last_signed_rx_at: number | null } | null;
+  agentCounters: SigningCounters | null;
 }
 
 export function buildDiagnostics(

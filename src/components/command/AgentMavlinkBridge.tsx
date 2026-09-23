@@ -2,21 +2,16 @@
 
 /**
  * @module AgentMavlinkBridge
- * @description Automatically establishes a MAVLink connection to the ADOS Drone
- * Agent when the agent reports an FC connected. Tries three paths in order:
+ * @description The single owner of the agent FC session. While the agent is
+ * connected and reports an FC, it keeps a MAVLink (or MSP) session to that FC
+ * open: it dials through `dialAgentFc` (ticketed WebSocket, bare WebSocket,
+ * then the cloud relay), hands the session to DroneManager.addDrone() — which
+ * activates telemetry, config panels, mission planning and flight commands —
+ * and, whenever the session is missing, re-dials every 3 s with no cap.
  *
- *   1. Authenticated WebSocket — the agent's raw MAVLink proxy URL dialed with
- *      a freshly-minted one-shot ticket carried as a WebSocket subprotocol.
- *      Authentication is orthogonal to the URL: the same proxy validates the
- *      ticket subprotocol for any profile. Used when a pairing key is held.
- *   2. Legacy raw WebSocket — the same proxy URL dialed bare (no subprotocol),
- *      for an agent with no key held. An unpaired agent admits that only from
- *      its own box or a lifeline link, so off one the agent is asked first and
- *      an unpaired answer raises the pair-this-node state instead of a dial.
- *   3. MQTT relay (via the cloud relay) — works from anywhere.
- *
- * Once connected via any path, calls DroneManager.addDrone() which activates
- * all GCS features (telemetry, config panels, mission planning, flight commands).
+ * It stops only for a reason a retry cannot fix: the agent reports it needs
+ * pairing, or the operator disconnected the FC on purpose. Either lasts until
+ * the node, its FC or its link changes.
  *
  * Renders nothing — pure bridge component.
  * @license GPL-3.0-only
@@ -26,58 +21,16 @@ import { useEffect, useRef } from "react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { onUnexpectedDisconnect, useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { resolveNodeId } from "@/lib/agent/node-id";
-import type { Transport } from "@/lib/protocol/types/transport";
-import {
-  mintWsTicket,
-  WS_TICKET_PROTOCOL,
-} from "@/lib/api/ground-station/ws-ticket";
 import { isMspVariant } from "@/lib/protocol/select-fc-adapter";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
-import {
-  agentReportsUnpaired,
-  isAgentLifelineHost,
-} from "@/lib/agent/unpaired-mavlink-gate";
-import {
-  relayWriteAuthFor,
-  useMqttControlGrantStore,
-} from "@/stores/mqtt-control-grant-store";
+import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
+import { dialAgentFc, planDialPaths } from "./agent-mavlink-dial";
 
-const WS_TIMEOUT_MS = 3000;
-
-// Ports the MAVLink bridge will refuse to dial on a derived ws://
-// URL even if the agent advertises one. 5760 is the ArduPilot SITL TCP
-// listener; an `ws://localhost:5760/` attempt at boot has been observed
-// in console logs with no user gesture, suggesting a stale advertised
-// URL slipped past the agent-URL hostname check below. Block defensively
-// so the symptom can never re-appear regardless of root cause. Triage
-// this list further when the source is pinned (DevTools Network tab,
-// "Initiator" column on the failed WS row, plus an IndexedDB scan of
-// idb-keyval-store for any stored ws:// URL).
-const FORBIDDEN_DERIVED_WS_PORTS = new Set(["5760"]);
-
-/**
- * Force a ws:// URL to wss:// when the GCS page is served over https, so
- * the authenticated dial isn't blocked as mixed content. A URL already on
- * wss:// (or any non-ws scheme) is returned untouched. Returns null on a
- * malformed URL so the caller can skip the dial.
- */
-function secureWsUrl(url: string): string | null {
-  try {
-    const u = new URL(url);
-    const pageSecure =
-      typeof window !== "undefined" &&
-      window.location.protocol === "https:";
-    if (pageSecure && u.protocol === "ws:") {
-      u.protocol = "wss:";
-    }
-    return u.toString();
-  } catch {
-    return null;
-  }
-}
+/** Gap between session checks, and so between re-dials of a missing session. */
+export const AGENT_FC_REDIAL_MS = 3_000;
 
 export function AgentMavlinkBridge() {
   const mavlinkUrl = useAgentConnectionStore((s) => s.mavlinkUrl);
@@ -88,47 +41,48 @@ export function AgentMavlinkBridge() {
     (s) => s.mavlinkWsUrlPrev,
   );
   // An MSP FC (Betaflight/iNav) never reports fc_connected — it sends no MAVLink
-  // heartbeat, so the agent keeps fc_connected false by design. But it IS
-  // reachable once the agent has identified the variant off the USB descriptor
-  // and the serial transport is open, and the GCS drives it over the same
-  // byte-transparent :8765 proxy with the MSP adapter. isFcReachable folds that
-  // in so a Betaflight/iNav board auto-connects like a MAVLink FC does.
+  // heartbeat — but it is reachable once the agent has identified the variant
+  // and the serial transport is open, over the same byte-transparent proxy.
   const fcActive = isFcReachable({
     fcConnected: status?.fc_connected,
     fcVariant: status?.fc_variant,
     transportOpen: status?.transport_open,
   });
-  const connectingRef = useRef(false);
   const connectedDroneIdRef = useRef<string | null>(null);
+  // Ids whose session dropped without anyone asking. Only those are re-dialled
+  // after they vanish; a session removed on purpose stays down.
+  const droppedRef = useRef(new Set<string>());
   const prevFcActiveRef = useRef(fcActive);
   const grantEpoch = useMqttControlGrantStore((s) => s.credentialEpoch);
   const prevGrantEpochRef = useRef(grantEpoch);
   const reselectAfterGrantRef = useRef<string | null>(null);
 
-  // Tear down the MAVLink session the moment the agent reports the FC
-  // disconnected, rather than waiting for the transport "close" event (which
-  // can lag or never fire on a relayed link). On a true->false transition
-  // while this bridge owns a connected drone, remove it so the FC panels stop
-  // rendering stale telemetry and queued writes stop going to a dead link.
-  // removeDrone detaches the FC from the registry and keeps a presence-owned
-  // fleet row in place, so the node card reverts to "flight controller not
-  // connected" instead of vanishing.
+  useEffect(
+    () =>
+      onUnexpectedDisconnect((droneId) => {
+        droppedRef.current.add(droneId);
+      }),
+    [],
+  );
+
+  // Tear down the session the moment the agent reports the FC gone, rather
+  // than waiting for a transport close that can lag or never fire on a relayed
+  // link. An intentional disconnect, so nothing tries to re-dial it.
   useEffect(() => {
     const prev = prevFcActiveRef.current;
     prevFcActiveRef.current = fcActive;
     if (prev && !fcActive && connectedDroneIdRef.current) {
       const droneId = connectedDroneIdRef.current;
       connectedDroneIdRef.current = null;
-      useDroneManager.getState().removeDrone(droneId);
+      useDroneManager.getState().disconnectDrone(droneId);
     }
   }, [fcActive]);
 
   // A minted write grant changes the broker principal, and an MQTT client cannot
   // swap credentials on a live socket. So when the credential changes under a
-  // relay session, drop it: the dial below re-establishes it in the same breath,
-  // this time as a command link rather than a receive-only one. Only the relay
-  // lane cares — a direct WebSocket or serial FC carries its own authority and
-  // must not be disturbed by a broker credential it never used.
+  // relay session, drop it: the supervisor below re-dials in the same breath,
+  // this time as a command link. A WebSocket or serial FC carries its own
+  // authority and is left alone.
   useEffect(() => {
     const prev = prevGrantEpochRef.current;
     prevGrantEpochRef.current = grantEpoch;
@@ -138,371 +92,137 @@ export function AgentMavlinkBridge() {
     const manager = useDroneManager.getState();
     const drone = manager.drones.get(droneId);
     if (drone?.transport.type !== "mqtt-mavlink") return;
-    // Read the selection BEFORE removing: removeDrone clears it when the drone
-    // going away is the selected one, and a credential renewal must not move the
-    // operator off the vehicle they are flying.
+    // Read the selection BEFORE removing: removal clears it when the drone is
+    // the selected one, and a renewal must not move the operator off it.
     if (manager.selectedDroneId === droneId) {
       reselectAfterGrantRef.current = droneId;
     }
     connectedDroneIdRef.current = null;
-    manager.removeDrone(droneId);
+    manager.disconnectDrone(droneId);
   }, [grantEpoch]);
 
+  // The session supervisor. Every AGENT_FC_REDIAL_MS it checks the session and
+  // dials when there is none, for as long as the agent is connected with an FC.
   useEffect(() => {
-    // Latest-value reads that must NOT re-trigger this effect: the agent URL
-    // and the cloud-relay device id change atomically with the connection
-    // inputs that ARE dependencies, so read them at execution time rather than
-    // as closure deps (which would re-fire the dial on every change).
-    const agentUrl = useAgentConnectionStore.getState().agentUrl;
-    const cloudDeviceId = useAgentConnectionStore.getState().cloudDeviceId;
-    const apiKey = useAgentConnectionStore.getState().apiKey;
+    if (!connected || !fcActive) return;
+    const readPlan = () => {
+      const conn = useAgentConnectionStore.getState();
+      return {
+        mavlinkUrl,
+        mavlinkWsUrlPrev,
+        agentUrl: conn.agentUrl,
+        apiKey: conn.apiKey,
+        cloudDeviceId: conn.cloudDeviceId,
+        mspLane: isMspVariant(useAgentSystemStore.getState().status?.fc_variant),
+      };
+    };
+    const paths = planDialPaths(readPlan());
+    if (!paths.auth && !paths.legacy && !paths.relay) return;
 
-    // Authentication is orthogonal to the URL: the raw MAVLink proxy
-    // validates a ticket subprotocol for any profile, so the cascade always
-    // dials `mavlinkUrl` and attaches a ticket when a pairing key is held.
-    // Two booleans derived from `mavlinkUrl` gate the dial:
-    //   - `urlUsable`   — the URL is present, parseable, not a forbidden
-    //                     port, and (when an agent URL is set) shares the
-    //                     agent host. Mixed content does NOT disqualify it:
-    //                     Try 1 upgrades ws→wss via secureWsUrl().
-    //   - `legacyUsable` — `urlUsable` AND not blocked as mixed content
-    //                     (i.e. not an https page dialing a bare ws:// URL).
-    let urlUsable = !!mavlinkUrl;
-    let legacyUsable = !!mavlinkUrl;
-    if (mavlinkUrl) {
-      try {
-        const wsUrl = new URL(mavlinkUrl);
-        if (FORBIDDEN_DERIVED_WS_PORTS.has(wsUrl.port)) {
-          console.debug(
-            "[AgentMavlinkBridge] dropping mavlinkUrl: forbidden port",
-            wsUrl.port,
-          );
-          urlUsable = false;
-          legacyUsable = false;
-        } else if (agentUrl) {
-          const agentHost = new URL(agentUrl).hostname;
-          if (wsUrl.hostname !== agentHost) {
-            console.debug(
-              "[AgentMavlinkBridge] dropping mavlinkUrl: hostname mismatch",
-              { mavlinkUrl, agentUrl },
-            );
-            urlUsable = false;
-            legacyUsable = false;
-          }
-        }
-        // On an HTTPS-origin GCS the browser blocks an insecure ws:// dial
-        // as mixed content. That only disqualifies the bare legacy dial:
-        // Try 1 upgrades the URL to wss:// before dialing, so `urlUsable`
-        // stays true for the authenticated path.
-        if (
-          urlUsable &&
-          typeof window !== "undefined" &&
-          window.location.protocol === "https:" &&
-          wsUrl.protocol === "ws:"
-        ) {
-          console.debug(
-            "[AgentMavlinkBridge] legacy ws:// blocked as mixed content on an https origin; using the wss:// authenticated dial instead",
-            { mavlinkUrl },
-          );
-          legacyUsable = false;
-        }
-      } catch {
-        // Malformed URL — neither dial can use it.
-        urlUsable = false;
-        legacyUsable = false;
-      }
-    }
-
-    // Need at least: agent connected + FC connected + at least one dialable
-    // path (a ticketed authenticated dial, the bare legacy dial, or the
-    // cloud MQTT relay).
-    if (!connected || !fcActive || connectingRef.current) return;
-    const authUsable = urlUsable && !!apiKey && !!agentUrl;
-    if (!authUsable && !legacyUsable && !cloudDeviceId) return;
-
-    // Skip the MQTT MAVLink relay path on localhost dev mode
-    // when no direct LAN WebSocket is available. The cloud MQTT MAVLink relay
-    // requires production cloud infrastructure that doesn't exist for the
-    // bench user, and the attempt always fails after 10s with the
-    // "No heartbeat received within 10 seconds" error spamming the console.
-    // Telemetry is already covered by MqttBridge.tsx in this mode, so the
-    // missing MAVLinkAdapter just disables binary command/control (which is
-    // fine for monitoring-only sessions).
-    const isLocalDev =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1");
-    if (isLocalDev && !authUsable && !legacyUsable) {
-      return;
-    }
-
-    // Don't reconnect if already connected to a drone from this bridge
-    if (connectedDroneIdRef.current) {
-      const existing = useDroneManager.getState().drones.get(connectedDroneIdRef.current);
-      if (existing) return;
-      connectedDroneIdRef.current = null;
-    }
-
-    connectingRef.current = true;
+    // The canonical node id: `node:<deviceId>` for an agent-attached FC, stable
+    // across local and cloud transports and matching the registry row.
+    const droneId = resolveNodeId(nodeDeviceId ?? undefined);
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (!cancelled) timer = setTimeout(() => void supervise(), AGENT_FC_REDIAL_MS);
+    };
 
-    async function connectMavlink() {
-      // Track the live transport and whether it was handed to the drone
-      // manager. If adapter.connect() (or any later step) throws after a
-      // transport has connected, the outer catch disconnects it so the open
-      // socket isn't leaked.
-      let connectedTransport: Transport | undefined;
+    const supervise = async () => {
+      if (cancelled) return;
+      const manager = useDroneManager.getState();
+      const held = connectedDroneIdRef.current;
+      if (held !== null) {
+        if (held === droneId && manager.drones.has(held)) {
+          schedule();
+          return;
+        }
+        if (manager.drones.has(held)) {
+          // A session for a different node than the one now selected.
+          manager.disconnectDrone(held);
+        } else if (!droppedRef.current.has(held)) {
+          // Removed on purpose (the operator disconnected it): stay down.
+          connectedDroneIdRef.current = null;
+          return;
+        }
+        droppedRef.current.delete(held);
+        connectedDroneIdRef.current = null;
+      }
+      if (await connectOnce()) schedule();
+    };
+
+    /** One dial. Returns false when a retry cannot help (pairing required). */
+    const connectOnce = async (): Promise<boolean> => {
+      const plan = readPlan();
+      const outcome = await dialAgentFc(plan, () => cancelled);
+      if (!outcome.transport) {
+        if (!cancelled) console.warn("[AgentMavlinkBridge] All MAVLink connection methods failed");
+        return !outcome.pairRequired;
+      }
+      const transport = outcome.transport;
       let handedOff = false;
       try {
-        if (cancelled) return;
-
-        let transport: Transport | undefined;
-        let connType: "websocket" | "mqtt-mavlink" = "websocket";
-
-        // The FC family the agent identified on the serial link, read at
-        // execution time (like agentUrl/apiKey above) so it does not re-fire
-        // the dial; the variant is known once the FC is active. It picks
-        // both the MQTT relay lane (below) and the adapter (further down):
-        // Betaflight/iNav → MSP over the msp lane; ArduPilot/PX4/unknown →
-        // MAVLink over the mavlink lane.
-        const fcVariant = useAgentSystemStore.getState().status?.fc_variant;
-        const mspLane = isMspVariant(fcVariant);
-
-        const { WebSocketTransport } = await import(
-          "@/lib/protocol/transport/websocket"
-        );
-        const tryWs = async (
-          url: string,
-          protocols?: string | string[],
-        ): Promise<InstanceType<typeof WebSocketTransport>> => {
-          const wsTransport = new WebSocketTransport();
-          const timeout = Promise.withResolvers<never>();
-          const timer = setTimeout(
-            () => timeout.reject(new Error("timeout")),
-            WS_TIMEOUT_MS,
-          );
-          try {
-            await Promise.race([
-              wsTransport.connect(url, protocols),
-              timeout.promise,
-            ]);
-          } catch (err) {
-            // The race only ABANDONS the connect; the socket underneath is
-            // still dialing and, on a slow-but-reachable agent, still
-            // completes. Every cascade attempt then left a live WebSocket
-            // with no owner — one per tier, per reconnect, for the life of
-            // the page. Disconnect before rethrowing.
-            try {
-              await wsTransport.disconnect();
-            } catch {
-              /* already dead */
-            }
-            throw err;
-          } finally {
-            clearTimeout(timer);
-          }
-          return wsTransport;
-        };
-
-        // Try 1: the raw MAVLink proxy dialed with a one-shot ticket. When a
-        // pairing key is held, mint a `gs.mavlink_ws` ticket and carry it as a
-        // WebSocket subprotocol so it never reaches the URL; the same proxy
-        // validates the ticket for any profile. On a secure GCS origin the
-        // ws:// URL is upgraded to wss:// (the only dial that survives
-        // mixed-content blocking). With no pairing key (unpaired) this path is
-        // skipped and the cascade keeps the open-posture legacy behavior.
-        if (!transport && authUsable && mavlinkUrl) {
-          const secured = secureWsUrl(mavlinkUrl);
-          if (secured) {
-            try {
-              const ticket = await mintWsTicket(
-                { baseUrl: agentUrl, apiKey },
-                "gs.mavlink_ws",
-              );
-              if (cancelled) return;
-              transport = ticket
-                ? await tryWs(secured, [WS_TICKET_PROTOCOL, ticket])
-                : undefined;
-              connType = "websocket";
-            } catch {
-              transport = undefined;
-            }
-          }
-        }
-
-        // Try 2: legacy raw direct WebSocket dialed bare (LAN, lowest
-        // latency, open posture). When the agent has rotated its WebSocket
-        // binding (port change, network move) the heartbeat carries the
-        // prior URL; if the current URL fails we retry the prior URL once
-        // before falling through to the MQTT relay path so a brief rotation
-        // doesn't drop an in-flight session.
-        //
-        // With no key held the agent must also admit a keyless caller. An
-        // unpaired agent refuses this WebSocket to anyone not on its own box
-        // or one of its lifelines (hotspot, USB, link-local), and the browser
-        // is never told why a handshake failed (no status, no reason). So off
-        // a lifeline the agent is asked first; on a lifeline it is dialed and
-        // asked only when the dial is refused. A definitive "unpaired" answer
-        // skips the dial and raises the pair-this-node state rather than a
-        // link failure that no retry can fix.
-        if (!transport && legacyUsable && mavlinkUrl) {
-          const keylessProbeBase = !apiKey && agentUrl ? agentUrl : null;
-          const onLifeline = isAgentLifelineHost(new URL(mavlinkUrl).hostname);
-          let pairRequired =
-            keylessProbeBase !== null && !onLifeline
-              ? await agentReportsUnpaired(keylessProbeBase)
-              : false;
-          if (cancelled) return;
-          if (!pairRequired) {
-            try {
-              transport = await tryWs(mavlinkUrl);
-            } catch {
-              // Retry the prior WS URL once (handles an agent WS-binding
-              // rotation); if that also fails, fall through to the MQTT relay.
-              if (mavlinkWsUrlPrev && mavlinkWsUrlPrev !== mavlinkUrl) {
-                try {
-                  transport = await tryWs(mavlinkWsUrlPrev);
-                } catch {
-                  // previous URL also failed; MQTT relay is the next fallback
-                }
-              }
-            }
-            if (!transport && keylessProbeBase !== null && onLifeline) {
-              pairRequired = await agentReportsUnpaired(keylessProbeBase);
-              if (cancelled) return;
-            }
-          }
-          useAgentConnectionStore.getState().setMavlinkPairRequired(pairRequired);
-        }
-
-        // Try 3: MQTT relay (cloud, works from anywhere). An MSP FC rides the
-        // agent's parallel MSP topic lane; a MAVLink FC the mavlink lane.
-        if (!transport && cloudDeviceId) {
-          try {
-            const { MqttMavlinkTransport } = await import(
-              "@/lib/protocol/transport/mqtt-mavlink"
-            );
-            const mqttTransport = new MqttMavlinkTransport(
-              mspLane ? "msp" : "mavlink",
-            );
-            // The operator's minted write grant, when one covers this drone.
-            // Read at execution time from the grant store rather than closed
-            // over, so a dial that races a renewal uses the credential that is
-            // live now. Absent (signed out, no grant yet, or a drone this
-            // operator does not own) the session still connects receive-only —
-            // telemetry, state and vehicle identity all arrive over it — and the
-            // transport says so rather than implying a command link.
-            await mqttTransport.connect(
-              cloudDeviceId,
-              undefined,
-              relayWriteAuthFor(cloudDeviceId),
-            );
-            transport = mqttTransport;
-            connType = "mqtt-mavlink";
-            if (!mqttTransport.canCommand) {
-              console.warn(
-                "[AgentMavlinkBridge] Relay session is receive-only: telemetry will " +
-                  "flow but commands cannot be sent to this vehicle",
-              );
-            }
-          } catch (mqttErr) {
-            console.warn("[AgentMavlinkBridge] MQTT relay failed:", mqttErr);
-          }
-        }
-
-        if (!transport) {
-          console.warn("[AgentMavlinkBridge] All MAVLink connection methods failed");
-          return;
-        }
-        connectedTransport = transport;
-
-        if (cancelled) {
-          transport.disconnect();
-          return;
-        }
-
-        // Select the adapter from the same FC family read above (mspLane).
+        if (cancelled) return false;
         // Betaflight/iNav → MSP over the byte-transparent transport;
-        // ArduPilot / PX4 / unidentified / older agents → MAVLink.
-        const { createFcAdapter } = await import(
-          "@/lib/protocol/select-fc-adapter"
+        // ArduPilot / PX4 / unidentified → MAVLink.
+        const { createFcAdapter } = await import("@/lib/protocol/select-fc-adapter");
+        const adapter = await createFcAdapter(
+          useAgentSystemStore.getState().status?.fc_variant,
         );
-        const adapter = await createFcAdapter(fcVariant);
         const vehicleInfo = await adapter.connect(transport);
-
         if (cancelled) {
-          adapter.disconnect();
-          transport.disconnect();
-          return;
+          adapter.disconnect().catch(() => {});
+          return false;
         }
 
-        // The canonical node id: `node:<deviceId>` for a paired agent (stable
-        // across local + cloud transports, matching the registry / fleet row),
-        // or a fresh `fc:<random>` for a direct USB/serial FC with no agent
-        // identity. There is no `agent-<timestamp>` escape hatch any more — the
-        // registry GC keys off this id, and a timestamped id would orphan the
-        // row on every reconnect.
-        const droneId = resolveNodeId(nodeDeviceId ?? undefined);
-        const registry = useNodeRegistryStore.getState();
         const presenceName = nodeDeviceId
-          ? registry.getEntry(droneId)?.presence.name
+          ? useNodeRegistryStore.getState().getEntry(droneId)?.presence.name
           : undefined;
         const droneName =
-          presenceName ||
-          useAgentSystemStore.getState().status?.board?.name ||
-          "Drone";
-        // The presence bridge owns the row whenever there is a node device id to
-        // reconcile against; only own a standalone row when there is none.
-        const ownsFleetRow = !nodeDeviceId;
-
-        // addDrone attaches the FC to the registry row (creating it for a
-        // direct-USB FC with no prior presence) and binds the connection
-        // transport, including whether it can carry a command.
+          presenceName || useAgentSystemStore.getState().status?.board?.name || "Drone";
+        // The presence bridge owns the row whenever there is a node device id
+        // to reconcile against; only own a standalone row when there is none.
         useDroneManager.getState().addDrone(
           droneId,
           droneName,
           adapter,
           transport,
           vehicleInfo,
-          { type: connType, url: mavlinkUrl || undefined },
-          { ownsFleetRow },
+          { type: outcome.connType, url: plan.mavlinkUrl || undefined },
+          { ownsFleetRow: !nodeDeviceId },
         );
+        handedOff = true;
+        droppedRef.current.delete(droneId);
+        connectedDroneIdRef.current = droneId;
 
-        // Restore the selection a credential-driven teardown cleared. addDrone
-        // auto-selects only the FIRST managed drone, so an operator flying one of
-        // several would otherwise be moved off it every time a grant renewed.
+        // Restore a selection a credential-driven teardown cleared: addDrone
+        // auto-selects only the first managed drone.
         if (reselectAfterGrantRef.current === droneId) {
           reselectAfterGrantRef.current = null;
           useDroneManager.getState().selectDrone(droneId);
         }
-
-        handedOff = true;
-        connectedDroneIdRef.current = droneId;
       } catch (err) {
         console.warn("[AgentMavlinkBridge] MAVLink connection failed:", err);
       } finally {
         // A transport that connected but was never handed to the drone manager
-        // (e.g. adapter handshake threw) would otherwise leak an open socket.
-        if (connectedTransport && !handedOff) {
+        // (the handshake threw, or the run was cancelled) would leak a socket.
+        if (!handedOff) {
           try {
-            connectedTransport.disconnect();
+            transport.disconnect();
           } catch {
             // best-effort teardown
           }
         }
-        connectingRef.current = false;
       }
-    }
+      return !cancelled;
+    };
 
-    connectMavlink();
-
+    void supervise();
     return () => {
       cancelled = true;
-      connectingRef.current = false;
-      // Don't disconnect the drone on unmount — the MAVLink connection should
-      // persist across tab navigations. DroneManager handles its own lifecycle.
-      // Only disconnect if the agent connection itself is dropped (handled by
-      // transport "close" event → DroneManager.removeDrone automatically).
+      clearTimeout(timer);
+      // The session itself persists across re-renders and route changes; the
+      // teardown effects above and the operator own ending it.
     };
   }, [
     mavlinkUrl,
@@ -511,8 +231,7 @@ export function AgentMavlinkBridge() {
     fcActive,
     nodeDeviceId,
     // Re-dial when the broker credential changes: the effect above has already
-    // dropped the relay session that was holding the old one, so this is what
-    // rebuilds it with the new grant.
+    // dropped the relay session holding the old one.
     grantEpoch,
   ]);
 

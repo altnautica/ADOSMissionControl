@@ -40,6 +40,7 @@ import type {
   INavTempSensorConfigEntry, INavLogicCondition, INavLogicConditionsStatus,
   INavGvarStatus, INavProgrammingPid, INavProgrammingPidStatus,
   INavEzTune, INavFwApproach, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
+  INavCustomOsdElement, INavCustomOsdElementsInfo,
   MotorMixerRule, INavServoMixerRule,
 } from '../msp/msp-decoders-inav';
 // Name-based settings surface (iNav). types → msp is the existing import
@@ -48,20 +49,22 @@ import type { SettingInfo, SettingValue } from '../msp/settings';
 // Betaflight serial-port config shape (MSP_CF_SERIAL_CONFIG).
 import type { MspSerialPort } from '../msp/decoders/config/serial';
 // Betaflight OSD config shape (MSP_OSD_CONFIG).
-import type { MspOsdConfig } from '../msp/decoders/config/osd';
+import type { MspOsdConfig, MspOsdGeneralConfig } from '../msp/decoders/config/osd';
 // Betaflight receiver config shape (MSP_RX_CONFIG).
 import type { BfRxConfig } from '../msp/decoders/config/rx';
 import type { HsvColor, BfLedModeColor } from '../msp/decoders/config/led';
 import type { DisplayPortOp } from '../msp/decoders/config/displayport';
+import type { MspModeBox, MspModeRange, MspAdjustmentRange } from '../msp/msp-decoders-status';
 
 // Re-export the settings value/metadata shapes so consumers can import them
 // from the protocol contract barrel rather than reaching into the MSP layer.
 export type { SettingInfo, SettingValue } from '../msp/settings';
 export { settingNumber } from '../msp/settings';
 export type { MspSerialPort } from '../msp/decoders/config/serial';
-export type { MspOsdConfig } from '../msp/decoders/config/osd';
+export type { MspOsdConfig, MspOsdGeneralConfig } from '../msp/decoders/config/osd';
 export type { BfRxConfig } from '../msp/decoders/config/rx';
 export type { HsvColor, BfLedModeColor } from '../msp/decoders/config/led';
+export type { MspModeBox, MspModeRange, MspAdjustmentRange } from '../msp/msp-decoders-status';
 
 /**
  * Name-indexed FC settings surface (the iNav MSP2_COMMON_SETTING family).
@@ -234,7 +237,8 @@ export interface DroneProtocol {
   getTimerOutputModes?(): Promise<INavTimerOutputModeEntry[]>;
   setTimerOutputMode?(entries: INavTimerOutputModeEntry[]): Promise<CommandResult>;
   getServoConfigs?(): Promise<INavServoConfig[]>;
-  setServoConfig?(idx: number, cfg: INavServoConfig): Promise<CommandResult>;
+  /** Write every servo's config (index = array position), then save to EEPROM. */
+  setServoConfigs?(cfgs: INavServoConfig[]): Promise<CommandResult>;
   getTempSensorConfigs?(): Promise<INavTempSensorConfigEntry[]>;
   getMcBraking?(): Promise<INavMcBraking>;
   setMcBraking?(b: INavMcBraking): Promise<CommandResult>;
@@ -249,7 +253,8 @@ export interface DroneProtocol {
   setOsdAlarms?(a: INavOsdAlarms): Promise<CommandResult>;
   getOsdPreferences?(): Promise<INavOsdPreferences>;
   setOsdPreferences?(p: INavOsdPreferences): Promise<CommandResult>;
-  setCustomOsdElement?(el: { index: number; visible: boolean; text: string }): Promise<CommandResult>;
+  getCustomOsdElements?(): Promise<{ info: INavCustomOsdElementsInfo; elements: INavCustomOsdElement[] }>;
+  setCustomOsdElement?(el: INavCustomOsdElement): Promise<CommandResult>;
 
   // ── iNav Name-Based Settings (optional) ───────────────────
   /**
@@ -277,8 +282,8 @@ export interface DroneProtocol {
   actuatorTest?(functionCode: number, value: number, timeoutS: number): Promise<CommandResult>;
   /** Read the OSD config: video system, alarms, per-element positions (Betaflight). */
   getOsdConfig?(): Promise<MspOsdConfig>;
-  /** Write the OSD layout: optional video system + each element position (Betaflight). */
-  writeOsdLayout?(items: Array<{ index: number; position: number }>, videoSystem?: number): Promise<CommandResult>;
+  /** Write the OSD layout: optional general settings, then each element position (Betaflight). */
+  writeOsdLayout?(items: Array<{ index: number; position: number }>, general?: MspOsdGeneralConfig): Promise<CommandResult>;
   /** Upload a MAX7456 character font, one glyph per MSP_OSD_CHAR_WRITE (Betaflight). */
   uploadOsdFont?(glyphs: Uint8Array[], onProgress?: (done: number, total: number) => void): Promise<CommandResult>;
   /** Read the per-LED packed strip config (Betaflight). */
@@ -291,8 +296,8 @@ export interface DroneProtocol {
   setLedColors?(colors: HsvColor[]): Promise<CommandResult>;
   /** Read the mode/special/aux colour assignments (Betaflight). */
   getLedStripModeColors?(): Promise<BfLedModeColor[]>;
-  /** Set one mode colour by (mode, function) (Betaflight). */
-  setLedStripModeColor?(mode: number, fun: number, color: number): Promise<CommandResult>;
+  /** Set mode colours by (mode, function), then save to EEPROM (Betaflight). */
+  setLedStripModeColors?(entries: BfLedModeColor[]): Promise<CommandResult>;
   /** Subscribe to pushed MSP DisplayPort OSD frames (Betaflight / iNav). */
   onDisplayPort?(cb: (op: DisplayPortOp) => void): () => void;
   /** Read the receiver config: provider, stick range, deadband (Betaflight). */
@@ -306,18 +311,35 @@ export interface DroneProtocol {
 
   // ── iNav Programming Framework ────────────────────────────
   downloadLogicConditions?(): Promise<INavLogicCondition[]>;
-  uploadLogicCondition?(idx: number, rule: INavLogicCondition): Promise<CommandResult>;
+  /** Write every logic condition (index = array position), then save to EEPROM. */
+  uploadLogicConditions?(rules: INavLogicCondition[]): Promise<CommandResult>;
   downloadLogicConditionsStatus?(): Promise<INavLogicConditionsStatus[]>;
   downloadGvarStatus?(): Promise<INavGvarStatus>;
   /** Set one global variable's live runtime value (iNav). */
   setGvar?(index: number, value: number): Promise<CommandResult>;
   downloadProgrammingPids?(): Promise<INavProgrammingPid[]>;
-  uploadProgrammingPid?(idx: number, rule: INavProgrammingPid): Promise<CommandResult>;
+  /** Write every programming PID (index = array position), then save to EEPROM. */
+  uploadProgrammingPids?(rules: INavProgrammingPid[]): Promise<CommandResult>;
   downloadProgrammingPidStatus?(): Promise<INavProgrammingPidStatus[]>;
   downloadMotorMixer?(): Promise<MotorMixerRule[]>;
   uploadMotorMixer?(rules: MotorMixerRule[]): Promise<void>;
   downloadServoMixer?(): Promise<INavServoMixerRule[]>;
   uploadServoMixer?(rules: INavServoMixerRule[]): Promise<void>;
+
+  // ── Mode and adjustment ranges (Betaflight / iNav) ─────────
+  /** The modes the FC offers, by permanent box id (MSP_BOXNAMES + MSP_BOXIDS). */
+  getModeBoxes?(): Promise<MspModeBox[]>;
+  /** Every mode-range slot in slot order, empty ones included (start >= end). */
+  getModeRanges?(): Promise<MspModeRange[]>;
+  /**
+   * Write `ranges` to slots 0..n-1, clear the remaining slots, then save to
+   * EEPROM. Fails when any slot write or the save fails.
+   */
+  setModeRanges?(ranges: MspModeRange[]): Promise<CommandResult>;
+  /** Every adjustment-range slot in slot order, empty ones included. */
+  getAdjustmentRanges?(): Promise<MspAdjustmentRange[]>;
+  /** Same slot semantics as `setModeRanges`, for adjustment ranges. */
+  setAdjustmentRanges?(ranges: MspAdjustmentRange[]): Promise<CommandResult>;
 
   // ── Guided Flight ─────────────────────────────────────────
   sendPositionTarget?(lat: number, lon: number, alt: number): void;

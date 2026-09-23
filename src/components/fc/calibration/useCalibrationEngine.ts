@@ -18,6 +18,8 @@ import {
   subscribeToCalibrationStatus,
 } from "./calibration-subscriptions";
 import { subscribePx4CalStatus } from "./px4-cal-parser";
+import { compassSaveEntries } from "./compass-save-entries";
+import { describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
 
 // ── Calibration snapshot params (before/after comparison) ──
 const CAL_SNAPSHOT_PARAMS: Record<string, string[]> = {
@@ -179,35 +181,45 @@ export function useCalibrationEngine() {
   const forceCompassSave = useCallback(async () => {
     const protocol = getSelectedProtocol();
     if (!protocol) return;
-    const results = Array.from(compass.compassResults.entries());
-    if (results.length === 0) return;
+    // Only fits the FC reported as successful are written; a rejected fit
+    // (bad radius, bad orientation) never lands in COMPASS_OFS*.
+    const { entries, saved, skipped } = compassSaveEntries(compass.compassResults, calSnapshot);
+    if (entries.length === 0) {
+      toast("No compass produced a successful fit; nothing was saved. Retry the calibration.", "error");
+      return;
+    }
     try {
-      for (const [compassId, r] of results) {
-        const suffix = compassId === 0 ? "" : `${compassId + 1}`;
-        await protocol.setParameter(`COMPASS_OFS${suffix}_X`, r.ofsX);
-        await protocol.setParameter(`COMPASS_OFS${suffix}_Y`, r.ofsY);
-        await protocol.setParameter(`COMPASS_OFS${suffix}_Z`, r.ofsZ);
-        if (r.diagX !== 1 || r.diagY !== 1 || r.diagZ !== 1) { await protocol.setParameter(`COMPASS_DIA${suffix}_X`, r.diagX); await protocol.setParameter(`COMPASS_DIA${suffix}_Y`, r.diagY); await protocol.setParameter(`COMPASS_DIA${suffix}_Z`, r.diagZ); }
-        if (r.offdiagX !== 0 || r.offdiagY !== 0 || r.offdiagZ !== 0) { await protocol.setParameter(`COMPASS_ODI${suffix}_X`, r.offdiagX); await protocol.setParameter(`COMPASS_ODI${suffix}_Y`, r.offdiagY); await protocol.setParameter(`COMPASS_ODI${suffix}_Z`, r.offdiagZ); }
+      const outcome = await writeParamBatch(protocol, entries, "calibration");
+      const { message } = describeParamBatch(outcome);
+      const skippedNote = skipped.length > 0 ? ` Compass ${skipped.map((id) => id + 1).join(", ")} not saved (fit failed).` : "";
+      if (outcome.failures.length > 0 || outcome.flash === "failed") {
+        const detail = outcome.failures.length > 0 ? ` Failed: ${outcome.failures.join(", ")}` : "";
+        setCompass((prev) => ({ ...prev, status: "error", waitingForConfirm: false, message: `${message}.${detail}${skippedNote}` }));
+        toast(`${message}${detail}`, "error");
+        return;
       }
-      const flashResult = await protocol.commitParamsToFlash();
-      if (!flashResult.success) console.error("[Calibration] Flash commit failed:", flashResult.message);
-      setCompass((prev) => ({ ...prev, status: "success", waitingForConfirm: false, needsReboot: true, message: "Compass offsets saved to flash. Reboot to apply." }));
-      toast("Compass offsets written to flash", "success");
+      const flashNote = outcome.flash === "unacknowledged" ? "Flash commit sent (unacknowledged)." : "Saved to flash.";
+      const savedNote = `Compass ${saved.map((id) => id + 1).join(", ")} offsets written. ${flashNote} Reboot to apply.${skippedNote}`;
+      setCompass((prev) => ({ ...prev, status: "success", waitingForConfirm: false, needsReboot: true, message: savedNote }));
+      toast(message, skipped.length > 0 || outcome.flash === "unacknowledged" ? "info" : "success");
     } catch { toast("Failed to write compass offsets", "error"); }
-  }, [getSelectedProtocol, compass.compassResults, toast]);
+  }, [getSelectedProtocol, compass.compassResults, calSnapshot, toast]);
 
   const acceptCompass = useCallback(async () => {
     const protocol = getSelectedProtocol();
     if (!protocol?.acceptCompassCal) return;
     try {
       const result = await protocol.acceptCompassCal();
-      if (!result.success) { toast("FC rejected accept — saving offsets directly", "info"); await forceCompassSave(); return; }
+      if (!result.success) { toast("FC rejected accept — saving successful fits directly", "info"); await forceCompassSave(); return; }
+      // The FC stores accepted offsets itself; the flash commit is the
+      // belt-and-braces step, and its outcome is reported, not assumed.
       const flashResult = await protocol.commitParamsToFlash();
-      if (!flashResult.success) console.error("[Calibration] Flash commit failed:", flashResult.message);
-      setCompass((prev) => ({ ...prev, status: "success", waitingForConfirm: false, progress: 100, needsReboot: true, message: "Compass offsets saved to flash. Reboot to apply." }));
+      const flashNote = !flashResult.success
+        ? "Flash commit failed; offsets may be RAM-only."
+        : flashResult.acknowledged === false ? "Flash commit sent (unacknowledged)." : "Saved to flash.";
+      setCompass((prev) => ({ ...prev, status: "success", waitingForConfirm: false, progress: 100, needsReboot: true, message: `Compass calibration accepted. ${flashNote} Reboot to apply.` }));
       cleanupSubs(manager, "compass");
-      toast("Compass calibration accepted and saved to flash", "success");
+      toast(`Compass calibration accepted. ${flashNote}`, flashResult.success ? "success" : "warning");
     } catch { toast("Accept failed — try Force Save", "error"); }
   }, [getSelectedProtocol, forceCompassSave, toast]);
 

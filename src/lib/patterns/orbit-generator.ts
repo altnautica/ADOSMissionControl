@@ -7,7 +7,8 @@
  * 2. Place points equally spaced on the circle starting from startAngle
  * 3. Reverse order if direction is counter-clockwise
  * 4. Repeat for the requested number of turns
- * 5. Insert ROI waypoint at the circle center so the camera always faces inward
+ * 5. Point the camera at the circle center with an ROI that rides the first
+ *    orbit point (an action follows the navigation point it fires at)
  *
  * @license GPL-3.0-only
  */
@@ -42,17 +43,9 @@ export function generateOrbit(config: OrbitConfig): PatternResult {
     singleOrbit.push(pt);
   }
 
-  // Build waypoints: ROI first, then orbit points repeated for turns
+  // Orbit points repeated for turns, with the ROI at the center right after
+  // the first one so the drone points toward the POI for the whole orbit.
   const waypoints: PatternWaypoint[] = [];
-
-  // ROI at center so the drone always points toward the POI
-  waypoints.push({
-    lat: center[0],
-    lon: center[1],
-    alt: altitude,
-    speed,
-    command: "ROI",
-  });
 
   for (let t = 0; t < turns; t++) {
     for (const pt of singleOrbit) {
@@ -63,6 +56,9 @@ export function generateOrbit(config: OrbitConfig): PatternResult {
         speed,
         command: "WAYPOINT",
       });
+      if (waypoints.length === 1) {
+        waypoints.push({ lat: center[0], lon: center[1], alt: altitude, speed, command: "ROI" });
+      }
     }
   }
 

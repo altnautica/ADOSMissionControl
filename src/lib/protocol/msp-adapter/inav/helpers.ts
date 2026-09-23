@@ -1,7 +1,6 @@
 /**
- * Shared helpers for the iNav MSP adapter section modules: error constants,
- * fixed-size limits for safehome / geozone tables, and small payload
- * decoders used by more than one file.
+ * Shared helpers for the iNav MSP adapter section modules: error constants
+ * and small payload decoders used by more than one file.
  *
  * @module protocol/msp-adapter/inav/helpers
  */
@@ -9,10 +8,6 @@
 import type { CommandResult } from '../../types'
 
 export const NOT_CONNECTED: CommandResult = { success: false, resultCode: -1, message: 'Not connected' }
-
-export const SAFEHOME_COUNT = 16
-
-export const GEOZONE_COUNT = 15
 
 /**
  * Decode MSP_WP_GETINFO response.

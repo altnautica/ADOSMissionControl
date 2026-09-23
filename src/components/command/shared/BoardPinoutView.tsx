@@ -68,7 +68,8 @@ export function BoardPinoutView() {
     // Also subscribe to future updates
     if (drone.protocol.onAutopilotVersion) {
       const unsub = drone.protocol.onAutopilotVersion((info) => {
-        setBoardId(info.boardVersion);
+        // 0 = the firmware reported no board id; renders as an unknown board.
+        setBoardId(info.boardId ?? 0);
       });
       return unsub;
     }

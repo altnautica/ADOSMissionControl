@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import type {
   ActionCommand, CommandMissionAction, MissionAction, RawMissionAction,
 } from "@/lib/types";
+import { POSITION_BEARING_ACTIONS } from "@/lib/mission/command-classes";
 import { CommandSpecificEditors } from "./WaypointCommandEditors";
 
 /** Lucide icon per action command. */
@@ -67,9 +68,16 @@ function summarize(action: CommandMissionAction, targets: NavTarget[]): string {
     case "DO_MOUNT_CONTROL": return p1 !== undefined ? `pitch ${p1}°` : "";
     case "DO_SET_SERVO": return p1 !== undefined && p2 !== undefined ? `#${p1} · ${p2} us` : "";
     case "DO_FENCE_ENABLE": return p1 ? "enable" : "disable";
+    case "ROI":
+    case "DO_SET_HOME":
+      return action.lat !== undefined && action.lon !== undefined && (action.lat !== 0 || action.lon !== 0)
+        ? `${action.lat.toFixed(5)}, ${action.lon.toFixed(5)}`
+        : "no location";
     case "DO_JUMP": {
       const target = action.jumpTargetId ? targets.find((t) => t.id === action.jumpTargetId) : undefined;
-      const rep = p2 && p2 > 1 ? ` ×${p2}` : "";
+      // The flight controller never takes a jump whose repeat count is 0.
+      const repeat = p2 ?? 0;
+      const rep = repeat === 0 ? " ×0 (inactive)" : repeat < 0 ? " ×∞" : repeat > 1 ? ` ×${repeat}` : "";
       return target ? `→ ${target.label}${rep}` : "→ ?";
     }
     default: return "";
@@ -222,7 +230,7 @@ function CommandActionRow({
                 placeholder={t("actions.jumpTargetPlaceholder")}
               />
               <Input
-                label={t("repeat")} type="number" placeholder="1" value={p2}
+                label={t("repeat")} type="number" placeholder="0" value={p2}
                 onChange={(e) => setP2(e.target.value)} onBlur={() => commitField("param2", p2)}
               />
               {!action.jumpTargetId && (
@@ -232,6 +240,8 @@ function CommandActionRow({
                 <span className="text-[9px] text-status-warning">{t("actions.jumpForever")}</span>
               )}
             </div>
+          ) : POSITION_BEARING_ACTIONS.has(action.command) ? (
+            <PositionEditor action={action} onUpdate={onUpdate} />
           ) : (
             <CommandSpecificEditors
               cmd={action.command}
@@ -244,6 +254,33 @@ function CommandActionRow({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Location of a positioned action (ROI target, new home). Each field commits
+ * on blur; an emptied or non-numeric field keeps the previous value.
+ */
+function PositionEditor({
+  action, onUpdate,
+}: { action: CommandMissionAction; onUpdate: (update: Partial<CommandMissionAction>) => void }) {
+  const t = useTranslations("planner");
+  const [lat, setLat] = useState(action.lat !== undefined ? String(action.lat) : "");
+  const [lon, setLon] = useState(action.lon !== undefined ? String(action.lon) : "");
+  const [alt, setAlt] = useState(action.alt !== undefined ? String(action.alt) : "");
+  const commit = (field: "lat" | "lon" | "alt", value: string) => {
+    const num = parseFloat(value);
+    if (!isNaN(num)) onUpdate({ [field]: num });
+  };
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <Input label={t("lat")} type="number" step="0.0001" value={lat}
+        onChange={(e) => setLat(e.target.value)} onBlur={() => commit("lat", lat)} />
+      <Input label={t("lon")} type="number" step="0.0001" value={lon}
+        onChange={(e) => setLon(e.target.value)} onBlur={() => commit("lon", lon)} />
+      <Input label={t("altitude")} type="number" unit="m" value={alt}
+        onChange={(e) => setAlt(e.target.value)} onBlur={() => commit("alt", alt)} />
     </div>
   );
 }

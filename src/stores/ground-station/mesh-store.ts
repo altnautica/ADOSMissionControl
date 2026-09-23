@@ -71,7 +71,9 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
     set({ role: { ...get().role, loading: true, error: null } });
     try {
       const info = await api.getRole();
-      set({ role: { info, loading: false, switching: false, error: null } });
+      set({
+        role: { info, loading: false, switching: false, error: null, fetchedAt: Date.now() },
+      });
     } catch (err) {
       const { message, status } = errorMessage(err);
       const friendly =
@@ -86,7 +88,9 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
     set({ role: { ...get().role, switching: true, error: null } });
     try {
       const info = await api.setRole(role);
-      set({ role: { info, loading: false, switching: false, error: null } });
+      set({
+        role: { info, loading: false, switching: false, error: null, fetchedAt: Date.now() },
+      });
       return info;
     } catch (err) {
       const friendly = roleSwitchErrorMessage(err, role);
@@ -98,9 +102,13 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
   loadDistributedRx: (api) => loadDistributedRx(api, set, get),
 
   loadMesh: async (api) => {
-    const currentRole = get().role.info?.current ?? "direct";
-    if (currentRole === "direct") {
-      set({ mesh: { ...INITIAL_MESH } });
+    const knownRole = get().role.info?.current ?? null;
+    if (knownRole === null || knownRole === "direct") {
+      // A direct node carries no mesh, which is itself a reading; an unknown
+      // role is not, so the slice stays unread rather than claiming "no mesh".
+      set({
+        mesh: { ...INITIAL_MESH, fetchedAt: knownRole === "direct" ? Date.now() : null },
+      });
       return;
     }
     set({ mesh: { ...get().mesh, loading: true, error: null } });
@@ -121,6 +129,7 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
           selectedGateway: gateways.selected,
           loading: false,
           error: null,
+          fetchedAt: Date.now(),
         },
       });
     } catch (err) {

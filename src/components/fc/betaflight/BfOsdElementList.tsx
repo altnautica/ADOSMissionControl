@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 import { Search, GripVertical, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { BfOsdElement } from "./bf-osd-constants";
+import { isVisibleInProfile, type BfOsdElement } from "./bf-osd-constants";
 
 interface BfOsdElementListProps {
   elements: BfOsdElement[];
+  /** 1-based OSD profile whose visibility the checkboxes show and toggle. */
+  activeProfile: number;
   selectedId: number | null;
   onSelectElement: (id: number | null) => void;
   onToggleVisibility: (id: number) => void;
@@ -15,7 +17,7 @@ interface BfOsdElementListProps {
 }
 
 export function BfOsdElementList({
-  elements, selectedId, onSelectElement, onToggleVisibility, onResetAll,
+  elements, activeProfile, selectedId, onSelectElement, onToggleVisibility, onResetAll,
 }: BfOsdElementListProps) {
   const [searchFilter, setSearchFilter] = useState("");
 
@@ -51,6 +53,7 @@ export function BfOsdElementList({
       <div className="flex-1 overflow-y-auto border border-border-default bg-bg-secondary min-h-0">
         {filteredElements.map((el) => {
           const isSelected = el.id === selectedId;
+          const visible = isVisibleInProfile(el, activeProfile);
           return (
             <div
               key={el.id}
@@ -69,12 +72,12 @@ export function BfOsdElementList({
                 }}
                 className={cn(
                   "shrink-0 w-4 h-4 border flex items-center justify-center transition-colors",
-                  el.visible
+                  visible
                     ? "bg-accent-primary border-accent-primary"
                     : "bg-transparent border-border-default",
                 )}
               >
-                {el.visible && (
+                {visible && (
                   <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
                     <path
                       d="M1 4L3.5 6.5L9 1"
@@ -90,7 +93,7 @@ export function BfOsdElementList({
               <span
                 className={cn(
                   "text-xs truncate",
-                  el.visible ? "text-text-primary" : "text-text-tertiary",
+                  visible ? "text-text-primary" : "text-text-tertiary",
                 )}
               >
                 {el.name}

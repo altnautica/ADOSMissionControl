@@ -48,11 +48,13 @@ export interface GroundStationFanOutCurrent {
  * Build the per-slice patch the bridge component should apply to
  * `useGroundStationStore` when the agent profile is `ground-station`.
  * Returns `null` when there's nothing to patch (avoids a no-op
- * setState).
+ * setState). Every slice the heartbeat refreshes is stamped with `now`, so
+ * the overview cards age it out once heartbeats stop arriving.
  */
 export function buildGroundStationPatch(
   cloudStatus: Record<string, unknown>,
   current: GroundStationFanOutCurrent,
+  now: number,
 ): Record<string, unknown> | null {
   const profileField = cloudStatus.profile as string | undefined;
   if (profileField !== "ground-station" && profileField !== "ground_station") {
@@ -97,6 +99,7 @@ export function buildGroundStationPatch(
       profile: "ground_station",
       uplink_active: wfbFailoverState ?? current.status.uplink_active,
     };
+    patch.statusFetchedAt = now;
   }
 
   if (roleField) {
@@ -110,6 +113,7 @@ export function buildGroundStationPatch(
         supported: currentRoleInfo?.supported ?? ["direct", "relay", "receiver"],
         mesh_capable: currentRoleInfo?.mesh_capable ?? false,
       },
+      fetchedAt: now,
     };
   }
 
@@ -134,6 +138,7 @@ export function buildGroundStationPatch(
       ...current.uplink,
       active: cloudUplink ?? wfbFailoverState ?? current.uplink.active,
       cloud_relay: cloudRelay,
+      fetchedAt: now,
     };
   }
 

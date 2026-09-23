@@ -2,7 +2,7 @@
  * @module protocol/firmware/px4.test
  * @license GPL-3.0-only
  *
- * PX4 custom_mode packing. The union (mavros px4_custom_mode.h) is
+ * PX4 custom_mode packing. The union is
  * reserved(0-15) | main_mode(16-23) | sub_mode(24-31), so an AUTO submode
  * must land in the top byte. These golden values are computed from that
  * layout, independent of the implementation.
@@ -19,7 +19,7 @@ const MAV_TYPE_FIXED_WING = 1;
 const MAV_TYPE_QUADROTOR = 2;
 const MAV_TYPE_VTOL_TILTROTOR = 24;
 
-// main_mode / sub_mode ids from PX4 commander (px4_custom_mode.h).
+// PX4 main_mode / sub_mode ids.
 const MAIN = { MANUAL: 1, ALTCTL: 2, POSCTL: 3, AUTO: 4, STABILIZED: 7 };
 const SUB_AUTO = { TAKEOFF: 2, LOITER: 3, MISSION: 4, RTL: 5, LAND: 6 };
 
@@ -92,6 +92,53 @@ describe("PX4 custom_mode packing", () => {
     expect(plane.encodeFlightMode("MISSION").customMode).toBe(
       packed(MAIN.AUTO, SUB_AUTO.MISSION),
     );
+  });
+});
+
+describe("PX4 mode table", () => {
+  // Every (main, sub) pair a PX4 vehicle reports in HEARTBEAT custom_mode.
+  // AUTO sub 7 is reserved, AUTO sub 10 is VTOL takeoff and
+  // POSCTL sub 1 is ORBIT.
+  const PX4_TABLE: ReadonlyArray<[UnifiedFlightMode, number, number]> = [
+    ["MANUAL", 1, 0],
+    ["ALT_HOLD", 2, 0],
+    ["POSHOLD", 3, 0],
+    ["ORBIT", 3, 1],
+    ["MISSION", 4, 4],
+    ["LOITER", 4, 3],
+    ["RTL", 4, 5],
+    ["LAND", 4, 6],
+    ["TAKEOFF", 4, 2],
+    ["READY", 4, 1],
+    ["FOLLOW_ME", 4, 8],
+    ["PRECLAND", 4, 9],
+    ["VTOL_TAKEOFF", 4, 10],
+    ["ACRO", 5, 0],
+    ["OFFBOARD", 6, 0],
+    ["STABILIZE", 7, 0],
+  ];
+
+  it.each(PX4_TABLE)("encodes %s as main %i sub %i", (mode, main, sub) => {
+    expect(px4Handler.encodeFlightMode(mode).customMode).toBe(packed(main, sub));
+  });
+
+  it.each(PX4_TABLE.filter(([m]) => m !== "MISSION"))(
+    "decodes %s from main %i sub %i",
+    (mode, main, sub) => {
+      expect(px4Handler.decodeFlightMode(packed(main, sub))).toBe(mode);
+    },
+  );
+
+  it("never commands the reserved AUTO sub-mode 7", () => {
+    for (const mode of createPX4Handler("vtol").getAvailableModes()) {
+      const { customMode } = px4Handler.encodeFlightMode(mode);
+      expect(customMode).not.toBe(packed(MAIN.AUTO, 7));
+    }
+  });
+
+  it("offers VTOL takeoff only to a VTOL", () => {
+    expect(createPX4Handler("vtol").getAvailableModes()).toContain("VTOL_TAKEOFF");
+    expect(createPX4Handler("copter").getAvailableModes()).not.toContain("VTOL_TAKEOFF");
   });
 });
 

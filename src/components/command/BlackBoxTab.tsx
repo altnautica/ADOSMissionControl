@@ -53,7 +53,8 @@ function fmtDuration(ms: number): string {
   return `${s}s`;
 }
 
-function fmtBytes(mb: number): string {
+function fmtBytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
   if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
   return `${mb.toFixed(1)} MB`;
 }
@@ -108,7 +109,7 @@ export function BlackBoxTab() {
   const sessionOptions = useMemo(() => {
     const all = { value: "", label: t("allSessions") };
     const opts = sessions.map((s) => {
-      const span = s.ended
+      const span = s.duration_ms !== null
         ? fmtDuration(s.duration_ms)
         : t("open");
       return {
@@ -220,8 +221,8 @@ export function BlackBoxTab() {
         )}
         {stats && (
           <span className="text-[10px] font-mono text-text-tertiary">
-            {fmtBytes(stats.db.file_size_mb)} ·{" "}
-            {stats.ingest.rows_per_sec.toFixed(0)} {t("rowsPerSec")}
+            {fmtBytes(stats.db.size_bytes)} ·{" "}
+            {(stats.db.row_counts.logs ?? 0).toLocaleString()} {t("logsShort")}
           </span>
         )}
 

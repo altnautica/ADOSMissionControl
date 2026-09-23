@@ -5,7 +5,7 @@
  * @module protocol/msp/decoders/inav/mixer
  */
 
-import { readU8, readU16, readS16 } from "./helpers";
+import { readU8, readU16, readS16, readU32 } from "./helpers";
 import type {
   INavMixer,
   INavTimerOutputModeEntry,
@@ -68,21 +68,19 @@ export function decodeMspINavTimerOutputMode(dv: DataView): INavTimerOutputModeE
 /**
  * MSP2_INAV_OUTPUT_MAPPING_EXT2 (0x210d)
  *
- * Repeated for each output:
- *   U8 timerId
- *   U16 usageFlags
- *   U16 specialLabels
+ * Repeated for each output, 6 bytes:
+ *   U8  timerId
+ *   U32 usageFlags (TIM_USE_*: MOTOR = 1 << 2, SERVO = 1 << 3, LED = 1 << 24)
+ *   U8  specialLabels
  */
 export function decodeMspINavOutputMappingExt2(dv: DataView): INavOutputMappingExt2Entry[] {
   const result: INavOutputMappingExt2Entry[] = [];
-  let offset = 0;
-  while (offset + 4 < dv.byteLength) {
+  for (let offset = 0; offset + 6 <= dv.byteLength; offset += 6) {
     result.push({
       timerId: readU8(dv, offset),
-      usageFlags: readU16(dv, offset + 1),
-      specialLabels: readU16(dv, offset + 3),
+      usageFlags: readU32(dv, offset + 1),
+      specialLabels: readU8(dv, offset + 5),
     });
-    offset += 5;
   }
   return result;
 }
@@ -97,7 +95,7 @@ export function decodeMspINavOutputMappingExt2(dv: DataView): INavOutputMappingE
  *   U8  inputSource
  *   S16 rate
  *   U8  speed
- *   U8  conditionId (or -1 if none)
+ *   S8  conditionId (logic condition gating the rule; -1 = always)
  */
 export function decodeMspINavServoMixer(dv: DataView): INavServoMixerRule[] {
   const result: INavServoMixerRule[] = [];
@@ -108,7 +106,7 @@ export function decodeMspINavServoMixer(dv: DataView): INavServoMixerRule[] {
       inputSource: readU8(dv, offset + 1),
       rate: readS16(dv, offset + 2),
       speed: readU8(dv, offset + 4),
-      conditionId: dv.byteLength > offset + 5 ? readU8(dv, offset + 5) : 0,
+      conditionId: dv.getInt8(offset + 5),
     });
     offset += 6;
   }

@@ -3,8 +3,9 @@
  * `events.publish`.
  *
  * Backed by the in-memory event bus in `../event-bus.ts`. A subscription
- * forwards every matching event to the iframe as a host event on
- * `events.<topic>`; the builder tracks each unsubscribe so `dispose()` tears
+ * forwards every matching event to the iframe as a host event whose method is
+ * the concrete topic itself, which is what the plugin SDK's
+ * `ctx.events.subscribe(topic, handler)` listens for; the builder tracks each unsubscribe so `dispose()` tears
  * them all down (and `events.unsubscribe` drops one). The bridge gates the
  * `event.subscribe` / `event.publish` capability before the handler runs;
  * `events.unsubscribe` is always-allowed (stopping delivery needs no grant),
@@ -16,6 +17,7 @@
 
 import type { BridgeHandler, BridgeHandlerContext } from "@/lib/plugins/bridge";
 import {
+  isReservedEventTopic,
   publishPluginEvent,
   subscribePluginEvent,
 } from "@/lib/plugins/event-bus";
@@ -40,9 +42,9 @@ export function buildEventHandlers(pluginId: string): {
     subs.get(topic)?.();
 
     const capability = ctx.capability ?? "";
-    const unsub = subscribePluginEvent(topic, pluginId, (payload, t) =>
-      ctx.postEvent(`events.${t}`, capability, payload),
-    );
+    const unsub = subscribePluginEvent(topic, pluginId, (payload, t) => {
+      if (!isReservedEventTopic(t)) ctx.postEvent(t, capability, payload);
+    });
     subs.set(topic, unsub);
     return { ok: true };
   };
@@ -62,6 +64,9 @@ export function buildEventHandlers(pluginId: string): {
   const publish: BridgeHandler = (args) => {
     const topic = readString(args, "topic");
     if (!topic) return { ok: false, error: "events.publish requires a topic" };
+    if (isReservedEventTopic(topic)) {
+      return { ok: false, error: `events.publish: ${topic} is a host-reserved topic` };
+    }
     publishPluginEvent(topic, asRecord(args).payload, pluginId);
     return { ok: true };
   };

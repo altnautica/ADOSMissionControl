@@ -8,46 +8,48 @@
 
 import { gsRequest, type RequestContext } from "./request";
 
-/** Counters + config for the GS-side Atlas keyframe relay. */
+/** Counters + config for the GS-side Atlas keyframe relay (ados-control
+ *  `gs_status.rs` get_atlas_relay_status). With no current snapshot the agent
+ *  nulls every key under `stale: true`; those readings stay null here rather
+ *  than reading as a stopped relay with zero counters. */
 export interface AtlasRelayStatus {
-  /** Whether a relay loop is currently running on this node. */
-  up: boolean;
+  /** Whether a relay loop is currently running on this node; null when stale. */
+  up: boolean | null;
   /** Datagrams read off the decoded aux port (received-side liveness proof). */
-  datagramsSeen: number;
+  datagramsSeen: number | null;
   /** Events decoded and accepted by the compute receiver. */
-  forwarded: number;
+  forwarded: number | null;
   /** Datagrams that did not decode to an Atlas event (dropped). */
-  malformed: number;
+  malformed: number | null;
   /** Events that decoded but the forward POST to the compute node failed. */
-  forwardFailed: number;
+  forwardFailed: number | null;
   /** The compute node base URL the relay forwards to. */
-  computeUrl: string;
+  computeUrl: string | null;
   /** The loopback port `wfb_rx -p 2` decodes the aux stream onto. */
-  listenPort: number;
+  listenPort: number | null;
   /** Epoch ms the snapshot was produced (drives the staleness badge). */
-  generatedAtMs: number;
+  generatedAtMs: number | null;
+  /** The agent has no current snapshot from the relay loop. */
+  stale: boolean;
 }
 
-function num(v: unknown): number {
-  return typeof v === "number" && Number.isFinite(v) ? v : 0;
-}
-
-function str(v: unknown): string {
-  return typeof v === "string" ? v : "";
+function num(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
 function coerce(raw: unknown): AtlasRelayStatus | null {
   if (!raw || typeof raw !== "object") return null;
   const e = raw as Record<string, unknown>;
   return {
-    up: e.up === true,
+    up: typeof e.up === "boolean" ? e.up : null,
     datagramsSeen: num(e.datagrams_seen),
     forwarded: num(e.forwarded),
     malformed: num(e.malformed),
     forwardFailed: num(e.forward_failed),
-    computeUrl: str(e.compute_url),
+    computeUrl: typeof e.compute_url === "string" ? e.compute_url : null,
     listenPort: num(e.listen_port),
     generatedAtMs: num(e.generated_at_ms),
+    stale: e.stale === true,
   };
 }
 

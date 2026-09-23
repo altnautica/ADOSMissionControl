@@ -14,6 +14,15 @@ import {
   type BridgeTokenValidatorOptions,
 } from "@/lib/plugins/bridge";
 import { isDemoMode } from "@/lib/utils";
+import {
+  agentStateOrigin,
+  isReservedEventTopic,
+  subscribePluginEvent,
+} from "@/lib/plugins/event-bus";
+import {
+  pluginConfigKey,
+  usePluginConfigCache,
+} from "@/lib/plugins/config-cache";
 
 /** Maximum time the host will wait for a pause/resume ACK before proceeding. */
 export const LIFECYCLE_ACK_TIMEOUT_MS = 300;
@@ -239,9 +248,6 @@ export const PluginIframeHost = forwardRef<
               return fn ? fn() : Date.now();
             },
             onTokenExpired: () => validatorRef.current?.onTokenExpired?.(),
-            get allowMissingToken() {
-              return validatorRef.current?.allowMissingToken;
-            },
           }
         : undefined;
     const bridge = createPluginBridge({
@@ -312,6 +318,63 @@ export const PluginIframeHost = forwardRef<
       iframe.removeEventListener("load", post);
     };
   }, [token]);
+
+  // Deliver the plugin's per-drone config values the GCS has written (from
+  // the plugin itself, the native parameter panel or the Skill Bar) as a
+  // `config.changed` event, on load and after every accepted write, so the
+  // plugin's UI reflects a setting changed anywhere. The SDK's
+  // `ctx.config.onChange` listens for this event.
+  const knownConfig = usePluginConfigCache((s) =>
+    agentId ? s.values[pluginConfigKey(agentId, pluginId)] : undefined,
+  );
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !knownConfig) return;
+    const post = () => {
+      iframe.contentWindow?.postMessage(
+        {
+          id: "config-" + Date.now(),
+          type: "event",
+          method: "config.changed",
+          capability: "",
+          args: knownConfig,
+          version: 1,
+        },
+        "*",
+      );
+    };
+    iframe.addEventListener("load", post);
+    post();
+    return () => {
+      iframe.removeEventListener("load", post);
+    };
+  }, [knownConfig]);
+
+  // Forward this plugin's own agent-published state (republished on the bus
+  // by the state egress under the plugin's agent-state origin for this drone)
+  // as host events whose method is the topic, which is what the SDK's
+  // `ctx.events.subscribe(topic)` listens for. Only this plugin's own state on
+  // this drone reaches it, so no grant is needed; host-reserved namespaces are
+  // never forwarded so a state topic cannot pose as a host push.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !agentId) return;
+    const origin = agentStateOrigin(pluginId, agentId);
+    return subscribePluginEvent("*", pluginId, (payload, topic, from) => {
+      if (from !== origin || isReservedEventTopic(topic)) return;
+      iframe.contentWindow?.postMessage(
+        {
+          id: "state-" + Date.now(),
+          type: "event",
+          method: topic,
+          capability: "",
+          args: payload,
+          version: 1,
+        },
+        "*",
+      );
+    });
+  }, [pluginId, agentId]);
 
   // Stream the latest host event to the iframe (e.g. video-overlay host
   // props). Re-posts on every change and once on iframe load so an overlay

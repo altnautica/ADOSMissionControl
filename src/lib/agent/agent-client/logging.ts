@@ -26,14 +26,27 @@
 
 import type { RequestContext } from "./transport";
 import { AGENT_FETCH_TIMEOUT_MS, timedFetch } from "./timeout";
+import {
+  normaliseBucket,
+  normaliseHealth,
+  normaliseQueryRow,
+  normaliseSessionRow,
+  normaliseStats,
+  toLogLevel,
+  usToIso,
+} from "./logging-wire";
+import { openLogTail, type LogTail, type LogTailHandlers } from "./log-tail";
+
+export type { LogTail, LogTailHandlers } from "./log-tail";
 
 // ── Row shapes ────────────────────────────────────────────────────────
 
 export type LogLevel = "debug" | "info" | "warning" | "error";
 
-/** A single log row from the durable store (`kind=logs`). */
+/** A single log row from the durable store (`kind=logs`), normalised from the
+ * store's `LogRow` wire shape by `logging-wire.ts`. */
 export interface LoggingRow {
-  /** ISO-8601 (with offset) server-rendered timestamp. */
+  /** ISO-8601 timestamp derived from `ts_us`. */
   ts: string;
   /** Microseconds since the epoch — the keyset sort key. */
   ts_us: number;
@@ -58,44 +71,48 @@ export interface MetricsRow {
   tags?: Record<string, string>;
 }
 
-/** A discrete event row (`kind=events`). */
+/** A discrete event row (`kind=events`). `data` is the store's `detail` map. */
 export interface EventsRow {
   ts: string;
   ts_us: number;
   kind: string;
   data?: Record<string, unknown>;
+  /** Emitting component. */
+  source?: string;
+  severity?: LogLevel;
 }
 
-/** A hardware-sample row (`kind=hw`). */
+/** A hardware snapshot row (`kind=hw`): the store's open signal map. */
 export interface HWRow {
   ts: string;
   ts_us: number;
-  hwclass: string;
-  fields: Record<string, number>;
+  signals: Record<string, unknown>;
 }
 
 /** A boot / flight / manual session. */
 export interface SessionRow {
   id: string;
-  /** ISO-8601 (with offset). */
+  /** ISO-8601, derived from the store's `started_us`. */
   started: string;
-  /** ISO-8601 (with offset), or null while the session is still open. */
+  /** ISO-8601, or null while the session is still open. */
   ended: string | null;
   kind: "boot" | "flight" | "manual";
   reason?: string;
   meta?: Record<string, unknown>;
   log_count: number;
   event_count: number;
-  duration_ms: number;
+  /** The store's `span_us` in milliseconds; null while the session is open. */
+  duration_ms: number | null;
 }
 
-/** One bucketed aggregate point. `metric` + `value` plus the bucket time. */
+/** One bucketed aggregate point. `ts_us` is the bucket start. */
 export interface AggregatePoint {
   ts: string;
   ts_us: number;
   metric: string;
   value: number;
-  tags?: Record<string, string>;
+  /** Samples folded into the bucket. */
+  count?: number;
 }
 
 // ── Request param shapes ──────────────────────────────────────────────
@@ -219,26 +236,30 @@ export interface LoggingEnvelope<T> {
   };
 }
 
+/** Store + ingest + sync health, as the store's `/v1/stats` reports it. */
 export interface StatsResponse {
   db: {
-    file_size_mb: number;
-    wal_size_mb: number;
+    size_bytes: number;
+    wal_size_bytes: number;
     row_counts: Record<string, number>;
-    integrity?: boolean;
-    user_version?: number;
+    /** True only when the integrity check read `ok`. */
+    integrity: boolean;
+    /** The raw integrity result (`ok`, or the failure text). */
+    integrity_detail: string;
+    schema_version: number | null;
   };
   ingest: {
-    rows_per_sec: number;
-    drops: Record<string, number>;
-    queue_depth: number;
-    last_batch_latency_ms?: number;
+    /** Frames accepted since the store daemon started. */
+    accepted: number;
+    /** Frames dropped under backpressure, per class. */
+    dropped: Record<string, number>;
   };
   sync: {
-    /** Rows still pending an explicit push, per table. */
-    pending_rows?: Record<string, number>;
-    synced_rows: number;
-    last_push_time: string | null;
+    /** Rows not yet pushed to the cloud, per table. */
+    unsynced_rows: Record<string, number>;
   };
+  oldest_ts_us: number | null;
+  newest_ts_us: number | null;
   /** Which tier answered the stats call (so the UI can show a degraded badge). */
   source: LoggingSource;
 }
@@ -378,15 +399,7 @@ function normaliseLegacyRow(raw: unknown, idx: number): LoggingRow {
         ? r.ts
         : new Date().toISOString();
   const tsMs = Date.parse(ts);
-  const level = ((): LogLevel => {
-    const lv = String(r.level ?? "info").toLowerCase();
-    if (lv === "debug" || lv === "info" || lv === "warning" || lv === "error") {
-      return lv;
-    }
-    if (lv === "warn") return "warning";
-    if (lv === "err" || lv === "critical" || lv === "fatal") return "error";
-    return "info";
-  })();
+  const level = toLogLevel(r.level);
   return {
     ts,
     ts_us: Number.isFinite(tsMs) ? tsMs * 1000 : 0,
@@ -430,11 +443,16 @@ function emptyLegacyEnvelope<T>(): LoggingEnvelope<T> {
   };
 }
 
-/** Coerce a raw `/v1` JSON body into the typed envelope, tolerating the
- * agent shipping extra fields ahead of the client. */
-function asEnvelope<T>(body: unknown, source: LoggingSource): LoggingEnvelope<T> {
+/** Coerce a raw `/v1` JSON body into the typed envelope, mapping each wire
+ * row through `mapRow` and tolerating extra fields the agent ships ahead of
+ * the client. */
+function asEnvelope<T>(
+  body: unknown,
+  source: LoggingSource,
+  mapRow: (raw: unknown, idx: number) => T,
+): LoggingEnvelope<T> {
   const b = (body ?? {}) as Record<string, unknown>;
-  const data = Array.isArray(b.data) ? (b.data as T[]) : [];
+  const data = Array.isArray(b.data) ? b.data.map(mapRow) : [];
   const page = (b.page ?? {}) as Record<string, unknown>;
   const meta = (b.meta ?? {}) as Record<string, unknown>;
   return {
@@ -452,7 +470,13 @@ function asEnvelope<T>(body: unknown, source: LoggingSource): LoggingEnvelope<T>
           ? (meta.source as LoggingSource)
           : source,
       v: typeof meta.v === "number" ? meta.v : 1,
-      ts: typeof meta.ts === "string" ? meta.ts : new Date().toISOString(),
+      // The store stamps the server time as a microsecond epoch.
+      ts:
+        typeof meta.ts === "number"
+          ? usToIso(meta.ts)
+          : typeof meta.ts === "string"
+            ? meta.ts
+            : new Date().toISOString(),
       db_lag_ms: typeof meta.db_lag_ms === "number" ? meta.db_lag_ms : 0,
     },
   };
@@ -599,7 +623,12 @@ export class LoggingService {
           : [];
       return wrapLegacy(arr) as unknown as LoggingEnvelope<T>;
     }
-    return asEnvelope<T>(body, TIER_SOURCE[tier]);
+    const kind = params.kind ?? "logs";
+    return asEnvelope<T>(
+      body,
+      TIER_SOURCE[tier],
+      (raw, idx) => normaliseQueryRow(kind, raw, idx) as T,
+    );
   }
 
   /** Async iterator that walks every page of a query (newest first). Stops
@@ -624,26 +653,22 @@ export class LoggingService {
 
   // ── tail (SSE) ─────────────────────────────────────────────────────────
 
-  /** Open a live Server-Sent-Events stream. Returns the EventSource so the
-   * caller wires up `message` / `error` handlers and closes it on unmount.
-   * The key travels as a query param because `EventSource` cannot set a
-   * request header in the browser. Tail is direct-only (the legacy
-   * `/api/logs/stream` is not wired here — callers fall back to polling
-   * when no tail source is available). Throws when no host is resolvable,
-   * the runtime has no EventSource, or the agent is reached through a radio
-   * relay (so the caller can fall back). */
-  tail(params: TailParams = {}): EventSource {
-    if (typeof EventSource === "undefined") {
-      throw new Error("EventSource unavailable");
-    }
+  /** Open a live log tail (`kind=logs`). The stream is read with `fetch` so
+   * the key travels in the `X-ADOS-Key` header, never in the URL; each row
+   * reaches `handlers.onRow` already normalised, and a dropped or refused
+   * stream reaches `handlers.onError` once. Tail is direct-only (the legacy
+   * `/api/logs/stream` is not wired here — callers fall back to polling when
+   * no tail source is available). Throws when no host is resolvable or the
+   * agent is reached through a radio relay (so the caller can fall back). */
+  tail(params: TailParams, handlers: LogTailHandlers): LogTail {
     if (this.ctx.relay) {
       // Not a radio limit — the measured link carries 4 Mbps of H.264
       // continuously. The aux lane's Request/Response channels are unary by
       // construction (`aux_mux.rs`), so a long-lived stream has no channel to
       // ride yet; a bounded-rate unary poll does, which is the substitution
       // `VisionDetectionsBridge` already makes for detections. Throwing drops
-      // the caller to that poll rather than opening an EventSource against
-      // the ground station's own logd, which would tail the WRONG node.
+      // the caller to that poll rather than opening a stream against the
+      // ground station's own logd, which would tail the WRONG node.
       throw new Error(
         "log tail is not yet multiplexed onto the relay lane — polling instead",
       );
@@ -651,12 +676,17 @@ export class LoggingService {
     // Tail rides the direct tier when reachable, else the proxy bridge.
     const tier: Tier = this.preferredTier === "proxy" ? "proxy" : "direct";
     const { origin, prefix } = tierBase(this.ctx, tier);
-    const qs = new URLSearchParams(buildQueryString(params));
+    const qs = new URLSearchParams(buildQueryString({ ...params, kind: "logs" }));
     if (params.replay != null) qs.set("replay", String(params.replay));
-    if (this.ctx.apiKey) qs.set("key", this.ctx.apiKey);
-    const query = qs.toString();
-    const url = `${origin}${prefix}/tail${query ? `?${query}` : ""}`;
-    return new EventSource(url);
+    const url = `${origin}${prefix}/tail?${qs.toString()}`;
+    const headers: Record<string, string> = { Accept: "text/event-stream" };
+    if (this.ctx.apiKey) headers["X-ADOS-Key"] = this.ctx.apiKey;
+    return openLogTail(
+      url,
+      headers,
+      this.ctx.defaultTimeoutMs ?? AGENT_FETCH_TIMEOUT_MS,
+      handlers,
+    );
   }
 
   // ── aggregate ──────────────────────────────────────────────────────────
@@ -684,7 +714,7 @@ export class LoggingService {
     if (tier === "legacy") {
       return emptyLegacyEnvelope<AggregatePoint>();
     }
-    return asEnvelope<AggregatePoint>(body, TIER_SOURCE[tier]);
+    return asEnvelope(body, TIER_SOURCE[tier], normaliseBucket);
   }
 
   // ── sessions ───────────────────────────────────────────────────────────
@@ -712,7 +742,7 @@ export class LoggingService {
     if (tier === "legacy") {
       return emptyLegacyEnvelope<SessionRow>();
     }
-    return asEnvelope<SessionRow>(body, TIER_SOURCE[tier]);
+    return asEnvelope(body, TIER_SOURCE[tier], normaliseSessionRow);
   }
 
   // ── export ───────────────────────────────────────────────────────────
@@ -873,45 +903,7 @@ export class LoggingService {
     if (tier === "legacy") {
       throw new Error("stats unavailable on legacy agent");
     }
-    const b = (body ?? {}) as Record<string, unknown>;
-    const db = (b.db ?? {}) as Record<string, unknown>;
-    const ingest = (b.ingest ?? {}) as Record<string, unknown>;
-    const sync = (b.sync ?? {}) as Record<string, unknown>;
-    return {
-      db: {
-        file_size_mb: Number(db.file_size_mb ?? 0),
-        wal_size_mb: Number(db.wal_size_mb ?? 0),
-        row_counts:
-          db.row_counts && typeof db.row_counts === "object"
-            ? (db.row_counts as Record<string, number>)
-            : {},
-        integrity: typeof db.integrity === "boolean" ? db.integrity : undefined,
-        user_version:
-          typeof db.user_version === "number" ? db.user_version : undefined,
-      },
-      ingest: {
-        rows_per_sec: Number(ingest.rows_per_sec ?? 0),
-        drops:
-          ingest.drops && typeof ingest.drops === "object"
-            ? (ingest.drops as Record<string, number>)
-            : {},
-        queue_depth: Number(ingest.queue_depth ?? 0),
-        last_batch_latency_ms:
-          typeof ingest.last_batch_latency_ms === "number"
-            ? ingest.last_batch_latency_ms
-            : undefined,
-      },
-      sync: {
-        pending_rows:
-          sync.pending_rows && typeof sync.pending_rows === "object"
-            ? (sync.pending_rows as Record<string, number>)
-            : undefined,
-        synced_rows: Number(sync.synced_rows ?? 0),
-        last_push_time:
-          typeof sync.last_push_time === "string" ? sync.last_push_time : null,
-      },
-      source: TIER_SOURCE[tier],
-    };
+    return { ...normaliseStats(body), source: TIER_SOURCE[tier] };
   }
 
   /** Liveness/readiness probe. Returns `{ ok:false }` rather than throwing
@@ -936,14 +928,7 @@ export class LoggingService {
           source: "legacy",
         };
       }
-      const b = (body ?? {}) as Record<string, unknown>;
-      return {
-        ok: b.ok === true,
-        db_open: b.db_open === true,
-        writer_alive: b.writer_alive === true,
-        integrity: b.integrity === true,
-        source: TIER_SOURCE[tier],
-      };
+      return { ...normaliseHealth(body), source: TIER_SOURCE[tier] };
     } catch {
       return {
         ok: false,

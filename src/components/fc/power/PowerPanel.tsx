@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { useFcPanelState } from "@/hooks/use-fc-panel-state";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
@@ -16,18 +15,7 @@ import { StarredParam } from "../parameters/ParamStar";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { LiveBatteryDisplay } from "./LiveBatteryDisplay";
-
-const BATT_MONITOR_OPTIONS = [
-  { value: "0", label: "0 — Disabled" },
-  { value: "3", label: "3 — Analog Voltage Only" },
-  { value: "4", label: "4 — Analog Voltage and Current" },
-  { value: "5", label: "5 — Solo" },
-  { value: "7", label: "7 — SMBus" },
-  { value: "8", label: "8 — DroneCAN" },
-  { value: "9", label: "9 — ESC" },
-  { value: "10", label: "10 — Sum of Selected" },
-  { value: "16", label: "16 — Analog VCC" },
-];
+import { Px4PowerSections, PX4_POWER_PARAMS, PX4_OPTIONAL_POWER_PARAMS } from "./Px4PowerSections";
 
 const POWER_PARAMS = [
   "BATT_MONITOR", "BATT_CAPACITY", "BATT_AMP_PERVLT", "BATT_AMP_OFFSET",
@@ -43,20 +31,25 @@ const OPTIONAL_POWER_PARAMS = [
   "BATT2_MONITOR", "BATT2_CAPACITY", "BATT2_AMP_PERVLT", "BATT2_AMP_OFFSET",
   "BATT2_FS_LOW_VOLT", "BATT2_FS_LOW_ACT", "BATT2_FS_CRT_VOLT", "BATT2_FS_CRT_ACT",
   "BATT2_FS_LOW_MAH", "BATT2_FS_CRT_MAH",
-  "BAT1_N_CELLS", "BAT1_R_INTERNAL",
 ];
+
+const NO_PARAMS: string[] = [];
 
 export function PowerPanel() {
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === 'px4';
   const isBetaflight = firmwareType === 'betaflight';
+  const isArduPilot = !isPx4 && !isBetaflight;
   const { label: pl } = useParamLabel();
   const metadata = useParamMetadataMap();
   const { enumValues } = useParamEnums(metadata);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
 
-  const powerParamNames = useMemo(() => isBetaflight ? [...BF_POWER_PARAMS] : POWER_PARAMS, [isBetaflight]);
-  const optionalPowerParams = useMemo(() => isBetaflight ? [] : OPTIONAL_POWER_PARAMS, [isBetaflight]);
+  const powerParamNames = useMemo(
+    () => isBetaflight ? [...BF_POWER_PARAMS] : isPx4 ? PX4_POWER_PARAMS : POWER_PARAMS,
+    [isBetaflight, isPx4],
+  );
+  const optionalPowerParams = isBetaflight ? NO_PARAMS : isPx4 ? PX4_OPTIONAL_POWER_PARAMS : OPTIONAL_POWER_PARAMS;
 
   const panelState = useFcPanelState({ paramNames: powerParamNames, optionalParams: optionalPowerParams, panelId: "power", autoLoad: true, scroll: true });
   const {
@@ -72,7 +65,7 @@ export function PowerPanel() {
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
   // Battery failsafe actions are vehicle-specific enums (Copter 1 = Land,
-  // Plane 1 = RTL, PX4 COM_LOW_BAT_ACT) and come from the vehicle's metadata.
+  // Plane 1 = RTL) and come from the vehicle's metadata.
   const actionField = (name: string, text: string) => (
     <ParamEnumSelect label={lbl(`${name} — ${text}`)} values={enumValues(name)}
       value={params.get(name) ?? 0} onChange={(v) => setLocalValue(name, v)} />
@@ -87,6 +80,10 @@ export function PowerPanel() {
           onRead={refresh} connected={connected} error={error} />
 
         <LiveBatteryDisplay batteryCapacity={Number(params.get("BATT_CAPACITY") ?? 0)} />
+
+        {isPx4 && (
+          <Px4PowerSections params={params} setLocalValue={setLocalValue} lbl={lbl} enumValues={enumValues} />
+        )}
 
         {/* Betaflight Battery Settings */}
         {isBetaflight && (
@@ -115,14 +112,15 @@ export function PowerPanel() {
         )}
 
         {/* Battery Settings (ArduPilot) */}
-        {!isBetaflight && (
+        {isArduPilot && (
           <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <Battery size={14} className="text-accent-primary" />
               <h2 className="text-sm font-medium text-text-primary">Battery Settings</h2>
             </div>
             <StarredParam param="BATT_MONITOR">
-              <Select label={lbl("BATT_MONITOR — Battery Monitor Type")} options={BATT_MONITOR_OPTIONS} value={p("BATT_MONITOR")} onChange={(v) => set("BATT_MONITOR", v)} />
+              <ParamEnumSelect label={lbl("BATT_MONITOR — Battery Monitor Type")} values={enumValues("BATT_MONITOR")}
+                value={params.get("BATT_MONITOR") ?? 0} onChange={(v) => setLocalValue("BATT_MONITOR", v)} />
             </StarredParam>
             <StarredParam param="BATT_CAPACITY">
               <Input label={lbl("BATT_CAPACITY — Battery Capacity")} type="number" step="100" min="0" unit="mAh" value={p("BATT_CAPACITY")} onChange={(e) => set("BATT_CAPACITY", e.target.value)} />
@@ -131,7 +129,7 @@ export function PowerPanel() {
         )}
 
         {/* Current Sensor Calibration (ArduPilot) */}
-        {!isBetaflight && (
+        {isArduPilot && (
           <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <Zap size={14} className="text-accent-primary" />
@@ -141,40 +139,40 @@ export function PowerPanel() {
               <Input label={lbl("BATT_AMP_PERVLT — Amps Per Volt")} type="number" step="0.1" unit="A/V" value={p("BATT_AMP_PERVLT", "17.0")} onChange={(e) => set("BATT_AMP_PERVLT", e.target.value)} />
             </StarredParam>
             <StarredParam param="BATT_AMP_OFFSET">
-              <Input label={lbl("BATT_AMP_OFFSET — Current Offset")} type="number" step="0.01" unit="A" value={p("BATT_AMP_OFFSET", "0.0")} onChange={(e) => set("BATT_AMP_OFFSET", e.target.value)} />
+              <Input label={lbl("BATT_AMP_OFFSET — Current Sensor Zero Offset")} type="number" step="0.001" unit="V" value={p("BATT_AMP_OFFSET", "0.0")} onChange={(e) => set("BATT_AMP_OFFSET", e.target.value)} />
             </StarredParam>
           </div>
         )}
 
         {/* Battery 1 Failsafe (ArduPilot) */}
-        {!isBetaflight && <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+        {isArduPilot && <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <ShieldAlert size={14} className="text-accent-primary" />
             <h2 className="text-sm font-medium text-text-primary">Battery 1 Failsafe</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input label={lbl("BATT_FS_LOW_VOLT — Low Voltage")} type="number" step="0.1" min="0" unit="V" value={p("BATT_FS_LOW_VOLT")} onChange={(e) => set("BATT_FS_LOW_VOLT", e.target.value)} />
-            {actionField("BATT_FS_LOW_ACT", isPx4 ? "Battery Failsafe Action" : "Low Action")}
+            {actionField("BATT_FS_LOW_ACT", "Low Action")}
             <Input label={lbl("BATT_FS_CRT_VOLT — Critical Voltage")} type="number" step="0.1" min="0" unit="V" value={p("BATT_FS_CRT_VOLT")} onChange={(e) => set("BATT_FS_CRT_VOLT", e.target.value)} />
-            {/* PX4 has a single battery action (COM_LOW_BAT_ACT, above). */}
-            {!isPx4 && actionField("BATT_FS_CRT_ACT", "Critical Action")}
+            {actionField("BATT_FS_CRT_ACT", "Critical Action")}
             <Input label={lbl("BATT_FS_LOW_MAH — Low mAh Remaining")} type="number" step="50" min="0" unit="mAh" value={p("BATT_FS_LOW_MAH")} onChange={(e) => set("BATT_FS_LOW_MAH", e.target.value)} />
             <Input label={lbl("BATT_FS_CRT_MAH — Critical mAh Remaining")} type="number" step="50" min="0" unit="mAh" value={p("BATT_FS_CRT_MAH")} onChange={(e) => set("BATT_FS_CRT_MAH", e.target.value)} />
           </div>
         </div>}
 
         {/* Battery 2 (ArduPilot) */}
-        {!isBetaflight && p("BATT2_MONITOR") !== "0" && (
+        {isArduPilot && params.has("BATT2_MONITOR") && p("BATT2_MONITOR") !== "0" && (
           <>
             <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <Battery size={14} className="text-accent-primary" />
                 <h2 className="text-sm font-medium text-text-primary">Battery 2 Settings</h2>
               </div>
-              <Select label={lbl("BATT2_MONITOR — Battery 2 Monitor Type")} options={BATT_MONITOR_OPTIONS} value={p("BATT2_MONITOR")} onChange={(v) => set("BATT2_MONITOR", v)} />
+              <ParamEnumSelect label={lbl("BATT2_MONITOR — Battery 2 Monitor Type")} values={enumValues("BATT2_MONITOR")}
+                value={params.get("BATT2_MONITOR") ?? 0} onChange={(v) => setLocalValue("BATT2_MONITOR", v)} />
               <Input label={lbl("BATT2_CAPACITY — Battery 2 Capacity")} type="number" step="100" min="0" unit="mAh" value={p("BATT2_CAPACITY")} onChange={(e) => set("BATT2_CAPACITY", e.target.value)} />
               <Input label={lbl("BATT2_AMP_PERVLT — Battery 2 Amps Per Volt")} type="number" step="0.1" unit="A/V" value={p("BATT2_AMP_PERVLT", "17.0")} onChange={(e) => set("BATT2_AMP_PERVLT", e.target.value)} />
-              <Input label={lbl("BATT2_AMP_OFFSET — Battery 2 Current Offset")} type="number" step="0.01" unit="A" value={p("BATT2_AMP_OFFSET", "0.0")} onChange={(e) => set("BATT2_AMP_OFFSET", e.target.value)} />
+              <Input label={lbl("BATT2_AMP_OFFSET — Battery 2 Current Sensor Zero Offset")} type="number" step="0.001" unit="V" value={p("BATT2_AMP_OFFSET", "0.0")} onChange={(e) => set("BATT2_AMP_OFFSET", e.target.value)} />
             </div>
             <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
               <div className="flex items-center gap-2 mb-1">
@@ -191,26 +189,6 @@ export function PowerPanel() {
               </div>
             </div>
           </>
-        )}
-
-        {/* PX4 Battery Config */}
-        {isPx4 && hasLoaded && (
-          <section className="border-t border-border-strong pt-4 mt-4">
-            <h3 className="text-sm font-medium text-text-secondary mb-3">PX4 Battery Config</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs text-text-secondary mb-1 block">Cell Count</label>
-                <Input type="number" step={1} min={1} max={14} value={String(params.get("BAT1_N_CELLS") ?? 4)}
-                  onChange={(e) => setLocalValue("BAT1_N_CELLS", Number(e.target.value) || 4)} className="h-8 text-xs" />
-                <p className="text-[10px] text-text-tertiary mt-1">PX4 needs explicit cell count (ArduPilot auto-detects)</p>
-              </div>
-              <div>
-                <label className="text-xs text-text-secondary mb-1 block">Internal Resistance (Ohm)</label>
-                <Input type="number" step={0.001} min={0} max={1} value={String(params.get("BAT1_R_INTERNAL") ?? 0.005)}
-                  onChange={(e) => setLocalValue("BAT1_R_INTERNAL", Number(e.target.value) || 0)} className="h-8 text-xs" />
-              </div>
-            </div>
-          </section>
         )}
 
         {/* Save */}

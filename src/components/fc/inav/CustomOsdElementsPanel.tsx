@@ -1,8 +1,11 @@
 /**
  * @module CustomOsdElementsPanel
  * @description iNav custom OSD elements editor.
- * Shows up to 8 custom text OSD elements. Each element has a visibility
- * toggle and a free-text field (max 16 ASCII characters).
+ * Shows up to the FC-reported element count of custom text OSD elements. Each
+ * element has a visibility toggle and a free-text field (ASCII, length the FC
+ * reports). Read loads every element back from the FC; Save writes one row
+ * with the FC's own element geometry, so a row can never be rejected for a
+ * size mismatch the firmware does not accept.
  * @license GPL-3.0-only
  */
 
@@ -13,20 +16,39 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Type } from "lucide-react";
+import type {
+  INavCustomOsdElement,
+  INavCustomOsdElementsInfo,
+} from "@/lib/protocol/msp/msp-decoders-inav";
 
-// ── Types ─────────────────────────────────────────────────────
+const MAX_TEXT_LEN = 16;
 
+/** One editable row: an element with its visibility rule reduced to a toggle. */
 interface OsdElement {
   index: number;
   visible: boolean;
   text: string;
 }
 
-const ELEMENT_COUNT = 8;
-const MAX_TEXT_LEN = 16;
-
 function defaultElement(index: number): OsdElement {
   return { index, visible: false, text: "" };
+}
+
+/** The wire value one row becomes: parts untouched, visibility = always/toggle. */
+function toWire(row: OsdElement): INavCustomOsdElement {
+  return {
+    index: row.index,
+    parts: [],
+    // Type 0 is "always visible"; any other type is a gated rule. A hidden
+    // row is gated on global variable 0, which defaults to false.
+    visibility: { type: row.visible ? 0 : 1, value: 0 },
+    text: row.text,
+  };
+}
+
+/** The visible toggle reads back as a visibility type-0 rule (always on). */
+function fromWire(el: INavCustomOsdElement): OsdElement {
+  return { index: el.index, visible: el.visibility.type === 0, text: el.text };
 }
 
 // ── Component ─────────────────────────────────────────────────
@@ -39,28 +61,32 @@ export function CustomOsdElementsPanel() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
-  const [elements, setElements] = useState<OsdElement[]>(
-    Array.from({ length: ELEMENT_COUNT }, (_, i) => defaultElement(i)),
-  );
+  const [info, setInfo] = useState<INavCustomOsdElementsInfo | null>(null);
+  const [elements, setElements] = useState<OsdElement[]>([]);
 
   const { isArmed, lockMessage } = useArmedLock();
 
-  // iNav does not provide a GET command that returns custom OSD element text
-  // back to the configurator. The FC stores elements write-only. Users configure
-  // elements in this table and save each row; the FC applies on next render.
-  // "Reset" clears the local table so the user can start fresh without rebooting.
   const handleReset = useCallback(() => {
-    setElements(Array.from({ length: ELEMENT_COUNT }, (_, i) => defaultElement(i)));
+    setElements([]);
+    setInfo(null);
     setHasLoaded(false);
     setError(null);
   }, []);
 
   const handleRead = useCallback(async () => {
     const protocol = getSelectedProtocol();
-    if (!protocol) { setError("Not connected"); return; }
+    if (!protocol?.getCustomOsdElements) { setError("Custom OSD elements not available on this firmware"); return; }
     setLoading(true); setError(null);
-    setHasLoaded(true);
-    setLoading(false);
+    try {
+      const { info: fcInfo, elements: fcElements } = await protocol.getCustomOsdElements();
+      setInfo(fcInfo);
+      setElements(fcElements.map(fromWire));
+      setHasLoaded(true);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setLoading(false);
+    }
   }, [getSelectedProtocol]);
 
   function updateElement(idx: number, key: keyof OsdElement, value: unknown) {
@@ -74,7 +100,7 @@ export function CustomOsdElementsPanel() {
     if (!protocol?.setCustomOsdElement) { setError("Custom OSD elements not available on this firmware"); return; }
     setSavingIdx(idx); setError(null);
     try {
-      const result = await protocol.setCustomOsdElement(elements[idx]);
+      const result = await protocol.setCustomOsdElement(toWire(elements[idx]));
       if (!result.success) setError(result.message);
     } catch (err) {
       setError(String(err));
@@ -83,16 +109,14 @@ export function CustomOsdElementsPanel() {
     }
   }, [getSelectedProtocol, elements]);
 
+  const textLength = info?.textLength ?? MAX_TEXT_LEN;
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl space-y-4">
-        <p className="text-[11px] text-text-tertiary border border-border-default rounded px-3 py-2 bg-bg-secondary">
-          iNav does not support reading custom OSD elements back from the flight controller.
-          Start from a blank table and write each row to persist.
-        </p>
         <PanelHeader
           title="Custom OSD"
-          subtitle={`Up to ${ELEMENT_COUNT} custom text OSD elements. Max ${MAX_TEXT_LEN} ASCII characters each.`}
+          subtitle={`${info?.maxElements ?? 0} custom text OSD elements, up to ${textLength} ASCII characters each.`}
           icon={<Type size={16} />}
           loading={loading}
           loadProgress={null}
@@ -141,9 +165,9 @@ export function CustomOsdElementsPanel() {
                     <td className="px-3 py-2">
                       <input
                         type="text"
-                        maxLength={MAX_TEXT_LEN}
+                        maxLength={textLength}
                         value={el.text}
-                        onChange={(e) => updateElement(idx, "text", e.target.value.slice(0, MAX_TEXT_LEN))}
+                        onChange={(e) => updateElement(idx, "text", e.target.value.slice(0, textLength))}
                         placeholder={`Element ${idx} text`}
                         className="w-full bg-bg-tertiary border border-border-default rounded px-2 py-1 font-mono text-text-primary placeholder:text-text-tertiary"
                       />

@@ -157,10 +157,11 @@ export async function revokeRelay(
 ): Promise<boolean> {
   try {
     await api.revokeRelay(device_id);
+    const current = get().distributedRx;
     set({
       distributedRx: {
-        ...get().distributedRx,
-        receiverRelays: get().distributedRx.receiverRelays.filter(
+        ...(current ?? {}),
+        receiverRelays: (current?.receiverRelays ?? []).filter(
           (r) => r.mac !== device_id,
         ),
         error: null,

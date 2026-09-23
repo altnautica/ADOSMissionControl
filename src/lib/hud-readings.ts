@@ -52,7 +52,10 @@ export interface HudInstruments {
   pitch: number | null;
   /** Roll, degrees (right-wing-down positive). Null when attitude is stale. */
   roll: number | null;
-  /** Relative altitude, meters. */
+  /**
+   * Height above home (GLOBAL_POSITION_INT.relative_alt), meters. Null when
+   * position is stale: VFR_HUD.alt is MSL, so it is no stand-in.
+   */
   alt: number | null;
   /** Ground speed, m/s. */
   speedMps: number | null;
@@ -116,11 +119,7 @@ export function deriveHudInstruments(samples: HudSamples): HudInstruments {
   const roll = attFresh && typeof att?.roll === "number" ? att.roll : null;
 
   const alt =
-    posFresh && typeof pos?.alt === "number"
-      ? pos.alt
-      : vfrFresh && typeof vfr?.alt === "number"
-        ? vfr.alt
-        : null;
+    posFresh && typeof pos?.relativeAlt === "number" ? pos.relativeAlt : null;
 
   const speedMps =
     vfrFresh && typeof vfr?.groundspeed === "number"

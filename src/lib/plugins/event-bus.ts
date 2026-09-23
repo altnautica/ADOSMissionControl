@@ -25,15 +25,21 @@
  * @license GPL-3.0-only
  */
 
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+
 /** Maximum buffered, undelivered events per subscriber before drop-oldest. */
 export const MAX_QUEUE = 256;
 
-/** Subscriber callback. Receives the event payload and the concrete topic. */
-export type PluginEventCallback = (payload: unknown, topic: string) => void;
+/**
+ * Subscriber callback. Receives the event payload, the concrete topic, and the
+ * publisher's origin id (a plugin id, or an {@link agentStateOrigin} id).
+ */
+export type PluginEventCallback = (payload: unknown, topic: string, origin: string) => void;
 
 interface QueuedEvent {
   payload: unknown;
   topic: string;
+  origin: string;
 }
 
 interface Subscription {
@@ -73,7 +79,7 @@ function drain(sub: Subscription): void {
       const event = sub.queue.shift();
       if (event === undefined) break;
       try {
-        sub.cb(event.payload, event.topic);
+        sub.cb(event.payload, event.topic, event.origin);
       } catch {
         // A throwing subscriber must not break delivery for others.
       }
@@ -88,20 +94,19 @@ function drain(sub: Subscription): void {
  *
  * @param topic         Concrete dotted topic (no wildcards).
  * @param payload       Arbitrary event payload, passed through untouched.
- * @param fromPluginId  Origin plugin id. Recorded for the caller's context;
- *                      not used for routing (the bus does not self-filter).
+ * @param fromPluginId  Origin id, handed to every subscriber. Not used for
+ *                      routing (the bus does not self-filter).
  */
 export function publishPluginEvent(
   topic: string,
   payload: unknown,
   fromPluginId: string,
 ): void {
-  void fromPluginId;
   const targets: Subscription[] = [];
   for (const sub of subscriptions) {
     if (matches(sub, topic)) targets.push(sub);
   }
-  for (const sub of targets) enqueue(sub, { payload, topic });
+  for (const sub of targets) enqueue(sub, { payload, topic, origin: fromPluginId });
   for (const sub of targets) drain(sub);
 }
 
@@ -143,6 +148,31 @@ export function subscribePluginEvent(
   return () => {
     subscriptions.delete(sub);
   };
+}
+
+/**
+ * Host-owned event namespaces. Bus events reach an iframe with the topic as
+ * the envelope method, so a bus topic in one of these namespaces would read to
+ * the plugin as a host push (a token, theme, config or telemetry frame). The
+ * handlers refuse to publish them and never deliver them.
+ */
+const RESERVED_TOPIC_PREFIXES = [
+  "telemetry.", "perception.", "theme.", "capability.", "config.",
+  "lifecycle.", "video.overlay.", "i18n.",
+] as const;
+
+export function isReservedEventTopic(topic: string): boolean {
+  return RESERVED_TOPIC_PREFIXES.some((p) => topic.startsWith(p));
+}
+
+/**
+ * Origin id for a plugin's own agent-published state, republished on the bus
+ * from the drone's agent. The iframe host forwards events with this origin to
+ * that plugin's iframe on that drone only. `droneId` may be a `node:` id or a
+ * bare device id; both name the same drone.
+ */
+export function agentStateOrigin(pluginId: string, droneId: string): string {
+  return `agent-state:${deviceIdFromNodeId(droneId) ?? droneId}:${pluginId}`;
 }
 
 /** Aggregate bus stats. For diagnostics and tests. */

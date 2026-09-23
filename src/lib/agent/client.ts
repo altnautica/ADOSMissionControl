@@ -10,6 +10,7 @@
 export { AgentClient } from "./agent-client/client";
 export { agentSupports } from "./agent-client/version-cache";
 export { normaliseSystemResources } from "./agent-client/system";
+export { SigningPartialEnrollError } from "./agent-client/extras";
 export type {
   CameraEntry,
   CameraListResponse,

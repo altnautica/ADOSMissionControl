@@ -13,6 +13,10 @@ import { MapPin, Upload, Download, Trash2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRallyStore, type RallyPoint } from "@/stores/rally-store";
 import { usePlannerStore } from "@/stores/planner-store";
+import { useDroneManager } from "@/stores/drone-manager";
+import { useRallyUploadStatus } from "@/hooks/use-upload-status";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { recordHistory } from "@/lib/planner-history";
 
 export function RallyPointEditor() {
   const t = useTranslations("rally");
@@ -30,31 +34,39 @@ export function RallyPointEditor() {
 
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<"success" | "error" | null>(null);
+  // The last transfer's failure, shown until the next attempt. Success is not
+  // latched here: "uploaded" is derived from the upload receipt, so an edit
+  // or a drone switch changes it immediately.
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
+  const uploadStatus = useRallyUploadStatus();
+  // Transfers need a selected flight controller that speaks the rally protocol.
+  const canUpload = useDroneManager((s) => !!s.getSelectedProtocol()?.uploadRallyPoints);
+  const canDownload = useDroneManager((s) => !!s.getSelectedProtocol()?.downloadRallyPoints);
 
   const handleUpload = useCallback(async () => {
     setUploading(true);
-    setUploadStatus(null);
-    try {
-      await uploadRallyPoints();
-      setUploadStatus("success");
-      setTimeout(() => setUploadStatus(null), 3000);
-    } catch {
-      setUploadStatus("error");
-      setTimeout(() => setUploadStatus(null), 3000);
-    } finally {
-      setUploading(false);
-    }
-  }, [uploadRallyPoints]);
+    setTransferError(null);
+    const r = await uploadRallyPoints();
+    if (!r.success) setTransferError(`${t("rallyUploadFailed")}: ${r.message}`);
+    setUploading(false);
+  }, [uploadRallyPoints, t]);
 
-  const handleDownload = useCallback(async () => {
+  const runDownload = useCallback(async () => {
+    setConfirmReplace(false);
     setDownloading(true);
-    try {
-      await downloadRallyPoints();
-    } finally {
-      setDownloading(false);
-    }
-  }, [downloadRallyPoints]);
+    setTransferError(null);
+    // The undo step is recorded only when the download succeeded and is about
+    // to replace the local points.
+    const r = await downloadRallyPoints(recordHistory);
+    if (!r.success) setTransferError(`${t("downloadFailed")}: ${r.message}`);
+    setDownloading(false);
+  }, [downloadRallyPoints, t]);
+
+  const handleDownload = useCallback(() => {
+    if (points.length > 0) setConfirmReplace(true);
+    else void runDownload();
+  }, [points.length, runDownload]);
 
   return (
     <div className="flex flex-col gap-2 px-3 py-2">
@@ -73,7 +85,7 @@ export function RallyPointEditor() {
         </button>
         <button
           onClick={handleUpload}
-          disabled={uploading || points.length === 0}
+          disabled={uploading || points.length === 0 || !canUpload}
           className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono bg-bg-tertiary border border-border-default text-text-secondary hover:text-text-primary disabled:opacity-40 cursor-pointer transition-colors"
         >
           <Upload size={10} />
@@ -81,7 +93,7 @@ export function RallyPointEditor() {
         </button>
         <button
           onClick={handleDownload}
-          disabled={downloading}
+          disabled={downloading || !canDownload}
           className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono bg-bg-tertiary border border-border-default text-text-secondary hover:text-text-primary disabled:opacity-40 cursor-pointer transition-colors"
         >
           <Download size={10} />
@@ -116,15 +128,18 @@ export function RallyPointEditor() {
         </div>
       )}
 
-      {uploadStatus === "success" && (
+      {uploadStatus === "on-aircraft" && (
         <p className="text-[10px] text-status-success font-mono">
           {t("rallyUploaded")}
         </p>
       )}
-      {uploadStatus === "error" && (
-        <p className="text-[10px] text-status-error font-mono">
-          {t("rallyUploadFailed")}
+      {uploadStatus === "older-on-aircraft" && (
+        <p className="text-[10px] text-status-warning font-mono">
+          {t("olderRallyOnAircraft")}
         </p>
+      )}
+      {transferError && (
+        <p className="text-[10px] text-status-error font-mono">{transferError}</p>
       )}
 
       {addingRallyPoint && (
@@ -132,6 +147,14 @@ export function RallyPointEditor() {
           {t("clickToAdd")}
         </p>
       )}
+
+      <ConfirmDialog
+        open={confirmReplace}
+        title={t("downloadRally")}
+        message={t("replaceLocalConfirm", { count: points.length })}
+        onConfirm={() => void runDownload()}
+        onCancel={() => setConfirmReplace(false)}
+      />
     </div>
   );
 }

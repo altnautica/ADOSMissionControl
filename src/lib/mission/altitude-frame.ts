@@ -242,15 +242,13 @@ export function waypointAltitudeAboveHome(
 
 /**
  * Home ground elevation (metres MSL) inferred from a mission: the terrain
- * sample at the launch point, i.e. the first waypoint that carries one. Returns
- * `undefined` rather than 0 when no waypoint has an elevation sample.
+ * sample at the launch point, which is the first waypoint. Returns `undefined`
+ * when that waypoint has no sample yet — a later waypoint's terrain is not the
+ * launch point's, and standing in for it shifts every relative altitude by the
+ * difference between the two sites.
  */
 export function inferHomeGroundElevation(
   waypoints: readonly FrameAwareWaypoint[],
 ): number | undefined {
-  for (const wp of waypoints) {
-    const g = finite(wp.groundElevation);
-    if (g !== undefined) return g;
-  }
-  return undefined;
+  return finite(waypoints[0]?.groundElevation);
 }

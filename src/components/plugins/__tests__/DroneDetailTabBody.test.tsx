@@ -14,18 +14,31 @@ import { render, screen } from "@testing-library/react";
 import type { DronePluginContribution } from "@/hooks/use-drone-plugin-contributions";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 
-const { contributionsRef } = vi.hoisted(() => ({
+const { contributionsRef, slotRef } = vi.hoisted(() => ({
   contributionsRef: { value: [] as DronePluginContribution[] },
+  slotRef: {
+    value: [] as Array<{ pluginId: string; panelId: string; pluginInstallId?: string }>,
+  },
+}));
+
+// The provider's node.detail.tab list holds EVERY plugin's tab iframe.
+vi.mock("@/components/plugins/PluginHostProvider", () => ({
+  useSlotContributions: () => slotRef.value,
 }));
 
 vi.mock("@/hooks/use-drone-plugin-contributions", () => ({
   useDronePluginContributions: () => contributionsRef.value,
 }));
 
-// The iframe slot pulls in the plugin host context + Convex; stub it to a
-// marker so the body test stays focused on the parameter-panel mount.
+// The iframe slot pulls in Convex; stub it to a marker that lists exactly the
+// contributions the body hands it (the ones that would mount as iframes).
 vi.mock("@/components/plugins/PluginSlot", () => ({
-  PluginSlot: () => <div data-testid="plugin-slot" />,
+  PluginSlot: (props: { contributions?: Array<{ pluginId: string }> }) => (
+    <div
+      data-testid="plugin-slot"
+      data-mounted={(props.contributions ?? []).map((c) => c.pluginId).join(",")}
+    />
+  ),
 }));
 
 // The parameter panel itself is covered by its own tests; stub it to a marker
@@ -114,6 +127,22 @@ describe("DroneDetailTabBody", () => {
     expect(screen.queryByTestId("params-panel")).toBeNull();
     // The iframe slot still mounts for an iframe-only plugin.
     expect(screen.getByTestId("plugin-slot")).toBeTruthy();
+  });
+
+  it("mounts only the active tab's iframe, never sibling plugins' tabs", () => {
+    const pod = contribution({ installId: "install-pod", pluginId: "com.example.pod", panelId: "console" });
+    const thermal = contribution({ installId: "install-thermal", pluginId: "com.example.thermal", panelId: "view" });
+    contributionsRef.value = [pod, thermal];
+    slotRef.value = [
+      { pluginId: "com.example.pod", panelId: "console", pluginInstallId: "install-pod" },
+      { pluginId: "com.example.thermal", panelId: "view", pluginInstallId: "install-thermal" },
+    ];
+    render(
+      <DroneDetailTabBody agentId="drone-1" activeTabId={pluginTabId(thermal.installId)} />,
+    );
+    expect(screen.getByTestId("plugin-slot").getAttribute("data-mounted")).toBe(
+      "com.example.thermal",
+    );
   });
 
   it("renders nothing when no contribution matches the active tab", () => {

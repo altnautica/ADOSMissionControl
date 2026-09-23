@@ -6,36 +6,44 @@
  * @license GPL-3.0-only
  */
 
-import type { analyzeMotors } from "./motor-analysis";
 import type {
   FFTResult,
+  MotorAnalysis,
   StepResponseResult,
   TrackingQualityResult,
   TuneIssue,
+  VibrationSummary,
 } from "./types";
 
-/** Score FFT noise quality (0-100). Lower peaks = better. */
-export function scoreFFTQuality(fft: FFTResult): number {
+/**
+ * Score FFT noise quality (0-100). Lower peaks = better.
+ * Null when no axis has gyro data.
+ */
+export function scoreFFTQuality(fft: FFTResult): number | null {
   let totalPeakMag = 0;
   let peakCount = 0;
+  let measured = false;
 
   for (const axis of [fft.roll, fft.pitch, fft.yaw] as const) {
+    if (axis.noiseFloorDb === null) continue;
+    measured = true;
     for (const peak of axis.peaks) {
       totalPeakMag += Math.abs(peak.magnitudeDb - axis.noiseFloorDb);
       peakCount++;
     }
   }
 
+  if (!measured) return null;
   if (peakCount === 0) return 100;
 
   const avgProminence = totalPeakMag / peakCount;
   return Math.max(0, Math.round(100 - avgProminence * 2.5));
 }
 
-/** Score step response quality (0-100). */
-export function scoreStepResponse(step: StepResponseResult): number {
+/** Score step response quality (0-100). Null when no step events were found. */
+export function scoreStepResponse(step: StepResponseResult): number | null {
   const allEvents = [...step.roll, ...step.pitch, ...step.yaw];
-  if (allEvents.length === 0) return 50;
+  if (allEvents.length === 0) return null;
 
   let totalScore = 0;
   for (const event of allEvents) {
@@ -62,18 +70,59 @@ export function scoreStepResponse(step: StepResponseResult): number {
   return Math.round(totalScore / allEvents.length);
 }
 
+/** Weights of the tune score parts. They are renormalized over the measured parts. */
+const TUNE_SCORE_WEIGHTS = {
+  tracking: 0.4,
+  motors: 0.25,
+  fft: 0.2,
+  step: 0.15,
+} as const;
+
+/**
+ * Overall tune score (0-100): the weighted mean of the parts that were
+ * measured. A part that is null (its log data is absent) is left out and the
+ * remaining weights are renormalized. Null when no part was measured.
+ */
+export function computeTuneScore(parts: {
+  tracking: number | null;
+  motors: number | null;
+  fft: number | null;
+  step: number | null;
+}): number | null {
+  let weighted = 0;
+  let weightSum = 0;
+  for (const key of Object.keys(TUNE_SCORE_WEIGHTS) as (keyof typeof TUNE_SCORE_WEIGHTS)[]) {
+    const value = parts[key];
+    if (value === null) continue;
+    weighted += value * TUNE_SCORE_WEIGHTS[key];
+    weightSum += TUNE_SCORE_WEIGHTS[key];
+  }
+  return weightSum > 0 ? Math.round(weighted / weightSum) : null;
+}
+
 /** Detect tune issues from analysis results. */
 export function detectIssues(
   fft: FFTResult,
   step: StepResponseResult,
   tracking: TrackingQualityResult,
-  motorAnalysis: ReturnType<typeof analyzeMotors>,
-  vibLevel: string,
+  motorAnalysis: MotorAnalysis,
+  vibLevel: VibrationSummary["level"] | null,
+  missingMessages: string[] = [],
 ): TuneIssue[] {
   const issues: TuneIssue[] = [];
 
+  // Absent log data: named, and the metrics that depend on it are not scored
+  if (missingMessages.length > 0) {
+    issues.push({
+      severity: "info",
+      title: "Log data missing",
+      description: `No ${missingMessages.join(", ")} messages in this log. The metrics that depend on them are not scored; enable them in LOG_BITMASK and log another flight.`,
+    });
+  }
+
   // Propwash peaks
   for (const axis of [fft.roll, fft.pitch, fft.yaw] as const) {
+    if (axis.noiseFloorDb === null) continue;
     const propwashPeaks = axis.peaks.filter((p) => p.zone === "propwash");
     if (propwashPeaks.length > 0) {
       const strongest = propwashPeaks[0];
@@ -114,7 +163,7 @@ export function detectIssues(
   }
 
   // Motor imbalance
-  if (motorAnalysis.imbalanceScore > 10) {
+  if (motorAnalysis.imbalanceScore !== null && motorAnalysis.imbalanceScore > 10) {
     issues.push({
       severity: motorAnalysis.imbalanceScore > 20 ? "critical" : "warning",
       title: "Motor imbalance detected",
@@ -124,6 +173,7 @@ export function detectIssues(
 
   // Tracking quality
   for (const axis of [tracking.roll, tracking.pitch, tracking.yaw] as const) {
+    if (axis.score === null || axis.rmsError === null || axis.phaseLagMs === null) continue;
     if (axis.score < 50) {
       issues.push({
         severity: axis.score < 25 ? "critical" : "warning",
@@ -146,6 +196,17 @@ export function detectIssues(
         severity: avgOvershoot > 50 ? "critical" : "warning",
         title: `High overshoot on ${axis}`,
         description: `Average ${avgOvershoot.toFixed(0)}% overshoot — consider reducing D or P gain`,
+        affectedAxis: axis,
+      });
+    }
+
+    const avgUndershoot =
+      events.reduce((s, e) => s + e.undershootPercent, 0) / events.length;
+    if (avgUndershoot > 20) {
+      issues.push({
+        severity: "warning",
+        title: `Slow response on ${axis}`,
+        description: `Average peak response ${avgUndershoot.toFixed(0)}% short of the requested rate — the axis does not reach its target; consider raising P or FF gain`,
         affectedAxis: axis,
       });
     }

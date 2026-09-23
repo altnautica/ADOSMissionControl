@@ -125,7 +125,8 @@ function rmsToScore(rms: number): number {
  * @param desired  Desired rate time series (e.g., from RATE.RDes)
  * @param actual   Actual rate time series (e.g., from RATE.R)
  * @param axis     Which axis
- * @returns Tracking quality metrics with RMS error, phase lag, and score
+ * @returns Tracking quality metrics with RMS error, phase lag, and score.
+ *   The metrics are null when either series is empty (nothing was measured).
  */
 export function analyzeTracking(
   desired: TimeSample[],
@@ -135,9 +136,9 @@ export function analyzeTracking(
   if (desired.length === 0 || actual.length === 0) {
     return {
       axis,
-      rmsError: 0,
-      phaseLagMs: 0,
-      score: 0,
+      rmsError: null,
+      phaseLagMs: null,
+      score: null,
       desired: [],
       actual: [],
       error: [],

@@ -3,8 +3,11 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
-import { useDroneStore } from "@/stores/drone-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { useKnownCellCount } from "@/hooks/use-known-cell-count";
+import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useDroneManager } from "@/stores/drone-manager";
+import { resolveCellCount } from "@/lib/telemetry/battery-cells";
 import {
   useSettingsStore,
   type TelemetryDeckMetricId,
@@ -15,10 +18,22 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import type { DeckSeverity, DeckSeverityContext } from "./deck-types";
 import { DECK_PAGE_TABS, DECK_PRESETS, METRIC_LABELS_BY_ID } from "./deck-constants";
-import { getSeverity, estimateFlightMinutes, gpsFixKey, deriveCellCount } from "./deck-utils";
+import { getSeverity, estimateFlightMinutes, gpsFixKey } from "./deck-utils";
 import { DeckCell } from "./DeckCell";
 import { DeckCustomizer } from "./DeckCustomizer";
 import { DetachedDeckPortal } from "./DetachedDeckPortal";
+
+/** `value` to `digits` places plus `unit`, or "--" when there is no reading. */
+function fixed(value: number | undefined, digits: number, unit = ""): string {
+  return value === undefined || !Number.isFinite(value) ? "--" : `${value.toFixed(digits)}${unit}`;
+}
+
+/** A 000-359 bearing, or "--" when there is no reading. */
+function bearing3(value: number | undefined): string {
+  return value === undefined || !Number.isFinite(value)
+    ? "--"
+    : `${String(Math.round(normalizeHeading(value))).padStart(3, "0")}°`;
+}
 
 interface TelemetryDeckSlots {
   /** Buttons (customize, expand/collapse, detach) — place inside the status bar flex row. */
@@ -28,17 +43,23 @@ interface TelemetryDeckSlots {
 }
 
 export function useTelemetryDeck(): TelemetryDeckSlots {
-  const pos = useTelemetryLatest("position");
-  const vfr = useTelemetryLatest("vfr");
-  const bat = useTelemetryLatest("battery");
-  const gps = useTelemetryLatest("gps");
-  const att = useTelemetryLatest("attitude");
-  const wind = useTelemetryLatest("wind");
-  const radio = useTelemetryLatest("radio");
-  const nav = useTelemetryLatest("navController");
-  const ekf = useTelemetryLatest("ekf");
-  const vibration = useTelemetryLatest("vibration");
-  const mode = useDroneStore((s) => s.flightMode);
+  // Every channel is its fresh sample or undefined. The ring buffers keep the
+  // last sample forever, so an ungated deck kept RSSI, BAT V and ROLL in
+  // "normal" styling after the telemetry radio died, and showed wings-level
+  // zeros before the first ATTITUDE. Absent reads "--" and carries no
+  // threshold verdict.
+  const pos = useFreshTelemetry("position");
+  const vfr = useFreshTelemetry("vfr");
+  const bat = useFreshTelemetry("battery");
+  const gps = useFreshTelemetry("gps");
+  const att = useFreshTelemetry("attitude");
+  const wind = useFreshTelemetry("wind");
+  const radio = useFreshTelemetry("radio");
+  const nav = useFreshTelemetry("navController");
+  const ekf = useFreshTelemetry("ekf");
+  const vibration = useFreshTelemetry("vibration");
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  const knownCellCount = useKnownCellCount(selectedDroneId, bat?.cellCount);
   const telemetryDeckPages = useSettingsStore((s) => s.telemetryDeckPages);
   const telemetryDeckActivePage = useSettingsStore((s) => s.telemetryDeckActivePage);
   const setTelemetryDeckActivePage = useSettingsStore((s) => s.setTelemetryDeckActivePage);
@@ -54,7 +75,7 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
   const { toast } = useToast();
   const tFix = useTranslations("indicators.gpsFix");
 
-  const heading = normalizeHeading(pos?.heading ?? vfr?.heading ?? 0);
+  const heading = pos?.heading ?? vfr?.heading;
   // Undefined until a GPS message arrives. "0 SATS" reads as a receiver that
   // has locked onto nothing, which is a different claim from having no fix
   // report at all, and it trips the low-satellite alarm. Fix type carries the
@@ -62,10 +83,28 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
   const fixType = gps?.fixType;
   const satellites = gps?.satellites;
   const hdop = gps?.hdop;
-  const powerWatts = (bat?.voltage ?? 0) * (bat?.current ?? 0);
-  const estimatedMinutes = estimateFlightMinutes(bat?.remaining ?? 0, bat?.consumed ?? 0, bat?.current ?? 0);
-  const cellCount = deriveCellCount(bat?.voltage ?? 0, bat?.cellVoltages);
+  // -1 is the FC's "capacity unknown", not an empty pack.
+  const remainingPct = bat !== undefined && bat.remaining >= 0 ? bat.remaining : undefined;
+  const powerWatts = bat !== undefined ? bat.voltage * bat.current : undefined;
+  const estimatedMinutes =
+    bat !== undefined && remainingPct !== undefined
+      ? estimateFlightMinutes(remainingPct, bat.consumed, bat.current)
+      : undefined;
+  const cellCount = resolveCellCount(bat?.cellVoltages, knownCellCount);
   const severityContext: DeckSeverityContext = useMemo(() => ({ cellCount }), [cellCount]);
+
+  // Samples are buffered but none of the deck's core channels is fresh: the
+  // link has gone silent, and the operator has to be told why it all reads "--".
+  const buffers = useTelemetryStore.getState();
+  const linkSilent =
+    pos === undefined &&
+    vfr === undefined &&
+    att === undefined &&
+    bat === undefined &&
+    (buffers.position.latest() !== undefined ||
+      buffers.vfr.latest() !== undefined ||
+      buffers.attitude.latest() !== undefined ||
+      buffers.battery.latest() !== undefined);
 
   const activePageMetrics = telemetryDeckPages[telemetryDeckActivePage] ?? [];
 
@@ -76,27 +115,27 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
 
   const deckMetricValues = useMemo<Record<TelemetryDeckMetricId, string>>(
     () => ({
-      relAlt: `${(pos?.relativeAlt ?? 0).toFixed(1)}m`,
-      airspeed: `${(vfr?.airspeed ?? pos?.airSpeed ?? 0).toFixed(1)}m/s`,
-      groundspeedMs: `${(pos?.groundSpeed ?? vfr?.groundspeed ?? 0).toFixed(1)}m/s`,
-      throttle: `${Math.round(vfr?.throttle ?? 0)}%`,
-      climbRate: `${(vfr?.climb ?? pos?.climbRate ?? 0).toFixed(1)}m/s`,
+      relAlt: fixed(pos?.relativeAlt, 1, "m"),
+      airspeed: fixed(vfr?.airspeed ?? pos?.airSpeed, 1, "m/s"),
+      groundspeedMs: fixed(pos?.groundSpeed ?? vfr?.groundspeed, 1, "m/s"),
+      throttle: fixed(vfr?.throttle, 0, "%"),
+      climbRate: fixed(vfr?.climb ?? pos?.climbRate, 1, "m/s"),
       gpsFix: fixType != null ? tFix(gpsFixKey(fixType)) : "--",
       satellites: satellites != null ? `${satellites}` : "--",
       gpsHdop: hdop != null ? hdop.toFixed(1) : "--",
-      batteryVoltage: `${(bat?.voltage ?? 0).toFixed(1)}V`,
-      batteryCurrent: `${(bat?.current ?? 0).toFixed(1)}A`,
-      batteryConsumed: `${Math.round(bat?.consumed ?? 0)}mAh`,
-      roll: `${(att?.roll ?? 0).toFixed(1)}°`,
-      pitch: `${(att?.pitch ?? 0).toFixed(1)}°`,
-      yaw: `${String(Math.round(normalizeHeading(att?.yaw ?? heading))).padStart(3, "0")}°`,
-      wpDistance: `${Math.round(nav?.wpDist ?? 0)}m`,
-      xtrackError: `${(nav?.xtrackError ?? 0).toFixed(1)}m`,
-      altError: `${(nav?.altError ?? 0).toFixed(1)}m`,
-      navBearing: `${String(Math.round(normalizeHeading(nav?.navBearing ?? 0))).padStart(3, "0")}°`,
-      targetBearing: `${String(Math.round(normalizeHeading(nav?.targetBearing ?? 0))).padStart(3, "0")}°`,
-      windSpeed: `${(wind?.speed ?? 0).toFixed(1)}m/s`,
-      windDirection: `${String(Math.round(normalizeHeading(wind?.direction ?? 0))).padStart(3, "0")}°`,
+      batteryVoltage: fixed(bat?.voltage, 1, "V"),
+      batteryCurrent: fixed(bat?.current, 1, "A"),
+      batteryConsumed: fixed(bat?.consumed, 0, "mAh"),
+      roll: fixed(att?.roll, 1, "°"),
+      pitch: fixed(att?.pitch, 1, "°"),
+      yaw: bearing3(att?.yaw ?? heading),
+      wpDistance: fixed(nav?.wpDist, 0, "m"),
+      xtrackError: fixed(nav?.xtrackError, 1, "m"),
+      altError: fixed(nav?.altError, 1, "m"),
+      navBearing: bearing3(nav?.navBearing),
+      targetBearing: bearing3(nav?.targetBearing),
+      windSpeed: fixed(wind?.speed, 1, "m/s"),
+      windDirection: bearing3(wind?.direction),
       // Every field here comes from one RADIO_STATUS message. With none
       // received the whole group is unknown, so it reads unknown as a group:
       // "0 errors" and "0% buffer" are as much a fabricated reading as "0 dBm",
@@ -107,13 +146,13 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
       remnoise: radio != null ? `${Math.round(radio.remnoise)}` : "--",
       rxerrors: radio != null ? `${Math.round(radio.rxerrors)}` : "--",
       txbuf: radio != null ? `${Math.round(radio.txbuf)}%` : "--",
-      powerWatts: `${powerWatts.toFixed(0)}W`,
-      estFlightMin: estimatedMinutes != null ? `${estimatedMinutes.toFixed(1)}m` : "--",
-      ekfVelRatio: `${(ekf?.velocityVariance ?? 0).toFixed(2)}`,
-      ekfPosHorizRatio: `${(ekf?.posHorizVariance ?? 0).toFixed(2)}`,
-      vibeX: `${(vibration?.vibrationX ?? 0).toFixed(1)}`,
-      vibeY: `${(vibration?.vibrationY ?? 0).toFixed(1)}`,
-      vibeZ: `${(vibration?.vibrationZ ?? 0).toFixed(1)}`,
+      powerWatts: fixed(powerWatts, 0, "W"),
+      estFlightMin: fixed(estimatedMinutes, 1, "m"),
+      ekfVelRatio: fixed(ekf?.velocityVariance, 2),
+      ekfPosHorizRatio: fixed(ekf?.posHorizVariance, 2),
+      vibeX: fixed(vibration?.vibrationX, 1),
+      vibeY: fixed(vibration?.vibrationY, 1),
+      vibeZ: fixed(vibration?.vibrationZ, 1),
     }),
     [att, bat, ekf, estimatedMinutes, fixType, hdop, heading, nav, pos, powerWatts, radio, satellites, tFix, vfr, vibration, wind],
   );
@@ -122,27 +161,27 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
   // threshold verdict, so an absent link or GPS raises no false alarm.
   const metricRawValues = useMemo<Record<TelemetryDeckMetricId, number | undefined>>(
     () => ({
-      relAlt: pos?.relativeAlt ?? 0,
-      airspeed: vfr?.airspeed ?? pos?.airSpeed ?? 0,
-      groundspeedMs: pos?.groundSpeed ?? vfr?.groundspeed ?? 0,
-      throttle: vfr?.throttle ?? 0,
-      climbRate: vfr?.climb ?? pos?.climbRate ?? 0,
+      relAlt: pos?.relativeAlt,
+      airspeed: vfr?.airspeed ?? pos?.airSpeed,
+      groundspeedMs: pos?.groundSpeed ?? vfr?.groundspeed,
+      throttle: vfr?.throttle,
+      climbRate: vfr?.climb ?? pos?.climbRate,
       gpsFix: fixType,
       satellites,
       gpsHdop: hdop,
-      batteryVoltage: bat?.voltage ?? 0,
-      batteryCurrent: bat?.current ?? 0,
-      batteryConsumed: bat?.consumed ?? 0,
-      roll: att?.roll ?? 0,
-      pitch: att?.pitch ?? 0,
-      yaw: normalizeHeading(att?.yaw ?? heading),
-      wpDistance: nav?.wpDist ?? 0,
-      xtrackError: nav?.xtrackError ?? 0,
-      altError: nav?.altError ?? 0,
-      navBearing: normalizeHeading(nav?.navBearing ?? 0),
-      targetBearing: normalizeHeading(nav?.targetBearing ?? 0),
-      windSpeed: wind?.speed ?? 0,
-      windDirection: normalizeHeading(wind?.direction ?? 0),
+      batteryVoltage: bat?.voltage,
+      batteryCurrent: bat?.current,
+      batteryConsumed: bat?.consumed,
+      roll: att?.roll,
+      pitch: att?.pitch,
+      yaw: att?.yaw ?? heading,
+      wpDistance: nav?.wpDist,
+      xtrackError: nav?.xtrackError,
+      altError: nav?.altError,
+      navBearing: nav?.navBearing,
+      targetBearing: nav?.targetBearing,
+      windSpeed: wind?.speed,
+      windDirection: wind?.direction,
       radioRssi: radio?.rssi,
       remrssi: radio?.remrssi,
       noise: radio?.noise,
@@ -151,11 +190,11 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
       txbuf: radio?.txbuf,
       powerWatts,
       estFlightMin: estimatedMinutes,
-      ekfVelRatio: ekf?.velocityVariance ?? 0,
-      ekfPosHorizRatio: ekf?.posHorizVariance ?? 0,
-      vibeX: vibration?.vibrationX ?? 0,
-      vibeY: vibration?.vibrationY ?? 0,
-      vibeZ: vibration?.vibrationZ ?? 0,
+      ekfVelRatio: ekf?.velocityVariance,
+      ekfPosHorizRatio: ekf?.posHorizVariance,
+      vibeX: vibration?.vibrationX,
+      vibeY: vibration?.vibrationY,
+      vibeZ: vibration?.vibrationZ,
     }),
     [att, bat, ekf, estimatedMinutes, fixType, hdop, heading, nav, pos, powerWatts, radio, satellites, vfr, vibration, wind],
   );
@@ -188,6 +227,15 @@ export function useTelemetryDeck(): TelemetryDeckSlots {
 
   const renderDeckPanel = (detached: boolean) => (
     <div className={cn("space-y-2", detached && "h-full flex flex-col")}>
+      {linkSilent && (
+        <p
+          role="status"
+          data-testid="deck-link-silent"
+          className="text-[10px] font-mono uppercase tracking-wide text-status-warning"
+        >
+          Link silent: no live telemetry
+        </p>
+      )}
       <div className="space-y-2 min-w-0">
         {/* Page tabs */}
         <div className="space-y-1">

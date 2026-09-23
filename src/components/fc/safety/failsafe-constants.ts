@@ -47,16 +47,17 @@ export const PLANE_FS_OPTIONAL_PARAMS = ["FS_SHORT_TIMEOUT"];
 /** ArduPilot params common to every vehicle. */
 export const AP_SHARED_FS_PARAMS = [
   "BATT_FS_VOLTSRC", "BATT_FS_LOW_VOLT", "BATT_FS_LOW_ACT",
-  "FENCE_ENABLE", "FENCE_ACTION", "FENCE_ALT_MAX", "FENCE_RADIUS", "FENCE_ALT_MIN",
+  "FENCE_ENABLE", "FENCE_TYPE", "FENCE_ACTION", "FENCE_ALT_MAX", "FENCE_RADIUS", "FENCE_ALT_MIN",
   ...Array.from({ length: RC_CHANNEL_COUNT }, (_, i) => `RC${i + 1}_OPTION`),
 ];
 
 /**
  * PX4, by the canonical names the PX4 handler maps (BATT_FS_LOW_ACT is
- * COM_LOW_BAT_ACT, FENCE_ENABLE is GF_ACTION) plus the PX4-native EKF limits.
+ * COM_LOW_BAT_ACT, BATT_FS_LOW_VOLT is the BAT_LOW_THR fraction, FENCE_ENABLE
+ * is GF_ACTION) plus the PX4-native EKF limits.
  */
 export const PX4_FS_PARAMS = [
   "BATT_FS_LOW_VOLT", "BATT_FS_LOW_ACT",
   "FENCE_ENABLE", "FENCE_ALT_MAX", "FENCE_RADIUS",
-  "COM_POS_FS_DELAY", "COM_POS_FS_EPH", "COM_POS_FS_EPV", "COM_VEL_FS_EVH",
+  "COM_POS_FS_EPH", "COM_VEL_FS_EVH",
 ];

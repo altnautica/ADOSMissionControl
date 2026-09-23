@@ -23,6 +23,15 @@
  * slot that lands in the right MAVLink slot (LOITER_TURNS turns and
  * PAYLOAD_PLACE max descent live in `holdTime`, the loiter radius in `param2`).
  *
+ * Speed: a waypoint's `speed` is the ground speed of the leg flown INTO it
+ * (absent = the mission default speed). The flight controller only changes
+ * speed on a DO_CHANGE_SPEED item, which takes effect when the vehicle leaves
+ * the navigation item it follows, so the expander writes one before the first
+ * navigation item and one right after navigation item i-1 whenever the leg
+ * into waypoint i needs a different speed. `collapseFromItems` folds those
+ * items back into `speed`. An operator-attached DO_SET_SPEED action governs
+ * the legs after its waypoint until a later waypoint sets its own speed.
+ *
  * @module mission/mission-expand
  * @license GPL-3.0-only
  */
@@ -63,12 +72,92 @@ export interface ExpandOptions {
    * ArduPilot mission layout). Every DO_JUMP target shifts with the items.
    */
   reserveHomeSlot?: HomeSlot;
+  /**
+   * Mission default ground speed (m/s) for a waypoint with no `speed`. Absent:
+   * only waypoints with an explicit `speed` produce speed items.
+   */
+  defaultSpeed?: number;
 }
 
-/** One planned wire slot before sequence numbers are assigned. */
+/** DO_CHANGE_SPEED speed type written by the expander: ground speed. */
+const SPEED_TYPE_GROUND = 1;
+/** DO_CHANGE_SPEED throttle value meaning "leave the throttle unchanged". */
+const THROTTLE_NO_CHANGE = -1;
+
+/**
+ * One planned wire slot before sequence numbers are assigned. `owner` is the
+ * index of the planner waypoint the slot belongs to.
+ */
 type Slot =
-  | { kind: "nav"; wp: Waypoint }
-  | { kind: "action"; act: MissionAction; parentFrame: number };
+  | { kind: "nav"; wp: Waypoint; owner: number }
+  | { kind: "action"; act: MissionAction; parentFrame: number; owner: number }
+  | { kind: "speed"; speed: number; frame: number; owner: number };
+
+/**
+ * Build the ordered slot list: navigation items, their attached actions (an
+ * unresolvable DO_JUMP is dropped here so the slot count is final) and the
+ * speed items the waypoint speeds require.
+ */
+function planSlots(
+  waypoints: readonly Waypoint[],
+  defaultFrame: AltitudeFrame,
+  defaultSpeed: number | undefined,
+): Slot[] {
+  const navIds = new Set<string>(waypoints.map((w) => w.id));
+  const slots: Slot[] = [];
+  // The speed the vehicle is known to fly at; undefined before the first
+  // speed item and after an operator-attached DO_SET_SPEED action.
+  let current: number | undefined;
+  // True while an attached DO_SET_SPEED action governs the speed: a waypoint
+  // with no speed of its own then keeps that speed instead of the default.
+  let actionOwnsSpeed = false;
+
+  const pushSpeedFor = (index: number, owner: number, frame: number) => {
+    const wp = waypoints[index];
+    const want = wp.speed ?? (actionOwnsSpeed ? undefined : defaultSpeed);
+    if (want === undefined || !(want > 0) || want === current) return;
+    slots.push({ kind: "speed", speed: want, frame, owner });
+    current = want;
+    actionOwnsSpeed = false;
+  };
+
+  waypoints.forEach((wp, i) => {
+    const parentFrame = frameToMav(wp.frame ?? defaultFrame);
+    if (i === 0) pushSpeedFor(0, 0, parentFrame);
+    slots.push({ kind: "nav", wp, owner: i });
+
+    const actions = wp.actions ?? [];
+    if (actions.some((a) => a.command === "DO_SET_SPEED")) {
+      current = undefined;
+      actionOwnsSpeed = true;
+    } else if (i + 1 < waypoints.length) {
+      // Right after the nav item, ahead of its actions, so a CONDITION_* gate
+      // or a DO_JUMP among them cannot delay or skip the leg's speed.
+      pushSpeedFor(i + 1, i, parentFrame);
+    }
+
+    for (const act of actions) {
+      if (act.command === "DO_JUMP") {
+        const target = act.jumpTargetId;
+        if (target === undefined || !navIds.has(target)) continue; // drop + re-tighten
+      }
+      slots.push({ kind: "action", act, parentFrame, owner: i });
+    }
+  });
+  return slots;
+}
+
+/**
+ * The planner waypoint index that owns each item {@link expandToItems}
+ * produces, in item order, excluding any home slot.
+ */
+export function expandedItemOwners(
+  waypoints: readonly Waypoint[],
+  opts: Pick<ExpandOptions, "defaultSpeed"> = {},
+): number[] {
+  // Ownership does not depend on the frame; any frame yields the same slots.
+  return planSlots(waypoints, "relative", opts.defaultSpeed).map((slot) => slot.owner);
+}
 
 /**
  * Expand a waypoint list into a flat, contiguously-sequenced `MissionItem[]`.
@@ -78,6 +167,8 @@ type Slot =
  * - Each attached action becomes its own item sequenced right after its parent,
  *   using correct MAVLink parameter slots; a raw passthrough action re-emits
  *   the item it was collapsed from.
+ * - A DO_CHANGE_SPEED item precedes the first leg and follows any navigation
+ *   item whose outgoing leg changes speed (see the module note on speed).
  * - `DO_JUMP` actions resolve their `jumpTargetId` to the target's flattened
  *   `seq`; an unresolved / missing target drops that `DO_JUMP` item and the
  *   remaining items re-tighten so `seq` stays contiguous.
@@ -88,23 +179,7 @@ export function expandToItems(
   waypoints: readonly Waypoint[],
   opts: ExpandOptions,
 ): MissionItem[] {
-  // The set of navigation-waypoint ids a DO_JUMP is allowed to target.
-  const navIds = new Set<string>(waypoints.map((w) => w.id));
-
-  // Pass 1: build the ordered slot list, dropping unresolvable DO_JUMPs so the
-  // slot count/order is final before any sequence number is assigned.
-  const slots: Slot[] = [];
-  for (const wp of waypoints) {
-    const parentFrame = frameToMav(wp.frame ?? opts.defaultFrame);
-    slots.push({ kind: "nav", wp });
-    for (const act of wp.actions ?? []) {
-      if (act.command === "DO_JUMP") {
-        const target = act.jumpTargetId;
-        if (target === undefined || !navIds.has(target)) continue; // drop + re-tighten
-      }
-      slots.push({ kind: "action", act, parentFrame });
-    }
-  }
+  const slots = planSlots(waypoints, opts.defaultFrame, opts.defaultSpeed);
 
   // The first mission seq: 1 when slot 0 holds the home position.
   const base = opts.reserveHomeSlot ? 1 : 0;
@@ -119,11 +194,17 @@ export function expandToItems(
   const items: MissionItem[] = opts.reserveHomeSlot ? [homeItem(opts.reserveHomeSlot)] : [];
   slots.forEach((slot, i) => {
     const seq = base + i;
-    items.push(
-      slot.kind === "nav"
-        ? navItem(slot.wp, seq, seq === base, opts.defaultFrame)
-        : actionItem(slot.act, seq, slot.parentFrame, seqById),
-    );
+    switch (slot.kind) {
+      case "nav":
+        items.push(navItem(slot.wp, seq, slot.owner === 0, opts.defaultFrame));
+        break;
+      case "action":
+        items.push(actionItem(slot.act, seq, slot.parentFrame, seqById));
+        break;
+      case "speed":
+        items.push(speedItem(slot.speed, seq, slot.frame));
+        break;
+    }
   });
 
   // FLIGHT-SAFETY invariant: contiguous sequence from 0 (home slot included).
@@ -154,6 +235,34 @@ function homeItem(home: HomeSlot): MissionItem {
     y: Math.round(home.lon * 1e7),
     z: home.alt,
   };
+}
+
+/** A DO_CHANGE_SPEED item setting the ground speed, throttle unchanged. */
+function speedItem(speed: number, seq: number, frame: number): MissionItem {
+  return {
+    seq,
+    frame,
+    command: cmdMap.DO_SET_SPEED,
+    current: 0,
+    autocontinue: 1,
+    param1: SPEED_TYPE_GROUND,
+    param2: speed,
+    param3: THROTTLE_NO_CHANGE,
+    param4: 0,
+    x: 0,
+    y: 0,
+    z: 0,
+  };
+}
+
+/** True for exactly the DO_CHANGE_SPEED shape {@link speedItem} writes. */
+function isFoldableSpeedItem(item: MissionItem): boolean {
+  return item.command === cmdMap.DO_SET_SPEED
+    && item.param1 === SPEED_TYPE_GROUND
+    && item.param2 > 0
+    && item.param3 === THROTTLE_NO_CHANGE
+    && item.param4 === 0
+    && item.x === 0 && item.y === 0 && item.z === 0;
 }
 
 /** Encode one navigation waypoint (one-slot-shift byte mapping). */
@@ -247,6 +356,12 @@ function actionItem(
  * Each navigation waypoint's altitude FRAME is restored from the item's
  * `MAV_FRAME`. `0` parameter slots collapse to `undefined` (the model treats
  * absent and zero as the same value, and `expandToItems` re-emits `0` for both).
+ *
+ * A ground-speed DO_CHANGE_SPEED item of the shape the expander writes, placed
+ * before a later navigation item, becomes that waypoint's `speed`, and the
+ * speed carries to each following waypoint until the next change, which is
+ * how the vehicle flies it. Any other DO_SET_SPEED stays an attached action,
+ * and the waypoints after it carry no speed of their own.
  */
 export function collapseFromItems(
   items: readonly MissionItem[],
@@ -259,16 +374,36 @@ export function collapseFromItems(
   const pendingJumps: Array<{ act: CommandMissionAction; targetSeq: number }> = [];
 
   let current: Waypoint | undefined;
+  // Seq-order index of the last navigation item: a speed item after it has no
+  // leg to fold into and is kept as an action in place.
+  let lastNavIndex = -1;
+  items.forEach((item, i) => {
+    const cmd = reverseCmd[item.command];
+    if (cmd !== undefined && isNavCommand(cmd)) lastNavIndex = i;
+  });
+  /** Speed set by a folded speed item since the previous navigation item. */
+  let pendingSpeed: number | undefined;
+  /** Speed the vehicle carries into the next leg, when the model knows it. */
+  let carriedSpeed: number | undefined;
 
-  for (const item of items) {
+  for (const [index, item] of items.entries()) {
     const command: WaypointCommand | undefined = reverseCmd[item.command];
 
+    if (index < lastNavIndex && isFoldableSpeedItem(item)) {
+      pendingSpeed = item.param2;
+      continue;
+    }
+
     if (command !== undefined && isNavCommand(command)) {
+      const speed = pendingSpeed ?? carriedSpeed;
+      pendingSpeed = undefined;
+      carriedSpeed = speed;
       const wp: Waypoint = {
         id: freshId(),
         lat: item.x / 1e7,
         lon: item.y / 1e7,
         alt: item.z,
+        speed,
         command,
         frame: mavToFrame(item.frame),
         holdTime: item.param1 || undefined,
@@ -311,7 +446,12 @@ export function collapseFromItems(
     const actionCommand = command as ActionCommand;
     const positional = POSITION_BEARING_ACTIONS.has(actionCommand);
     const isJump = actionCommand === "DO_JUMP";
-
+    if (actionCommand === "DO_SET_SPEED") {
+      // This action sets the speed from here on in a way the model does not
+      // carry, so the following waypoints keep no speed of their own.
+      pendingSpeed = undefined;
+      carriedSpeed = undefined;
+    }
     const action: CommandMissionAction = {
       id: freshId(),
       command: actionCommand,

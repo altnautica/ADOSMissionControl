@@ -9,16 +9,35 @@ import { create } from 'zustand'
 import type { DroneProtocol } from '@/lib/protocol/types'
 import type { MotorMixerRule, INavServoMixerRule } from '@/lib/protocol/msp/msp-decoders-inav'
 import { formatErrorMessage } from '@/lib/utils'
+import { droneSlices, type DroneKeyed } from './drone-slices'
 
 export const MOTOR_MIXER_MAX = 16
 export const SERVO_MIXER_MAX = 32
 
-interface MixerState {
+interface MixerSlice {
   motorRules: MotorMixerRule[]
   servoRules: INavServoMixerRule[]
   loading: boolean
   error: string | null
   dirty: boolean
+  /** A read from this drone's FC has succeeded. */
+  loaded: boolean
+}
+
+const emptySlice = (): MixerSlice => ({
+  motorRules: [], servoRules: [], loading: false, error: null, dirty: false, loaded: false,
+})
+
+const slices = droneSlices<MixerSlice>(
+  ['motorRules', 'servoRules', 'loading', 'error', 'dirty', 'loaded'],
+  emptySlice,
+)
+
+interface MixerState extends MixerSlice, DroneKeyed<MixerSlice> {
+  /** Show `droneId`'s tables (called when the selected drone changes). */
+  bindDrone: (droneId: string | null) => void
+  /** Drop a removed drone's tables. */
+  forgetDrone: (droneId: string) => void
 
   setMotorRule: (idx: number, partial: Partial<MotorMixerRule>) => void
   removeMotorRule: (idx: number) => void
@@ -32,11 +51,19 @@ interface MixerState {
 }
 
 export const useMixerStore = create<MixerState>((set, get) => ({
-  motorRules: [],
-  servoRules: [],
-  loading: false,
-  error: null,
-  dirty: false,
+  ...emptySlice(),
+  droneId: null,
+  byDrone: new Map(),
+
+  bindDrone(droneId) {
+    const patch = slices.bind(get(), droneId)
+    if (patch) set(patch)
+  },
+
+  forgetDrone(droneId) {
+    const patch = slices.forget(get(), droneId)
+    if (patch) set(patch)
+  },
 
   setMotorRule(idx, partial) {
     const motorRules = [...get().motorRules]
@@ -80,15 +107,16 @@ export const useMixerStore = create<MixerState>((set, get) => ({
       set({ error: 'Mixer tables not supported by this firmware' })
       return
     }
+    const droneId = get().droneId
     set({ loading: true, error: null })
     try {
       const [motorRules, servoRules] = await Promise.all([
         protocol.downloadMotorMixer(),
         protocol.downloadServoMixer(),
       ])
-      set({ motorRules, servoRules, loading: false, dirty: false })
+      set((st) => slices.patchFor(st, droneId, { motorRules, servoRules, loading: false, dirty: false, loaded: true }))
     } catch (err) {
-      set({ loading: false, error: formatErrorMessage(err) })
+      set((st) => slices.patchFor(st, droneId, { loading: false, error: formatErrorMessage(err) }))
     }
   },
 
@@ -106,17 +134,18 @@ export const useMixerStore = create<MixerState>((set, get) => ({
       set({ error: `Motor rule ${unusedAt} has throttle 0, which the flight controller reads as the end of the motor table` })
       return
     }
+    const droneId = get().droneId
     set({ loading: true, error: null })
     try {
       await protocol.uploadMotorMixer(motorRules)
       await protocol.uploadServoMixer(servoRules)
-      set({ loading: false, dirty: false })
+      set((st) => slices.patchFor(st, droneId, { loading: false, dirty: false }))
     } catch (err) {
-      set({ loading: false, error: formatErrorMessage(err) })
+      set((st) => slices.patchFor(st, droneId, { loading: false, error: formatErrorMessage(err) }))
     }
   },
 
   clear() {
-    set({ motorRules: [], servoRules: [], loading: false, error: null, dirty: false })
+    set(emptySlice())
   },
 }))

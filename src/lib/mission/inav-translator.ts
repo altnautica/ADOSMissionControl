@@ -12,6 +12,11 @@
  * derived from the item frame; a terrain-relative item has no iNav datum and is
  * refused.
  *
+ * iNav has no speed-change item: a WAYPOINT carries its leg speed in `p1`
+ * (cm/s, 0 = the mission default). A DO_CHANGE_SPEED item is therefore folded
+ * into the `p1` of every following WAYPOINT until the next change, and DO_JUMP
+ * targets are renumbered to account for the removed items.
+ *
  * @module mission/inav-translator
  */
 
@@ -38,6 +43,7 @@ const MAV_CMD_NAV_LAND         = 21
 const MAV_CMD_NAV_TAKEOFF      = 22
 const MAV_CMD_CONDITION_YAW    = 115
 const MAV_CMD_DO_JUMP          = 177
+const MAV_CMD_DO_CHANGE_SPEED  = 178
 const MAV_CMD_DO_SET_ROI       = 201
 
 /** iNav firmware hard limit on waypoints per mission. */
@@ -63,6 +69,8 @@ function altitudeDatumBit(item: MissionItem, number: number): number {
 function toInavAction(
   item: MissionItem,
   number: number,
+  speedCmS: number,
+  jumpTargetNumber: (seq: number) => number,
 ): Pick<INavWaypoint, 'action' | 'p1' | 'p2' | 'p3'> {
   switch (item.command) {
     case MAV_CMD_NAV_TAKEOFF:
@@ -74,7 +82,7 @@ function toInavAction(
       const hold = Math.round(item.param1)
       return hold > 0
         ? { action: INAV_WP_ACTION.POSHOLD_TIME, p1: hold, p2: 0, p3: altitudeDatumBit(item, number) }
-        : { action: INAV_WP_ACTION.WAYPOINT, p1: 0, p2: 0, p3: altitudeDatumBit(item, number) }
+        : { action: INAV_WP_ACTION.WAYPOINT, p1: speedCmS, p2: 0, p3: altitudeDatumBit(item, number) }
     }
     case MAV_CMD_NAV_LOITER_UNLIM:
       return { action: INAV_WP_ACTION.POSHOLD_UNLIM, p1: 0, p2: 0, p3: altitudeDatumBit(item, number) }
@@ -87,8 +95,7 @@ function toInavAction(
       // p2 is the landing-site elevation (metres) in the same datum as the waypoint.
       return { action: INAV_WP_ACTION.LAND, p1: 0, p2: Math.round(item.param2), p3: altitudeDatumBit(item, number) }
     case MAV_CMD_DO_JUMP:
-      // MAVLink targets a 0-based seq; iNav targets a 1-based waypoint number.
-      return { action: INAV_WP_ACTION.JUMP, p1: Math.round(item.param1) + 1, p2: Math.round(item.param2), p3: 0 }
+      return { action: INAV_WP_ACTION.JUMP, p1: jumpTargetNumber(Math.round(item.param1)), p2: Math.round(item.param2), p3: 0 }
     case MAV_CMD_DO_SET_ROI:
       return { action: INAV_WP_ACTION.SET_POI, p1: 0, p2: 0, p3: altitudeDatumBit(item, number) }
     case MAV_CMD_CONDITION_YAW:
@@ -109,21 +116,50 @@ function toInavAction(
  * Altitude: MissionItem.z is in meters. INavWaypoint.altitude is in cm.
  * Position: MissionItem.x/y are lat*1e7/lon*1e7. INavWaypoint.lat/lon are float degrees.
  *
- * Throws if items.length exceeds INAV_MAX_WAYPOINTS (60), if an item's command
- * has no iNav equivalent, or if an item uses a terrain-relative frame.
+ * Throws if the waypoint count exceeds INAV_MAX_WAYPOINTS (60), if an item's
+ * command has no iNav equivalent, or if an item uses a terrain-relative frame.
  */
 export function translateToInavWaypoints(items: MissionItem[]): INavWaypoint[] {
-  if (items.length > INAV_MAX_WAYPOINTS) {
-    throw new Error(`iNav mission limit exceeded: ${items.length} waypoints, maximum is ${INAV_MAX_WAYPOINTS}.`)
+  // A speed item becomes a WAYPOINT p1; every other item is one iNav waypoint.
+  const kept = items.filter((item) => item.command !== MAV_CMD_DO_CHANGE_SPEED)
+  if (kept.length > INAV_MAX_WAYPOINTS) {
+    throw new Error(`iNav mission limit exceeded: ${kept.length} waypoints, maximum is ${INAV_MAX_WAYPOINTS}.`)
   }
-  return items.map((item, idx) => ({
-    number: idx + 1,
-    ...toInavAction(item, idx + 1),
-    lat: item.x / 1e7,
-    lon: item.y / 1e7,
-    altitude: Math.round(item.z * 100), // meters to cm
-    flag: idx === items.length - 1 ? INAV_WP_FLAG_LAST : 0,
-  }))
+  // 1-based iNav number of the first kept item at or after each item index
+  // (MAVLink DO_JUMP targets a 0-based index into `items`).
+  const numberAt: number[] = []
+  let keptSoFar = 0
+  for (const item of items) {
+    if (item.command === MAV_CMD_DO_CHANGE_SPEED) {
+      numberAt.push(keptSoFar + 1)
+    } else {
+      keptSoFar += 1
+      numberAt.push(keptSoFar)
+    }
+  }
+  const jumpTargetNumber = (seq: number) => numberAt[seq] ?? seq + 1
+
+  const out: INavWaypoint[] = []
+  let speedCmS = 0
+  for (const item of items) {
+    if (item.command === MAV_CMD_DO_CHANGE_SPEED) {
+      if (!(item.param2 > 0)) {
+        throw new Error(`iNav cannot fly the speed change at item ${item.seq}: it sets no speed.`)
+      }
+      speedCmS = Math.round(item.param2 * 100)
+      continue
+    }
+    const number = out.length + 1
+    out.push({
+      number,
+      ...toInavAction(item, number, speedCmS, jumpTargetNumber),
+      lat: item.x / 1e7,
+      lon: item.y / 1e7,
+      altitude: Math.round(item.z * 100), // meters to cm
+      flag: number === kept.length ? INAV_WP_FLAG_LAST : 0,
+    })
+  }
+  return out
 }
 
 /** The MAV_CMD and param1/param2 for one iNav waypoint. */

@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage } from "node:http";
 import { type ChildProcess, spawn } from "node:child_process";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { verifyViewerToken } from "./viewer-token.js";
 import { WebSocketServer, WebSocket } from "ws";
 
 // ---------------------------------------------------------------------------
@@ -70,17 +70,15 @@ function parseDeviceId(url: string | undefined): string | null {
   return match ? match[1] : null;
 }
 
-/** The token that authorises viewing exactly one device. */
-export function viewerToken(deviceId: string, secret: string): string {
-  return createHmac("sha256", secret).update(deviceId).digest("hex");
-}
-
 /**
- * Whether the request carries a token scoped to THIS device.
+ * Whether the request carries an unexpired token scoped to THIS device.
  *
  * Scoped, not a blanket bearer: a token for drone A must not open drone B's
- * camera. Accepts `Authorization: Bearer <token>` or `?token=<token>`, since
- * a browser `WebSocket` cannot set headers.
+ * camera. Short-lived: the owner-gated Convex minter issues tokens that expire
+ * within minutes, so a leaked token stops working on its own. Checked once, at
+ * upgrade; an open stream is not cut when its token later expires. Accepts
+ * `Authorization: Bearer <token>` or `?token=<token>`, since a browser
+ * `WebSocket` cannot set headers.
  */
 function isAuthorized(req: IncomingMessage, deviceId: string): boolean {
   if (!AUTH_SECRET) return false;
@@ -89,11 +87,7 @@ function isAuthorized(req: IncomingMessage, deviceId: string): boolean {
   const query = new URL(req.url ?? "/", "http://relay.invalid").searchParams;
   const presented = bearer || query.get("token") || "";
   if (!presented) return false;
-  const expected = viewerToken(deviceId, AUTH_SECRET);
-  const a = Buffer.from(presented, "utf8");
-  const b = Buffer.from(expected, "utf8");
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+  return verifyViewerToken(presented, deviceId, AUTH_SECRET, Math.floor(Date.now() / 1000));
 }
 
 function log(msg: string): void {

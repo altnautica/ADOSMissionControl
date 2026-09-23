@@ -26,7 +26,7 @@ import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
 import { NodeIdentityCell } from "./NodeIdentityCell";
 import { ReachCell } from "./ReachCell";
 import { LinkCell } from "./LinkCell";
-import { BatteryCell } from "./StateCells";
+import { BatteryCell, fcReading } from "./StateCells";
 import { FlightModeCell } from "./FlightModeCell";
 import { RelayModeCell } from "./RelayModeCell";
 import { FeaturesCell } from "./FeaturesCell";
@@ -101,12 +101,12 @@ export function NodeBoardRow({
         <LinkCell radio={summary.radio} freshness={freshness} />
       </td>
       <td className={CELL}>
-        <BatteryCell telemetry={summary.telemetry} freshness={freshness} />
+        <BatteryCell telemetry={summary.telemetry} reading={fcReading(summary)} />
       </td>
       <td className={CELL}>
         <FlightModeCell
           telemetry={summary.telemetry}
-          freshness={freshness}
+          reading={fcReading(summary)}
           skills={skills}
           nodeName={node.name}
         />

@@ -4,8 +4,8 @@
  * `/api/pairing/unpair` endpoint.
  *
  * The browser POSTs `{ host, apiKey }`. Server forwards the API key
- * in the `X-ADOS-Key` header the agent's auth middleware reads. Body
- * and status are returned verbatim. The API key stays under browser
+ * in the `X-ADOS-Key` header the agent's auth middleware reads. A JSON
+ * body and status are returned unchanged (see `../_proxy`). The API key stays under browser
  * control — it
  * never lands in cookies or Mission Control's database; it just
  * relays through the server in one request.
@@ -13,70 +13,35 @@
  * @license GPL-3.0-only
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { normaliseAndCheckHost } from "@/lib/agent/host-validation";
-import { ipv4FetchBase } from "../_ipv4";
+import type { NextRequest } from "next/server";
+import {
+  checkAgentHost,
+  proxyError,
+  proxyToAgent,
+  readJsonEnvelope,
+} from "../_proxy";
 
 export const runtime = "nodejs";
 
 const UPSTREAM_TIMEOUT_MS = 8000;
 
 export async function POST(req: NextRequest) {
-  let payload: { host?: string; apiKey?: string };
-  try {
-    payload = (await req.json()) as {
-      host?: string;
-      apiKey?: string;
-    };
-  } catch {
-    return NextResponse.json(
-      { error: "bad_json", message: "Request body must be JSON" },
-      { status: 400 },
-    );
-  }
+  const env = await readJsonEnvelope(req);
+  if ("reject" in env) return env.reject;
+  const host = checkAgentHost(env.payload.host);
+  if ("reject" in host) return host.reject;
 
-  const target = normaliseAndCheckHost(payload?.host ?? "");
-  if ("error" in target) {
-    return NextResponse.json(
-      { error: target.error, message: target.message },
-      { status: 400 },
-    );
-  }
-
-  const apiKey = String(payload?.apiKey ?? "").trim();
+  const apiKey = String(env.payload.apiKey ?? "").trim();
   if (!apiKey) {
-    return NextResponse.json(
-      { error: "api_key_required", message: "apiKey is required" },
-      { status: 400 },
-    );
+    return proxyError(400, "api_key_required", "apiKey is required");
   }
 
-  try {
-    // Resolve to IPv4 first so a .local host doesn't stall on AAAA (../_ipv4).
-    const base = await ipv4FetchBase(target);
-    const upstream = await fetch(`${base}/api/pairing/unpair`, {
-      method: "POST",
-      headers: {
-        "X-ADOS-Key": apiKey,
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    });
-    const body = await upstream.text();
-    return new NextResponse(body, {
-      status: upstream.status,
-      headers: {
-        "content-type":
-          upstream.headers.get("content-type") ?? "application/json",
-      },
-    });
-  } catch (e) {
-    return NextResponse.json(
-      {
-        error: "upstream_unreachable",
-        message: e instanceof Error ? e.message : String(e),
-      },
-      { status: 502 },
-    );
-  }
+  // Resolved to IPv4 first so a .local host doesn't stall on AAAA (../_ipv4).
+  return proxyToAgent({
+    target: host.target,
+    path: "/api/pairing/unpair",
+    method: "POST",
+    apiKey,
+    timeoutMs: UPSTREAM_TIMEOUT_MS,
+  });
 }

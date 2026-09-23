@@ -170,7 +170,7 @@ export function LogicConditionsPanel() {
   const stopPolling = useProgrammingStore((s) => s.stopPolling);
 
   const connected = !!getSelectedProtocol();
-  const hasLoaded = conditions.some((c) => c.enabled);
+  const hasLoaded = useProgrammingStore((s) => s.loaded);
 
   // Live status polling while armed
   useEffect(() => {

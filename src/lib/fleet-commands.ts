@@ -25,10 +25,12 @@ export interface FleetCommandOutcome {
 
 /**
  * Command every fleet drone that is airborne or armed on a live FC link to
- * return to launch, one at a time, and report each vehicle's own
- * acknowledgement. A drone whose FC link is lost has an unknown arm state: it
- * is reported as a failure without a send, because nothing would acknowledge
- * it and the operator has to know that aircraft was not recalled.
+ * return to launch, all at once, and report each vehicle's own
+ * acknowledgement. The sends run concurrently so a silent drone's ACK timeout
+ * never delays the recall of the others. A drone whose FC link is lost has an
+ * unknown arm state: it is reported as a failure without a send, because
+ * nothing would acknowledge it and the operator has to know that aircraft was
+ * not recalled.
  */
 export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
   const fleet = useFleetStore.getState().drones;
@@ -46,22 +48,24 @@ export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
     attempted++;
   }
 
-  for (const drone of targets) {
-    const protocol = managed.get(drone.id)?.protocol;
-    if (!protocol) {
-      failures.push(`${drone.name}: no command link`);
-      continue;
+  const results = await Promise.allSettled(
+    targets.map(async (drone) => {
+      const protocol = managed.get(drone.id)?.protocol;
+      if (!protocol) throw new Error("no command link");
+      return protocol.returnToLaunch();
+    }),
+  );
+  results.forEach((settled, i) => {
+    const name = targets[i].name;
+    if (settled.status === "rejected") {
+      const err = settled.reason;
+      failures.push(`${name}: ${err instanceof Error ? err.message : String(err)}`);
+    } else if (settled.value.success) {
+      acknowledged.push(name);
+    } else {
+      failures.push(`${name}: ${settled.value.message}`);
     }
-    try {
-      const result = await protocol.returnToLaunch();
-      if (result.success) acknowledged.push(drone.name);
-      else failures.push(`${drone.name}: ${result.message}`);
-    } catch (err) {
-      failures.push(
-        `${drone.name}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
+  });
 
   return { acknowledged, failures, attempted };
 }

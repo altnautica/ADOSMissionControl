@@ -5,7 +5,7 @@
  */
 
 import type { INavLogicCondition, INavProgrammingPid } from '../../msp-decoders-inav';
-import { writeU8, writeS32 } from './_helpers';
+import { writeU8, writeU16, writeS32 } from './_helpers';
 
 /**
  * Encode MSP2_INAV_SET_LOGIC_CONDITIONS (0x2023) payload for one condition slot.
@@ -38,21 +38,6 @@ export function encodeMspINavSetLogicCondition(rule: INavLogicCondition): Uint8A
 }
 
 /**
- * Encode MSP2_INAV_SET_PROGRAMMING_PID (0x2029) payload for one PID slot.
- *
- * U8  enabled
- * U8  setpointType
- * S32 setpointValue
- * U8  measurementType
- * S32 measurementValue
- * U8  P
- * U8  I
- * U8  D
- * U8  FF
- *
- * 15 bytes total. Mirrors the decoder layout in decodeMspINavProgrammingPid.
- */
-/**
  * Encode MSP2_INAV_SET_GVAR (0x2214) payload — set one global variable's
  * live runtime value.
  *
@@ -69,19 +54,30 @@ export function encodeMspINavSetGvar(index: number, value: number): Uint8Array {
   return buf;
 }
 
-export function encodeMspINavSetProgrammingPid(rule: INavProgrammingPid): Uint8Array {
-  const buf = new Uint8Array(15);
+/**
+ * Encode MSP2_INAV_SET_PROGRAMMING_PID (0x2029) payload for one PID slot. The
+ * FC accepts exactly 20 bytes:
+ *
+ * U8  index
+ * U8  enabled
+ * U8  setpointType, S32 setpointValue
+ * U8  measurementType, S32 measurementValue
+ * U16 P, U16 I, U16 D, U16 FF
+ */
+export function encodeMspINavSetProgrammingPid(index: number, rule: INavProgrammingPid): Uint8Array {
+  const buf = new Uint8Array(20);
   const dv = new DataView(buf.buffer);
 
-  writeU8(dv, 0, rule.enabled ? 1 : 0);
-  writeU8(dv, 1, rule.setpointType);
-  writeS32(dv, 2, rule.setpointValue);
-  writeU8(dv, 6, rule.measurementType);
-  writeS32(dv, 7, rule.measurementValue);
-  writeU8(dv, 11, rule.gains.P);
-  writeU8(dv, 12, rule.gains.I);
-  writeU8(dv, 13, rule.gains.D);
-  writeU8(dv, 14, rule.gains.FF);
+  writeU8(dv, 0, index);
+  writeU8(dv, 1, rule.enabled ? 1 : 0);
+  writeU8(dv, 2, rule.setpointType);
+  writeS32(dv, 3, rule.setpointValue);
+  writeU8(dv, 7, rule.measurementType);
+  writeS32(dv, 8, rule.measurementValue);
+  writeU16(dv, 12, rule.gains.P);
+  writeU16(dv, 14, rule.gains.I);
+  writeU16(dv, 16, rule.gains.D);
+  writeU16(dv, 18, rule.gains.FF);
 
   return buf;
 }

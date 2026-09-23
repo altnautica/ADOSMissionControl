@@ -34,6 +34,9 @@ vi.mock('@/stores/mission-store', () => ({
 vi.mock('@/stores/drone-manager', () => ({
   useDroneManager: { getState: () => ({ getSelectedProtocol: () => null }) },
 }));
+vi.mock('@/hooks/use-upload-status', () => ({
+  useFenceUploadStatus: () => 'unknown',
+}));
 
 import { GeofenceEditor } from '@/components/planner/GeofenceEditor';
 import { useGeofenceStore } from '@/stores/geofence-store';

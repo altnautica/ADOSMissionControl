@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
-import { useTrailStore } from "@/stores/trail-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";
@@ -202,8 +201,10 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   const pos = useTelemetryLatest("position");
   const gps = useTelemetryLatest("gps");
   const nav = useTelemetryLatest("navController");
-  const trailRing = useTrailStore((s) => s._ring);
-  useTrailStore((s) => s._version); // subscribe to updates
+  // HOME_POSITION is latched state (sent rarely, changes only on arm or
+  // set-home), so it is read without an age gate; the ring is cleared on
+  // selection change and disconnect.
+  const home = useTelemetryLatest("homePosition");
 
   // Guidance line settings
   const guidanceHdgLength = useSettingsStore((s) => s.guidanceHdgLength);
@@ -236,12 +237,10 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   const heading = pos?.heading ?? 0;
   const droneIcon = useMemo(() => createDroneIcon(heading, "#00ff41", 24), [heading]);
 
-  // Home position = first trail point. Indexed straight out of the ring:
-  // reading element zero does not need a copy of the whole trail.
-  const homePoint = trailRing.get(0);
-  const homePos: [number, number] | null = homePoint
-    ? [homePoint.lat, homePoint.lon]
-    : null;
+  // The FC's own home, the point RTL returns to. Hidden until one arrives: the
+  // oldest trail point is not home, it walks along the track once the trail
+  // ring fills and restarts wherever this GCS first saw the drone.
+  const homePos: [number, number] | null = home ? [home.lat, home.lon] : null;
 
   const defaultCenter = useDefaultCenter();
   const hasGps = dronePos !== null;

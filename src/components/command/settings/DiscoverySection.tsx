@@ -16,18 +16,21 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Radar, RefreshCw } from "lucide-react";
 
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import type { SetupAccessUrl } from "@/lib/agent/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfigToggleField, ConfigReadonlyRow } from "./ConfigFields";
 import { Section } from "./Section";
+import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 interface SectionProps {
+  /** The node this page is rendered for; the reach report is read only
+   * through a connection attached to it. */
+  nodeDeviceId: string | null;
   config: Record<string, unknown> | null;
   readOnly: boolean;
   setValue: (key: string, value: string) => Promise<void>;
@@ -71,9 +74,20 @@ function ReadRow({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-export function DiscoverySection({ config, readOnly, setValue }: SectionProps) {
+export function DiscoverySection({
+  nodeDeviceId,
+  config,
+  readOnly,
+  setValue,
+}: SectionProps) {
   const t = useTranslations("nodeSettings.discovery");
-  const client = useAgentConnectionStore((s) => s.client);
+  const client = useNodeDirectAgent(nodeDeviceId)?.client ?? null;
+  // A report belongs to the client it was requested from; an answer from the
+  // previously attached node is dropped.
+  const clientRef = useRef(client);
+  useEffect(() => {
+    clientRef.current = client;
+  }, [client]);
 
   const [load, setLoad] = useState<ReachLoad>({ state: "loading" });
 
@@ -84,6 +98,7 @@ export function DiscoverySection({ config, readOnly, setValue }: SectionProps) {
     if (!client) return;
     try {
       const status = await client.getSetupStatus();
+      if (clientRef.current !== client) return;
       setLoad({
         state: "loaded",
         reach: {
@@ -95,6 +110,7 @@ export function DiscoverySection({ config, readOnly, setValue }: SectionProps) {
         },
       });
     } catch {
+      if (clientRef.current !== client) return;
       setLoad({ state: "failed" });
     }
   }, [client]);

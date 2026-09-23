@@ -618,10 +618,14 @@ export interface FrameGenInput {
   batteryEndV: number;
 }
 
+/** Take-off point elevation for synthetic AMSL altitude fields. */
+const DEMO_HOME_AMSL_M = 920;
+
 /**
  * Build synthetic telemetry frames for one flight. Channels emitted match
  * what `series-builder.ts` consumes (attitude, globalPosition, vfr,
- * battery, gps, vibration).
+ * battery, gps, vibration), in the units the live recorder writes:
+ * attitude in degrees, `alt` AMSL and `relativeAlt` above home.
  */
 export function generateTelemetryFrames(
   input: FrameGenInput,
@@ -658,11 +662,11 @@ export function generateTelemetryFrames(
     return input.cruiseSpeedMs * (0.9 + 0.1 * Math.sin(tS / 7));
   };
 
-  // attitude @ 2 Hz
+  // attitude @ 2 Hz, degrees like live AttitudeData
   for (let t = 0; t < dur; t += 0.5) {
-    const yaw = ((t * 6 + rand() * 2) % 360) * (Math.PI / 180);
-    const roll = Math.sin(t / 4) * 0.1;
-    const pitch = Math.cos(t / 5) * 0.08;
+    const yaw = (t * 6 + rand() * 2) % 360;
+    const roll = Math.sin(t / 4) * 5.7;
+    const pitch = Math.cos(t / 5) * 4.6;
     frames.push({
       offsetMs: Math.round(t * 1000),
       channel: "attitude",
@@ -673,21 +677,21 @@ export function generateTelemetryFrames(
   // globalPosition @ 1 Hz
   for (let t = 0; t < dur; t += 1) {
     const [lat, lon] = posAt(t);
-    const alt = altAt(t);
+    const rel = altAt(t);
     frames.push({
       offsetMs: Math.round(t * 1000),
       channel: "globalPosition",
       data: {
         lat,
         lon,
-        alt,
-        relativeAlt: alt,
+        alt: DEMO_HOME_AMSL_M + rel,
+        relativeAlt: rel,
         groundSpeed: speedAt(t),
       },
     });
   }
 
-  // vfr @ 1 Hz (separate channel that ChartsTab also consumes)
+  // vfr @ 1 Hz. VFR_HUD alt is AMSL on the real message.
   for (let t = 0; t < dur; t += 1) {
     const gs = speedAt(t);
     frames.push({
@@ -696,7 +700,7 @@ export function generateTelemetryFrames(
       data: {
         groundspeed: gs,
         airspeed: gs * 1.05,
-        alt: altAt(t),
+        alt: DEMO_HOME_AMSL_M + altAt(t),
       },
     });
   }

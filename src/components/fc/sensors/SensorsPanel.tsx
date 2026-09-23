@@ -61,16 +61,25 @@ export function SensorsPanel() {
     <ParamEnumSelect label={lbl(`${name} — ${text}`)} values={enumValues(name)}
       value={params.get(name) ?? fallback} onChange={(v) => setLocalValue(name, v)} />
   );
+  // Optional params the vehicle does not have stay out of `params` after a
+  // load. Such a section says so instead of rendering fallback numbers as if
+  // they were the vehicle's values.
+  const absent = (name: string) => hasLoaded && !params.has(name);
+  const notOnFirmware = (name: string) => (
+    <p className="text-xs text-text-tertiary">{name} is not on this firmware.</p>
+  );
 
   // Additional ArduPilot rangefinder instances (2..A): show any that are
   // already configured (TYPE != 0), plus any the operator reveals via "Add".
+  // An instance the firmware does not have is never offered.
   const [revealedRngfnd, setRevealedRngfnd] = useState<Set<string>>(new Set());
-  const extraRngfnd = RNGFND_EXTRA_INSTANCES.filter(
+  const availableRngfnd = RNGFND_EXTRA_INSTANCES.filter((n) => !absent(`RNGFND${n}_TYPE`));
+  const extraRngfnd = availableRngfnd.filter(
     (n) => p(`RNGFND${n}_TYPE`) !== "0" || revealedRngfnd.has(n),
   );
-  const canAddRngfnd = extraRngfnd.length < RNGFND_EXTRA_INSTANCES.length;
+  const canAddRngfnd = extraRngfnd.length < availableRngfnd.length;
   const addRngfnd = () => {
-    const next = RNGFND_EXTRA_INSTANCES.find((n) => !extraRngfnd.includes(n));
+    const next = availableRngfnd.find((n) => !extraRngfnd.includes(n));
     if (next) setRevealedRngfnd((prev) => new Set(prev).add(next));
   };
 
@@ -163,8 +172,8 @@ export function SensorsPanel() {
                 </div>
               ) : (
                 <>
-                  {enumField("RNGFND1_TYPE", "Sensor Type")}
-                  {p("RNGFND1_TYPE") !== "0" && (
+                  {absent("RNGFND1_TYPE") ? notOnFirmware("RNGFND1_TYPE") : enumField("RNGFND1_TYPE", "Sensor Type")}
+                  {!absent("RNGFND1_TYPE") && p("RNGFND1_TYPE") !== "0" && (
                     <>
                       <Input label={lbl("RNGFND1_PIN — Analog Pin")} type="number" step="1" min="-1" value={p("RNGFND1_PIN", "-1")} onChange={(e) => set("RNGFND1_PIN", e.target.value)} />
                       <Input label={lbl("RNGFND1_MIN_CM — Min Distance")} type="number" step="1" min="0" unit="cm" value={p("RNGFND1_MIN_CM", "20")} onChange={(e) => set("RNGFND1_MIN_CM", e.target.value)} />
@@ -205,8 +214,8 @@ export function SensorsPanel() {
           {/* Optical Flow */}
           <CollapsibleSection title="Optical Flow">
             <div className="p-4 space-y-3">
-              {enumField("FLOW_TYPE", "Sensor Type")}
-              {p("FLOW_TYPE") !== "0" && (
+              {absent("FLOW_TYPE") ? notOnFirmware("FLOW_TYPE") : enumField("FLOW_TYPE", "Sensor Type")}
+              {!absent("FLOW_TYPE") && p("FLOW_TYPE") !== "0" && (
                 <>
                   <Input label={lbl("FLOW_FXSCALER — X Scaler")} type="number" step="1" value={p("FLOW_FXSCALER")} onChange={(e) => set("FLOW_FXSCALER", e.target.value)} />
                   <Input label={lbl("FLOW_FYSCALER — Y Scaler")} type="number" step="1" value={p("FLOW_FYSCALER")} onChange={(e) => set("FLOW_FYSCALER", e.target.value)} />
@@ -219,8 +228,8 @@ export function SensorsPanel() {
           {/* Airspeed */}
           <CollapsibleSection title="Airspeed">
             <div className="p-4 space-y-3">
-              {enumField("ARSPD_TYPE", "Sensor Type")}
-              {p("ARSPD_TYPE") !== "0" && (
+              {absent("ARSPD_TYPE") ? notOnFirmware("ARSPD_TYPE") : enumField("ARSPD_TYPE", "Sensor Type")}
+              {!absent("ARSPD_TYPE") && p("ARSPD_TYPE") !== "0" && (
                 <>
                   {enumField("ARSPD_USE", "Use Airspeed", 1)}
                   <Input label={lbl("ARSPD_OFFSET — Pressure Offset")} type="number" step="0.1" unit="Pa" value={p("ARSPD_OFFSET")} onChange={(e) => set("ARSPD_OFFSET", e.target.value)} />

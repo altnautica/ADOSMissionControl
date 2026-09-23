@@ -19,6 +19,7 @@ import { useGeofenceStore } from "@/stores/geofence-store";
 import type { FenceType, BreachAction } from "@/stores/geofence-store";
 import { usePatternStore } from "@/stores/pattern-store";
 import { useMissionStore } from "@/stores/mission-store";
+import { useFenceUploadStatus } from "@/hooks/use-upload-status";
 import { Upload, Download, Pentagon, Circle, Trash2, ShieldPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,10 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
   const { toast } = useToast();
 
   const [autoFenceBuffer, setAutoFenceBuffer] = useState(50);
+  // The max-altitude field text. Only a positive number reaches the store:
+  // an empty field is not "no ceiling" (that silently disabled the validator's
+  // FENCE_ALT_MAX check), it is an input error.
+  const [maxAltText, setMaxAltText] = useState<string | null>(null);
 
   const enabled = useGeofenceStore((s) => s.enabled);
   const fenceType = useGeofenceStore((s) => s.fenceType);
@@ -67,6 +72,7 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
   const downloadFence = useGeofenceStore((s) => s.downloadFence);
   const clearFence = useGeofenceStore((s) => s.clearFence);
   const uploadState = useGeofenceStore((s) => s.uploadState);
+  const fenceStatus = useFenceUploadStatus();
   const polygonPoints = useGeofenceStore((s) => s.polygonPoints);
   const circleCenter = useGeofenceStore((s) => s.circleCenter);
 
@@ -143,11 +149,14 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
             label={t("maxAltitude")}
             type="number"
             unit="m"
-            value={String(maxAltitude)}
+            value={maxAltText ?? String(maxAltitude)}
             onChange={(e) => {
+              setMaxAltText(e.target.value);
               const v = parseFloat(e.target.value);
-              setMaxAltitude(Number.isFinite(v) ? v : 0);
+              if (Number.isFinite(v) && v > 0) setMaxAltitude(v);
             }}
+            onBlur={() => setMaxAltText(null)}
+            error={maxAltText !== null && !(parseFloat(maxAltText) > 0) ? t("maxAltitudeRequired") : undefined}
             placeholder="120"
           />
           <Select
@@ -200,7 +209,9 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
               {uploadState === "uploading" ? t("uploading") : t("uploadFence")}
             </button>
             <button
-              onClick={() => { void downloadFence().then((r) => { if (!r.success) toast(r.message, "error"); }); }}
+              onClick={() => {
+                void downloadFence().then((r) => toast(r.message, r.success ? "success" : "error"));
+              }}
               className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-mono
                 text-text-primary border border-border-default hover:bg-bg-tertiary transition-colors cursor-pointer"
             >
@@ -222,8 +233,11 @@ export function GeofenceEditor({ onDrawOnMap }: GeofenceEditorProps) {
             </button>
           </div>
 
-          {uploadState === "uploaded" && (
+          {fenceStatus === "on-aircraft" && (
             <div className="text-[10px] font-mono text-status-success">{t("fenceUploaded")}</div>
+          )}
+          {fenceStatus === "older-on-aircraft" && uploadState !== "error" && (
+            <div className="text-[10px] font-mono text-status-warning">{t("olderFenceOnAircraft")}</div>
           )}
           {uploadState === "error" && (
             <div className="text-[10px] font-mono text-status-error">{t("uploadFailed")}</div>

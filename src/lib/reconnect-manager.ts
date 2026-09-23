@@ -1,7 +1,13 @@
 /**
  * @module reconnect-manager
- * @description Pure-class reconnect state machine with exponential backoff.
- * Handles serial (VID/PID match via getPorts) and WebSocket reconnection.
+ * @description Re-dials a directly connected FC (serial, WebSocket, UDP/TCP)
+ * after its link drops: a fixed interval, no attempt cap, no terminal failed
+ * state — a vehicle that comes back into range is picked up whenever it does.
+ *
+ * An FC attached through a paired agent (`node:<deviceId>` id) is not handled
+ * here. Its agent bridge owns that session: it holds the credential the agent's
+ * proxy requires and knows which agent the FC belongs to, so a bare re-dial
+ * from here could only fail or bind the wrong vehicle.
  * @license GPL-3.0-only
  */
 
@@ -13,10 +19,8 @@ import { createFcAdapter } from "@/lib/protocol/select-fc-adapter";
 import type { DroneProtocol, VehicleInfo } from "@/lib/protocol/types";
 import { serialPortManager } from "@/lib/serial-port-manager";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useAgentSystemStore } from "@/stores/agent-system-store";
 
-export type ReconnectState = "idle" | "waiting" | "attempting" | "connected" | "failed";
+export type ReconnectState = "waiting" | "attempting" | "connected";
 
 export interface ReconnectEntry {
   droneId: string;
@@ -24,21 +28,37 @@ export interface ReconnectEntry {
   meta: ConnectionMeta;
   state: ReconnectState;
   attempt: number;
-  maxAttempts: number;
 }
+
+type ReconnectTransport = WebSerialTransport | WebSocketTransport | NetMavlinkTransport;
 
 type StateChangeListener = (entry: ReconnectEntry) => void;
 type AddDroneCallback = (
   id: string,
   name: string,
   protocol: DroneProtocol,
-  transport: WebSerialTransport | WebSocketTransport | NetMavlinkTransport,
-  vehicleInfo: import("@/lib/protocol/types").VehicleInfo,
+  transport: ReconnectTransport,
+  vehicleInfo: VehicleInfo,
   meta: ConnectionMeta,
 ) => void;
 
-const BACKOFF_DELAYS = [500, 1000, 2000, 4000, 5000];
-const MAX_ATTEMPTS = 10;
+/** Gap between re-dial attempts. Fixed: a link is retried at the same pace forever. */
+export const RECONNECT_INTERVAL_MS = 3_000;
+
+/** Connection types this manager can re-dial on its own. */
+const RECONNECTABLE_TYPES: ReadonlySet<ConnectionMeta["type"]> = new Set([
+  "serial",
+  "websocket",
+  "udp-proxy",
+  "tcp",
+]);
+
+interface ReconnectedLink {
+  transport: ReconnectTransport;
+  adapter: DroneProtocol;
+  vehicleInfo: VehicleInfo;
+  meta: ConnectionMeta;
+}
 
 export class ReconnectManager {
   private entries = new Map<string, ReconnectEntry>();
@@ -50,9 +70,16 @@ export class ReconnectManager {
     this.addDroneCallback = addDrone;
   }
 
-  /** Start reconnect cycle for a disconnected drone. */
-  startReconnect(droneId: string, droneName: string, meta: ConnectionMeta): void {
-    // Cancel existing reconnect for same drone
+  /**
+   * Start re-dialling a dropped drone. Returns false, and does nothing, for a
+   * drone this manager does not own: an agent-attached FC, whose agent bridge
+   * re-dials it, or a transport with no direct re-dial path.
+   */
+  startReconnect(droneId: string, droneName: string, meta: ConnectionMeta): boolean {
+    if (droneId.startsWith("node:") || !RECONNECTABLE_TYPES.has(meta.type)) {
+      return false;
+    }
+    // One cycle per drone: a second start replaces the first.
     this.cancelReconnect(droneId);
 
     const entry: ReconnectEntry = {
@@ -61,14 +88,14 @@ export class ReconnectManager {
       meta,
       state: "waiting",
       attempt: 0,
-      maxAttempts: MAX_ATTEMPTS,
     };
     this.entries.set(droneId, entry);
     this.notify(entry);
     this.scheduleAttempt(droneId);
+    return true;
   }
 
-  /** Cancel an in-progress reconnect. */
+  /** Stop re-dialling a drone. An attempt already in flight is discarded when it lands. */
   cancelReconnect(droneId: string): void {
     const timer = this.timers.get(droneId);
     if (timer) clearTimeout(timer);
@@ -91,10 +118,7 @@ export class ReconnectManager {
 
   /** Check if any reconnect is active. */
   isReconnecting(): boolean {
-    for (const entry of this.entries.values()) {
-      if (entry.state === "waiting" || entry.state === "attempting") return true;
-    }
-    return false;
+    return this.entries.size > 0;
   }
 
   private notify(entry: ReconnectEntry): void {
@@ -104,15 +128,10 @@ export class ReconnectManager {
   }
 
   private scheduleAttempt(droneId: string): void {
-    const entry = this.entries.get(droneId);
-    if (!entry) return;
-
-    const delayIdx = Math.min(entry.attempt, BACKOFF_DELAYS.length - 1);
-    const delay = BACKOFF_DELAYS[delayIdx];
-
+    if (!this.entries.has(droneId)) return;
     const timer = setTimeout(() => {
-      this.attempt(droneId);
-    }, delay);
+      void this.attempt(droneId);
+    }, RECONNECT_INTERVAL_MS);
     this.timers.set(droneId, timer);
   }
 
@@ -124,136 +143,84 @@ export class ReconnectManager {
     entry.state = "attempting";
     this.notify(entry);
 
-    // Log reconnect attempt to diagnostics
-    useDiagnosticsStore.getState().logConnection(
-      "reconnect_attempt",
-      `Reconnect attempt ${entry.attempt}/${entry.maxAttempts} for ${entry.droneName} (${entry.meta.type})`,
-    );
-    useDiagnosticsStore.getState().logEvent(
-      "reconnect_attempt",
-      `Reconnect attempt ${entry.attempt}/${entry.maxAttempts} for ${entry.droneName}`,
-    );
+    const note = `Reconnect attempt ${entry.attempt} for ${entry.droneName}`;
+    useDiagnosticsStore
+      .getState()
+      .logConnection("reconnect_attempt", `${note} (${entry.meta.type})`);
+    useDiagnosticsStore.getState().logEvent("reconnect_attempt", note);
 
+    let link: ReconnectedLink;
     try {
-      if (entry.meta.type === "serial") {
-        await this.attemptSerial(entry);
-      } else if (entry.meta.type === "websocket") {
-        await this.attemptWebSocket(entry);
-      } else if (entry.meta.type === "udp-proxy" || entry.meta.type === "tcp") {
-        await this.attemptNet(entry);
-      }
-
-      // Success
-      entry.state = "connected";
-      this.notify(entry);
-      this.timers.delete(droneId);
-      this.entries.delete(droneId);
+      link = await this.dial(entry.meta);
     } catch {
-      // Failed
-      if (entry.attempt >= entry.maxAttempts) {
-        entry.state = "failed";
-        this.notify(entry);
-        this.timers.delete(droneId);
-        this.entries.delete(droneId);
-      } else {
-        entry.state = "waiting";
-        this.notify(entry);
-        this.scheduleAttempt(droneId);
-      }
+      // Cancelled or superseded while dialling: that cycle is over.
+      if (this.entries.get(droneId) !== entry) return;
+      entry.state = "waiting";
+      this.notify(entry);
+      this.scheduleAttempt(droneId);
+      return;
+    }
+
+    // The dial succeeded, but the cycle it belonged to may have been cancelled
+    // (the operator connected or removed the drone) or replaced meanwhile.
+    // Attaching it then would resurrect a drone nobody is waiting for.
+    if (this.entries.get(droneId) !== entry) {
+      await link.adapter.disconnect().catch(() => {});
+      await link.transport.disconnect().catch(() => {});
+      return;
+    }
+
+    // Reconnect under the ORIGINAL id so the drone re-attaches to the same
+    // fleet row instead of spawning a second one.
+    const name = `${link.vehicleInfo.firmwareVersionString} (${link.vehicleInfo.vehicleClass})`;
+    this.addDroneCallback(droneId, name, link.adapter, link.transport, link.vehicleInfo, link.meta);
+    entry.state = "connected";
+    this.notify(entry);
+    this.timers.delete(droneId);
+    this.entries.delete(droneId);
+  }
+
+  private dial(meta: ConnectionMeta): Promise<ReconnectedLink> {
+    switch (meta.type) {
+      case "serial":
+        return this.dialSerial(meta);
+      case "websocket":
+        return this.dialWebSocket(meta);
+      case "udp-proxy":
+      case "tcp":
+        return this.dialNet(meta);
+      default:
+        return Promise.reject(new Error(`No reconnect path for a ${meta.type} link`));
     }
   }
 
-  private async attemptSerial(entry: ReconnectEntry): Promise<void> {
+  private async dialSerial(meta: ConnectionMeta): Promise<ReconnectedLink> {
     const ports = await serialPortManager.getKnownPorts();
     if (ports.length === 0) throw new Error("No serial ports");
 
-    // Try to match by VID/PID if available
+    // Match by VID/PID when known.
     let matchedPort = ports[0].port;
-    if (entry.meta.portVendorId !== undefined && entry.meta.portProductId !== undefined) {
+    if (meta.portVendorId !== undefined && meta.portProductId !== undefined) {
       const match = ports.find(
-        (p) => p.vendorId === entry.meta.portVendorId && p.productId === entry.meta.portProductId,
+        (p) => p.vendorId === meta.portVendorId && p.productId === meta.portProductId,
       );
       if (match) matchedPort = match.port;
     }
 
     const transport = new WebSerialTransport();
-    await transport.connectToPort(matchedPort, entry.meta.baudRate || 115200);
-
-    // Re-select the adapter from the FC family detected at first connect so a
-    // Betaflight/iNav FC reconnects over MSP instead of always assuming MAVLink.
-    const adapter = await createFcAdapter(entry.meta.firmwareType);
-    let vehicleInfo: VehicleInfo;
-    try {
-      vehicleInfo = await adapter.connect(transport);
-    } catch (err) {
-      // The socket opened but no heartbeat arrived; tear it down so a failed
-      // attempt doesn't leak the socket (a UDP-listen leak keeps host:port bound
-      // and can wedge the next attempt with EADDRINUSE).
-      try {
-        await transport.disconnect();
-      } catch {
-        /* ignore */
-      }
-      throw err;
-    }
-    // Reconnect under the ORIGINAL id, not a fresh one. For an agent-owned FC
-    // (id `node:<deviceId>`, ownsFleetRow=false) the presence row survives the
-    // drop, so a new random id would re-attach as a SECOND standalone row
-    // (the duplicate). Re-using the id re-attaches to the same registry node.
-    const name = `${vehicleInfo.firmwareVersionString} (${vehicleInfo.vehicleClass})`;
-
-    this.addDroneCallback(entry.droneId, name, adapter, transport, vehicleInfo, entry.meta);
+    await transport.connectToPort(matchedPort, meta.baudRate || 115200);
+    return handshake(transport, meta);
   }
 
-  private async attemptWebSocket(entry: ReconnectEntry): Promise<void> {
-    // The agent can rotate its MAVLink WebSocket binding (port change, network
-    // move) while we're backing off. Prefer the live URL the agent-connection
-    // store currently advertises over the one captured at first disconnect so
-    // a rotated port isn't retried stale; fall back to the captured URL when
-    // the store has none.
-    const liveUrl = useAgentConnectionStore.getState().mavlinkUrl;
-    const url = liveUrl ?? entry.meta.url;
-    if (!url) throw new Error("No URL for WebSocket reconnect");
-
+  private async dialWebSocket(meta: ConnectionMeta): Promise<ReconnectedLink> {
+    if (!meta.url) throw new Error("No URL for WebSocket reconnect");
     const transport = new WebSocketTransport();
-    await transport.connect(url);
-
-    // Prefer the family detected at first connect (a direct WS FC); fall back
-    // to the family the agent advertises (an agent-owned FC has no persisted
-    // meta variant).
-    const adapter = await createFcAdapter(
-      entry.meta.firmwareType ??
-        useAgentSystemStore.getState().status?.fc_variant,
-    );
-    let vehicleInfo: VehicleInfo;
-    try {
-      vehicleInfo = await adapter.connect(transport);
-    } catch (err) {
-      // The socket opened but no heartbeat arrived; tear it down so a failed
-      // attempt doesn't leak the socket (a UDP-listen leak keeps host:port bound
-      // and can wedge the next attempt with EADDRINUSE).
-      try {
-        await transport.disconnect();
-      } catch {
-        /* ignore */
-      }
-      throw err;
-    }
-    // Reconnect under the ORIGINAL id (see attemptSerial) so an agent FC
-    // re-attaches to its surviving presence card instead of spawning a
-    // duplicate standalone row.
-    const name = `${vehicleInfo.firmwareVersionString} (${vehicleInfo.vehicleClass})`;
-
-    // Persist the URL actually dialed so a later disconnect doesn't fall back
-    // to the stale captured one.
-    this.addDroneCallback(entry.droneId, name, adapter, transport, vehicleInfo, {
-      ...entry.meta,
-      url,
-    });
+    await transport.connect(meta.url);
+    return handshake(transport, meta);
   }
 
-  private async attemptNet(entry: ReconnectEntry): Promise<void> {
-    const { proto, host, port } = entry.meta;
+  private async dialNet(meta: ConnectionMeta): Promise<ReconnectedLink> {
+    const { proto, host, port } = meta;
     if (!proto || !host || port === undefined) {
       throw new Error("Incomplete endpoint for UDP/TCP reconnect");
     }
@@ -262,41 +229,30 @@ export class ReconnectManager {
       proto,
       host,
       port,
-      mode: entry.meta.mode,
-      bridgeUrl: entry.meta.bridgeUrl,
+      mode: meta.mode,
+      bridgeUrl: meta.bridgeUrl,
     });
+    return handshake(transport, meta);
+  }
+}
 
-    // Prefer the family detected at first connect (a direct UDP/TCP FC); fall
-    // back to the family the agent advertises.
-    const adapter = await createFcAdapter(
-      entry.meta.firmwareType ??
-        useAgentSystemStore.getState().status?.fc_variant,
-    );
-    let vehicleInfo: VehicleInfo;
-    try {
-      vehicleInfo = await adapter.connect(transport);
-    } catch (err) {
-      // The socket opened but no heartbeat arrived; tear it down so a failed
-      // attempt doesn't leak the socket (a UDP-listen leak keeps host:port bound
-      // and can wedge the next attempt with EADDRINUSE).
-      try {
-        await transport.disconnect();
-      } catch {
-        /* ignore */
-      }
-      throw err;
-    }
-    // Reconnect under the ORIGINAL id (see attemptSerial) so an agent-attached
-    // FC re-attaches to its surviving presence card instead of duplicating.
-    const name = `${vehicleInfo.firmwareVersionString} (${vehicleInfo.vehicleClass})`;
-
-    this.addDroneCallback(
-      entry.droneId,
-      name,
-      adapter,
-      transport,
-      vehicleInfo,
-      entry.meta,
-    );
+/**
+ * Run the FC handshake over an open transport with the adapter for the FC
+ * family detected at first connect, so a Betaflight/iNav FC comes back over
+ * MSP. A failed handshake closes the transport so a failed attempt never
+ * leaks a socket (a leaked UDP listener keeps its port bound and wedges the
+ * next attempt).
+ */
+async function handshake(
+  transport: ReconnectTransport,
+  meta: ConnectionMeta,
+): Promise<ReconnectedLink> {
+  const adapter = await createFcAdapter(meta.firmwareType);
+  try {
+    const vehicleInfo = await adapter.connect(transport);
+    return { transport, adapter, vehicleInfo, meta };
+  } catch (err) {
+    await transport.disconnect().catch(() => {});
+    throw err;
   }
 }

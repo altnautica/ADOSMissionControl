@@ -16,11 +16,10 @@ function num(v: unknown): number | undefined {
   return typeof v === "number" && isFinite(v) ? v : undefined;
 }
 
-function maybeDeg(v: unknown): number | undefined {
+/** Body rates are recorded in rad/s (ATTITUDE rollspeed etc. pass through). */
+function rateDeg(v: unknown): number | undefined {
   const n = num(v);
-  if (n === undefined) return undefined;
-  // Attitude values > 2π are likely already degrees (dataflash import).
-  return Math.abs(n) > 6.3 ? n : n * RAD_TO_DEG;
+  return n === undefined ? undefined : n * RAD_TO_DEG;
 }
 
 function chanAt(v: unknown, idx: number): number | undefined {
@@ -55,12 +54,13 @@ export const CHANNEL_REGISTRY: ChannelDef[] = [
     channel: "attitude",
     label: "Attitude",
     fields: [
-      { key: "roll", label: "Roll", unit: "°", extract: (d) => maybeDeg(d.roll) },
-      { key: "pitch", label: "Pitch", unit: "°", extract: (d) => maybeDeg(d.pitch) },
-      { key: "yaw", label: "Yaw", unit: "°", extract: (d) => maybeDeg(d.yaw) },
-      { key: "rollSpeed", label: "Roll Rate", unit: "°/s", extract: (d) => maybeDeg(d.rollSpeed) },
-      { key: "pitchSpeed", label: "Pitch Rate", unit: "°/s", extract: (d) => maybeDeg(d.pitchSpeed) },
-      { key: "yawSpeed", label: "Yaw Rate", unit: "°/s", extract: (d) => maybeDeg(d.yawSpeed) },
+      // Recorded attitude angles are degrees (the AttitudeData contract).
+      { key: "roll", label: "Roll", unit: "°", extract: (d) => num(d.roll) },
+      { key: "pitch", label: "Pitch", unit: "°", extract: (d) => num(d.pitch) },
+      { key: "yaw", label: "Yaw", unit: "°", extract: (d) => num(d.yaw) },
+      { key: "rollSpeed", label: "Roll Rate", unit: "°/s", extract: (d) => rateDeg(d.rollSpeed) },
+      { key: "pitchSpeed", label: "Pitch Rate", unit: "°/s", extract: (d) => rateDeg(d.pitchSpeed) },
+      { key: "yawSpeed", label: "Yaw Rate", unit: "°/s", extract: (d) => rateDeg(d.yawSpeed) },
     ],
   },
   {

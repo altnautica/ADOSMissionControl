@@ -29,7 +29,6 @@ function DroneRow({
   onDisconnect: () => void;
 }) {
   const [uptime, setUptime] = useState(0);
-  const [disconnecting, setDisconnecting] = useState(false);
   const t = useTranslations("connect");
 
   useEffect(() => {
@@ -39,15 +38,6 @@ function DroneRow({
     }, 1000);
     return () => clearInterval(interval);
   }, [drone.connectedAt]);
-
-  async function handleDisconnect() {
-    setDisconnecting(true);
-    try {
-      onDisconnect();
-    } finally {
-      setDisconnecting(false);
-    }
-  }
 
   const info = drone.vehicleInfo;
   const VehicleIcon = VEHICLE_ICONS[info.vehicleClass] || HelpCircle;
@@ -89,9 +79,8 @@ function DroneRow({
           icon={<Unplug size={12} />}
           onClick={(e) => {
             e.stopPropagation();
-            handleDisconnect();
+            onDisconnect();
           }}
-          loading={disconnecting}
         >
           &times;
         </Button>

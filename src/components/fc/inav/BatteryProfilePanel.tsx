@@ -37,6 +37,7 @@ const VOLTAGE_SOURCE_OPTIONS = [
 ];
 
 const DEFAULT_CFG: INavBatteryConfig = {
+  voltageScale: 1100, // 1.10 divider scale at iNav's 10x resolution — replaced by the FC-read value when present
   capacityMah: 2200,
   capacityWarningMah: 440,
   capacityCriticalMah: 220,

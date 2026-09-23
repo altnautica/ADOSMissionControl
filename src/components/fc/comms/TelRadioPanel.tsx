@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -14,7 +14,7 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
 import { ParamEnumSelect, useParamEnums } from "../shared/ParamEnumSelect";
 import { Button } from "@/components/ui/button";
-import { Radio, Save, HardDrive, Terminal, Signal } from "lucide-react";
+import { Radio, Save, HardDrive, Signal } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import {
   TELRADIO_PARAMS, OPTIONAL_TELRADIO_PARAMS,
@@ -30,8 +30,6 @@ export function TelRadioPanel() {
   const { enumValues } = useParamEnums(paramMeta);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={paramMeta} />;
   const [saving, setSaving] = useState(false);
-  const [atCommand, setAtCommand] = useState("");
-  const [atResponse, setAtResponse] = useState("");
 
   const radioBuffer = useTelemetryStore((s) => s.radio);
   const latestRadio = radioBuffer.latest();
@@ -62,14 +60,6 @@ export function TelRadioPanel() {
     showFlashResult(ok);
   }
 
-  const handleSendAT = useCallback(() => {
-    if (!atCommand.trim()) return;
-    // AT command passthrough would use protocol.sendSerialData()
-    setAtResponse(`> ${atCommand}\nOK`);
-    setAtCommand("");
-    toast("AT command sent", "success");
-  }, [atCommand, toast]);
-
   const localRssiPct = latestRadio ? rssiPercent(latestRadio.rssi) : 0;
   const remoteRssiPct = latestRadio ? rssiPercent(latestRadio.remrssi) : 0;
 
@@ -79,7 +69,7 @@ export function TelRadioPanel() {
         <div className="max-w-2xl space-y-6">
           <PanelHeader
             title="Telemetry Radio"
-            subtitle="Radio link status, serial port config, AT commands"
+            subtitle="Radio link status and serial port config"
             icon={<Radio size={16} />}
             loading={loading}
             loadProgress={loadProgress}
@@ -179,30 +169,6 @@ export function TelRadioPanel() {
             <p className="text-[10px] text-text-tertiary mt-1">
               Each vehicle on the same link needs a unique SYSID_THISMAV. Default GCS ID is 255.
             </p>
-          </Card>
-
-          {/* AT Commands */}
-          <Card icon={<Terminal size={14} />} title="AT Commands" description="Send AT commands to 3DR/RFD900 radios">
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={atCommand}
-                  onChange={(e) => setAtCommand(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSendAT(); }}
-                  placeholder="AT command (e.g. ATI, ATS1?)"
-                  className="flex-1 px-2 py-1.5 text-xs font-mono bg-bg-tertiary border border-border-default rounded"
-                />
-                <Button size="sm" onClick={handleSendAT} disabled={!atCommand.trim()}>
-                  Send
-                </Button>
-              </div>
-              {atResponse && (
-                <pre className="p-2 text-[10px] font-mono bg-bg-tertiary/50 border border-border-default rounded text-text-secondary whitespace-pre-wrap max-h-32 overflow-y-auto">
-                  {atResponse}
-                </pre>
-              )}
-            </div>
           </Card>
 
           {/* Save */}

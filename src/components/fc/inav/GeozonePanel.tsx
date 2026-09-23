@@ -40,7 +40,7 @@ export function GeozonePanel() {
   const { isArmed, lockMessage } = useArmedLock();
   useUnsavedGuard(dirty);
 
-  const hasLoaded = zones.length > 0;
+  const hasLoaded = useGeozoneStore((s) => s.loaded);
   const connected = !!getSelectedProtocol();
 
   const handleRead = useCallback(async () => {

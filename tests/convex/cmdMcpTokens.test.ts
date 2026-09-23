@@ -41,7 +41,11 @@ function authorize(row: Row | null, now: number): { ok: boolean; reason?: string
 
 /** The enqueue scope gate: does the credential hold the command's required class? */
 function commandScopeOk(scopes: string[], command: Parameters<typeof requiredScopeForCommand>[0], args: unknown): boolean {
-  return scopes.includes(requiredScopeForCommand(command, args));
+  const required = requiredScopeForCommand(command, args);
+  // A payload that is not a command the agent accepts ("null class" for an
+  // unknown verb) can never be granted, mirroring assertCommandScope.
+  if (required === null) return false;
+  return scopes.includes(required);
 }
 
 /** The mint scope-vocabulary gate. */
@@ -120,8 +124,10 @@ describe("cmdMcpReach per-command scope enforcement (the direct-Convex backstop)
     expect(commandScopeOk(flightCred, "send_command", { cmd: "arm" })).toBe(true);
   });
 
-  it("allows a non-flight send_command from an Operate credential", () => {
-    expect(commandScopeOk(operate, "send_command", { cmd: "get_battery" })).toBe(true);
+  it("refuses a send_command verb the agent does not accept, for every credential", () => {
+    expect(commandScopeOk(operate, "send_command", { cmd: "get_battery" })).toBe(false);
+    expect(commandScopeOk([...flightCred, "destructive"], "send_command", { cmd: "get_battery" })).toBe(false);
+    expect(commandScopeOk(flightCred, "send_command", { cmd: "constructor" })).toBe(false);
   });
 
   it("gates admin ops on the admin scope and read pulls on read", () => {

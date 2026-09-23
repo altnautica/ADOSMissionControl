@@ -40,6 +40,8 @@ export type BatteryCallback = (data: {
   consumed: number;
   temperature?: number;
   cellVoltages?: number[];
+  /** Series cell count the FC reports for the pack; absent when unknown. */
+  cellCount?: number;
 }) => void;
 
 export type GpsCallback = (data: {
@@ -210,14 +212,23 @@ export type HomePositionCallback = (data: {
   alt: number;
 }) => void;
 
-export type AutopilotVersionCallback = (data: {
+/** AUTOPILOT_VERSION (msg 148) as delivered to subscribers. */
+export interface AutopilotVersionData {
   capabilities: number;
   flightSwVersion: number;
   middlewareSwVersion: number;
   osSwVersion: number;
+  /** Raw AUTOPILOT_VERSION.board_version as sent on the wire. */
   boardVersion: number;
+  /**
+   * AP_FW_BOARD_ID decoded from board_version (ArduPilot sends it in the upper
+   * 16 bits). Undefined when the firmware does not report a board id there.
+   */
+  boardId?: number;
   uid: number;
-}) => void;
+}
+
+export type AutopilotVersionCallback = (data: AutopilotVersionData) => void;
 
 export type PowerStatusCallback = (data: {
   timestamp: number;

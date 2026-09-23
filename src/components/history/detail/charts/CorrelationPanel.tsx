@@ -45,8 +45,7 @@ const FIELDS: PickerField[] = [
   { channel: "ekf", channelLabel: "EKF", key: "posHorizVariance", label: "Pos H Var" },
 ];
 
-const RAD_TO_DEG = 180 / Math.PI;
-
+/** Numeric samples of one field. Recorded attitude is already in degrees. */
 function extractField(
   frames: TelemetryFrame[],
   channel: string,
@@ -55,11 +54,8 @@ function extractField(
   const pts: { t: number; v: number }[] = [];
   for (const f of frames) {
     if (f.channel !== channel) continue;
-    const d = f.data as Record<string, unknown>;
-    let raw = typeof d[key] === "number" ? (d[key] as number) : undefined;
-    if (raw === undefined || !isFinite(raw)) continue;
-    // Attitude rads → deg
-    if (channel === "attitude" && Math.abs(raw) < 6.3) raw *= RAD_TO_DEG;
+    const raw = (f.data as Record<string, unknown>)[key];
+    if (typeof raw !== "number" || !isFinite(raw)) continue;
     pts.push({ t: f.offsetMs, v: raw });
   }
   return pts;

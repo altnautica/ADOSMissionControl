@@ -1,8 +1,11 @@
 /**
  * FFT analysis for PID tuning.
  *
- * Radix-2 Cooley-Tukey FFT with Hanning window, power spectral density,
- * and peak detection with frequency zone classification.
+ * Welch-averaged power spectrum (Hanning-windowed radix-2 FFT segments with
+ * 50% overlap) and capped peak detection with frequency zone classification.
+ * Averaging segments keeps the spectrum bounded to SEGMENT_LENGTH / 2 bins
+ * and suppresses the random bin-to-bin scatter a single whole-log
+ * periodogram shows, so only real resonances clear the peak threshold.
  *
  * @license GPL-3.0-only
  */
@@ -10,16 +13,36 @@
 import type { TimeSample, FFTAxisResult, FFTBin, FFTPeak } from "@/lib/analysis/types";
 
 // ---------------------------------------------------------------------------
+// Tuning constants
+// ---------------------------------------------------------------------------
+
+/** Welch segment length (power of 2). The spectrum has half this many bins. */
+export const SEGMENT_LENGTH = 1024;
+
+/** Maximum number of peaks reported per axis. */
+export const MAX_PEAKS = 8;
+
+/** Minimum spacing between reported peaks in Hz. */
+const MIN_PEAK_SPACING_HZ = 5;
+
+/** A local maximum must clear the median level by this much to count. */
+const PEAK_THRESHOLD_DB = 6;
+
+// ---------------------------------------------------------------------------
 // Window function
 // ---------------------------------------------------------------------------
 
-/** Apply a Hanning window to the sample array (in-place). */
-function hanningWindow(data: Float64Array): void {
-  const n = data.length;
-  for (let i = 0; i < n; i++) {
-    const w = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (n - 1)));
-    data[i] *= w;
+/** Hanning window coefficients for a segment of `n` samples. */
+function hanningWindow(n: number): Float64Array {
+  const w = new Float64Array(n);
+  if (n === 1) {
+    w[0] = 1;
+    return w;
   }
+  for (let i = 0; i < n; i++) {
+    w[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (n - 1)));
+  }
+  return w;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,12 +134,17 @@ function median(arr: Float64Array): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Compute FFT on a set of time-domain samples.
+ * Compute the averaged power spectrum of a set of time-domain samples.
+ *
+ * Inputs longer than SEGMENT_LENGTH are split into 50%-overlapping segments
+ * whose power spectra are averaged (Welch). Shorter inputs form one
+ * zero-padded segment.
  *
  * @param samples  Time-value pairs (value = gyro rate in deg/s or similar)
  * @param sampleRate  Sample rate in Hz
  * @param axis  Which axis these samples represent
- * @returns FFT result with spectrum, peaks, and noise floor
+ * @returns Spectrum (at most SEGMENT_LENGTH / 2 bins), up to MAX_PEAKS
+ *   distinct peaks, and the noise floor (null when there are no samples)
  */
 export function computeFFT(
   samples: TimeSample[],
@@ -124,46 +152,52 @@ export function computeFFT(
   axis: "roll" | "pitch" | "yaw",
 ): FFTAxisResult {
   if (samples.length < 2) {
-    return { axis, spectrum: [], sampleRate, peaks: [], noiseFloorDb: -120 };
+    return { axis, spectrum: [], sampleRate, peaks: [], noiseFloorDb: null };
   }
 
-  const n = nextPow2(samples.length);
+  const n = Math.min(SEGMENT_LENGTH, nextPow2(samples.length));
+  const windowLen = Math.min(n, samples.length);
+  const window = hanningWindow(windowLen);
+  const hop = n >> 1;
+  const halfN = n >> 1;
 
-  // Prepare windowed real array, zero-padded
   const re = new Float64Array(n);
   const im = new Float64Array(n);
-  for (let i = 0; i < samples.length; i++) {
-    re[i] = samples[i].value;
+  const power = new Float64Array(halfN);
+  let segments = 0;
+
+  for (let start = 0; start + windowLen <= samples.length; start += hop) {
+    re.fill(0);
+    im.fill(0);
+    for (let i = 0; i < windowLen; i++) {
+      re[i] = samples[start + i].value * window[i];
+    }
+    fftInPlace(re, im);
+    for (let i = 0; i < halfN; i++) {
+      power[i] += re[i] * re[i] + im[i] * im[i];
+    }
+    segments++;
+    if (windowLen < n) break; // single zero-padded segment
   }
-  hanningWindow(re);
 
-  // Run FFT
-  fftInPlace(re, im);
-
-  // Compute power spectral density (magnitude in dB)
-  // Only positive frequencies (0 to N/2)
-  const halfN = n >> 1;
+  // Averaged magnitude in dB (same scale as 20*log10(|X| / n) for one segment)
   const freqResolution = sampleRate / n;
   const spectrum: FFTBin[] = new Array(halfN);
   const magnitudes = new Float64Array(halfN);
+  const scale = segments * n * n;
 
   for (let i = 0; i < halfN; i++) {
-    const mag = Math.sqrt(re[i] * re[i] + im[i] * im[i]) / n;
-    const magDb = mag > 0 ? 20 * Math.log10(mag) : -120;
-    spectrum[i] = {
-      frequency: i * freqResolution,
-      magnitude: magDb,
-    };
+    const p = power[i] / scale;
+    const magDb = p > 0 ? 10 * Math.log10(p) : -120;
+    spectrum[i] = { frequency: i * freqResolution, magnitude: magDb };
     magnitudes[i] = magDb;
   }
 
-  // Noise floor = median magnitude
   const noiseFloorDb = median(magnitudes);
+  const threshold = noiseFloorDb + PEAK_THRESHOLD_DB;
 
-  // Peak detection: find local maxima above noise floor + 6 dB
-  const threshold = noiseFloorDb + 6;
-  const peaks: FFTPeak[] = [];
-
+  // Candidate peaks: local maxima (±2 bins) above the threshold
+  const candidates: FFTPeak[] = [];
   for (let i = 2; i < halfN - 2; i++) {
     const mag = magnitudes[i];
     if (
@@ -173,22 +207,21 @@ export function computeFFT(
       mag > magnitudes[i - 2] &&
       mag > magnitudes[i + 2]
     ) {
-      peaks.push({
-        frequency: i * freqResolution,
-        magnitudeDb: mag,
-        zone: classifyFrequency(i * freqResolution),
-      });
+      const frequency = i * freqResolution;
+      candidates.push({ frequency, magnitudeDb: mag, zone: classifyFrequency(frequency) });
     }
   }
 
-  // Sort peaks by magnitude descending
-  peaks.sort((a, b) => b.magnitudeDb - a.magnitudeDb);
+  // Keep the strongest distinct peaks: descending magnitude, minimum spacing, capped
+  candidates.sort((a, b) => b.magnitudeDb - a.magnitudeDb);
+  const minSpacingHz = Math.max(MIN_PEAK_SPACING_HZ, 3 * freqResolution);
+  const peaks: FFTPeak[] = [];
+  for (const c of candidates) {
+    if (peaks.length >= MAX_PEAKS) break;
+    if (peaks.every((p) => Math.abs(p.frequency - c.frequency) >= minSpacingHz)) {
+      peaks.push(c);
+    }
+  }
 
-  return {
-    axis,
-    spectrum,
-    sampleRate,
-    peaks,
-    noiseFloorDb,
-  };
+  return { axis, spectrum, sampleRate, peaks, noiseFloorDb };
 }

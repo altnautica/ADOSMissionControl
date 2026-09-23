@@ -1,23 +1,39 @@
 "use client";
 
-import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { useTelemetryStore } from "@/stores/telemetry-store";
 import { parseSensorHealth } from "@/lib/protocol/mavlink-constants";
 import { cn } from "@/lib/utils";
 
 interface SensorHealthBarProps {
   compact?: boolean;
+  /**
+   * False when the surface knows no FC is attached; the bar then shows no
+   * sensor claims whatever the telemetry ring still holds.
+   */
+  fcLive?: boolean;
 }
 
 /** Core sensors to always show when present. */
 const CORE_SENSOR_IDS = new Set([0, 1, 2, 3, 5, 15, 16, 21]); // Gyro, Accel, Compass, Baro, GPS, Motors, RC, AHRS
 
-export function SensorHealthBar({ compact = false }: SensorHealthBarProps) {
-  const sysStatus = useTelemetryLatest("sysStatus");
+export function SensorHealthBar({ compact = false, fcLive = true }: SensorHealthBarProps) {
+  // Fresh SYS_STATUS or undefined. The ring keeps its last sample when the
+  // link dies, so an ungated bar kept every sensor green "OK" for as long as
+  // the tab stayed open after a radio dropout.
+  const fresh = useFreshTelemetry("sysStatus");
+  const sysStatus = fcLive ? fresh : undefined;
 
   if (!sysStatus) {
+    const heard = fcLive && useTelemetryStore.getState().sysStatus.latest() !== undefined;
     return (
-      <div className={cn("flex items-center gap-1.5", compact ? "py-1" : "py-2")}>
-        <span className="text-[10px] text-text-tertiary">No sensor data</span>
+      <div
+        className={cn("flex items-center gap-1.5", compact ? "py-1" : "py-2")}
+        data-testid={heard ? "sensor-health-stale" : "sensor-health-none"}
+      >
+        <span className={cn("text-[10px]", heard ? "text-status-warning" : "text-text-tertiary")}>
+          {heard ? "Sensor data stale" : "No sensor data"}
+        </span>
       </div>
     );
   }

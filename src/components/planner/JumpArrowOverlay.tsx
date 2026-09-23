@@ -61,12 +61,15 @@ export function JumpArrowOverlay({ waypoints }: JumpArrowOverlayProps) {
     for (const wp of waypoints) {
       for (const action of wp.actions ?? []) {
         if (action.command !== "DO_JUMP" || !action.jumpTargetId) continue;
+        // A repeat count of 0 is never taken by the flight controller.
+        const count = action.param2 ?? 0;
+        if (count === 0) continue;
 
         const targetIdx = waypoints.findIndex((w) => w.id === action.jumpTargetId);
         if (targetIdx < 0) continue;
 
         const targetWp = waypoints[targetIdx];
-        const repeat = action.param2 && action.param2 > 1 ? ` ×${action.param2}` : "";
+        const repeat = count < 0 ? " ×∞" : count > 1 ? ` ×${count}` : "";
         arrows.push({
           from: [wp.lat, wp.lon],
           to: [targetWp.lat, targetWp.lon],

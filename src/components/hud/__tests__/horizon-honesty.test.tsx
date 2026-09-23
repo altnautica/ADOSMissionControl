@@ -90,8 +90,20 @@ describe("HUD kiosk bottom bar", () => {
       groundspeed: 11,
       heading: 90,
       throttle: 45,
-      alt: 120,
+      alt: 420,
       climb: 0.4,
+    });
+    // MSL 420 m at a site 300 m above sea level: 120 m above home.
+    s.pushPosition({
+      timestamp,
+      lat: 12.97,
+      lon: 77.59,
+      alt: 420,
+      relativeAlt: 120,
+      heading: 90,
+      groundSpeed: 11,
+      airSpeed: 12,
+      climbRate: 0.4,
     });
   }
 
@@ -107,6 +119,8 @@ describe("HUD kiosk bottom bar", () => {
     expect(container.querySelector("[data-testid='horizon-attitude-flag']")).toBeNull();
     expect(container.innerHTML).toContain("rotate(-15 100 100)");
     expect(container.textContent).toContain("120");
+    // Altitude is height above home, never the MSL figure VFR_HUD carries.
+    expect(container.textContent).not.toContain("420");
   });
 
   it("flags the instrument and blanks the tapes once telemetry goes stale", () => {

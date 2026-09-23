@@ -17,6 +17,11 @@ export interface ArduPilotBoardEntry {
   vendor: string
   mcu: string
   category: ArduPilotBoardCategory
+  /**
+   * AP_FW_BOARD_ID values (the board's APJ_BOARD_ID) this entry is detected by.
+   * Each id belongs to at most one entry. Empty when the firmware build reports
+   * an id shared with another entry, or no id at all.
+   */
   boardIds: number[]
   outputCount?: number
   timerGroups?: number[][]
@@ -34,7 +39,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'SpeedyBee',
     mcu: 'STM32F405',
     category: 'wing-fc',
-    boardIds: [1032],
+    boardIds: [1106],
     outputCount: 12,
     timerGroups: [[1, 2], [3, 4], [5, 6, 7], [8, 9, 10], [11, 12]],
     outputNotes: {
@@ -51,7 +56,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'SpeedyBee',
     mcu: 'STM32F405',
     category: 'mini-fc',
-    boardIds: [1031],
+    boardIds: [1082],
     outputCount: 9,
     timerGroups: [[1, 2], [3, 4], [5, 6], [7, 8], [9]],
     outputNotes: { 9: 'LED pad — serial LED default' },
@@ -63,19 +68,11 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'SpeedyBee',
     mcu: 'STM32F405',
     category: 'mini-fc',
-    boardIds: [1043],
+    boardIds: [1136],
     outputCount: 10,
     timerGroups: [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]],
     outputNotes: { 9: 'Solder pad', 10: 'LED pad — serial LED default' },
     protocols: ['Both', 'Both', 'Both', 'Both', 'Both'],
-  },
-  {
-    name: 'SpeedyBeef7V3',
-    displayName: 'SpeedyBee F7 V3',
-    vendor: 'SpeedyBee',
-    mcu: 'STM32F745',
-    category: 'mini-fc',
-    boardIds: [1045],
   },
 
   // ── Matek ─────────────────────────────────────────────────
@@ -92,44 +89,20 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     protocols: ['Both', 'Both', 'Both', 'Both', 'Both', 'PWM'],
   },
   {
-    name: 'MatekF405-SE',
-    displayName: 'Matek F405-SE',
-    vendor: 'Matek',
-    mcu: 'STM32F405',
-    category: 'mini-fc',
-    boardIds: [1022],
-  },
-  {
     name: 'MatekF405-Wing',
-    displayName: 'Matek F405-Wing',
+    displayName: 'Matek F405-Wing / F405-SE',
     vendor: 'Matek',
     mcu: 'STM32F405',
     category: 'wing-fc',
-    boardIds: [1053],
+    boardIds: [127],
   },
   {
     name: 'MatekF765-Wing',
     displayName: 'Matek F765-Wing',
     vendor: 'Matek',
-    mcu: 'STM32F765',
+    mcu: 'STM32F767',
     category: 'wing-fc',
-    boardIds: [1014],
-  },
-  {
-    name: 'MatekH743-Mini',
-    displayName: 'Matek H743-Mini',
-    vendor: 'Matek',
-    mcu: 'STM32H743',
-    category: 'mini-fc',
-    boardIds: [1044],
-  },
-  {
-    name: 'MatekH743-Slim',
-    displayName: 'Matek H743-Slim',
-    vendor: 'Matek',
-    mcu: 'STM32H743',
-    category: 'mini-fc',
-    boardIds: [1058],
+    boardIds: [143],
   },
 
   // ── Holybro ───────────────────────────────────────────────
@@ -137,7 +110,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     name: 'Pixhawk4',
     displayName: 'Pixhawk 4',
     vendor: 'Holybro',
-    mcu: 'STM32F765',
+    mcu: 'STM32F767',
     category: 'pixhawk',
     boardIds: [50],
     outputCount: 16,
@@ -167,9 +140,9 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     name: 'Pixhawk6X',
     displayName: 'Pixhawk 6X',
     vendor: 'Holybro',
-    mcu: 'STM32H753',
+    mcu: 'STM32H743',
     category: 'pixhawk',
-    boardIds: [57],
+    boardIds: [53],
     outputCount: 16,
     timerGroups: [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]],
     outputNotes: {
@@ -184,7 +157,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Holybro',
     mcu: 'STM32F745',
     category: 'mini-fc',
-    boardIds: [1012],
+    boardIds: [123],
   },
   {
     name: 'KakuteH7',
@@ -192,7 +165,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Holybro',
     mcu: 'STM32H743',
     category: 'mini-fc',
-    boardIds: [1046],
+    boardIds: [1048],
   },
   {
     name: 'KakuteH7Mini',
@@ -200,7 +173,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Holybro',
     mcu: 'STM32H743',
     category: 'mini-fc',
-    boardIds: [1069],
+    boardIds: [1058],
   },
   {
     name: 'Durandal',
@@ -208,7 +181,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Holybro',
     mcu: 'STM32H743',
     category: 'pixhawk',
-    boardIds: [1072],
+    boardIds: [139],
   },
 
   // ── CubePilot ─────────────────────────────────────────────
@@ -232,9 +205,9 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     name: 'CubeOrangePlus',
     displayName: 'CubeOrange+',
     vendor: 'CubePilot',
-    mcu: 'STM32H743',
+    mcu: 'STM32H757',
     category: 'pixhawk',
-    boardIds: [1062],
+    boardIds: [1063],
   },
   {
     name: 'CubeYellow',
@@ -250,9 +223,10 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     name: 'CUAVv5plus',
     displayName: 'CUAV V5+',
     vendor: 'CUAV',
-    mcu: 'STM32F765',
+    mcu: 'STM32F767',
     category: 'pixhawk',
-    boardIds: [1054],
+    // Runs the FMUv5 build and reports board id 50, the same as Pixhawk 4.
+    boardIds: [],
   },
   {
     name: 'CUAVX7',
@@ -260,7 +234,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'CUAV',
     mcu: 'STM32H743',
     category: 'pixhawk',
-    boardIds: [1061],
+    boardIds: [1010],
   },
   {
     name: 'CUAVNora',
@@ -268,7 +242,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'CUAV',
     mcu: 'STM32H743',
     category: 'pixhawk',
-    boardIds: [1059],
+    boardIds: [1009],
   },
 
   // ── mRo ───────────────────────────────────────────────────
@@ -281,20 +255,20 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     boardIds: [11],
   },
   {
-    name: 'mRoControlZero',
-    displayName: 'mRo Control Zero',
+    name: 'mRoControlZeroH7',
+    displayName: 'mRo Control Zero H7',
     vendor: 'mRo',
     mcu: 'STM32H743',
     category: 'mini-fc',
-    boardIds: [1063],
+    boardIds: [1023],
   },
   {
-    name: 'mRoControlZeroH7',
+    name: 'mRoControlZeroOEMH7',
     displayName: 'mRo Control Zero H7 OEM',
     vendor: 'mRo',
     mcu: 'STM32H743',
     category: 'mini-fc',
-    boardIds: [1085],
+    boardIds: [1024],
   },
   {
     name: 'mRoNexus',
@@ -302,7 +276,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'mRo',
     mcu: 'STM32H743',
     category: 'carrier',
-    boardIds: [1093],
+    boardIds: [1015],
   },
 
   // ── Flywoo ────────────────────────────────────────────────
@@ -312,7 +286,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Flywoo',
     mcu: 'STM32F405',
     category: 'mini-fc',
-    boardIds: [1039],
+    boardIds: [1137],
   },
   {
     name: 'FlywooF745',
@@ -320,7 +294,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Flywoo',
     mcu: 'STM32F745',
     category: 'mini-fc',
-    boardIds: [1049],
+    boardIds: [1027],
   },
 
   // ── iFlight ───────────────────────────────────────────────
@@ -330,7 +304,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'iFlight',
     mcu: 'STM32F745',
     category: 'mini-fc',
-    boardIds: [1033],
+    boardIds: [1026],
   },
   {
     name: 'BeastH7',
@@ -338,7 +312,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'iFlight',
     mcu: 'STM32H743',
     category: 'mini-fc',
-    boardIds: [1064],
+    boardIds: [1025],
   },
 
   // ── Foxeer ────────────────────────────────────────────────
@@ -348,7 +322,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Foxeer',
     mcu: 'STM32H743',
     category: 'mini-fc',
-    boardIds: [1070],
+    boardIds: [1089],
   },
 
   // ── Generic / Popular boards ──────────────────────────────
@@ -366,23 +340,15 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Holybro',
     mcu: 'STM32F405',
     category: 'mini-fc',
-    boardIds: [1011],
-  },
-  {
-    name: 'BetaflightF4',
-    displayName: 'BetaflightF4',
-    vendor: 'Generic',
-    mcu: 'STM32F405',
-    category: 'mini-fc',
-    boardIds: [1017],
+    boardIds: [122],
   },
   {
     name: 'f4by',
     displayName: 'Swift F4BY',
     vendor: 'Swift',
-    mcu: 'STM32F405',
+    mcu: 'STM32F407',
     category: 'mini-fc',
-    boardIds: [1010],
+    boardIds: [20],
   },
   {
     name: 'MambaF405-2022',
@@ -390,7 +356,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Diatone',
     mcu: 'STM32F405',
     category: 'mini-fc',
-    boardIds: [1047],
+    boardIds: [1038],
   },
   {
     name: 'MambaH743v4',
@@ -408,7 +374,8 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Generic',
     mcu: 'Linux',
     category: 'linux',
-    boardIds: [70],
+    // Linux builds report no board id in AUTOPILOT_VERSION.
+    boardIds: [],
   },
   {
     name: 'navigator',
@@ -416,7 +383,7 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'Blue Robotics',
     mcu: 'Linux (RPi)',
     category: 'linux',
-    boardIds: [100],
+    boardIds: [],
   },
   {
     name: 'Pixhawk1-1M',
@@ -424,7 +391,8 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'mRo',
     mcu: 'STM32F427',
     category: 'pixhawk',
-    boardIds: [5],
+    // Runs the FMUv3 build and reports board id 9, the same as CubeBlack.
+    boardIds: [],
   },
   {
     name: 'Pixhawk1-1M-bdshot',
@@ -432,7 +400,8 @@ export const ARDUPILOT_BOARDS: ArduPilotBoardEntry[] = [
     vendor: 'mRo',
     mcu: 'STM32F427',
     category: 'pixhawk',
-    boardIds: [5],
+    // Runs the FMUv3 build and reports board id 9, the same as CubeBlack.
+    boardIds: [],
   },
 
   // ── Generic F405 fallback ─────────────────────────────────

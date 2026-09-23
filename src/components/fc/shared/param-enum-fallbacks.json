@@ -11,7 +11,8 @@
       "ARSPD_USE": [[0, "DoNotUse"], [1, "Use"], [2, "UseWhenZeroThrottle"]],
       "BATT_FS_VOLTSRC": [[0, "Raw Voltage"], [1, "Sag Compensated Voltage"]],
       "TERRAIN_ENABLE": [[0, "Disable"], [1, "Enable"]],
-      "BARO_PRIMARY": [[0, "FirstBaro"], [1, "2ndBaro"], [2, "3rdBaro"]]
+      "BARO_PRIMARY": [[0, "FirstBaro"], [1, "2ndBaro"], [2, "3rdBaro"]],
+      "BATT_MONITOR": [[0, "Disabled"], [3, "Analog Voltage Only"], [4, "Analog Voltage and Current"], [5, "Solo"], [6, "Bebop"], [7, "SMBus-Generic"], [8, "DroneCAN-BatteryInfo"], [9, "ESC"], [10, "Sum Of Selected Monitors"], [11, "FuelFlow"], [12, "FuelLevelPWM"], [13, "SMBUS-SUI3"], [14, "SMBUS-SUI6"], [15, "NeoDesign"], [16, "SMBus-Maxell"], [17, "Generator-Elec"], [18, "Generator-Fuel"], [19, "Rotoye"], [20, "MPPT"], [21, "INA2XX (INA226 INA228 INA238 INA231 INA260)"], [22, "LTC2946"], [23, "Torqeedo"], [24, "FuelLevelAnalog"], [25, "Synthetic Current and Analog Voltage"], [26, "INA239_SPI"], [27, "EFI"], [28, "AD7091R5"], [29, "Scripting"], [30, "INA3221"], [31, "Analog Current Only"], [32, "TIBQ76952-I2C (Periph only)"]]
     },
     "bitmask": {
       "GPS_GNSS_MODE": [[0, "GPS"], [1, "SBAS"], [2, "Galileo"], [3, "Beidou"], [4, "IMES"], [5, "QZSS"], [6, "GLONASS"]]
@@ -67,7 +68,10 @@
   },
   "px4": {
     "values": {
-      "COM_LOW_BAT_ACT": [[0, "Warning"], [2, "Land mode"], [3, "Return at critical level, land at emergency level"]]
+      "COM_LOW_BAT_ACT": [[0, "Warning"], [2, "Land mode"], [3, "Return at critical level, land at emergency level"]],
+      "GF_ACTION": [[0, "None"], [1, "Warning"], [2, "Hold mode"], [3, "Return mode"], [4, "Terminate"], [5, "Land mode"]],
+      "BAT1_SOURCE": [[-1, "Disabled"], [0, "Power Module"], [1, "External"], [2, "ESCs"]],
+      "BAT1_N_CELLS": [[0, "Unknown"], [1, "1S Battery"], [2, "2S Battery"], [3, "3S Battery"], [4, "4S Battery"], [5, "5S Battery"], [6, "6S Battery"], [7, "7S Battery"], [8, "8S Battery"], [9, "9S Battery"], [10, "10S Battery"], [11, "11S Battery"], [12, "12S Battery"], [13, "13S Battery"], [14, "14S Battery"], [15, "15S Battery"], [16, "16S Battery"]]
     }
   }
 }

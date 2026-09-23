@@ -8,11 +8,14 @@ import type { ServiceInfo } from "@/lib/agent/types";
 import { countRunning } from "@/lib/agent/service-state";
 import { useVideoStore } from "@/stores/video-store";
 import { useFreshness } from "@/lib/agent/freshness";
+import { useToast } from "@/components/ui/toast";
 
 interface ServiceTableProps {
   services: ServiceInfo[];
-  onRestart: (name: string) => void;
-  onRestartAll?: () => void;
+  /** Resolves with the agent's confirmation (null when queued over the
+   * cloud relay); rejects with the agent's reason on a failed restart. */
+  onRestart: (name: string) => Promise<string | null>;
+  onRestartAll?: () => Promise<string>;
   processCpu?: number | null;
   processMemoryMb?: number | null;
 }
@@ -53,7 +56,16 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
   const t = useTranslations("agent");
   const agentDependencies = useVideoStore((s) => s.agentDependencies);
   const freshness = useFreshness();
+  const { toast } = useToast();
   const isStale = freshness.state !== "live" && freshness.state !== "unknown";
+  const report = (pending: Promise<string | null>) => {
+    pending.then(
+      (message) => {
+        if (message) toast(message, "success");
+      },
+      (err: unknown) => toast(err instanceof Error ? err.message : String(err), "error"),
+    );
+  };
   if (!services || !Array.isArray(services) || services.length === 0) {
     return (
       <div className="border border-border-default rounded-lg p-4">
@@ -94,7 +106,7 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
           <span>{runningCount}/{services.length} running</span>
           {onRestartAll && (
             <button
-              onClick={onRestartAll}
+              onClick={() => report(onRestartAll())}
               className="p-1 rounded hover:bg-white/10 text-text-tertiary hover:text-text-primary transition-colors"
               title="Restart all services"
             >
@@ -177,7 +189,7 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
                 </td>
                 <td className="py-1.5 text-right">
                   <button
-                    onClick={() => onRestart(svc.name)}
+                    onClick={() => report(onRestart(svc.name))}
                     className="p-1 text-text-tertiary hover:text-accent-primary transition-colors"
                     title={t("restartService", { name: svc.name })}
                   >

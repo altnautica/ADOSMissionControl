@@ -17,8 +17,11 @@ export interface DeckThreshold {
 }
 
 export interface DeckSeverityContext {
-  /** Detected cell count for per-cell voltage thresholds. */
-  cellCount: number;
+  /**
+   * Series cell count for per-cell voltage thresholds, or null when neither
+   * measured cells nor a known pack establish it (see `resolveCellCount`).
+   */
+  cellCount: number | null;
 }
 
 export type { TelemetryDeckMetricId, TelemetryDeckPageId };

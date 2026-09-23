@@ -22,10 +22,14 @@ export function CombinedStreamStats() {
     );
   }
 
+  const fmt = (v: number | null) => (v === null ? "--" : v.toLocaleString());
   return (
     <div className="p-4 bg-surface-primary border border-border-default/40">
-      <div className="text-sm font-medium text-text-primary mb-2">
-        {t("combinedTitle")}
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-medium text-text-primary">{t("combinedTitle")}</div>
+        {combined.stale && (
+          <div className="text-xs text-status-warning">{t("staleSnapshot")}</div>
+        )}
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div>
@@ -33,7 +37,7 @@ export function CombinedStreamStats() {
             {t("fragmentsAfterDedup")}
           </div>
           <div className="font-mono text-lg text-text-primary">
-            {combined.fragments_after_dedup.toLocaleString()}
+            {fmt(combined.fragments_after_dedup)}
           </div>
         </div>
         <div>
@@ -41,7 +45,7 @@ export function CombinedStreamStats() {
             {t("fecRepaired")}
           </div>
           <div className="font-mono text-lg text-text-primary">
-            {combined.fec_repaired.toLocaleString()}
+            {fmt(combined.fec_repaired)}
           </div>
         </div>
         <div>
@@ -49,7 +53,7 @@ export function CombinedStreamStats() {
             {t("outputBitrate")}
           </div>
           <div className="font-mono text-lg text-text-primary">
-            {combined.output_kbps} <span className="text-xs text-text-tertiary">kbps</span>
+            {fmt(combined.output_kbps)} <span className="text-xs text-text-tertiary">kbps</span>
           </div>
         </div>
       </div>

@@ -30,9 +30,16 @@ export interface PicConfirmTokenResult {
   expires_in_s: number;
 }
 
+/** One frame of `/ws/pic`. The agent relays the PIC arbiter's transition
+ * lines verbatim (ados-hid `pic_ipc.rs` subscribe: `client_id` is the new
+ * holder on `claimed`, the previous holder on `released`/`disconnected`), and
+ * sends an `error` frame when the arbiter's socket is unreachable
+ * (ados-control `gs_ws.rs` pic_loop). */
 export type PicEvent =
-  | { type: "claimed"; claimed_by: string | null; claim_counter: number }
-  | { type: "released"; claimed_by: string | null }
-  | { type: "gamepad_changed"; primary_gamepad_id: string | null }
-  | { type: "state"; state: string; claimed_by: string | null; claim_counter: number; primary_gamepad_id: string | null }
-  | { type: string; [key: string]: unknown };
+  | {
+      event: "claimed" | "released" | "disconnected";
+      client_id: string | null;
+      claim_counter: number;
+      timestamp_ms: number;
+    }
+  | { event: "error"; code: string; message: string };

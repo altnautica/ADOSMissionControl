@@ -14,11 +14,9 @@ export function useDisconnectGuard() {
       setPendingDroneId(droneId);
       setGuardOpen(true);
     } else {
-      // No pending writes, disconnect immediately
-      const drone = useDroneManager.getState().drones.get(droneId);
-      if (drone) {
-        drone.protocol.disconnect().catch(() => {});
-      }
+      // No pending writes, disconnect immediately. disconnectDrone marks the
+      // drone intentional BEFORE it closes the protocol, so the transport's
+      // close is never mistaken for a dropped link and re-dialled.
       useDroneManager.getState().disconnectDrone(droneId);
     }
   }, []);
@@ -29,7 +27,6 @@ export function useDisconnectGuard() {
     if (drone) {
       // Fire-and-forget flash commit
       drone.protocol.commitParamsToFlash().catch(() => {});
-      drone.protocol.disconnect().catch(() => {});
     }
     useParamSafetyStore.getState().commitFlash(true);
     useDroneManager.getState().disconnectDrone(pendingDroneId);
@@ -39,10 +36,6 @@ export function useDisconnectGuard() {
 
   const discardAndDisconnect = useCallback(() => {
     if (!pendingDroneId) return;
-    const drone = useDroneManager.getState().drones.get(pendingDroneId);
-    if (drone) {
-      drone.protocol.disconnect().catch(() => {});
-    }
     useParamSafetyStore.getState().clear();
     useDroneManager.getState().disconnectDrone(pendingDroneId);
     setPendingDroneId(null);

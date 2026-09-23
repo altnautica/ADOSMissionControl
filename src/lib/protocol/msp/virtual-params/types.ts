@@ -15,6 +15,7 @@ export const MSP_BLACKBOX_CONFIG = 80;
 export const MSP_VTX_CONFIG = 88;
 export const MSP_ADVANCED_CONFIG = 90;
 export const MSP_FILTER_CONFIG = 92;
+export const MSP_PID_ADVANCED = 94;
 export const MSP_RC_TUNING = 111;
 export const MSP_PID = 112;
 export const MSP_MOTOR_CONFIG = 131;
@@ -31,6 +32,7 @@ export const MSP_SET_BLACKBOX_CONFIG = 81;
 export const MSP_SET_VTX_CONFIG = 89;
 export const MSP_SET_ADVANCED_CONFIG = 91;
 export const MSP_SET_FILTER_CONFIG = 93;
+export const MSP_SET_PID_ADVANCED = 95;
 export const MSP_SET_PID = 202;
 export const MSP_SET_RC_TUNING = 204;
 export const MSP_SET_MOTOR_CONFIG = 222;
@@ -45,10 +47,21 @@ export interface VirtualParamDef {
   readCmd: number;
   /** MSP command to write this param's value */
   writeCmd: number;
+  /**
+   * Byte length the read payload must have for this param to be present.
+   * Older firmware sends shorter payloads; a field past the end is absent,
+   * not zero.
+   */
+  readEnd: number;
+  /** The firmware reports this value but does not accept writes to it. */
+  readOnly?: boolean;
   /** Extract this param's value from the read response payload */
   decode: (payload: Uint8Array) => number;
-  /** Patch this param's value into a write payload. Returns new payload. */
-  encode: (value: number, existingPayload: Uint8Array) => Uint8Array;
+  /**
+   * Patch this param's value into a write payload (laid out as the write
+   * command expects). Returns a new payload.
+   */
+  encode: (value: number, writePayload: Uint8Array) => Uint8Array;
   /** Data type for UI hints */
   type: 'uint8' | 'uint16' | 'int16' | 'uint32' | 'float';
   min?: number;
@@ -118,6 +131,7 @@ export function u8Param(
   return {
     readCmd,
     writeCmd,
+    readEnd: readOffset + 1,
     decode: (p) => getU8(p, readOffset),
     encode: (v, p) => setU8(p, writeOffset, v),
     type: 'uint8',
@@ -139,6 +153,7 @@ export function u16Param(
   return {
     readCmd,
     writeCmd,
+    readEnd: readOffset + 2,
     decode: (p) => getU16(p, readOffset),
     encode: (v, p) => setU16(p, writeOffset, v),
     type: 'uint16',
@@ -158,6 +173,7 @@ export function u32Param(
   return {
     readCmd,
     writeCmd,
+    readEnd: readOffset + 4,
     decode: (p) => getU32(p, readOffset),
     encode: (v, p) => setU32(p, writeOffset, v),
     type: 'uint32',

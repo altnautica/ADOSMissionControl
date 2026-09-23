@@ -4,9 +4,9 @@
  * reader. Replays the same mock service log timeline through the
  * `LoggingService` envelope shape, synthesises a couple of sessions, and
  * feeds the CPU/memory aggregate so the ADOS Black Box view renders fully
- * in `npm run demo`. The `tail()` method returns a tiny in-process
- * EventSource-like object that emits a few rows then idles, so the live
- * LogViewer works without a real `:8090` endpoint.
+ * in `npm run demo`. The `tail()` method drives the handler-based tail
+ * contract from an interval: it emits a few rows, then drips one every few
+ * seconds, so the live LogViewer works without a real `:8090` endpoint.
  * @license GPL-3.0-only
  */
 
@@ -19,6 +19,8 @@ import type {
   HealthzResponse,
   LoggingEnvelope,
   LoggingRow,
+  LogTail,
+  LogTailHandlers,
   QueryParams,
   SessionListParams,
   SessionRow,
@@ -127,56 +129,32 @@ function toRows(): LoggingRow[] {
 
 const ROWS = toRows();
 
-/** A minimal EventSource-shaped object backed by an interval, so the
- * LogViewer's tail wiring exercises the same code path in demo mode. */
-class MockEventSource {
-  private listeners = new Map<string, Set<(ev: MessageEvent) => void>>();
-  private timer: ReturnType<typeof setInterval> | null = null;
-  private idx = 0;
-  readonly url = "mock://logd/tail";
-  readonly readyState = 1;
-
-  constructor(replay: number) {
-    // Replay the tail of the timeline immediately, then drip new lines.
-    const start = Math.max(0, ROWS.length - replay);
-    queueMicrotask(() => {
-      for (let i = start; i < ROWS.length; i++) {
-        this.emit(ROWS[i]);
-      }
+/** An interval-backed tail, so the LogViewer's tail wiring exercises the same
+ * handler contract in demo mode. */
+function mockTail(replay: number, handlers: LogTailHandlers): LogTail {
+  let idx = 0;
+  let closed = false;
+  // Replay the tail of the timeline immediately, then drip new lines.
+  const start = Math.max(0, ROWS.length - replay);
+  queueMicrotask(() => {
+    for (let i = start; i < ROWS.length && !closed; i++) handlers.onRow(ROWS[i]);
+  });
+  const timer = setInterval(() => {
+    const base = ROWS[idx % ROWS.length];
+    idx += 1;
+    handlers.onRow({
+      ...base,
+      id: `mock-live-${idx}`,
+      ts: new Date().toISOString(),
+      ts_us: Date.now() * 1000,
     });
-    this.timer = setInterval(() => {
-      const base = ROWS[this.idx % ROWS.length];
-      this.idx += 1;
-      this.emit({
-        ...base,
-        id: `mock-live-${this.idx}`,
-        ts: new Date().toISOString(),
-        ts_us: Date.now() * 1000,
-      });
-    }, 3000);
-  }
-
-  private emit(row: LoggingRow): void {
-    const set = this.listeners.get("message");
-    if (!set) return;
-    const ev = { data: JSON.stringify(row) } as MessageEvent;
-    for (const fn of set) fn(ev);
-  }
-
-  addEventListener(type: string, fn: (ev: MessageEvent) => void): void {
-    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
-    this.listeners.get(type)!.add(fn);
-  }
-
-  removeEventListener(type: string, fn: (ev: MessageEvent) => void): void {
-    this.listeners.get(type)?.delete(fn);
-  }
-
-  close(): void {
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
-    this.listeners.clear();
-  }
+  }, 3000);
+  return {
+    close() {
+      closed = true;
+      clearInterval(timer);
+    },
+  };
 }
 
 export class MockLoggingService {
@@ -238,8 +216,8 @@ export class MockLoggingService {
     for (const row of page.data) yield row;
   }
 
-  tail(params: TailParams = {}): EventSource {
-    return new MockEventSource(params.replay ?? 50) as unknown as EventSource;
+  tail(params: TailParams, handlers: LogTailHandlers): LogTail {
+    return mockTail(params.replay ?? 50, handlers);
   }
 
   async aggregate(
@@ -257,6 +235,7 @@ export class MockLoggingService {
           ts_us: tsMs * 1000,
           metric,
           value: base + Math.sin(i / 8) * 6,
+          count: 5,
         });
       }
     }
@@ -280,7 +259,7 @@ export class MockLoggingService {
         reason: "power on",
         log_count: ROWS.length,
         event_count: 4,
-        duration_ms: 30 * 60_000,
+        duration_ms: null,
       },
       {
         id: "flight-3",
@@ -320,19 +299,17 @@ export class MockLoggingService {
   async stats(): Promise<StatsResponse> {
     return {
       db: {
-        file_size_mb: 18.4,
-        wal_size_mb: 1.2,
+        size_bytes: 18_400_000,
+        wal_size_bytes: 1_200_000,
         row_counts: { logs: ROWS.length, metrics: 8400, events: 12, hw: 3600 },
         integrity: true,
-        user_version: 1,
+        integrity_detail: "ok",
+        schema_version: 1,
       },
-      ingest: {
-        rows_per_sec: 42,
-        drops: {},
-        queue_depth: 0,
-        last_batch_latency_ms: 3,
-      },
-      sync: { pending_rows: {}, synced_rows: 0, last_push_time: null },
+      ingest: { accepted: 12_000 + ROWS.length, dropped: {} },
+      sync: { unsynced_rows: { logs: ROWS.length, metrics: 8400, events: 12, hw: 3600 } },
+      oldest_ts_us: ROWS.length > 0 ? Math.min(...ROWS.map((r) => r.ts_us)) : null,
+      newest_ts_us: ROWS.length > 0 ? Math.max(...ROWS.map((r) => r.ts_us)) : null,
       source: "logd",
     };
   }

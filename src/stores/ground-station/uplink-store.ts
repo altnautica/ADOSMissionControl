@@ -10,13 +10,13 @@
 import type { GroundStationSliceCreator } from "./state";
 import { errorMessage } from "./error-handler";
 import { INITIAL_UPLINK, INITIAL_WIFI_SCAN } from "./initial-state";
-import { subscribeUplinkWs } from "./uplink-ws";
+import { dataCapFromModem, subscribeUplinkWs } from "./uplink-ws";
 import type { UplinkSlice as UplinkSliceShape, WifiScanCache } from "./types";
 import type {
   EthernetConfig,
   EthernetConfigUpdate,
   GroundStationApi,
-  ModemStatus,
+  ModemView,
   ModemUpdate,
   WifiScanResult,
 } from "@/lib/api/ground-station-api";
@@ -24,7 +24,7 @@ import { GroundStationApiError } from "@/lib/api/ground-station-api";
 
 export interface UplinkSlice {
   wifiScan: WifiScanCache;
-  modem: ModemStatus | null;
+  modem: ModemView | null;
   uplink: UplinkSliceShape;
   ethernetConfig: EthernetConfig | null;
 
@@ -43,7 +43,7 @@ export interface UplinkSlice {
   applyModem: (
     api: GroundStationApi,
     update: ModemUpdate,
-  ) => Promise<ModemStatus | null>;
+  ) => Promise<ModemView | null>;
   loadPriority: (api: GroundStationApi) => Promise<void>;
   applyPriority: (
     api: GroundStationApi,
@@ -161,7 +161,7 @@ export const createUplinkSlice: GroundStationSliceCreator<UplinkSlice> = (
         modem: m,
         uplink: {
           ...currentUplink,
-          data_cap: m.data_cap ?? currentUplink.data_cap,
+          data_cap: dataCapFromModem(m) ?? currentUplink.data_cap,
         },
       });
     } catch (err) {
@@ -178,7 +178,7 @@ export const createUplinkSlice: GroundStationSliceCreator<UplinkSlice> = (
         modem: m,
         uplink: {
           ...currentUplink,
-          data_cap: m.data_cap ?? currentUplink.data_cap,
+          data_cap: dataCapFromModem(m) ?? currentUplink.data_cap,
         },
       });
       return m;

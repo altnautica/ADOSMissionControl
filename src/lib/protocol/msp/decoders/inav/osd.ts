@@ -5,7 +5,14 @@
  */
 
 import { readU8, readU16, readS16 } from "./helpers";
-import type { INavOsdLayoutsHeader, INavOsdAlarms, INavOsdPreferences } from "./types";
+import type {
+  INavOsdLayoutsHeader,
+  INavOsdAlarms,
+  INavOsdPreferences,
+  INavCustomOsdElementsInfo,
+  INavCustomOsdElement,
+  INavCustomOsdField,
+} from "./types";
 
 // ── iNav OSD decoders ────────────────────────────────────────
 
@@ -82,4 +89,51 @@ export function decodeMspINavOsdPreferences(dv: DataView): INavOsdPreferences {
     statsEnergyUnit:      u(8),
     adsbWarningStyle:     u(9),
   };
+}
+
+// ── iNav custom OSD elements ─────────────────────────────────
+
+/**
+ * MSP2_INAV_CUSTOM_OSD_ELEMENTS (0x2100), 3 bytes:
+ *
+ * U8 maxElements, U8 textLength (text bytes per element), U8 partCount
+ */
+export function decodeMspINavCustomOsdElementsInfo(dv: DataView): INavCustomOsdElementsInfo {
+  return {
+    maxElements: readU8(dv, 0),
+    textLength: readU8(dv, 1),
+    partCount: readU8(dv, 2),
+  };
+}
+
+/**
+ * MSP2_INAV_CUSTOM_OSD_ELEMENT (0x2101) reply for one element index:
+ *
+ * partCount x (U8 type, U16 value), U8 visibilityType, U16 visibilityValue,
+ * textLength bytes of text (NUL-padded)
+ */
+export function decodeMspINavCustomOsdElement(
+  dv: DataView,
+  index: number,
+  info: INavCustomOsdElementsInfo,
+): INavCustomOsdElement {
+  const expected = info.partCount * 3 + 3 + info.textLength;
+  if (dv.byteLength < expected) {
+    throw new RangeError(`Custom OSD element ${index} reply is ${dv.byteLength} bytes, expected ${expected}`);
+  }
+  const parts: INavCustomOsdField[] = [];
+  let offset = 0;
+  for (let i = 0; i < info.partCount; i++) {
+    parts.push({ type: readU8(dv, offset), value: readU16(dv, offset + 1) });
+    offset += 3;
+  }
+  const visibility = { type: readU8(dv, offset), value: readU16(dv, offset + 1) };
+  offset += 3;
+  let text = "";
+  for (let i = 0; i < info.textLength; i++) {
+    const c = readU8(dv, offset + i);
+    if (c === 0) break;
+    text += String.fromCharCode(c);
+  }
+  return { index, parts, visibility, text };
 }

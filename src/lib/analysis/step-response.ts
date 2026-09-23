@@ -189,7 +189,7 @@ export function extractStepResponses(
 
     const riseTimeMs = foundRiseEnd ? usToMs(riseEndUs - riseStartUs) : usToMs(analysisWindowUs);
 
-    // Measure overshoot: peak actual value beyond step target
+    // Peak actual value in the step direction
     let peakValue = preStepValue;
     for (const s of actualSlice) {
       if (stepMagnitude > 0) {
@@ -199,11 +199,13 @@ export function extractStepResponses(
       }
     }
 
-    const overshootAbs = Math.abs(peakValue - stepTarget);
-    const overshootPercent =
-      Math.abs(stepMagnitude) > 0
-        ? (overshootAbs / Math.abs(stepMagnitude)) * 100
-        : 0;
+    // Signed excursion past the target along the step direction: positive
+    // means the response went beyond the target (overshoot), negative means
+    // it never reached it (undershoot).
+    const excursionPercent =
+      (((peakValue - stepTarget) * Math.sign(stepMagnitude)) / Math.abs(stepMagnitude)) * 100;
+    const overshootPercent = Math.max(0, excursionPercent);
+    const undershootPercent = Math.max(0, -excursionPercent);
 
     // Measure settling time: time until actual stays within 5% of target
     const settlingBand = Math.abs(stepMagnitude) * SETTLING_BAND;
@@ -240,6 +242,7 @@ export function extractStepResponses(
       axis,
       riseTimeMs,
       overshootPercent,
+      undershootPercent,
       settlingTimeMs,
       dampingRatio,
       desired: desiredSlice,

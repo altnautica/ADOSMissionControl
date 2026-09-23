@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeFFT } from '@/lib/analysis/fft';
+import { computeFFT, MAX_PEAKS, SEGMENT_LENGTH } from '@/lib/analysis/fft';
 import type { TimeSample } from '@/lib/analysis/types';
 
 function makeSineWave(
@@ -14,6 +14,22 @@ function makeSineWave(
   }));
 }
 
+/** Deterministic zero-mean uniform noise in [-amplitude, amplitude]. */
+function makeNoise(count: number, sampleRate: number, amplitude: number, seed = 1): TimeSample[] {
+  let state = seed >>> 0;
+  const next = () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  return Array.from({ length: count }, (_, i) => ({
+    timeUs: (i / sampleRate) * 1e6,
+    value: amplitude * (2 * next() - 1),
+  }));
+}
+
 function makeDC(value: number, count: number): TimeSample[] {
   return Array.from({ length: count }, (_, i) => ({
     timeUs: i * 1000,
@@ -22,10 +38,11 @@ function makeDC(value: number, count: number): TimeSample[] {
 }
 
 describe('computeFFT', () => {
-  it('returns empty spectrum for empty input', () => {
+  it('returns empty spectrum and no noise floor for empty input', () => {
     const result = computeFFT([], 1000, 'roll');
     expect(result.spectrum).toHaveLength(0);
     expect(result.peaks).toHaveLength(0);
+    expect(result.noiseFloorDb).toBeNull();
     expect(result.axis).toBe('roll');
   });
 
@@ -116,8 +133,10 @@ describe('computeFFT', () => {
     const result = computeFFT(samples, 1000, 'roll');
     expect(result.peaks.length).toBeGreaterThanOrEqual(1);
     // Each peak should be above noiseFloor + 6
+    const floor = result.noiseFloorDb;
+    expect(floor).not.toBeNull();
     for (const peak of result.peaks) {
-      expect(peak.magnitudeDb).toBeGreaterThan(result.noiseFloorDb + 6);
+      expect(peak.magnitudeDb).toBeGreaterThan((floor ?? 0) + 6);
     }
   });
 
@@ -193,5 +212,50 @@ describe('computeFFT', () => {
     const res1 = result1.spectrum[1].frequency - result1.spectrum[0].frequency;
     const res2 = result2.spectrum[1].frequency - result2.spectrum[0].frequency;
     expect(res2).toBeGreaterThan(res1);
+  });
+
+  describe('long logs (averaged segments)', () => {
+    // 10 minutes of 400 Hz gyro
+    const RATE = 400;
+    const COUNT = RATE * 600;
+
+    it('bounds the spectrum to one segment regardless of log length', () => {
+      const result = computeFFT(makeNoise(COUNT, RATE, 1), RATE, 'roll');
+      expect(result.spectrum.length).toBe(SEGMENT_LENGTH / 2);
+      expect(result.spectrum[result.spectrum.length - 1].frequency).toBeLessThan(RATE / 2);
+    });
+
+    it('reports no peaks for broadband noise', () => {
+      const result = computeFFT(makeNoise(COUNT, RATE, 1), RATE, 'roll');
+      expect(result.peaks).toHaveLength(0);
+    });
+
+    it('finds a resonance buried in noise as the top peak', () => {
+      const noise = makeNoise(COUNT, RATE, 2);
+      const samples = noise.map((s, i) => ({
+        timeUs: s.timeUs,
+        value: s.value + Math.sin((2 * Math.PI * 150 * i) / RATE),
+      }));
+      const result = computeFFT(samples, RATE, 'roll');
+      expect(result.peaks.length).toBeGreaterThanOrEqual(1);
+      expect(result.peaks.length).toBeLessThanOrEqual(MAX_PEAKS);
+      expect(Math.abs(result.peaks[0].frequency - 150)).toBeLessThan(1);
+    });
+
+    it('caps and spaces the reported peaks', () => {
+      // Twelve tones 12 Hz apart, plus two tones 1 Hz from two of them
+      const tones = [...Array.from({ length: 12 }, (_, k) => 30 + 12 * k), 31, 55];
+      const samples = Array.from({ length: RATE * 60 }, (_, i) => ({
+        timeUs: (i / RATE) * 1e6,
+        value: tones.reduce((v, f) => v + Math.sin((2 * Math.PI * f * i) / RATE), 0),
+      }));
+      const result = computeFFT(samples, RATE, 'roll');
+      expect(result.peaks).toHaveLength(MAX_PEAKS);
+      for (let a = 0; a < result.peaks.length; a++) {
+        for (let b = a + 1; b < result.peaks.length; b++) {
+          expect(Math.abs(result.peaks[a].frequency - result.peaks[b].frequency)).toBeGreaterThanOrEqual(5);
+        }
+      }
+    });
   });
 });

@@ -5,7 +5,7 @@
  * @module protocol/msp/decoders/inav/programming
  */
 
-import { readU8, readS32 } from "./helpers";
+import { readU8, readU16, readS32 } from "./helpers";
 import type {
   INavLogicCondition,
   INavLogicConditionsStatus,
@@ -94,22 +94,18 @@ export function decodeMspINavGvarStatus(dv: DataView): INavGvarStatus {
 /**
  * MSP2_INAV_PROGRAMMING_PID (0x2028)
  *
- * Repeated per PID (variable size):
+ * Repeated per PID, 19 bytes:
  *   U8  enabled
  *   U8  setpointType
  *   S32 setpointValue
  *   U8  measurementType
  *   S32 measurementValue
- *   U8  P
- *   U8  I
- *   U8  D
- *   U8  FF
+ *   U16 P, U16 I, U16 D, U16 FF
  */
 export function decodeMspINavProgrammingPid(dv: DataView): INavProgrammingPid[] {
   const result: INavProgrammingPid[] = [];
-  const ENTRY = 15;
-  let offset = 0;
-  while (offset + ENTRY <= dv.byteLength) {
+  const ENTRY = 19;
+  for (let offset = 0; offset + ENTRY <= dv.byteLength; offset += ENTRY) {
     result.push({
       enabled: readU8(dv, offset) !== 0,
       setpointType: readU8(dv, offset + 1),
@@ -117,13 +113,12 @@ export function decodeMspINavProgrammingPid(dv: DataView): INavProgrammingPid[] 
       measurementType: readU8(dv, offset + 6),
       measurementValue: readS32(dv, offset + 7),
       gains: {
-        P: readU8(dv, offset + 11),
-        I: readU8(dv, offset + 12),
-        D: readU8(dv, offset + 13),
-        FF: readU8(dv, offset + 14),
+        P: readU16(dv, offset + 11),
+        I: readU16(dv, offset + 13),
+        D: readU16(dv, offset + 15),
+        FF: readU16(dv, offset + 17),
       },
     });
-    offset += ENTRY;
   }
   return result;
 }
@@ -133,20 +128,13 @@ export function decodeMspINavProgrammingPid(dv: DataView): INavProgrammingPid[] 
 /**
  * MSP2_INAV_PROGRAMMING_PID_STATUS (0x202a)
  *
- * Repeated per PID:
- *   U8  id
- *   S32 output
+ * One S32 output per PID, in PID order, with no index byte: the FC writes
+ * `programmingPidGetOutput(i)` for every slot. The id is the slot position.
  */
 export function decodeMspINavProgrammingPidStatus(dv: DataView): INavProgrammingPidStatus[] {
   const result: INavProgrammingPidStatus[] = [];
-  const ENTRY = 5;
-  let offset = 0;
-  while (offset + ENTRY <= dv.byteLength) {
-    result.push({
-      id: readU8(dv, offset),
-      output: readS32(dv, offset + 1),
-    });
-    offset += ENTRY;
+  for (let offset = 0; offset + 4 <= dv.byteLength; offset += 4) {
+    result.push({ id: offset / 4, output: readS32(dv, offset) });
   }
   return result;
 }

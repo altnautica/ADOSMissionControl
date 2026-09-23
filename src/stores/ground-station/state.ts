@@ -16,7 +16,7 @@ import type {
   GroundStationApi,
   GroundStationRole,
   MeshGatewayPreferenceUpdate,
-  ModemStatus,
+  ModemView,
   ModemUpdate,
   NetworkStatus,
   OledUpdate,
@@ -50,6 +50,10 @@ export interface GroundStationState {
   loading: boolean;
   lastError: string | null;
   lastFetchedAt: number | null;
+  /** Epoch ms `status` was last refreshed (LAN status read or cloud
+   * heartbeat). Separate from `lastFetchedAt`, which is the LAN link-health
+   * stamp the radio source picker keys on. */
+  statusFetchedAt: number | null;
 
   // pair / network slice
   network: NetworkStatus | null;
@@ -66,7 +70,7 @@ export interface GroundStationState {
 
   // uplink slice (wifi client, modem, priority, ethernet)
   wifiScan: WifiScanCache;
-  modem: ModemStatus | null;
+  modem: ModemView | null;
   uplink: UplinkSlice;
   ethernetConfig: EthernetConfig | null;
 
@@ -118,7 +122,7 @@ export interface GroundStationState {
   loadGamepads: (api: GroundStationApi) => Promise<void>;
   applyPrimaryGamepad: (
     api: GroundStationApi,
-    deviceId: string | null,
+    deviceId: string,
   ) => Promise<boolean>;
   scanBluetooth: (api: GroundStationApi, durationS?: number) => Promise<void>;
   pairBluetooth: (api: GroundStationApi, mac: string) => Promise<boolean>;
@@ -162,7 +166,7 @@ export interface GroundStationState {
   applyModem: (
     api: GroundStationApi,
     update: ModemUpdate,
-  ) => Promise<ModemStatus | null>;
+  ) => Promise<ModemView | null>;
   loadPriority: (api: GroundStationApi) => Promise<void>;
   applyPriority: (
     api: GroundStationApi,

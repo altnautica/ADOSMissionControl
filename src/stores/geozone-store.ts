@@ -1,18 +1,19 @@
 /**
  * @module geozone-store
  * @description Zustand store for iNav geozone state.
- * Manages up to 15 geozones. A polygon zone has one vertex per corner; a
+ * Manages the FC's geozone slots. A polygon zone has one vertex per corner; a
  * circular zone has a single centre vertex that carries the radius.
  * @license GPL-3.0-only
  */
 
 import { create } from 'zustand'
 import type { DroneProtocol } from '@/lib/protocol/types'
-import type { INavGeozone, INavGeozoneVertex } from '@/lib/protocol/msp/msp-decoders-inav'
+import { INAV_LIMITS, type INavGeozone, type INavGeozoneVertex } from '@/lib/protocol/msp/msp-decoders-inav'
 import { formatErrorMessage } from '@/lib/utils'
+import { droneSlices, type DroneKeyed } from './drone-slices'
 
-/** Maximum geozones supported by iNav. */
-export const GEOZONE_MAX = 15
+/** Geozone slots iNav has (MAX_GEOZONES_IN_CONFIG). */
+export const GEOZONE_MAX = INAV_LIMITS.GEOZONES
 /** Maximum vertices per polygon geozone. */
 export const GEOZONE_VERTEX_MAX = 10
 
@@ -23,14 +24,31 @@ export const GEOZONE_SHAPE = { CIRCULAR: 0, POLYGON: 1 } as const
 /** Vertex slots a circular zone occupies on the FC: its centre and its radius. */
 const CIRCLE_VERTEX_SLOTS = 2
 
-interface GeozoneStoreState {
+interface GeozoneSlice {
   zones: INavGeozone[]
   vertices: Map<number, INavGeozoneVertex[]>
   activeId: number | null
   loading: boolean
   error: string | null
   dirty: boolean
+  /** True once a read from the FC succeeded, even when it holds no zones. */
+  loaded: boolean
+}
 
+const emptySlice = (): GeozoneSlice => ({
+  zones: [], vertices: new Map(), activeId: null, loading: false, error: null, dirty: false, loaded: false,
+})
+
+const slices = droneSlices<GeozoneSlice>(
+  ['zones', 'vertices', 'activeId', 'loading', 'error', 'dirty', 'loaded'],
+  emptySlice,
+)
+
+interface GeozoneStoreState extends GeozoneSlice, DroneKeyed<GeozoneSlice> {
+  /** Show `droneId`'s zones (called when the selected drone changes). */
+  bindDrone: (droneId: string | null) => void
+  /** Drop a removed drone's zones. */
+  forgetDrone: (droneId: string) => void
   // Zone CRUD
   addZone: (zone?: Partial<INavGeozone>) => void
   removeZone: (id: number) => void
@@ -51,18 +69,28 @@ interface GeozoneStoreState {
   uploadToFc: (protocol: DroneProtocol) => Promise<void>
 }
 
+/** Lowest free slot number, so zone numbers always stay inside the FC's table. */
 function nextId(zones: INavGeozone[]): number {
-  if (zones.length === 0) return 0
-  return Math.max(...zones.map((z) => z.number)) + 1
+  const used = new Set(zones.map((z) => z.number))
+  let id = 0
+  while (used.has(id)) id++
+  return id
 }
 
 export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
-  zones: [],
-  vertices: new Map(),
-  activeId: null,
-  loading: false,
-  error: null,
-  dirty: false,
+  ...emptySlice(),
+  droneId: null,
+  byDrone: new Map(),
+
+  bindDrone(droneId) {
+    const patch = slices.bind(get(), droneId)
+    if (patch) set(patch)
+  },
+
+  forgetDrone(droneId) {
+    const patch = slices.forget(get(), droneId)
+    if (patch) set(patch)
+  },
 
   addZone(partial = {}) {
     const { zones } = get()
@@ -186,7 +214,7 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
   },
 
   clear() {
-    set({ zones: [], vertices: new Map(), activeId: null, loading: false, error: null, dirty: false })
+    set(emptySlice())
   },
 
   async loadFromFc(protocol) {
@@ -195,6 +223,7 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
       set({ error: 'Geozones not supported by this firmware' })
       return
     }
+    const droneId = get().droneId
     set({ loading: true, error: null })
     try {
       const { zones, vertices: flatVerts } = await protocol.downloadGeozones()
@@ -204,9 +233,9 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
         arr.push(v)
         vertexMap.set(v.geozoneId, arr)
       }
-      set({ zones, vertices: vertexMap, loading: false, dirty: false })
+      set((st) => slices.patchFor(st, droneId, { zones, vertices: vertexMap, loading: false, dirty: false, loaded: true }))
     } catch (err) {
-      set({ loading: false, error: formatErrorMessage(err) })
+      set((st) => slices.patchFor(st, droneId, { loading: false, error: formatErrorMessage(err) }))
     }
   },
 
@@ -237,6 +266,7 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
       set({ error: `Circular zones ${invalidCircles.join(', ')} need a centre and a radius before upload` })
       return
     }
+    const droneId = get().droneId
     set({ loading: true, error: null })
     try {
       const allVertices: INavGeozoneVertex[] = []
@@ -244,13 +274,11 @@ export const useGeozoneStore = create<GeozoneStoreState>((set, get) => ({
         allVertices.push(...verts)
       }
       const result = await protocol.uploadGeozones(zones, allVertices)
-      if (result.success) {
-        set({ loading: false, dirty: false })
-      } else {
-        set({ loading: false, error: result.message })
-      }
+      set((st) => slices.patchFor(st, droneId, result.success
+        ? { loading: false, dirty: false }
+        : { loading: false, error: result.message }))
     } catch (err) {
-      set({ loading: false, error: formatErrorMessage(err) })
+      set((st) => slices.patchFor(st, droneId, { loading: false, error: formatErrorMessage(err) }))
     }
   },
 }))

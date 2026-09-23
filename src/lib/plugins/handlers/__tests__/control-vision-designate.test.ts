@@ -24,15 +24,19 @@ vi.mock("@/stores/local-nodes-store", () => ({
 
 import { buildControlHandlers } from "../control";
 import type { BridgeHandlerContext } from "@/lib/plugins/bridge";
+import type { PluginTarget } from "../target";
+import { setPluginConfirmHandler } from "@/lib/plugins/confirm";
+import { resetCommandRateLimits } from "../command-rate";
 
 const BBOX = { x: 10, y: 20, width: 30, height: 40 };
 const NODE = { deviceId: "d1", hostname: "http://drone.local:8080", apiKey: "k" };
+const TARGET: PluginTarget = { nodeId: "node:d1", deviceId: "d1" };
 
 function callDesignate(
   args: Record<string, unknown>,
-  deviceId: string | null = "d1",
+  target: PluginTarget | null = TARGET,
 ) {
-  const handlers = buildControlHandlers("com.altnautica.follow-me", deviceId);
+  const handlers = buildControlHandlers("com.altnautica.follow-me", target);
   return handlers["command.send"](
     { command: "vision.designate", args },
     {} as BridgeHandlerContext,
@@ -44,6 +48,17 @@ describe("command.send vision.designate branch", () => {
     designate.mockReset();
     designate.mockResolvedValue({ designated: true, trackId: 7 });
     nodes = [];
+    resetCommandRateLimits();
+    // Every designation needs the operator's approval; approve by default.
+    setPluginConfirmHandler(async () => true);
+  });
+
+  it("does not retarget the tracker when the operator declines", async () => {
+    nodes = [NODE];
+    setPluginConfirmHandler(async () => false);
+    const res = await callDesignate({ camera_id: "uvc-0", bbox: BBOX });
+    expect(res).toMatchObject({ ok: false, error: "operator denied" });
+    expect(designate).not.toHaveBeenCalled();
   });
 
   it("designates via the LAN agent and returns the locked track", async () => {

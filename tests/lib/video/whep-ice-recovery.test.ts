@@ -26,6 +26,7 @@ import { startStream } from "@/lib/video/webrtc/whep-flow";
 import { useVideoStore } from "@/stores/video-store";
 import { resetSessionStateForTest } from "@/lib/video/webrtc/session-state";
 import { NEGOTIATED_JITTER_TARGET_MS } from "@/lib/video/webrtc/jitter-controller";
+import { closePeerConnection } from "@/lib/video/webrtc-client";
 
 /** One recorded moment in the negotiation, in the order it happened. */
 type Step =
@@ -111,6 +112,7 @@ function fakeStream(): MediaStream {
 }
 
 const WHEP_URL = "http://192.168.1.50:8080/whep";
+const NODE_KEY = "node-api-key";
 
 let originalPc: typeof RTCPeerConnection | undefined;
 
@@ -131,7 +133,7 @@ beforeEach(() => {
       ok: true,
       status: 200,
       statusText: "OK",
-      headers: new Headers(),
+      headers: new Headers({ Location: "/whep/session-1" }),
       text: async () => "v=0\r\na=recvonly\r\n",
     })),
   );
@@ -145,7 +147,7 @@ afterEach(() => {
 
 /** Negotiate once and hand back the connection the flow built. */
 async function connect(): Promise<FakePeerConnection> {
-  await startStream(WHEP_URL);
+  await startStream(WHEP_URL, undefined, NODE_KEY);
   const pc = FakePeerConnection.last;
   expect(pc).not.toBeNull();
   return pc as FakePeerConnection;
@@ -166,6 +168,34 @@ describe("jitterBufferTarget ordering", () => {
     const srdIndex = pc.steps.findIndex((s) => s.kind === "setRemoteDescription");
     expect(srdIndex).toBeGreaterThanOrEqual(0);
     expect(pc.getReceivers()).toHaveLength(1);
+  });
+});
+
+describe("WHEP on the agent front is authenticated", () => {
+  it("sends the node API key on the offer", async () => {
+    await connect();
+    const fetchMock = vi.mocked(fetch);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(WHEP_URL);
+    const headers = init?.headers as Record<string, string>;
+    expect(init?.method).toBe("POST");
+    expect(headers["X-ADOS-Key"]).toBe(NODE_KEY);
+    expect(headers["Content-Type"]).toBe("application/sdp");
+  });
+
+  it("deletes the session resource, with the key, when the connection is torn down", async () => {
+    const pc = await connect();
+    const fetchMock = vi.mocked(fetch);
+    closePeerConnection(pc as unknown as RTCPeerConnection);
+    const del = fetchMock.mock.calls.find(([, init]) => init?.method === "DELETE");
+    expect(del?.[0]).toBe("http://192.168.1.50:8080/whep/session-1");
+    expect((del?.[1]?.headers as Record<string, string>)["X-ADOS-Key"]).toBe(NODE_KEY);
+  });
+
+  it("sends no key to an endpoint that is not an agent", async () => {
+    await startStream("http://localhost:8889/gazebo-cam/whep", undefined, null);
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    expect((init?.headers as Record<string, string>)["X-ADOS-Key"]).toBeUndefined();
   });
 });
 

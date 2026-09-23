@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { Monitor, Eye, Grid3x3 } from "lucide-react";
-import type { OsdElement, VideoFormat } from "./OsdElementGrid";
+import type { OsdElement, VideoFormat } from "./ap-osd-elements";
 
 export const FORMAT_ROWS: Record<VideoFormat, number> = { PAL: 16, NTSC: 13 };
 export const GRID_COLS = 30;

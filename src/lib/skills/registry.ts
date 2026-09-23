@@ -122,7 +122,12 @@ export interface SkillRegistryState {
   _seq: number;
 
   register: (skill: Skill) => void;
-  unregister: (skillId: string) => void;
+  /**
+   * Drop a skill from the registry. Dropping never commands a vehicle by
+   * itself: pass `deactivateOn` to also clean-stop the skill on that one drone
+   * when it is active there (an uninstall from that drone), never on others.
+   */
+  unregister: (skillId: string, options?: { deactivateOn?: string }) => void;
   resolveForDrone: (droneId: string) => Skill[];
   getState: (droneId: string, skillId: string) => SkillState;
   recomputeSelected: () => void;
@@ -147,22 +152,23 @@ export const useSkillRegistry = create<SkillRegistryState>((set, get) => ({
     get().recomputeSelected();
   },
 
-  unregister: (skillId) => {
+  unregister: (skillId, options) => {
     const { skills, states } = get();
     const skill = skills.get(skillId);
     if (!skill) return;
 
-    // Clean-stop the skill on every drone where it is active before dropping it.
-    if (skill.toggle && skill.deactivate) {
-      for (const [droneId, perDrone] of states) {
-        if (perDrone.get(skillId)?.kind === "active") {
-          const ctx = buildSkillContextFor(droneId);
-          void skill.deactivate(ctx).catch(() => {
-            // Forced teardown is best-effort; a failed stop must not wedge the
-            // registry. The behavior's own store reconciles the truth.
-          });
-        }
-      }
+    const droneId = options?.deactivateOn;
+    if (
+      droneId &&
+      skill.toggle &&
+      skill.deactivate &&
+      states.get(droneId)?.get(skillId)?.kind === "active"
+    ) {
+      const ctx = buildSkillContextFor(droneId);
+      void skill.deactivate(ctx).catch(() => {
+        // Teardown stop is best-effort; a failed stop must not wedge the
+        // registry. The behavior's own store reconciles the truth.
+      });
     }
 
     set((s) => {

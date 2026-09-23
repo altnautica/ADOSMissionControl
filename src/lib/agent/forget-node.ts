@@ -131,6 +131,8 @@ export function forgetNode(
   registry.dropPresence(nodeId, "local");
   registry.dropPresence(nodeId, "cloud");
   if (deviceId) {
-    useCommandFleetStore.getState().removeCloudStatuses([deviceId]);
+    const fleet = useCommandFleetStore.getState();
+    fleet.removeCloudStatuses([deviceId]);
+    fleet.clearTelemetry([deviceId]);
   }
 }

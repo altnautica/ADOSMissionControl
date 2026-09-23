@@ -19,13 +19,15 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { notifySkill } from "@/lib/skills";
 import {
+  expiredBeforeDelivery,
+  DELIVERY_WINDOW_GRACE_MS,
   useCloudCommandAckStore,
   type OutstandingCloudCommand,
 } from "@/stores/cloud-command-ack-store";
@@ -81,9 +83,28 @@ function CommandAckWatch({
   const status = useConvexSkipQuery(api.cmdDroneCommands.getCommandStatus, {
     args: { commandId: command.commandId as Id<"cmd_droneCommands"> },
   });
+  // Flips once the delivery window (plus grace) has closed, so a row the node
+  // never took is re-judged even when no further subscription update arrives.
+  const [windowClosed, setWindowClosed] = useState(false);
+  useEffect(() => {
+    const closesIn =
+      command.queuedAt + command.ttlMs + DELIVERY_WINDOW_GRACE_MS - Date.now();
+    const timer = setTimeout(() => setWindowClosed(true), Math.max(0, closesIn));
+    return () => clearTimeout(timer);
+  }, [command.queuedAt, command.ttlMs]);
 
   useEffect(() => {
     if (!status) return;
+    if (windowClosed && expiredBeforeDelivery(command, status, Date.now())) {
+      // The queue never hands out a row past its window, so this command can
+      // no longer reach the vehicle. Say so rather than leaving it "queued".
+      notifySkill(
+        `${nodeName} did not receive the command within ${command.ttlMs / 1000} s; it was not delivered and will not run`,
+        "error",
+      );
+      resolve(command.commandId);
+      return;
+    }
     if (status.status !== "completed" && status.status !== "failed") return;
     // Terminal: the vehicle's answer is in. A completed row with no explicit
     // failure is an acceptance; anything else is a refusal. Prefer the vehicle's
@@ -97,7 +118,7 @@ function CommandAckWatch({
         : `${nodeName} rejected the queued command`);
     notifySkill(message, accepted ? "success" : "error");
     resolve(command.commandId);
-  }, [status, command.commandId, nodeName, resolve]);
+  }, [status, windowClosed, command, nodeName, resolve]);
 
   return null;
 }

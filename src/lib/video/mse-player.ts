@@ -25,6 +25,14 @@ const VIDEO_RELAY_URL_DEFAULT = OFFICIAL_VIDEO_RELAY_URL;
 
 // Reconnect delay after a transport drop or a detected stall.
 const RECONNECT_DELAY_MS = 3000;
+/**
+ * Consecutive sockets allowed to close before they open, beyond the first,
+ * before the session gives up. The relay answers a refused token with a bare
+ * HTTP 401 on the upgrade, which a browser surfaces only as a close before
+ * `open`. The first such close reconnects with a freshly minted token; a
+ * second in a row is reported instead of retried every few seconds forever.
+ */
+const MAX_PRE_OPEN_RETRIES = 1;
 // How often the playback-stall watchdog samples currentTime.
 const STALL_CHECK_INTERVAL_MS = 1000;
 // currentTime frozen for at least this long while the socket is open
@@ -63,7 +71,9 @@ export type MsePlayerErrorCode =
   | "mse-unsupported"
   | "codec-unknown"
   | "codec-unsupported"
-  | "source-buffer-rejected";
+  | "source-buffer-rejected"
+  | "relay-token-unavailable"
+  | "relay-refused";
 
 export interface MsePlayerError {
   code: MsePlayerErrorCode;
@@ -80,15 +90,16 @@ export interface MsePlayerOptions {
    */
   onError?: (err: MsePlayerError) => void;
   /**
-   * Viewer token scoped to THIS device, minted by the same shared secret the
-   * relay holds.
+   * Fetches a viewer token scoped to THIS device, called before every
+   * connection attempt so a reconnect never presents an expired one.
+   * Rejecting ends the session with `relay-token-unavailable` and the
+   * rejection's message.
    *
-   * The relay refuses an unauthenticated upgrade: it used to accept any
-   * WebSocket and attach the client to that device's camera. A browser
-   * `WebSocket` cannot set an `Authorization` header, so the token rides in
-   * the query string.
+   * The relay refuses an unauthenticated upgrade. A browser `WebSocket`
+   * cannot set an `Authorization` header, so the token rides in the query
+   * string.
    */
-  relayToken?: string;
+  getRelayToken?: () => Promise<string>;
 }
 
 export class MsePlayer {
@@ -123,8 +134,28 @@ export class MsePlayer {
   // of an intentional teardown must NOT schedule a reconnect, so every
   // reconnect trigger bails when this is set. Cleared by the next start().
   private tearingDown = false;
+  /**
+   * Sockets in a row that closed before opening, across reconnects. Reset
+   * by a successful open and by a caller's `start()`, never by `reconnect()`.
+   */
+  private preOpenFailures = 0;
+  /**
+   * Bumped by every `stop()`, so a token fetch that resolves after its
+   * session was torn down or replaced does not open a socket for it.
+   */
+  private sessionSeq = 0;
 
   start(
+    deviceId: string,
+    videoElement: HTMLVideoElement,
+    videoRelayUrl?: string,
+    options?: MsePlayerOptions,
+  ): void {
+    this.preOpenFailures = 0;
+    this.beginSession(deviceId, videoElement, videoRelayUrl, options);
+  }
+
+  private beginSession(
     deviceId: string,
     videoElement: HTMLVideoElement,
     videoRelayUrl?: string,
@@ -215,9 +246,10 @@ export class MsePlayer {
 
   stop(): void {
     // Latch teardown so the imminent socket close does not bounce back
-    // through scheduleReconnect(). reconnect() re-issues start(), which
-    // clears the latch for the new session.
+    // through scheduleReconnect(). reconnect() re-issues the session, which
+    // clears the latch for the new one.
     this.tearingDown = true;
+    this.sessionSeq += 1;
     if (this.stallTimer) {
       clearInterval(this.stallTimer);
       this.stallTimer = null;
@@ -254,15 +286,42 @@ export class MsePlayer {
     }
   }
 
+  /** Fetch a fresh viewer token when the caller supplies a source, then dial. */
   private connectWebSocket(): void {
-    const token = this.options?.relayToken;
+    const getRelayToken = this.options?.getRelayToken;
+    if (!getRelayToken) {
+      this.openSocket(null);
+      return;
+    }
+    // `stop()` bumps the sequence, so a token that lands after its session
+    // was torn down or replaced is dropped.
+    const seq = this.sessionSeq;
+    getRelayToken().then(
+      (token) => {
+        if (seq === this.sessionSeq) this.openSocket(token);
+      },
+      (err: unknown) => {
+        if (seq !== this.sessionSeq) return;
+        this.stop();
+        this.fail(
+          "relay-token-unavailable",
+          err instanceof Error ? err.message : String(err),
+        );
+      },
+    );
+  }
+
+  private openSocket(token: string | null): void {
     const url = token
       ? `${this.videoRelayUrl}/ws/stream/${this.deviceId}?token=${encodeURIComponent(token)}`
       : `${this.videoRelayUrl}/ws/stream/${this.deviceId}`;
     this.ws = new WebSocket(url);
     this.ws.binaryType = "arraybuffer";
+    let opened = false;
 
     this.ws.onopen = () => {
+      opened = true;
+      this.preOpenFailures = 0;
       // Fresh connection — reset the stall baseline and clear the
       // reconnect guard so a later failure can schedule again.
       this.reconnectScheduled = false;
@@ -276,6 +335,17 @@ export class MsePlayer {
     };
 
     this.ws.onclose = () => {
+      if (!opened) {
+        this.preOpenFailures += 1;
+        if (this.preOpenFailures > MAX_PRE_OPEN_RETRIES) {
+          this.stop();
+          this.fail(
+            "relay-refused",
+            "the video relay closed the connection before it opened: the viewer token was refused or the relay is unreachable",
+          );
+          return;
+        }
+      }
       this.scheduleReconnect();
     };
 
@@ -309,12 +379,13 @@ export class MsePlayer {
     const relayUrl = this.videoRelayUrl;
     const options = this.options;
     if (!video || !deviceId) return;
-    // stop() clears timers + tracks + nulls videoElement; re-issue start
-    // with the captured references to rebuild the pipeline. The options go
-    // back in too: without them the caller's error handler survived exactly
-    // one session.
+    // stop() clears timers + tracks + nulls videoElement; rebuild the
+    // pipeline with the captured references. The options go back in too:
+    // without them the caller's error handler survived exactly one session.
+    // `beginSession`, not `start`, so the run of pre-open failures carries
+    // over and a relay that keeps refusing is reported rather than retried.
     this.stop();
-    this.start(deviceId, video, relayUrl, options);
+    this.beginSession(deviceId, video, relayUrl, options);
   }
 
   private appendBuffer(data: ArrayBuffer): void {

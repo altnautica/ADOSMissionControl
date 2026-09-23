@@ -51,26 +51,23 @@ export async function inavSelectMixerProfile(queue: MspSerialQueue | null, idx: 
 // ── Output mapping ───────────────────────────────────────────
 
 export async function inavGetOutputMapping(queue: MspSerialQueue | null): Promise<INavOutputMappingExt2Entry[]> {
-  if (!queue) return []
-  try {
-    const frame = await queue.send(INAV_MSP.MSP2_INAV_OUTPUT_MAPPING_EXT2)
-    return decodeMspINavOutputMappingExt2(dv(frame.payload))
-  } catch { return [] }
+  if (!queue) throw new Error('Not connected')
+  const frame = await queue.send(INAV_MSP.MSP2_INAV_OUTPUT_MAPPING_EXT2)
+  return decodeMspINavOutputMappingExt2(dv(frame.payload))
 }
 
 export async function inavGetTimerOutputModes(queue: MspSerialQueue | null): Promise<INavTimerOutputModeEntry[]> {
-  if (!queue) return []
-  try {
-    const frame = await queue.send(INAV_MSP.MSP2_INAV_TIMER_OUTPUT_MODE)
-    return decodeMspINavTimerOutputMode(dv(frame.payload))
-  } catch { return [] }
+  if (!queue) throw new Error('Not connected')
+  const frame = await queue.send(INAV_MSP.MSP2_INAV_TIMER_OUTPUT_MODE)
+  return decodeMspINavTimerOutputMode(dv(frame.payload))
 }
 
-export async function inavSetTimerOutputModes(queue: MspSerialQueue | null, entries: INavTimerOutputModeEntry[]): Promise<CommandResult> {
+/** Set one timer's output mode (outputMode_e); the FC takes one timer per frame. */
+export async function inavSetTimerOutputMode(queue: MspSerialQueue | null, entry: INavTimerOutputModeEntry): Promise<CommandResult> {
   if (!queue) return NOT_CONNECTED
   try {
-    await queue.send(INAV_MSP.MSP2_INAV_SET_TIMER_OUTPUT_MODE, encodeMspINavSetTimerOutputMode(entries))
-    return { success: true, resultCode: 0, message: 'Timer output modes saved' }
+    await queue.send(INAV_MSP.MSP2_INAV_SET_TIMER_OUTPUT_MODE, encodeMspINavSetTimerOutputMode(entry))
+    return { success: true, resultCode: 0, message: `Timer ${entry.timerId} output mode saved` }
   } catch (err) {
     return { success: false, resultCode: -1, message: formatErrorMessage(err) }
   }

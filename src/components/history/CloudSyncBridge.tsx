@@ -24,36 +24,10 @@ import { useHistoryStore } from "@/stores/history-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useConvexAvailable } from "@/app/ConvexClientProvider";
 import { cmdFlightLogsApi } from "@/lib/cmd-flight-logs-api";
-import type { FlightRecord } from "@/lib/types";
+import { toCloudShape, fromCloudShape } from "./cloud-sync-shape";
 
 const SYNC_DEBOUNCE_MS = 1000;
 const CLOUD_PAGE_SIZE = 25;
-
-/**
- * Strip non-schema fields before sending to the server. The Convex validator
- * rejects any extra keys, so the local-only `cloudSynced` flag must be
- * removed.
- */
-function toCloudShape(record: FlightRecord): Omit<FlightRecord, "cloudSynced"> & { clientId: string } {
-  // Map the record-store `id` field to the cloud-side `clientId`.
-  const { id, cloudSynced: _cloudSynced, ...rest } = record;
-  void _cloudSynced;
-  return { ...rest, clientId: id } as unknown as Omit<FlightRecord, "cloudSynced"> & { clientId: string };
-}
-
-/**
- * Translate a cloud row (which uses `clientId` + `_id` + `_creationTime`)
- * back into the local FlightRecord shape.
- */
-function fromCloudShape(row: Record<string, unknown>): FlightRecord {
-  const { _id, _creationTime, userId, clientId, ...rest } = row as Record<string, unknown> & {
-    clientId: string;
-  };
-  void _id;
-  void _creationTime;
-  void userId;
-  return { ...rest, id: clientId } as unknown as FlightRecord;
-}
 
 /**
  * Public entry. `usePaginatedQuery` has no "skip" sentinel, so we gate

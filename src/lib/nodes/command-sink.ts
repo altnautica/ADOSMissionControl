@@ -121,6 +121,15 @@ export type NodeCommandReach =
   | { readonly sink: null; readonly blockedReason: NodeCommandBlockedReason };
 
 /**
+ * Delivery window for a flight command on the cloud relay. The lane is
+ * store-and-forward, so without a window a command queued while the node was
+ * unreachable would execute whenever the node next polled, possibly minutes
+ * later and mid-flight. Past the window the queue fails the row instead of
+ * handing it out, and the watcher reports the command failed.
+ */
+export const CLOUD_FLIGHT_COMMAND_TTL_MS = 10_000;
+
+/**
  * Writes one relay command onto a device's cloud command queue. Supplied by the
  * caller because the queue client is React-scoped; a component holds it from
  * the enqueue mutation and hands it in.
@@ -129,6 +138,8 @@ export type CloudCommandEnqueuer = (args: {
   deviceId: string;
   command: "send_command";
   args: { cmd: string; args: unknown[] };
+  /** Delivery window; the queue never hands the row out once it closes. */
+  ttlMs: number;
 }) => Promise<{ commandId: string }>;
 
 /**
@@ -143,6 +154,8 @@ export interface NodeQueuedCloudCommand {
   deviceId: string;
   /** The cloud queue row id, to watch its terminal status reactively. */
   commandId: string;
+  /** The delivery window the row was queued with. */
+  ttlMs: number;
 }
 
 export interface NodeCommandSinkOptions {
@@ -258,17 +271,18 @@ async function dispatchOverCloud(
       deviceId,
       command: "send_command",
       args: { cmd, args },
+      ttlMs: CLOUD_FLIGHT_COMMAND_TTL_MS,
     });
     // Hand the queue row id to whoever is watching so it can surface the
     // vehicle's real answer when it lands; the synchronous result below still
     // reports only "queued", which is all that is true at this instant.
-    onQueued?.({ deviceId, commandId });
+    onQueued?.({ deviceId, commandId, ttlMs: CLOUD_FLIGHT_COMMAND_TTL_MS });
     return {
       // The queue accepted the command. That is the whole of what happened —
       // the vehicle has not seen it yet, and the message says so.
       success: true,
       resultCode: NO_MAV_RESULT,
-      message: `Queued for delivery over the cloud relay (${commandId}); the vehicle has not acknowledged it`,
+      message: `Queued for delivery over the cloud relay (${commandId}); the vehicle has not acknowledged it, and the command is dropped if the node does not take it within ${CLOUD_FLIGHT_COMMAND_TTL_MS / 1000} s`,
     };
   } catch (error) {
     return failed(errorMessage(error));

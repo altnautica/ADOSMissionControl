@@ -156,7 +156,11 @@ export async function activate(
     busy.add(key);
     let confirmed = false;
     try {
-      confirmed = await ctx.confirm(skill.confirm);
+      confirmed = await ctx.confirm(
+        skill.confirmValues
+          ? { ...skill.confirm, values: skill.confirmValues(args) }
+          : skill.confirm,
+      );
     } finally {
       busy.delete(key);
     }

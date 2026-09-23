@@ -27,6 +27,11 @@ import type {
   CameraLegInput,
   RosterCamera,
 } from "@/lib/agent/feature-types";
+import type { SigningCounters } from "@/lib/agent/agent-client/types";
+import type {
+  ServiceRestartResult,
+  SupervisorRestartResult,
+} from "@/lib/agent/agent-client/system";
 import { delay, jitter, startTime } from "./utils";
 import { getMockConfig, setMockConfigValue } from "./config";
 import { MOCK_PERIPHERALS } from "./peripherals";
@@ -263,9 +268,15 @@ export class MockAgentClient {
     return commandResponses[key] ?? { success: false, message: `Unknown command: ${cmd}` };
   }
 
-  async restartService(name: string): Promise<CommandResult> {
+  async restartService(name: string): Promise<ServiceRestartResult> {
     await delay(300);
-    return { success: true, message: `Service '${name}' restarted` };
+    const unit = name.startsWith("ados-") ? name : `ados-${name}`;
+    return { status: "ok", message: `Restarted ${unit}`, unit, aliased_from: null };
+  }
+
+  async restartSupervisor(): Promise<SupervisorRestartResult> {
+    await delay(100);
+    return { ok: true, message: "ados-supervisor restart scheduled" };
   }
 
   // ── Peripherals ─────────────────────────────────────────
@@ -429,15 +440,12 @@ export class MockAgentClient {
     return { success: true, require };
   }
 
-  async getSigningCounters(): Promise<{
-    tx_signed_count: number;
-    rx_signed_count: number;
-    last_signed_rx_at: number | null;
-  }> {
+  async getSigningCounters(): Promise<SigningCounters> {
     await delay(40);
     // Steady trickle so the debug view shows non-zero counters.
     const uptimeSec = (Date.now() - startTime) / 1000;
     return {
+      observed: true,
       tx_signed_count: Math.floor(uptimeSec * 5),
       rx_signed_count: Math.floor(uptimeSec * 10),
       last_signed_rx_at: Date.now() / 1000,

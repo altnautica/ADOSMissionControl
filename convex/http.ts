@@ -32,6 +32,7 @@ import {
   stringField,
   videoStreamsField,
 } from "./lib/heartbeatFields";
+import { resolveAtlasJobPost } from "./lib/atlasJobsIngest";
 
 
 const http = httpRouter();
@@ -624,10 +625,8 @@ http.route({
 // A workstation/compute node POSTs its reconstruct jobs so the World Model
 // tab's cloud path surfaces the drone's world models (cmd_atlasJobs; the GCS
 // reads them local-first over the LAN, this is the secondary/remote path).
-// Auth mirrors /agent/status but with an auth-vs-attribution split: the POSTER
-// (the workstation, itself a paired fleet node) is validated by posterDeviceId
-// + X-ADOS-Key, while cmd_atlasJobs.deviceId is the DIFFERENT capturing-drone
-// id in the body. metadata carries the honest { backend } badge (Rule 44).
+// Validation (poster auth, subject ownership, URL scheme, length caps) lives in
+// lib/atlasJobsIngest so every deployment runs the same tested decision.
 
 http.route({
   path: "/agent/atlas-jobs",
@@ -635,93 +634,13 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const body = await readJsonObject(request);
     if (body instanceof Response) return body;
-    const posterDeviceId = stringField(body, "posterDeviceId");
-    const deviceId = stringField(body, "deviceId");
-    const computeNodeId = stringField(body, "computeNodeId");
-    const kind = stringField(body, "kind");
-    const status = stringField(body, "status");
-    const apiKey = request.headers.get("X-ADOS-Key") ?? undefined;
-
-    if (!posterDeviceId || !apiKey || !deviceId || !computeNodeId || !kind || !status) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "posterDeviceId, apiKey, deviceId, computeNodeId, kind, and status required",
-        }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
-
-    // Authenticate the POSTER (a paired workstation node).
-    const poster = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, {
-      deviceId: posterDeviceId,
-    });
-    if (!poster || !agentKeyMatches(poster.apiKey, apiKey)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid device or API key" }),
-        { status: 401, headers: jsonHeaders }
-      );
-    }
-
-    // The SUBJECT drone must belong to the same owner as the poster.
-    //
-    // `deviceId` is attribution, and it used to be taken from the body and
-    // never proved: reads are gated by ownership of `deviceId`
-    // (`cmdAtlasJobs`), which is what made it exploitable — one valid device
-    // key wrote rows that surfaced in ANOTHER account's World Model tab,
-    // carrying an attacker-chosen `outputUrl` the viewer then dials.
-    if (deviceId !== posterDeviceId) {
-      const subject = await ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, {
-        deviceId,
-      });
-      if (!subject || subject.userId !== poster.userId) {
-        return new Response(
-          JSON.stringify({ error: "Subject device is not in this fleet" }),
-          { status: 403, headers: jsonHeaders }
-        );
-      }
-    }
-
-    // Bound the attacker-chosen strings. None had a length cap, unlike
-    // `requireBoundedString` on the pairing routes, and every one of them is
-    // persisted and rendered.
-    const outputUrl = boundedField(body, "outputUrl", 2048);
-    if (outputUrl instanceof Response) return outputUrl;
-    if (outputUrl !== undefined && !/^https?:\/\//i.test(outputUrl)) {
-      return new Response(
-        JSON.stringify({ error: "outputUrl must be an http(s) URL" }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
-    const sessionId = boundedField(body, "sessionId", 128);
-    if (sessionId instanceof Response) return sessionId;
-    const inputBag = boundedField(body, "inputBag", 512);
-    if (inputBag instanceof Response) return inputBag;
-    const derivedFrom = boundedField(body, "derivedFrom", 128);
-    if (derivedFrom instanceof Response) return derivedFrom;
-
-    // metadata is a free-form object (backend badge, viewer hint, gaussian
-    // count); forward it verbatim when it is a plain object, else omit.
-    const metadata =
-      typeof body.metadata === "object" &&
-      body.metadata !== null &&
-      !Array.isArray(body.metadata)
-        ? body.metadata
-        : undefined;
-
-    await ctx.runMutation(internal.cmdAtlasJobs.upsertJob, {
-      deviceId,
-      computeNodeId,
-      kind,
-      status,
-      sessionId,
-      inputBag,
-      outputUrl,
-      derivedFrom,
-      metadata,
-      startedAt: numberField(body, "startedAt"),
-      finishedAt: numberField(body, "finishedAt"),
-    });
+    const job = await resolveAtlasJobPost(
+      body,
+      request.headers.get("X-ADOS-Key") ?? undefined,
+      (deviceId) => ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, { deviceId }),
+    );
+    if (job instanceof Response) return job;
+    await ctx.runMutation(internal.cmdAtlasJobs.upsertJob, job);
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: jsonHeaders,
@@ -731,8 +650,9 @@ http.route({
 
 // ── Cloud Relay: agent polls for pending commands ──────────
 //
-// This read-only poll returns the queued rows; the agent then executes and
-// acks each. An at-most-once delivery path exists in
+// The poll hands out the queued rows the agent may still run (a row past its
+// delivery window is failed instead) and stamps each first hand-out; the agent
+// then executes and acks each. An at-most-once delivery path exists in
 // cmdDroneCommands.claimCommands (it leases each row before execution so a
 // retried poll cannot re-return an in-flight command, bounded by an attempt
 // budget). Switching this route to claimCommands is a coordinated change with
@@ -762,7 +682,7 @@ http.route({
       );
     }
 
-    const commands = await ctx.runQuery(internal.cmdDroneCommands.getPendingCommands, { deviceId });
+    const commands = await ctx.runMutation(internal.cmdDroneCommands.takeDeliverableCommands, { deviceId });
     return new Response(JSON.stringify({ commands }), {
       status: 200,
       headers: jsonHeaders,

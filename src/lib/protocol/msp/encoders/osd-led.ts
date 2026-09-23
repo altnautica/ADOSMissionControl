@@ -7,27 +7,44 @@
 import { makeBuffer, push8, push16, push32 } from "./helpers";
 
 /**
- * MSP_SET_OSD_CONFIG (85)
- * Per-element write: U8 index (0xFF = video system config), U16 value
- *
- * When index is 0xFF (or -1 as signed), the value is interpreted as:
- *   U8  0xFF
- *   U8  videoSystem
- * Otherwise:
- *   U8  elementIndex
- *   U16 position
+ * MSP_SET_OSD_CONFIG (85), element form: U8 element index (`osd_items_e`),
+ * U16 position word.
  */
 export function encodeMspSetOsdConfig(index: number, position: number): Uint8Array {
-  if (index === 0xff || index === -1) {
-    // Video system config
-    const { buf, dv } = makeBuffer(2);
-    push8(dv, 0, 0xff);
-    push8(dv, 1, position & 0xff);
-    return buf;
-  }
+  if (index < 0 || index > 0xfd) throw new RangeError(`OSD element index ${index} out of range`);
   const { buf, dv } = makeBuffer(3);
   push8(dv, 0, index);
   push16(dv, 1, position);
+  return buf;
+}
+
+/**
+ * MSP_SET_OSD_CONFIG (85), address -1 (0xFF): the general OSD settings.
+ *
+ * Betaflight reads video system, units, RSSI alarm, capacity alarm, a
+ * skipped U16 and the altitude alarm unconditionally, then the enabled
+ * warnings as U16 (older API) and U32 (API >= 1.41). Every field is sent
+ * so none is filled from stale receive-buffer bytes; the OSD profile byte
+ * that may follow is deliberately left off so the active profile is kept.
+ */
+export function encodeMspSetOsdGeneralConfig(cfg: {
+  videoSystem: number;
+  units: number;
+  rssiAlarm: number;
+  capacityWarning: number;
+  altAlarm: number;
+  enabledWarnings: number;
+}): Uint8Array {
+  const { buf, dv } = makeBuffer(16);
+  push8(dv, 0, 0xff);
+  push8(dv, 1, cfg.videoSystem);
+  push8(dv, 2, cfg.units);
+  push8(dv, 3, cfg.rssiAlarm);
+  push16(dv, 4, cfg.capacityWarning);
+  push16(dv, 6, 0);
+  push16(dv, 8, cfg.altAlarm);
+  push16(dv, 10, cfg.enabledWarnings & 0xffff);
+  push32(dv, 12, cfg.enabledWarnings >>> 0);
   return buf;
 }
 

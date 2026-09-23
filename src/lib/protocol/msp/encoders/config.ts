@@ -182,26 +182,34 @@ export function encodeMspSetArmingConfig(config: {
 /**
  * MSP_SET_MODE_RANGE (35)
  *
- * From MSPHelper.js `sendModeRanges`:
  *   U8 index (which mode range slot)
- *   U8 boxId
+ *   U8 boxId (permanent id)
  *   U8 auxChannel
  *   U8 rangeStart ((pwm - 900) / 25)
  *   U8 rangeEnd ((pwm - 900) / 25)
+ *   U8 modeLogic, U8 linkedTo  (only when `linked` is given: Betaflight
+ *   reads them when present; iNav accepts only the 5-byte form)
  */
-export function encodeMspSetModeRange(range: {
-  index: number;
-  boxId: number;
-  auxChannel: number;
-  rangeStart: number;
-  rangeEnd: number;
-}): Uint8Array {
-  const { buf, dv } = makeBuffer(5);
+export function encodeMspSetModeRange(
+  range: {
+    index: number;
+    boxId: number;
+    auxChannel: number;
+    rangeStart: number;
+    rangeEnd: number;
+  },
+  linked?: { modeLogic: number; linkedTo: number },
+): Uint8Array {
+  const { buf, dv } = makeBuffer(linked ? 7 : 5);
   push8(dv, 0, range.index);
   push8(dv, 1, range.boxId);
   push8(dv, 2, range.auxChannel);
-  push8(dv, 3, (range.rangeStart - 900) / 25);
-  push8(dv, 4, (range.rangeEnd - 900) / 25);
+  push8(dv, 3, Math.round((range.rangeStart - 900) / 25));
+  push8(dv, 4, Math.round((range.rangeEnd - 900) / 25));
+  if (linked) {
+    push8(dv, 5, linked.modeLogic);
+    push8(dv, 6, linked.linkedTo);
+  }
   return buf;
 }
 

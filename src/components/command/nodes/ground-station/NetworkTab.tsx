@@ -103,9 +103,9 @@ export function NetworkTab() {
   useEffect(() => {
     if (!modemOpen || !modem) return;
     setApnDraft(modem.apn ?? "");
-    const capMb = modem.data_cap?.cap_mb ?? 0;
+    const capMb = modem.cap_mb ?? 0;
     setCapGbDraft(capMb > 0 ? Math.max(1, Math.round(capMb / 1024)) : 5);
-    setModemEnabledDraft(modem.enabled ?? true);
+    setModemEnabledDraft(modem.enabled);
   }, [modemOpen, modem]);
 
   const handleSave = async () => {

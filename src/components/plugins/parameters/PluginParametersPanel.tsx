@@ -156,6 +156,9 @@ export function PluginParametersPanel({
       if (binding !== "plugin.config") return;
 
       const previous = state[param.key];
+      // No change, no write: a re-commit of the shown value (possibly an
+      // unconfirmed default) must not overwrite the drone's setting.
+      if (value === previous) return;
       const wasConfirmed = confirmed[param.key] ?? false;
       setState((s) => ({ ...s, [param.key]: value }));
       // Optimistically treat the value as confirmed: we just wrote it to the

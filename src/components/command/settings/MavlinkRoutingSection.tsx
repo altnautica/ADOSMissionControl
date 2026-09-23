@@ -19,12 +19,11 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Route } from "lucide-react";
 
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import type {
   SigningCapability,
   SigningCounters,
@@ -35,9 +34,13 @@ import { useToast } from "@/components/ui/toast";
 import { formatLogTime } from "../shared/LogViewer";
 import { ConfigIntField, ConfigReadonlyRow } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
+import { useNodeDirectAgent } from "./use-node-direct-agent";
 import { Section } from "./Section";
 
 interface SectionProps {
+  /** The node this page is rendered for. The signing reads and the
+   * require-signing write go only to a connection attached to this node. */
+  nodeDeviceId: string | null;
   profile: NodeProfile;
   config: Record<string, unknown> | null;
   readOnly: boolean;
@@ -106,6 +109,22 @@ type SigningLoad =
       counters: SigningCounters | null;
     };
 
+/** How recent a signed frame must be for enabling require-signing to skip the
+ * confirm. A cumulative count proves nothing about the FC signing now. */
+const SIGNED_RECENT_MS = 10_000;
+
+/** True only when the agent measured a signed frame from the FC within
+ * {@link SIGNED_RECENT_MS}. Unmeasured counters are never evidence. */
+export function signedFramesRecent(
+  counters: SigningCounters | null,
+  nowMs: number,
+): boolean {
+  if (counters?.observed !== true || counters.last_signed_rx_at === null) {
+    return false;
+  }
+  return nowMs - counters.last_signed_rx_at * 1000 <= SIGNED_RECENT_MS;
+}
+
 function isUnexposedError(err: unknown): boolean {
   return err instanceof Error && /Agent API (404|501)/.test(err.message);
 }
@@ -132,6 +151,7 @@ function reasonLabel(t: (key: string) => string, reason: string): string {
 }
 
 export function MavlinkRoutingSection({
+  nodeDeviceId,
   profile,
   config,
   readOnly,
@@ -140,7 +160,7 @@ export function MavlinkRoutingSection({
   const t = useTranslations("nodeSettings.mavlinkRouting");
   const tRoot = useTranslations("nodeSettings");
   const { toast } = useToast();
-  const client = useAgentConnectionStore((s) => s.client);
+  const client = useNodeDirectAgent(nodeDeviceId)?.client ?? null;
 
   const isDrone = profile === "drone";
 
@@ -151,7 +171,13 @@ export function MavlinkRoutingSection({
   // unsigned frame from the FC and drop the link).
   const [confirmRequire, setConfirmRequire] = useState(false);
 
+  // Every load (and every require write) belongs to the client it started
+  // on. A newer load, or a switch to another node's client, supersedes it, so
+  // a slow answer from the previous node never lands on this node's page.
+  const signingSeq = useRef(0);
+
   const loadSigning = useCallback(async () => {
+    const seq = ++signingSeq.current;
     if (!isDrone || !client) return;
     setSigning({ state: "loading" });
     try {
@@ -160,6 +186,7 @@ export function MavlinkRoutingSection({
         client.getSigningRequire().catch(() => null),
         client.getSigningCounters().catch(() => null),
       ]);
+      if (seq !== signingSeq.current) return;
       setSigning({
         state: "loaded",
         capability,
@@ -167,6 +194,7 @@ export function MavlinkRoutingSection({
         counters,
       });
     } catch (err) {
+      if (seq !== signingSeq.current) return;
       setSigning({ state: isUnexposedError(err) ? "unexposed" : "failed" });
     }
   }, [isDrone, client]);
@@ -177,13 +205,16 @@ export function MavlinkRoutingSection({
 
   const onToggleRequire = useCallback(
     async (next: boolean) => {
-      if (!client || requirePending) return;
+      if (!client || requirePending || readOnly) return;
+      const seq = signingSeq.current;
       setRequirePending(true);
       try {
         const res = await client.setSigningRequire(next);
-        setSigning((prev) =>
-          prev.state === "loaded" ? { ...prev, require: res.require } : prev,
-        );
+        if (seq === signingSeq.current) {
+          setSigning((prev) =>
+            prev.state === "loaded" ? { ...prev, require: res.require } : prev,
+          );
+        }
         toast(tRoot("applied"), "success");
       } catch (err) {
         toast(
@@ -194,7 +225,7 @@ export function MavlinkRoutingSection({
         setRequirePending(false);
       }
     },
-    [client, requirePending, toast, tRoot],
+    [client, requirePending, readOnly, toast, tRoot],
   );
 
   const sourceOptions: Record<string, string> = {
@@ -360,17 +391,18 @@ export function MavlinkRoutingSection({
                   label={t("signingRequireLabel")}
                   checked={signing.require === true}
                   onChange={(v) => {
-                    // Enabling require-signing while no signed frames have been
-                    // observed rejects every unsigned frame the FC sends and
-                    // drops the link. Gate that transition behind a confirm;
-                    // disabling (a safe transition) never needs one.
-                    if (v && (signing.counters?.rx_signed_count ?? 0) === 0) {
+                    // Enabling require-signing unless the agent measured a
+                    // signed FC frame just now rejects every unsigned frame the
+                    // FC sends and can drop the link. Gate that transition
+                    // behind a confirm; disabling (a safe transition) never
+                    // needs one.
+                    if (v && !signedFramesRecent(signing.counters, Date.now())) {
                       setConfirmRequire(true);
                       return;
                     }
                     void onToggleRequire(v);
                   }}
-                  disabled={requirePending}
+                  disabled={requirePending || readOnly}
                 />
                 {signing.require === null ? (
                   <p className="text-[11px] text-text-tertiary">
@@ -381,15 +413,30 @@ export function MavlinkRoutingSection({
                   {t("signingRequireHint")}
                 </p>
               </div>
-              {signing.counters ? (
+              {signing.counters?.observed !== true ? (
+                // No observer on the agent (or an agent that predates the
+                // flag and reports hard-coded zeros): nothing was measured.
+                <ReadRow
+                  label={t("signingCountersLabel")}
+                  value={t("signingNotMeasured")}
+                />
+              ) : (
                 <>
                   <ReadRow
                     label={t("signingTxLabel")}
-                    value={String(signing.counters.tx_signed_count)}
+                    value={
+                      signing.counters.tx_signed_count === null
+                        ? t("signingNotMeasured")
+                        : String(signing.counters.tx_signed_count)
+                    }
                   />
                   <ReadRow
                     label={t("signingRxLabel")}
-                    value={String(signing.counters.rx_signed_count)}
+                    value={
+                      signing.counters.rx_signed_count === null
+                        ? t("signingNotMeasured")
+                        : String(signing.counters.rx_signed_count)
+                    }
                   />
                   <ReadRow
                     label={t("signingLastRxLabel")}
@@ -404,7 +451,7 @@ export function MavlinkRoutingSection({
                     }
                   />
                 </>
-              ) : null}
+              )}
               <p className="text-[11px] text-text-tertiary">
                 {t("signingEnrollHint")}
               </p>
@@ -413,8 +460,8 @@ export function MavlinkRoutingSection({
         </div>
       ) : null}
 
-      {/* Require-signing enable guard: no signed frames observed yet, so
-          enforcing signing now would drop the FC link. */}
+      {/* Require-signing enable guard: no recent signed frame was measured,
+          so enforcing signing now may drop the FC link. */}
       <ConfirmDialog
         open={confirmRequire}
         title={t("signingRequireConfirmTitle")}

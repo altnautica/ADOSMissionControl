@@ -249,6 +249,7 @@ describe("buildSystemUpdate", () => {
 });
 
 describe("buildGroundStationPatch", () => {
+  const NOW = 1_700_000_000_000;
   const current: GroundStationFanOutCurrent = {
     linkHealth: {
       rssi_dbm: null,
@@ -264,8 +265,8 @@ describe("buildGroundStationPatch", () => {
   };
 
   it("returns null when the agent is not a ground station", () => {
-    expect(buildGroundStationPatch({ profile: "drone" }, current)).toBeNull();
-    expect(buildGroundStationPatch({}, current)).toBeNull();
+    expect(buildGroundStationPatch({ profile: "drone" }, current, NOW)).toBeNull();
+    expect(buildGroundStationPatch({}, current, NOW)).toBeNull();
   });
 
   it("maps radio link health and pair status, normalising kbps to mbps", () => {
@@ -283,6 +284,7 @@ describe("buildGroundStationPatch", () => {
         wfbFailoverState: "local",
       },
       current,
+      NOW,
     );
     expect(patch).not.toBeNull();
     const linkHealth = patch?.linkHealth as Record<string, unknown>;
@@ -304,6 +306,7 @@ describe("buildGroundStationPatch", () => {
         wfbFailoverState: "cloud_relay",
       },
       current,
+      NOW,
     );
     const role = (patch?.role as Record<string, unknown>).info as Record<string, unknown>;
     expect(role.current).toBe("relay");
@@ -323,6 +326,7 @@ describe("buildGroundStationPatch", () => {
         forwardingTelemetry: true,
       },
       current,
+      NOW,
     );
     const uplink = patch?.uplink as Record<string, unknown>;
     expect(uplink.active).toBe("eth0");
@@ -336,7 +340,7 @@ describe("buildGroundStationPatch", () => {
   it("returns null when a ground station sends no patchable fields", () => {
     // No radio/role/uplink/peripherals → nothing to patch even though it
     // is a ground station, so the builder returns null.
-    const patch = buildGroundStationPatch({ profile: "ground-station" }, current);
+    const patch = buildGroundStationPatch({ profile: "ground-station" }, current, NOW);
     expect(patch).toBeNull();
   });
 });

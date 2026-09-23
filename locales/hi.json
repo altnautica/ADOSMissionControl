@@ -1044,6 +1044,7 @@
     "flightSuite": "Suite"
   },
   "flight": {
+    "takeoffAltitudeOutOfRange": "Takeoff altitude must be between {min} and {max} m",
     "preFlightCheck": "प्री-फ़्लाइट चेक",
     "arm": "ARM",
     "disarm": "DISARM",
@@ -1522,7 +1523,16 @@
       "remoteSetupUrlLabel": "Setup URL",
       "remoteApiUrlLabel": "API URL",
       "remoteVideoUrlLabel": "Video (WHEP) URL",
-      "remoteMavlinkUrlLabel": "MAVLink WebSocket URL"
+      "remoteMavlinkUrlLabel": "MAVLink WebSocket URL",
+      "remoteStatusLabel": "Tunnel status",
+      "remoteStatusNeedsLan": "Read over the local network only",
+      "remoteStatusUnknown": "Not reported by this node",
+      "remoteStatus_disabled": "Disabled",
+      "remoteStatus_configured": "Configured, not started",
+      "remoteStatus_running": "Running",
+      "remoteStatus_stopped": "Stopped",
+      "remoteStatus_error": "Error",
+      "remoteManagedOnNode": "The tunnel is set up and started on the node itself; this page shows its state."
     },
     "advanced": {
       "title": "Advanced",
@@ -1882,7 +1892,7 @@
       "signingReasonOk": "Supported",
       "signingReasonFcNotConnected": "No flight controller connected",
       "signingReasonFirmwareNotSupported": "Firmware does not support signing",
-      "signingReasonFirmwareTooOld": "Firmware too old",
+      "signingReasonFirmwareTooOld": "Agent could not confirm signing support; update the drone agent",
       "signingReasonPx4NoStore": "PX4 build lacks persistent key storage",
       "signingReasonMsp": "MSP firmware (signing is MAVLink-only)",
       "signingFirmwareLabel": "Firmware",
@@ -1896,7 +1906,9 @@
       "signingEnrollHint": "Key enrollment, export and clearing live in the flight controller's Setup, under Security, in the MAVLink Signing panel.",
       "signingRequireConfirmTitle": "Require signing with no signed frames seen?",
       "signingRequireConfirmMessage": "No signed MAVLink frames have been received from the flight controller yet. Requiring signing now will reject every unsigned frame and can drop the FC link until the FC is enrolled and signing. Enrol the signing key on the FC first.",
-      "signingRequireConfirmAction": "Require signing anyway"
+      "signingRequireConfirmAction": "Require signing anyway",
+      "signingCountersLabel": "Signed frames",
+      "signingNotMeasured": "Not measured"
     },
     "security": {
       "title": "Security",
@@ -1986,7 +1998,8 @@
       "kioskEnabled": "Run the kiosk browser",
       "kioskEnabledHint": "Starts the full-screen browser on the HDMI output at boot. Takes effect when the kiosk service next starts.",
       "kioskTargetUrl": "Kiosk page",
-      "kioskTargetUrlHint": "The page the kiosk opens. Leave empty to use this node's own console."
+      "kioskTargetUrlHint": "The page the kiosk opens. Leave empty to use this node's own console.",
+      "kioskAlwaysOn": "The kiosk browser runs whenever a display is attached; it has no on/off switch."
     },
     "pageUnavailableHere": "{page} is not available on this node. Showing the first page this node offers.",
     "segmentLive": "लाइव",
@@ -2684,7 +2697,7 @@
     "reverseWaypoints": "Waypoints उलटें",
     "discardChanges": "बदलाव हटाएं",
     "simulateIn3d": "3D में simulate करें",
-    "relativeAgl": "Relative (AGL)",
+    "relativeHome": "Relative (Home)",
     "absoluteMsl": "Absolute (MSL)",
     "terrainFollowing": "Terrain Following",
     "acceptRadius": "Accept Radius",
@@ -2949,7 +2962,9 @@
     "uploading": "Upload हो रहा है...",
     "download": "Download करें",
     "fenceUploaded": "Fence upload हो गया",
-    "uploadFailed": "Fence upload fail हो गया"
+    "uploadFailed": "Fence upload fail हो गया",
+    "olderFenceOnAircraft": "Aircraft holds an older fence",
+    "maxAltitudeRequired": "Enter a max altitude above 0 m"
   },
   "rally": {
     "title": "रैली पॉइंट्स",
@@ -2963,7 +2978,10 @@
     "clickToAdd": "रैली पॉइंट जोड़ने के लिए मैप पर क्लिक करें",
     "deleteRally": "हटाएँ",
     "rallyUploaded": "Rally points upload हो गए",
-    "rallyUploadFailed": "Rally point upload fail हो गया"
+    "rallyUploadFailed": "Rally point upload fail हो गया",
+    "olderRallyOnAircraft": "Aircraft holds older rally points",
+    "replaceLocalConfirm": "Replace the {count} planned rally points with the ones on the aircraft?",
+    "downloadFailed": "Rally download failed"
   },
   "terrain": {
     "terrainConflict": "{count} न्यूनतम ऊंचाई से नीचे",
@@ -4039,7 +4057,8 @@
       "fecRepaired": "FEC repaired",
       "outputBitrate": "Output bitrate",
       "emptyDirect": "This node is in direct mode. Set the role to relay or receiver to use distributed reception.",
-      "emptyUnset": "Set the ground-station role from the device OLED to begin."
+      "emptyUnset": "Set the ground-station role from the device OLED to begin.",
+      "staleSnapshot": "Snapshot is stale — the receiver stopped reporting; values shown may be old"
     },
     "mesh": {
       "title": "Mesh",
@@ -5440,7 +5459,8 @@
       "partitioned": "Partitioned",
       "connected": "Connected",
       "meshId": "Mesh ID",
-      "notCapable": "Mesh not enabled on this node."
+      "notCapable": "Mesh not enabled on this node.",
+      "unknown": "Unknown"
     },
     "link": {
       "title": "Link",
@@ -5468,7 +5488,8 @@
       "status": {
         "ok": "OK",
         "degraded": "Degraded",
-        "down": "Down"
+        "down": "Down",
+        "unknown": "Not reported"
       },
       "priority": "Priority",
       "dataCap": "Data cap",
@@ -5482,7 +5503,8 @@
     },
     "pairedDrone": {
       "title": "Paired drone",
-      "unpaired": "No drone paired"
+      "unpaired": "No drone paired",
+      "unknown": "Not read from this node"
     },
     "video": {
       "title": "Downlink video",
@@ -5500,6 +5522,10 @@
       "heardMinutesAgo": "heard {minutes}m ago",
       "authorityFull": "This ground node is paired on this browser, so commands and configuration for this drone route through its relay-proxy lane.",
       "authorityNotPaired": "This ground node is not paired on this browser, so nothing can be sent to this drone through it. Pair the ground node to reach the drone."
+    },
+    "freshness": {
+      "stale": "stale",
+      "notRead": "not read"
     }
   },
   "navigation": {
@@ -6124,7 +6150,7 @@
       "label": "Take Off",
       "effect": "Arms and climbs to the set altitude",
       "confirm": {
-        "title": "Take off",
+        "title": "Take off to {altitude} m",
         "message": "Command takeoff to the set altitude. Confirm the launch area is clear.",
         "button": "Take off"
       }
@@ -7267,6 +7293,10 @@
         "hopData": "to {node}",
         "streamAria": "{path}. {state}."
       }
+    },
+    "fc": {
+      "notReachable": "Flight controller not reachable — the serial or network link to the flight controller is down",
+      "notFlightNode": "This node does not fly — no flight controller readings"
     }
   },
   "rcElrsLink": {

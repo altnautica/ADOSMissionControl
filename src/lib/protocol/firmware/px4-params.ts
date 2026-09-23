@@ -47,18 +47,21 @@ export const PX4_PARAM_MAP: Record<string, string> = {
   BATT_CAPACITY: 'BAT1_CAPACITY',
   BATT_VOLT_MULT: 'BAT1_V_DIV',
   BATT_AMP_PERVLT: 'BAT1_A_PER_V',
-  BATT_AMP_OFFSET: 'BAT1_A_OFFSET',
+  // Volts at the current-sensor ADC input at zero current, like ArduPilot's
+  // BATT_AMP_OFFSET; PX4 has one shared offset for every analog battery.
+  BATT_AMP_OFFSET: 'BAT_V_OFFS_CURR',
   BATT2_MONITOR: 'BAT2_SOURCE',
   BATT2_CAPACITY: 'BAT2_CAPACITY',
   BATT2_VOLT_MULT: 'BAT2_V_DIV',
   BATT2_AMP_PERVLT: 'BAT2_A_PER_V',
-  BATT2_AMP_OFFSET: 'BAT2_A_OFFSET',
 
   // ── Failsafe ──────────────────────────────────────────
   FS_THR_ENABLE: 'COM_RC_LOSS_T',
   FS_THR_VALUE: 'RC_FAILS_THR',
   FS_GCS_ENABLE: 'COM_DL_LOSS_T',
   BATT_FS_LOW_ACT: 'COM_LOW_BAT_ACT',
+  // BAT_LOW_THR / BAT_CRIT_THR are remaining-charge FRACTIONS (0.15 = 15 %),
+  // not volts; PX4 panels render them as such.
   BATT_FS_LOW_VOLT: 'BAT_LOW_THR',
   BATT_FS_CRT_VOLT: 'BAT_CRIT_THR',
 
@@ -182,9 +185,7 @@ export const PX4_PARAM_MAP: Record<string, string> = {
   CAM1_SERVO_OFF: 'TRIG_PWM_NEUTRAL',
 
   // ── EKF failsafe (PX4-only, passthrough) ────────────────────
-  COM_POS_FS_DELAY: 'COM_POS_FS_DELAY',
   COM_POS_FS_EPH: 'COM_POS_FS_EPH',
-  COM_POS_FS_EPV: 'COM_POS_FS_EPV',
   COM_VEL_FS_EVH: 'COM_VEL_FS_EVH',
 
   // ── Geofence extras ─────────────────────────────────────────
@@ -212,6 +213,8 @@ export const PX4_PARAM_MAP: Record<string, string> = {
   //                         BATT_FS_LOW_ACT); no separate critical-action param.
   //   BATT_FS_{LOW,CRT}_MAH, BATT2_FS_* ... PX4 has no mAh-based or per-battery
   //                         failsafe actions.
+  //   BATT2_AMP_OFFSET .... PX4 has one current-sensor offset for every analog
+  //                         battery (BAT_V_OFFS_CURR, mapped from BATT_AMP_OFFSET).
   //   FLOW_TYPE, FLOW_F{X,Y}SCALER ... PX4 enables optical flow per-driver and
   //                         has no matching type/scaler params.
   //   RNGFND1_{TYPE,PIN,MIN_CM,MAX_CM,ORIENT} ... PX4 enables rangefinders per

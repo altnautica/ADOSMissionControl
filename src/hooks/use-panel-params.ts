@@ -17,6 +17,13 @@ export function usePanelParams(
 ): PanelParamState & PanelParamActions {
   const { paramNames, optionalParams = EMPTY_ARRAY, panelId, autoLoad = false, maxRetries = 3, batchSize = DEFAULT_BATCH_SIZE, onEvent, metadata: externalMetadata } = options;
   const optionalSet = useMemo(() => new Set(optionalParams), [optionalParams]);
+  // Every name the panel renders is read: required names first, then any
+  // optional-only name. `optionalParams` only decides whether a failed read
+  // blocks the panel, never whether the read happens.
+  const loadNames = useMemo(() => {
+    const required = new Set(paramNames);
+    return [...paramNames, ...optionalParams.filter((n) => !required.has(n))];
+  }, [paramNames, optionalParams]);
 
   const [params, setParams] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -50,8 +57,8 @@ export function usePanelParams(
 
     setLoading(true);
     setError(null);
-    setLoadProgress({ loaded: 0, total: paramNames.length });
-    onEvent?.({ type: "info", message: `Loading ${paramNames.length} parameters...` });
+    setLoadProgress({ loaded: 0, total: loadNames.length });
+    onEvent?.({ type: "info", message: `Loading ${loadNames.length} parameters...` });
 
     const loaded = new Map<string, number>();
     const failed: string[] = [];
@@ -92,14 +99,14 @@ export function usePanelParams(
     };
 
     try {
-      for (let i = 0; i < paramNames.length; i += batchSize) {
+      for (let i = 0; i < loadNames.length; i += batchSize) {
         if (abortedRef.current) return;
-        const batch = paramNames.slice(i, i + batchSize);
+        const batch = loadNames.slice(i, i + batchSize);
         await Promise.allSettled(batch.map((name) => fetchOne(name)));
-        completedCount = Math.min(i + batchSize, paramNames.length);
+        completedCount = Math.min(i + batchSize, loadNames.length);
         if (abortedRef.current) return;
         setParams(new Map(loaded));
-        setLoadProgress({ loaded: completedCount, total: paramNames.length });
+        setLoadProgress({ loaded: completedCount, total: loadNames.length });
       }
 
       if (abortedRef.current) return;
@@ -132,7 +139,7 @@ export function usePanelParams(
     } finally {
       if (!abortedRef.current) setLoading(false);
     }
-  }, [getProtocol, paramNames, optionalSet, panelId, maxRetries, batchSize, markPanelLoaded, cachePanel, onEvent]);
+  }, [getProtocol, loadNames, optionalSet, panelId, maxRetries, batchSize, markPanelLoaded, cachePanel, onEvent]);
 
   const loadParamsRef = useRef(loadParams);
   loadParamsRef.current = loadParams;
@@ -178,7 +185,7 @@ export function usePanelParams(
   // The dep is the set's CONTENT, not the array identity: a caller that builds
   // `paramNames` inline would otherwise reload on every render and hammer the
   // flight controller with PARAM_REQUEST_READ.
-  const paramSetKey = paramNames.join("\u0000");
+  const paramSetKey = loadNames.join("\u0000");
   useEffect(() => {
     abortedRef.current = false;
     if (autoLoad) loadParamsRef.current();

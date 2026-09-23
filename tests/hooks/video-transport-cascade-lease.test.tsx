@@ -16,8 +16,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
-const startStream = vi.fn<(url: string, signal?: AbortSignal) => Promise<MediaStream>>();
+const startStream =
+  vi.fn<(url: string, signal: AbortSignal | undefined, apiKey: string | null) => Promise<MediaStream>>();
 const startStreamViaMqttSignaling = vi.fn();
 const stopStream = vi.fn(async () => {});
 
@@ -40,7 +42,7 @@ function fakeStream(): MediaStream {
   } as unknown as MediaStream;
 }
 
-const WHEP = "http://192.168.1.50:8889/main/whep";
+const WHEP = "http://192.168.1.50:8080/whep";
 
 /**
  * A `<video>` stand-in. A real happy-dom element validates `srcObject`
@@ -156,5 +158,43 @@ describe("cascade session holds", () => {
     // A failed attempt acquired nothing. Releasing on its way out is how a
     // dead LAN attempt used to close a working P2P session.
     expect(stopStream).not.toHaveBeenCalled();
+  });
+});
+
+describe("cascade WHEP credential", () => {
+
+  function connectOnce(agentWhepUrl: string) {
+    const el = videoEl();
+    return renderHook(() =>
+      useVideoTransportCascade({
+        agentWhepUrl,
+        cloudDeviceId: null,
+        transportMode: "lan-whep",
+        videoEl: el,
+        retryKey: 0,
+        enabled: true,
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    useAgentConnectionStore.setState({ agentUrl: "http://192.168.1.50:8080", apiKey: "node-key" });
+  });
+  afterEach(() => {
+    useAgentConnectionStore.setState({ agentUrl: null, apiKey: null });
+  });
+
+  it("presents the node API key to the connected agent's own front", async () => {
+    const { result, unmount } = connectOnce(WHEP);
+    await vi.waitFor(() => expect(result.current.state).toBe("connected"));
+    expect(startStream.mock.calls[0][2]).toBe("node-key");
+    unmount();
+  });
+
+  it("never sends the node API key to another host", async () => {
+    const { result, unmount } = connectOnce("http://localhost:8889/gazebo-cam/whep");
+    await vi.waitFor(() => expect(result.current.state).toBe("connected"));
+    expect(startStream.mock.calls[0][2]).toBeNull();
+    unmount();
   });
 });

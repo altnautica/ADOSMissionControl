@@ -137,7 +137,7 @@ describe("useCapabilityToken", () => {
       new Response(JSON.stringify({ ok: true, token }), { status: 200 }),
     );
     const { result } = renderHook(() =>
-      useCapabilityToken(PLUGIN_INSTALL_ID, DEVICE_ID, "lan"),
+      useCapabilityToken(PLUGIN_INSTALL_ID, "com.example.basic", DEVICE_ID, "lan"),
     );
     await waitFor(() => expect(result.current.token).toBeTruthy());
     expect(result.current.claims?.pluginId).toBe("com.example.basic");
@@ -148,6 +148,11 @@ describe("useCapabilityToken", () => {
     );
     const headers = callInit?.headers as Record<string, string>;
     expect(headers["X-ADOS-Key"]).toBe("test-api-key");
+    // The agent looks the install up by the manifest plugin id
+    // (`CapabilityTokenRequest.plugin_id`), never the cloud install row id.
+    expect(JSON.parse(String(callInit?.body))).toEqual({
+      plugin_id: "com.example.basic",
+    });
   });
 
   it("mints a cloud token via Convex action", async () => {
@@ -164,7 +169,7 @@ describe("useCapabilityToken", () => {
       expiresAt: Date.now() + 60_000,
     });
     const { result } = renderHook(() =>
-      useCapabilityToken(PLUGIN_INSTALL_ID, DEVICE_ID, "cloud"),
+      useCapabilityToken(PLUGIN_INSTALL_ID, "com.example.basic", DEVICE_ID, "cloud"),
     );
     await waitFor(() => expect(result.current.token).toBeTruthy());
     // React 19 + RTL double-mounts hooks under test; we accept either
@@ -203,7 +208,7 @@ describe("useCapabilityToken", () => {
       .mockResolvedValueOnce({ token: tokenB, expiresAt: baseNow + 600_000 });
 
     const { result } = renderHook(() =>
-      useCapabilityToken(PLUGIN_INSTALL_ID, DEVICE_ID, "cloud"),
+      useCapabilityToken(PLUGIN_INSTALL_ID, "com.example.basic", DEVICE_ID, "cloud"),
     );
     await vi.waitFor(() => expect(result.current.token).toBe(tokenA));
     // Advance to 60s before expiry — refresh fires at expiresAt - 60s.
@@ -235,10 +240,10 @@ describe("useCapabilityToken", () => {
         }),
     );
     const { result: a } = renderHook(() =>
-      useCapabilityToken(PLUGIN_INSTALL_ID, DEVICE_ID, "cloud"),
+      useCapabilityToken(PLUGIN_INSTALL_ID, "com.example.basic", DEVICE_ID, "cloud"),
     );
     const { result: b } = renderHook(() =>
-      useCapabilityToken(PLUGIN_INSTALL_ID, DEVICE_ID, "cloud"),
+      useCapabilityToken(PLUGIN_INSTALL_ID, "com.example.basic", DEVICE_ID, "cloud"),
     );
     // Both hooks attached to the same cache key. The second hook MUST
     // attach to the inflight promise instead of issuing a fresh mint.
@@ -257,7 +262,7 @@ describe("useCapabilityToken", () => {
   it("surfaces a mint error", async () => {
     cloudMintMock.mockRejectedValueOnce(new Error("boom"));
     const { result } = renderHook(() =>
-      useCapabilityToken(PLUGIN_INSTALL_ID, DEVICE_ID, "cloud"),
+      useCapabilityToken(PLUGIN_INSTALL_ID, "com.example.basic", DEVICE_ID, "cloud"),
     );
     await waitFor(() => expect(result.current.error).toBeInstanceOf(Error));
     expect(result.current.error?.message).toMatch(/boom/);

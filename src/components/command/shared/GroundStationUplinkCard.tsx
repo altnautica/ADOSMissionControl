@@ -9,7 +9,9 @@
  */
 
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import { useGroundStationStore } from "@/stores/ground-station-store";
+import { GsFreshnessBadge, useGsSliceFreshness } from "./gs-slice-freshness";
 
 const healthTone: Record<string, string> = {
   ok: "text-status-success",
@@ -27,22 +29,37 @@ const dataCapTone: Record<string, string> = {
 export function GroundStationUplinkCard() {
   const t = useTranslations("groundStationOverview.uplink");
   const uplink = useGroundStationStore((s) => s.uplink);
+  // The slice's defaults (no active uplink, no health) are not a reading; until
+  // the node has been read the card says so rather than reporting "None".
+  const freshness = useGsSliceFreshness(uplink.fetchedAt);
+  const unread = freshness === "unread";
+  const unknown = <span className="text-text-tertiary">{t("status.unknown")}</span>;
 
   return (
     <div className="rounded-lg border border-border-default bg-surface-secondary p-3 space-y-2">
-      <h3 className="text-xs uppercase tracking-wide text-text-tertiary">
+      <h3 className="text-xs uppercase tracking-wide text-text-tertiary flex items-center gap-2">
         {t("title")}
+        <GsFreshnessBadge freshness={freshness} />
       </h3>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+      <dl
+        className={cn(
+          "grid grid-cols-2 gap-x-3 gap-y-1 text-xs",
+          freshness === "stale" && "opacity-60",
+        )}
+      >
         <dt className="text-text-tertiary">{t("active")}</dt>
         <dd className="text-text-primary">
-          {uplink.active ?? t("none")}
+          {unread ? unknown : (uplink.active ?? t("none"))}
         </dd>
 
         <dt className="text-text-tertiary">{t("health")}</dt>
-        <dd className={healthTone[uplink.health] ?? "text-text-secondary"}>
-          {t(`status.${uplink.health}`)}
-        </dd>
+        {uplink.health === null || unread ? (
+          <dd>{unknown}</dd>
+        ) : (
+          <dd className={healthTone[uplink.health] ?? "text-text-secondary"}>
+            {t(`status.${uplink.health}`)}
+          </dd>
+        )}
 
         {uplink.priority.length > 0 && (
           <>

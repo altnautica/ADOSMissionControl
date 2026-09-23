@@ -197,7 +197,7 @@ describe("per-command parameter slots", () => {
   it("a new DO_DIGICAM action shoots: param5 (item x) = 1, and a downloaded shot survives", () => {
     const wps: Waypoint[] = [{
       id: "w", lat: 1, lon: 1, alt: 20, command: "WAYPOINT",
-      actions: [{ id: "d", command: "DO_DIGICAM", ...defaultActionParams("DO_DIGICAM") }],
+      actions: [{ id: "d", command: "DO_DIGICAM", ...defaultActionParams("DO_DIGICAM", { lat: 1, lon: 1 }) }],
     }];
     const items = expandToItems(wps, OPTS);
     expect(items[1]).toMatchObject({ command: 203, x: 1, y: 0, z: 0 });
@@ -217,7 +217,7 @@ describe("per-command parameter slots", () => {
   });
 
   it("a new DO_WINCH action defaults to winch 1 with length control", () => {
-    expect(defaultActionParams("DO_WINCH")).toEqual({ param1: 1, param2: 1 });
+    expect(defaultActionParams("DO_WINCH", { lat: 1, lon: 1 })).toEqual({ param1: 1, param2: 1 });
   });
 });
 

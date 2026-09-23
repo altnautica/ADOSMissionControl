@@ -50,6 +50,7 @@ entries.push([
   {
     readCmd: MSP_BATTERY_CONFIG,
     writeCmd: MSP_SET_BATTERY_CONFIG,
+    readEnd: 9,
     decode: (p) => getU16(p, 7), // U16÷100 (raw value, consumer divides)
     encode: (v, p) => {
       let out = setU8(p, 0, Math.round(v / 10)); // legacy U8 (÷10 stored)
@@ -67,6 +68,7 @@ entries.push([
   {
     readCmd: MSP_BATTERY_CONFIG,
     writeCmd: MSP_SET_BATTERY_CONFIG,
+    readEnd: 11,
     decode: (p) => getU16(p, 9),
     encode: (v, p) => {
       let out = setU8(p, 1, Math.round(v / 10));
@@ -84,6 +86,7 @@ entries.push([
   {
     readCmd: MSP_BATTERY_CONFIG,
     writeCmd: MSP_SET_BATTERY_CONFIG,
+    readEnd: 13,
     decode: (p) => getU16(p, 11),
     encode: (v, p) => {
       let out = setU8(p, 2, Math.round(v / 10));

@@ -17,11 +17,10 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Wifi } from "lucide-react";
 
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import {
   AgentNetworkError,
   agentNetworkContext,
@@ -43,6 +42,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { Section } from "./Section";
+import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 const STATUS_POLL_MS = 10000;
 
@@ -55,22 +55,34 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function WifiClientSection() {
+export function WifiClientSection({
+  nodeDeviceId,
+}: {
+  /** The node this page is rendered for. Reads and writes go only to a
+   * connection attached to this node; any other node's page reads "needs a
+   * LAN connection" rather than acting on the focused one. */
+  nodeDeviceId: string | null;
+}) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
-  const nodeDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
+  const agent = useNodeDirectAgent(nodeDeviceId);
   const ctx = useMemo(
-    () => agentNetworkContext(agentUrl, apiKey),
-    [agentUrl, apiKey],
+    () => (agent ? agentNetworkContext(agent.agentUrl, agent.apiKey) : null),
+    [agent],
   );
+  // Answers belong to the connection they were requested on. A status poll,
+  // scan or join started against one node that resolves after the page moved
+  // to another is dropped instead of rendering under the new node's name.
+  const ctxRef = useRef(ctx);
+  useEffect(() => {
+    ctxRef.current = ctx;
+  }, [ctx]);
   // The identity of the agent this section talks to. It changes on a node
   // switch, a re-pair, or an unpair — and every field holding the PREVIOUS
   // agent's state must clear then, so a passphrase (or SSID) typed for one node
   // can never be submitted to the next. The section renders the same instances
   // in place, so nothing resets these otherwise.
-  const agentIdentity = `${nodeDeviceId ?? ""}|${agentUrl ?? ""}|${apiKey ?? ""}`;
+  const agentIdentity = `${nodeDeviceId ?? ""}|${agent?.agentUrl ?? ""}|${agent?.apiKey ?? ""}`;
 
   const [status, setStatus] = useState<WifiClientLiveStatus | null>(null);
   const [statusFailed, setStatusFailed] = useState(false);
@@ -94,15 +106,21 @@ export function WifiClientSection() {
   const refresh = useCallback(async () => {
     if (!ctx) return;
     try {
-      setStatus(await getWifiStatus(ctx));
+      const next = await getWifiStatus(ctx);
+      if (ctxRef.current !== ctx) return;
+      setStatus(next);
       setStatusFailed(false);
     } catch {
+      if (ctxRef.current !== ctx) return;
       setStatus(null);
       setStatusFailed(true);
     }
     try {
-      setSaved(await getConfiguredWifi(ctx));
+      const next = await getConfiguredWifi(ctx);
+      if (ctxRef.current !== ctx) return;
+      setSaved(next);
     } catch {
+      if (ctxRef.current !== ctx) return;
       setSaved(null);
     }
   }, [ctx]);
@@ -153,8 +171,11 @@ export function WifiClientSection() {
     setScanning(true);
     setScanError(null);
     try {
-      setNetworks(await scanWifi(ctx));
+      const found = await scanWifi(ctx);
+      if (ctxRef.current !== ctx) return;
+      setNetworks(found);
     } catch (err) {
+      if (ctxRef.current !== ctx) return;
       setNetworks(null);
       setScanError({
         message: err instanceof Error ? err.message : String(err),

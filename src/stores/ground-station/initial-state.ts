@@ -74,7 +74,7 @@ export const INITIAL_WIFI_SCAN: WifiScanCache = {
 export const INITIAL_UPLINK: UplinkSlice = {
   active: null,
   priority: [],
-  health: "ok",
+  health: null,
   failover_log: [],
   data_cap: null,
   cloud_relay: null,
@@ -82,6 +82,7 @@ export const INITIAL_UPLINK: UplinkSlice = {
   shareUplinkAppliedReason: null,
   loading: false,
   error: null,
+  fetchedAt: null,
 };
 
 export const INITIAL_PERIPHERALS: PeripheralsSlice = {
@@ -96,6 +97,7 @@ export const INITIAL_ROLE: RoleSlice = {
   loading: false,
   switching: false,
   error: null,
+  fetchedAt: null,
 };
 
 export const INITIAL_DISTRIBUTED_RX: DistributedRxSlice = {
@@ -120,6 +122,7 @@ export const INITIAL_MESH: MeshSlice = {
   wsDisconnectedAt: null,
   loading: false,
   error: null,
+  fetchedAt: null,
 };
 
 export const FAILOVER_LOG_CAP = 20;
@@ -136,6 +139,7 @@ export const INITIAL_STORE_SLICE = {
   loading: false,
   lastError: null,
   lastFetchedAt: null,
+  statusFetchedAt: null,
   network: null,
   ap: null,
   pair: INITIAL_PAIR,

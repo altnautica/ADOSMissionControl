@@ -24,6 +24,7 @@ describe("ground-station mesh slice", () => {
       loading: false,
       switching: false,
       error: null,
+      fetchedAt: null,
     });
     expect(s.distributedRx).toEqual({
       receiverRelays: [],
@@ -46,12 +47,13 @@ describe("ground-station mesh slice", () => {
       wsDisconnectedAt: null,
       loading: false,
       error: null,
+      fetchedAt: null,
     });
   });
 
   it("resetAll restores mesh slice fields after manual mutation", () => {
     useGroundStationStore.setState({
-      role: { info: null, loading: true, switching: false, error: "boom" },
+      role: { info: null, loading: true, switching: false, error: "boom", fetchedAt: null },
       mesh: {
         health: null,
         neighbors: [],
@@ -63,6 +65,7 @@ describe("ground-station mesh slice", () => {
         wsDisconnectedAt: 1700000000,
         loading: false,
         error: null,
+        fetchedAt: null,
       },
     });
     useGroundStationStore.getState().resetAll();

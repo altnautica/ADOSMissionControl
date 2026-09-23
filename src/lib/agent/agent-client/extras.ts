@@ -27,7 +27,7 @@ import {
   PeripheralListSchema,
   VideoStatusSchema,
 } from "../schemas";
-import { agentRequest, type RequestContext } from "./transport";
+import { AgentHttpError, agentRequest, type RequestContext } from "./transport";
 import type {
   CameraListResponse,
   RecordingControlResponse,
@@ -265,20 +265,56 @@ export function getSigningCapability(
   );
 }
 
-export function enrollSigningKey(
+/** The FC may already hold the new key: the agent sent the first
+ * SETUP_SIGNING frame but the confirming repeat failed (HTTP 500 with
+ * `partially_applied: true`). The caller must keep the key and verify the
+ * signing state instead of discarding it. */
+export class SigningPartialEnrollError extends Error {
+  /** First 8 hex of sha256(key): a fingerprint, never the key. */
+  readonly keyId: string | null;
+
+  constructor(message: string, keyId: string | null) {
+    super(message);
+    this.name = "SigningPartialEnrollError";
+    this.keyId = keyId;
+  }
+}
+
+/** Enroll a signing key on the FC. Throws `SigningPartialEnrollError` when
+ * the agent reports a partially-applied enrollment; every other non-2xx
+ * answer stays an `AgentHttpError`. */
+export async function enrollSigningKey(
   ctx: RequestContext,
   keyHex: string,
   linkId: number,
 ): Promise<SigningEnrollResult> {
-  return agentRequest<SigningEnrollResult>(
-    ctx,
-    "/api/mavlink/signing/enroll-fc",
-    {
-      method: "POST",
-      body: JSON.stringify({ key_hex: keyHex, link_id: linkId }),
-      timeoutMs: SIGNING_WRITE_TIMEOUT_MS,
-    },
-  );
+  try {
+    return await agentRequest<SigningEnrollResult>(
+      ctx,
+      "/api/mavlink/signing/enroll-fc",
+      {
+        method: "POST",
+        body: JSON.stringify({ key_hex: keyHex, link_id: linkId }),
+        timeoutMs: SIGNING_WRITE_TIMEOUT_MS,
+      },
+    );
+  } catch (err) {
+    if (err instanceof AgentHttpError && err.status === 500) {
+      let body: { detail?: unknown; partially_applied?: unknown; key_id?: unknown } = {};
+      try {
+        body = JSON.parse(err.body) as typeof body;
+      } catch {
+        /* not JSON: a plain enrollment failure */
+      }
+      if (body.partially_applied === true) {
+        throw new SigningPartialEnrollError(
+          typeof body.detail === "string" ? body.detail : "enrollment may have partially applied",
+          typeof body.key_id === "string" ? body.key_id : null,
+        );
+      }
+    }
+    throw err;
+  }
 }
 
 export function disableSigningOnFc(

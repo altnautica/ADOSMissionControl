@@ -64,7 +64,8 @@ export function CommandSpecificEditors({
   const t = useTranslations("planner");
   return (
     <>
-      {(cmd === "LOITER" || cmd === "LOITER_TIME" || cmd === "SPLINE_WAYPOINT") && (
+      {/* MAVLink param1 is a hold time only for these; LOITER (unlimited) has none. */}
+      {(cmd === "WAYPOINT" || cmd === "LOITER_TIME" || cmd === "SPLINE_WAYPOINT") && (
         <Input label={t("holdTime")} type="number" unit="s" placeholder="0"
           value={localHoldTime} onChange={(e) => setLocalHoldTime(e.target.value)}
           onBlur={() => commitField("holdTime", localHoldTime)} />
@@ -136,7 +137,7 @@ export function CommandSpecificEditors({
       )}
       {cmd === "DO_FENCE_ENABLE" && (
         <Select label={t("fence")} options={[{ value: "0", label: t("disable") }, { value: "1", label: t("enable") }]}
-          value={String(params.param1 ?? 1)} onChange={(v) => onUpdate({ param1: parseInt(v) })} />
+          value={String(params.param1 ?? 0)} onChange={(v) => onUpdate({ param1: parseInt(v) })} />
       )}
       {cmd === "NAV_PAYLOAD_PLACE" && (
         // MAVLink PAYLOAD_PLACE param1 (max descent) is the nav holdTime slot.
@@ -210,7 +211,7 @@ export function INavCommandEditors({
       )}
       {cmd === "WAYPOINT" && (
         <span className="text-[9px] text-text-tertiary">
-          Flies through this position at the mission speed.
+          Flies through this position at its speed, or the mission speed when blank.
         </span>
       )}
       {cmd === "LOITER" && (

@@ -36,35 +36,44 @@ export function decodeMspINavAnalog(dv: DataView): INavAnalog {
 
 // ── iNav BATTERY CONFIG decoder ──────────────────────────────
 
+/** Byte length of MSP2_INAV_BATTERY_CONFIG and of its SET payload. */
+const INAV_BATTERY_CONFIG_SIZE = 29;
+
 /**
- * MSP2_INAV_BATTERY_CONFIG (0x2005)
+ * MSP2_INAV_BATTERY_CONFIG (0x2005), 29 bytes, the same layout the FC's
+ * MSP2_INAV_SET_BATTERY_CONFIG requires:
  *
- * U32 capacityMah
- * U32 capacityWarningMah
- * U32 capacityCriticalMah
- * U8  capacityUnit
- * U8  voltageSource
- * U8  cells
- * U8  cellDetect
- * U16 cellMin (mV)
- * U16 cellMax (mV)
- * U16 cellWarning (mV)
- * U16 currentScale
- * U16 currentOffset
+ * U16 voltageScale        @0
+ * U8  voltageSource       @2
+ * U8  cells               @3
+ * U16 cellDetect          @4   (0.01 V)
+ * U16 cellMin             @6   (0.01 V)
+ * U16 cellMax             @8   (0.01 V)
+ * U16 cellWarning         @10  (0.01 V)
+ * U16 currentOffset       @12
+ * U16 currentScale        @14
+ * U32 capacity            @16
+ * U32 capacityWarning     @20
+ * U32 capacityCritical    @24
+ * U8  capacityUnit        @28  (0 = mAh, 1 = mWh)
  */
 export function decodeMspINavBatteryConfig(dv: DataView): INavBatteryConfig {
+  if (dv.byteLength < INAV_BATTERY_CONFIG_SIZE) {
+    throw new RangeError(`Battery config reply is ${dv.byteLength} bytes, expected ${INAV_BATTERY_CONFIG_SIZE}`);
+  }
   return {
-    capacityMah: readU32(dv, 0),
-    capacityWarningMah: dv.byteLength > 7 ? readU32(dv, 4) : 0,
-    capacityCriticalMah: dv.byteLength > 11 ? readU32(dv, 8) : 0,
-    capacityUnit: dv.byteLength > 12 ? readU8(dv, 12) : 0,
-    voltageSource: dv.byteLength > 13 ? readU8(dv, 13) : 0,
-    cells: dv.byteLength > 14 ? readU8(dv, 14) : 0,
-    cellDetect: dv.byteLength > 15 ? readU8(dv, 15) : 0,
-    cellMin: dv.byteLength > 17 ? readU16(dv, 16) : 0,
-    cellMax: dv.byteLength > 19 ? readU16(dv, 18) : 0,
-    cellWarning: dv.byteLength > 21 ? readU16(dv, 20) : 0,
-    currentScale: dv.byteLength > 23 ? readU16(dv, 22) : 0,
-    currentOffset: dv.byteLength > 25 ? readU16(dv, 24) : 0,
+    voltageScale: readU16(dv, 0),
+    voltageSource: readU8(dv, 2),
+    cells: readU8(dv, 3),
+    cellDetect: readU16(dv, 4),
+    cellMin: readU16(dv, 6),
+    cellMax: readU16(dv, 8),
+    cellWarning: readU16(dv, 10),
+    currentOffset: readU16(dv, 12),
+    currentScale: readU16(dv, 14),
+    capacityMah: readU32(dv, 16),
+    capacityWarningMah: readU32(dv, 20),
+    capacityCriticalMah: readU32(dv, 24),
+    capacityUnit: readU8(dv, 28),
   };
 }

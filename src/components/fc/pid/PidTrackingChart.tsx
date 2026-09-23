@@ -128,7 +128,7 @@ export function PidTrackingChart({ data, color = "#3A82FF" }: PidTrackingChartPr
       <div className="absolute top-2 right-2 bg-bg-tertiary border border-border-default px-2 py-1">
         <span className="text-[9px] text-text-tertiary block">RMS Error</span>
         <span className="text-xs font-mono font-medium text-text-primary">
-          {data.rmsError.toFixed(2)} deg/s
+          {data.rmsError === null ? "-" : `${data.rmsError.toFixed(2)} deg/s`}
         </span>
       </div>
     </div>

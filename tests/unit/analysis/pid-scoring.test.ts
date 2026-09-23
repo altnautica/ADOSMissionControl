@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scoreFFTQuality, scoreStepResponse, detectIssues } from '@/lib/analysis/pid-scoring';
+import { scoreFFTQuality, scoreStepResponse, computeTuneScore, detectIssues } from '@/lib/analysis/pid-scoring';
 import type {
   FFTResult,
   FFTAxisResult,
@@ -34,12 +34,20 @@ function makeStepEvent(overrides: Partial<StepResponseEvent> = {}): StepResponse
     axis: 'roll',
     riseTimeMs: 30,
     overshootPercent: 10,
+    undershootPercent: 0,
     settlingTimeMs: 100,
     dampingRatio: 0.8,
     desired: [],
     actual: [],
     ...overrides,
   };
+}
+
+/** Step score of a result that has events (never null). */
+function stepScore(step: StepResponseResult): number {
+  const score = scoreStepResponse(step);
+  if (score === null) throw new Error('expected a measured step score');
+  return score;
 }
 
 function makeEmptyStep(): StepResponseResult {
@@ -89,6 +97,13 @@ describe('scoreFFTQuality', () => {
     expect(scoreFFTQuality(makeCleanFFT())).toBe(100);
   });
 
+  it('is null when no axis has gyro data', () => {
+    const absent = (axis: 'roll' | 'pitch' | 'yaw'): FFTAxisResult => ({
+      axis, spectrum: [], sampleRate: 400, peaks: [], noiseFloorDb: null,
+    });
+    expect(scoreFFTQuality({ roll: absent('roll'), pitch: absent('pitch'), yaw: absent('yaw') })).toBeNull();
+  });
+
   it('lowers score when high prominence peaks exist', () => {
     const fft: FFTResult = {
       roll: makeAxisWithPeaks('roll', [
@@ -122,8 +137,8 @@ describe('scoreFFTQuality', () => {
 // ============================================================
 
 describe('scoreStepResponse', () => {
-  it('returns 50 when no events', () => {
-    expect(scoreStepResponse(makeEmptyStep())).toBe(50);
+  it('is null when no step events were found', () => {
+    expect(scoreStepResponse(makeEmptyStep())).toBeNull();
   });
 
   it('returns near 100 for perfect response', () => {
@@ -132,17 +147,17 @@ describe('scoreStepResponse', () => {
       pitch: [],
       yaw: [],
     };
-    const score = scoreStepResponse(step);
+    const score = stepScore(step);
     expect(score).toBeGreaterThanOrEqual(95);
   });
 
   it('penalizes slow rise time (>50ms)', () => {
-    const fast = scoreStepResponse({
+    const fast = stepScore({
       roll: [makeStepEvent({ riseTimeMs: 30 })],
       pitch: [],
       yaw: [],
     });
-    const slow = scoreStepResponse({
+    const slow = stepScore({
       roll: [makeStepEvent({ riseTimeMs: 100 })],
       pitch: [],
       yaw: [],
@@ -151,12 +166,12 @@ describe('scoreStepResponse', () => {
   });
 
   it('penalizes high overshoot (>20%)', () => {
-    const low = scoreStepResponse({
+    const low = stepScore({
       roll: [makeStepEvent({ overshootPercent: 10 })],
       pitch: [],
       yaw: [],
     });
-    const high = scoreStepResponse({
+    const high = stepScore({
       roll: [makeStepEvent({ overshootPercent: 60 })],
       pitch: [],
       yaw: [],
@@ -165,12 +180,12 @@ describe('scoreStepResponse', () => {
   });
 
   it('penalizes long settling time (>200ms)', () => {
-    const fast = scoreStepResponse({
+    const fast = stepScore({
       roll: [makeStepEvent({ settlingTimeMs: 100 })],
       pitch: [],
       yaw: [],
     });
-    const slow = scoreStepResponse({
+    const slow = stepScore({
       roll: [makeStepEvent({ settlingTimeMs: 500 })],
       pitch: [],
       yaw: [],
@@ -179,12 +194,12 @@ describe('scoreStepResponse', () => {
   });
 
   it('penalizes under-damped (dampingRatio < 0.5)', () => {
-    const good = scoreStepResponse({
+    const good = stepScore({
       roll: [makeStepEvent({ dampingRatio: 0.8 })],
       pitch: [],
       yaw: [],
     });
-    const under = scoreStepResponse({
+    const under = stepScore({
       roll: [makeStepEvent({ dampingRatio: 0.2 })],
       pitch: [],
       yaw: [],
@@ -193,17 +208,36 @@ describe('scoreStepResponse', () => {
   });
 
   it('penalizes over-damped (dampingRatio > 1.5)', () => {
-    const good = scoreStepResponse({
+    const good = stepScore({
       roll: [makeStepEvent({ dampingRatio: 0.8 })],
       pitch: [],
       yaw: [],
     });
-    const over = scoreStepResponse({
+    const over = stepScore({
       roll: [makeStepEvent({ dampingRatio: 3.0 })],
       pitch: [],
       yaw: [],
     });
     expect(over).toBeLessThan(good);
+  });
+});
+
+// ============================================================
+// computeTuneScore
+// ============================================================
+
+describe('computeTuneScore', () => {
+  it('weights the measured parts', () => {
+    expect(computeTuneScore({ tracking: 50, motors: 100, fft: 100, step: 100 })).toBe(80);
+  });
+
+  it('leaves unmeasured parts out instead of scoring them', () => {
+    expect(computeTuneScore({ tracking: null, motors: 90, fft: null, step: null })).toBe(90);
+    expect(computeTuneScore({ tracking: null, motors: 100, fft: 100, step: null })).toBe(100);
+  });
+
+  it('is null when nothing was measured', () => {
+    expect(computeTuneScore({ tracking: null, motors: null, fft: null, step: null })).toBeNull();
   });
 });
 
@@ -301,6 +335,30 @@ describe('detectIssues', () => {
     const overshoot = issues.filter((i) => i.title.includes('overshoot'));
     expect(overshoot.length).toBe(1);
     expect(overshoot[0].affectedAxis).toBe('roll');
+  });
+
+  it('reports undershoot as a slow response, not as overshoot', () => {
+    const step: StepResponseResult = {
+      roll: [makeStepEvent({ overshootPercent: 0, undershootPercent: 40 })],
+      pitch: [],
+      yaw: [],
+    };
+    const issues = detectIssues(makeCleanFFT(), step, makeGoodTracking(), makeMotorAnalysis(), 'good');
+    expect(issues.some((i) => i.title.includes('overshoot'))).toBe(false);
+    expect(issues.filter((i) => i.title === 'Slow response on roll')).toHaveLength(1);
+  });
+
+  it('does not report unmeasured tracking axes and names missing messages', () => {
+    const unmeasured = (axis: 'roll' | 'pitch' | 'yaw'): TrackingAxisResult => ({
+      axis, rmsError: null, phaseLagMs: null, score: null, desired: [], actual: [], error: [],
+    });
+    const tracking: TrackingQualityResult = {
+      roll: unmeasured('roll'), pitch: unmeasured('pitch'), yaw: unmeasured('yaw'), overallScore: null,
+    };
+    const issues = detectIssues(makeCleanFFT(), makeEmptyStep(), tracking, makeMotorAnalysis(), null, ['RATE']);
+    expect(issues.some((i) => i.title.includes('tracking'))).toBe(false);
+    expect(issues).toEqual([expect.objectContaining({ severity: 'info', title: 'Log data missing' })]);
+    expect(issues[0].description).toContain('RATE');
   });
 
   it('adds critical issue for bad vibration', () => {

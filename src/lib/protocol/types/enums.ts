@@ -84,7 +84,7 @@ export type UnifiedFlightMode =
   | "ORBIT"
   | "READY"
   | "PRECLAND"
-  | "RTGS"
+  | "VTOL_TAKEOFF"
   // Generic
   | "UNKNOWN";
 

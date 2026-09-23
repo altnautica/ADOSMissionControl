@@ -42,6 +42,26 @@ import {
   stopStream,
 } from "@/lib/video/webrtc-client";
 import { useVideoStore, type VideoTransport } from "@/stores/video-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+
+/**
+ * The node API key to present on `whepUrl`, or null. Sent only when the
+ * WHEP endpoint is on the connected agent's own origin: the key authorizes
+ * that node's front and must never travel to any other host (a manual
+ * SITL/Gazebo override, for one).
+ */
+function whepKeyFor(
+  whepUrl: string | null,
+  agentUrl: string | null,
+  apiKey: string | null,
+): string | null {
+  if (!whepUrl || !agentUrl || !apiKey) return null;
+  try {
+    return new URL(whepUrl).origin === new URL(agentUrl).origin ? apiKey : null;
+  } catch {
+    return null;
+  }
+}
 
 type TransportMode = "auto" | "lan-whep" | "p2p-mqtt" | "off";
 
@@ -89,6 +109,9 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
   const [state, setState] = useState<CascadeResult["state"]>("idle");
   const [activeTransport, setActiveTransport] = useState<VideoTransport>("unknown");
   const [error, setError] = useState<string | null>(null);
+  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
+  const agentApiKey = useAgentConnectionStore((s) => s.apiKey);
+  const whepApiKey = whepKeyFor(agentWhepUrl, agentUrl, agentApiKey);
 
   useEffect(() => {
     // Whether THIS effect run holds a hold on the shared session. Only a run
@@ -192,7 +215,7 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
           if (!agentWhepUrl) {
             throw new Error("LAN Direct unavailable: no agent WHEP URL");
           }
-          return await startStream(agentWhepUrl, modeController.signal);
+          return await startStream(agentWhepUrl, modeController.signal, whepApiKey);
         }
         if (mode === "p2p-mqtt") {
           if (!cloudDeviceId) {
@@ -313,6 +336,7 @@ export function useVideoTransportCascade(opts: CascadeOpts): CascadeResult {
     };
   }, [
     agentWhepUrl,
+    whepApiKey,
     cloudDeviceId,
     transportMode,
     videoEl,

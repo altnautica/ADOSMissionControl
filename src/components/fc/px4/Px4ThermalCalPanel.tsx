@@ -26,9 +26,9 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 
 const SENSOR_TYPES = [
-  { key: "A", label: "Accelerometer", enable: "TC_A_ENABLE" },
-  { key: "G", label: "Gyroscope", enable: "TC_G_ENABLE" },
-  { key: "B", label: "Barometer", enable: "TC_B_ENABLE" },
+  { key: "A", label: "Accelerometer", enable: "TC_A_ENABLE", trigger: "SYS_CAL_ACCEL" },
+  { key: "G", label: "Gyroscope", enable: "TC_G_ENABLE", trigger: "SYS_CAL_GYRO" },
+  { key: "B", label: "Barometer", enable: "TC_B_ENABLE", trigger: "SYS_CAL_BARO" },
 ] as const;
 
 const INSTANCES = [0, 1, 2] as const;
@@ -39,19 +39,27 @@ const ENABLE_OPTIONS = [
   { value: "1", label: "Enabled" },
 ];
 
-const CAL_TEMP_OPTIONS = [
-  { value: "-1", label: "-1: Do not calibrate" },
-  { value: "0", label: "0: Calibrate at next reboot" },
+const TRIGGER_OPTIONS = [
+  { value: "0", label: "Off" },
+  { value: "1", label: "Calibrate at next power-up" },
 ];
 
-// Core params + every per-instance field, all optional (present only on a PX4
-// build with thermal calibration compiled and run).
-const CORE_PARAMS = [
-  "TC_A_ENABLE",
-  "TC_G_ENABLE",
-  "TC_B_ENABLE",
-  "SYS_CAL_TEMP",
+/** Start-condition limits the onboard routine checks before it runs. */
+const LIMITS = [
+  { name: "SYS_CAL_TMIN", label: "Min Start Temp", unit: "°C" },
+  { name: "SYS_CAL_TMAX", label: "Max Start Temp", unit: "°C" },
+  { name: "SYS_CAL_TDEL", label: "Required Rise", unit: "°C" },
 ] as const;
+
+// PX4 starts thermal calibration at the next power-up for each sensor type
+// whose SYS_CAL_ACCEL / SYS_CAL_GYRO / SYS_CAL_BARO is 1, within the
+// SYS_CAL_TMIN..TMAX start window and until the temperature has risen by
+// SYS_CAL_TDEL. The per-instance TC_* fields exist only for instances that
+// have been calibrated, so they are optional.
+const CORE_PARAMS = [
+  ...SENSOR_TYPES.flatMap((t) => [t.enable, t.trigger]),
+  ...LIMITS.map((l) => l.name),
+];
 const INSTANCE_PARAMS = SENSOR_TYPES.flatMap((t) =>
   INSTANCES.flatMap((i) => FIELDS.map((f) => `TC_${t.key}${i}_${f}`)),
 );
@@ -100,10 +108,10 @@ export function Px4ThermalCalPanel() {
             error={error}
           />
 
-          {/* Enables + trigger */}
+          {/* Enables */}
           <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
             <h2 className="text-sm font-medium text-text-primary">Compensation</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {SENSOR_TYPES.map((t) => (
                 <Select
                   key={t.enable}
@@ -113,22 +121,43 @@ export function Px4ThermalCalPanel() {
                   onChange={(v) => setLocalValue(t.enable, Number(v))}
                 />
               ))}
-              {has("SYS_CAL_TEMP") && (
+            </div>
+          </div>
+
+          {/* Calibration trigger */}
+          <div className="border border-border-default bg-bg-secondary p-4 space-y-3">
+            <h2 className="text-sm font-medium text-text-primary">Run Calibration</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {SENSOR_TYPES.map((t) => (
                 <Select
-                  label="Calibrate on Boot (SYS_CAL_TEMP)"
-                  options={CAL_TEMP_OPTIONS}
-                  value={str("SYS_CAL_TEMP", "-1")}
-                  onChange={(v) => setLocalValue("SYS_CAL_TEMP", Number(v))}
+                  key={t.trigger}
+                  label={`${t.label} (${t.trigger})`}
+                  options={TRIGGER_OPTIONS}
+                  value={str(t.trigger)}
+                  onChange={(v) => setLocalValue(t.trigger, Number(v))}
                 />
-              )}
+              ))}
+              {LIMITS.map((l) => (
+                <Input
+                  key={l.name}
+                  label={`${l.label} (${l.name})`}
+                  type="number"
+                  step="1"
+                  unit={l.unit}
+                  value={str(l.name)}
+                  onChange={(e) => setLocalValue(l.name, Number(e.target.value) || 0)}
+                />
+              ))}
             </div>
             <div className="flex items-start gap-2 p-2 bg-accent-primary/5 border border-accent-primary/20">
               <Info size={12} className="text-accent-primary shrink-0 mt-0.5" />
               <p className="text-[10px] text-text-secondary">
-                Set &ldquo;Calibrate at next reboot&rdquo;, then reboot cold and
-                let the board heat up undisturbed. PX4 fits the compensation
-                polynomials automatically; the ranges below show what each sensor
-                was calibrated across.
+                Set the sensors to calibrate to &ldquo;Calibrate at next
+                power-up&rdquo;, save and write to flash, then power the board up
+                cold (between the min and max start temperatures) and let it heat
+                up undisturbed by at least the required rise. PX4 fits the
+                compensation polynomials and clears the trigger when done; the
+                ranges below show what each sensor was calibrated across.
               </p>
             </div>
           </div>

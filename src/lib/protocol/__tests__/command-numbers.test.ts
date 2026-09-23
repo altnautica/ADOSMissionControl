@@ -1,6 +1,6 @@
 /**
  * @module protocol/command-numbers.test
- * @description Pins the MAV_CMD numbers and load-bearing parameters of four
+ * @description Pins the MAV_CMD numbers and load-bearing parameters of
  * senders that commanded the wrong thing:
  *
  * - "bind receiver" sent 243 (PREFLIGHT_UAVCAN), whose param1 = 1 triggers a
@@ -11,6 +11,8 @@
  *   MAV_MOUNT_MODE_RETRACT, so commanding an angle stowed the gimbal.
  * - parameter reset passed -1 as PREFLIGHT_STORAGE's MISSION storage action,
  *   outside the enum, where 0 means "no action".
+ * - relay control sent 186 (DO_CHANGE_ALTITUDE), so switching a relay off
+ *   retargeted a plane's altitude, instead of 181 (DO_SET_RELAY).
  *
  * Command numbers are transcribed from the MAVLink MAV_CMD enum. The no-ack
  * senders are asserted on the bytes they actually put on the wire, decoded
@@ -26,6 +28,7 @@ import {
   cmdSetGeoFenceEnabled,
   cmdSetGimbalAngle,
   cmdResetParametersToDefault,
+  cmdSetRelay,
   cmdCommitParamsToFlash,
   type CommandContext,
 } from "../mavlink-adapter-commands";
@@ -35,10 +38,12 @@ import type { CommandResult } from "../types";
 
 /** From the MAVLink MAV_CMD enum. */
 const MAV_CMD = {
+  DO_CHANGE_ALTITUDE: 186,
   DO_FENCE_ENABLE: 207,
   DO_MOUNT_CONTROL: 205,
   PREFLIGHT_STORAGE: 245,
   PREFLIGHT_UAVCAN: 243,
+  DO_SET_RELAY: 181,
   START_RX_PAIR: 500,
 } as const;
 
@@ -114,6 +119,16 @@ describe("MAV_CMD numbers", () => {
     expect(sent[0].params.slice(0, 3)).toEqual([-30, 0, 90]);
     expect(sent[0].params[6]).toBe(MAV_MOUNT_MODE_MAVLINK_TARGETING);
     expect(sent[0].params[6]).not.toBe(MAV_MOUNT_MODE_RETRACT);
+  });
+
+  it("setRelay sends DO_SET_RELAY with instance and state, not DO_CHANGE_ALTITUDE", async () => {
+    const sent: Sent[] = [];
+    await cmdSetRelay(ctxCapturing(sent), 3, false);
+    await cmdSetRelay(ctxCapturing(sent), 0, true);
+    expect(sent.map((s) => s.command)).toEqual([MAV_CMD.DO_SET_RELAY, MAV_CMD.DO_SET_RELAY]);
+    expect(sent[0].command).not.toBe(MAV_CMD.DO_CHANGE_ALTITUDE);
+    expect(sent[0].params.slice(0, 2)).toEqual([3, 0]);
+    expect(sent[1].params.slice(0, 2)).toEqual([0, 1]);
   });
 });
 

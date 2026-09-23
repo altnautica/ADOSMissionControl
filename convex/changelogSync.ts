@@ -2,8 +2,7 @@
 
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
+import { renderChangelogBodyHtml } from "./lib/changelogHtml";
 
 const REPOS = [
   { owner: "altnautica", name: "ADOSMissionControl", label: "ADOS Mission Control" },
@@ -34,12 +33,6 @@ interface GroqCommitSummary {
   tags: string[];
 }
 
-// Configure marked for simple output (no GFM extensions that might break)
-marked.setOptions({
-  breaks: false,
-  gfm: true,
-});
-
 function getGithubHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
@@ -63,49 +56,11 @@ function getFullMessage(commit: GitHubCommit): string {
 }
 
 const VALID_TAGS = ["feature", "fix", "improvement", "refactor", "docs", "ui", "performance", "security"];
-const CHANGELOG_ALLOWED_TAGS = [
-  "a",
-  "blockquote",
-  "br",
-  "code",
-  "em",
-  "li",
-  "ol",
-  "p",
-  "pre",
-  "strong",
-  "ul",
-];
 
 function validateTags(tags: unknown): string[] {
   if (!Array.isArray(tags)) return ["improvement"];
   const valid = tags.filter((t): t is string => typeof t === "string" && VALID_TAGS.includes(t));
   return valid.length > 0 ? valid : ["improvement"];
-}
-
-function sanitizeChangelogHtml(html: string): string {
-  return sanitizeHtml(html, {
-    allowedTags: CHANGELOG_ALLOWED_TAGS,
-    allowedAttributes: {
-      a: ["href", "name", "target", "rel"],
-      code: ["class"],
-      pre: ["class"],
-    },
-    allowedSchemes: ["http", "https", "mailto"],
-    transformTags: {
-      a: sanitizeHtml.simpleTransform("a", {
-        rel: "noopener noreferrer",
-        target: "_blank",
-      }),
-    },
-  });
-}
-
-function escapePlainText(text: string): string {
-  return sanitizeHtml(text, {
-    allowedTags: [],
-    allowedAttributes: {},
-  });
 }
 
 /** Batch commits to Groq, get per-commit summaries */
@@ -241,16 +196,7 @@ async function processBatch(
     const body = summary.body || commit.commit.message.split("\n")[0];
     const tags = validateTags(summary.tags);
 
-    // Convert markdown body to HTML
-    let bodyHtml: string;
-    try {
-      const result = marked(body);
-      bodyHtml = sanitizeChangelogHtml(
-        typeof result === "string" ? result : await result,
-      );
-    } catch {
-      bodyHtml = `<p>${escapePlainText(body)}</p>`;
-    }
+    const bodyHtml = renderChangelogBodyHtml(body);
 
     const commitDate = Date.parse(commit.commit.author.date);
 

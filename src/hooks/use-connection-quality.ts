@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 
 type SignalQuality = "excellent" | "good" | "fair" | "poor" | "lost" | "unknown";
 
@@ -16,8 +16,14 @@ interface ConnectionQualityResult {
   txBuf: number;
   /** Noise floor */
   noise: number;
-  /** Overall signal quality rating */
+  /**
+   * Overall signal quality rating. "unknown" when no RADIO_STATUS has ever
+   * arrived; "lost" when the last one is older than the telemetry staleness
+   * window — a radio that stopped reporting is not a strong link.
+   */
   quality: SignalQuality;
+  /** True when a RADIO_STATUS was heard but has gone stale. */
+  stale: boolean;
   /** Signal strength as percentage (0-100) */
   signalStrength: number;
 }
@@ -35,30 +41,26 @@ function deriveQuality(strength: number, hasData: boolean): SignalQuality {
   return "lost";
 }
 
+const NO_READING = {
+  latencyMs: 0,
+  packetLoss: 0,
+  rssi: 0,
+  remoteRssi: 0,
+  txBuf: 0,
+  noise: 0,
+  signalStrength: 0,
+};
+
 export function useConnectionQuality(): ConnectionQualityResult {
-  const radio = useTelemetryStore((s) => s.radio);
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  void tick;
-
-  const latest = radio.latest();
+  // Fresh sample or undefined; re-renders on new telemetry and on the shared
+  // 1 Hz clock, so a dead link decays instead of freezing its last bars.
+  const latest = useFreshTelemetry("radio");
 
   if (!latest) {
-    return {
-      latencyMs: 0,
-      packetLoss: 0,
-      rssi: 0,
-      remoteRssi: 0,
-      txBuf: 0,
-      noise: 0,
-      quality: "unknown",
-      signalStrength: 0,
-    };
+    const heard = useTelemetryStore.getState().radio.latest() !== undefined;
+    return heard
+      ? { ...NO_READING, quality: "lost", stale: true }
+      : { ...NO_READING, quality: "unknown", stale: false };
   }
 
   const rssi = latest.rssi;
@@ -87,6 +89,7 @@ export function useConnectionQuality(): ConnectionQualityResult {
     txBuf,
     noise,
     quality,
+    stale: false,
     signalStrength,
   };
 }

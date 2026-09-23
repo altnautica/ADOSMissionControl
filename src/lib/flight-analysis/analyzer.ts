@@ -27,7 +27,34 @@ interface BatteryFrame { voltage: number; remaining: number }
 interface GpsFrame { fixType: number; satellites: number; hdop: number }
 interface VibrationFrame { vibrationX: number; vibrationY: number; vibrationZ: number }
 interface SysStatusFrame { batteryRemaining: number }
-interface EkfFrame { flags: number }
+interface EkfFrame {
+  flags?: number;
+  velocityVariance?: number;
+  posHorizVariance?: number;
+  posVertVariance?: number;
+  compassVariance?: number;
+}
+
+/** Variance fields checked against the EKF levels, with their labels. */
+const EKF_VARIANCE_FIELDS = [
+  ["velocityVariance", "velocity"],
+  ["posHorizVariance", "horizontal position"],
+  ["posVertVariance", "vertical position"],
+  ["compassVariance", "compass"],
+] as const;
+
+/**
+ * EKF_STATUS_FLAGS bits that report a fault. Every other bit reports a
+ * healthy estimate, so a healthy EKF sends a non-zero bitmask.
+ */
+const EKF_FAULT_BITS = [
+  { bit: 128, type: "ekf_const_pos_mode", severity: "warning", label: "EKF in constant position mode" },
+  { bit: 1024, type: "ekf_uninitialized", severity: "error", label: "EKF uninitialized" },
+  { bit: 32768, type: "ekf_gps_glitch", severity: "warning", label: "EKF reports GPS glitching" },
+] as const;
+
+/** Minimum spacing between two EKF variance events. */
+const EKF_VARIANCE_EVENT_SPACING_MS = 5000;
 
 export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
   const events: FlightEvent[] = [];
@@ -52,6 +79,8 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
   let maxVibrationRms = 0;
   let batteryStartPct: number | undefined;
   let batteryEndPct: number | undefined;
+  let lastEkfVarianceT = -Infinity;
+  let prevEkfFlags: number | undefined;
 
   // For battery sag (voltage drop within ~1 s)
   const batteryVoltageWindow: { t: number; v: number }[] = [];
@@ -190,16 +219,47 @@ export function analyzeFlight(frames: TelemetryFrame[]): AnalyzeResult {
       }
     } else if (frame.channel === "ekf") {
       const d = frame.data as EkfFrame;
-      if (typeof d.flags === "number" && d.flags !== 0) {
-        if (!events.some((e) => e.type === "ekf_variance" && Math.abs(e.t - t) < 5000)) {
-          events.push({
-            t,
-            type: "ekf_variance",
-            severity: "warning",
-            label: `EKF variance (flags=${d.flags})`,
-            data: { flags: d.flags },
-          });
+      let worstField: (typeof EKF_VARIANCE_FIELDS)[number] | undefined;
+      let worstValue = -Infinity;
+      for (const field of EKF_VARIANCE_FIELDS) {
+        const value = d[field[0]];
+        if (typeof value === "number" && value > worstValue) {
+          worstValue = value;
+          worstField = field;
         }
+      }
+      if (
+        worstField &&
+        worstValue >= THRESHOLDS.ekfVarianceWarn &&
+        t - lastEkfVarianceT >= EKF_VARIANCE_EVENT_SPACING_MS
+      ) {
+        events.push({
+          t,
+          type: "ekf_variance",
+          severity: worstValue >= THRESHOLDS.ekfVarianceError ? "error" : "warning",
+          label: `EKF ${worstField[1]} variance ${worstValue.toFixed(2)}`,
+          data: { field: worstField[0], value: worstValue },
+        });
+        lastEkfVarianceT = t;
+      }
+      // Fault bits are reported when they turn on. A bit already set on the
+      // first sample (a non-GPS flight in constant position mode) is the
+      // flight's normal state, not an event.
+      if (typeof d.flags === "number") {
+        if (prevEkfFlags !== undefined) {
+          for (const fault of EKF_FAULT_BITS) {
+            if ((d.flags & fault.bit) !== 0 && (prevEkfFlags & fault.bit) === 0) {
+              events.push({
+                t,
+                type: fault.type,
+                severity: fault.severity,
+                label: fault.label,
+                data: { flags: d.flags },
+              });
+            }
+          }
+        }
+        prevEkfFlags = d.flags;
       }
     }
   }

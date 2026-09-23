@@ -59,6 +59,8 @@ const DEFAULT_FRAME: AltitudeFrame = DEFAULT_ALTITUDE_FRAME;
 export interface FlatExportOptions {
   /** Mission default altitude frame for waypoints carrying none. */
   defaultFrame?: AltitudeFrame;
+  /** Mission default ground speed (m/s) for waypoints carrying none. */
+  defaultSpeed?: number;
   /**
    * The real home / launch position. When absent the first waypoint's
    * coordinates stand in as a PLANNED home at 0 m — a placeholder the format
@@ -81,6 +83,7 @@ function toFileItems(waypoints: readonly Waypoint[], opts?: FlatExportOptions): 
   const home = opts?.home ?? { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
   return expandToItems(waypoints, {
     defaultFrame: opts?.defaultFrame ?? DEFAULT_FRAME,
+    defaultSpeed: opts?.defaultSpeed,
     reserveHomeSlot: { lat: home.lat, lon: home.lon, alt: home.alt ?? 0 },
   });
 }

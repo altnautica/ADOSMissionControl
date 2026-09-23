@@ -208,6 +208,72 @@ describe('routeFrame — Heartbeat (ID 0)', () => {
     // A co-channel vehicle must not mask this drone's link loss by refreshing the timer.
     expect(s.lastVehicleHeartbeat).toBe(0);
   });
+
+  it('ignores a companion computer heartbeat on the vehicle sysid', () => {
+    // Armed FC locked at (1, 1); the companion sends ONBOARD_CONTROLLER,
+    // AUTOPILOT_INVALID, base_mode 0 from compid 191 every second.
+    const s = makeState({ lastVehicleHeartbeat: 0 });
+    const cb = vi.fn();
+    s.cbs.heartbeatCallbacks.push(cb);
+
+    const payload = makeHeartbeatPayload(0, 18, 0x00);
+    payload.setUint8(5, 8); // MAV_AUTOPILOT_INVALID
+    routeFrame(s, { ...makeFrame(0, payload), componentId: 191 }, new DataView(payload.buffer));
+
+    expect(cb).not.toHaveBeenCalled();
+    expect(s.lastVehicleHeartbeat).toBe(0);
+  });
+
+  it('ignores a gimbal heartbeat even when it shares the autopilot compid', () => {
+    const s = makeState({ lastVehicleHeartbeat: 0 });
+    const cb = vi.fn();
+    s.cbs.heartbeatCallbacks.push(cb);
+
+    const payload = makeHeartbeatPayload(0, 26, 0x00); // MAV_TYPE_GIMBAL
+    routeFrame(s, makeFrame(0, payload), new DataView(payload.buffer));
+
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it('ignores any other component on the vehicle sysid', () => {
+    const s = makeState({ lastVehicleHeartbeat: 0 });
+    const cb = vi.fn();
+    s.cbs.heartbeatCallbacks.push(cb);
+
+    const payload = makeHeartbeatPayload(0, 2, 0x00); // looks like a disarmed quad
+    routeFrame(s, { ...makeFrame(0, payload), componentId: 100 }, new DataView(payload.buffer));
+
+    expect(cb).not.toHaveBeenCalled();
+    expect(s.lastVehicleHeartbeat).toBe(0);
+  });
+});
+
+describe('routeFrame — AUTOPILOT_VERSION (ID 148)', () => {
+  function makeAutopilotVersionPayload(boardVersion: number): DataView {
+    const dv = makeDataView(78);
+    dv.setUint32(8, 0x04050000, true); // flight_sw_version 4.5.0
+    dv.setUint32(28, boardVersion, true);
+    return dv;
+  }
+
+  it('decodes the ArduPilot board id from the upper 16 bits of board_version', () => {
+    const s = makeState();
+    const cb = vi.fn();
+    s.cbs.autopilotVersionCallbacks.push(cb);
+
+    const payload = makeAutopilotVersionPayload((1106 << 16) >>> 0);
+    routeFrame(s, makeFrame(148, payload), payload);
+
+    expect(s.vehicleInfo?.boardId).toBe(1106);
+    expect(cb).toHaveBeenCalledWith(expect.objectContaining({ boardId: 1106, boardVersion: 1106 << 16 }));
+  });
+
+  it('reports no board id for firmware that does not encode one', () => {
+    const s = makeState({ firmwareHandler: makeFirmwareHandler({ firmwareType: 'px4' }) });
+    const payload = makeAutopilotVersionPayload(0x00000032);
+    routeFrame(s, makeFrame(148, payload), payload);
+    expect(s.vehicleInfo?.boardId).toBeUndefined();
+  });
 });
 
 describe('routeFrame — legacy MISSION_REQUEST (ID 40)', () => {

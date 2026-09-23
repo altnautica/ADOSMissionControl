@@ -12,7 +12,10 @@ export function describeReason(reason: string): string {
     case "firmware_not_supported":
       return "This firmware family does not expose a signing key store.";
     case "firmware_too_old":
-      return "This firmware version does not expose signing parameters. ArduPilot 4.0 or newer is required.";
+      // Only an older drone agent sends this: it gated support on SIGNING_*
+      // parameters that ArduPilot does not expose, so it says nothing about
+      // the firmware's age.
+      return "The drone agent could not confirm signing support on this flight controller. Update the drone agent and reconnect.";
     case "firmware_px4_no_persistent_store":
       return "PX4 supports the signing protocol but lacks a persistent on-board key store.";
     case "msp_protocol":

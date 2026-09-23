@@ -22,7 +22,7 @@ import { Modal } from "@/components/ui/modal";
 import { ParameterGrid } from "./ParameterGrid";
 import { WriteConfirmDialog } from "../shared/WriteConfirmDialog";
 import { ParameterSearchFilter } from "./ParameterSearchFilter";
-import { ParamCompare } from "./ParamCompare";
+import { ParamCompare, type ParamCompareApplied } from "./ParamCompare";
 import { ParamDefaultsDiff } from "./ParamDefaultsDiff";
 import { FavoritesQuickAccess } from "./FavoritesQuickAccess";
 import { useToast } from "@/components/ui/toast";
@@ -37,11 +37,10 @@ import { useMqttControlAuthority } from "@/hooks/use-mqtt-control-authority";
 import { useControlAuthorityNotice } from "@/hooks/use-node-control-authority";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
-import { confirmArmedParamWrite, writeParamToFc } from "@/lib/protocol/param-write";
-import { useParamSafetyStore } from "@/stores/param-safety-store";
+import { confirmArmedParamWrite, describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
 import { cn } from "@/lib/utils";
 import { ListTree, RefreshCw, SlidersHorizontal } from "lucide-react";
-import type { ParameterValue, DroneProtocol, CommandResult } from "@/lib/protocol/types";
+import type { ParameterValue, DroneProtocol } from "@/lib/protocol/types";
 import { exportParamFile } from "./param-file-io";
 
 /**
@@ -267,35 +266,25 @@ export function ParametersPanel() {
     if (!confirmed) return;
 
     setSaving(true); setError(null);
-    const failures: string[] = [];
     // Which names the FC actually acknowledged. A lossy link makes a batch
     // PARTIALLY land, and the grid has to show the vehicle's real state: the
     // writes that succeeded are no longer pending, and the ones that failed
     // still are. Reporting the whole batch as failed left all N rows marked
     // modified with their old values, so Save re-wrote what had already landed
     // and Revert silently discarded the record that the vehicle had changed.
-    const written = new Set<string>();
     setWriteProgress({ current: 0, total: entries.length });
-    for (let i = 0; i < entries.length; i++) {
-      const [name, value] = entries[i];
-      setWriteProgress({ current: i + 1, total: entries.length });
-      const param = paramsByName.get(name);
-      try {
-        // Shared write path: records the pending write and the reboot
-        // requirement, so this grid's own highlights and the reboot banner
-        // light exactly as they do for the identical write from an FC panel.
-        const result = await writeParamToFc({
-          writer: protocol,
-          name,
-          value,
-          oldValue: param?.value ?? 0,
-          panelId: PANEL_ID,
-          rebootRequired: metadata.get(name)?.rebootRequired,
-        });
-        if (result.success) written.add(name);
-        else failures.push(`${name}: ${result.message}`);
-      } catch { failures.push(`${name}: write failed`); }
-    }
+    const outcome = await writeParamBatch(
+      protocol,
+      entries.map(([name, value]) => ({
+        name,
+        value,
+        oldValue: paramsByName.get(name)?.value ?? 0,
+        rebootRequired: metadata.get(name)?.rebootRequired,
+      })),
+      PANEL_ID,
+      (current, total) => setWriteProgress({ current, total }),
+    );
+    const { written, failures } = outcome;
 
     // Commit what landed, whether or not the rest did.
     if (written.size > 0) {
@@ -317,36 +306,10 @@ export function ParametersPanel() {
       setError(`Failed to write ${failures.length} of ${entries.length} param(s): ${failures.join(", ")}`);
     }
 
-    if (written.size > 0) {
-      // Belt-and-braces PREFLIGHT_STORAGE: ArduPilot writes PARAM_SET straight
-      // to EEPROM, and this command is deliberately sent without waiting for an
-      // ack (`acknowledged: false`), so awaiting it does NOT block on the
-      // vehicle — it only reads what the send reported. Claiming "saved to
-      // flash" for a command nothing confirmed is the failure being fixed.
-      let flash: CommandResult | null = null;
-      try { flash = await protocol.commitParamsToFlash(); }
-      catch { flash = null; }
-      const flashOk = flash !== null && flash.success;
-      // Same bookkeeping usePanelParams does: the pending-write records clear
-      // only when a commit actually went out. A failed commit leaves the values
-      // RAM-only on the vehicle, which is precisely what "pending" means, so
-      // the grid's highlight has to stay lit.
-      if (flashOk) useParamSafetyStore.getState().commitFlash(true);
-      const wrote = `Wrote ${written.size}/${entries.length} parameter(s) to FC`;
-      if (!flashOk) {
-        toast(`${wrote} — flash commit FAILED, changes are RAM-only`, "error");
-      } else if (flash?.acknowledged === false) {
-        toast(`${wrote}; flash commit sent (unacknowledged)`, "info");
-      } else {
-        toast(`${wrote} and saved to flash`, "success");
-      }
-      // Only the parameters that landed can require a reboot.
-      if (entries.some(([name]) => written.has(name) && metadata.get(name)?.rebootRequired)) {
-        setShowRebootPrompt(true);
-      }
-    } else {
-      toast(`Failed to write ${failures.length} parameter(s)`, "error");
-    }
+    const summary = describeParamBatch(outcome);
+    toast(summary.message, summary.level);
+    // Only the parameters that landed can require a reboot.
+    if (outcome.rebootRequired) setShowRebootPrompt(true);
     setSaving(false); setWriteProgress({ current: 0, total: 0 });
   }, [modified, paramsByName, metadata, toast]);
 
@@ -393,7 +356,13 @@ export function ParametersPanel() {
     return map;
   }, [parameters, modified]);
 
-  const handleCompareApplied = useCallback(() => { setShowCompare(false); downloadParams(); }, [downloadParams]);
+  // Re-read the vehicle whenever any compare write landed; close the compare
+  // view only when all of it did, so the failures stay in front of the operator.
+  const handleCompareApplied = useCallback(({ allLanded, rebootRequired }: ParamCompareApplied) => {
+    if (allLanded) setShowCompare(false);
+    if (rebootRequired) setShowRebootPrompt(true);
+    downloadParams();
+  }, [downloadParams]);
 
   const handleExport = useCallback(() => {
     exportParamFile(parameters, modified, { format: "mp" });
@@ -501,7 +470,7 @@ export function ParametersPanel() {
         title={t("resetTitle")} message={t("resetMessage")}
         confirmLabel={t("resetConfirmLabel")} variant="danger" />
       <Modal open={showCompare} onClose={() => setShowCompare(false)} title={t("compareTitle")} className="max-w-3xl">
-        <ParamCompare fcParams={fcParamMap} onApplied={handleCompareApplied} />
+        <ParamCompare fcParams={fcParamMap} metadata={metadata} onApplied={handleCompareApplied} />
       </Modal>
       <Modal open={showDefaultsDiff} onClose={() => setShowDefaultsDiff(false)} title={t("compareDefaults")} className="max-w-3xl">
         <ParamDefaultsDiff parameters={parameters} modified={modified} metadata={metadata} />

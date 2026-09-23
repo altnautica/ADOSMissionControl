@@ -11,6 +11,7 @@ import type {
   VideoConfigResponse,
   WfbReceiverCombined,
   WfbReceiverRelay,
+  WfbReceiverRelays,
   WfbRelayStatus,
 } from "./types";
 import { gsRequest, type RequestContext } from "./request";
@@ -111,21 +112,54 @@ export function unpairDrone(ctx: RequestContext): Promise<UnpairResult> {
   });
 }
 
-/** Relay-side WFB fragment counters plus receiver reachability. */
-export function getWfbRelayStatus(ctx: RequestContext): Promise<WfbRelayStatus> {
-  return gsRequest<WfbRelayStatus>(ctx, "/api/v1/ground-station/wfb/relay/status");
+type Raw = Record<string, unknown>;
+const numOrNull = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+const strOrNull = (v: unknown): string | null => (typeof v === "string" ? v : null);
+const boolOrNull = (v: unknown): boolean | null => (typeof v === "boolean" ? v : null);
+
+/** Relay-side WFB fragment counters plus receiver reachability. A stale
+ *  answer carries nulls (or no keys at all); both read as null here. */
+export async function getWfbRelayStatus(ctx: RequestContext): Promise<WfbRelayStatus> {
+  const r = await gsRequest<Raw>(ctx, "/api/v1/ground-station/wfb/relay/status");
+  return {
+    role: r.role === "relay" ? "relay" : null,
+    drone_iface: strOrNull(r.drone_iface),
+    receiver_ip: strOrNull(r.receiver_ip),
+    receiver_port: numOrNull(r.receiver_port),
+    receiver_last_seen_ms: numOrNull(r.receiver_last_seen_ms),
+    fragments_seen: numOrNull(r.fragments_seen),
+    fragments_forwarded: numOrNull(r.fragments_forwarded),
+    up: boolOrNull(r.up),
+    mesh_iface: strOrNull(r.mesh_iface),
+    stale: r.stale === true,
+  };
 }
 
-/** Per-relay fragment counters on the receiver. */
-export function getWfbReceiverRelays(
+/** Per-relay fragment counters on the receiver; `relays` is null when stale. */
+export async function getWfbReceiverRelays(
   ctx: RequestContext,
-): Promise<{ relays: WfbReceiverRelay[] }> {
-  return gsRequest(ctx, "/api/v1/ground-station/wfb/receiver/relays");
+): Promise<WfbReceiverRelays> {
+  const r = await gsRequest<Raw>(ctx, "/api/v1/ground-station/wfb/receiver/relays");
+  const stale = r.stale === true;
+  return {
+    relays: !stale && Array.isArray(r.relays) ? (r.relays as WfbReceiverRelay[]) : null,
+    stale,
+  };
 }
 
-/** Combined FEC output stats on the receiver. */
-export function getWfbReceiverCombined(ctx: RequestContext): Promise<WfbReceiverCombined> {
-  return gsRequest<WfbReceiverCombined>(ctx, "/api/v1/ground-station/wfb/receiver/combined");
+/** Combined FEC output stats on the receiver; every counter is null when stale. */
+export async function getWfbReceiverCombined(
+  ctx: RequestContext,
+): Promise<WfbReceiverCombined> {
+  const r = await gsRequest<Raw>(ctx, "/api/v1/ground-station/wfb/receiver/combined");
+  return {
+    fragments_after_dedup: numOrNull(r.fragments_after_dedup),
+    fec_repaired: numOrNull(r.fec_repaired),
+    output_kbps: numOrNull(r.output_kbps),
+    up: boolOrNull(r.up),
+    stale: r.stale === true,
+  };
 }
 
 // ─── v0.16 pair surface ─────────────────────────────────────────
@@ -134,18 +168,25 @@ export function getWfbReceiverCombined(ctx: RequestContext): Promise<WfbReceiver
 // protocol. Direct REST against the agent's own listener (LAN, USB
 // tether, or Cloudflare tunnel) — no Convex hop needed.
 
+/** The agent holds the local-bind request open for up to 300 s before it
+ *  cancels the rendezvous and answers with the terminal session; the client
+ *  waits past that so the agent's own verdict always arrives. */
+export const LOCAL_BIND_TIMEOUT_MS = 310_000;
+
 /** Open a local-radio bind window. Synchronous: the agent runs the
  *  upstream wfb-ng protocol to completion and returns the terminal
- *  session shape (paired / failed / aborted). 60-second hard cap.
- *  HTTP 409 if a session is already in flight. */
+ *  session shape (paired / failed / aborted), holding the request open for
+ *  up to 300 s. HTTP 409 if a session is already in flight. */
 export function openLocalBind(
   ctx: RequestContext,
   options: { role?: "drone" | "gs"; peer_device_id?: string } = {},
 ): Promise<LocalBindSession> {
-  return gsRequest<LocalBindSession>(ctx, "/api/wfb/pair/local-bind", {
-    method: "POST",
-    body: JSON.stringify(options),
-  });
+  return gsRequest<LocalBindSession>(
+    ctx,
+    "/api/wfb/pair/local-bind",
+    { method: "POST", body: JSON.stringify(options) },
+    LOCAL_BIND_TIMEOUT_MS,
+  );
 }
 
 /** Snapshot of the most recent bind session, or `{}` if none has run. */

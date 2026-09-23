@@ -13,7 +13,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { X, RefreshCcw, Download, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,9 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [importing, setImporting] = useState(false);
   const [summary, setSummary] = useState<DataflashImportSummary | null>(null);
+  const [cancelled, setCancelled] = useState(false);
+  // Set by Cancel so the rejected download reads as a cancel, not a failure.
+  const cancelRequestedRef = useRef(false);
 
   const isMockOrDemo = isDemoMode() || !selectedDrone;
 
@@ -81,6 +84,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
       setSelectedIds(new Set());
       setProgress(null);
       setSummary(null);
+      setCancelled(false);
     }
   }, [open]);
 
@@ -103,18 +107,28 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
     setImporting(true);
     setError(null);
     setSummary(null);
+    setCancelled(false);
+    cancelRequestedRef.current = false;
 
+    let totalImported = 0;
+    let totalBytes = 0;
+    let rcInMissing = false;
     try {
-      let totalImported = 0;
-      let totalBytes = 0;
-      let rcInMissing = false;
       for (const id of selectedIds) {
-        setProgress({ logId: id, received: 0, total: logs?.find((l) => l.id === id)?.size ?? 0 });
+        // LOG_DATA carries no total, so the listed LOG_ENTRY size is both the
+        // progress denominator and the completeness check.
+        const expected = logs?.find((l) => l.id === id)?.size ?? 0;
+        setProgress({ logId: id, received: 0, total: expected });
         const buffer = await selectedDrone.protocol.downloadLog(id, (received, total) => {
-          setProgress({ logId: id, received, total });
+          setProgress({ logId: id, received, total: total > 0 ? total : expected });
         });
         if (buffer.byteLength === 0) {
           throw new Error(`Log ${id} downloaded with 0 bytes — flight controller may not have data for it.`);
+        }
+        if (expected > 0 && buffer.byteLength < expected) {
+          throw new Error(
+            `Log ${id} is incomplete: received ${fmtBytes(buffer.byteLength)} of ${fmtBytes(expected)}. Nothing was imported from it; download it again.`,
+          );
         }
         const result = await importDataflashLog(buffer, {
           sourceFilename: `log-${id}.bin`,
@@ -125,26 +139,28 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
         totalBytes += result.bytesParsed;
         if (result.rcInMissing) rcInMissing = true;
       }
-      setSummary({
-        flightsImported: totalImported,
-        bytesParsed: totalBytes,
-        resyncSkipped: 0,
-        rcInMissing,
-        paramCount: 0,
-      });
-      setProgress(null);
     } catch (err) {
-      setError((err as Error).message);
-      setProgress(null);
+      if (cancelRequestedRef.current) setCancelled(true);
+      else setError((err as Error).message);
     } finally {
+      // Logs fully imported before a cancel or failure stay reported.
+      if (totalImported > 0) {
+        setSummary({
+          flightsImported: totalImported,
+          bytesParsed: totalBytes,
+          resyncSkipped: 0,
+          rcInMissing,
+          paramCount: 0,
+        });
+      }
+      setProgress(null);
       setImporting(false);
     }
   }, [selectedDrone, selectedIds, logs, isArmed]);
 
   const handleCancel = useCallback(() => {
+    cancelRequestedRef.current = true;
     selectedDrone?.protocol.cancelLogDownload();
-    setImporting(false);
-    setProgress(null);
   }, [selectedDrone]);
 
   const toggleSelect = (id: number) => {
@@ -269,6 +285,12 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
           {error && (
             <div className="rounded border border-status-error/40 bg-status-error/10 px-3 py-2 text-[11px] text-status-error">
               {t("logBrowserParseError", { message: error })}
+            </div>
+          )}
+
+          {cancelled && (
+            <div className="rounded border border-border-default bg-bg-tertiary px-3 py-2 text-[11px] text-text-secondary">
+              Download cancelled. Nothing was imported from the cancelled log.
             </div>
           )}
 

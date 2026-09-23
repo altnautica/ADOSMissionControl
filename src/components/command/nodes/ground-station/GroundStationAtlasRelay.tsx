@@ -73,8 +73,9 @@ export function GroundStationAtlasRelay() {
 
   const status = snap.url === agentUrl ? snap.status : null;
 
-  // Only surface a card when a relay is actually running.
-  if (!status || !status.up) {
+  // Surface a card when a relay is running, or when the relay loop has gone
+  // quiet (stale): a dead relay must not read as "no relay active".
+  if (!status || (!status.stale && status.up !== true)) {
     return (
       <div className="p-4">
         <div className="text-[11px] text-text-tertiary text-center py-6 border border-border-default rounded-lg">
@@ -84,12 +85,18 @@ export function GroundStationAtlasRelay() {
     );
   }
 
+  const seen = status.datagramsSeen;
+  const forwarded = status.forwarded;
   const keepRate =
-    status.datagramsSeen > 0
-      ? Math.round((status.forwarded / status.datagramsSeen) * 100)
-      : 0;
+    seen !== null && forwarded !== null && seen > 0
+      ? `${Math.round((forwarded / seen) * 100)}%`
+      : "--";
   const isStale =
-    status.generatedAtMs > 0 && now - status.generatedAtMs > STALE_MS;
+    status.stale ||
+    (status.generatedAtMs !== null &&
+      status.generatedAtMs > 0 &&
+      now - status.generatedAtMs > STALE_MS);
+  const fmt = (v: number | null) => (v === null ? "--" : String(v));
 
   return (
     <div className="p-4">
@@ -111,10 +118,10 @@ export function GroundStationAtlasRelay() {
         <p className="text-[10px] text-text-tertiary">{t("relayForwarding")}</p>
 
         <div className={cn("grid grid-cols-4 gap-2", isStale && "opacity-50")}>
-          <Stat label={t("relaySeen")} value={String(status.datagramsSeen)} />
-          <Stat label={t("relayForwarded")} value={String(status.forwarded)} />
-          <Stat label={t("relayDropped")} value={String(status.malformed)} />
-          <Stat label={t("relayFailed")} value={String(status.forwardFailed)} />
+          <Stat label={t("relaySeen")} value={fmt(status.datagramsSeen)} />
+          <Stat label={t("relayForwarded")} value={fmt(status.forwarded)} />
+          <Stat label={t("relayDropped")} value={fmt(status.malformed)} />
+          <Stat label={t("relayFailed")} value={fmt(status.forwardFailed)} />
         </div>
 
         <div className="flex items-center justify-between border-t border-border-default pt-2">
@@ -122,7 +129,7 @@ export function GroundStationAtlasRelay() {
             {t("relayKeepRate")}
           </span>
           <span className="text-[10px] font-mono text-text-primary tabular-nums">
-            {keepRate}%
+            {keepRate}
           </span>
         </div>
 

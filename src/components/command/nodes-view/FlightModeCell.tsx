@@ -27,8 +27,7 @@ import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { safeTranslate } from "@/hooks/use-skill-toast-bridge";
 import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
-import { ModeReadout } from "./StateCells";
-import type { ReadingFreshness } from "./cell-primitives";
+import { ModeReadout, type FcReading } from "./StateCells";
 import {
   BOARD_MODE_SKILLS,
   type NodeSkills,
@@ -43,12 +42,12 @@ const DIVIDER_AFTER = BOARD_MODE_SKILLS.length - 1;
 
 export function FlightModeCell({
   telemetry,
-  freshness,
+  reading,
   skills,
   nodeName,
 }: {
   telemetry: CommandAgentSummary["telemetry"];
-  freshness: ReadingFreshness;
+  reading: FcReading;
   skills: NodeSkills;
   nodeName: string;
 }) {
@@ -91,7 +90,7 @@ export function FlightModeCell({
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
           )}
         >
-          <ModeReadout telemetry={telemetry} freshness={freshness} />
+          <ModeReadout telemetry={telemetry} reading={reading} />
           <ChevronDown size={11} className="text-text-tertiary" />
         </button>
       }

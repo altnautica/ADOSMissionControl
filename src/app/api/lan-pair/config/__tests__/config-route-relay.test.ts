@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The config proxy's relay lane: a drone reached only through a ground
  * station's WFB relay has no IP address of its own, so this route composing
@@ -48,7 +49,7 @@ function upstreamAnswers(status: number, body: string) {
 function envelope(payload: Record<string, unknown>) {
   return new Request("http://localhost/api/lan-pair/config", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", origin: "http://localhost" },
     body: JSON.stringify(payload),
   }) as unknown as Parameters<typeof POST>[0];
 }
@@ -287,7 +288,7 @@ describe("the client envelope and this route agree end to end", () => {
           return POST(
             new Request("http://localhost/api/lan-pair/config", {
               method: "POST",
-              headers: { "content-type": "application/json" },
+              headers: { "content-type": "application/json", origin: "http://localhost" },
               body: String(init.body),
             }) as unknown as Parameters<typeof POST>[0],
           );
@@ -341,7 +342,7 @@ describe("the client envelope and this route agree end to end", () => {
           return POST(
             new Request("http://localhost/api/lan-pair/config", {
               method: "POST",
-              headers: { "content-type": "application/json" },
+              headers: { "content-type": "application/json", origin: "http://localhost" },
               body: String(init.body),
             }) as unknown as Parameters<typeof POST>[0],
           );

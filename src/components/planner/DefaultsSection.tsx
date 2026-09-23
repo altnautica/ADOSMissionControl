@@ -45,7 +45,7 @@ export function DefaultsSection({
   useEffect(() => { setLocalRadius(String(defaultAcceptRadius)); }, [defaultAcceptRadius]);
 
   const FRAME_OPTIONS: { value: AltitudeFrame; label: string }[] = useMemo(() => [
-    { value: "relative", label: t("relativeAgl") },
+    { value: "relative", label: t("relativeHome") },
     { value: "absolute", label: t("absoluteMsl") },
     { value: "terrain", label: t("terrainFollowing") },
   ], [t]);

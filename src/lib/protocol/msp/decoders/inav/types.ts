@@ -93,19 +93,39 @@ export interface INavMisc {
   cellWarning: number;
 }
 
+/** The profiles the FC is flying, from MSP2_INAV_STATUS byte 8. */
+export interface INavActiveProfiles {
+  /** Control (PID and rate) profile, 0-based (low nibble). */
+  controlProfile: number;
+  /** Battery profile, 0-based (high nibble). */
+  batteryProfile: number;
+}
+
+/**
+ * MSP2_INAV_BATTERY_CONFIG. Voltage scale, voltage source and the current
+ * sensor fields are board-wide; cells, cell voltages and capacities belong to
+ * the active battery profile. Capacities are in the unit `capacityUnit` names
+ * (0 = mAh, 1 = mWh).
+ */
 export interface INavBatteryConfig {
+  /** vbat_scale. */
+  voltageScale: number;
+  voltageSource: number;
+  cells: number;
+  /** Cell-detect voltage (0.01 V). */
+  cellDetect: number;
+  /** Cell voltages (0.01 V). */
+  cellMin: number;
+  cellMax: number;
+  cellWarning: number;
+  /** Current sensor offset (mV). */
+  currentOffset: number;
+  /** Current sensor scale (0.1 mV/A). */
+  currentScale: number;
   capacityMah: number;
   capacityWarningMah: number;
   capacityCriticalMah: number;
   capacityUnit: number;
-  voltageSource: number;
-  cells: number;
-  cellDetect: number;
-  cellMin: number;
-  cellMax: number;
-  cellWarning: number;
-  currentScale: number;
-  currentOffset: number;
 }
 
 export interface INavRateProfile {
@@ -263,6 +283,31 @@ export interface INavPid {
   I: number;
   D: number;
   FF: number;
+}
+
+/** MSP2_INAV_CUSTOM_OSD_ELEMENTS: the FC's custom-element limits. */
+export interface INavCustomOsdElementsInfo {
+  /** Number of custom element slots. */
+  maxElements: number;
+  /** Text bytes carried per element. */
+  textLength: number;
+  /** Parts (type + value) per element. */
+  partCount: number;
+}
+
+/** One typed field of a custom OSD element (a part or the visibility rule). */
+export interface INavCustomOsdField {
+  type: number;
+  value: number;
+}
+
+/** MSP2_INAV_CUSTOM_OSD_ELEMENT: one custom element as the FC stores it. */
+export interface INavCustomOsdElement {
+  index: number;
+  parts: INavCustomOsdField[];
+  /** Visibility rule: type 0 always, 1 global variable, 2 logic condition. */
+  visibility: INavCustomOsdField;
+  text: string;
 }
 
 export interface INavFwApproach {

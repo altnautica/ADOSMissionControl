@@ -515,7 +515,16 @@ export function validateMission(
       } else if (action.command === "ROI" || action.command === "DO_SET_HOME") {
         const alat = action.lat ?? 0;
         const alon = action.lon ?? 0;
-        if (alat < -90 || alat > 90 || alon < -180 || alon > 180) {
+        if (alat === 0 && alon === 0) {
+          // 0,0 uploads as "clear the ROI" / a home in the ocean off Africa.
+          errors.push({
+            severity: "blocking",
+            code: "ACTION_NO_LOCATION",
+            message: `WP${i + 1}: ${action.command} has no location (0, 0); set its latitude and longitude`,
+            waypointIndex: i,
+            waypointId: wp.id,
+          });
+        } else if (alat < -90 || alat > 90 || alon < -180 || alon > 180) {
           errors.push({
             severity: "blocking",
             code: "INVALID_ACTION_COORDS",

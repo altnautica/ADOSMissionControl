@@ -46,12 +46,10 @@ export function MixerProfilePanel() {
   const [mixer, setMixer] = useState<INavMixer | null>(null);
   const [activeProfile, setActiveProfile] = useState(0);
 
-  const motorRules = useMixerStore((s) => s.motorRules);
-  const servoRules = useMixerStore((s) => s.servoRules);
   const mixerLoading = useMixerStore((s) => s.loading);
   const mixerError = useMixerStore((s) => s.error);
   const dirty = useMixerStore((s) => s.dirty);
-  const mixerLoaded = motorRules.length > 0 || servoRules.length > 0;
+  const mixerLoaded = useMixerStore((s) => s.loaded);
 
   const { loadFromFc, uploadToFc } = useMixerStore.getState();
 

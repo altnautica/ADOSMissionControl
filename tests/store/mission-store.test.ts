@@ -3,6 +3,12 @@ import { useMissionStore } from '@/stores/mission-store';
 import { clearHistory } from '@/lib/planner-history';
 import type { Waypoint } from '@/lib/types';
 import type { MissionItem } from '@/lib/protocol/types';
+import { useUploadReceiptsStore, receiptFor, receiptStatus } from '@/stores/upload-receipts-store';
+import { missionContentHash } from '@/lib/mission-upload';
+import { mspDownloadMission } from '@/lib/protocol/msp-adapter-commands';
+import { inavDownloadMission } from '@/lib/protocol/msp-adapter/inav/mission';
+import { INAV_MSP } from '@/lib/protocol/msp/msp-decoders-inav';
+import type { MspSerialQueue } from '@/lib/protocol/msp/msp-serial-queue';
 
 // A per-test-controllable selected protocol. `null` (the default) exercises the
 // no-connection early-return; a stub lets a test observe the flattened upload and
@@ -16,7 +22,12 @@ let mockProtocol: {
 // Mock dependencies
 vi.mock('@/stores/drone-manager', () => ({
   useDroneManager: {
-    getState: () => ({ getSelectedProtocol: () => mockProtocol }),
+    // The stub protocol is drone "d1", the selected drone.
+    getState: () => ({
+      getSelectedProtocol: () => mockProtocol,
+      selectedDroneId: mockProtocol ? 'd1' : null,
+      drones: new Map(mockProtocol ? [['d1', { protocol: mockProtocol }]] : []),
+    }),
     setState: vi.fn(),
   },
 }));
@@ -60,6 +71,7 @@ describe('mission-store', () => {
     // Undo/redo now lives in the shared coordinated timeline; drop it so each
     // test starts from a clean history.
     clearHistory();
+    useUploadReceiptsStore.setState({ receipts: {} });
   });
 
   it('initial state has empty waypoints', () => {
@@ -316,4 +328,100 @@ describe('mission-store', () => {
       expect.stringContaining('MAV_CMD 181'),
     ]);
   });
+
+  // ── Upload receipts ──────────────────────────────────────
+
+  function stubArduPilot(upload: () => Promise<{ success: boolean }> = async () => ({ success: true })) {
+    mockProtocol = {
+      uploadMission: upload,
+      downloadMission: async () => [],
+      getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
+    };
+  }
+
+  function missionStatus() {
+    return receiptStatus(
+      receiptFor('mission', 'd1'),
+      missionContentHash(useMissionStore.getState().waypoints),
+    );
+  }
+
+  it('a confirmed upload reads as on aircraft until the plan is edited', async () => {
+    stubArduPilot();
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    await useMissionStore.getState().uploadMission();
+    expect(missionStatus()).toBe('on-aircraft');
+
+    useMissionStore.getState().updateWaypoint('a', { lat: 13.01 });
+    expect(missionStatus()).toBe('older-on-aircraft');
+    // Another drone never inherits this drone's upload.
+    expect(receiptFor('mission', 'd2')).toBeUndefined();
+  });
+
+  it('a failed upload leaves no receipt, even over an earlier good one', async () => {
+    stubArduPilot();
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    await useMissionStore.getState().uploadMission();
+    stubArduPilot(async () => ({ success: false }));
+    expect(await useMissionStore.getState().uploadMission()).toBe(false);
+    expect(missionStatus()).toBe('unknown');
+  });
+
+  it('MISSION_CURRENT maps ArduPilot seq onto planner waypoints past the home slot', async () => {
+    stubArduPilot();
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    await useMissionStore.getState().uploadMission();
+    const at = (seq: number) => {
+      useMissionStore.getState().applyMissionCurrent('d1', seq);
+      return useMissionStore.getState().currentWaypoint;
+    };
+    expect(at(1)).toBe(0); // TAKEOFF
+    expect(at(4)).toBe(2); // B's DO_JUMP belongs to B
+    expect(at(5)).toBe(3); // RTL
+    expect(at(0)).toBeNull(); // the home slot is not a planner waypoint
+  });
+
+  it('MISSION_CURRENT reads as unknown without a matching receipt', async () => {
+    stubArduPilot();
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    useMissionStore.getState().applyMissionCurrent('d1', 1);
+    expect(useMissionStore.getState().currentWaypoint).toBeNull();
+
+    await useMissionStore.getState().uploadMission();
+    useMissionStore.getState().updateWaypoint('a', { lat: 13.01 });
+    useMissionStore.getState().applyMissionCurrent('d1', 1);
+    expect(useMissionStore.getState().currentWaypoint).toBeNull();
+    expect(useMissionStore.getState().progress).toBe(0);
+  });
+
+  it('a failed download keeps the local plan', async () => {
+    const plan = arduPilotPlan();
+    useMissionStore.setState({ waypoints: plan });
+    mockProtocol = {
+      uploadMission: async () => ({ success: true }),
+      downloadMission: async () => { throw new Error('MISSION_ITEM_INT timeout'); },
+      getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
+    };
+    await useMissionStore.getState().downloadMission();
+    expect(useMissionStore.getState().downloadState).toBe('error');
+    expect(useMissionStore.getState().waypoints).toEqual(plan);
+  });
+
+  it('an MSP firmware with no mission store rejects the download instead of returning an empty mission', async () => {
+    await expect(mspDownloadMission()).rejects.toThrow(/not supported/i);
+  });
+
+  it('an iNav read that fails part-way rejects instead of returning a short mission', async () => {
+    // WP_GETINFO reports 3 waypoints, then the first MSP_WP read times out.
+    const info = new Uint8Array([0, 3, 1, 0]);
+    const queue = {
+      send: vi.fn(async (cmd: number) => {
+        if (cmd === INAV_MSP.MSP_WP_GETINFO) return { payload: info };
+        throw new Error('MSP_WP timeout');
+      }),
+    } as unknown as MspSerialQueue;
+    await expect(inavDownloadMission(queue)).rejects.toThrow('MSP_WP timeout');
+    await expect(inavDownloadMission(null)).rejects.toThrow(/not connected/i);
+  });
 });
+

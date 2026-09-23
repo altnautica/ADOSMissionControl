@@ -47,14 +47,14 @@ export interface FFTBin {
 /** FFT result for a single axis. */
 export interface FFTAxisResult {
   axis: "roll" | "pitch" | "yaw";
-  /** Power spectral density bins. */
+  /** Averaged power spectrum bins (bounded by the segment length). */
   spectrum: FFTBin[];
   /** Sample rate in Hz (derived from log timestamps). */
   sampleRate: number;
-  /** Detected peaks sorted by magnitude (descending). */
+  /** Strongest distinct peaks sorted by magnitude (descending), capped. */
   peaks: FFTPeak[];
-  /** Average noise floor in dB. */
-  noiseFloorDb: number;
+  /** Median spectrum level in dB; null when the log holds no gyro samples. */
+  noiseFloorDb: number | null;
 }
 
 /** A peak detected in the FFT spectrum. */
@@ -85,8 +85,10 @@ export interface StepResponseEvent {
   axis: "roll" | "pitch" | "yaw";
   /** Time from 10% to 90% of target in ms. */
   riseTimeMs: number;
-  /** Peak overshoot as percentage of step size. */
+  /** Peak travel beyond the step target as a percentage of step size (0 when the target is never passed). */
   overshootPercent: number;
+  /** Shortfall of the peak response below the step target as a percentage of step size (0 when the target is reached). */
+  undershootPercent: number;
   /** Time to settle within 5% of target in ms. */
   settlingTimeMs: number;
   /** Damping ratio estimate (0 = undamped, 1 = critically damped). */
@@ -111,12 +113,12 @@ export interface StepResponseResult {
 /** Tracking quality for a single axis. */
 export interface TrackingAxisResult {
   axis: "roll" | "pitch" | "yaw";
-  /** RMS tracking error in deg/s. */
-  rmsError: number;
-  /** Estimated phase lag in ms. */
-  phaseLagMs: number;
-  /** Quality score 0-100 (higher = better tracking). */
-  score: number;
+  /** RMS tracking error in deg/s; null when the log holds no rate data for this axis. */
+  rmsError: number | null;
+  /** Estimated phase lag in ms; null when not measured. */
+  phaseLagMs: number | null;
+  /** Quality score 0-100 (higher = better tracking); null when not measured. */
+  score: number | null;
   /** Desired rate time series. */
   desired: TimeSample[];
   /** Actual rate time series. */
@@ -130,8 +132,8 @@ export interface TrackingQualityResult {
   roll: TrackingAxisResult;
   pitch: TrackingAxisResult;
   yaw: TrackingAxisResult;
-  /** Overall tracking score (average of per-axis scores). */
-  overallScore: number;
+  /** Overall tracking score (average of the measured axes); null when no axis was measured. */
+  overallScore: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,10 +156,10 @@ export interface MotorAnalysisResult {
 /** Combined motor analysis. */
 export interface MotorAnalysis {
   motors: MotorAnalysisResult[];
-  /** Imbalance score: how uneven the motors are (0 = perfect, 100 = severe). */
-  imbalanceScore: number;
-  /** Overall motor health score 0-100. */
-  healthScore: number;
+  /** Imbalance score: how uneven the motors are (0 = perfect, 100 = severe); null without motor output data. */
+  imbalanceScore: number | null;
+  /** Overall motor health score 0-100; null without motor output data. */
+  healthScore: number | null;
   /** Raw motor time series for charting. */
   timeSeries: MotorTimeSeries;
 }
@@ -206,9 +208,10 @@ export interface PidAnalysisResult {
   stepResponse: StepResponseResult;
   tracking: TrackingQualityResult;
   motors: MotorAnalysis;
-  vibration: VibrationSummary;
-  /** Overall tune quality score 0-100. */
-  tuneScore: number;
+  /** Vibration summary; null when the log holds no VIBE messages. */
+  vibration: VibrationSummary | null;
+  /** Overall tune quality score 0-100 over the measured parts; null when nothing was measured. */
+  tuneScore: number | null;
   /** List of identified issues. */
   issues: TuneIssue[];
 }
@@ -250,18 +253,19 @@ export interface AiAnalysisRequest {
   vehicleType: VehicleType;
   currentParams: Record<string, number>;
   analysisMetrics: {
-    tuneScore: number;
+    tuneScore: number | null;
     fftPeaks: { axis: string; frequency: number; magnitudeDb: number; zone: string }[];
     stepResponse: {
       axis: string;
       avgOvershoot: number;
+      avgUndershoot: number;
       avgRiseTime: number;
       avgSettlingTime: number;
       avgDamping: number;
     }[];
     tracking: { axis: string; rmsError: number; score: number }[];
-    motorImbalance: number;
-    vibrationLevel: string;
+    motorImbalance: number | null;
+    vibrationLevel: string | null;
     issues: { severity: string; title: string; description: string }[];
   };
 }

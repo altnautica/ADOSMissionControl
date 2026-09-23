@@ -19,9 +19,11 @@ import { useFollowMeStore } from "@/stores/follow-me-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useFlightShortcuts } from "@/hooks/use-flight-shortcuts";
 import { useSkillToastBridge } from "@/hooks/use-skill-toast-bridge";
+import { useToast } from "@/components/ui/toast";
 import { useShallow } from "zustand/react/shallow";
 import { buildSkillContext, activate } from "@/lib/skills";
 import type { SkillActivateArgs } from "@/lib/skills";
+import { TAKEOFF_ALTITUDE_M } from "@/lib/skills/builtins/takeoff";
 import { cn } from "@/lib/utils";
 
 
@@ -31,6 +33,7 @@ export function ActionsPanel() {
   // Every button here dispatches a skill; without the bridge a refusal
   // (pre-arm failure, no link, already armed) would be silent.
   useSkillToastBridge();
+  const { toast } = useToast();
   const armState = useDroneStore((s) => s.armState);
   const flightMode = useDroneStore((s) => s.flightMode);
   const previousMode = useDroneStore((s) => s.previousMode);
@@ -73,8 +76,24 @@ export function ActionsPanel() {
   };
   const fireArmToggle = () => fire(isArmed ? "disarm" : "arm");
   const fireTakeoff = () => {
-    const alt = parseFloat(takeoffAlt);
-    if (isNaN(alt) || alt <= 0) return;
+    // A typed value is not bound by the input's min/max, so the advertised
+    // range is enforced here before the confirm dialog opens.
+    const alt = Number(takeoffAlt);
+    if (
+      takeoffAlt.trim() === "" ||
+      !Number.isFinite(alt) ||
+      alt < TAKEOFF_ALTITUDE_M.min ||
+      alt > TAKEOFF_ALTITUDE_M.max
+    ) {
+      toast(
+        t("takeoffAltitudeOutOfRange", {
+          min: TAKEOFF_ALTITUDE_M.min,
+          max: TAKEOFF_ALTITUDE_M.max,
+        }),
+        "error",
+      );
+      return;
+    }
     fire("takeoff", { altitudeM: alt });
   };
   // Pause/Resume present as one mission-aware control; the skill it fires
@@ -94,7 +113,6 @@ export function ActionsPanel() {
     onLandConfirm: () => fire("land"),
     onAbortConfirm: () => fire("abort"),
     onPauseResume: firePauseResume,
-    takeoffAlt,
   });
 
   return (
@@ -205,14 +223,17 @@ export function ActionsPanel() {
           {hasAutonomousFlight && (
             <>
               <div className="flex-1 [&>*]:w-full">
-                <Tooltip content="Takeoff altitude (1-120m)" position="right">
+                <Tooltip
+                  content={`Takeoff altitude (${TAKEOFF_ALTITUDE_M.min}-${TAKEOFF_ALTITUDE_M.max}m)`}
+                  position="right"
+                >
                   <input
                     type="number"
                     value={takeoffAlt}
                     onChange={(e) => setTakeoffAlt(e.target.value)}
                     className="w-full h-7 px-1 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary text-center focus:outline-none focus:border-accent-primary"
-                    min="1"
-                    max="120"
+                    min={TAKEOFF_ALTITUDE_M.min}
+                    max={TAKEOFF_ALTITUDE_M.max}
                     step="1"
                   />
                 </Tooltip>

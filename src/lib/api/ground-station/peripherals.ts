@@ -67,13 +67,17 @@ export function listGamepads(ctx: RequestContext): Promise<GamepadList> {
   return gsRequest<GamepadList>(ctx, "/api/v1/ground-station/gamepads");
 }
 
+/** Select the primary gamepad (ados-control `gs_gamepad_write.rs`
+ * GamepadPrimaryUpdate: a required, non-empty `device_id`; there is no clear
+ * operation). The reply is `{primary_id, result}` and carries no device list,
+ * so callers reload the list with `listGamepads`. */
 export function setPrimaryGamepad(
   ctx: RequestContext,
-  deviceId: string | null,
-): Promise<GamepadList> {
-  return gsRequest<GamepadList>(ctx, "/api/v1/ground-station/gamepads/primary", {
+  deviceId: string,
+): Promise<{ primary_id: string; result: unknown }> {
+  return gsRequest(ctx, "/api/v1/ground-station/gamepads/primary", {
     method: "PUT",
-    body: JSON.stringify({ primary_id: deviceId }),
+    body: JSON.stringify({ device_id: deviceId }),
   });
 }
 

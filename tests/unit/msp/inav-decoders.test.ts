@@ -280,32 +280,6 @@ describe('decodeMspINavMisc', () => {
   })
 })
 
-// ── decodeMspINavBatteryConfig ────────────────────────────────
-
-describe('decodeMspINavBatteryConfig', () => {
-  it('decodes capacity and cell voltage fields', () => {
-    const bytes: number[] = [
-      ...le32(5000),  // capacityMah
-      ...le32(1000),  // capacityWarningMah
-      ...le32(500),   // capacityCriticalMah
-      0,              // capacityUnit
-      0,              // voltageSource
-      6,              // cells
-      0,              // cellDetect
-      ...le16(3300),  // cellMin (mV)
-      ...le16(4200),  // cellMax (mV)
-      ...le16(3700),  // cellWarning (mV)
-      ...le16(100),   // currentScale
-      ...le16(0),     // currentOffset
-    ]
-    const result = decodeMspINavBatteryConfig(dv(bytes))
-    expect(result.capacityMah).toBe(5000)
-    expect(result.cells).toBe(6)
-    expect(result.cellMin).toBe(3300)
-    expect(result.cellMax).toBe(4200)
-  })
-})
-
 // ── decodeMspINavRateProfile ──────────────────────────────────
 
 describe('decodeMspINavRateProfile', () => {

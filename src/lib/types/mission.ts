@@ -13,8 +13,8 @@ export interface Waypoint {
   id: string;
   lat: number;
   lon: number;
-  alt: number;         // meters AGL
-  speed?: number;      // m/s
+  alt: number;         // meters, in the waypoint's altitude frame (relative = above home)
+  speed?: number;      // m/s ground speed of the leg into this waypoint; absent = mission default
   holdTime?: number;   // seconds
   command?: WaypointCommand;
   param1?: number;

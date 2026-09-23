@@ -6,7 +6,7 @@ import type {
   EthernetConfig,
   EthernetConfigUpdate,
   ModemDetailStatus,
-  ModemStatus,
+  ModemView,
   ModemUpdate,
   NetworkStatus,
   ShareUplinkResult,
@@ -81,12 +81,14 @@ export function leaveWifiClient(ctx: RequestContext): Promise<WifiLeaveResult> {
   });
 }
 
-export function getModem(ctx: RequestContext): Promise<ModemStatus> {
-  return gsRequest<ModemStatus>(ctx, "/api/v1/ground-station/network/modem");
+export function getModem(ctx: RequestContext): Promise<ModemView> {
+  return gsRequest<ModemView>(ctx, "/api/v1/ground-station/network/modem");
 }
 
-export function setModem(ctx: RequestContext, update: ModemUpdate): Promise<ModemStatus> {
-  return gsRequest<ModemStatus>(ctx, "/api/v1/ground-station/network/modem", {
+/** Persist the modem config; the agent answers with the same view the read
+ * route serves, over the freshly-persisted config. */
+export function setModem(ctx: RequestContext, update: ModemUpdate): Promise<ModemView> {
+  return gsRequest<ModemView>(ctx, "/api/v1/ground-station/network/modem", {
     method: "PUT",
     body: JSON.stringify(update),
   });

@@ -5,14 +5,26 @@
  * @license GPL-3.0-only
  */
 
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import {
   requireCommandForDevice,
   requireOwnedCommand,
   requireOwnedDroneByDeviceId,
 } from "./cmdDroneAccess";
+import { settleInstallJobFromAck } from "./cmdPluginInstallJobs";
 import { relayCommandValidator } from "./commandVocabulary";
+
+/**
+ * Bounds on a caller-supplied delivery window. The ceiling keeps a queued
+ * flight command from executing long after the operator sent it; the floor
+ * leaves room for at least one agent poll.
+ */
+const MIN_COMMAND_TTL_MS = 1_000;
+const MAX_COMMAND_TTL_MS = 60_000;
+
+/** Result message for a row whose delivery window closed before the agent took it. */
+const EXPIRED_BEFORE_DELIVERY = "command expired: not delivered to the node in time";
 
 /**
  * Enqueue a command for a drone (called from GCS).
@@ -26,9 +38,25 @@ export const enqueueCommand = mutation({
     // command names the agent dispatcher acts on.
     command: relayCommandValidator,
     args: v.optional(v.any()),
+    // Delivery window in ms, measured on the server clock. A row the agent has
+    // not taken within it is never handed out: the poll fails it instead. Flight
+    // commands set it so one queued while the node was unreachable cannot
+    // execute when the node comes back.
+    ttlMs: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const drone = await requireOwnedDroneByDeviceId(ctx, args.deviceId);
+
+    const createdAt = Date.now();
+    let expiresAt: number | undefined;
+    if (args.ttlMs !== undefined) {
+      if (!Number.isFinite(args.ttlMs)) {
+        throw new Error("ttlMs must be a finite number of milliseconds");
+      }
+      expiresAt =
+        createdAt +
+        Math.min(Math.max(args.ttlMs, MIN_COMMAND_TTL_MS), MAX_COMMAND_TTL_MS);
+    }
 
     const id = await ctx.db.insert("cmd_droneCommands", {
       deviceId: args.deviceId,
@@ -36,7 +64,8 @@ export const enqueueCommand = mutation({
       command: args.command,
       args: args.args,
       status: "pending",
-      createdAt: Date.now(),
+      createdAt,
+      ...(expiresAt !== undefined ? { expiresAt } : {}),
     });
     return { commandId: id };
   },
@@ -56,21 +85,45 @@ const CLAIM_LEASE_MS = 60_000;
 const MAX_DELIVERY_ATTEMPTS = 5;
 
 /**
- * Get pending commands for a device (called by agent via HTTP).
+ * Hand the agent its deliverable commands (called by the agent's poll route).
  *
- * Read-only view of the queued + in-flight rows. Retained for callers that
- * only need to observe the queue; the at-most-once delivery path uses
- * {@link claimCommands}, which leases each row before the agent executes it.
+ * Returns the device's pending rows in queue order. A row whose delivery
+ * window has closed is never handed out: if the agent never received it, it is
+ * failed as expired; if it was handed out in time, it is left to its pending
+ * ack. The first hand-out of a row stamps `deliveredAt`, which is how a watcher
+ * tells "the node has it" apart from "still queued".
  */
-export const getPendingCommands = internalQuery({
+export const takeDeliverableCommands = internalMutation({
   args: { deviceId: v.string() },
   handler: async (ctx, { deviceId }) => {
-    return await ctx.db
+    const now = Date.now();
+    const pending = await ctx.db
       .query("cmd_droneCommands")
       .withIndex("by_deviceId_status", (q) =>
         q.eq("deviceId", deviceId).eq("status", "pending")
       )
       .collect();
+
+    const deliverable: Array<typeof pending[number]> = [];
+    for (const row of pending) {
+      if (row.expiresAt !== undefined && row.expiresAt <= now) {
+        if (row.deliveredAt === undefined) {
+          await ctx.db.patch(row._id, {
+            status: "failed",
+            result: { success: false, message: EXPIRED_BEFORE_DELIVERY },
+            completedAt: now,
+          });
+        }
+        continue;
+      }
+      if (row.deliveredAt === undefined) {
+        await ctx.db.patch(row._id, { deliveredAt: now });
+        deliverable.push({ ...row, deliveredAt: now });
+      } else {
+        deliverable.push(row);
+      }
+    }
+    return deliverable;
   },
 });
 
@@ -128,6 +181,21 @@ export const claimCommands = internalMutation({
 
     const claimed: Array<typeof candidates[number]> = [];
     for (const row of candidates) {
+      // A closed delivery window is final: the row is failed, never leased.
+      if (row.expiresAt !== undefined && row.expiresAt <= now) {
+        await ctx.db.patch(row._id, {
+          status: "failed",
+          result: {
+            success: false,
+            message:
+              row.status === "pending"
+                ? EXPIRED_BEFORE_DELIVERY
+                : "command expired: claimed by the node but never acknowledged",
+          },
+          completedAt: now,
+        });
+        continue;
+      }
       const nextAttempts = (row.attempts ?? 0) + 1;
       if (nextAttempts > MAX_DELIVERY_ATTEMPTS) {
         // Out of attempts: fail the row instead of re-leasing it so a
@@ -169,13 +237,14 @@ export const ackCommand = internalMutation({
     data: v.optional(v.any()),
   },
   handler: async (ctx, { commandId, deviceId, status, result, data }) => {
-    await requireCommandForDevice(ctx, commandId, deviceId);
+    const command = await requireCommandForDevice(ctx, commandId, deviceId);
     await ctx.db.patch(commandId, {
       status,
       result,
       data,
       completedAt: Date.now(),
     });
+    await settleInstallJobFromAck(ctx, command, { status, result, data });
     return { ok: true };
   },
 });

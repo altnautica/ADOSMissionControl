@@ -42,7 +42,10 @@ const PX4_MAIN_MODE = {
   RATTITUDE: 8,
 } as const
 
-/** PX4 auto sub-mode IDs (bits 0-15 of custom_mode). */
+/**
+ * PX4 AUTO sub-mode IDs (sub_mode byte when main_mode is AUTO). Sub 7 is
+ * reserved (formerly RTGS) and must never be commanded.
+ */
 const PX4_AUTO_SUB = {
   READY: 1,
   TAKEOFF: 2,
@@ -50,10 +53,15 @@ const PX4_AUTO_SUB = {
   MISSION: 4,
   RTL: 5,
   LAND: 6,
-  RTGS: 7,
   FOLLOW_TARGET: 8,
   PRECLAND: 9,
-  ORBIT: 10,
+  VTOL_TAKEOFF: 10,
+} as const
+
+/** PX4 POSCTL sub-mode IDs (sub_mode byte when main_mode is POSCTL). */
+const PX4_POSCTL_SUB = {
+  POSCTL: 0,
+  ORBIT: 1,
 } as const
 
 // ---------------------------------------------------------------------------
@@ -63,7 +71,8 @@ const PX4_AUTO_SUB = {
 const PX4_MODE_TABLE: ReadonlyArray<[number, number, UnifiedFlightMode]> = [
   [PX4_MAIN_MODE.MANUAL, 0, 'MANUAL'],
   [PX4_MAIN_MODE.ALTCTL, 0, 'ALT_HOLD'],
-  [PX4_MAIN_MODE.POSCTL, 0, 'POSHOLD'],
+  [PX4_MAIN_MODE.POSCTL, PX4_POSCTL_SUB.POSCTL, 'POSHOLD'],
+  [PX4_MAIN_MODE.POSCTL, PX4_POSCTL_SUB.ORBIT, 'ORBIT'],
   [PX4_MAIN_MODE.STABILIZED, 0, 'STABILIZE'],
   [PX4_MAIN_MODE.ACRO, 0, 'ACRO'],
   [PX4_MAIN_MODE.OFFBOARD, 0, 'OFFBOARD'],
@@ -75,17 +84,16 @@ const PX4_MODE_TABLE: ReadonlyArray<[number, number, UnifiedFlightMode]> = [
   [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.TAKEOFF, 'TAKEOFF'],
   [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.MISSION, 'MISSION'],
   [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.FOLLOW_TARGET, 'FOLLOW_ME'],
-  [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.ORBIT, 'ORBIT'],
   [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.READY, 'READY'],
   [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.PRECLAND, 'PRECLAND'],
-  [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.RTGS, 'RTGS'],
+  [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.VTOL_TAKEOFF, 'VTOL_TAKEOFF'],
 ]
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-// PX4 custom_mode is a packed union (mavros px4_custom_mode.h):
+// PX4 custom_mode is a packed union:
 //   bits  0-15 : reserved
 //   bits 16-23 : main_mode
 //   bits 24-31 : sub_mode
@@ -109,7 +117,7 @@ function decodeCustomMode(customMode: number): { main: number; sub: number } {
  * Firmware handler for PX4 autopilot.
  *
  * Handles PX4's custom_mode encoding where main_mode occupies bits 16-23
- * and sub_mode occupies bits 0-15.
+ * and sub_mode occupies bits 24-31.
  */
 class PX4Handler implements FirmwareHandler {
   readonly firmwareType: FirmwareType = 'px4'
@@ -161,9 +169,9 @@ class PX4Handler implements FirmwareHandler {
     return mainOnly ?? 'UNKNOWN'
   }
 
-  /** Return all flight modes available in PX4. */
+  /** Return the flight modes PX4 offers for this vehicle class. */
   getAvailableModes(): UnifiedFlightMode[] {
-    return [
+    const modes: UnifiedFlightMode[] = [
       'MANUAL',
       'STABILIZE',
       'ALT_HOLD',
@@ -180,6 +188,8 @@ class PX4Handler implements FirmwareHandler {
       'FOLLOW_ME',
       'ORBIT',
     ]
+    if (this.vehicleClass === 'vtol') modes.push('VTOL_TAKEOFF')
+    return modes
   }
 
   /** PX4 defaults to MANUAL. */

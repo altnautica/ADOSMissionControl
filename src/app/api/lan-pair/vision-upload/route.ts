@@ -10,15 +10,19 @@
  * The browser POSTs a `multipart/form-data` body carrying `host`,
  * `apiKey`, `file`, and `metadata` (a JSON string). The server reads the
  * routing fields, rebuilds a clean multipart with just `file` + `metadata`,
- * and forwards it with the `X-ADOS-Key` header. The agent's response body
- * and status are returned verbatim.
+ * and forwards it with the `X-ADOS-Key` header. The agent's JSON body and
+ * status are returned unchanged (see `../_proxy`).
  *
  * @license GPL-3.0-only
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { normaliseAndCheckHost } from "@/lib/agent/host-validation";
-import { ipv4FetchBase } from "../_ipv4";
+import type { NextRequest } from "next/server";
+import {
+  checkAgentHost,
+  proxyError,
+  proxyToAgent,
+  readFormEnvelope,
+} from "../_proxy";
 
 export const runtime = "nodejs";
 
@@ -26,40 +30,19 @@ export const runtime = "nodejs";
 const UPSTREAM_TIMEOUT_MS = 120000;
 
 export async function POST(req: NextRequest) {
-  let form: FormData;
-  try {
-    form = await req.formData();
-  } catch {
-    return NextResponse.json(
-      { error: "bad_form", message: "Request body must be multipart/form-data" },
-      { status: 400 },
-    );
-  }
-
-  const host = String(form.get("host") ?? "").trim();
-  const target = normaliseAndCheckHost(host);
-  if ("error" in target) {
-    return NextResponse.json(
-      { error: target.error, message: target.message },
-      { status: 400 },
-    );
-  }
-
-  const apiKey = String(form.get("apiKey") ?? "").trim();
+  const env = await readFormEnvelope(req);
+  if ("reject" in env) return env.reject;
+  const { form } = env;
+  const host = checkAgentHost(String(form.get("host") ?? "").trim());
+  if ("reject" in host) return host.reject;
 
   const file = form.get("file");
   if (!(file instanceof File)) {
-    return NextResponse.json(
-      { error: "file_required", message: "file is required" },
-      { status: 400 },
-    );
+    return proxyError(400, "file_required", "file is required");
   }
   const metadata = form.get("metadata");
   if (typeof metadata !== "string") {
-    return NextResponse.json(
-      { error: "metadata_required", message: "metadata json is required" },
-      { status: 400 },
-    );
+    return proxyError(400, "metadata_required", "metadata json is required");
   }
 
   // Rebuild a clean upstream form so the routing-only fields (host/apiKey)
@@ -68,32 +51,12 @@ export async function POST(req: NextRequest) {
   upstreamForm.append("file", file, file.name);
   upstreamForm.append("metadata", metadata);
 
-  try {
-    const base = await ipv4FetchBase(target);
-    const upstream = await fetch(`${base}/api/vision/models/upload`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        ...(apiKey ? { "X-ADOS-Key": apiKey } : {}),
-      },
-      body: upstreamForm,
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    });
-    const body = await upstream.text();
-    return new NextResponse(body, {
-      status: upstream.status,
-      headers: {
-        "content-type":
-          upstream.headers.get("content-type") ?? "application/json",
-      },
-    });
-  } catch (e) {
-    return NextResponse.json(
-      {
-        error: "upstream_unreachable",
-        message: e instanceof Error ? e.message : String(e),
-      },
-      { status: 502 },
-    );
-  }
+  return proxyToAgent({
+    target: host.target,
+    path: "/api/vision/models/upload",
+    method: "POST",
+    apiKey: String(form.get("apiKey") ?? "").trim(),
+    form: upstreamForm,
+    timeoutMs: UPSTREAM_TIMEOUT_MS,
+  });
 }

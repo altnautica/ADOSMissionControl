@@ -139,6 +139,36 @@ export function pollPicHeartbeat(
   };
 }
 
+/** Fold one `/ws/pic` frame into the PIC slice. A claim makes `client_id` the
+ * holder; a release or a holder disconnect leaves PIC unclaimed; an error
+ * frame surfaces the arbiter being unreachable. */
+export function applyPicEvent(
+  current: GroundStationState["pic"],
+  event: PicEvent,
+): GroundStationState["pic"] {
+  switch (event.event) {
+    case "claimed":
+      return {
+        ...current,
+        state: "claimed",
+        claimed_by: event.client_id,
+        claim_counter: event.claim_counter,
+        error: null,
+      };
+    case "released":
+    case "disconnected":
+      return {
+        ...current,
+        state: "unclaimed",
+        claimed_by: null,
+        claim_counter: event.claim_counter,
+        error: null,
+      };
+    case "error":
+      return { ...current, error: event.message || event.code };
+  }
+}
+
 export function subscribePicWs(
   api: GroundStationApi,
   set: Setter,
@@ -146,31 +176,7 @@ export function subscribePicWs(
 ): () => void {
   return api.subscribePicEvents((event: PicEvent) => {
     const current = get().pic;
-    if (event.type === "state" || event.type === "claimed" || event.type === "released") {
-      set({
-        pic: {
-          ...current,
-          state: (event as { state?: string }).state ?? current.state,
-          claimed_by:
-            (event as { claimed_by?: string | null }).claimed_by !== undefined
-              ? ((event as { claimed_by: string | null }).claimed_by)
-              : current.claimed_by,
-          claim_counter:
-            (event as { claim_counter?: number }).claim_counter ?? current.claim_counter,
-          primary_gamepad_id:
-            (event as { primary_gamepad_id?: string | null }).primary_gamepad_id !== undefined
-              ? ((event as { primary_gamepad_id: string | null }).primary_gamepad_id)
-              : current.primary_gamepad_id,
-        },
-      });
-    } else if (event.type === "gamepad_changed") {
-      set({
-        pic: {
-          ...current,
-          primary_gamepad_id:
-            (event as { primary_gamepad_id?: string | null }).primary_gamepad_id ?? null,
-        },
-      });
-    }
+    const next = applyPicEvent(current, event);
+    if (next !== current) set({ pic: next });
   });
 }

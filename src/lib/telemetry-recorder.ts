@@ -130,6 +130,8 @@ const DEFAULT_SLOT = "__default__";
 const MAX_FRAMES = 500_000;
 
 const _slots = new Map<string, RecorderSlot>();
+/** Mirror slot keys fed by a drone's frame stream, keyed by drone id. */
+const _mirrors = new Map<string, Set<string>>();
 
 function newSlot(droneId?: string, droneName?: string): RecorderSlot {
   return {
@@ -173,7 +175,17 @@ export function startRecordingFor(droneId: string, droneName?: string): string {
  */
 export function recordFrameFor(droneId: string, channel: string, data: unknown): void {
   const slot = _slots.get(droneId);
-  if (!slot || slot.state !== "recording") return;
+  if (slot) appendFrame(slot, channel, data);
+  const mirrors = _mirrors.get(droneId);
+  if (!mirrors) return;
+  for (const key of mirrors) {
+    const mirror = _slots.get(key);
+    if (mirror) appendFrame(mirror, channel, data);
+  }
+}
+
+function appendFrame(slot: RecorderSlot, channel: string, data: unknown): void {
+  if (slot.state !== "recording") return;
   if (slot.frames.length >= MAX_FRAMES) return;
 
   if (!CAP_BYPASS_CHANNELS.has(channel)) {
@@ -191,6 +203,27 @@ export function recordFrameFor(droneId: string, channel: string, data: unknown):
     channel,
     data,
   });
+}
+
+/**
+ * Start a recording in its own slot (`slotKey`) that is fed from
+ * {@link droneId}'s frame stream, independent of that drone's own slot. Used
+ * for recordings a plugin starts: stopping it never touches the drone's
+ * flight recording, and the flight recording never stops it. The recording
+ * carries {@link droneId} as its drone. Stop it with `stopRecordingFor(slotKey)`.
+ *
+ * @throws if a recording is already in progress for this slot.
+ */
+export function startMirrorRecording(slotKey: string, droneId: string, droneName?: string): string {
+  if (_slots.get(slotKey)?.state === "recording") {
+    throw new Error(`Already recording for ${slotKey}`);
+  }
+  const slot = newSlot(droneId, droneName);
+  _slots.set(slotKey, slot);
+  const mirrors = _mirrors.get(droneId) ?? new Set<string>();
+  mirrors.add(slotKey);
+  _mirrors.set(droneId, mirrors);
+  return slot.recordingId;
 }
 
 /**
@@ -322,6 +355,11 @@ async function finalizeSlot(slotKey: string, slot: RecorderSlot): Promise<Teleme
   await idbSet(IDB_RECORDINGS_INDEX, index);
 
   _slots.delete(slotKey);
+  if (slot.droneId !== undefined) {
+    const mirrors = _mirrors.get(slot.droneId);
+    mirrors?.delete(slotKey);
+    if (mirrors?.size === 0) _mirrors.delete(slot.droneId);
+  }
   return recording;
 }
 

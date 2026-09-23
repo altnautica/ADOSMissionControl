@@ -39,13 +39,20 @@ export function PluginConfirmHost() {
 
   useEffect(() => {
     setPluginConfirmHandler(
-      (req: PluginConfirmRequest) =>
+      (req: PluginConfirmRequest, signal: AbortSignal) =>
         new Promise<boolean>((resolve) => {
           // Re-entrancy guard: a new request denies any prior pending one so
           // two dialogs never render at once.
           const prior = pendingRef.current;
           if (prior) prior.resolve(false);
-          setPending({ req, resolve });
+          const entry: Pending = { req, resolve };
+          // The confirm window lapsed: drop this dialog (only if it is still
+          // the one showing) so a late click can never approve it.
+          signal.addEventListener("abort", () => {
+            resolve(false);
+            setPending((cur) => (cur === entry ? null : cur));
+          });
+          setPending(entry);
         }),
     );
     return () => {
@@ -70,7 +77,7 @@ export function PluginConfirmHost() {
       open
       onCancel={() => settle(false)}
       onConfirm={() => settle(true)}
-      title={pending.req.title}
+      title={`${pending.req.title} — ${pending.req.targetName}`}
       message={pending.req.body}
       variant={severity === "critical" ? "danger" : "primary"}
     />

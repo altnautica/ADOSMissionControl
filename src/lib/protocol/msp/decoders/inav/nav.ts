@@ -254,31 +254,27 @@ export function decodeMspINavMisc(dv: DataView): INavMisc {
 // ── iNav FW APPROACH decoder ──────────────────────────────────
 
 /**
- * MSP2_INAV_FW_APPROACH (0x204a)
+ * MSP2_INAV_FW_APPROACH (0x204a) reply for one requested slot, 15 bytes:
  *
- * Repeated per approach:
  *   U8  number
  *   S32 approachAlt (cm)
  *   S32 landAlt (cm)
- *   U8  approachDirection
+ *   U8  approachDirection (0 = left, 1 = right)
  *   S16 landHeading1 (degrees)
  *   S16 landHeading2 (degrees)
  *   U8  isSeaLevelRef (bool)
  */
-export function decodeMspINavFwApproach(dv: DataView): INavFwApproach[] {
-  const result: INavFwApproach[] = [];
-  let offset = 0;
-  while (offset + 14 <= dv.byteLength) {
-    result.push({
-      number: readU8(dv, offset),
-      approachAlt: readS32(dv, offset + 1),
-      landAlt: readS32(dv, offset + 5),
-      approachDirection: readU8(dv, offset + 9),
-      landHeading1: readS16(dv, offset + 10),
-      landHeading2: readS16(dv, offset + 12),
-      isSeaLevelRef: dv.byteLength > offset + 14 ? readU8(dv, offset + 14) !== 0 : false,
-    });
-    offset += 15;
+export function decodeMspINavFwApproach(dv: DataView): INavFwApproach {
+  if (dv.byteLength < 15) {
+    throw new RangeError(`FW approach reply is ${dv.byteLength} bytes, expected 15`);
   }
-  return result;
+  return {
+    number: readU8(dv, 0),
+    approachAlt: readS32(dv, 1),
+    landAlt: readS32(dv, 5),
+    approachDirection: readU8(dv, 9),
+    landHeading1: readS16(dv, 10),
+    landHeading2: readS16(dv, 12),
+    isSeaLevelRef: readU8(dv, 14) !== 0,
+  };
 }

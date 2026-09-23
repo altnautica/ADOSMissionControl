@@ -33,13 +33,15 @@ import * as inav from './msp-adapter-inav'
 import { SettingsClient } from './msp/settings'
 import { BfCliSession } from './msp/bf-cli'
 import { makeCliSettingsCapability } from './msp/bf-cli-settings'
-import { decodeMspSerialConfig, decodeMspSerialConfig2, type MspSerialPort } from './msp/decoders/config/serial'
-import { decodeMspRxConfig, decodeMspRxMap, type BfRxConfig } from './msp/decoders/config/rx'
-import { encodeMspSetSerialConfig, encodeMspSetSerialConfig2, encodeMspSendDshotCommand, encodeMspSetRxConfig, encodeMspSetRxMap } from './msp/encoders/config'
-import { decodeMspOsdConfig, type MspOsdConfig } from './msp/decoders/config/osd'
-import { decodeMspLedStripConfig, decodeMspLedColors, decodeMspLedStripModeColors, type HsvColor, type BfLedModeColor } from './msp/decoders/config/led'
+import * as bf from './msp-adapter/bf-config'
+import * as ranges from './msp-adapter/ranges'
+import type { MspSerialPort } from './msp/decoders/config/serial'
+import type { BfRxConfig } from './msp/decoders/config/rx'
+import type { MspOsdConfig, MspOsdGeneralConfig } from './msp/decoders/config/osd'
+import type { HsvColor, BfLedModeColor } from './msp/decoders/config/led'
 import { decodeMspDisplayPort, type DisplayPortOp } from './msp/decoders/config/displayport'
-import { encodeMspSetOsdConfig, encodeMspOsdCharWrite, encodeMspSetLedStripConfigEntry, encodeMspSetLedColors, encodeMspSetLedStripModeColor } from './msp/encoders/osd-led'
+import type { MspAdjustmentRange, MspModeBox, MspModeRange } from './msp/msp-decoders-status'
+import { decodeMspBoardInfo } from './msp/msp-decoders-status'
 import {
   getFlashSummary,
   downloadBlackboxLog,
@@ -60,7 +62,9 @@ import type {
   INavTempSensorConfigEntry,
   MotorMixerRule,
   INavServoMixerRule,
+  INavFwApproach,
 } from './msp/msp-decoders-inav'
+import { INAV_LIMITS } from './msp/decoders/inav/constants'
 
 function u8(buf: Uint8Array, offset: number): number { return buf[offset] }
 
@@ -152,7 +156,8 @@ export class MSPAdapter implements DroneProtocol {
     const vP = versionFrame.payload
     const firmwareVersionString = `${variantStr} ${u8(vP, 0)}.${u8(vP, 1)}.${u8(vP, 2)} (MSP API ${apiVersionMajor}.${apiVersionMinor})`
 
-    await this.queue.send(MSP.MSP_BOARD_INFO)
+    const boardInfoFrame = await this.queue.send(MSP.MSP_BOARD_INFO)
+    const boardInfo = decodeMspBoardInfo(new DataView(boardInfoFrame.payload.buffer, boardInfoFrame.payload.byteOffset, boardInfoFrame.payload.byteLength))
 
     const boxNamesFrame = await this.queue.send(MSP.MSP_BOXNAMES)
     const boxNames = String.fromCharCode(...boxNamesFrame.payload).split(';').filter(n => n.length > 0)
@@ -203,6 +208,7 @@ export class MSPAdapter implements DroneProtocol {
       firmwareType: isBetaflight ? 'betaflight' : isInav ? 'inav' : 'unknown',
       vehicleClass: 'copter', firmwareVersionString,
       systemId: 0, componentId: 0, autopilotType: 0, vehicleType: 0,
+      gyroSampleRateHz: boardInfo.gyroSampleRateHz,
     }
     this.vehicleInfo = info
 
@@ -286,60 +292,125 @@ export class MSPAdapter implements DroneProtocol {
     return { ok: false, reason: 'rejected' }
   }
 
+  /**
+   * Run a config write, then MSP_EEPROM_WRITE. MSP config writes only change
+   * the FC's RAM, so without the EEPROM write every change is lost at the
+   * next power cycle. The result is a success only when both steps succeed.
+   */
+  private async persist(write: () => Promise<CommandResult>): Promise<CommandResult> {
+    const result = await write()
+    if (!result.success) return result
+    const saved = await cmds.mspCommitParamsToFlash(this.cmdCtx)
+    if (!saved.success) {
+      return { success: false, resultCode: -1, message: `Written to the flight controller's RAM but not saved: ${saved.message}` }
+    }
+    return result
+  }
+
+  /** `persist` for uploads that report failure by throwing. */
+  private async persistOrThrow(write: () => Promise<void>): Promise<void> {
+    const result = await this.persist(async () => { await write(); return { success: true, resultCode: 0, message: 'OK' } })
+    if (!result.success) throw new Error(result.message)
+  }
+
   // ── iNav-specific methods ────────────────────────────────────
-  async downloadSafehomes(): Promise<INavSafehome[]> {
-    return inav.inavDownloadSafehomes(this.queue)
-  }
-
-  async uploadSafehomes(safehomes: INavSafehome[]): Promise<CommandResult> {
-    return inav.inavUploadSafehomes(this.queue, safehomes)
-  }
-
-  async downloadGeozones(): Promise<{ zones: INavGeozone[]; vertices: INavGeozoneVertex[] }> {
-    return inav.inavDownloadGeozones(this.queue)
-  }
-
-  async uploadGeozones(zones: INavGeozone[], vertices: INavGeozoneVertex[]): Promise<CommandResult> {
-    return inav.inavUploadGeozones(this.queue, zones, vertices)
-  }
+  async downloadSafehomes(): Promise<INavSafehome[]> { return inav.inavDownloadSafehomes(this.queue) }
+  async uploadSafehomes(safehomes: INavSafehome[]): Promise<CommandResult> { return this.persist(() => inav.inavUploadSafehomes(this.queue, safehomes)) }
+  async downloadGeozones(): Promise<{ zones: INavGeozone[]; vertices: INavGeozoneVertex[] }> { return inav.inavDownloadGeozones(this.queue) }
+  async uploadGeozones(zones: INavGeozone[], vertices: INavGeozoneVertex[]): Promise<CommandResult> { return this.persist(() => inav.inavUploadGeozones(this.queue, zones, vertices)) }
 
   async getBatteryConfig(): Promise<INavBatteryConfig> { return inav.inavGetBatteryConfig(this.queue) }
-  async setBatteryConfig(cfg: INavBatteryConfig): Promise<CommandResult> { return inav.inavSetBatteryConfig(this.queue, cfg) }
+  async setBatteryConfig(cfg: INavBatteryConfig): Promise<CommandResult> { return this.persist(() => inav.inavSetBatteryConfig(this.queue, cfg)) }
+  // Profile selects are saved to EEPROM by the FC itself.
   async selectBatteryProfile(idx: number): Promise<CommandResult> { return inav.inavSelectBatteryProfile(this.queue, idx) }
   async getMixerConfig(): Promise<INavMixer> { return inav.inavGetMixerConfig(this.queue) }
   async selectMixerProfile(idx: number): Promise<CommandResult> { return inav.inavSelectMixerProfile(this.queue, idx) }
   async getOutputMapping(): Promise<INavOutputMappingExt2Entry[]> { return inav.inavGetOutputMapping(this.queue) }
   async getTimerOutputModes(): Promise<INavTimerOutputModeEntry[]> { return inav.inavGetTimerOutputModes(this.queue) }
-  async setTimerOutputMode(entries: INavTimerOutputModeEntry[]): Promise<CommandResult> { return inav.inavSetTimerOutputModes(this.queue, entries) }
+  async setTimerOutputMode(entries: INavTimerOutputModeEntry[]): Promise<CommandResult> {
+    return this.persist(async () => {
+      for (const entry of entries) {
+        const r = await inav.inavSetTimerOutputMode(this.queue, entry)
+        if (!r.success) return r
+      }
+      return { success: true, resultCode: 0, message: `${entries.length} timer output modes saved` }
+    })
+  }
   async getServoConfigs(): Promise<INavServoConfig[]> { return inav.inavGetServoConfigs(this.queue) }
-  async setServoConfig(idx: number, cfg: INavServoConfig): Promise<CommandResult> { return inav.inavSetServoConfig(this.queue, idx, cfg) }
+  async setServoConfigs(cfgs: INavServoConfig[]): Promise<CommandResult> {
+    return this.persist(async () => {
+      for (let i = 0; i < cfgs.length; i++) {
+        const r = await inav.inavSetServoConfig(this.queue, i, cfgs[i])
+        if (!r.success) return r
+      }
+      return { success: true, resultCode: 0, message: `${cfgs.length} servo configs saved` }
+    })
+  }
   async getTempSensorConfigs(): Promise<INavTempSensorConfigEntry[]> { return inav.inavGetTempSensorConfigs(this.queue) }
   async getMcBraking(): Promise<INavMcBraking> { return inav.inavGetMcBraking(this.queue) }
-  async setMcBraking(b: INavMcBraking): Promise<CommandResult> { return inav.inavSetMcBraking(this.queue, b) }
+  async setMcBraking(b: INavMcBraking): Promise<CommandResult> { return this.persist(() => inav.inavSetMcBraking(this.queue, b)) }
   async getRateDynamics(): Promise<INavRateDynamics> { return inav.inavGetRateDynamics(this.queue) }
-  async setRateDynamics(r: INavRateDynamics): Promise<CommandResult> { return inav.inavSetRateDynamics(this.queue, r) }
+  async setRateDynamics(r: INavRateDynamics): Promise<CommandResult> { return this.persist(() => inav.inavSetRateDynamics(this.queue, r)) }
   async getEzTune() { return inav.inavGetEzTune(this.queue) }
-  async setEzTune(cfg: Parameters<typeof inav.inavSetEzTune>[1]) { return inav.inavSetEzTune(this.queue, cfg) }
-  async getFwApproach() { return inav.inavGetFwApproach(this.queue) }
-  async setFwApproach(a: Parameters<typeof inav.inavSetFwApproach>[1]) { return inav.inavSetFwApproach(this.queue, a) }
+  async setEzTune(cfg: Parameters<typeof inav.inavSetEzTune>[1]) { return this.persist(() => inav.inavSetEzTune(this.queue, cfg)) }
+  async getFwApproach(): Promise<INavFwApproach[]> {
+    const approaches: INavFwApproach[] = []
+    for (let i = 0; i < INAV_LIMITS.FW_APPROACHES; i++) {
+      approaches.push(await inav.inavGetFwApproach(this.queue, i))
+    }
+    return approaches
+  }
+  async setFwApproach(a: Parameters<typeof inav.inavSetFwApproach>[1]) { return this.persist(() => inav.inavSetFwApproach(this.queue, a)) }
   async getOsdLayoutsHeader() { return inav.inavGetOsdLayoutsHeader(this.queue) }
   async getOsdAlarms() { return inav.inavGetOsdAlarms(this.queue) }
-  async setOsdAlarms(a: Parameters<typeof inav.inavSetOsdAlarms>[1]) { return inav.inavSetOsdAlarms(this.queue, a) }
+  async setOsdAlarms(a: Parameters<typeof inav.inavSetOsdAlarms>[1]) { return this.persist(() => inav.inavSetOsdAlarms(this.queue, a)) }
   async getOsdPreferences() { return inav.inavGetOsdPreferences(this.queue) }
-  async setOsdPreferences(p: Parameters<typeof inav.inavSetOsdPreferences>[1]) { return inav.inavSetOsdPreferences(this.queue, p) }
-  async setCustomOsdElement(el: Parameters<typeof inav.inavSetCustomOsdElement>[1]) { return inav.inavSetCustomOsdElement(this.queue, el) }
+  async setOsdPreferences(p: Parameters<typeof inav.inavSetOsdPreferences>[1]) { return this.persist(() => inav.inavSetOsdPreferences(this.queue, p)) }
+  async getCustomOsdElements() { return inav.inavGetCustomOsdElements(this.queue) }
+  async setCustomOsdElement(el: Parameters<typeof inav.inavSetCustomOsdElement>[1]) { return this.persist(() => inav.inavSetCustomOsdElement(this.queue, el)) }
   async downloadLogicConditions() { return inav.inavDownloadLogicConditions(this.queue) }
-  async uploadLogicCondition(idx: number, rule: Parameters<typeof inav.inavUploadLogicCondition>[2]) { return inav.inavUploadLogicCondition(this.queue, idx, rule) }
+  async uploadLogicConditions(rules: Parameters<typeof inav.inavUploadLogicCondition>[2][]): Promise<CommandResult> {
+    return this.persist(async () => {
+      for (let i = 0; i < rules.length; i++) {
+        const r = await inav.inavUploadLogicCondition(this.queue, i, rules[i])
+        if (!r.success) return { ...r, message: `Logic condition ${i}: ${r.message}` }
+      }
+      return { success: true, resultCode: 0, message: `${rules.length} logic conditions saved` }
+    })
+  }
   async downloadLogicConditionsStatus() { return inav.inavDownloadLogicConditionsStatus(this.queue) }
   async downloadGvarStatus() { return inav.inavDownloadGvarStatus(this.queue) }
+  // A live runtime value, not stored config: no EEPROM write.
   async setGvar(index: number, value: number) { return inav.inavSetGvar(this.queue, index, value) }
   async downloadProgrammingPids() { return inav.inavDownloadProgrammingPids(this.queue) }
-  async uploadProgrammingPid(idx: number, rule: Parameters<typeof inav.inavUploadProgrammingPid>[2]) { return inav.inavUploadProgrammingPid(this.queue, idx, rule) }
+  async uploadProgrammingPids(pids: Parameters<typeof inav.inavUploadProgrammingPid>[2][]): Promise<CommandResult> {
+    return this.persist(async () => {
+      for (let i = 0; i < pids.length; i++) {
+        const r = await inav.inavUploadProgrammingPid(this.queue, i, pids[i])
+        if (!r.success) return { ...r, message: `Programming PID ${i}: ${r.message}` }
+      }
+      return { success: true, resultCode: 0, message: `${pids.length} programming PIDs saved` }
+    })
+  }
   async downloadProgrammingPidStatus() { return inav.inavDownloadProgrammingPidStatus(this.queue) }
   async downloadMotorMixer(): Promise<MotorMixerRule[]> { return inav.inavDownloadMotorMixer(this.queue) }
-  async uploadMotorMixer(rules: MotorMixerRule[]): Promise<void> { return inav.inavUploadMotorMixer(this.queue, rules) }
+  async uploadMotorMixer(rules: MotorMixerRule[]): Promise<void> { return this.persistOrThrow(() => inav.inavUploadMotorMixer(this.queue, rules)) }
   async downloadServoMixer(): Promise<INavServoMixerRule[]> { return inav.inavDownloadServoMixer(this.queue) }
-  async uploadServoMixer(rules: INavServoMixerRule[]): Promise<void> { return inav.inavUploadServoMixer(this.queue, rules) }
+  async uploadServoMixer(rules: INavServoMixerRule[]): Promise<void> { return this.persistOrThrow(() => inav.inavUploadServoMixer(this.queue, rules)) }
+
+  // ── Mode and adjustment ranges (Betaflight / iNav) ───────────
+  private get isBetaflight(): boolean { return this.vehicleInfo?.firmwareType === 'betaflight' }
+  async getModeBoxes(): Promise<MspModeBox[]> { return ranges.mspGetModeBoxes(this.queue) }
+  async getModeRanges(): Promise<MspModeRange[]> { return ranges.mspGetModeRanges(this.queue, this.isBetaflight) }
+  async setModeRanges(r: MspModeRange[]): Promise<CommandResult> {
+    const result = await this.persist(() => ranges.mspSetModeRanges(this.queue, r, this.isBetaflight))
+    // Flight-mode commands and the RC override switch modes through these
+    // ranges and share this array; update it in place.
+    if (result.success) this.modeRanges.splice(0, this.modeRanges.length, ...r.filter((m) => m.rangeStart < m.rangeEnd))
+    return result
+  }
+  async getAdjustmentRanges(): Promise<MspAdjustmentRange[]> { return ranges.mspGetAdjustmentRanges(this.queue) }
+  async setAdjustmentRanges(r: MspAdjustmentRange[]): Promise<CommandResult> { return this.persist(() => ranges.mspSetAdjustmentRanges(this.queue, r)) }
 
   async resetParametersToDefault() { return cmds.mspResetParametersToDefault() }
   async getLogList() { return cmds.mspGetLogList() }
@@ -377,129 +448,28 @@ export class MSPAdapter implements DroneProtocol {
     await eraseBlackboxFlash(this.queue)
   }
 
-  // ── Serial ports (MSP2_COMMON_SERIAL_CONFIG, legacy MSP_CF_SERIAL_CONFIG) ──
-  /** True once a read used the 32-bit MSP2 serial config (function bits > 15). */
+  // ── Betaflight binary config (serial, OSD, LED strip, receiver) ──
+  /** Which serial transport answered the last read: MSP2 32-bit mask or the legacy U16 one. */
   private _serialUsesV2: boolean | null = null
 
-  /** Read the per-UART serial-port configuration (function mask + baud indices). */
   async getSerialConfig(): Promise<MspSerialPort[]> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    // Prefer the 32-bit MSP2 config; fall back to the legacy U16 config.
-    try {
-      const frame = await this.queue.send(MSP2.MSP2_COMMON_SERIAL_CONFIG)
-      const p = frame.payload
-      const ports = decodeMspSerialConfig2(new DataView(p.buffer, p.byteOffset, p.byteLength)).ports
-      this._serialUsesV2 = true
-      return ports
-    } catch {
-      const frame = await this.queue.send(MSP.MSP_CF_SERIAL_CONFIG)
-      const p = frame.payload
-      this._serialUsesV2 = false
-      return decodeMspSerialConfig(new DataView(p.buffer, p.byteOffset, p.byteLength)).ports
-    }
+    const { ports, extended } = await bf.bfGetSerialConfig(this.queue)
+    this._serialUsesV2 = extended
+    return ports
   }
-
   /** Whether the current serial config carries the 32-bit (MSP2) function mask. */
-  serialConfigExtended(): boolean {
-    return this._serialUsesV2 === true
-  }
-
-  /** Write the per-UART serial-port configuration (matching the read transport). */
-  async setSerialConfig(ports: MspSerialPort[]): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    if (this._serialUsesV2 === false) {
-      await this.queue.send(MSP.MSP_SET_CF_SERIAL_CONFIG, encodeMspSetSerialConfig(ports))
-    } else {
-      await this.queue.send(MSP2.MSP2_COMMON_SET_SERIAL_CONFIG, encodeMspSetSerialConfig2(ports))
-    }
-    return { success: true, resultCode: 0, message: 'OK' }
-  }
-
-  /**
-   * Send a DShot special command (beacon, spin direction, 3D mode, save).
-   * The FC only acts on these while DISARMED and silently ignores them when
-   * armed; fire-and-forget (no reply).
-   */
-  async sendDshotCommand(commandType: number, motorIndex: number, commands: number[]): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    this.queue.sendNoReply(MSP2.MSP2_SEND_DSHOT_COMMAND, encodeMspSendDshotCommand(commandType, motorIndex, commands))
-    return { success: true, resultCode: 0, message: 'OK' }
-  }
-
-  // ── OSD (Betaflight MSP_OSD_CONFIG + character font) ─────────
-  /** Read the OSD config (video system, alarms, and per-element positions). */
-  async getOsdConfig(): Promise<MspOsdConfig> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    const frame = await this.queue.send(MSP.MSP_OSD_CONFIG)
-    const p = frame.payload
-    return decodeMspOsdConfig(new DataView(p.buffer, p.byteOffset, p.byteLength))
-  }
-
-  /** Write the OSD layout: optionally the video system, then each element position. */
-  async writeOsdLayout(items: Array<{ index: number; position: number }>, videoSystem?: number): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    if (videoSystem !== undefined) await this.queue.send(MSP.MSP_SET_OSD_CONFIG, encodeMspSetOsdConfig(0xff, videoSystem))
-    for (const it of items) await this.queue.send(MSP.MSP_SET_OSD_CONFIG, encodeMspSetOsdConfig(it.index, it.position))
-    return { success: true, resultCode: 0, message: 'OK' }
-  }
-
-  /** Upload a character font: one MSP_OSD_CHAR_WRITE per glyph. */
-  async uploadOsdFont(glyphs: Uint8Array[], onProgress?: (done: number, total: number) => void): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    for (let i = 0; i < glyphs.length; i++) {
-      await this.queue.send(MSP.MSP_OSD_CHAR_WRITE, encodeMspOsdCharWrite(i, glyphs[i]))
-      onProgress?.(i + 1, glyphs.length)
-    }
-    return { success: true, resultCode: 0, message: `Wrote ${glyphs.length} glyphs` }
-  }
-
-  // ── LED strip (Betaflight MSP_LED_STRIP_CONFIG) ──────────────
-  /** Read the per-LED packed configs. */
-  async getLedStripConfig(): Promise<number[]> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    const frame = await this.queue.send(MSP.MSP_LED_STRIP_CONFIG)
-    const p = frame.payload
-    return decodeMspLedStripConfig(new DataView(p.buffer, p.byteOffset, p.byteLength)).leds
-  }
-
-  /** Write the per-LED packed configs (one MSP write per LED, by index). */
-  async setLedStripConfig(leds: number[]): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    for (let i = 0; i < leds.length; i++) {
-      await this.queue.send(MSP.MSP_SET_LED_STRIP_CONFIG, encodeMspSetLedStripConfigEntry(i, leds[i]))
-    }
-    return { success: true, resultCode: 0, message: 'OK' }
-  }
-
-  /** Read the 16-entry configurable HSV colour palette (MSP_LED_COLORS 46). */
-  async getLedColors(): Promise<HsvColor[]> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    const frame = await this.queue.send(MSP.MSP_LED_COLORS)
-    const p = frame.payload
-    return decodeMspLedColors(new DataView(p.buffer, p.byteOffset, p.byteLength))
-  }
-
-  /** Write the full HSV colour palette (MSP_SET_LED_COLORS 47). */
-  async setLedColors(colors: HsvColor[]): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    await this.queue.send(MSP.MSP_SET_LED_COLORS, encodeMspSetLedColors(colors))
-    return { success: true, resultCode: 0, message: 'OK' }
-  }
-
-  /** Read the mode/special/aux colour assignments (MSP_LED_STRIP_MODECOLOR 127). */
-  async getLedStripModeColors(): Promise<BfLedModeColor[]> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    const frame = await this.queue.send(MSP.MSP_LED_STRIP_MODECOLOR)
-    const p = frame.payload
-    return decodeMspLedStripModeColors(new DataView(p.buffer, p.byteOffset, p.byteLength))
-  }
-
-  /** Set one mode colour (MSP_SET_LED_STRIP_MODECOLOR 221). */
-  async setLedStripModeColor(mode: number, fun: number, color: number): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    await this.queue.send(MSP.MSP_SET_LED_STRIP_MODECOLOR, encodeMspSetLedStripModeColor(mode, fun, color))
-    return { success: true, resultCode: 0, message: 'OK' }
-  }
+  serialConfigExtended(): boolean { return this._serialUsesV2 === true }
+  async setSerialConfig(ports: MspSerialPort[]): Promise<CommandResult> { return this.persist(() => bf.bfSetSerialConfig(this.queue, ports, this._serialUsesV2 !== false)) }
+  async sendDshotCommand(commandType: number, motorIndex: number, commands: number[]): Promise<CommandResult> { return bf.bfSendDshotCommand(this.queue, commandType, motorIndex, commands) }
+  async getOsdConfig(): Promise<MspOsdConfig> { return bf.bfGetOsdConfig(this.queue) }
+  async writeOsdLayout(items: Array<{ index: number; position: number }>, general?: MspOsdGeneralConfig): Promise<CommandResult> { return this.persist(() => bf.bfWriteOsdLayout(this.queue, items, general)) }
+  async uploadOsdFont(glyphs: Uint8Array[], onProgress?: (done: number, total: number) => void): Promise<CommandResult> { return bf.bfUploadOsdFont(this.queue, glyphs, onProgress) }
+  async getLedStripConfig(): Promise<number[]> { return bf.bfGetLedStripConfig(this.queue) }
+  async setLedStripConfig(leds: number[]): Promise<CommandResult> { return this.persist(() => bf.bfSetLedStripConfig(this.queue, leds)) }
+  async getLedColors(): Promise<HsvColor[]> { return bf.bfGetLedColors(this.queue) }
+  async setLedColors(colors: HsvColor[]): Promise<CommandResult> { return this.persist(() => bf.bfSetLedColors(this.queue, colors)) }
+  async getLedStripModeColors(): Promise<BfLedModeColor[]> { return bf.bfGetLedStripModeColors(this.queue) }
+  async setLedStripModeColors(entries: BfLedModeColor[]): Promise<CommandResult> { return this.persist(() => bf.bfSetLedStripModeColors(this.queue, entries)) }
 
   /**
    * Subscribe to MSP DisplayPort (182) OSD frames the FC pushes. Fires only if
@@ -515,35 +485,10 @@ export class MSPAdapter implements DroneProtocol {
     })
   }
 
-  // ── Receiver (Betaflight MSP_RX_CONFIG / MSP_RX_MAP) ─────────
-  /** Read the receiver config (leading fields + raw payload for round-trip). */
-  async getRxConfig(): Promise<BfRxConfig> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    const frame = await this.queue.send(MSP.MSP_RX_CONFIG)
-    const p = frame.payload
-    return decodeMspRxConfig(new DataView(p.buffer, p.byteOffset, p.byteLength))
-  }
-
-  /** Write the receiver config (echoes the raw payload with edited fields patched). */
-  async setRxConfig(cfg: BfRxConfig): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    await this.queue.send(MSP.MSP_SET_RX_CONFIG, encodeMspSetRxConfig(cfg))
-    return { success: true, resultCode: 0, message: 'OK' }
-  }
-
-  /** Read the RC channel map. */
-  async getRxMap(): Promise<number[]> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    const frame = await this.queue.send(MSP.MSP_RX_MAP)
-    return decodeMspRxMap(frame.payload)
-  }
-
-  /** Write the RC channel map. */
-  async setRxMap(map: number[]): Promise<CommandResult> {
-    if (!this.queue) throw new Error('Not connected to flight controller')
-    await this.queue.send(MSP.MSP_SET_RX_MAP, encodeMspSetRxMap(map))
-    return { success: true, resultCode: 0, message: 'OK' }
-  }
+  async getRxConfig(): Promise<BfRxConfig> { return bf.bfGetRxConfig(this.queue) }
+  async setRxConfig(cfg: BfRxConfig): Promise<CommandResult> { return this.persist(() => bf.bfSetRxConfig(this.queue, cfg)) }
+  async getRxMap(): Promise<number[]> { return bf.bfGetRxMap(this.queue) }
+  async setRxMap(map: number[]): Promise<CommandResult> { return this.persist(() => bf.bfSetRxMap(this.queue, map)) }
 
   // ── Parameters ──────────────────────────────────────────────
   async getAllParameters() { const c = this.prmCtx; const r = await prm.mspGetAllParameters(c); this.paramNameCache = c.paramNameCache; return r }
@@ -683,7 +628,5 @@ export class MSPAdapter implements DroneProtocol {
   async setGimbalMode(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async uploadFence(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async downloadFence(): Promise<Array<{ idx: number; lat: number; lon: number }>> { return [] }
-  async uploadRallyPoints(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
-  async downloadRallyPoints(): Promise<Array<{ lat: number; lon: number; alt: number }>> { return [] }
   getCommandQueueSnapshot() { return { pendingCount: 0, entries: [] } }
 }

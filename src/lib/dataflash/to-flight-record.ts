@@ -51,7 +51,9 @@ function num(r: DataflashRecord, key: string): number | undefined {
 /**
  * Walk the log and detect every armed→disarmed pair. If the log only contains
  * ARM/DISARM events without `EV` rows, falls back to the ARMED state column
- * on the ARM message itself. If neither exists, treats the whole log as one
+ * on the ARM message itself. A flight still armed when the log ends (brown-out,
+ * battery ejection, crash) is closed at the log's last TimeUS rather than
+ * dropped. If there are no arm events at all, treats the whole log as one
  * flight (best-effort).
  */
 export function detectFlightSlices(log: DataflashLog): FlightSlice[] {
@@ -82,38 +84,37 @@ export function detectFlightSlices(log: DataflashLog): FlightSlice[] {
 
   changes.sort((a, b) => a.us - b.us);
 
-  const slices: FlightSlice[] = [];
-  let current: { startUs: number } | null = null;
-  let lastArmed = false;
-  for (const c of changes) {
-    if (c.armed && !lastArmed) {
-      current = { startUs: c.us };
-      lastArmed = true;
-    } else if (!c.armed && lastArmed) {
-      if (current) {
-        slices.push({ startUs: current.startUs, endUs: c.us });
-        current = null;
-      }
-      lastArmed = false;
+  // One pass for the log's TimeUS span. A .bin holds 10^5..10^6 records, so
+  // spreading them into Math.min/Math.max overflows the call stack.
+  let firstUs = Infinity;
+  let lastUs = -Infinity;
+  let stampedRows = 0;
+  for (const bucket of log.messages.values()) {
+    for (const r of bucket) {
+      const us = num(r, "TimeUS");
+      if (us === undefined) continue;
+      if (us < firstUs) firstUs = us;
+      if (us > lastUs) lastUs = us;
+      stampedRows += 1;
     }
   }
 
-  // Best-effort fallback if no arm/disarm events at all: one flight covering
-  // the full TimeUS range.
-  if (slices.length === 0) {
-    const allUs: number[] = [];
-    for (const bucket of log.messages.values()) {
-      for (const r of bucket) {
-        const us = num(r, "TimeUS");
-        if (us !== undefined) allUs.push(us);
-      }
+  const slices: FlightSlice[] = [];
+  let currentStartUs: number | null = null;
+  for (const c of changes) {
+    if (c.armed && currentStartUs === null) {
+      currentStartUs = c.us;
+    } else if (!c.armed && currentStartUs !== null) {
+      slices.push({ startUs: currentStartUs, endUs: c.us });
+      currentStartUs = null;
     }
-    if (allUs.length >= 2) {
-      slices.push({
-        startUs: Math.min(...allUs),
-        endUs: Math.max(...allUs),
-      });
-    }
+  }
+  if (currentStartUs !== null) {
+    slices.push({ startUs: currentStartUs, endUs: Math.max(currentStartUs, lastUs) });
+  }
+
+  if (slices.length === 0 && stampedRows >= 2) {
+    slices.push({ startUs: firstUs, endUs: lastUs });
   }
 
   return slices;
@@ -208,28 +209,27 @@ function buildFlight(
   const inSlice = (us: number | undefined): boolean =>
     us !== undefined && us >= slice.startUs && us <= slice.endUs;
 
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-
-  // Attitude — convert deg to rad to match the live `attitude` channel shape.
+  // Attitude — ATT logs degrees, which is the recorded `attitude` contract
+  // (live frames are AttitudeData in degrees), so the values pass through.
   for (const r of ATT_ROWS) {
     const us = num(r, "TimeUS");
     if (!inSlice(us)) continue;
-    const roll = num(r, "Roll") ?? 0;
-    const pitch = num(r, "Pitch") ?? 0;
-    const yaw = num(r, "Yaw") ?? 0;
     frames.push({
       offsetMs: usToOffsetMs(us!, slice.startUs),
       channel: "attitude",
       data: {
-        roll: toRad(roll),
-        pitch: toRad(pitch),
-        yaw: toRad(yaw),
+        roll: num(r, "Roll") ?? 0,
+        pitch: num(r, "Pitch") ?? 0,
+        yaw: num(r, "Yaw") ?? 0,
         timestamp: us,
       },
     });
   }
 
-  // POS — primary position source (lat/lon/alt in proper units).
+  // POS — primary position source. `Alt` is AMSL; the height above home is
+  // `RelHomeAlt` on current firmware. Older logs lack it, so fall back to the
+  // AMSL altitude minus the first fix of the flight (the arm point).
+  let slicePosBaseAlt: number | undefined;
   for (const r of POS_ROWS) {
     const us = num(r, "TimeUS");
     if (!inSlice(us)) continue;
@@ -237,13 +237,15 @@ function buildFlight(
     const lon = num(r, "Lng");
     const alt = num(r, "Alt") ?? 0;
     if (lat === undefined || lon === undefined) continue;
+    if (slicePosBaseAlt === undefined) slicePosBaseAlt = alt;
+    const relativeAlt = num(r, "RelHomeAlt") ?? alt - slicePosBaseAlt;
 
     if (prevLat !== undefined && prevLon !== undefined) {
       distanceM += haversineMeters(prevLat, prevLon, lat, lon);
     }
     prevLat = lat;
     prevLon = lon;
-    if (alt > maxAltM) maxAltM = alt;
+    if (relativeAlt > maxAltM) maxAltM = relativeAlt;
 
     const offsetMs = usToOffsetMs(us!, slice.startUs);
     frames.push({
@@ -253,7 +255,7 @@ function buildFlight(
         lat,
         lon,
         alt,
-        relativeAlt: alt,
+        relativeAlt,
         groundSpeed: 0,
         airSpeed: 0,
         heading: 0,

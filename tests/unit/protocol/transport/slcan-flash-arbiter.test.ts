@@ -168,7 +168,7 @@ afterEach(() => {
 
 describe("enterSlcanMode — happy paths", () => {
   it("F4 path: writes params, reboots, waits for port, opens SLCAN", async () => {
-    const { protocol, setParam, reboot } = makeFakeProtocol({ boardId: 1031 }); // F4
+    const { protocol, setParam, reboot } = makeFakeProtocol({ boardId: 1082 }); // SpeedyBee F405 V3 → F4
     const promise = enterSlcanMode({
       protocol,
       droneId: "drone-1",

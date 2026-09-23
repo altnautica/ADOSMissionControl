@@ -7,7 +7,16 @@
  * these run cleanly in jsdom.
  */
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import type * as ConvexReact from "convex/react";
+
+// The embedded video pane mints cloud-relay tokens through a Convex action. The
+// app always mounts a Convex provider; this pure-UI test never dials video, so
+// the action is a stub.
+vi.mock("convex/react", async (orig) => ({
+  ...(await orig<typeof ConvexReact>()),
+  useAction: () => vi.fn(),
+}));
 import { render, screen, cleanup } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { DroneWorldModelTab } from "@/components/drone-detail/DroneWorldModelTab";

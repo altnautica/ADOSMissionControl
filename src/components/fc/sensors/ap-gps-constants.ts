@@ -1,37 +1,65 @@
 /**
  * @module fc/sensors/ap-gps-constants
  * @description Parameter names and option lists for the ArduPilot GPS panel.
- * Names + enum values follow the ArduPilot AP_GPS driver parameter set
- * (classic `GPS_*` naming, ArduPilot 4.5). Second-GPS, blending, moving-baseline
- * yaw, antenna offset, and driver-option params are optional so a single-GPS
- * build (or a firmware that renamed them per-instance) degrades cleanly rather
- * than erroring.
+ * ArduPilot 4.6 moved the per-receiver params from `GPS_*` (`GPS_TYPE`,
+ * `GPS_TYPE2`, `GPS_POS1_X`, ...) to per-instance `GPS1_*` / `GPS2_*`
+ * (`GPS1_TYPE`, `GPS2_TYPE`, `GPS1_POS_X`, ...), and later releases dropped the
+ * old names. Both spellings are read as optional and the panel resolves each
+ * logical field to whichever name the vehicle actually has.
  * @license GPL-3.0-only
  */
 
-/** Always-present single-GPS config. */
+/** Receiver-independent config, the same name on every ArduPilot release. */
 export const AP_GPS_CORE_PARAM_NAMES = [
-  "GPS_TYPE",
   "GPS_AUTO_SWITCH",
-  "GPS_GNSS_MODE",
-  "GPS_RATE_MS",
   "GPS_SBAS_MODE",
   "GPS_MIN_ELEV",
   "GPS_AUTO_CONFIG",
 ] as const;
 
-/** Second GPS, blending, yaw/moving-baseline, antenna offsets, driver options. */
-export const AP_GPS_OPTIONAL_PARAM_NAMES = [
-  "GPS_TYPE2",
+/**
+ * Per-receiver fields: `[pre-4.6 name, 4.6+ name]`. The 4.6+ name wins when a
+ * vehicle reports both.
+ */
+export const AP_GPS_RENAMED = {
+  type1: ["GPS_TYPE", "GPS1_TYPE"],
+  type2: ["GPS_TYPE2", "GPS2_TYPE"],
+  gnssMode: ["GPS_GNSS_MODE", "GPS1_GNSS_MODE"],
+  rateMs: ["GPS_RATE_MS", "GPS1_RATE_MS"],
+  mbType: ["GPS_MB1_TYPE", "GPS1_MB_TYPE"],
+  posX: ["GPS_POS1_X", "GPS1_POS_X"],
+  posY: ["GPS_POS1_Y", "GPS1_POS_Y"],
+  posZ: ["GPS_POS1_Z", "GPS1_POS_Z"],
+} as const satisfies Record<string, readonly [string, string]>;
+
+export type ApGpsRenamedField = keyof typeof AP_GPS_RENAMED;
+
+/**
+ * The name the connected vehicle uses for a per-receiver field, or null when
+ * it has neither spelling.
+ */
+export function resolveApGpsName(
+  field: ApGpsRenamedField,
+  params: ReadonlyMap<string, number>,
+): string | null {
+  const [legacy, current] = AP_GPS_RENAMED[field];
+  if (params.has(current)) return current;
+  if (params.has(legacy)) return legacy;
+  return null;
+}
+
+/** Every spelling of every per-receiver field, both release generations. */
+export const AP_GPS_RENAMED_PARAM_NAMES: readonly string[] =
+  Object.values(AP_GPS_RENAMED).flat();
+
+/** Second GPS selection, blending, driver options, plus every per-receiver spelling. */
+export const AP_GPS_OPTIONAL_PARAM_NAMES: readonly string[] = [
   "GPS_PRIMARY",
   "GPS_BLEND_MASK",
   "GPS_NAVFILTER",
   "GPS_DRV_OPTIONS",
-  "GPS_MB1_TYPE",
-  "GPS_POS1_X",
-  "GPS_POS1_Y",
-  "GPS_POS1_Z",
-] as const;
+  ...AP_GPS_RENAMED_PARAM_NAMES,
+];
 
 export const apGpsParamNames = [...AP_GPS_CORE_PARAM_NAMES];
 export const apGpsOptionalParamNames = [...AP_GPS_OPTIONAL_PARAM_NAMES];

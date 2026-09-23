@@ -168,9 +168,12 @@ export interface CommandCloudStatus {
   updatedAt: number;
 }
 
+/** A streamed telemetry snapshot stamped with the local time it arrived. */
+export type StreamedTelemetry = CommandTelemetrySnapshot & { receivedAt: number };
+
 interface CommandFleetState {
   cloudStatuses: Record<string, CommandCloudStatus>;
-  telemetryByDeviceId: Record<string, CommandTelemetrySnapshot>;
+  telemetryByDeviceId: Record<string, StreamedTelemetry>;
   /** Replace the whole map. Use when one source owns every row in the
    * cloudStatuses table (legacy single-bridge contract). */
   setCloudStatuses: (rows: CommandCloudStatus[]) => void;
@@ -180,8 +183,21 @@ interface CommandFleetState {
   /** Remove rows by deviceId. Use when a node disappears from a
    * bridge's ownership set (unpaired, fleet refresh dropped it). */
   removeCloudStatuses: (deviceIds: string[]) => void;
+  /** Record a streamed snapshot, stamped with its arrival time. */
   setTelemetry: (deviceId: string, telemetry: CommandTelemetrySnapshot) => void;
+  /** Drop streamed telemetry for these devices (their stream closed). */
+  clearTelemetry: (deviceIds: readonly string[]) => void;
   clear: () => void;
+}
+
+function withoutKeys<V>(
+  map: Record<string, V>,
+  keys: readonly string[],
+): Record<string, V> | null {
+  if (!keys.some((k) => k in map)) return null;
+  const next = { ...map };
+  for (const k of keys) delete next[k];
+  return next;
 }
 
 export const useCommandFleetStore = create<CommandFleetState>((set) => ({
@@ -207,15 +223,8 @@ export const useCommandFleetStore = create<CommandFleetState>((set) => ({
   removeCloudStatuses(deviceIds) {
     if (deviceIds.length === 0) return;
     set((state) => {
-      const next = { ...state.cloudStatuses };
-      let changed = false;
-      for (const id of deviceIds) {
-        if (id in next) {
-          delete next[id];
-          changed = true;
-        }
-      }
-      return changed ? { cloudStatuses: next } : state;
+      const statuses = withoutKeys(state.cloudStatuses, deviceIds);
+      return statuses ? { cloudStatuses: statuses } : state;
     });
   },
 
@@ -223,9 +232,16 @@ export const useCommandFleetStore = create<CommandFleetState>((set) => ({
     set((state) => ({
       telemetryByDeviceId: {
         ...state.telemetryByDeviceId,
-        [deviceId]: telemetry,
+        [deviceId]: { ...telemetry, receivedAt: Date.now() },
       },
     }));
+  },
+
+  clearTelemetry(deviceIds) {
+    set((state) => {
+      const telemetry = withoutKeys(state.telemetryByDeviceId, deviceIds);
+      return telemetry ? { telemetryByDeviceId: telemetry } : state;
+    });
   },
 
   clear() {

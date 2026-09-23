@@ -75,6 +75,7 @@ describe("param enum fallback tables", () => {
       RNGFND1_ORIENT: [..."123456789A"].map((n) => `RNGFND${n}_ORIENT`),
       BATT_FS_LOW_ACT: ["BATT_FS_LOW_ACT", ...[..."23456789"].map((n) => `BATT${n}_FS_LOW_ACT`)],
       BATT_FS_CRT_ACT: ["BATT_FS_CRT_ACT", "BATT2_FS_CRT_ACT"],
+      BATT_MONITOR: ["BATT_MONITOR", ...[..."23456789"].map((n) => `BATT${n}_MONITOR`)],
     };
     for (const vehicle of AP_VEHICLES) {
       const snap = SNAPSHOTS.get(vehicle)!;

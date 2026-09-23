@@ -41,6 +41,8 @@ export function BfPortsPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  /** Saved to EEPROM this session; ports are only reconfigured at boot. */
+  const [needsReboot, setNeedsReboot] = useState(false);
 
   const read = useCallback(async () => {
     const protocol = getSelectedProtocol();
@@ -70,7 +72,7 @@ export function BfPortsPanel() {
     setError(null);
     try {
       const r = await protocol.setSerialConfig(ports);
-      if (r.success) setBaseline(JSON.stringify(ports));
+      if (r.success) { setBaseline(JSON.stringify(ports)); setNeedsReboot(true); }
       else setError(r.message);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -123,7 +125,10 @@ export function BfPortsPanel() {
       </PanelHeader>
 
       {dirty && (
-        <p className="text-[10px] font-mono text-status-warning py-1">Unsaved changes : use Write to FC to apply.</p>
+        <p className="text-[10px] font-mono text-status-warning py-1">Unsaved changes : use Write to FC to save them to the flight controller.</p>
+      )}
+      {!dirty && needsReboot && (
+        <p className="text-[10px] font-mono text-status-warning py-1">Saved. The flight controller applies port changes when it next reboots.</p>
       )}
 
       {hasLoaded && (

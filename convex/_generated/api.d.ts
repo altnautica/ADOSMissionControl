@@ -37,6 +37,7 @@ import type * as cmdPreferences from "../cmdPreferences.js";
 import type * as cmdRadioPairing from "../cmdRadioPairing.js";
 import type * as cmdSigningEvents from "../cmdSigningEvents.js";
 import type * as cmdSigningKeys from "../cmdSigningKeys.js";
+import type * as cmdVideoRelayTokens from "../cmdVideoRelayTokens.js";
 import type * as commandVocabulary from "../commandVocabulary.js";
 import type * as comments from "../comments.js";
 import type * as communityChangelog from "../communityChangelog.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   cmdRadioPairing: typeof cmdRadioPairing;
   cmdSigningEvents: typeof cmdSigningEvents;
   cmdSigningKeys: typeof cmdSigningKeys;
+  cmdVideoRelayTokens: typeof cmdVideoRelayTokens;
   commandVocabulary: typeof commandVocabulary;
   comments: typeof comments;
   communityChangelog: typeof communityChangelog;

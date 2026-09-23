@@ -138,6 +138,9 @@ export function ParameterControl({
       }
       setError(null);
       setText(String(clamped));
+      // Focus in and out without an edit must not write the shown value
+      // (which may be an unconfirmed default) over the drone's setting.
+      if (clamped === value) return;
       onCommit(clamped);
     },
     [schema, value, onCommit],
@@ -151,17 +154,19 @@ export function ParameterControl({
         return;
       }
       setError(null);
+      if (raw === value) return;
       onCommit(raw);
     },
-    [schema, onCommit],
+    [schema, value, onCommit],
   );
 
   const commitRange = useCallback(() => {
     const clamped = clampValue(schema, rangeVal);
     if (typeof clamped !== "number") return;
     if (!validateValue(schema, clamped).ok) return;
+    if (clamped === value) return;
     onCommit(clamped);
-  }, [schema, rangeVal, onCommit]);
+  }, [schema, rangeVal, value, onCommit]);
 
   // The active detector is engine-wide: a model / model_upload parameter binds
   // to `engine.detector`, not the plugin's own config. Render the board-filtered

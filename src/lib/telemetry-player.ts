@@ -5,6 +5,11 @@
  * through the telemetry store at configurable speeds. Pairs with
  * telemetry-recorder.ts for record/replay workflows.
  *
+ * Replay writes into the SAME telemetry and trail singletons the live link
+ * writes into. There is no marker on a pushed sample saying which producer it
+ * came from, so every entry point that writes those stores refuses while any
+ * vehicle link is managed: loading, playing, seeking and resuming.
+ *
  * @module telemetry-player
  * @license GPL-3.0-only
  */
@@ -12,7 +17,8 @@
 import { loadRecordingFrames, listRecordings } from "@/lib/telemetry-recorder";
 import type { TelemetryFrame, TelemetryRecording } from "@/lib/telemetry-recorder";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useDroneStore } from "@/stores/drone-store";
+import { useTrailStore } from "@/stores/trail-store";
+import { useDroneManager } from "@/stores/drone-manager";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -65,6 +71,8 @@ type PushMethod =
 const CHANNEL_DISPATCH: Record<string, PushMethod> = {
   attitude: "pushAttitude",
   position: "pushPosition",
+  // Imported logs (tlog, ULog) record the fix as globalPosition.
+  globalPosition: "pushPosition",
   battery: "pushBattery",
   gps: "pushGps",
   radio: "pushRadio",
@@ -126,11 +134,23 @@ function emitChange(): void {
   for (const cb of _onChange) cb(status);
 }
 
+/**
+ * Why replay may not write the telemetry stores right now, or null when it
+ * may. Any managed vehicle blocks it, whatever its connection or arm state:
+ * an armed drone and a drone whose link dropped both still own the stores.
+ */
+export function replayBlockedReason(): string | null {
+  const { drones, selectedDroneId } = useDroneManager.getState();
+  if (selectedDroneId === null && drones.size === 0) return null;
+  return "Disconnect every vehicle before replaying: playback and live telemetry share one store, and interleaving them renders a recording as live flight data";
+}
+
+function assertReplayAllowed(): void {
+  const reason = replayBlockedReason();
+  if (reason) throw new Error(reason);
+}
+
 function dispatchFrame(frame: TelemetryFrame): void {
-  if (frame.channel === "heartbeat") {
-    useDroneStore.getState().heartbeat();
-    return;
-  }
   const method = CHANNEL_DISPATCH[frame.channel];
   if (!method) return;
   // The ONE widening on the replay path, and the reason it is an unchecked
@@ -144,6 +164,22 @@ function dispatchFrame(frame: TelemetryFrame): void {
     data: unknown,
   ) => void;
   push(frame.data);
+  // The map trail is fed by the live bridge, not by the telemetry store;
+  // replay feeds it from the recorded position frames the same way.
+  if (method === "pushPosition") pushTrailPoint(frame.data);
+}
+
+function pushTrailPoint(data: unknown): void {
+  const d = data as { lat?: unknown; lon?: unknown; relativeAlt?: unknown };
+  if (typeof d.lat !== "number" || typeof d.lon !== "number") return;
+  if (d.lat === 0 && d.lon === 0) return;
+  useTrailStore.getState().pushPoint(d.lat, d.lon, typeof d.relativeAlt === "number" ? d.relativeAlt : 0);
+}
+
+/** Empty the stores replay writes, so a fresh position starts clean. */
+function clearReplayStores(): void {
+  useTelemetryStore.getState().clear();
+  useTrailStore.getState().clear();
 }
 
 /**
@@ -175,17 +211,22 @@ function tick(): void {
 
 /**
  * Load a recording for playback. Does not auto-play.
- * Clears telemetry store to start fresh.
+ * Refuses while a vehicle link is managed; otherwise clears the telemetry and
+ * trail stores to start fresh.
  */
 export async function loadPlayback(recordingId: string): Promise<void> {
+  assertReplayAllowed();
   // Stop any active playback
   if (_state !== "stopped") stop();
 
-  _frames = await loadRecordingFrames(recordingId);
-  if (_frames.length === 0) {
+  const frames = await loadRecordingFrames(recordingId);
+  if (frames.length === 0) {
     throw new Error(`No frames found for recording ${recordingId}`);
   }
+  // A vehicle may have connected while the frames were loading.
+  assertReplayAllowed();
 
+  _frames = frames;
   // Ensure frames are sorted by offset (should already be, but defensive)
   _frames.sort((a, b) => a.offsetMs - b.offsetMs);
 
@@ -195,40 +236,46 @@ export async function loadPlayback(recordingId: string): Promise<void> {
   _playStartOffset = 0;
   _state = "stopped";
 
-  // Clear telemetry store for clean playback
-  useTelemetryStore.getState().clear();
+  clearReplayStores();
 
+  emitChange();
+}
+
+/**
+ * Stop playback and release the recording. Clears the replayed samples from
+ * the telemetry and trail stores, unless a vehicle link has taken them over
+ * in the meantime (its data is live, not the recording's).
+ */
+export function unloadPlayback(): void {
+  const hadRecording = _recordingId !== null;
+  stop();
+  _frames = [];
+  _recordingId = null;
+  _totalDurationMs = 0;
+  if (hadRecording && replayBlockedReason() === null) clearReplayStores();
   emitChange();
 }
 
 /**
  * Start playback from the beginning.
  *
- * Refuses while a vehicle is connected. Replay writes into the SAME
- * telemetry singleton the live link writes into, so with both running the
- * rings interleave a recorded flight with the aircraft in front of the
- * operator — and every consumer downstream (the HUD, the cockpit band,
- * the analyser) reads the result as current. There is no marker on a
- * pushed sample saying which one it came from, so the only safe rule is
- * that exactly one producer owns the store at a time.
+ * Refuses while a vehicle link is managed: with both running the rings would
+ * interleave a recorded flight with the aircraft in front of the operator,
+ * and every consumer downstream (the HUD, the cockpit band, the analyser)
+ * reads the result as current.
  */
 export function play(): void {
   if (_frames.length === 0) {
     throw new Error("No recording loaded — call loadPlayback() first");
   }
-  if (useDroneStore.getState().connectionState === "connected") {
-    throw new Error(
-      "Disconnect the vehicle before replaying: playback and live telemetry share one store, and interleaving them renders a recording as live flight data",
-    );
-  }
+  assertReplayAllowed();
   // Reset to start
   _frameIndex = 0;
   _playStartOffset = 0;
   _playStartWall = performance.now();
   _state = "playing";
 
-  useTelemetryStore.getState().clear();
-
+  clearReplayStores();
   if (_rafId !== null) cancelAnimationFrame(_rafId);
   _rafId = requestAnimationFrame(tick);
   emitChange();
@@ -253,10 +300,12 @@ export function pause(): void {
 }
 
 /**
- * Resume playback from paused position.
+ * Resume playback from paused position. Refuses while a vehicle link is
+ * managed, like {@link play}.
  */
 export function resume(): void {
   if (_state !== "paused") return;
+  assertReplayAllowed();
 
   _playStartWall = performance.now();
   _state = "playing";
@@ -284,11 +333,13 @@ export function stop(): void {
 /**
  * Seek to a specific offset in the recording.
  * Works in any state (playing, paused, stopped).
- * Re-dispatches the most recent frame per channel up to the seek point
- * so the UI reflects the correct state at that time.
+ * Re-dispatches the most recent frame per channel up to the seek point, and
+ * rebuilds the trail from every position up to it, so the UI reflects the
+ * correct state at that time. Refuses while a vehicle link is managed.
  */
 export function seek(offsetMs: number): void {
   if (_frames.length === 0) return;
+  assertReplayAllowed();
 
   const clampedOffset = Math.max(0, Math.min(offsetMs, _totalDurationMs));
   const wasPlaying = _state === "playing";
@@ -299,8 +350,8 @@ export function seek(offsetMs: number): void {
     _rafId = null;
   }
 
-  // Clear telemetry store for clean seek
-  useTelemetryStore.getState().clear();
+  // Clear the replay stores for a clean seek
+  clearReplayStores();
 
   // Find the frame index at the seek point
   _frameIndex = 0;
@@ -308,11 +359,15 @@ export function seek(offsetMs: number): void {
     _frameIndex++;
   }
 
-  // Replay the last frame per channel up to this point so the UI
-  // shows correct values at the seek position
+  // Replay the last frame per channel up to this point so the UI shows
+  // correct values at the seek position. The trail is a path, so every
+  // position up to the seek point goes back in (the trail store drops the
+  // repeat when the last one is dispatched again below).
   const lastPerChannel = new Map<string, TelemetryFrame>();
   for (let i = 0; i < _frameIndex; i++) {
-    lastPerChannel.set(_frames[i].channel, _frames[i]);
+    const frame = _frames[i];
+    lastPerChannel.set(frame.channel, frame);
+    if (CHANNEL_DISPATCH[frame.channel] === "pushPosition") pushTrailPoint(frame.data);
   }
   for (const frame of lastPerChannel.values()) {
     dispatchFrame(frame);

@@ -5,7 +5,8 @@
  * @description The small core settings pages that used to live inline in the
  * Settings tab body: Profile (read-only — a switch is a transactional setup
  * change), Cloud posture (mode + backend URL read-only as a transactional
- * pair, plus the editable remote-access / Cloudflare-tunnel controls), and
+ * pair, plus the remote-access tunnel as read-only status: the node's own
+ * report of whether its tunnel service is running), and
  * Advanced (per-key log level + read-only board override). The
  * board override is file-sourced (`/etc/ados/board_override`, injected onto
  * the GET response only) and is not a writable config field, so it renders
@@ -13,14 +14,13 @@
  * @license GPL-3.0-only
  */
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import {
-  ConfigReadonlyRow,
-  ConfigSelectField,
-  ConfigToggleField,
-} from "./ConfigFields";
+import type { SetupStatus } from "@/lib/agent/types";
+import { ConfigReadonlyRow, ConfigSelectField } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
+import { useNodeDirectAgent } from "./use-node-direct-agent";
 import { Section } from "./Section";
 
 interface PageProps {
@@ -59,10 +59,64 @@ export function ProfilePage({ config }: Pick<PageProps, "config">) {
   );
 }
 
+type TunnelStatus = SetupStatus["remote_access"]["status"];
+
+/** The node's own report of its tunnel service, read from its setup status
+ * over a connection attached to this node. Null while unread or when there
+ * is no direct connection. */
+function useTunnelStatus(nodeDeviceId: string | null): {
+  status: TunnelStatus | null;
+  error: string | null;
+  reachable: boolean;
+} {
+  const client = useNodeDirectAgent(nodeDeviceId)?.client ?? null;
+  const [read, setRead] = useState<{
+    client: unknown;
+    status: TunnelStatus;
+    error: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!client) return;
+    let current = true;
+    client
+      .getSetupStatus()
+      .then((s) => {
+        if (current) {
+          setRead({
+            client,
+            status: s.remote_access.status,
+            error: s.remote_access.error,
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [client]);
+  // A report read from a previously attached node never renders here.
+  const mine = read !== null && read.client === client ? read : null;
+  return {
+    status: mine?.status ?? null,
+    error: mine?.error ? mine.error : null,
+    reachable: client !== null,
+  };
+}
+
 /** Cloud posture — the cloud mode + backend URL are read-only (a
- * transactional setup pair), and the remote-access / Cloudflare-tunnel block
- * is editable. */
-export function CloudPage({ config, readOnly, setValue }: PageProps) {
+ * transactional setup pair). Remote access is read-only too: the node starts
+ * or stops its tunnel service outside the config document (changing
+ * `remote_access.*` there does not touch the running tunnel), so a switch here
+ * would report a change the node never made. The page shows the configured
+ * provider and the node's own report of the tunnel service instead. */
+export function CloudPage({
+  nodeDeviceId,
+  config,
+}: {
+  nodeDeviceId: string | null;
+  config: Record<string, unknown> | null;
+}) {
+  const tunnel = useTunnelStatus(nodeDeviceId);
   const t = useTranslations("nodeSettings");
   const cloudModeOptions = [
     { value: "local", label: t("cloud.optionLocal") },
@@ -124,25 +178,36 @@ export function CloudPage({ config, readOnly, setValue }: PageProps) {
       ) : null}
 
       {/* Remote access — the outbound tunnel that reaches this node beyond
-          the LAN. Editable; the tunnel's published endpoints are read-only. */}
+          the LAN. Read-only: configured provider, and the tunnel service
+          state as the node itself reports it. */}
       <div className="space-y-4 border-t border-border-default pt-4">
-        <ConfigSelectField
+        <ConfigReadonlyRow
           configKey="remote_access.provider"
           label={t("cloud.remoteProviderLabel")}
           hint={t("cloud.remoteProviderHint")}
-          options={remoteProviderOptions}
           config={config}
-          readOnly={readOnly}
-          setValue={setValue}
+          format={(raw) => labelFor(remoteProviderOptions, raw)}
         />
-        <ConfigToggleField
-          configKey="remote_access.cloudflare.enabled"
-          label={t("cloud.remoteEnabledLabel")}
-          hint={t("cloud.remoteEnabledHint")}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-xs text-text-secondary">
+              {t("cloud.remoteStatusLabel")}
+            </span>
+            <span className="font-mono text-xs text-text-primary">
+              {!tunnel.reachable
+                ? t("cloud.remoteStatusNeedsLan")
+                : tunnel.status === null
+                  ? t("cloud.remoteStatusUnknown")
+                  : t(`cloud.remoteStatus_${tunnel.status}`)}
+            </span>
+          </div>
+          {tunnel.error ? (
+            <p className="text-[11px] text-status-error">{tunnel.error}</p>
+          ) : null}
+          <p className="text-[11px] text-text-tertiary">
+            {t("cloud.remoteManagedOnNode")}
+          </p>
+        </div>
         {tunnelUrls.map(({ key, label }) => {
           const v = readConfigPath(config, key);
           return typeof v === "string" && v.length > 0 ? (

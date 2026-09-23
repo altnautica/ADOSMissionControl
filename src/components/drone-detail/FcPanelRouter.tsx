@@ -28,7 +28,7 @@ const MavlinkShellPanel = dynamic(() => import("@/components/fc/comms/MavlinkShe
 const PidTuningPanel = dynamic(() => import("@/components/fc/pid/PidTuningPanel").then(m => ({ default: m.PidTuningPanel })), { ssr: false, ...panelLoading });
 const PortsPanel = dynamic(() => import("@/components/fc/comms/PortsPanel").then(m => ({ default: m.PortsPanel })), { ssr: false, ...panelLoading });
 const MavlinkInspectorPanel = dynamic(() => import("@/components/fc/comms/MavlinkInspectorPanel").then(m => ({ default: m.MavlinkInspectorPanel })), { ssr: false, ...panelLoading });
-const OsdEditorPanel = dynamic(() => import("@/components/fc/betaflight/OsdEditorPanel").then(m => ({ default: m.OsdEditorPanel })), { ssr: false, ...panelLoading });
+const OsdEditorPanel = dynamic(() => import("@/components/fc/osd/OsdEditorPanel").then(m => ({ default: m.OsdEditorPanel })), { ssr: false, ...panelLoading });
 const BfOsdEditorPanel = dynamic(() => import("@/components/fc/betaflight/BfOsdEditorPanel").then(m => ({ default: m.BfOsdEditorPanel })), { ssr: false, ...panelLoading });
 const FirmwarePanel = dynamic(() => import("@/components/fc/firmware/FirmwarePanel").then(m => ({ default: m.FirmwarePanel })), { ssr: false, ...panelLoading });
 const GeofencePanel = dynamic(() => import("@/components/fc/safety/GeofencePanel").then(m => ({ default: m.GeofencePanel })), { ssr: false, ...panelLoading });
@@ -138,7 +138,7 @@ export function FcPanelRouter({ activePanel, firmwareType }: FcPanelRouterProps)
   }
   if (activePanel === "osd") {
     // Betaflight drives the OSD over MSP (grid + character font); ArduPilot uses
-    // the OSD_SCREEN* parameter editor.
+    // the OSDn_<ITEM>_EN/_X/_Y parameter editor.
     return firmwareType === "betaflight" ? <BfOsdEditorPanel /> : <OsdEditorPanel />;
   }
   if (activePanel === "led") {

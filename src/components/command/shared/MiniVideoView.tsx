@@ -20,11 +20,13 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAction } from "convex/react";
 import { VideoOff, Loader2 } from "lucide-react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useVideoStore } from "@/stores/video-store";
 import { communityApi } from "@/lib/community-api";
+import { cmdVideoRelayTokensApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useSingletonAgentVideo } from "@/hooks/use-singleton-agent-video";
 
@@ -37,6 +39,7 @@ export function MiniVideoView() {
   const agentVideoState = useVideoStore((s) => s.agentVideoState);
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
   const clientConfig = useConvexSkipQuery(communityApi.clientConfig.get);
+  const mintRelayToken = useAction(cmdVideoRelayTokensApi.mint);
   const playerRef = useRef<{ stop: () => void } | null>(null);
   // The real cloud-relay failure reason, or null. The MSE player reported
   // every one of `mse-unsupported` / `codec-unknown` / `codec-unsupported` /
@@ -64,6 +67,7 @@ export function MiniVideoView() {
   // Cloud mode fallback: MSE player, only while WHEP is not carrying it.
   useEffect(() => {
     if (!cloudMode || !cloudDeviceId || !videoEl || directStreaming) return;
+    const deviceId = cloudDeviceId;
 
     let cancelled = false;
     const el = videoEl;
@@ -92,7 +96,7 @@ export function MiniVideoView() {
       const player = new MsePlayer();
       playerRef.current = player;
       player.start(
-        cloudDeviceId!,
+        deviceId,
         el,
         clientConfig?.videoRelayUrl ?? undefined,
         {
@@ -100,6 +104,17 @@ export function MiniVideoView() {
             if (cancelled) return;
             setCloudStreaming(false);
             setCloudError(err.message);
+          },
+          // The relay opens a stream only for an owner-minted, short-lived
+          // token. The player asks for a fresh one before every dial, so a
+          // reconnect never presents an expired token.
+          getRelayToken: async () => {
+            const result = await mintRelayToken({ deviceId }).catch(() => null);
+            if (!result) throw new Error("Could not authorize cloud video for this drone");
+            if (result.status === "not-configured") {
+              throw new Error("Cloud video relay is not configured");
+            }
+            return result.token;
           },
         },
       );
@@ -122,6 +137,7 @@ export function MiniVideoView() {
     directStreaming,
     setCloudStreaming,
     clientConfig?.videoRelayUrl,
+    mintRelayToken,
   ]);
 
   // Cloud mode rendering

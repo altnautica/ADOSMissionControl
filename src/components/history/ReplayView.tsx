@@ -12,12 +12,11 @@ import { useLocale } from "next-intl";
 import { ArrowLeft, Play } from "lucide-react";
 import { formatDecimal } from "@/lib/i18n/format";
 import {
-  loadPlayback, play as playerPlay, pause as playerPause, resume as playerResume,
-  stop as playerStop, seek as playerSeek, setSpeed as playerSetSpeed,
+  loadPlayback, unloadPlayback, replayBlockedReason,
+  play as playerPlay, pause as playerPause, resume as playerResume,
+  seek as playerSeek, setSpeed as playerSetSpeed,
   getPlaybackState, type PlaybackSpeed,
 } from "@/lib/telemetry-player";
-import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useTrailStore } from "@/stores/trail-store";
 import { ReplayPlaybackBar } from "./ReplayPlaybackBar";
 import { ReplayTelemetryPanel } from "./ReplayTelemetryPanel";
 import type { TelemetryRecording } from "@/lib/telemetry-recorder";
@@ -42,41 +41,52 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
   const [error, setError] = useState<string | null>(null);
   const locale = useLocale();
 
-  // Load recording and start playback on mount
+  // Load recording and start playback on mount. The live-link check runs
+  // before anything touches a store; the player owns every store write,
+  // including the cleanup on exit.
   useEffect(() => {
     let mounted = true;
 
     async function init() {
+      const blocked = replayBlockedReason();
+      if (blocked) {
+        setError(blocked);
+        setLoading(false);
+        return;
+      }
       try {
-        // Clear any stale data
-        useTelemetryStore.getState().clear();
-        useTrailStore.getState().clear();
-
         await loadPlayback(recording.id);
         if (!mounted) return;
-
-        setLoading(false);
         playerPlay();
+        setLoading(false);
       } catch (err) {
         if (!mounted) return;
-        setError("Failed to load recording");
+        setError(err instanceof Error ? err.message : "Failed to load recording");
         setLoading(false);
       }
     }
 
-    init();
+    void init();
 
-    // Cleanup on unmount
     return () => {
       mounted = false;
-      playerStop();
-      useTelemetryStore.getState().clear();
-      useTrailStore.getState().clear();
+      unloadPlayback();
     };
   }, [recording.id]);
 
-  // Keyboard shortcuts. Mounted once per replay session.
+  const ready = !loading && error === null;
+
+  // Keyboard shortcuts. Mounted only while a recording is loaded and playing,
+  // so no shortcut can drive the player from the loading or error state.
   useEffect(() => {
+    if (!ready) return;
+    const run = (action: () => void) => {
+      try {
+        action();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    };
     const handler = (e: KeyboardEvent) => {
       // Ignore if user is typing in a form field
       const target = e.target as HTMLElement | null;
@@ -88,8 +98,8 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
       if (e.key === " " || e.code === "Space") {
         e.preventDefault();
         if (status.state === "playing") playerPause();
-        else if (status.state === "paused") playerResume();
-        else playerPlay();
+        else if (status.state === "paused") run(playerResume);
+        else run(playerPlay);
         return;
       }
       if (e.key === "Escape") {
@@ -99,24 +109,24 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
       }
       if (e.key === "Home") {
         e.preventDefault();
-        playerSeek(0);
+        run(() => playerSeek(0));
         return;
       }
       if (e.key === "End") {
         e.preventDefault();
-        playerSeek(status.totalDurationMs);
+        run(() => playerSeek(status.totalDurationMs));
         return;
       }
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         const step = e.shiftKey ? 10_000 : 1000;
-        playerSeek(Math.max(0, status.currentTimeMs - step));
+        run(() => playerSeek(Math.max(0, status.currentTimeMs - step)));
         return;
       }
       if (e.key === "ArrowRight") {
         e.preventDefault();
         const step = e.shiftKey ? 10_000 : 1000;
-        playerSeek(Math.min(status.totalDurationMs, status.currentTimeMs + step));
+        run(() => playerSeek(Math.min(status.totalDurationMs, status.currentTimeMs + step)));
         return;
       }
       if (e.key === "j" || e.key === "J") {
@@ -129,7 +139,7 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
       if (e.key === "k" || e.key === "K") {
         e.preventDefault();
         if (status.state === "playing") playerPause();
-        else playerResume();
+        else run(playerResume);
         return;
       }
       if (e.key === "l" || e.key === "L") {
@@ -142,7 +152,7 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onExit]);
+  }, [onExit, ready]);
 
   const dateStr = formatDate(flightRecord.date);
 

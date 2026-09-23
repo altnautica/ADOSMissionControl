@@ -330,6 +330,8 @@ const VOLATILE_KEYS = new Set([
   // Soft-delete is a metadata operation that should not break the seal.
   "deleted",
   "deletedAt",
+  // Linked media is evidence attached after the flight, not flight data.
+  "media",
 ]);
 
 async function requireUser(ctx: QueryCtx): Promise<string> {

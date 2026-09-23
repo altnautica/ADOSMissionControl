@@ -432,8 +432,10 @@ export async function importBoundaryFile(file: File): Promise<[number, number][]
  */
 export function currentExportOptions(): FlatExportOptions {
   const home = useTelemetryStore.getState().homePosition.latest();
+  const { defaultFrame, defaultSpeed } = usePlannerStore.getState();
   return {
-    defaultFrame: usePlannerStore.getState().defaultFrame,
+    defaultFrame,
+    defaultSpeed,
     home: home ? { lat: home.lat, lon: home.lon, alt: home.alt } : undefined,
   };
 }

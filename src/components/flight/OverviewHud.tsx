@@ -24,8 +24,10 @@ import {
  * Used on the Overview tab — full glass cockpit experience.
  */
 export function OverviewHud() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef = useRef<number>(0);
+  // The canvas moves between documents when the HUD detaches (React mounts a
+  // new one inside the popup), so it is held in state and every effect that
+  // measures or draws re-binds to whichever canvas is mounted now.
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const popupRef = useRef<Window | null>(null);
   const [isDetached, setIsDetached] = useState(false);
   const [popupContainer, setPopupContainer] = useState<HTMLDivElement | null>(null);
@@ -90,88 +92,90 @@ export function OverviewHud() {
     detach();
   }, [detach, isDetached, reattach]);
 
-  /** Parent size, measured on resize rather than read inside the RAF loop. */
-  const sizeRef = useRef({ width: 0, height: 0 });
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // From the ResizeObserver, not `getBoundingClientRect()`: that forces a
-    // synchronous layout flush, and this loop runs at 60 Hz for a value that
-    // only changes when the pane resizes.
-    const rect = sizeRef.current;
-    if (rect.width <= 0 || rect.height <= 0) {
-      rafRef.current = requestAnimationFrame(draw);
-      return;
-    }
-    const dpr = window.devicePixelRatio || 1;
-
-    if (
-      canvas.width !== Math.floor(rect.width * dpr) ||
-      canvas.height !== Math.floor(rect.height * dpr)
-    ) {
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-    }
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    const w = rect.width;
-    const h = rect.height;
-    const cx = w / 2;
-    const cy = h / 2;
-
-    // Every reading is freshness-gated in one place and every one of them is
-    // nullable, so an absent sample draws an explicit unknown rather than a
-    // fabricated value: no level horizon and no four-bar signal meter on a
-    // vehicle nobody is hearing from (Rule 44).
-    const hud = readHudFrame();
-    const startedAt = useMissionStore.getState().activeMission?.startedAt;
-
-    // Sky/ground gradient FIRST (background)
-    drawSkyGround(ctx, w, h, hud.pitch, hud.roll);
-
-    // Instruments on top
-    drawPitchLadder(ctx, cx, cy, hud.pitch, hud.roll, h);
-    drawRollArc(ctx, cx, cy, hud.roll, h);
-    drawCrosshair(ctx, cx, cy);
-    drawSpeedTape(ctx, cx - w * 0.25, cy, hud.speedKph, h);
-    drawAltTape(ctx, cx + w * 0.25, cy, hud.alt, h);
-    drawHeadingCompass(ctx, cx, 30, hud.heading, w);
-    drawBatteryHud(ctx, cx, h - 45, hud.batteryPct);
-    drawGpsAndMode(ctx, 16, h - 20, hud.satellites, hud.mode);
-    drawArmedStatus(ctx, cx, cy + 34, hud.armed);
-    drawSignalBars(ctx, w - 80, h - 20, hud.signalBars);
-    drawFlightTimer(ctx, w - 16, h - 20, startedAt);
-
-    rafRef.current = requestAnimationFrame(draw);
-  }, []);
-
   useEffect(() => {
-    const parent = canvasRef.current?.parentElement;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    // Drive the loop from the window that owns the canvas: a detached popup
+    // keeps animating when the main window is backgrounded or minimized, and
+    // the freshness gating in readHudFrame keeps running there.
+    const view = canvas.ownerDocument.defaultView ?? window;
+    const ctx = canvas.getContext("2d");
+    if (!parent || !ctx) return;
+
+    // Measured on resize rather than read inside the loop: getBoundingClientRect
+    // forces a synchronous layout flush, and this loop runs at display rate for
+    // a value that only changes when the pane resizes.
+    const size = { width: 0, height: 0 };
     const measure = () => {
-      if (!parent) return;
       const box = parent.getBoundingClientRect();
-      sizeRef.current = { width: box.width, height: box.height };
+      size.width = box.width;
+      size.height = box.height;
     };
     measure();
-    const ro = parent ? new ResizeObserver(measure) : null;
-    if (parent && ro) ro.observe(parent);
-    rafRef.current = requestAnimationFrame(draw);
+    const ro = new view.ResizeObserver(measure);
+    ro.observe(parent);
+
+    let raf = 0;
+    const draw = () => {
+      raf = view.requestAnimationFrame(draw);
+      if (size.width <= 0 || size.height <= 0) return;
+      const dpr = view.devicePixelRatio || 1;
+      const pxW = Math.floor(size.width * dpr);
+      const pxH = Math.floor(size.height * dpr);
+      if (canvas.width !== pxW || canvas.height !== pxH) {
+        canvas.width = pxW;
+        canvas.height = pxH;
+        canvas.style.width = `${size.width}px`;
+        canvas.style.height = `${size.height}px`;
+      }
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const w = size.width;
+      const h = size.height;
+      const cx = w / 2;
+      const cy = h / 2;
+
+      // Every reading is freshness-gated in one place and every one of them is
+      // nullable, so an absent sample draws an explicit unknown rather than a
+      // fabricated value: no level horizon and no four-bar signal meter on a
+      // vehicle nobody is hearing from (Rule 44).
+      const hud = readHudFrame();
+      const startedAt = useMissionStore.getState().activeMission?.startedAt;
+
+      // Sky/ground gradient FIRST (background)
+      drawSkyGround(ctx, w, h, hud.pitch, hud.roll);
+
+      // Instruments on top
+      drawPitchLadder(ctx, cx, cy, hud.pitch, hud.roll, h);
+      drawRollArc(ctx, cx, cy, hud.roll, h);
+      drawCrosshair(ctx, cx, cy);
+      drawSpeedTape(ctx, cx - w * 0.25, cy, hud.speedKph, h);
+      drawAltTape(ctx, cx + w * 0.25, cy, hud.alt, h);
+      drawHeadingCompass(ctx, cx, 30, hud.heading, w);
+      drawBatteryHud(ctx, cx, h - 45, hud.batteryPct);
+      drawGpsAndMode(ctx, 16, h - 20, hud.satellites, hud.mode);
+      drawArmedStatus(ctx, cx, cy + 34, hud.armed);
+      drawSignalBars(ctx, w - 80, h - 20, hud.signalBars);
+      drawFlightTimer(ctx, w - 16, h - 20, startedAt);
+    };
+    raf = view.requestAnimationFrame(draw);
+
     return () => {
-      ro?.disconnect();
-      cancelAnimationFrame(rafRef.current);
+      ro.disconnect();
+      view.cancelAnimationFrame(raf);
+    };
+  }, [canvas]);
+
+  // Close a still-open popup when the HUD unmounts.
+  useEffect(
+    () => () => {
       const popup = popupRef.current;
       if (popup && !popup.closed) popup.close();
       popupRef.current = null;
-    };
-  }, [draw]);
+    },
+    [],
+  );
 
   const hudContent = useMemo(() => (
     <div
@@ -185,7 +189,7 @@ export function OverviewHud() {
       <span className="absolute top-2 right-2 z-10 text-[9px] font-mono text-text-tertiary">
         {isDetached ? "Detached" : "Double-click to detach"}
       </span>
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      <canvas ref={setCanvas} className="absolute inset-0 w-full h-full" />
     </div>
   ), [handleToggleDetach, isDetached]);
 

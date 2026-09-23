@@ -20,16 +20,20 @@
  *
  * The browser POSTs `{ host, apiKey, peerDeviceId }` — `peerDeviceId` is
  * required (this route has no LAN-direct use; the LAN branch never needed a
- * server proxy for a same-network dial). The upstream body and status are
- * returned verbatim so an unreachable engine's `{"detections": []}` reading
+ * server proxy for a same-network dial). The upstream JSON body and status
+ * are returned unchanged (see `../_proxy`) so an unreachable engine's `{"detections": []}` reading
  * or a 502 surfaces exactly as the agent produced it.
  *
  * @license GPL-3.0-only
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { normaliseAndCheckHost } from "@/lib/agent/host-validation";
-import { ipv4FetchBase } from "../_ipv4";
+import type { NextRequest } from "next/server";
+import {
+  checkAgentHost,
+  proxyError,
+  proxyToAgent,
+  readJsonEnvelope,
+} from "../_proxy";
 import { isValidPeerDeviceId } from "../_peer-device-id";
 
 export const runtime = "nodejs";
@@ -54,70 +58,27 @@ const RELAY_PROXY_PREFIX = "/api/v1/ground-station/relay-proxy";
 const UPSTREAM_PATH = "/api/vision/detections/latest";
 
 export async function POST(req: NextRequest) {
-  let payload: { host?: string; apiKey?: string; peerDeviceId?: unknown };
-  try {
-    payload = (await req.json()) as {
-      host?: string;
-      apiKey?: string;
-      peerDeviceId?: unknown;
-    };
-  } catch {
-    return NextResponse.json(
-      { error: "bad_json", message: "Request body must be JSON" },
-      { status: 400 },
-    );
-  }
-
-  const target = normaliseAndCheckHost(payload?.host ?? "");
-  if ("error" in target) {
-    return NextResponse.json(
-      { error: target.error, message: target.message },
-      { status: 400 },
-    );
-  }
+  const env = await readJsonEnvelope(req);
+  if ("reject" in env) return env.reject;
+  const host = checkAgentHost(env.payload.host);
+  if ("reject" in host) return host.reject;
 
   // This route only serves the relay lane (see module doc) — a missing or
   // invalid peer id is a caller bug, not a silent LAN downgrade.
-  const peerDeviceId = payload?.peerDeviceId;
+  const peerDeviceId = env.payload.peerDeviceId;
   if (!isValidPeerDeviceId(peerDeviceId)) {
-    return NextResponse.json(
-      {
-        error: "bad_peer_device_id",
-        message:
-          "peerDeviceId must be a device id (letters, digits, dot, dash, underscore; 32 chars max)",
-      },
-      { status: 400 },
+    return proxyError(
+      400,
+      "bad_peer_device_id",
+      "peerDeviceId must be a device id (letters, digits, dot, dash, underscore; 32 chars max)",
     );
   }
 
-  const upstreamPath = `${RELAY_PROXY_PREFIX}/${peerDeviceId}${UPSTREAM_PATH}`;
-  const apiKey = String(payload?.apiKey ?? "").trim();
-
-  try {
-    const base = await ipv4FetchBase(target);
-    const upstream = await fetch(`${base}${upstreamPath}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        ...(apiKey ? { "X-ADOS-Key": apiKey } : {}),
-      },
-      signal: AbortSignal.timeout(RELAY_UPSTREAM_TIMEOUT_MS),
-    });
-    const body = await upstream.text();
-    return new NextResponse(body, {
-      status: upstream.status,
-      headers: {
-        "content-type":
-          upstream.headers.get("content-type") ?? "application/json",
-      },
-    });
-  } catch (e) {
-    return NextResponse.json(
-      {
-        error: "upstream_unreachable",
-        message: e instanceof Error ? e.message : String(e),
-      },
-      { status: 502 },
-    );
-  }
+  return proxyToAgent({
+    target: host.target,
+    path: `${RELAY_PROXY_PREFIX}/${peerDeviceId}${UPSTREAM_PATH}`,
+    method: "GET",
+    apiKey: String(env.payload.apiKey ?? "").trim(),
+    timeoutMs: RELAY_UPSTREAM_TIMEOUT_MS,
+  });
 }

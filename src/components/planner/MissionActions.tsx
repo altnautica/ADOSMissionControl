@@ -13,6 +13,7 @@ import { Upload, Save, MoreHorizontal, Download, FileDown, FileOutput, FileSprea
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useMissionUploadStatus } from "@/hooks/use-upload-status";
 
 interface MissionActionsProps {
   hasWaypoints: boolean;
@@ -101,19 +102,18 @@ export function MissionActions({
     else if (id === "discard") onDiscard();
   };
 
-  // Honest upload-state cue: once a mission is on the aircraft, say so — and if
-  // the plan has since been edited, say the aircraft holds an OLDER version.
+  // Honest upload-state cue, from the upload receipt: "on aircraft" only when
+  // the selected drone acknowledged exactly the mission the planner would
+  // upload now; an edit, a plan switch or another drone reads differently.
+  const status = useMissionUploadStatus();
   const uploadPill =
-    uploadState === "uploaded"
-      ? {
-          label: isDirty ? t("olderMissionOnAircraft") : t("onAircraft"),
-          className: isDirty
-            ? "text-status-warning border-status-warning/40 bg-status-warning/10"
-            : "text-status-success border-status-success/40 bg-status-success/10",
-        }
-      : uploadState === "error"
-        ? { label: t("uploadFailed"), className: "text-status-error border-status-error/40 bg-status-error/10" }
-        : null;
+    uploadState === "error"
+      ? { label: t("uploadFailed"), className: "text-status-error border-status-error/40 bg-status-error/10" }
+      : status === "on-aircraft"
+        ? { label: t("onAircraft"), className: "text-status-success border-status-success/40 bg-status-success/10" }
+        : status === "older-on-aircraft"
+          ? { label: t("olderMissionOnAircraft"), className: "text-status-warning border-status-warning/40 bg-status-warning/10" }
+          : null;
 
   return (
     <div className="border-t border-border-default p-3 flex flex-col gap-2">

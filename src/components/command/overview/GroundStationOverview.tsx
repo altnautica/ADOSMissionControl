@@ -14,6 +14,8 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useGroundStationStore } from "@/stores/ground-station-store";
+import { useGroundStationPoll } from "../nodes/ground-station/use-gs-poll";
 import { AgentStatusCard } from "../shared/AgentStatusCard";
 import { SystemResourceGauges } from "../shared/SystemResourceGauges";
 import { CpuSparkline } from "../shared/CpuSparkline";
@@ -30,6 +32,9 @@ import { PairedDroneCard } from "../shared/PairedDroneCard";
 import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewGrid, OverviewTile } from "./OverviewGrid";
 
+/** Cadence of the summary poll; the cards age out after a few misses. */
+const GS_SUMMARY_POLL_MS = 3000;
+
 export function GroundStationOverview({ name }: { name?: string }) {
   const t = useTranslations("agent");
   const connected = useAgentConnectionStore((s) => s.connected);
@@ -43,6 +48,7 @@ export function GroundStationOverview({ name }: { name?: string }) {
   const fetchResources = useAgentSystemStore((s) => s.fetchResources);
   const fetchLogs = useAgentSystemStore((s) => s.fetchLogs);
   const restartService = useAgentSystemStore((s) => s.restartService);
+  const restartAll = useAgentSystemStore((s) => s.restartAll);
 
   useEffect(() => {
     if (connected) {
@@ -51,6 +57,38 @@ export function GroundStationOverview({ name }: { name?: string }) {
       fetchLogs();
     }
   }, [connected, fetchServices, fetchResources, fetchLogs]);
+
+  // The summary cards below read the status, role, mesh and uplink slices.
+  // Nothing else keeps them current on this landing page (their writers are
+  // the Radio, Mesh and Network tabs), so poll them here. A failed status read
+  // drops the link snapshot rather than leaving the last one standing; every
+  // other slice keeps its refresh stamp and ages out on its own.
+  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
+  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const loadStatus = useGroundStationStore((s) => s.loadStatus);
+  const invalidateLinkHealth = useGroundStationStore((s) => s.invalidateLinkHealth);
+  const loadRole = useGroundStationStore((s) => s.loadRole);
+  const loadMesh = useGroundStationStore((s) => s.loadMesh);
+  const loadNetwork = useGroundStationStore((s) => s.loadNetwork);
+  useGroundStationPoll(agentUrl, apiKey, GS_SUMMARY_POLL_MS, async (api) => {
+    try {
+      const gs = await api.getStatus();
+      loadStatus(
+        {
+          paired_drone: gs.paired_drone ?? null,
+          profile: gs.profile ?? "unconfigured",
+          uplink_active: gs.uplink_active ?? null,
+        },
+        gs.link_health,
+      );
+    } catch (err) {
+      invalidateLinkHealth(err instanceof Error ? err.message : "status read failed");
+      throw err;
+    }
+    await loadRole(api);
+    await loadMesh(api);
+    await loadNetwork(api);
+  });
 
   if (!status) {
     if (!connected) return <AgentDisconnectedPage />;
@@ -101,7 +139,7 @@ export function GroundStationOverview({ name }: { name?: string }) {
           <ServiceTable
             services={services}
             onRestart={restartService}
-            onRestartAll={() => restartService("ados-supervisor")}
+            onRestartAll={restartAll}
             processCpu={processCpu}
             processMemoryMb={processMemMb}
           />

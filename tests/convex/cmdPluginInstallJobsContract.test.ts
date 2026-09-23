@@ -8,20 +8,17 @@
  * with `failed` and `cancelled` as terminal off-ramps from any stage.
  *
  * These tests pin:
- *   - the stage validator declares exactly the 8 stages above
- *   - the mutation argument shapes for createJob / advanceStage /
- *     cancelJob match the documented contract
- *   - cancelJob refuses to roll back a job already in `installing`
- *   - cancelJob is a no-op (not an error) on already-terminal jobs
+ *   - the createJob / cancelJob contract (asserted against the source
+ *     text, since those need a Convex runtime)
+ *   - how a `plugin.install` command ACK settles its job (executed
+ *     against an in-memory db)
  *   - the schema table shape mirrors the mutation surface
- *
- * Convex internal mutations cannot be executed directly without a
- * runtime; the contract is asserted against the source text. This
- * mirrors the cmdDroneStatus tests in this folder.
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+
+import { settleInstallJobFromAck } from "../../convex/cmdPluginInstallJobs";
 
 const MUTATION_PATH = path.join(process.cwd(), "convex/cmdPluginInstallJobs.ts");
 const SCHEMA_PATH = path.join(process.cwd(), "convex/schema.ts");
@@ -36,31 +33,6 @@ const EXPECTED_STAGES = [
   "failed",
   "cancelled",
 ] as const;
-
-describe("plugin install job stage validator", () => {
-  it("declares exactly the eight documented stages", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    for (const stage of EXPECTED_STAGES) {
-      expect(text).toContain(`v.literal("${stage}")`);
-    }
-  });
-
-  it("does not declare any stages outside the documented set", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    // Pull every v.literal("...") string occurrence inside the stage
-    // validator block; if a future change adds a new stage, the test
-    // forces an explicit update here and in the doc comment.
-    const stageBlockMatch = text.match(
-      /const stageValidator = v\.union\(([\s\S]*?)\);/,
-    );
-    expect(stageBlockMatch).toBeTruthy();
-    const block = stageBlockMatch ? stageBlockMatch[1] : "";
-    const literals = Array.from(block.matchAll(/v\.literal\("([^"]+)"\)/g)).map(
-      (m) => m[1],
-    );
-    expect(literals.sort()).toEqual([...EXPECTED_STAGES].sort());
-  });
-});
 
 describe("createJob mutation contract", () => {
   it("requires deviceId, archiveId, and requestedPermissions", async () => {
@@ -109,21 +81,83 @@ describe("createJob mutation contract", () => {
   });
 });
 
-describe("advanceStage mutation contract (agent-facing)", () => {
-  it("is an internalMutation so only the HTTP layer can invoke it", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    expect(text).toContain("export const advanceStage = internalMutation");
+describe("settleInstallJobFromAck (agent-facing)", () => {
+  type Row = Record<string, unknown> & { _id: string };
+
+  // In-memory stand-in for the mutation db: ids are "<table>:<n>", so
+  // normalizeId resolves an id only for the table it belongs to.
+  function fakeDb(rows: Row[]) {
+    const byId = new Map(rows.map((r) => [r._id, { ...r }]));
+    const db = {
+      normalizeId: (table: string, id: string) => (id.startsWith(`${table}:`) ? id : null),
+      get: async (id: string) => byId.get(id) ?? null,
+      patch: async (id: string, patch: Record<string, unknown>) => {
+        const row = byId.get(id);
+        if (!row) throw new Error("missing row");
+        Object.assign(row, patch);
+      },
+    };
+    return { ctx: { db } as never, row: (id: string) => byId.get(id) };
+  }
+
+  const JOB = "plugin_install_jobs:1";
+  const CMD = "cmd_droneCommands:1";
+  const job = (stage: string, cmdId = CMD): Row => ({ _id: JOB, stage, cmdId, attempts: 0 });
+  const command = (overrides: Record<string, unknown> = {}) =>
+    ({ _id: CMD, command: "plugin.install", args: { jobId: JOB }, ...overrides }) as never;
+
+  it("completes the linked job on a completed ack, recording an install row id", async () => {
+    const { ctx, row } = fakeDb([job("commanded")]);
+    await settleInstallJobFromAck(ctx, command(), {
+      status: "completed",
+      result: { success: true, message: "installed" },
+      data: { installId: "cmd_pluginInstalls:7" },
+    });
+    expect(row(JOB)).toMatchObject({ stage: "completed", installId: "cmd_pluginInstalls:7" });
   });
 
-  it("accepts a stage transition, an optional installId, and an optional error", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    const exportIdx = text.indexOf("export const advanceStage");
-    const argsBlock = text.slice(exportIdx, exportIdx + 500);
-    expect(argsBlock).toContain('jobId: v.id("plugin_install_jobs")');
-    expect(argsBlock).toContain("stage: stageValidator");
-    expect(argsBlock).toContain('installId: v.optional(v.id("cmd_pluginInstalls"))');
-    expect(argsBlock).toContain("error: v.optional(errorValidator)");
-    expect(argsBlock).toContain("incrementAttempts: v.optional(v.boolean())");
+  it("completes without an installId when the ack names no install row", async () => {
+    const { ctx, row } = fakeDb([job("commanded")]);
+    await settleInstallJobFromAck(ctx, command(), {
+      status: "completed",
+      data: { installId: JOB },
+    });
+    expect(row(JOB)?.stage).toBe("completed");
+    expect(row(JOB)?.installId).toBeUndefined();
+  });
+
+  it("fails the linked job with the agent's code and message", async () => {
+    const { ctx, row } = fakeDb([job("commanded")]);
+    await settleInstallJobFromAck(ctx, command(), {
+      status: "failed",
+      result: { success: false, message: "download failed: host not allowed" },
+      data: { code: "download_failed" },
+    });
+    expect(row(JOB)).toMatchObject({
+      stage: "failed",
+      error: { code: "download_failed", message: "download failed: host not allowed" },
+    });
+  });
+
+  it("leaves a cancelled job cancelled", async () => {
+    const { ctx, row } = fakeDb([job("cancelled")]);
+    await settleInstallJobFromAck(ctx, command(), { status: "completed" });
+    expect(row(JOB)?.stage).toBe("cancelled");
+  });
+
+  it("does not move a job linked to a different command", async () => {
+    const { ctx, row } = fakeDb([job("commanded", "cmd_droneCommands:2")]);
+    await settleInstallJobFromAck(ctx, command(), { status: "completed" });
+    expect(row(JOB)?.stage).toBe("commanded");
+  });
+
+  it("ignores other commands and a jobId that is not a job", async () => {
+    const { ctx, row } = fakeDb([job("commanded")]);
+    await settleInstallJobFromAck(ctx, command({ command: "plugin.enable" }), { status: "completed" });
+    await settleInstallJobFromAck(ctx, command({ args: { jobId: "cmd_droneCommands:1" } }), {
+      status: "completed",
+    });
+    expect(row(JOB)?.stage).toBe("commanded");
   });
 });
 

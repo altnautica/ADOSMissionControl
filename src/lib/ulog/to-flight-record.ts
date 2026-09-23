@@ -108,7 +108,40 @@ function buildAllFrames(
 
   // Sort by time
   frames.sort((a, b) => a.offsetMs - b.offsetMs);
+  addRelativeAltitude(frames, homeAltitudeAt(log, startUs));
   return frames;
+}
+
+/**
+ * AMSL home altitude in effect at `startUs`: the latest home_position row at
+ * or before it, else the first one logged. Undefined when the log has none.
+ */
+function homeAltitudeAt(log: UlogFile, startUs: number): number | undefined {
+  let chosen: number | undefined;
+  for (const row of log.data.get("home_position") ?? []) {
+    const alt = typeof row.alt === "number" && isFinite(row.alt) ? row.alt : undefined;
+    if (alt === undefined) continue;
+    const ts = typeof row.timestamp === "number" ? row.timestamp : 0;
+    if (chosen === undefined || ts <= startUs) chosen = alt;
+    if (ts > startUs) break;
+  }
+  return chosen;
+}
+
+/**
+ * Set `relativeAlt` (height above home) on every globalPosition frame from
+ * its AMSL `alt`. Without a logged home, the first fix of the flight is the
+ * reference, which is where the vehicle armed.
+ */
+function addRelativeAltitude(frames: TelemetryFrame[], homeAlt: number | undefined): void {
+  let ref = homeAlt;
+  for (const f of frames) {
+    if (f.channel !== "globalPosition") continue;
+    const d = f.data as Record<string, unknown>;
+    if (typeof d.alt !== "number") continue;
+    if (ref === undefined) ref = d.alt;
+    d.relativeAlt = d.alt - ref;
+  }
 }
 
 // ── Record building ──────────────────────────────────────────
@@ -145,8 +178,8 @@ function buildRecordFromFrames(
   for (const f of frames) {
     const d = f.data as Record<string, unknown>;
 
-    if (f.channel === "position" || f.channel === "globalPosition") {
-      const alt = typeof d.relativeAlt === "number" ? d.relativeAlt : typeof d.alt === "number" ? d.alt : undefined;
+    if (f.channel === "globalPosition") {
+      const alt = typeof d.relativeAlt === "number" ? d.relativeAlt : undefined;
       const gs = typeof d.groundSpeed === "number" ? d.groundSpeed : undefined;
       const lat = typeof d.lat === "number" ? d.lat : undefined;
       const lon = typeof d.lon === "number" ? d.lon : undefined;

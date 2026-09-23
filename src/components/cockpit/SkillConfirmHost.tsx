@@ -43,10 +43,14 @@ function recordSafetyOverride(action: string, reason: string): void {
 }
 
 /** Translate a key, falling back to the raw string for non-key content. */
-function tr(t: ReturnType<typeof useTranslations>, value: string): string {
+function tr(
+  t: ReturnType<typeof useTranslations>,
+  value: string,
+  values?: Record<string, string | number>,
+): string {
   if (value.startsWith("skills.") || value.includes(".")) {
     try {
-      return t(value);
+      return t(value, values);
     } catch {
       return value;
     }
@@ -113,8 +117,8 @@ export function SkillConfirmHost() {
               setKillStage({ id: requestId, final: true });
             }
           }}
-          title={tr(t, policy.title)}
-          message={tr(t, policy.message)}
+          title={tr(t, policy.title, policy.values)}
+          message={tr(t, policy.message, policy.values)}
           confirmLabel={tr(t, policy.confirmLabel)}
           variant={policy.variant}
         />
@@ -143,9 +147,11 @@ export function SkillConfirmHost() {
 
   // ── Standard single-dialog (with optional checklist-aware OVERRIDE) ────
   const title = escalated
-    ? t("skills.override.title", { title: tr(t, policy.title) })
-    : tr(t, policy.title);
-  const message = escalated ? t("skills.override.message") : tr(t, policy.message);
+    ? t("skills.override.title", { title: tr(t, policy.title, policy.values) })
+    : tr(t, policy.title, policy.values);
+  const message = escalated
+    ? t("skills.override.message")
+    : tr(t, policy.message, policy.values);
   const typedPhrase = escalated ? "OVERRIDE" : policy.typedPhrase;
 
   return (

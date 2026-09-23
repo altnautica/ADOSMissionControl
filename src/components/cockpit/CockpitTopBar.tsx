@@ -94,8 +94,9 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
   // defaults "disarmed" / "STABILIZE" as though they were measured — a safety
   // strip asserting a confirmed-safe state it never observed. They go through
   // the same heartbeat gate the canvas HUD uses (`hud-draw-status`), which
-  // renders the no-data glyph for null.
-  const { armed, mode, signalBars } = deriveHudStatus(
+  // renders the no-data glyph for null. Battery percent comes from the same
+  // derivation, which reads the FC's -1 ("capacity unknown") as no reading.
+  const { armed, mode, signalBars, batteryPct } = deriveHudStatus(
     { battery, gps, radio },
     { armState, flightMode: rawMode, lastHeartbeat },
   );
@@ -108,13 +109,8 @@ function CockpitTopBarInner({ onExit, controls, lean = false }: CockpitTopBarPro
 
   const timer = useFlightTimer(armedAt);
 
-  const batteryPct = battery?.remaining;
-  const batteryLow =
-    typeof batteryPct === "number" && Number.isFinite(batteryPct) && batteryPct <= LOW_BATTERY_PERCENT;
-  const batWidth =
-    typeof batteryPct === "number" && Number.isFinite(batteryPct)
-      ? Math.max(0, Math.min(100, batteryPct))
-      : 0;
+  const batteryLow = batteryPct !== null && batteryPct <= LOW_BATTERY_PERCENT;
+  const batWidth = batteryPct !== null ? Math.max(0, Math.min(100, batteryPct)) : 0;
 
   // The locale already carried gpsRtk / gps3d / gps2d / gpsNoFix; this band was
   // building its own English strings beside them, so the one surface an

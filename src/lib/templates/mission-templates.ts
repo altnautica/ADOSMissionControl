@@ -6,15 +6,16 @@
  * flight-pattern generators in `@/lib/patterns` — no fabricated coordinates.
  *
  * A template is a pure function: given a `MissionTemplateContext` (map center,
- * optional boundary, default altitude + speed) it returns a mission `Waypoint[]`
- * bookended with TAKEOFF / RTL (mirroring the pattern-apply path), all derived
- * from real generator output. Nothing here reads or mutates a store.
+ * optional boundary, default altitude, speed and frame) it returns a mission
+ * `Waypoint[]` built by the same pattern converter the pattern apply uses, all
+ * derived from real generator output. Nothing here reads or mutates a store.
  *
  * @license GPL-3.0-only
  */
 
-import type { Waypoint, WaypointCommand } from "@/lib/types";
+import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import type { PatternResult } from "@/lib/patterns/types";
+import { patternToMission } from "@/lib/patterns/pattern-to-mission";
 import {
   generateSurvey,
   generateOrbit,
@@ -23,7 +24,6 @@ import {
   generateSectorSearch,
 } from "@/lib/patterns";
 import { offsetPoint } from "@/lib/drawing/geo-utils";
-import { randomId } from "@/lib/utils";
 
 /** Everything a template needs to build real waypoints from the current view. */
 export interface MissionTemplateContext {
@@ -34,10 +34,12 @@ export interface MissionTemplateContext {
    * fall back to a box around `center` when it is absent (see `needsBoundary`).
    */
   boundary?: [number, number][];
-  /** Default altitude AGL for generated waypoints, in meters. */
+  /** Default altitude for generated waypoints, in meters, in `frame`. */
   altitude: number;
   /** Default cruise speed for generated waypoints, in m/s. */
   speed: number;
+  /** Mission default altitude frame, stamped on every generated waypoint. */
+  frame: AltitudeFrame;
 }
 
 /** A single built-in mission template. */
@@ -86,41 +88,9 @@ function boxAround(center: [number, number], halfM: number): [number, number][] 
 
 // ── Pattern → mission-waypoint conversion ────────────────────
 
-/**
- * Convert a generator's `PatternResult` into mission `Waypoint[]`, bookended
- * with TAKEOFF (at the first generated point) and RTL (at the last). Mirrors the
- * pattern-apply path so templates behave like the manual pattern tools. Returns
- * an empty array when the generator produced nothing, so the caller can guard.
- */
-function finalize(result: PatternResult): Waypoint[] {
-  const pts = result.waypoints;
-  if (pts.length === 0) return [];
-
-  const waypoints: Waypoint[] = pts.map((pw) => ({
-    id: randomId(),
-    lat: pw.lat,
-    lon: pw.lon,
-    alt: pw.alt,
-    speed: pw.speed,
-    command: (pw.command ?? "WAYPOINT") as WaypointCommand,
-    param1: pw.param1,
-    param2: pw.param2,
-  }));
-
-  const first = waypoints[0];
-  if (first.command !== "TAKEOFF") {
-    waypoints.unshift({
-      id: randomId(),
-      lat: first.lat,
-      lon: first.lon,
-      alt: first.alt,
-      command: "TAKEOFF",
-    });
-  }
-  const last = waypoints[waypoints.length - 1];
-  waypoints.push({ id: randomId(), lat: last.lat, lon: last.lon, alt: 0, command: "RTL" });
-
-  return waypoints;
+/** Convert a generator result into mission waypoints for this context. */
+function finalize(result: PatternResult, ctx: MissionTemplateContext): Waypoint[] {
+  return patternToMission(result.waypoints, ctx.frame);
 }
 
 // ── The catalog ──────────────────────────────────────────────
@@ -144,6 +114,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           altitude: ctx.altitude,
           speed: ctx.speed,
         }),
+        ctx,
       ),
   },
   {
@@ -167,6 +138,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           altitude: ctx.altitude,
           speed: ctx.speed,
         }),
+        ctx,
       ),
   },
   {
@@ -186,6 +158,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           altitude: ctx.altitude,
           speed: ctx.speed,
         }),
+        ctx,
       ),
   },
   {
@@ -207,6 +180,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           altitude: ctx.altitude,
           speed: ctx.speed,
         }),
+        ctx,
       );
     },
   },
@@ -226,6 +200,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           speed: ctx.speed,
           startBearing: 0,
         }),
+        ctx,
       ),
   },
   {
@@ -244,6 +219,7 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           speed: ctx.speed,
           startBearing: 0,
         }),
+        ctx,
       ),
   },
 ];

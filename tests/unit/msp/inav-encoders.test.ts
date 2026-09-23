@@ -6,7 +6,6 @@ import {
   encodeCommonSetSetting,
   encodeCommonSettingInfo,
   encodeMspINavSetMisc,
-  encodeMspINavSetBatteryConfig,
   encodeMspINavSelectBatteryProfile,
   encodeMspINavSelectMixerProfile,
 } from '@/lib/protocol/msp/msp-encoders-inav'
@@ -24,10 +23,6 @@ function readU16LE(buf: Uint8Array, offset: number): number {
 
 function readS32LE(buf: Uint8Array, offset: number): number {
   return new DataView(buf.buffer, buf.byteOffset + offset, 4).getInt32(0, true)
-}
-
-function readU32LE(buf: Uint8Array, offset: number): number {
-  return new DataView(buf.buffer, buf.byteOffset + offset, 4).getUint32(0, true)
 }
 
 // ── encodeMspSetWp ────────────────────────────────────────────
@@ -160,33 +155,6 @@ describe('encodeMspINavSetMisc', () => {
 
   it('encodes voltageScale at offset 18', () => {
     expect(readU8(encodeMspINavSetMisc(misc), 18)).toBe(100)
-  })
-})
-
-// ── encodeMspINavSetBatteryConfig ─────────────────────────────
-
-describe('encodeMspINavSetBatteryConfig', () => {
-  const cfg = {
-    capacityMah: 5000, capacityWarningMah: 1000, capacityCriticalMah: 500,
-    capacityUnit: 0, voltageSource: 0, cells: 6, cellDetect: 0,
-    cellMin: 3300, cellMax: 4200, cellWarning: 3700,
-    currentScale: 100, currentOffset: 0,
-  }
-
-  it('produces a 26-byte payload', () => {
-    expect(encodeMspINavSetBatteryConfig(cfg).byteLength).toBe(26)
-  })
-
-  it('encodes capacityMah as U32LE at offset 0', () => {
-    expect(readU32LE(encodeMspINavSetBatteryConfig(cfg), 0)).toBe(5000)
-  })
-
-  it('encodes cells at offset 14', () => {
-    expect(readU8(encodeMspINavSetBatteryConfig(cfg), 14)).toBe(6)
-  })
-
-  it('encodes cellMin as U16LE at offset 16', () => {
-    expect(readU16LE(encodeMspINavSetBatteryConfig(cfg), 16)).toBe(3300)
   })
 })
 

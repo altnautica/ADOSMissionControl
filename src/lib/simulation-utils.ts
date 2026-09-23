@@ -77,8 +77,15 @@ export function computeFlightPlan(waypoints: Waypoint[], defaultSpeed: number): 
     const from = waypoints[i];
     const to = waypoints[i + 1];
     const dist = distance3D(from, to);
-    const speed = to.speed ?? from.speed ?? defaultSpeed;
-    const holdTime = from.holdTime ?? 0;
+    // The uploaded speed of a leg: the destination's own speed, else the
+    // mission default (see the speed note in mission/mission-expand).
+    const speed = to.speed ?? defaultSpeed;
+    // Only these commands hold for `holdTime` seconds. An unlimited LOITER
+    // never advances on its own, and LOITER_TURNS / PAYLOAD_PLACE keep turns
+    // and a descent distance in that slot.
+    const holds = from.command === undefined || from.command === "WAYPOINT"
+      || from.command === "SPLINE_WAYPOINT" || from.command === "LOITER_TIME";
+    const holdTime = holds ? from.holdTime ?? 0 : 0;
     const duration = holdTime + (speed > 0 ? dist / speed : 0);
     const hdg = bearing(from.lat, from.lon, to.lat, to.lon);
 

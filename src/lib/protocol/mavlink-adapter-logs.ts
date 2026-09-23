@@ -23,6 +23,7 @@ export interface LogListState {
 
 export interface LogDataState {
   logId: number
+  /** LOG_DATA carries no total, so the adapter never knows it: always 0 (unknown). */
   totalSize: number
   data: Uint8Array
   receivedBytes: number
@@ -73,6 +74,8 @@ export async function downloadLog(ctx: LogContext, logId: number, onProgress?: L
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
   return new Promise<Uint8Array>((resolve, reject) => {
+    // LOG_DATA has no end marker other than a short packet, so a download
+    // that has not seen one when a timer fires is incomplete and rejects.
     const hardTimer = setTimeout(() => {
       finishLogDataDownload(ctx, true)
     }, 5 * 60 * 1000)
@@ -116,11 +119,12 @@ export async function eraseAllLogs(ctx: LogContext): Promise<CommandResult> {
   return { success: true, resultCode: 0, message: 'Erase command sent' }
 }
 
+/** Abort the active log download; its promise rejects with "Log download cancelled". */
 export function cancelLogDownload(ctx: LogContext): void {
   if (ctx.logDataDownload) {
-    if (ctx.logDataDownload.inactivityTimer) clearTimeout(ctx.logDataDownload.inactivityTimer)
+    clearTimeout(ctx.logDataDownload.inactivityTimer ?? undefined)
     clearTimeout(ctx.logDataDownload.hardTimer)
-    ctx.logDataDownload.resolve(new Uint8Array(0))
+    ctx.logDataDownload.reject(new Error('Log download cancelled'))
     ctx.logDataDownload = null
   }
   if (ctx.transport?.isConnected) {
@@ -168,9 +172,9 @@ export function handleLogData(ctx: LogContext, frame: MAVLinkFrame): void {
   }
   ctx.logDataDownload.lastReceivedOfs = data.ofs
 
-  if (ctx.logDataDownload.onProgress && ctx.logDataDownload.totalSize > 0) {
-    ctx.logDataDownload.onProgress(ctx.logDataDownload.receivedBytes, ctx.logDataDownload.totalSize)
-  }
+  // totalSize is 0 (unknown): the caller scales progress against the
+  // LOG_ENTRY size it listed.
+  ctx.logDataDownload.onProgress?.(ctx.logDataDownload.receivedBytes, ctx.logDataDownload.totalSize)
 
   if (ctx.logDataDownload.inactivityTimer) clearTimeout(ctx.logDataDownload.inactivityTimer)
   ctx.logDataDownload.inactivityTimer = setTimeout(() => {
@@ -193,14 +197,22 @@ export function handleLogData(ctx: LogContext, frame: MAVLinkFrame): void {
   }
 }
 
-export function finishLogDataDownload(ctx: LogContext, _partial: boolean): void {
+/**
+ * End the active download. A complete download (short final packet)
+ * resolves with the bytes; an incomplete one (hard timer or retries
+ * exhausted) rejects, so a truncated log is never handed on as a whole one.
+ */
+export function finishLogDataDownload(ctx: LogContext, partial: boolean): void {
   if (!ctx.logDataDownload) return
   const dl = ctx.logDataDownload
-  if (dl.inactivityTimer) clearTimeout(dl.inactivityTimer)
+  clearTimeout(dl.inactivityTimer ?? undefined)
   clearTimeout(dl.hardTimer)
-  const trimmed = dl.data.slice(0, dl.receivedBytes)
-  dl.resolve(trimmed)
   ctx.logDataDownload = null
+  if (partial) {
+    dl.reject(new Error(`Log ${dl.logId} download incomplete: the flight controller stopped sending after ${dl.receivedBytes} bytes`))
+  } else {
+    dl.resolve(dl.data.slice(0, dl.receivedBytes))
+  }
   if (ctx.transport?.isConnected) {
     ctx.transport.send(encodeLogRequestEnd(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
   }

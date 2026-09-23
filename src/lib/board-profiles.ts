@@ -89,11 +89,11 @@ export const UNKNOWN_BOARD: BoardProfile = {
 // ── Detection & Lookup ───────────────────────────────────────
 
 /**
- * Find a board profile by AP_FW_BOARD_ID from AUTOPILOT_VERSION message.
- * Returns UNKNOWN_BOARD if no match found.
+ * Find a board profile by AP_FW_BOARD_ID (decoded from AUTOPILOT_VERSION
+ * board_version). Returns UNKNOWN_BOARD if no match found.
  */
-export function detectBoardProfile(boardVersion: number): BoardProfile {
-  const entry = findArduPilotBoard(boardVersion)
+export function detectBoardProfile(boardId: number): BoardProfile {
+  const entry = findArduPilotBoard(boardId)
   if (entry) return entryToProfile(entry)
   return UNKNOWN_BOARD
 }

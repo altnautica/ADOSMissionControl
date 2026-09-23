@@ -12,19 +12,19 @@ import { indexedDBStorage } from "@/lib/storage";
 import { useDroneManager } from "./drone-manager";
 import { polygonBounds } from "@/lib/drawing/geo-utils";
 import type { FenceElement } from "@/lib/protocol/types";
+import {
+  nextZoneId,
+  flattenToPolygon,
+  buildFenceElements,
+  elementToZone,
+  fenceContentHash,
+  writeFenceParams,
+  readFenceParams,
+} from "@/lib/geofence-elements";
+import { useUploadReceiptsStore } from "./upload-receipts-store";
 
 export type FenceType = "circle" | "polygon";
 export type BreachAction = "RTL" | "LAND" | "REPORT";
-
-/**
- * ArduPilot `FENCE_ACTION` values for the breach responses the planner exposes.
- * (0 = report only, 1 = RTL or land, 2 = always land.)
- */
-const FENCE_ACTION_VALUE: Record<BreachAction, number> = {
-  REPORT: 0,
-  RTL: 1,
-  LAND: 2,
-};
 
 /** Fence zone role: inclusion = must stay inside, exclusion = must stay outside */
 export type FenceZoneRole = "inclusion" | "exclusion";
@@ -40,13 +40,6 @@ export interface FenceZone {
   /** Radius for circle zones (meters) */
   circleRadius: number;
 }
-
-/** ArduPilot FENCE_TYPE bitmask */
-export const FENCE_TYPE_BITS = {
-  ALT_MAX: 1 << 0,
-  CIRCLE: 1 << 1,
-  POLYGON: 1 << 2,
-} as const;
 
 /**
  * Immutable snapshot of the operator-editable geofence state for the
@@ -136,117 +129,6 @@ interface GeofenceStoreState {
   snapshot: () => GeofenceSnapshot;
   /** Restore a previously captured fence state (from undo / redo). */
   restore: (snap: GeofenceSnapshot) => void;
-}
-
-let zoneIdCounter = 0;
-function nextZoneId(): string {
-  return `zone-${++zoneIdCounter}`;
-}
-
-/** Approximate a circle as a 16-vertex polygon (legacy FENCE_POINT path). */
-function circleToPolygon(
-  center: [number, number],
-  radiusMeters: number,
-): Array<{ lat: number; lon: number }> {
-  const pts: Array<{ lat: number; lon: number }> = [];
-  const cosLat = Math.cos((center[0] * Math.PI) / 180);
-  const lonScale = 111320 * (Math.abs(cosLat) < 1e-6 ? 1e-6 : cosLat);
-  for (let i = 0; i < 16; i++) {
-    const angle = (i * 2 * Math.PI) / 16;
-    const dLat = (radiusMeters / 111320) * Math.cos(angle);
-    const dLon = (radiusMeters / lonScale) * Math.sin(angle);
-    pts.push({ lat: center[0] + dLat, lon: center[1] + dLon });
-  }
-  return pts;
-}
-
-/**
- * Flatten the active fence to a single inclusion polygon for the legacy
- * FENCE_POINT path (ArduPilot). A circle becomes a 16-vertex polygon.
- */
-function flattenToPolygon(
-  fenceType: FenceType,
-  polygonPoints: [number, number][],
-  circleCenter: [number, number] | null,
-  circleRadius: number,
-): Array<{ lat: number; lon: number }> {
-  if (fenceType === "polygon") {
-    return polygonPoints.map(([lat, lon]) => ({ lat, lon }));
-  }
-  if (!circleCenter) return [];
-  return circleToPolygon(circleCenter, circleRadius);
-}
-
-/**
- * Build the fence model for the mission-type-fence path (PX4). The primary
- * fence is an inclusion zone (stay inside); each additional zone keeps its own
- * inclusion/exclusion role. Circles stay native (no polygon approximation).
- */
-function buildFenceElements(
-  fenceType: FenceType,
-  polygonPoints: [number, number][],
-  circleCenter: [number, number] | null,
-  circleRadius: number,
-  zones: FenceZone[],
-): FenceElement[] {
-  const elements: FenceElement[] = [];
-  if (fenceType === "polygon") {
-    if (polygonPoints.length >= 3) {
-      elements.push({
-        kind: "polygon",
-        role: "inclusion",
-        vertices: polygonPoints.map(([lat, lon]) => ({ lat, lon })),
-      });
-    }
-  } else if (circleCenter) {
-    elements.push({
-      kind: "circle",
-      role: "inclusion",
-      center: { lat: circleCenter[0], lon: circleCenter[1] },
-      radius: circleRadius,
-    });
-  }
-  for (const z of zones) {
-    if (z.type === "polygon") {
-      if (z.polygonPoints.length >= 3) {
-        elements.push({
-          kind: "polygon",
-          role: z.role,
-          vertices: z.polygonPoints.map(([lat, lon]) => ({ lat, lon })),
-        });
-      }
-    } else if (z.circleCenter) {
-      elements.push({
-        kind: "circle",
-        role: z.role,
-        center: { lat: z.circleCenter[0], lon: z.circleCenter[1] },
-        radius: z.circleRadius,
-      });
-    }
-  }
-  return elements;
-}
-
-/** Convert a downloaded fence element into a store zone. */
-function elementToZone(el: FenceElement): FenceZone {
-  if (el.kind === "polygon") {
-    return {
-      id: nextZoneId(),
-      role: el.role,
-      type: "polygon",
-      polygonPoints: el.vertices.map((v) => [v.lat, v.lon] as [number, number]),
-      circleCenter: null,
-      circleRadius: 0,
-    };
-  }
-  return {
-    id: nextZoneId(),
-    role: el.role,
-    type: "circle",
-    polygonPoints: [],
-    circleCenter: [el.center.lat, el.center.lon],
-    circleRadius: el.radius,
-  };
 }
 
 export const useGeofenceStore = create<GeofenceStoreState>()(
@@ -341,7 +223,9 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
       return { success: false, message: "No flight controller connected" };
     }
 
-    const { fenceType, polygonPoints, circleCenter, circleRadius, breachAction, zones } = get();
+    const snap = get().snapshot();
+    const { fenceType, polygonPoints, circleCenter, circleRadius, zones } = snap;
+    const droneId = useDroneManager.getState().selectedDroneId;
     const firmware = protocol.getVehicleInfo()?.firmwareType;
     // PX4 stores the geofence as a mission plan (mission_type = fence). ArduPilot
     // and other firmwares use the legacy FENCE_POINT protocol. Branch here so a
@@ -364,32 +248,35 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
       }
     }
 
+    const isPx4 = firmware === "px4";
+    const receipts = useUploadReceiptsStore.getState();
     set({ uploadState: "uploading" });
+    let outcome: FenceTransferResult;
     try {
       const result = useMissionFence
         ? await protocol.uploadFenceMission!(elements)
         : await protocol.uploadFence(points);
-      set({ uploadState: result.success ? "uploaded" : "error" });
-      // Best-effort: write the ArduPilot breach action alongside the geometry so
-      // the FC enforces the operator's chosen response. Advisory: a failed or
-      // unsupported param write never flips the committed geometry upload to an
-      // error. FENCE_ACTION is an ArduPilot parameter, so it is only written on
-      // the legacy path (PX4 uses a different breach-action parameter and enum).
-      if (result.success && !useMissionFence) {
-        try {
-          await protocol.setParameter("FENCE_ACTION", FENCE_ACTION_VALUE[breachAction]);
-        } catch {
-          // FENCE_ACTION write is advisory; ignore.
-        }
-      }
-      return { success: result.success, message: result.message };
+      // The geometry alone enforces nothing: the enable flag, fence type,
+      // altitude ceiling and breach action are parameters. A fence the FC
+      // holds but does not enforce is not "uploaded", so any failed write
+      // fails the upload.
+      outcome = result.success
+        ? await writeFenceParams(protocol, isPx4, snap)
+        : { success: false, message: result.message };
+      if (outcome.success) outcome = { success: true, message: result.message };
     } catch (err) {
-      set({ uploadState: "error" });
-      return {
-        success: false,
-        message: err instanceof Error ? err.message : String(err),
-      };
+      outcome = { success: false, message: err instanceof Error ? err.message : String(err) };
     }
+    set({ uploadState: outcome.success ? "uploaded" : "error" });
+    if (droneId) {
+      if (outcome.success) {
+        receipts.record("fence", { droneId, contentHash: fenceContentHash(snap), at: Date.now() });
+      } else {
+        // A partial transfer leaves the FC's fence unknown.
+        receipts.clearKindForDrone("fence", droneId);
+      }
+    }
+    return outcome;
   },
 
   downloadFence: async () => {
@@ -399,57 +286,75 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     }
 
     const firmware = protocol.getVehicleInfo()?.firmwareType;
-    const useMissionFence =
-      firmware === "px4" && typeof protocol.downloadFenceMission === "function";
+    const isPx4 = firmware === "px4";
+    const useMissionFence = isPx4 && typeof protocol.downloadFenceMission === "function";
+    const droneId = useDroneManager.getState().selectedDroneId;
+    const noFence = { success: true, message: "No fence stored on the flight controller" };
 
     set({ downloadState: "downloading" });
     try {
+      // Read everything before touching local state, so a failed read never
+      // leaves a half-replaced fence.
+      let geometry: Partial<GeofenceSnapshot>;
+      let message: string;
       if (useMissionFence) {
         const elements = await protocol.downloadFenceMission!();
         if (elements.length === 0) {
           set({ downloadState: "downloaded" });
-          return { success: true, message: "No fence stored on the flight controller" };
+          return noFence;
         }
         // The first inclusion element (else the first element) is the primary
         // fence; every remaining element becomes an inclusion/exclusion zone.
         const firstInclusion = elements.findIndex((e) => e.role === "inclusion");
         const primaryIdx = firstInclusion >= 0 ? firstInclusion : 0;
         const primary = elements[primaryIdx];
-        const rest = elements.filter((_, i) => i !== primaryIdx);
-        const zones = rest.map(elementToZone);
-        if (primary.kind === "polygon") {
-          set({
-            fenceType: "polygon",
-            polygonPoints: primary.vertices.map((v) => [v.lat, v.lon] as [number, number]),
-            zones,
-            enabled: true,
-            downloadState: "downloaded",
-          });
-        } else {
-          set({
-            fenceType: "circle",
-            circleCenter: [primary.center.lat, primary.center.lon],
-            circleRadius: primary.radius,
-            zones,
-            enabled: true,
-            downloadState: "downloaded",
-          });
+        const zones = elements.filter((_, i) => i !== primaryIdx).map(elementToZone);
+        geometry =
+          primary.kind === "polygon"
+            ? {
+                fenceType: "polygon",
+                polygonPoints: primary.vertices.map((v) => [v.lat, v.lon] as [number, number]),
+                zones,
+              }
+            : {
+                fenceType: "circle",
+                circleCenter: [primary.center.lat, primary.center.lon],
+                circleRadius: primary.radius,
+                zones,
+              };
+        message = `Loaded ${elements.length} fence elements`;
+      } else {
+        const points = await protocol.downloadFence();
+        if (points.length < 3) {
+          set({ downloadState: "downloaded" });
+          return noFence;
         }
-        return { success: true, message: `Loaded ${elements.length} fence elements` };
-      }
-
-      const points = await protocol.downloadFence();
-      if (points.length >= 3) {
-        set({
+        geometry = {
           fenceType: "polygon",
           polygonPoints: points.map((p) => [p.lat, p.lon] as [number, number]),
-          enabled: true,
-          downloadState: "downloaded",
-        });
-        return { success: true, message: `Loaded ${points.length} fence points` };
+        };
+        message = `Loaded ${points.length} fence points`;
       }
-      set({ downloadState: "downloaded" });
-      return { success: true, message: "No fence stored on the flight controller" };
+      const params = await readFenceParams(protocol, isPx4);
+      set({
+        ...geometry,
+        enabled: params.enabled,
+        maxAltitude: params.maxAltitude,
+        ...(params.breachAction ? { breachAction: params.breachAction } : {}),
+        downloadState: "downloaded",
+      });
+      // The planner now shows what the FC holds, unless its breach action has
+      // no planner equivalent (the local action was kept, so they differ).
+      if (droneId && params.breachAction) {
+        useUploadReceiptsStore.getState().record("fence", {
+          droneId,
+          contentHash: fenceContentHash(get().snapshot()),
+          at: Date.now(),
+        });
+      }
+      return params.breachAction
+        ? { success: true, message }
+        : { success: true, message: `${message}; the FC's breach action has no planner equivalent` };
     } catch (err) {
       set({ downloadState: "error" });
       return {

@@ -30,9 +30,15 @@ import { MenuItem } from "./context-menu/MenuItem";
 import { OrbitPanel } from "./context-menu/panels/OrbitPanel";
 import { SetHomeConfirmPanel } from "./context-menu/panels/SetHomeConfirmPanel";
 import { PoiInputPanel } from "./context-menu/panels/PoiInputPanel";
+import { RallyAltitudePanel } from "./context-menu/panels/RallyAltitudePanel";
 import { handleOrbitConfirmed } from "./context-menu/actions/orbit";
 import { handleSetHomeConfirmed } from "./context-menu/actions/home";
-import { handleAddPoiConfirmed } from "./context-menu/actions/markers";
+import {
+  handleAddPoiConfirmed,
+  handleAddRallyConfirmed,
+  readReturnAltitude,
+} from "./context-menu/actions/markers";
+import { useRallyStore } from "@/stores/rally-store";
 
 export function MapContextMenu() {
   const map = useMap();
@@ -44,6 +50,8 @@ export function MapContextMenu() {
   const [poiInput, setPoiInput] = useState(false);
   const [poiLabel, setPoiLabel] = useState("");
   const [confirmHomeOpen, setConfirmHomeOpen] = useState(false);
+  const [rallyOpen, setRallyOpen] = useState(false);
+  const [rallyAlt, setRallyAlt] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const poiInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +71,8 @@ export function MapContextMenu() {
   const confirmPending = useGuidedStore((s) => s.confirmPending);
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const addPoi = usePoiStore((s) => s.addMarker);
+  const addRally = useRallyStore((s) => s.addPoint);
+  const uploadRally = useRallyStore((s) => s.uploadRallyPoints);
 
   const posBuffer = useTelemetryStore((s) => s.position);
   const latestPos = posBuffer.latest();
@@ -76,6 +86,7 @@ export function MapContextMenu() {
     setPoiInput(false);
     setPoiLabel("");
     setConfirmHomeOpen(false);
+    setRallyOpen(false);
   }, []);
 
   useEffect(() => {
@@ -98,6 +109,7 @@ export function MapContextMenu() {
       setOrbitOpen(false);
       setPoiInput(false);
       setConfirmHomeOpen(false);
+      setRallyOpen(false);
     };
 
     map.on("contextmenu", onContextMenu);
@@ -134,6 +146,16 @@ export function MapContextMenu() {
     setTimeout(() => poiInputRef.current?.focus(), 50);
   }, []);
 
+  // The rally altitude defaults to the vehicle's return altitude; until it is
+  // read (or when it cannot be) the field stays empty for the operator.
+  const openRallyPanel = useCallback(() => {
+    setRallyAlt("");
+    setRallyOpen(true);
+    void readReturnAltitude(getProtocol()).then((alt) => {
+      if (alt !== null) setRallyAlt((cur) => (cur === "" ? String(Math.round(alt)) : cur));
+    });
+  }, [getProtocol]);
+
   const { toast } = useToast();
   // Every flight-affecting menu action reports what the vehicle actually did.
   const report = useCallback<MenuReport>(
@@ -150,6 +172,7 @@ export function MapContextMenu() {
     openOrbitPanel,
     openHomeConfirmPanel,
     openPoiInputPanel,
+    openRallyPanel,
     report,
   });
 
@@ -188,6 +211,12 @@ export function MapContextMenu() {
     closeMenu();
   }, [menuPos, addPoi, poiLabel, closeMenu]);
 
+  const handleRallyConfirm = useCallback(() => {
+    if (!menuPos) return;
+    void handleAddRallyConfirmed({ menuPos, alt: Number(rallyAlt), addRally, uploadRally, report });
+    closeMenu();
+  }, [menuPos, rallyAlt, addRally, uploadRally, report, closeMenu]);
+
   const handlePoiCancel = useCallback(() => {
     setPoiInput(false);
     setPoiLabel("");
@@ -196,7 +225,7 @@ export function MapContextMenu() {
   // ── Keyboard navigation ─────────────────────────────────
 
   useEffect(() => {
-    if (!menuPos || orbitOpen || poiInput || confirmHomeOpen) return;
+    if (!menuPos || orbitOpen || poiInput || confirmHomeOpen || rallyOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -231,7 +260,7 @@ export function MapContextMenu() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [menuPos, menuItems, highlightIdx, handleAction, closeMenu, orbitOpen, poiInput, confirmHomeOpen]);
+  }, [menuPos, menuItems, highlightIdx, handleAction, closeMenu, orbitOpen, poiInput, confirmHomeOpen, rallyOpen]);
 
   // ── Edge-aware positioning ──────────────────────────────
 
@@ -289,6 +318,15 @@ export function MapContextMenu() {
         />
       )}
 
+      {rallyOpen && (
+        <RallyAltitudePanel
+          alt={rallyAlt}
+          setAlt={setRallyAlt}
+          onConfirm={handleRallyConfirm}
+          onCancel={() => setRallyOpen(false)}
+        />
+      )}
+
       {poiInput && (
         <PoiInputPanel
           ref={poiInputRef}
@@ -303,6 +341,7 @@ export function MapContextMenu() {
       {!orbitOpen &&
         !confirmHomeOpen &&
         !poiInput &&
+        !rallyOpen &&
         sortedGroups.map((group, gi) => {
           const groupItems = menuItems.filter((i) => i.group === group);
           if (groupItems.length === 0) return null;

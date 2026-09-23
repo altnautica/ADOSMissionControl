@@ -3,11 +3,15 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useArmedLock } from "@/hooks/use-armed-lock";
+import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
+import { confirmArmedParamWrite, describeParamBatch, writeParamBatch, type ParamBatchEntry } from "@/lib/protocol/param-write";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { RC_CAL_STEPS } from "./calibration-types";
 import { RcChannelBar, RcCalSummaryTable } from "./RcChannelBar";
+import { rcCalibrationEntries, type RcChannelCapture } from "./rc-calibration-entries";
+import { useLiveRc } from "../receiver/use-live-rc";
 
 const RC_CHANNEL_COUNT = 8;
 const RC_CHANNEL_LABELS = ["Roll", "Pitch", "Throttle", "Yaw", "Aux 1", "Aux 2", "Aux 3", "Aux 4"];
@@ -15,31 +19,42 @@ const RC_PWM_MIN = 800;
 const RC_PWM_MAX = 2200;
 const RC_CENTER_TOLERANCE = 100;
 const RC_CENTER_VALUE = 1500;
+const NO_PARAMS: ReadonlyMap<string, number> = new Map();
 
 type RcCalStep = "idle" | "center" | "move" | "confirm" | "saving" | "done" | "error";
 
-interface RcChannelCapture { min: number; max: number; trim: number; }
 function defaultCapture(): RcChannelCapture { return { min: RC_PWM_MAX, max: RC_PWM_MIN, trim: RC_CENTER_VALUE }; }
 
-export function RcCalibrationWizard({ connected }: { connected: boolean }) {
+interface RcCalibrationWizardProps {
+  connected: boolean;
+  /** Current RC params when the host panel has them loaded; used for the pending-write record and to detect a firmware without RCn_* params. */
+  currentParams?: ReadonlyMap<string, number>;
+  /** Called after any write reached the vehicle, so the host can re-read. */
+  onWritten?: () => void;
+}
+
+export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcCalibrationWizardProps) {
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const rcBuffer = useTelemetryStore((s) => s.rc);
-  const telVersion = useTelemetryStore((s) => s._version);
+  const { isHardBlocked } = useArmedLock();
+  const { firmwareType } = useFirmwareCapabilities();
+  const liveRc = useLiveRc();
   const { toast } = useToast();
 
   const [step, setStep] = useState<RcCalStep>("idle");
   const [captures, setCaptures] = useState<RcChannelCapture[]>(() => Array.from({ length: RC_CHANNEL_COUNT }, defaultCapture));
   const [errorMsg, setErrorMsg] = useState("");
+  const [doneMsg, setDoneMsg] = useState("");
   const [showTrimReset, setShowTrimReset] = useState(false);
   const [trimResetting, setTrimResetting] = useState(false);
   const capturesRef = useRef(captures);
   capturesRef.current = captures;
 
-  const latestRc = useMemo(() => {
-    const latest = rcBuffer.latest();
-    return latest?.channels ?? Array(16).fill(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rcBuffer, telVersion]);
+  const latestRc = useMemo(() => liveRc?.channels ?? Array(16).fill(0), [liveRc]);
+
+  // MSP firmwares have no RCn_MIN/MAX/TRIM, and a host panel that loaded its
+  // params without RC1_MIN proves this vehicle does not either.
+  const unavailable = firmwareType === "inav" || firmwareType === "betaflight"
+    || (currentParams !== undefined && currentParams.size > 0 && !currentParams.has("RC1_MIN"));
 
   useEffect(() => {
     if (step !== "move") return;
@@ -84,35 +99,51 @@ export function RcCalibrationWizard({ connected }: { connected: boolean }) {
     setStep("confirm");
   }, [toast]);
 
-  const handleSave = useCallback(async () => {
+  /**
+   * Write a batch after the armed guard, and report only what the vehicle
+   * accepted. `failed` carries the failure text, null when everything landed.
+   */
+  const writeBatch = useCallback(async (entries: ParamBatchEntry[]): Promise<{ failed: string | null; message: string; level: "success" | "info" | "error" }> => {
     const protocol = getSelectedProtocol();
-    if (!protocol) return;
+    if (!protocol) return { failed: "Not connected", message: "Not connected", level: "error" };
+    const confirmed = await confirmArmedParamWrite("rc-calibration", entries.map((e) => e.name));
+    if (!confirmed) return { failed: "Cancelled: vehicle is armed", message: "Cancelled: vehicle is armed", level: "error" };
+    const outcome = await writeParamBatch(protocol, entries, "rc-calibration");
+    if (outcome.written.size > 0) onWritten?.();
+    const { message, level } = describeParamBatch(outcome);
+    if (outcome.failures.length > 0) return { failed: `${message}. Failed: ${outcome.failures.join(", ")}`, message, level: "error" };
+    if (outcome.flash === "failed") return { failed: message, message, level: "error" };
+    return { failed: null, message, level };
+  }, [getSelectedProtocol, onWritten]);
+
+  const handleSave = useCallback(async () => {
+    const entries = rcCalibrationEntries(capturesRef.current, currentParams ?? NO_PARAMS);
+    if (entries.length === 0) {
+      setStep("error"); setErrorMsg("No channel moved during capture; nothing was written.");
+      return;
+    }
     setStep("saving");
     try {
-      for (let i = 0; i < RC_CHANNEL_COUNT; i++) {
-        const ch = capturesRef.current[i]; const idx = i + 1;
-        await protocol.setParameter(`RC${idx}_MIN`, ch.min);
-        await protocol.setParameter(`RC${idx}_MAX`, ch.max);
-        await protocol.setParameter(`RC${idx}_TRIM`, ch.trim);
-      }
-      await protocol.commitParamsToFlash();
-      setStep("done"); toast("RC calibration saved to flash", "success");
+      const { failed, message, level } = await writeBatch(entries);
+      if (failed) { setStep("error"); setErrorMsg(failed); toast(failed, "error"); return; }
+      setStep("done"); setDoneMsg(message); toast(message, level);
     } catch { setStep("error"); setErrorMsg("Failed to write RC parameters"); toast("Failed to write RC parameters", "error"); }
-  }, [getSelectedProtocol, toast]);
+  }, [currentParams, writeBatch, toast]);
 
   const handleCancel = useCallback(() => { setStep("idle"); setCaptures(Array.from({ length: RC_CHANNEL_COUNT }, defaultCapture)); setErrorMsg(""); }, []);
 
   const handleResetTrims = useCallback(async () => {
-    const protocol = getSelectedProtocol();
-    if (!protocol) return;
     setTrimResetting(true);
     try {
-      for (let i = 1; i <= RC_CHANNEL_COUNT; i++) await protocol.setParameter(`RC${i}_TRIM`, RC_CENTER_VALUE);
-      await protocol.commitParamsToFlash();
-      toast("RC trims reset to 1500 and saved to flash", "success");
+      const entries = Array.from({ length: RC_CHANNEL_COUNT }, (_, i) => {
+        const name = `RC${i + 1}_TRIM`;
+        return { name, value: RC_CENTER_VALUE, oldValue: currentParams?.get(name) ?? 0 };
+      });
+      const { failed, message, level } = await writeBatch(entries);
+      toast(failed ?? message, failed ? "error" : level);
     } catch { toast("Failed to reset RC trims", "error"); }
     finally { setTrimResetting(false); setShowTrimReset(false); }
-  }, [getSelectedProtocol, toast]);
+  }, [currentParams, writeBatch, toast]);
 
   const statusBadge = {
     idle: { label: "Ready", className: "bg-bg-tertiary text-text-tertiary" },
@@ -126,6 +157,15 @@ export function RcCalibrationWizard({ connected }: { connected: boolean }) {
 
   const badge = statusBadge[step];
   const showCaptures = step === "move" || step === "confirm" || step === "done";
+
+  if (unavailable) {
+    return (
+      <div className="border border-border-default bg-bg-secondary p-4">
+        <h3 className="text-sm font-medium text-text-primary">Radio Calibration</h3>
+        <p className="text-xs text-text-tertiary mt-0.5">This firmware has no RCn_MIN / RCn_MAX / RCn_TRIM parameters, so stick endpoints cannot be calibrated here.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="border border-border-default bg-bg-secondary p-4">
@@ -178,7 +218,8 @@ export function RcCalibrationWizard({ connected }: { connected: boolean }) {
 
       {(step === "confirm" || step === "done") && <RcCalSummaryTable captures={captures} channelLabels={RC_CHANNEL_LABELS} />}
 
-      {step === "done" && <p className="text-[10px] font-mono text-status-success mb-3">RC calibration complete. Parameters saved to flash.</p>}
+      {step === "done" && <p className="text-[10px] font-mono text-status-success mb-3">{doneMsg}</p>}
+      {isHardBlocked && <p className="text-[10px] font-mono text-status-warning mb-3">Vehicle is armed. Disarm to calibrate or reset trims.</p>}
       {step === "error" && <p className="text-[10px] font-mono text-status-error mb-3">{errorMsg}</p>}
       {step === "saving" && <p className="text-[10px] font-mono text-text-tertiary mb-3">Writing RC parameters to flight controller...</p>}
 
@@ -187,20 +228,20 @@ export function RcCalibrationWizard({ connected }: { connected: boolean }) {
           <p className="text-[10px] font-medium text-status-warning mb-1.5">Confirm Trim Reset</p>
           <p className="text-[10px] text-text-tertiary mb-2">This will set RC1_TRIM through RC8_TRIM to 1500 (center). This affects flight behavior and should only be done if trims are incorrect.</p>
           <div className="flex gap-2">
-            <Button variant="danger" size="sm" onClick={handleResetTrims} loading={trimResetting} disabled={trimResetting}>Reset All Trims</Button>
+            <Button variant="danger" size="sm" onClick={handleResetTrims} loading={trimResetting} disabled={trimResetting || isHardBlocked}>Reset All Trims</Button>
             <Button variant="secondary" size="sm" onClick={() => setShowTrimReset(false)} disabled={trimResetting}>Cancel</Button>
           </div>
         </div>
       )}
 
       <div className="flex gap-2">
-        {step === "idle" && (<><Button variant="primary" size="sm" onClick={handleStart} disabled={!connected}>Start</Button>
-          <Button variant="secondary" size="sm" onClick={() => setShowTrimReset(true)} disabled={!connected || showTrimReset}>Reset Trims</Button></>)}
+        {step === "idle" && (<><Button variant="primary" size="sm" onClick={handleStart} disabled={!connected || isHardBlocked}>Start</Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowTrimReset(true)} disabled={!connected || showTrimReset || isHardBlocked}>Reset Trims</Button></>)}
         {step === "center" && (<><Button variant="primary" size="sm" onClick={handleCenterConfirm}>Next</Button>
           <Button variant="danger" size="sm" onClick={handleCancel}>Cancel</Button></>)}
         {step === "move" && (<><Button variant="primary" size="sm" onClick={handleMoveComplete}>Next</Button>
           <Button variant="danger" size="sm" onClick={handleCancel}>Cancel</Button></>)}
-        {step === "confirm" && (<><Button variant="primary" size="sm" onClick={handleSave}>Save</Button>
+        {step === "confirm" && (<><Button variant="primary" size="sm" onClick={handleSave} disabled={isHardBlocked}>Save</Button>
           <Button variant="danger" size="sm" onClick={handleCancel}>Cancel</Button></>)}
         {step === "saving" && <Button variant="secondary" size="sm" loading disabled>Saving...</Button>}
         {(step === "done" || step === "error") && <Button variant="primary" size="sm" onClick={handleStart}>{step === "done" ? "Re-calibrate" : "Retry"}</Button>}

@@ -136,8 +136,12 @@ export class AgentClient {
     return system.setConfigValue(this.ctx, key, value);
   }
 
-  restartService(name: string): Promise<CommandResult> {
+  restartService(name: string): Promise<system.ServiceRestartResult> {
     return system.restartService(this.ctx, name);
+  }
+
+  restartSupervisor(): Promise<system.SupervisorRestartResult> {
+    return system.restartSupervisor(this.ctx);
   }
 
   getFullStatus(): Promise<FullStatusResponse | null> {

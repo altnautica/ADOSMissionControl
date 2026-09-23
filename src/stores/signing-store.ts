@@ -20,7 +20,9 @@ export type EnrollmentUIState =
   | "pending_fc_online"      // browser has a key, waiting for drone to come online to enroll FC
   | "enrolled"               // browser key matches FC, signed frames flowing
   | "fc_rejected"            // FC rejected our key (key mismatch, manual intervention needed)
-  | "key_missing";           // FC requires signing but this browser has no key
+  | "key_missing"            // FC requires signing but this browser has no key
+  | "unconfirmed"            // a new key may or may not be on the FC; the previous key is kept
+  | "disable_unconfirmed";   // a disable was sent, unacknowledged; the key is kept
 
 export interface DroneSigningState {
   droneId: string;
@@ -28,6 +30,8 @@ export interface DroneSigningState {
   capabilityPolledAt: number | null;
   keyId: string | null;
   enrolledAt: string | null;
+  /** Fingerprint of the key kept alongside an "unconfirmed" new key. */
+  previousKeyId: string | null;
   requireOnFc: boolean | null;
   hasBrowserKey: boolean;
   enrollmentState: EnrollmentUIState;
@@ -63,6 +67,7 @@ interface SigningStoreState {
       keyId: string;
       enrolledAt: string;
       enrollmentState: EnrollmentUIState;
+      previousKeyId?: string | null;
     } | null,
   ): void;
   setRequireOnFc(droneId: string, require: boolean | null): void;
@@ -84,6 +89,7 @@ function blankState(droneId: string): DroneSigningState {
     capabilityPolledAt: null,
     keyId: null,
     enrolledAt: null,
+    previousKeyId: null,
     requireOnFc: null,
     hasBrowserKey: false,
     enrollmentState: "unknown",
@@ -125,6 +131,7 @@ export const useSigningStore = create<SigningStoreState>()((set, get) => ({
               ...prev,
               keyId: null,
               enrolledAt: null,
+              previousKeyId: null,
               hasBrowserKey: false,
               enrollmentState: "no_browser_key",
             },
@@ -138,6 +145,7 @@ export const useSigningStore = create<SigningStoreState>()((set, get) => ({
             ...prev,
             keyId: opts.keyId,
             enrolledAt: opts.enrolledAt,
+            previousKeyId: opts.previousKeyId ?? null,
             hasBrowserKey: true,
             enrollmentState: opts.enrollmentState,
           },

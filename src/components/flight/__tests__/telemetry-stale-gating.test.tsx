@@ -48,8 +48,9 @@ function seedFlight(ageMs: number) {
     timestamp: ts,
     lat: 12.9,
     lon: 77.6,
-    alt: 50,
-    relativeAlt: 50,
+    // MSL 950 m at a site 908 m above sea level: 42 m above home.
+    alt: 950,
+    relativeAlt: 42,
     heading: 90,
     groundSpeed: 5,
     airSpeed: 5,
@@ -110,10 +111,11 @@ describe("FlightDataCard attitude freshness gating", () => {
 });
 
 describe("TelemetryReadout flight + battery freshness gating", () => {
-  it("shows live ALT and battery when fresh", () => {
+  it("shows live ALT (height above home) and battery when fresh", () => {
     seedFlight(0);
     const { container } = render(<TelemetryReadout />);
-    expect(container.textContent).toContain("50.0m");
+    expect(container.textContent).toContain("42.0m");
+    expect(container.textContent).not.toContain("950");
     expect(container.textContent).toContain("80%");
     expect(container.textContent).not.toContain("link silent");
   });
@@ -121,10 +123,45 @@ describe("TelemetryReadout flight + battery freshness gating", () => {
   it("blanks stale ALT and battery and flags the link silent", () => {
     seedFlight(10_000);
     const { container } = render(<TelemetryReadout />);
-    expect(container.textContent).not.toContain("50.0m");
+    expect(container.textContent).not.toContain("42.0m");
     expect(container.textContent).toContain("--.-m");
     expect(container.textContent).toContain("--%");
     expect(container.textContent).toContain("link silent");
+  });
+
+  it("never takes a field from a stale source while another channel is live", () => {
+    // Position went stale; VFR_HUD keeps arriving. VFR_HUD.alt is MSL, so it
+    // is no stand-in for height above home, and the stale position must not
+    // win the speed/heading fallback.
+    seedFlight(10_000);
+    useTelemetryStore.getState().vfr.push({
+      timestamp: Date.now(),
+      airspeed: 7,
+      groundspeed: 2.5,
+      heading: 270,
+      throttle: 40,
+      alt: 950,
+      climb: -0.3,
+    });
+    const { container } = render(<TelemetryReadout />);
+    expect(container.textContent).toContain("--.-m");
+    expect(container.textContent).not.toContain("950");
+    expect(container.textContent).toContain("270\u00B0");
+    expect(container.textContent).toContain("9.0"); // 2.5 m/s in km/h
+  });
+
+  it("reads an FC-reported -1 battery percentage as unknown", () => {
+    seedFlight(0);
+    useTelemetryStore.getState().battery.push({
+      timestamp: Date.now(),
+      voltage: 16.2,
+      current: 10,
+      remaining: -1,
+      consumed: 100,
+    });
+    const { container } = render(<TelemetryReadout />);
+    expect(container.textContent).toContain("--%");
+    expect(container.textContent).not.toContain("-1%");
   });
 });
 

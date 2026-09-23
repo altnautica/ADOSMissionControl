@@ -13,7 +13,6 @@ import { useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { freshOnly } from "@/lib/telemetry/freshness";
-import { useTrailStore } from "@/stores/trail-store";
 import { haversineDistance } from "@/lib/drawing/geo-utils";
 
 function fmt(n: number | undefined | null, digits = 0): string {
@@ -49,9 +48,8 @@ export function TelemetryStrip() {
   const t = useTranslations("cockpit");
 
   useTelemetryStore((s) => s._version);
-  useTrailStore((s) => s._version);
-  // Subscribed for its re-render, like the two _version reads above. Without
-  // a time-passing signal a link loss stops `_version` changing, so the strip
+  // Subscribed for its re-render, like the _version read above. Without a
+  // time-passing signal a link loss stops `_version` changing, so the strip
   // would keep the last distance, heading, and climb rate on screen forever,
   // reading as current.
   useClockTick();
@@ -61,10 +59,13 @@ export function TelemetryStrip() {
   const vfr = freshOnly(tState.vfr.latest(), now);
   const pos = freshOnly(tState.position.latest(), now);
 
-  // Home is the oldest trail point. Indexed straight out of the ring: this
-  // strip re-renders on every telemetry sample, and copying the whole trail
-  // to read element zero made that cost scale with the length of the flight.
-  const home = useTrailStore.getState()._ring.get(0) ?? null;
+  // Home is the FC's own HOME_POSITION: the point RTL returns to. It is latched
+  // (the FC sends it rarely and it only changes on a new arm or a set-home),
+  // so it is not age-gated; the ring is cleared on selection change and
+  // disconnect. Until one arrives DIST/HOME read "--" rather than measuring
+  // from some other point — the oldest trail sample walks along the track once
+  // the trail ring fills, and restarts wherever this GCS first saw the drone.
+  const home = tState.homePosition.latest() ?? null;
   const hasPos = pos && pos.lat !== 0 && pos.lon !== 0;
   const homeDist =
     home && hasPos ? haversineDistance(home.lat, home.lon, pos.lat, pos.lon) : null;

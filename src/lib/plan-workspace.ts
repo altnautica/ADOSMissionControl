@@ -16,6 +16,7 @@ import { useRallyStore } from "@/stores/rally-store";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { planSnapshotString } from "@/lib/plan-snapshot";
+import { clearHistory } from "@/lib/planner-history";
 import type { SavedPlan } from "@/lib/types";
 
 /**
@@ -47,7 +48,24 @@ export function applyPlanToWorkspace(plan: SavedPlan): void {
   if (plan.pois && plan.pois.length > 0) poi.restore({ points: plan.pois, selectedId: null });
   else poi.clearPoints();
 
+  // The undo timeline belongs to one plan. Without this, Ctrl+Z after a load
+  // restored the previous plan's content into this one, and the library
+  // autosave then wrote it over this plan.
+  clearHistory();
+
   usePlannerStore.getState().requestFit();
+}
+
+/**
+ * Save the live workspace (waypoints plus fence, rally and POIs) into the
+ * active library plan, or into a new plan when none is active. Works from any
+ * surface that shows the library, not only the Plan page.
+ */
+export function saveActivePlanFromWorkspace(): void {
+  const lib = usePlanLibraryStore.getState();
+  const { waypoints } = useMissionStore.getState();
+  if (lib.activePlanId) lib.savePlan(lib.activePlanId, waypoints, undefined, capturePlanExtras());
+  else lib.createPlan(undefined, waypoints, undefined, capturePlanExtras());
 }
 
 /**

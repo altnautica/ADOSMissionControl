@@ -150,7 +150,10 @@ export function PidAnalysisWizard({ target, connected }: Props) {
                       className="min-w-[16rem]"
                       options={stepEvents.map((ev, i) => ({
                         value: String(i),
-                        label: `${ev.axis} #${i + 1} (${ev.overshootPercent.toFixed(1)}% overshoot)`,
+                        label:
+                          ev.undershootPercent > 0
+                            ? `${ev.axis} #${i + 1} (${ev.undershootPercent.toFixed(1)}% undershoot)`
+                            : `${ev.axis} #${i + 1} (${ev.overshootPercent.toFixed(1)}% overshoot)`,
                       }))}
                     />
                   </div>

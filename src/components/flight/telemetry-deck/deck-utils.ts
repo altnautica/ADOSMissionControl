@@ -3,18 +3,9 @@ import type { DeckSeverity, DeckSeverityContext } from "./deck-types";
 import { DECK_THRESHOLDS, BATTERY_CELL_WARNING_V, BATTERY_CELL_CRITICAL_V } from "./deck-constants";
 
 /**
- * Derive cell count from pack voltage or per-cell voltages.
- * Same pattern as LiveBatteryDisplay.tsx.
- */
-export function deriveCellCount(voltage: number, cellVoltages?: number[]): number {
-  if (cellVoltages && cellVoltages.length > 0) return cellVoltages.length;
-  if (voltage <= 0) return 0;
-  return Math.round(voltage / 4.2);
-}
-
-/**
  * Evaluate severity for a metric value against its threshold config.
- * batteryVoltage uses per-cell thresholds scaled by detected cell count.
+ * batteryVoltage uses per-cell thresholds scaled by the pack's cell count, and
+ * has no verdict while the cell count is unknown.
  *
  * A `rawValue` of `undefined` means the metric was never received, which is
  * not a reading to threshold. It returns "normal" rather than tripping the

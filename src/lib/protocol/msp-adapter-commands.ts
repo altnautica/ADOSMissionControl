@@ -410,7 +410,9 @@ export async function mspSetServo(): Promise<CommandResult> { return NOT_SUPPORT
 export async function mspCameraTrigger(): Promise<CommandResult> { return NOT_SUPPORTED }
 export async function mspSetGimbalAngle(): Promise<CommandResult> { return NOT_SUPPORTED }
 export async function mspUploadMission(): Promise<CommandResult> { return NOT_SUPPORTED }
-export async function mspDownloadMission(): Promise<MissionItem[]> { return [] }
+/** Rejects: a firmware without a mission store has nothing to read, and an empty
+ *  list would replace the operator's plan as if the FC held no mission. */
+export async function mspDownloadMission(): Promise<MissionItem[]> { throw new Error(NOT_SUPPORTED.message) }
 export async function mspSetCurrentMissionItem(): Promise<CommandResult> { return NOT_SUPPORTED }
 export async function mspResetParametersToDefault(): Promise<CommandResult> { return NOT_SUPPORTED }
 export async function mspGetLogList(): Promise<LogEntry[]> { return [] }

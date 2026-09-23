@@ -32,6 +32,8 @@ export interface LinkSlice {
   loading: boolean;
   lastError: string | null;
   lastFetchedAt: number | null;
+  /** When `status` was last refreshed; see `GroundStationState`. */
+  statusFetchedAt: number | null;
 
   loadStatus: (
     status: GroundStationStatus,
@@ -61,13 +63,16 @@ export const createLinkSlice: GroundStationSliceCreator<LinkSlice> = (
   loading: false,
   lastError: null,
   lastFetchedAt: null,
+  statusFetchedAt: null,
 
   loadStatus: (status, linkHealth) => {
     const current = get().linkHealth;
+    const now = Date.now();
     set({
       status,
       linkHealth: linkHealth ? { ...current, ...linkHealth } : current,
-      lastFetchedAt: Date.now(),
+      lastFetchedAt: now,
+      statusFetchedAt: now,
       lastError: null,
     });
   },
@@ -101,6 +106,7 @@ export const createLinkSlice: GroundStationSliceCreator<LinkSlice> = (
       loading: false,
       lastError: null,
       lastFetchedAt: null,
+      statusFetchedAt: null,
     }),
 });
 

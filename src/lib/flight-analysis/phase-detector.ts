@@ -50,25 +50,20 @@ interface Sample {
   groundSpeed: number;
 }
 
-/** Extract time-ordered (alt, groundSpeed) samples from position + vfr frames. */
+/**
+ * Extract time-ordered (alt, groundSpeed) samples from position frames.
+ * `alt` is height above home (`relativeAlt`). VFR_HUD frames are not used:
+ * their `alt` is AMSL and interleaving it with height above home made every
+ * sample pair look like a climb or descent of the field elevation.
+ */
 function extractSamples(frames: TelemetryFrame[]): Sample[] {
   const samples: Sample[] = [];
   for (const f of frames) {
-    if (f.channel === "position" || f.channel === "globalPosition") {
-      const d = f.data as { relativeAlt?: number; alt?: number; groundSpeed?: number };
-      const alt = typeof d.relativeAlt === "number" ? d.relativeAlt : d.alt ?? 0;
-      const gs = typeof d.groundSpeed === "number" ? d.groundSpeed : 0;
-      samples.push({ tMs: f.offsetMs, alt, groundSpeed: gs });
-    } else if (f.channel === "vfr") {
-      const d = f.data as { alt?: number; groundspeed?: number };
-      if (typeof d.alt === "number" || typeof d.groundspeed === "number") {
-        samples.push({
-          tMs: f.offsetMs,
-          alt: d.alt ?? 0,
-          groundSpeed: d.groundspeed ?? 0,
-        });
-      }
-    }
+    if (f.channel !== "position" && f.channel !== "globalPosition") continue;
+    const d = f.data as { relativeAlt?: number; groundSpeed?: number };
+    if (typeof d.relativeAlt !== "number") continue;
+    const gs = typeof d.groundSpeed === "number" ? d.groundSpeed : 0;
+    samples.push({ tMs: f.offsetMs, alt: d.relativeAlt, groundSpeed: gs });
   }
   samples.sort((a, b) => a.tMs - b.tMs);
   return samples;

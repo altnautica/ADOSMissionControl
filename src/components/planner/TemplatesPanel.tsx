@@ -30,6 +30,7 @@ import {
   type MissionTemplate,
   type MissionTemplateContext,
 } from "@/lib/templates/mission-templates";
+import { sampleGroundElevations } from "@/lib/mission/sample-ground-elevations";
 import { cn } from "@/lib/utils";
 
 /** Icon per template id (falls back to the generic grid mark). */
@@ -49,6 +50,7 @@ export function TemplatesPanel() {
   const mapCenter = usePlannerStore((s) => s.mapCenter);
   const defaultAlt = usePlannerStore((s) => s.defaultAlt);
   const defaultSpeed = usePlannerStore((s) => s.defaultSpeed);
+  const defaultFrame = usePlannerStore((s) => s.defaultFrame);
   const polygons = useDrawingStore((s) => s.polygons);
   const waypointCount = useMissionStore((s) => s.waypoints.length);
 
@@ -73,6 +75,7 @@ export function TemplatesPanel() {
         boundary,
         altitude: defaultAlt,
         speed: defaultSpeed,
+        frame: defaultFrame,
       };
       let waypoints;
       try {
@@ -85,10 +88,13 @@ export function TemplatesPanel() {
         toast(t("empty", { name: t(tpl.nameKey) }), "warning");
         return;
       }
+      // Terrain-relative altitudes need a ground sample under every waypoint to
+      // mean anything; eager, so the chart and validator see it immediately.
+      if (defaultFrame === "terrain") sampleGroundElevations(waypoints);
       useMissionStore.getState().setWaypoints(waypoints);
       toast(t("applied", { name: t(tpl.nameKey), count: waypoints.length }), "success");
     },
-    [hasCenter, mapCenter, boundary, defaultAlt, defaultSpeed, t, toast],
+    [hasCenter, mapCenter, boundary, defaultAlt, defaultSpeed, defaultFrame, t, toast],
   );
 
   const handleSelect = useCallback(

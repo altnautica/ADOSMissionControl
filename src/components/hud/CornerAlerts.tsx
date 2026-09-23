@@ -11,16 +11,23 @@
 // or "BATT CRIT" on screen for as long as the tab stayed open after a link
 // loss, describing a vehicle state nobody had heard about in hours.
 //
-// The stale badge is the alert that must fire when telemetry stops, and it was
-// the one that could not: its age check ran inside a memo with no time-passing
-// dependency, so after the link died nothing re-rendered and the badge never
-// appeared. It needs the clock tick more than any other badge on the screen.
+// The stale badge is the alert that must fire when telemetry stops. It keys on
+// the heartbeat age of the selected drone and nothing else: the connection
+// state is "armed" for an armed vehicle and turns "disconnected" as soon as
+// the adapter declares the link lost, so gating on "connected" hid the badge
+// for exactly the aircraft that most needed it. It also needs the clock tick
+// more than any other badge, because a dead link produces no re-render.
+//
+// Battery percent comes from deriveHudStatus, which treats the FC's -1
+// ("capacity unknown") as no reading rather than a critically empty pack.
 
 import { useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager } from "@/stores/drone-manager";
 import { useClockTick } from "@/lib/agent/freshness";
 import { freshOnly, TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
+import { deriveHudStatus } from "@/lib/hud-readings";
 
 const BATTERY_WARN_PCT = 25;
 const BATTERY_CRIT_PCT = 15;
@@ -32,20 +39,25 @@ export function CornerAlerts() {
   useTelemetryStore((s) => s._version);
   useClockTick();
 
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
-  const connectionState = useDroneStore((s) => s.connectionState);
+  const armState = useDroneStore((s) => s.armState);
+  const flightMode = useDroneStore((s) => s.flightMode);
 
   const buffers = useTelemetryStore.getState();
   const now = Date.now();
-  const battery = freshOnly(buffers.battery.latest(), now);
   const fence = freshOnly(buffers.fenceStatus.latest(), now);
+  const { batteryPct } = deriveHudStatus(
+    { battery: buffers.battery.latest() },
+    { armState, flightMode, lastHeartbeat },
+  );
 
   const alerts: AlertKey[] = [];
 
-  if (battery && Number.isFinite(battery.remaining)) {
-    if (battery.remaining <= BATTERY_CRIT_PCT) {
+  if (batteryPct !== null) {
+    if (batteryPct <= BATTERY_CRIT_PCT) {
       alerts.push("battCrit");
-    } else if (battery.remaining <= BATTERY_WARN_PCT) {
+    } else if (batteryPct <= BATTERY_WARN_PCT) {
       alerts.push("battLow");
     }
   }
@@ -54,9 +66,9 @@ export function CornerAlerts() {
     alerts.push("fenceBreach");
   }
 
-  // Only meaningful once a link has existed: a GCS that never connected is
-  // not a GCS whose link went stale.
-  if (connectionState === "connected" && lastHeartbeat > 0) {
+  // Only meaningful once a link has existed for the selected drone: a GCS
+  // that never heard a heartbeat is not a GCS whose link went stale.
+  if (selectedDroneId !== null && lastHeartbeat > 0) {
     if (now - lastHeartbeat > TELEMETRY_STALE_MS) {
       alerts.push("linkStale");
     }

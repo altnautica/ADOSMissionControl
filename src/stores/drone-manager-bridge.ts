@@ -19,6 +19,7 @@ import { recordFrameFor } from "@/lib/telemetry-recorder";
 import { notifyArmed } from "@/lib/flight-lifecycle";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
 import { asFlightMode } from "@/lib/flight-mode";
+import { useMissionStore } from "./mission-store";
 
 /**
  * Bridge protocol telemetry callbacks into the Zustand stores
@@ -259,6 +260,11 @@ export function bridgeTelemetry(
         if (settings.audioEnabled && settings.alertWaypoint) {
           audioEngine.play("waypoint_reached");
         }
+      } else if (isSelected()) {
+        // MISSION_CURRENT: the item the FC is flying now. mission-store is a
+        // single slot for the selected drone, and maps the seq onto the plan
+        // only when this drone's upload receipt matches it.
+        useMissionStore.getState().applyMissionCurrent(droneId, data.currentSeq);
       }
     }),
 

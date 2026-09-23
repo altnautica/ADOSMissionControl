@@ -10,12 +10,12 @@
 import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 
-function formatAge(lastSeenMs: number): string {
+function formatAge(lastSeenMs: number | null): string {
   if (!lastSeenMs) return "--";
   const ageS = Math.max(0, Math.floor((Date.now() - lastSeenMs) / 1000));
-  if (ageS < 60) return `${ageS}s`;
-  if (ageS < 3600) return `${Math.floor(ageS / 60)}m`;
-  return `${Math.floor(ageS / 3600)}h`;
+  if (ageS < 60) return `${ageS}s ago`;
+  if (ageS < 3600) return `${Math.floor(ageS / 60)}m ago`;
+  return `${Math.floor(ageS / 3600)}h ago`;
 }
 
 export function ReceiverCard() {
@@ -30,19 +30,25 @@ export function ReceiverCard() {
     );
   }
 
-  const reachable = status.up;
+  const fmt = (v: number | null) => (v === null ? "--" : v.toLocaleString());
   return (
     <div className="p-4 bg-surface-primary border border-border-default/40 flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium text-text-primary">{t("forwardingTo")}</div>
         <div
           className={
-            reachable
-              ? "text-xs uppercase tracking-wider text-status-success"
-              : "text-xs uppercase tracking-wider text-status-warning"
+            status.stale
+              ? "text-xs text-status-warning"
+              : status.up
+                ? "text-xs uppercase tracking-wider text-status-success"
+                : "text-xs uppercase tracking-wider text-status-warning"
           }
         >
-          {reachable ? t("reachable") : t("unreachable")}
+          {status.stale
+            ? t("staleSnapshot")
+            : status.up
+              ? t("reachable")
+              : t("unreachable")}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs">
@@ -51,7 +57,7 @@ export function ReceiverCard() {
             {t("receiverIp")}
           </div>
           <div className="font-mono text-text-primary">
-            {status.receiver_ip ?? "--"}:{status.receiver_port}
+            {status.receiver_ip ?? "--"}:{status.receiver_port ?? "--"}
           </div>
         </div>
         <div>
@@ -59,7 +65,7 @@ export function ReceiverCard() {
             {t("lastSeen")}
           </div>
           <div className="font-mono text-text-primary">
-            {formatAge(status.receiver_last_seen_ms)} ago
+            {formatAge(status.receiver_last_seen_ms)}
           </div>
         </div>
         <div>
@@ -67,7 +73,7 @@ export function ReceiverCard() {
             {t("fragmentsSeen")}
           </div>
           <div className="font-mono text-text-primary">
-            {status.fragments_seen.toLocaleString()}
+            {fmt(status.fragments_seen)}
           </div>
         </div>
         <div>
@@ -75,7 +81,7 @@ export function ReceiverCard() {
             {t("fragmentsForwarded")}
           </div>
           <div className="font-mono text-text-primary">
-            {status.fragments_forwarded.toLocaleString()}
+            {fmt(status.fragments_forwarded)}
           </div>
         </div>
       </div>

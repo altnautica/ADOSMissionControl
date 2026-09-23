@@ -9,9 +9,9 @@
  * cloud-paired nodes, whose heartbeat rows carry no telemetry at all. So a
  * consumer that reads only the heartbeat row sees nothing for exactly the
  * nodes the cloud lane exists to serve. `telemetryValue` is the single merge
- * rule — live stream first, heartbeat row as fallback — and both the display
- * cells and the command gates read through it, so the two can never disagree
- * about whether a node's flight state is known.
+ * rule — the fresher of the two, with a stream that has gone quiet treated as
+ * absent — and both the display cells and the command gates read through it,
+ * so the two can never disagree about whether a node's flight state is known.
  *
  * Presence is the other half of the same honesty rule: a persisted telemetry
  * value is only worth anything while the node is still being heard from, so
@@ -28,9 +28,11 @@ import {
   STALE_THRESHOLD_MS,
   OFFLINE_THRESHOLD_MS,
 } from "@/lib/agent/freshness";
+import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import type {
   CommandCloudStatus,
   CommandTelemetrySnapshot,
+  StreamedTelemetry,
 } from "@/stores/command-fleet-store";
 
 /** How current a node's last contact is. */
@@ -77,12 +79,19 @@ export function nodeLiveness(
 }
 
 /**
- * The one rule for reading a node's telemetry from the fleet store: the live
- * stream when it has published, else the heartbeat row's snapshot.
+ * The one rule for reading a node's telemetry from the fleet store: whichever
+ * of the live stream and the heartbeat row's snapshot is fresher. A stream
+ * snapshot older than the telemetry staleness window is absent: a broker that
+ * stopped forwarding must not keep a node's last armed state and mode on
+ * screen, or behind the flight controls, while its heartbeat carries on.
  */
 export function telemetryValue(
-  telemetry: CommandTelemetrySnapshot | undefined,
+  stream: StreamedTelemetry | undefined,
   status: CommandCloudStatus | undefined,
+  now: number = Date.now(),
 ): CommandTelemetrySnapshot | undefined {
-  return telemetry ?? status?.telemetry;
+  const heartbeat = status?.telemetry;
+  if (!stream || now - stream.receivedAt >= TELEMETRY_STALE_MS) return heartbeat;
+  if (!heartbeat || !status) return stream;
+  return stream.receivedAt >= status.updatedAt ? stream : heartbeat;
 }

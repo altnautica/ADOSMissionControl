@@ -4,33 +4,37 @@ import {
   chipFamilyRequiresReboot,
 } from "@/lib/board-profiles/family";
 
+// Board ids are the APJ_BOARD_ID each firmware build reports in the upper 16
+// bits of AUTOPILOT_VERSION.board_version.
 describe("detectChipFamily", () => {
-  it("resolves F4 from MatekF405-SE (board id 1022)", () => {
-    expect(detectChipFamily(1022)).toBe("F4");
+  it.each<[string, number, string]>([
+    ["SpeedyBee F405 Wing", 1106, "F4"],
+    ["SpeedyBee F405 V3", 1082, "F4"],
+    ["Matek F405-Wing", 127, "F4"],
+    ["CubeBlack / Pixhawk 1 (FMUv3)", 9, "F4"],
+    ["Pixhawk 4 (FMUv5)", 50, "F7"],
+    ["Kakute F7", 123, "F7"],
+    ["Matek F765-Wing", 143, "F7"],
+    ["Matek H743", 1013, "H7"],
+    ["Pixhawk 6X", 53, "H7"],
+    ["CubeOrange", 140, "H7"],
+    ["CubeOrange+", 1063, "H7"],
+    ["Durandal", 139, "H7"],
+    ["Pixhawk 5X (no registry row)", 51, "F7"],
+    ["Matek H7A3 (no registry row)", 1149, "H7"],
+  ])("resolves %s (board id %i) to %s", (_name, id, family) => {
+    expect(detectChipFamily(id)).toBe(family);
   });
 
-  it("resolves H7 from MatekH743 (board id 1013)", () => {
-    expect(detectChipFamily(1013)).toBe("H7");
-  });
-
-  it("resolves F4 from SpeedyBee F405 V3 (board id 1031)", () => {
-    expect(detectChipFamily(1031)).toBe("F4");
-  });
-
-  it("resolves F7 from SpeedyBee F7 V3 (board id 1045)", () => {
-    expect(detectChipFamily(1045)).toBe("F7");
-  });
-
-  it("resolves F4 from Pixhawk1 reference (board id 5)", () => {
-    expect(detectChipFamily(5)).toBe("F4");
-  });
-
-  it("resolves F7 from Pixhawk 4 / FMUv5 (board id 50)", () => {
-    expect(detectChipFamily(50)).toBe("F7");
-  });
-
-  it("resolves H7 from Pixhawk 6X (board id 54)", () => {
-    expect(detectChipFamily(54)).toBe("H7");
+  // F405 boards whose ids were once mislabelled as F7/H7 boards must take the
+  // reboot path, never the no-reboot CAN_FORWARD hot switch.
+  it.each<[string, number]>([
+    ["Skystars F405 DJI", 1045],
+    ["Matek F405-TE", 1054],
+    ["JHEMCU GSF405A", 1059],
+    ["Carbonix F405", 1064],
+  ])("resolves %s (board id %i) to F4", (_name, id) => {
+    expect(detectChipFamily(id)).toBe("F4");
   });
 
   it("falls back to F4 when the board ID is unknown", () => {

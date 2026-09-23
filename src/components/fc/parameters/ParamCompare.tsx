@@ -6,18 +6,32 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { parseParamFile, compareParams, type ParamDiff } from "@/lib/formats/param-file-parser";
+import { confirmArmedParamWrite, describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
+import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import { cn } from "@/lib/utils";
 import {
   Upload, Search, CheckSquare, Square, FileText, PenLine, HardDrive,
 } from "lucide-react";
 import { STATUS_STYLES, STATUS_LABELS, FILTER_MODES, TH, filterLabel, type FilterMode } from "./param-compare-helpers";
 
-interface ParamCompareProps {
-  fcParams: Map<string, number>;
-  onApplied: () => void;
+/** Pending-write records from this surface are attributed to the grid it opens from. */
+const PANEL_ID = "parameters";
+
+export interface ParamCompareApplied {
+  /** Every selected parameter landed on the vehicle. */
+  allLanded: boolean;
+  /** A parameter that landed needs an FC restart. */
+  rebootRequired: boolean;
 }
 
-export function ParamCompare({ fcParams, onApplied }: ParamCompareProps) {
+interface ParamCompareProps {
+  fcParams: Map<string, number>;
+  metadata: Map<string, ParamMetadata>;
+  /** Called whenever at least one parameter landed, so the grid re-reads the vehicle. */
+  onApplied: (result: ParamCompareApplied) => void;
+}
+
+export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -110,34 +124,45 @@ export function ParamCompare({ fcParams, onApplied }: ParamCompareProps) {
     const protocol = useDroneManager.getState().getSelectedProtocol();
     if (!protocol || selected.size === 0) return;
 
-    setApplying(true);
     const entries = diffs.filter((d) => selected.has(d.name));
+    // Same armed-write guard as every other parameter write: one confirmation
+    // naming the whole batch before anything reaches the vehicle.
+    const confirmed = await confirmArmedParamWrite(PANEL_ID, entries.map((d) => d.name));
+    if (!confirmed) return;
+
+    setApplying(true);
     setApplyProgress({ current: 0, total: entries.length });
-    const failures: string[] = [];
+    const outcome = await writeParamBatch(
+      protocol,
+      entries.map((d) => ({
+        name: d.name,
+        value: d.fileValue,
+        oldValue: d.fcValue ?? 0,
+        rebootRequired: metadata.get(d.name)?.rebootRequired,
+      })),
+      PANEL_ID,
+      (current, total) => setApplyProgress({ current, total }),
+    );
 
-    for (let i = 0; i < entries.length; i++) {
-      const { name, fileValue } = entries[i];
-      setApplyProgress({ current: i + 1, total: entries.length });
-      try {
-        const result = await protocol.setParameter(name, fileValue);
-        if (!result.success) failures.push(`${name}: ${result.message}`);
-      } catch {
-        failures.push(`${name}: write failed`);
-      }
-    }
+    const summary = describeParamBatch(outcome);
+    const shown = outcome.failures.slice(0, 5).join(", ");
+    const more = outcome.failures.length > 5 ? ` and ${outcome.failures.length - 5} more` : "";
+    const failed = outcome.failures.length > 0 ? `. Failed: ${shown}${more}` : "";
+    toast(`${summary.message}${failed}`, summary.level);
 
-    if (failures.length > 0) {
-      toast(`Failed to write ${failures.length} parameter(s)`, "error");
-    } else {
-      toast(`Applied ${entries.length} parameter(s) to FC`, "success");
-      // Fire-and-forget flash commit
-      protocol.commitParamsToFlash().catch(() => {});
-      onApplied();
+    if (outcome.written.size > 0) {
+      // What landed now matches the file; what failed stays selected so the
+      // operator can retry it without re-loading the file.
+      setDiffs((prev) => prev.map((d) => (
+        outcome.written.has(d.name) ? { ...d, fcValue: d.fileValue, status: "unchanged" } : d
+      )));
+      setSelected((prev) => new Set([...prev].filter((n) => !outcome.written.has(n))));
+      onApplied({ allLanded: outcome.failures.length === 0, rebootRequired: outcome.rebootRequired });
     }
 
     setApplying(false);
     setApplyProgress({ current: 0, total: 0 });
-  }, [diffs, selected, toast, onApplied]);
+  }, [diffs, selected, metadata, toast, onApplied]);
 
   return (
     <div className="flex flex-col gap-4 max-h-[70vh]">

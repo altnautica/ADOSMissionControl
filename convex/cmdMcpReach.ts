@@ -107,10 +107,15 @@ async function authorize(ctx: ActionCtx, credential: string): Promise<Authorized
  * Enforce that the credential holds the scope class the relay command requires.
  * Scope classes are non-hierarchical groups (admin does NOT imply flight), so a
  * plain membership check is correct: a `["read","safe_write","admin"]` credential
- * fails the `flight` requirement of an arm/takeoff `send_command`.
+ * fails the `flight` requirement of an arm/takeoff `send_command`. A command with
+ * no scope class (a `send_command` verb outside the agent's control vocabulary)
+ * is refused for every credential.
  */
 function assertCommandScope(auth: Authorized, command: RelayCommandName, args: unknown): void {
   const required = requiredScopeForCommand(command, args);
+  if (required === null) {
+    throw new Error(`${command} payload is not a command the agent accepts`);
+  }
   if (!auth.scopes.includes(required)) {
     throw new Error(`credential lacks the ${required} scope for ${command}`);
   }

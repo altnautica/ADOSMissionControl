@@ -15,6 +15,9 @@ import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { NavCommand, Waypoint, WaypointCommand } from "@/lib/types";
 import { usePlannerStore } from "@/stores/planner-store";
+import { useMissionStore } from "@/stores/mission-store";
+import { waypointAltitudeAgl } from "@/lib/mission/altitude-frame";
+import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
 import { useDroneManager } from "@/stores/drone-manager";
 import { NAV_COMMAND_OPTIONS, CMD_LETTER, INAV_ACTION_COMMANDS } from "./waypoint-constants";
 import { cmdMap } from "@/lib/mission-io-formats";
@@ -22,7 +25,8 @@ import { useSupportedMissionCommands } from "@/hooks/use-supported-mission-comma
 import { CommandSpecificEditors, INavCommandEditors } from "./WaypointCommandEditors";
 import { WaypointActionTimeline } from "./WaypointActionTimeline";
 
-const FRAME_LABELS: Record<string, string> = { relative: "AGL", absolute: "MSL", terrain: "Terrain" };
+/** Altitude datum badge: relative altitudes are above home, not above ground. */
+const FRAME_LABELS: Record<string, string> = { relative: "REL", absolute: "MSL", terrain: "Terrain" };
 
 // ── iNav action options ───────────────────────────────────────
 
@@ -81,7 +85,11 @@ export function WaypointListItem({
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
   // Badge the waypoint's OWN altitude reference (imported waypoints carry their
   // own frame); fall back to the mission default only when the waypoint has none.
-  const frameLabel = FRAME_LABELS[waypoint.frame ?? defaultFrame] ?? "AGL";
+  const frameLabel = FRAME_LABELS[waypoint.frame ?? defaultFrame] ?? "REL";
+  // Terrain clearance below this waypoint: its altitude resolved in its own
+  // frame against the launch point's terrain (the first waypoint's sample).
+  const homeGroundElevation = useMissionStore((s) => s.waypoints[0]?.groundElevation);
+  const clearance = waypointAltitudeAgl(waypoint, { homeGroundElevation, defaultFrame });
 
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const protocol = getProtocol();
@@ -143,8 +151,13 @@ export function WaypointListItem({
           <span className="text-[11px] font-mono text-text-primary truncate">{rowLabel}</span>
           <span className="text-[10px] font-mono text-text-tertiary">{waypoint.alt}m</span>
           <span className="text-[9px] font-mono text-accent-primary/70 bg-accent-primary/10 px-1 py-px">{frameLabel}</span>
-          {waypoint.groundElevation !== undefined && (
-            <span className="text-[9px] font-mono text-status-success bg-status-success/10 px-1 py-px">{t("aboveGround", { alt: Math.round(waypoint.alt), elev: Math.round(waypoint.groundElevation) })}</span>
+          {waypoint.groundElevation !== undefined && clearance !== null && (
+            <span className={cn(
+              "text-[9px] font-mono px-1 py-px",
+              clearance < 0 ? "text-status-error bg-status-error/10"
+                : clearance < DEFAULT_MIN_TERRAIN_CLEARANCE ? "text-status-warning bg-status-warning/10"
+                : "text-status-success bg-status-success/10",
+            )}>{t("aboveGround", { alt: Math.round(clearance), elev: Math.round(waypoint.groundElevation) })}</span>
           )}
           {(waypoint.actions?.length ?? 0) > 0 && (
             <span

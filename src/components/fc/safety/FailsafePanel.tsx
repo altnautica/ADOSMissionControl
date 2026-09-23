@@ -19,6 +19,7 @@ import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { ArmedLockOverlay } from "@/components/indicators/ArmedLockOverlay";
 import { ShieldAlert, Battery, Radio, Gauge, Save, HardDrive, MapPin, SlidersHorizontal, Mountain } from "lucide-react";
 import { StarredParam } from "../parameters/ParamStar";
+import { FenceEnableToggle, FenceTypeBits } from "./geofence-components";
 import {
   BF_FAILSAFE_PARAMS, BF_FS_PROCEDURE_OPTIONS, FS_OPTION_BITS, COPTER_FS_PARAMS, PLANE_FS_PARAMS,
   PLANE_FS_OPTIONAL_PARAMS, AP_SHARED_FS_PARAMS, PX4_FS_PARAMS, RC_CHANNEL_COUNT,
@@ -157,9 +158,11 @@ export function FailsafePanel() {
         </Card>}
 
         {/* PX4 has one battery failsafe action (COM_LOW_BAT_ACT) with its own
-            enum; the canonical BATT_FS_LOW_ACT name maps onto it. */}
+            enum; the canonical BATT_FS_LOW_ACT name maps onto it. Its
+            thresholds are remaining-charge fractions, not volts. */}
         {isPx4 && <Card icon={<Battery size={14} />} title="Battery Failsafe (PX4)" description="Action on low and critical battery">
-          <StarredParam param="BATT_FS_LOW_VOLT"><Input label={lbl("BATT_FS_LOW_VOLT — Low Battery Threshold")} type="number" step="0.01" min="0" max="1" value={p("BATT_FS_LOW_VOLT")} onChange={(e) => set("BATT_FS_LOW_VOLT", e.target.value)} /></StarredParam>
+          <StarredParam param="BATT_FS_LOW_VOLT"><Input label={lbl("BATT_FS_LOW_VOLT — Low Threshold")} type="number" step="0.01" min="0.12" max="0.5" unit="fraction" value={p("BATT_FS_LOW_VOLT")} onChange={(e) => set("BATT_FS_LOW_VOLT", e.target.value)} /></StarredParam>
+          <p className="text-[10px] text-text-tertiary">Fraction of charge remaining (0.15 = 15 % left), not volts.</p>
           {enumField("BATT_FS_LOW_ACT", "Battery Failsafe Action")}
         </Card>}
 
@@ -214,13 +217,13 @@ export function FailsafePanel() {
           </div>
         </Card>}
 
-        {/* ArduPilot geofence. NOT rendered for PX4: `FENCE_ENABLE` maps to
-            PX4's `GF_ACTION` (see PX4_PARAM_MAP), which is a BREACH ACTION
-            enum, not a fence-type bitmask — so the "4 — Polygon Only" option
-            on this control configured PX4 Flight Termination. PX4 gets its own
-            card below with its own enum. */}
+        {/* ArduPilot geofence: FENCE_ENABLE is a 0/1 switch and the fence
+            types are the FENCE_TYPE bitmask. NOT rendered for PX4, whose
+            canonical FENCE_ENABLE maps to GF_ACTION (a breach action enum);
+            PX4 gets its own card below. */}
         {isArduPilot && <Card icon={<MapPin size={14} />} title="Geofence" description="Geographical boundary enforcement">
-          <Select label={lbl("FENCE_ENABLE — Fence Type")} options={[{ value: "0", label: "0 — Disabled" }, { value: "1", label: "1 — Altitude Only" }, { value: "2", label: "2 — Circle Only" }, { value: "3", label: "3 — Altitude + Circle" }, { value: "4", label: "4 — Polygon Only" }, { value: "5", label: "5 — Altitude + Polygon" }, { value: "6", label: "6 — Circle + Polygon" }, { value: "7", label: "7 — All" }]} value={p("FENCE_ENABLE")} onChange={(v) => set("FENCE_ENABLE", v)} />
+          <FenceEnableToggle label={pl("FENCE_ENABLE")} enabled={(params.get("FENCE_ENABLE") ?? 0) !== 0} onChange={(v) => setLocalValue("FENCE_ENABLE", v)} />
+          <FenceTypeBits value={params.get("FENCE_TYPE") ?? 0} onChange={(v) => setLocalValue("FENCE_TYPE", v)} />
           {enumField("FENCE_ACTION", "Breach Action")}
           <Input label={lbl("FENCE_ALT_MAX — Max Altitude")} type="number" step="1" min="0" unit="m" value={p("FENCE_ALT_MAX", "100")} onChange={(e) => set("FENCE_ALT_MAX", e.target.value)} />
           <Input label={lbl("FENCE_RADIUS — Max Radius")} type="number" step="1" min="0" unit="m" value={p("FENCE_RADIUS", "300")} onChange={(e) => set("FENCE_RADIUS", e.target.value)} />
@@ -228,22 +231,9 @@ export function FailsafePanel() {
         </Card>}
 
         {isPx4 && <Card icon={<MapPin size={14} />} title="Geofence (PX4)" description="PX4 geofence action and limits">
-          {/* PX4's own enum. Value 4 is Flight Termination — an irreversible
-              motors-off action — so it is labelled as such rather than hidden
-              behind an ArduPilot fence-type label. */}
-          <Select
-            label={lbl("GF_ACTION — Breach Action")}
-            options={[
-              { value: "0", label: "0 — None" },
-              { value: "1", label: "1 — Warning" },
-              { value: "2", label: "2 — Hold" },
-              { value: "3", label: "3 — Return" },
-              { value: "4", label: "4 — Flight Termination (motors off)" },
-              { value: "5", label: "5 — Land" },
-            ]}
-            value={p("FENCE_ENABLE")}
-            onChange={(v) => set("FENCE_ENABLE", v)}
-          />
+          {/* GF_ACTION, PX4's own breach-action enum from the vehicle's
+              metadata. Value 4 is Flight Termination (motors off). */}
+          {enumField("FENCE_ENABLE", "Breach Action")}
           <Input label={lbl("FENCE_ALT_MAX — Max Altitude")} type="number" step="1" min="0" unit="m" value={p("FENCE_ALT_MAX", "100")} onChange={(e) => set("FENCE_ALT_MAX", e.target.value)} />
           <Input label={lbl("FENCE_RADIUS — Max Radius")} type="number" step="1" min="0" unit="m" value={p("FENCE_RADIUS", "300")} onChange={(e) => set("FENCE_RADIUS", e.target.value)} />
         </Card>}
@@ -252,9 +242,7 @@ export function FailsafePanel() {
           <section className="border-t border-border-strong pt-4 mt-4">
             <h3 className="text-sm font-medium text-text-secondary mb-3 flex items-center gap-2"><Gauge size={14} /> EKF Position Failsafe (PX4)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="text-xs text-text-secondary mb-1 block">Position Loss Delay (s)</label><Input type="number" step={0.5} min={0} max={30} value={p("COM_POS_FS_DELAY", "1")} onChange={(e) => set("COM_POS_FS_DELAY", e.target.value)} className="h-8 text-xs" /></div>
-              <div><label className="text-xs text-text-secondary mb-1 block">Max EPH (m)</label><Input type="number" step={1} min={0} max={50} value={p("COM_POS_FS_EPH", "5")} onChange={(e) => set("COM_POS_FS_EPH", e.target.value)} className="h-8 text-xs" /></div>
-              <div><label className="text-xs text-text-secondary mb-1 block">Max EPV (m)</label><Input type="number" step={1} min={0} max={100} value={p("COM_POS_FS_EPV", "10")} onChange={(e) => set("COM_POS_FS_EPV", e.target.value)} className="h-8 text-xs" /></div>
+              <div><label className="text-xs text-text-secondary mb-1 block">Max EPH (m)</label><Input type="number" step={0.5} min={-1} max={400} value={p("COM_POS_FS_EPH", "5")} onChange={(e) => set("COM_POS_FS_EPH", e.target.value)} className="h-8 text-xs" /></div>
               <div><label className="text-xs text-text-secondary mb-1 block">Max EVH (m/s)</label><Input type="number" step={0.5} min={0} max={10} value={p("COM_VEL_FS_EVH", "1")} onChange={(e) => set("COM_VEL_FS_EVH", e.target.value)} className="h-8 text-xs" /></div>
             </div>
           </section>

@@ -21,7 +21,8 @@ import type {
 } from "../types";
 import {
   AgentStatusSchema,
-  CommandResultSchema,
+  ServiceRestartResultSchema,
+  SupervisorRestartResultSchema,
   FullStatusResponseSchema,
   MavlinkPortsResponseSchema,
   PingResponseSchema,
@@ -334,18 +335,46 @@ export function setConfigValue(
   });
 }
 
-export function restartService(
+export type ServiceRestartResult = z.infer<typeof ServiceRestartResultSchema>;
+export type SupervisorRestartResult = z.infer<typeof SupervisorRestartResultSchema>;
+
+/** The single-unit restart runs `systemctl restart` (up to 30 s) and then
+ * waits up to ~5 s for a fresh MainPID before it answers, so the request
+ * deadline sits above both. */
+export const SERVICE_RESTART_TIMEOUT_MS = 40_000;
+
+/** Restart one agent unit. The agent answers HTTP 200 for every outcome, so
+ * a `status:"error"` body (unknown unit, failed or unconfirmed restart) is
+ * thrown with the agent's message. */
+export async function restartService(
   ctx: RequestContext,
   name: string,
-): Promise<CommandResult> {
-  return agentRequest<CommandResult>(
+): Promise<ServiceRestartResult> {
+  const res = await agentRequest(
     ctx,
     `/api/services/${encodeURIComponent(name)}/restart`,
     {
       method: "POST",
-      schema: CommandResultSchema as z.ZodType<CommandResult>,
+      schema: ServiceRestartResultSchema,
+      timeoutMs: SERVICE_RESTART_TIMEOUT_MS,
     },
   );
+  if (res.status !== "ok") throw new Error(res.message);
+  return res;
+}
+
+/** Restart the supervisor, which cycles every agent service. The agent
+ * schedules the restart and answers at once; `ok:false` means it could not
+ * schedule it and is thrown with the agent's message. */
+export async function restartSupervisor(
+  ctx: RequestContext,
+): Promise<SupervisorRestartResult> {
+  const res = await agentRequest(ctx, "/api/v1/system/restart-supervisor", {
+    method: "POST",
+    schema: SupervisorRestartResultSchema,
+  });
+  if (!res.ok) throw new Error(res.message);
+  return res;
 }
 
 /**

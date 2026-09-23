@@ -16,7 +16,7 @@ export const NAV_COMMAND_OPTIONS: { value: NavCommand; label: string }[] = [
   { value: "SPLINE_WAYPOINT", label: "Spline Waypoint" },
   { value: "TAKEOFF", label: "Takeoff" },
   { value: "LAND", label: "Land" },
-  { value: "LOITER", label: "Loiter" },
+  { value: "LOITER", label: "Loiter (unlimited)" },
   { value: "LOITER_TIME", label: "Loiter (Time)" },
   { value: "LOITER_TURNS", label: "Loiter (Turns)" },
   { value: "RTL", label: "Return to Launch" },
@@ -49,10 +49,16 @@ export const INAV_ACTION_COMMANDS: readonly ActionCommand[] = ["ROI", "DO_JUMP",
 /**
  * Sensible default parameters applied when a fresh action of the given command is
  * added, so a newly-inserted action is immediately valid rather than all-zero.
+ * A positioned action (ROI, DO_SET_HOME) starts at the ground point below the
+ * waypoint it rides; a location of 0,0 would upload as "clear ROI" / the
+ * null island.
  */
-export function defaultActionParams(command: ActionCommand): Partial<CommandMissionAction> {
+export function defaultActionParams(
+  command: ActionCommand,
+  parent: { lat: number; lon: number },
+): Partial<CommandMissionAction> {
   switch (command) {
-    case "DO_SET_SPEED": return { param1: 1, param2: 5 }; // airspeed type, 5 m/s
+    case "DO_SET_SPEED": return { param1: 1, param2: 5 }; // ground speed type, 5 m/s
     case "DO_SET_CAM_TRIGG": return { param1: 10 }; // trigger every 10 m
     case "DELAY": return { param1: 3 }; // 3 s
     case "CONDITION_YAW": return { param1: 0, param2: 0, param3: 1 }; // heading 0, abs, CW
@@ -65,13 +71,10 @@ export function defaultActionParams(command: ActionCommand): Partial<CommandMiss
     case "DO_DIGICAM": return { param5: 1 }; // shoot command = take one photo
     case "DO_FENCE_ENABLE": return { param1: 1 }; // enable
     case "DO_AUX_FUNCTION": return { param1: 0, param2: 0 };
-    default: return {}; // ROI / DO_SET_HOME (positioned) / DO_SET_ROI_NONE
+    case "ROI":
+    case "DO_SET_HOME": return { lat: parent.lat, lon: parent.lon, alt: 0 };
+    default: return {}; // DO_SET_ROI_NONE
   }
-}
-
-/** True for an action whose own coordinates (lat/lon) are meaningful. */
-export function isPositionedAction(command: ActionCommand): boolean {
-  return command === "ROI" || command === "DO_SET_HOME";
 }
 
 export const CMD_LETTER: Record<string, string> = {

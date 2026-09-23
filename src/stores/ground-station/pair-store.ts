@@ -10,6 +10,7 @@
 import type { GroundStationSliceCreator } from "./state";
 import { errorMessage } from "./error-handler";
 import { INITIAL_PAIR } from "./initial-state";
+import { dataCapFromModem } from "./uplink-ws";
 import type { PairSlice as PairSliceShape } from "./types";
 import type {
   ApStatus,
@@ -69,7 +70,8 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
           ...currentUplink,
           active: net.active_uplink ?? currentUplink.active,
           priority: net.priority ?? currentUplink.priority,
-          data_cap: modemFromNet?.data_cap ?? currentUplink.data_cap,
+          data_cap: dataCapFromModem(modemFromNet) ?? currentUplink.data_cap,
+          fetchedAt: Date.now(),
         },
         lastError: null,
       });

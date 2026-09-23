@@ -80,9 +80,10 @@ export function MissionExecutionOverlay() {
 
   return (
     <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-3 px-3 py-1.5 bg-bg-secondary/90 border border-border-default backdrop-blur-sm">
-      {/* Waypoint progress */}
+      {/* Waypoint progress: 1-based for the operator; "--" when the FC's
+          current item cannot be mapped onto this plan (no matching upload). */}
       <span className="text-[9px] font-mono text-text-tertiary">
-        WP {currentWaypoint}/{waypointCount}
+        WP {currentWaypoint === null ? "--" : currentWaypoint + 1}/{waypointCount}
       </span>
 
       <div className="w-px h-3 bg-border-default" />

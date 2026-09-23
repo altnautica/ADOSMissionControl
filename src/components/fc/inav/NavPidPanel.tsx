@@ -1,7 +1,8 @@
 /**
  * @module NavPidPanel
- * @description iNav navigation PID gains via the named settings system.
- * Reads and writes nav_*_pid_* settings for six navigation controllers.
+ * @description iNav navigation controller gains via the named settings
+ * system. Only the terms iNav actually has are shown, with the range the
+ * connected firmware reports for each.
  * @license GPL-3.0-only
  */
 
@@ -12,96 +13,59 @@ import { Button } from "@/components/ui/button";
 import { Settings2, Upload } from "lucide-react";
 import { useSettingsParams } from "@/hooks/use-settings-params";
 import type { DroneProtocol } from "@/lib/protocol/types";
-import { settingNumber } from "@/lib/protocol/types";
+import {
+  emptySettingGroup, readSettingGroup, writeSettingGroup,
+  type SettingGroup, type SettingSpec,
+} from "./inav-setting-fields";
+import { SettingNumberField } from "./SettingNumberField";
 
-// ── Types ─────────────────────────────────────────────────────
+type Term = "p" | "i" | "d" | "ff";
 
-interface PidGroup {
-  p: number;
-  i: number;
-  d: number;
+interface PidGroupDef {
+  label: string;
+  base: string;
+  terms: Term[];
+  /** Fixed-wing controllers: shown only when the firmware reports them. */
+  optional?: boolean;
 }
 
-interface NavPidState {
-  posXy: PidGroup;
-  posZ: PidGroup;
-  heading: PidGroup;
-  surface: PidGroup;
-  velXy: PidGroup;
-  velZ: PidGroup;
-}
-
-const DEFAULT_GROUP: PidGroup = { p: 0, i: 0, d: 0 };
-
-const DEFAULT: NavPidState = {
-  posXy: { ...DEFAULT_GROUP },
-  posZ: { ...DEFAULT_GROUP },
-  heading: { ...DEFAULT_GROUP },
-  surface: { ...DEFAULT_GROUP },
-  velXy: { ...DEFAULT_GROUP },
-  velZ: { ...DEFAULT_GROUP },
-};
-
-/** Maps each PID group to its iNav setting name prefix. */
-const GROUPS: { key: keyof NavPidState; label: string; base: string }[] = [
-  { key: "posXy",   label: "Position XY", base: "nav_mc_pos_xy" },
-  { key: "posZ",    label: "Position Z",  base: "nav_mc_pos_z" },
-  { key: "heading", label: "Heading",     base: "nav_mc_heading" },
-  { key: "surface", label: "Surface",     base: "nav_mc_surface" },
-  { key: "velXy",   label: "Velocity XY", base: "nav_mc_vel_xy" },
-  { key: "velZ",    label: "Velocity Z",  base: "nav_mc_vel_z" },
+const GROUPS: PidGroupDef[] = [
+  { label: "Multirotor altitude (position Z)", base: "nav_mc_pos_z", terms: ["p"] },
+  { label: "Multirotor climb rate (velocity Z)", base: "nav_mc_vel_z", terms: ["p", "i", "d"] },
+  { label: "Multirotor position XY", base: "nav_mc_pos_xy", terms: ["p"] },
+  { label: "Multirotor velocity XY", base: "nav_mc_vel_xy", terms: ["p", "i", "d", "ff"] },
+  { label: "Multirotor heading", base: "nav_mc_heading", terms: ["p"] },
+  { label: "Fixed-wing altitude", base: "nav_fw_pos_z", terms: ["p", "i", "d"], optional: true },
+  { label: "Fixed-wing position XY", base: "nav_fw_pos_xy", terms: ["p", "i", "d"], optional: true },
+  { label: "Fixed-wing heading", base: "nav_fw_pos_hdg", terms: ["p", "i", "d"], optional: true },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────
-
-function clampU8(v: number): number {
-  return Math.min(255, Math.max(0, Math.round(v)));
-}
+const SPECS: readonly SettingSpec<string>[] = GROUPS.flatMap((g) =>
+  g.terms.map((t) => ({ key: `${g.base}_${t}`, name: `${g.base}_${t}`, optional: g.optional })),
+);
 
 const settingsSupported = (p: DroneProtocol): boolean => !!p.settings;
-
-async function readNavPid(protocol: DroneProtocol): Promise<NavPidState> {
-  const settings = protocol.settings!;
-  const next = structuredClone(DEFAULT);
-  for (const { key, base } of GROUPS) {
-    const [p, i, d] = await Promise.all([
-      settings.getSetting(`${base}_p`),
-      settings.getSetting(`${base}_i`),
-      settings.getSetting(`${base}_d`),
-    ]);
-    next[key] = { p: settingNumber(p), i: settingNumber(i), d: settingNumber(d) };
-  }
-  return next;
-}
-
-async function writeNavPid(protocol: DroneProtocol, state: NavPidState): Promise<void> {
-  const settings = protocol.settings!;
-  for (const { key, base } of GROUPS) {
-    const g = state[key];
-    await settings.setSetting(`${base}_p`, clampU8(g.p));
-    await settings.setSetting(`${base}_i`, clampU8(g.i));
-    await settings.setSetting(`${base}_d`, clampU8(g.d));
-  }
-}
-
-// ── Component ─────────────────────────────────────────────────
+const readNavPid = (p: DroneProtocol) => readSettingGroup(p.settings!, SPECS);
+const writeNavPid = (p: DroneProtocol, g: SettingGroup<string>) => writeSettingGroup(p.settings!, SPECS, g);
 
 export function NavPidPanel() {
   const {
-    values: state, setValues, loading, error, hasLoaded, dirty,
+    values: group, setValues, loading, error, hasLoaded, dirty,
     connected, isArmed, lockMessage, read, write,
-  } = useSettingsParams<NavPidState>({
+  } = useSettingsParams<SettingGroup<string>>({
     panelId: "inav-nav-pid",
-    initial: DEFAULT,
+    initial: emptySettingGroup(),
     read: readNavPid,
     write: writeNavPid,
     supported: settingsSupported,
     unsupportedMessage: "Settings not available on this firmware",
   });
 
-  function updateGroup(group: keyof NavPidState, key: keyof PidGroup, value: number) {
-    setValues((prev) => ({ ...prev, [group]: { ...prev[group], [key]: value } }));
+  function update(name: string, value: number) {
+    setValues((prev) => ({ ...prev, values: { ...prev.values, [name]: value } }));
   }
+
+  const shownGroups = GROUPS.filter((g) => g.terms.some((t) => group.values[`${g.base}_${t}`] !== undefined));
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -140,27 +104,24 @@ export function NavPidPanel() {
 
         {hasLoaded && (
           <div className="space-y-5">
-            {GROUPS.map(({ key, label }) => (
-              <fieldset key={key} className="rounded border border-border-default p-3">
+            {shownGroups.map((g) => (
+              <fieldset key={g.base} className="rounded border border-border-default p-3">
                 <legend className="px-1 text-[10px] font-mono text-text-tertiary uppercase tracking-wider">
-                  {label}
+                  {g.label}
                 </legend>
-                <div className="grid grid-cols-3 gap-3 mt-1">
-                  {(["p", "i", "d"] as const).map((term) => (
-                    <label key={term} className="flex flex-col gap-1">
-                      <span className="text-[10px] text-text-tertiary font-mono uppercase">{term}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={255}
-                        step={1}
-                        value={state[key][term]}
-                        onChange={(e) => updateGroup(key, term, parseInt(e.target.value) || 0)}
-                        onBlur={(e) => updateGroup(key, term, clampU8(parseInt(e.target.value) || 0))}
-                        className="bg-bg-tertiary border border-border-default rounded px-2 py-1 text-xs font-mono text-text-primary focus:outline-none focus:border-accent-primary"
+                <div className="grid grid-cols-4 gap-3 mt-1">
+                  {g.terms.map((t) => {
+                    const name = `${g.base}_${t}`;
+                    return (
+                      <SettingNumberField
+                        key={name}
+                        label={t.toUpperCase()}
+                        value={group.values[name]}
+                        range={group.ranges[name]}
+                        onChange={(v) => update(name, v)}
                       />
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </fieldset>
             ))}

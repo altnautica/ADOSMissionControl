@@ -7,6 +7,7 @@
 
 import {
   MSP_PID, MSP_SET_PID,
+  MSP_PID_ADVANCED, MSP_SET_PID_ADVANCED,
   MSP_RC_TUNING, MSP_SET_RC_TUNING,
   MSP_FILTER_CONFIG, MSP_SET_FILTER_CONFIG,
   MSP_ADVANCED_CONFIG, MSP_SET_ADVANCED_CONFIG,
@@ -27,6 +28,14 @@ for (let ax = 0; ax < PID_AXES.length; ax++) {
   entries.push([`BF_PID_${name}_P`, u8Param(MSP_PID, MSP_SET_PID, ax * 3, ax * 3, `${name} P gain`, 0, 255)]);
   entries.push([`BF_PID_${name}_I`, u8Param(MSP_PID, MSP_SET_PID, ax * 3 + 1, ax * 3 + 1, `${name} I gain`, 0, 255)]);
   entries.push([`BF_PID_${name}_D`, u8Param(MSP_PID, MSP_SET_PID, ax * 3 + 2, ax * 3 + 2, `${name} D gain`, 0, 255)]);
+}
+
+// ── Feedforward (MSP_PID_ADVANCED=94, MSP_SET_PID_ADVANCED=95) ──
+// Both directions carry the per-axis feedforward gain as U16 at 32/34/36,
+// after the fixed advanced-tuning block.
+const FF_AXES = [['ROLL', 32], ['PITCH', 34], ['YAW', 36]] as const;
+for (const [name, offset] of FF_AXES) {
+  entries.push([`BF_PID_${name}_F`, u16Param(MSP_PID_ADVANCED, MSP_SET_PID_ADVANCED, offset, offset, `${name} feedforward`, 0, 2000)]);
 }
 
 // ── RC Tuning (MSP_RC_TUNING=111, MSP_SET_RC_TUNING=204) ──

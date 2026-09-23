@@ -28,7 +28,12 @@ const CONFIG = {
 function renderSection(config: Record<string, unknown> | null = CONFIG) {
   const setValue = vi.fn(async () => {});
   renderWithIntl(
-    <DiscoverySection config={config} readOnly={false} setValue={setValue} />,
+    <DiscoverySection
+      nodeDeviceId="node-1"
+      config={config}
+      readOnly={false}
+      setValue={setValue}
+    />,
   );
   return { setValue };
 }
@@ -89,6 +94,8 @@ describe("DiscoverySection advertised reach", () => {
 
   it("renders the node-reported names and URLs verbatim", async () => {
     useAgentConnectionStore.setState({
+      agentUrl: "http://192.168.1.50:8080",
+      nodeDeviceId: "node-1",
       client: { getSetupStatus: vi.fn(async () => reportWith()) },
     } as never);
 
@@ -108,6 +115,8 @@ describe("DiscoverySection advertised reach", () => {
 
   it("reads 'not reported' for an empty advertised name, never a guess", async () => {
     useAgentConnectionStore.setState({
+      agentUrl: "http://192.168.1.50:8080",
+      nodeDeviceId: "node-1",
       client: {
         getSetupStatus: vi.fn(async () =>
           reportWith({
@@ -137,6 +146,8 @@ describe("DiscoverySection advertised reach", () => {
 
   it("says the read failed instead of showing stale names", async () => {
     useAgentConnectionStore.setState({
+      agentUrl: "http://192.168.1.50:8080",
+      nodeDeviceId: "node-1",
       client: { getSetupStatus: vi.fn(async () => Promise.reject(new Error("down"))) },
     } as never);
 

@@ -84,7 +84,7 @@ export const KNOWN_FLIGHT_MODES: ReadonlySet<string> = new Set<FlightMode>([
   "ORBIT",
   "READY",
   "PRECLAND",
-  "RTGS",
+  "VTOL_TAKEOFF",
   // Generic
   "UNKNOWN",
 ]);

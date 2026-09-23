@@ -36,7 +36,9 @@ vi.mock("@/stores/node-registry", () => ({
   useNodeRegistryStore: {
     getState: () => ({
       getEntry: (id: string) =>
-        droneManagerState.drones.has(id) ? { fc: { armState } } : undefined,
+        droneManagerState.drones.has(id)
+          ? { fc: { armState }, connection: { fcConnected: true } }
+          : undefined,
     }),
   },
 }));
@@ -116,7 +118,7 @@ function okResult() {
 
 /** Install a drone "d1" whose protocol carries a sendCommand spy. */
 function withProtocol(sendCommand = vi.fn(async () => okResult())) {
-  droneManagerState = { drones: new Map([["d1", { protocol: { sendCommand } }]]) };
+  droneManagerState = { drones: new Map([["node:d1", { protocol: { sendCommand } }]]) };
   return { sendCommand };
 }
 
@@ -155,7 +157,7 @@ describe("command.send gates", () => {
     "refuses the un-allowlisted command name '%s' without prompting or sending",
     async (name) => {
       const { sendCommand } = withProtocol();
-      const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+      const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
       const { ctx } = makeCtx({ capability: "command.send" });
       const out = await handlers["command.send"]({ command: name }, ctx);
       expect(out).toEqual({
@@ -169,7 +171,7 @@ describe("command.send gates", () => {
 
   it("requires a string command name", async () => {
     withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     const out = await handlers["command.send"]({ commandId: 22 }, ctx);
     expect(out).toEqual({
@@ -180,7 +182,7 @@ describe("command.send gates", () => {
 
   it("maps takeoff to MAV_CMD 22 with a clamped altitude after confirm", async () => {
     const { sendCommand } = withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     const out = await handlers["command.send"](
       { command: "takeoff", args: { alt: 25 } },
@@ -193,7 +195,7 @@ describe("command.send gates", () => {
 
   it("clamps the takeoff altitude into the 1..120 m band", async () => {
     const { sendCommand } = withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     await handlers["command.send"](
       { command: "takeoff", args: { alt: 9999 } },
@@ -204,7 +206,7 @@ describe("command.send gates", () => {
 
   it("rejects takeoff with no/invalid altitude before sending", async () => {
     const { sendCommand } = withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     const out = await handlers["command.send"](
       { command: "takeoff", args: {} },
@@ -219,7 +221,7 @@ describe("command.send gates", () => {
     ["rtl", 20],
   ])("maps %s to MAV_CMD %i after confirm", async (name, id) => {
     const { sendCommand } = withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     const out = await handlers["command.send"]({ command: name }, ctx);
     expect(sendCommand).toHaveBeenCalledWith(id, [0, 0, 0, 0, 0, 0, 0]);
@@ -229,7 +231,7 @@ describe("command.send gates", () => {
   it("denies an allowlisted command when the operator declines", async () => {
     confirmAnswer = false;
     const { sendCommand } = withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     const out = await handlers["command.send"]({ command: "rtl" }, ctx);
     expect(confirmSpy).toHaveBeenCalledTimes(1);
@@ -240,7 +242,7 @@ describe("command.send gates", () => {
   it("escalates the confirm to critical when the vehicle is armed", async () => {
     armState = "armed";
     withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     await handlers["command.send"]({ command: "rtl" }, ctx);
     const arg = confirmSpy.mock.calls[0][0];
@@ -250,7 +252,7 @@ describe("command.send gates", () => {
 
   it("rejects a token whose agentId targets a different drone", async () => {
     const { sendCommand } = withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send", agentId: "other-drone" });
     const out = await handlers["command.send"]({ command: "rtl" }, ctx);
     expect(out).toEqual({ ok: false, error: "command.send target mismatch" });
@@ -260,15 +262,15 @@ describe("command.send gates", () => {
 
   it("reports not supported when the scoped drone has no protocol", async () => {
     droneManagerState = { drones: new Map() };
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     const out = await handlers["command.send"]({ command: "rtl" }, ctx);
     expect(out).toEqual({ ok: false, error: "command.send not supported" });
   });
 
   it("reports not supported when sendCommand is absent on the protocol", async () => {
-    droneManagerState = { drones: new Map([["d1", { protocol: {} }]]) };
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    droneManagerState = { drones: new Map([["node:d1", { protocol: {} }]]) };
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     const out = await handlers["command.send"]({ command: "rtl" }, ctx);
     expect(out).toEqual({ ok: false, error: "command.send not supported" });
@@ -276,7 +278,7 @@ describe("command.send gates", () => {
 
   it("rate-limits confirmed command sends", async () => {
     const { sendCommand } = withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "command.send" });
     for (let i = 0; i < COMMAND_RATE_LIMIT_MAX; i += 1) {
       const out = await handlers["command.send"]({ command: "rtl" }, ctx);
@@ -294,7 +296,7 @@ describe("mission.write gates", () => {
     // operator's SELECTED drone, so refusing here is what stops a plugin bound
     // to an absent device from uploading to whatever is on screen.
     droneManagerState = { drones: new Map() };
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
       { payload: { waypoints: [WP("w1"), WP("w2")] } },
@@ -312,12 +314,12 @@ describe("mission.write gates", () => {
     const otherProtocol = { sendCommand: vi.fn(async () => okResult()) };
     droneManagerState = {
       drones: new Map([
-        ["d1", { protocol }],
-        ["d2", { protocol: otherProtocol }],
+        ["node:d1", { protocol }],
+        ["node:d2", { protocol: otherProtocol }],
       ]),
     };
     const wps = [WP("w1"), WP("w2")];
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"]({ payload: { waypoints: wps } }, ctx);
     expect(out).toEqual({ ok: true });
@@ -329,7 +331,7 @@ describe("mission.write gates", () => {
   it("refuses to write while the vehicle is armed", async () => {
     armState = "armed";
     withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
       { payload: { waypoints: [WP("w1"), WP("w2")] } },
@@ -344,7 +346,7 @@ describe("mission.write gates", () => {
   it("refuses to write while the arm state is unknown after a lost link", async () => {
     armState = "unknown";
     withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
       { payload: { waypoints: [WP("w1"), WP("w2")] } },
@@ -364,7 +366,7 @@ describe("mission.write gates", () => {
       warnings: [],
     });
     withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
       { payload: { waypoints: [WP("w1")] } },
@@ -380,21 +382,19 @@ describe("mission.write gates", () => {
   });
 
   it("rejects a non-array payload.waypoints", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
       { payload: { waypoints: "nope" } },
       ctx,
     );
-    expect(out).toEqual({
-      ok: false,
-      error: "mission.write requires payload.waypoints to be an array",
-    });
+    expect(out).toMatchObject({ ok: false });
+    expect((out as { error: string }).error).toMatch(/payload\.waypoints/);
     expect(validateMissionMock).not.toHaveBeenCalled();
   });
 
   it("rejects a missing payload", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"]({ missionId: "active" }, ctx);
     expect(out).toMatchObject({ ok: false });
@@ -402,7 +402,7 @@ describe("mission.write gates", () => {
   });
 
   it("rejects waypoints missing numeric coordinates", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
       { payload: { waypoints: [{ id: "w1", lat: "x", lon: 2, alt: 3 }] } },
@@ -415,7 +415,7 @@ describe("mission.write gates", () => {
   it("rejects a valid mission when the operator declines", async () => {
     confirmAnswer = false;
     withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
       { payload: { waypoints: [WP("w1"), WP("w2")] } },
@@ -430,7 +430,7 @@ describe("mission.write gates", () => {
   it("writes + uploads a confirmed valid mission", async () => {
     const wps = [WP("w1"), WP("w2")];
     withProtocol();
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "mission.write" });
     const out = await handlers["mission.write"](
       { payload: { waypoints: wps } },
@@ -444,7 +444,7 @@ describe("mission.write gates", () => {
 
 describe("events pub/sub", () => {
   it("delivers a plugin-published event to its subscriber", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx, postEvent } = makeCtx({ capability: "event.subscribe" });
     const subAck = await handlers["events.subscribe"](
       { topic: "plugin.demo.evt" },
@@ -457,26 +457,26 @@ describe("events pub/sub", () => {
     );
     expect(pubAck).toEqual({ ok: true });
     expect(postEvent).toHaveBeenCalledWith(
-      "events.plugin.demo.evt",
+      "plugin.demo.evt",
       "event.subscribe",
       { n: 7 },
     );
   });
 
   it("forwards an externally published event to the plugin", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx, postEvent } = makeCtx({ capability: "event.subscribe" });
     await handlers["events.subscribe"]({ topic: "vehicle.armed" }, ctx);
     publishPluginEvent("vehicle.armed", { armed: true }, "other");
     expect(postEvent).toHaveBeenCalledWith(
-      "events.vehicle.armed",
+      "vehicle.armed",
       "event.subscribe",
       { armed: true },
     );
   });
 
   it("events.unsubscribe stops delivery; dispose is idempotent after it", async () => {
-    const { handlers, dispose } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers, dispose } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx, postEvent } = makeCtx({ capability: "event.subscribe" });
     await handlers["events.subscribe"]({ topic: "t.x" }, ctx);
     await handlers["events.unsubscribe"]({ topic: "t.x" }, ctx);
@@ -486,7 +486,7 @@ describe("events pub/sub", () => {
   });
 
   it("dispose tears down a still-open subscription", async () => {
-    const { handlers, dispose } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers, dispose } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx, postEvent } = makeCtx({ capability: "event.subscribe" });
     await handlers["events.subscribe"]({ topic: "t.y" }, ctx);
     dispose();
@@ -498,7 +498,7 @@ describe("events pub/sub", () => {
 describe("cloud.read / cloud.write gates", () => {
   it("rejects an off-allowlist cloud.read without touching the client", async () => {
     const cloudQuery = vi.fn(async () => ({}));
-    const { handlers } = buildPluginHandlers("p", "d1", { ...DEPS, cloudQuery });
+    const { handlers } = buildPluginHandlers("p", "node:d1", { ...DEPS, cloudQuery });
     const { ctx } = makeCtx({ capability: "cloud.read" });
     const out = await handlers["cloud.read"]({ fn: "cmdDrones:list" }, ctx);
     expect(out).toEqual({ ok: false, error: "not allowed" });
@@ -507,7 +507,7 @@ describe("cloud.read / cloud.write gates", () => {
 
   it("runs an allowlisted cloud.read through the injected client", async () => {
     const cloudQuery = vi.fn(async () => ({ token: "abc" }));
-    const { handlers } = buildPluginHandlers("p", "d1", { ...DEPS, cloudQuery });
+    const { handlers } = buildPluginHandlers("p", "node:d1", { ...DEPS, cloudQuery });
     const { ctx } = makeCtx({ capability: "cloud.read" });
     const out = await handlers["cloud.read"](
       { fn: "clientConfig:getClientConfig", args: { a: 1 } },
@@ -520,7 +520,7 @@ describe("cloud.read / cloud.write gates", () => {
   });
 
   it("reports cloud unavailable when no client is wired", async () => {
-    const { handlers } = buildPluginHandlers("p", "d1", DEPS);
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx({ capability: "cloud.read" });
     const out = await handlers["cloud.read"](
       { fn: "communityChangelog:list" },
@@ -531,7 +531,7 @@ describe("cloud.read / cloud.write gates", () => {
 
   it("rejects non-object args before reaching the client", async () => {
     const cloudQuery = vi.fn(async () => ({}));
-    const { handlers } = buildPluginHandlers("p", "d1", { ...DEPS, cloudQuery });
+    const { handlers } = buildPluginHandlers("p", "node:d1", { ...DEPS, cloudQuery });
     const { ctx } = makeCtx({ capability: "cloud.read" });
     const out = await handlers["cloud.read"](
       { fn: "communityItems:list", args: [1, 2] },
@@ -543,7 +543,7 @@ describe("cloud.read / cloud.write gates", () => {
 
   it("rate-limits cloud.read", async () => {
     const cloudQuery = vi.fn(async () => ({}));
-    const { handlers } = buildPluginHandlers("p", "d1", { ...DEPS, cloudQuery });
+    const { handlers } = buildPluginHandlers("p", "node:d1", { ...DEPS, cloudQuery });
     const { ctx } = makeCtx({ capability: "cloud.read" });
     for (let i = 0; i < CLOUD_RATE_LIMIT_MAX; i += 1) {
       const out = await handlers["cloud.read"]({ fn: "communityItems:list" }, ctx);
@@ -558,7 +558,7 @@ describe("cloud.read / cloud.write gates", () => {
 
   it("always refuses cloud.write, even on-allowlist-shaped calls", async () => {
     const cloudQuery = vi.fn(async () => ({}));
-    const { handlers } = buildPluginHandlers("p", "d1", { ...DEPS, cloudQuery });
+    const { handlers } = buildPluginHandlers("p", "node:d1", { ...DEPS, cloudQuery });
     const { ctx } = makeCtx({ capability: "cloud.write" });
     const out = await handlers["cloud.write"](
       { fn: "comments:create", args: {} },

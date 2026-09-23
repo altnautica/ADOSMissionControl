@@ -17,12 +17,13 @@
  */
 
 // ── Constants + waypoint action enum ─────────────────────────
-export { INAV_MSP, INAV_WP_ACTION, INAV_WP_FLAG_LAST } from "./decoders/inav/constants";
+export { INAV_MSP, INAV_WP_ACTION, INAV_WP_FLAG_LAST, INAV_LIMITS } from "./decoders/inav/constants";
 
 // ── Decoded result types ─────────────────────────────────────
 export type {
   INavWaypoint,
   INavStatus,
+  INavActiveProfiles,
   INavMisc2,
   INavSafehome,
   INavNavConfig,
@@ -47,6 +48,9 @@ export type {
   INavProgrammingPidStatus,
   INavPid,
   INavFwApproach,
+  INavCustomOsdElementsInfo,
+  INavCustomOsdField,
+  INavCustomOsdElement,
   INavRateDynamics,
   INavEzTune,
   INavServoConfig,
@@ -103,6 +107,8 @@ export {
   decodeMspINavOsdLayoutsHeader,
   decodeMspINavOsdAlarms,
   decodeMspINavOsdPreferences,
+  decodeMspINavCustomOsdElementsInfo,
+  decodeMspINavCustomOsdElement,
 } from "./decoders/inav/osd";
 
 // ── Sensors: air speed, temperatures, ADS-B ──────────────────

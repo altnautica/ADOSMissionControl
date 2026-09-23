@@ -29,13 +29,16 @@ export function BottomBar() {
   const now = Date.now();
   const attitude = freshOnly(buffers.attitude.latest(), now);
   const vfr = freshOnly(buffers.vfr.latest(), now);
+  const position = freshOnly(buffers.position.latest(), now);
 
   // Null, not zero. Zero is a wings-level attitude, and the horizon drew it
   // whenever attitude was missing — a fabricated flight instrument.
   const pitchDeg = attitude?.pitch ?? null;
   const rollDeg = attitude?.roll ?? null;
   const headingDeg = vfr ? fmt(vfr.heading, 0) : "--";
-  const altitudeM = vfr ? fmt(vfr.alt, 0) : "--";
+  // Height above home. VFR_HUD.alt is MSL and reads as the site elevation
+  // with the aircraft on the ground.
+  const altitudeM = position ? fmt(position.relativeAlt, 0) : "--";
 
   return (
     <div className="absolute bottom-0 left-0 right-0 h-48 px-6 pb-4 flex items-end justify-between pointer-events-none">

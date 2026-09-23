@@ -19,12 +19,13 @@ import { useRallyStore } from "@/stores/rally-store";
 import { recordHistory } from "@/lib/planner-history";
 import { clampLat, clampLon, clampAlt } from "./use-planner-state";
 import type { ContextMenuState } from "./use-planner-state";
-import type { ActionCommand, CommandMissionAction, Waypoint } from "@/lib/types";
-import { isActionCommand } from "@/lib/mission/command-classes";
+import type { Waypoint } from "@/lib/types";
+import { patternToMission } from "@/lib/patterns/pattern-to-mission";
+import { sampleGroundElevations } from "@/lib/mission/sample-ground-elevations";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
 import type { DrawingFor } from "@/lib/planner-mode";
 import { datumPatternFor } from "@/lib/planner-mode";
-import { getElevation, getElevations } from "@/lib/terrain/terrain-provider";
+import { getElevation } from "@/lib/terrain/terrain-provider";
 
 interface ActionsDeps {
   waypoints: Waypoint[];
@@ -72,7 +73,9 @@ const TOOL_COMMAND_MAP: Record<string, Waypoint["command"]> = {
   waypoint: "WAYPOINT",
   takeoff: "TAKEOFF",
   land: "LAND",
-  loiter: "LOITER",
+  // A timed loiter: the operator sets the hold. An unlimited LOITER never
+  // advances on its own, so it is never placed by a click.
+  loiter: "LOITER_TIME",
 };
 
 /** Fire-and-forget terrain elevation lookup for a waypoint. */
@@ -84,26 +87,6 @@ function fetchGroundElevation(wpId: string, lat: number, lon: number): void {
       useMissionStore.getState().updateWaypoint(wpId, { groundElevation: elev });
     }
   }).catch(() => { /* offline / API error — leave groundElevation unset */ });
-}
-
-/**
- * Populate `groundElevation` for a whole generated mission in one batched
- * lookup. Without this, a pattern-generated mission carried no elevation
- * samples at all and the terrain-clearance rule had nothing to check — it was
- * skipped silently for every survey, orbit and corridor pattern ever applied.
- */
-function fetchGroundElevations(waypoints: readonly Waypoint[]): void {
-  if (waypoints.length === 0) return;
-  const ids = waypoints.map((wp) => wp.id);
-  getElevations(waypoints.map((wp) => ({ lat: wp.lat, lon: wp.lon })))
-    .then((elevations) => {
-      const store = useMissionStore.getState();
-      for (let i = 0; i < ids.length; i++) {
-        const elev = elevations[i];
-        if (elev !== null) store.updateWaypoint(ids[i], { groundElevation: elev });
-      }
-    })
-    .catch(() => { /* offline / API error — the validator reports it unchecked */ });
 }
 
 /**
@@ -440,57 +423,14 @@ export function usePlannerActions(deps: ActionsDeps) {
     if (!result || result.waypoints.length === 0) { toast("No pattern generated yet", "info"); return; }
     if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
 
-    // Generated rows are a FLAT list that mixes NAV waypoints with action
-    // commands (`ROI`, `DO_SET_CAM_TRIGG` from orbit / structure-scan /
-    // camera-survey). Those were emitted as top-level `Waypoint`s, which is a
-    // shape the model does not allow: `expandToItems` skips a non-NAV
-    // top-level row so the camera trigger never reached the aircraft, and the
-    // flat-file exporters wrote its params into the wrong MAVLink slots. Fold
-    // each action onto the NAV waypoint it follows, which is exactly where the
-    // wire sequences it.
-    //
-    // Every generated waypoint also carries the mission's default frame
-    // EXPLICITLY, so a pattern flown at a `terrain` default cannot be
-    // re-interpreted as above-home by an export or a re-import.
-    const defaultFrame = usePlannerStore.getState().defaultFrame;
-    const newWaypoints: Waypoint[] = [];
-    for (const pw of result.waypoints) {
-      const command = (pw.command ?? "WAYPOINT") as Waypoint["command"];
-      if (isActionCommand(command) && newWaypoints.length > 0) {
-        const parent = newWaypoints[newWaypoints.length - 1];
-        const action: CommandMissionAction = {
-          id: randomId(),
-          command: command as ActionCommand,
-          param1: pw.param1,
-          param2: pw.param2,
-          // Position-bearing actions (ROI, DO_SET_HOME) keep their coordinates;
-          // the rest encode x=y=z=0 downstream.
-          lat: pw.lat,
-          lon: pw.lon,
-          alt: pw.alt,
-        };
-        parent.actions = [...(parent.actions ?? []), action];
-        continue;
-      }
-      newWaypoints.push({
-        id: randomId(), lat: pw.lat, lon: pw.lon, alt: pw.alt, speed: pw.speed,
-        command, param1: pw.param1, param2: pw.param2, frame: defaultFrame,
-      });
-    }
+    // One converter shared with the mission templates: actions fold onto the
+    // navigation waypoint they follow, every waypoint carries the mission's
+    // default frame explicitly (so a `terrain` default is never re-read as
+    // above-home by an export), and TAKEOFF / RTL bookend the mission.
+    const newWaypoints = patternToMission(result.waypoints, usePlannerStore.getState().defaultFrame);
     if (newWaypoints.length === 0) { toast("Pattern produced no navigation waypoints", "warning"); return; }
-
-    const firstCmd = newWaypoints[0]?.command;
-    if (firstCmd !== "TAKEOFF") {
-      newWaypoints.unshift({ id: randomId(), lat: newWaypoints[0].lat, lon: newWaypoints[0].lon, alt: newWaypoints[0].alt, command: "TAKEOFF", frame: defaultFrame });
-    }
-    const lastWp = newWaypoints[newWaypoints.length - 1];
-    newWaypoints.push({ id: randomId(), lat: lastWp.lat, lon: lastWp.lon, alt: 0, command: "RTL", frame: defaultFrame });
     setWaypoints(newWaypoints);
-    // Sample terrain under every generated waypoint. Without this a
-    // pattern-generated mission carried no `groundElevation` at all, so the
-    // terrain-clearance rule had nothing to compare and was skipped for every
-    // survey / orbit / corridor mission the planner produced.
-    fetchGroundElevations(newWaypoints);
+    sampleGroundElevations(newWaypoints);
     patternStore.clear();
     const stats = result.stats;
     const distStr = stats.totalDistance >= 1000 ? `${(stats.totalDistance / 1000).toFixed(1)} km` : `${Math.round(stats.totalDistance)} m`;

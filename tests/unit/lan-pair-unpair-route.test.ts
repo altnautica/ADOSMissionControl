@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Verifies the LAN unpair proxy forwards the API key under the
  * `X-ADOS-Key` header the agent's auth middleware reads — not the
@@ -13,7 +14,7 @@ import { NextRequest } from "next/server";
 // The route resolves the upstream base via node:dns; stub it so the test
 // stays a pure HTTP-shape assertion and never touches the resolver.
 vi.mock("@/app/api/lan-pair/_ipv4", () => ({
-  ipv4FetchBase: vi.fn(async (target: { url: string }) => target.url),
+  agentFetchBase: vi.fn(async (target: { url: string }) => new URL(target.url).origin),
 }));
 
 import { POST } from "@/app/api/lan-pair/unpair/route";
@@ -21,7 +22,7 @@ import { POST } from "@/app/api/lan-pair/unpair/route";
 function postJson(body: unknown): NextRequest {
   return new NextRequest("http://localhost/api/lan-pair/unpair", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Origin: "http://localhost" },
     body: JSON.stringify(body),
   });
 }

@@ -47,6 +47,7 @@ export function ComputeOverview({ nodeId }: { nodeId?: string }) {
   const fetchResources = useAgentSystemStore((s) => s.fetchResources);
   const fetchLogs = useAgentSystemStore((s) => s.fetchLogs);
   const restartService = useAgentSystemStore((s) => s.restartService);
+  const restartAll = useAgentSystemStore((s) => s.restartAll);
 
   useEffect(() => {
     if (connected) {
@@ -116,7 +117,7 @@ export function ComputeOverview({ nodeId }: { nodeId?: string }) {
           <ServiceTable
             services={services}
             onRestart={restartService}
-            onRestartAll={() => restartService("ados-supervisor")}
+            onRestartAll={restartAll}
             processCpu={processCpu}
             processMemoryMb={processMemMb}
           />

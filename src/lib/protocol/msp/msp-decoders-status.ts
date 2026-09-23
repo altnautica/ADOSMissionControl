@@ -28,6 +28,16 @@ export interface MspBoardInfo {
   boardId: string;
   hwRevision: number;
   boardType: number;
+  /** Target name string (Betaflight/iNav MSP_BOARD_INFO, when present). */
+  targetName?: string;
+  /**
+   * Gyro sample rate in Hz, Betaflight MSP API 1.43+ only: the final U16 of
+   * the reply, after the target/board/manufacturer pstrings, the 32-byte
+   * signature, the MCU-type byte and the configuration-state byte. Old API
+   * replies and iNav replies (which end before the signature) leave it
+   * undefined rather than misreading the tail.
+   */
+  gyroSampleRateHz?: number;
 }
 
 export interface MspStatusEx {
@@ -52,10 +62,24 @@ export interface MspBoxIds {
 }
 
 export interface MspModeRange {
+  /** Permanent box id (as MSP_BOXIDS reports it). */
   boxId: number;
+  /** AUX channel index: 0 = AUX1. */
   auxChannel: number;
+  /** PWM, 900..2100 in steps of 25. A slot with start >= end is empty. */
   rangeStart: number;
   rangeEnd: number;
+  /** 0 = OR, 1 = AND with the box's other ranges (Betaflight). */
+  modeLogic?: number;
+  /** Permanent box id this slot follows instead of a range; 0 = none (Betaflight). */
+  linkedTo?: number;
+}
+
+/** One activatable mode the FC reports (MSP_BOXNAMES zipped with MSP_BOXIDS). */
+export interface MspModeBox {
+  /** Permanent box id. */
+  id: number;
+  name: string;
 }
 
 export interface MspAdjustmentRange {
@@ -120,14 +144,59 @@ export function decodeMspFcVersion(dv: DataView): MspFcVersion {
 
 /**
  * MSP_BOARD_INFO (4)
- * 4 ASCII + U16 hwRevision + U8 boardType (+ more, but we stop at the core fields)
+ *
+ * Fixed core (every firmware): 4 ASCII identifier + U16 hwRevision + U8
+ * boardType. Both firmwares then append an OSD byte and a capabilities byte,
+ * then a pstring target name. Betaflight (API >= 1.43) continues with the
+ * board-name and manufacturer pstrings, a 32-byte signature, an MCU-type byte,
+ * a configuration-state byte (API >= 1.42) and finally the U16 gyro sample
+ * rate. Every tail read is length-guarded, so an iNav reply or an old-API
+ * Betaflight reply simply leaves the late fields undefined.
  */
 export function decodeMspBoardInfo(dv: DataView): MspBoardInfo {
-  return {
+  const out: MspBoardInfo = {
     boardId: readString(dv, 0, 4),
     hwRevision: readU16(dv, 4),
     boardType: readU8(dv, 6),
   };
+  let off = 7;
+  // OSD support byte (2 = OSD chip, 1 = OSD slave, 0 = none) and the comm
+  // capabilities byte begin every known reply's tail.
+  if (off + 2 > dv.byteLength) return out;
+  off += 2;
+
+  const nameLen = readU8(dv, off);
+  off += 1;
+  if (off + nameLen > dv.byteLength) return out;
+  if (nameLen > 0) out.targetName = readString(dv, off, nameLen);
+  off += nameLen;
+
+  // Two more pstrings follow only on Betaflight (board name, manufacturer id);
+  // iNav stops after the target name, so the walk ends here.
+  const gyroOffset = tailGyroOffset(dv, off);
+  if (gyroOffset !== null && gyroOffset + 2 <= dv.byteLength) {
+    out.gyroSampleRateHz = readU16(dv, gyroOffset);
+  }
+  return out;
+}
+
+/**
+ * Walk the Betaflight post-name tail to the API-1.43 gyro-rate word: board
+ * name pstring, manufacturer pstring, 32-byte signature, MCU-type byte,
+ * configuration-state byte. Returns its offset, or null when the frame ends
+ * before it.
+ */
+function tailGyroOffset(dv: DataView, start: number): number | null {
+  let off = start;
+  for (let i = 0; i < 2; i++) {
+    if (off + 1 > dv.byteLength) return null;
+    const len = readU8(dv, off);
+    off += 1 + len;
+  }
+  // 32-byte signature + MCU-type byte + configuration-state byte.
+  const afterFixed = off + 32 + 2;
+  if (afterFixed > dv.byteLength) return null;
+  return afterFixed;
 }
 
 /**

@@ -1,11 +1,12 @@
 /**
- * The reconnect state machine, which shipped with no test at all.
+ * The reconnect state machine for directly connected FCs.
  *
  * It is what puts a dropped vehicle back on the link, so the properties that
- * matter are: it actually retries, it backs off rather than hammering, it
- * stops at the attempt cap instead of retrying forever, a success ends the
- * cycle, and a cancel is honoured mid-flight. Each of those is observable
- * through the state-change listener the surfaces already subscribe to.
+ * matter are: it retries at a fixed pace forever (a vehicle out of range for a
+ * minute must still come back), a success ends the cycle, a cancel is honoured
+ * even for an attempt already in flight, and an agent-attached FC is left to
+ * its agent bridge. Each is observable through the state-change listener or the
+ * add-drone callback.
  *
  * @license GPL-3.0-only
  */
@@ -68,7 +69,7 @@ describe("ReconnectManager", () => {
     expect(manager.isReconnecting()).toBe(true);
   });
 
-  it("backs off between attempts instead of hammering the port", async () => {
+  it("retries at a fixed interval, never backing off", async () => {
     const at: number[] = [];
     getKnownPorts.mockImplementation(async () => {
       at.push(Date.now());
@@ -77,40 +78,30 @@ describe("ReconnectManager", () => {
     const manager = new ReconnectManager(() => {});
 
     manager.startReconnect("d1", "Drone 1", SERIAL);
-    await vi.advanceTimersByTimeAsync(4_000);
+    await vi.advanceTimersByTimeAsync(12_500);
 
-    expect(at.length).toBeGreaterThanOrEqual(3);
-    // Strictly increasing gaps until the ladder saturates: the first retry is
-    // fast so a momentary USB re-enumeration recovers immediately, and later
-    // ones are slow so a genuinely absent vehicle is not hammered.
-    const firstGap = at[1] - at[0];
-    const secondGap = at[2] - at[1];
-    expect(secondGap).toBeGreaterThan(firstGap);
+    expect(at.length).toBe(4);
+    const gaps = at.slice(1).map((t, i) => t - at[i]);
+    expect(gaps).toEqual([3_000, 3_000, 3_000]);
   });
 
-  it("gives up at the attempt cap rather than retrying forever", async () => {
+  it("never gives up: still retrying after an hour, with no failed state", async () => {
     const manager = new ReconnectManager(() => {});
     const states = recorder(manager);
 
     manager.startReconnect("d1", "Drone 1", SERIAL);
-    // Far past the ladder's total: 5 escalating waits then 5 s each.
-    await vi.advanceTimersByTimeAsync(300_000);
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
 
-    expect(states.at(-1)).toBe("failed");
-    expect(manager.isReconnecting()).toBe(false);
-    const after = getKnownPorts.mock.calls.length;
-    await vi.advanceTimersByTimeAsync(300_000);
-    expect(
-      getKnownPorts.mock.calls.length,
-      "no attempts after the terminal state",
-    ).toBe(after);
+    expect(getKnownPorts.mock.calls.length).toBe(1200);
+    expect(states).not.toContain("failed");
+    expect(manager.isReconnecting()).toBe(true);
   });
 
   it("stops attempting once cancelled mid-cycle", async () => {
     const manager = new ReconnectManager(() => {});
 
     manager.startReconnect("d1", "Drone 1", SERIAL);
-    await vi.advanceTimersByTimeAsync(1_200);
+    await vi.advanceTimersByTimeAsync(3_200);
     const before = getKnownPorts.mock.calls.length;
     expect(before).toBeGreaterThan(0);
 
@@ -121,22 +112,50 @@ describe("ReconnectManager", () => {
     expect(manager.isReconnecting()).toBe(false);
   });
 
+  it("discards a dial that lands after its cycle was cancelled", async () => {
+    const ports = Promise.withResolvers<Array<{ port: unknown }>>();
+    getKnownPorts.mockImplementation(() => ports.promise);
+    const addDrone = vi.fn();
+    const manager = new ReconnectManager(addDrone);
+
+    manager.startReconnect("d1", "Drone 1", SERIAL);
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(getKnownPorts).toHaveBeenCalledTimes(1);
+
+    manager.cancelReconnect("d1");
+    // The in-flight attempt fails after the cancel; nothing may be rescheduled.
+    ports.resolve([]);
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(getKnownPorts).toHaveBeenCalledTimes(1);
+    expect(addDrone).not.toHaveBeenCalled();
+  });
+
   it("restarting a drone's cycle replaces the old one rather than racing it", async () => {
     const manager = new ReconnectManager(() => {});
 
     manager.startReconnect("d1", "Drone 1", SERIAL);
-    await vi.advanceTimersByTimeAsync(600);
-    const afterFirst = getKnownPorts.mock.calls.length;
-
+    await vi.advanceTimersByTimeAsync(3_100);
     manager.startReconnect("d1", "Drone 1", SERIAL);
-    await vi.advanceTimersByTimeAsync(600);
+    await vi.advanceTimersByTimeAsync(6_000);
 
-    // One ladder, restarted — not two concurrent ladders fighting over the
-    // same port. A second start cancels the first, so the attempt rate does
-    // not double.
-    const afterSecond = getKnownPorts.mock.calls.length - afterFirst;
-    expect(afterSecond).toBeLessThanOrEqual(afterFirst + 1);
+    // One cycle, restarted: 1 attempt before the restart, 2 after it.
+    expect(getKnownPorts.mock.calls.length).toBe(3);
     expect(manager.isReconnecting()).toBe(true);
+  });
+
+  it("leaves an agent-attached FC and a relay session to their own bridge", async () => {
+    const manager = new ReconnectManager(() => {});
+    const states = recorder(manager);
+
+    expect(
+      manager.startReconnect("node:dev-1", "Agent FC", { type: "websocket", url: "ws://192.168.1.50:8765/" }),
+    ).toBe(false);
+    expect(manager.startReconnect("fc:relay", "Relay", { type: "mqtt-mavlink" })).toBe(false);
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(states).toEqual([]);
+    expect(manager.isReconnecting()).toBe(false);
   });
 
   it("cancelAll clears every in-flight cycle", () => {

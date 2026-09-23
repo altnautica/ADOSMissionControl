@@ -31,7 +31,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
@@ -161,6 +161,18 @@ export function useNodeConfig(
   );
   const readOnly = access.mode === "none";
 
+  // Reads race: a relayed node's GET can take seconds while the next node's
+  // LAN GET lands first. Every read takes a sequence number, and only the
+  // newest read for the transport this surface currently uses may touch the
+  // document, the error or the loading flag. `accessRef` is declared before
+  // the refresh effect so it already names the new transport when that effect
+  // starts the new read.
+  const accessRef = useRef(access);
+  const readSeq = useRef(0);
+  useEffect(() => {
+    accessRef.current = access;
+  }, [access]);
+
   // A document belongs to the node it was read from. Drop it the instant the
   // identity changes so a stale config can never render — or be written back —
   // under a new node's name. The refresh effect below re-reads immediately;
@@ -171,20 +183,30 @@ export function useNodeConfig(
   }, [nodeDeviceId]);
 
   const refresh = useCallback(async () => {
+    // A read for a transport this surface no longer uses (a write's read-back
+    // finishing after the node changed) must neither run nor supersede the
+    // current node's read.
+    if (accessRef.current !== access) return;
+    const seq = ++readSeq.current;
+    const isCurrent = () =>
+      seq === readSeq.current && accessRef.current === access;
     if (access.mode === "none") {
       setConfig(null);
+      setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const cfg = await getConfigViaAccess(access);
-      setConfig(cfg);
+      if (isCurrent()) setConfig(cfg);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load config");
-      setConfig(null);
+      if (isCurrent()) {
+        setError(err instanceof Error ? err.message : "Failed to load config");
+        setConfig(null);
+      }
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [access]);
 
@@ -204,7 +226,9 @@ export function useNodeConfig(
       if (failure) throw new Error(failure);
       // Re-read so the field reflects the real persisted value, not an
       // optimistic guess (the surface confirms the round-trip) — over the
-      // proxy exactly as over the direct client.
+      // proxy exactly as over the direct client. `refresh` skips the read-back
+      // when the surface has moved to another node while the write was in
+      // flight, so this node's answer can never land on the next node's page.
       await refresh();
     },
     [access, refresh],

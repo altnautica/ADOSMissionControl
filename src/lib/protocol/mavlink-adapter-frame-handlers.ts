@@ -11,7 +11,7 @@ import type { MissionUploadState, MissionDownloadState, RallyUploadState, RallyD
 import { decodeFenceMissionItems } from './mavlink-adapter-missions'
 import type { LogListState, LogDataState } from './mavlink-adapter-logs'
 import {
-  decodeHeartbeat, decodeCommandAck, decodeParamValue,
+  decodeCommandAck, decodeParamValue,
   decodeMissionAck, decodeMissionRequestInt,
   decodeMissionCount, decodeMissionItemInt as decodeMissionItemIntMsg,
   decodeComponentMetadata,
@@ -59,6 +59,7 @@ import { handleFileTransferProtocolAck, type FtpContext } from './mavlink-adapte
 import { handleFtpOpAck } from './mavlink-adapter-ftp-ops'
 import type { Transport } from './types'
 import type { CommandQueue } from './command-queue'
+import { handleHeartbeat } from './heartbeat-source'
 
 /** Shared adapter state accessed by frame handlers. */
 export interface FrameHandlerState {
@@ -193,17 +194,6 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 102: handleVisionPositionEstimate(p, c.visionPositionEstimateCallbacks); break
     case 331: handleOdometry(p, c.odometryCallbacks); break
     case 11011: handleVisionPositionDelta(p, c.visionPositionDeltaCallbacks); break
-  }
-}
-
-function handleHeartbeat(s: FrameHandlerState, frame: MAVLinkFrame): void {
-  const hb = decodeHeartbeat(frame.payload)
-  if (hb.type === 6) return
-  s.lastVehicleHeartbeat = Date.now()
-  const armed = (hb.baseMode & 0x80) !== 0
-  const mode = s.firmwareHandler?.decodeFlightMode(hb.customMode) ?? 'UNKNOWN'
-  for (const cb of s.cbs.heartbeatCallbacks) {
-    cb({ armed, mode, systemStatus: hb.systemStatus, vehicleInfo: s.vehicleInfo! })
   }
 }
 
@@ -425,7 +415,7 @@ function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame)
 }
 
 function handleAutopilotVersionFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {
-  const data = handleAutopilotVersionMsg(frame.payload, s.cbs.autopilotVersionCallbacks)
+  const data = handleAutopilotVersionMsg(frame.payload, s.cbs.autopilotVersionCallbacks, s.firmwareHandler?.firmwareType)
   if (s.vehicleInfo) {
     const major = (data.flightSwVersion >> 24) & 0xff
     const minor = (data.flightSwVersion >> 16) & 0xff
@@ -433,7 +423,7 @@ function handleAutopilotVersionFrame(s: FrameHandlerState, frame: MAVLinkFrame):
     s.vehicleInfo = {
       ...s.vehicleInfo,
       firmwareVersionString: `${major}.${minor}.${patch}`,
-      boardId: data.boardVersion,
+      boardId: data.boardId,
     }
   }
 }

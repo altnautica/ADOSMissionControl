@@ -51,7 +51,7 @@ export function WaypointActionTimeline({ waypoint, onUpdate, allowedCommands }: 
   })).filter((g) => g.options.length > 0);
 
   const addAction = (command: ActionCommand) => {
-    const action: CommandMissionAction = { id: freshId(), command, ...defaultActionParams(command) };
+    const action: CommandMissionAction = { id: freshId(), command, ...defaultActionParams(command, waypoint) };
     onUpdate({ actions: [...actions, action] });
     setExpandedId(action.id);
   };

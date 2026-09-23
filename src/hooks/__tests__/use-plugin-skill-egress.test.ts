@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type * as EventBus from "@/lib/plugins/event-bus";
 import { renderHook, waitFor } from "@testing-library/react";
 
 const { localPluginsRef, getStateImpl, pushSpy, publishSpy } = vi.hoisted(
@@ -36,7 +37,8 @@ vi.mock("@/lib/agent/plugin-client", () => ({
     }
   },
 }));
-vi.mock("@/lib/plugins/event-bus", () => ({
+vi.mock("@/lib/plugins/event-bus", async (orig) => ({
+  ...(await orig<typeof EventBus>()),
   publishPluginEvent: (...args: unknown[]) => publishSpy.fn(...args),
 }));
 vi.mock("@/lib/skills/plugin-skill-host-store", () => ({
@@ -143,7 +145,7 @@ describe("usePluginSkillEgress", () => {
     expect(publishSpy.fn).toHaveBeenCalledWith(
       "follow.state",
       { active: true, lock_state: "locked", commanding: true },
-      expect.any(String),
+      expect.stringMatching(/^agent-state:drone-1:/),
     );
   });
 

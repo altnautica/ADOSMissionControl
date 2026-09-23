@@ -284,4 +284,50 @@ describe("MsePlayer", () => {
     );
     player.stop();
   });
+
+  it("dials with a fresh token each attempt and reports a relay that keeps refusing", async () => {
+    const onError = vi.fn();
+    let minted = 0;
+    const getRelayToken = vi.fn(async () => `tok-${++minted}`);
+    const player = new MsePlayer();
+    player.start("drone-1", fakeVideo(), "wss://relay.invalid", { onError, getRelayToken });
+    ms.emit("sourceopen");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(FakeWebSocket.opened).toEqual(["wss://relay.invalid/ws/stream/drone-1?token=tok-1"]);
+
+    // A refused upgrade reaches the browser as a close before `open`. The
+    // first one retries with a newly minted token.
+    FakeWebSocket.last!.onclose?.();
+    ms = new FakeMediaSource();
+    await vi.advanceTimersByTimeAsync(3000);
+    ms.emit("sourceopen");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(FakeWebSocket.opened).toHaveLength(2);
+    expect(FakeWebSocket.opened[1]).toContain("token=tok-2");
+    expect(onError).not.toHaveBeenCalled();
+
+    // A second refusal in a row ends the session with a reason.
+    FakeWebSocket.last!.onclose?.();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(FakeWebSocket.opened).toHaveLength(2);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "relay-refused" }));
+    player.stop();
+  });
+
+  it("reports why no relay token could be obtained and never dials", async () => {
+    const onError = vi.fn();
+    const player = new MsePlayer();
+    player.start("drone-1", fakeVideo(), "wss://relay.invalid", {
+      onError,
+      getRelayToken: () => Promise.reject(new Error("relay not configured")),
+    });
+    ms.emit("sourceopen");
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(FakeWebSocket.opened).toHaveLength(0);
+    expect(onError).toHaveBeenCalledWith({
+      code: "relay-token-unavailable",
+      message: "relay not configured",
+    });
+    player.stop();
+  });
 });

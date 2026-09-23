@@ -12,6 +12,7 @@ import { styles } from "../styles";
 import { Row } from "../_shared/Row";
 import type { FlightRecord } from "@/lib/types";
 import type { OperatorProfile, AircraftRecord } from "@/lib/types/operator";
+import { resolvePilot, resolveAircraftIdentity } from "../../field-reader";
 
 // ── Shared helpers ───────────────────────────────────────────
 
@@ -43,15 +44,16 @@ interface SectionProps {
   aircraft?: AircraftRecord;
 }
 
-export function PilotOperatorSection({ operator }: SectionProps) {
+export function PilotOperatorSection({ record, operator }: SectionProps) {
+  const pilot = resolvePilot(record, operator);
   return (
     <View style={styles.section}>
       <SectionTitle>Pilot & Operator</SectionTitle>
       <View style={styles.twoCol}>
         <View style={styles.col}>
-          <Row label="Pilot" value={[operator.pilotFirstName, operator.pilotLastName].filter(Boolean).join(" ") || "—"} />
-          <Row label="License" value={operator.pilotLicenseNumber || "—"} />
-          <Row label="Issuer" value={operator.pilotLicenseIssuer || "—"} />
+          <Row label="Pilot" value={[pilot.firstName, pilot.lastName].filter(Boolean).join(" ") || "—"} />
+          <Row label="License" value={pilot.licenseNumber || "—"} />
+          <Row label="Issuer" value={pilot.licenseIssuer || "—"} />
           <Row label="Class" value={operator.pilotLicenseClass || "—"} />
           <Row label="Expiry" value={operator.pilotLicenseExpiry || "—"} />
         </View>
@@ -68,21 +70,22 @@ export function PilotOperatorSection({ operator }: SectionProps) {
 }
 
 export function AircraftSection({ record, aircraft }: SectionProps) {
+  const identity = resolveAircraftIdentity(record, aircraft);
   return (
     <View style={styles.section}>
       <SectionTitle>Aircraft</SectionTitle>
       <View style={styles.twoCol}>
         <View style={styles.col}>
           <Row label="Name" value={record.droneName} />
-          <Row label="Registration" value={record.aircraftRegistration ?? aircraft?.registrationNumber ?? "—"} />
-          <Row label="Serial" value={record.aircraftSerial ?? aircraft?.serialNumber ?? "—"} />
+          <Row label="Registration" value={identity.registration ?? "—"} />
+          <Row label="Serial" value={identity.serial ?? "—"} />
           <Row label="Manufacturer" value={aircraft?.manufacturer ?? "—"} />
         </View>
         <View style={styles.col}>
           <Row label="Model" value={aircraft?.model ?? "—"} />
           <Row label="Type" value={aircraft?.vehicleType ?? "—"} />
           <Row label="Category" value={aircraft?.category ?? "—"} />
-          <Row label="MTOM" value={record.aircraftMtomKg ? `${record.aircraftMtomKg} kg` : aircraft?.mtomKg ? `${aircraft.mtomKg} kg` : "—"} />
+          <Row label="MTOM" value={identity.mtomKg !== undefined ? `${identity.mtomKg} kg` : "—"} />
         </View>
       </View>
     </View>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowDown, ArrowUp, Circle, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Card ──────────────────────────────────────────────────────
@@ -29,32 +30,70 @@ export function Card({
   );
 }
 
-// ── FenceTypeChip ─────────────────────────────────────────────
+// ── Fence enable / type ───────────────────────────────────────
 
-export function FenceTypeChip({
-  label,
-  icon,
-  active,
-  onClick,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
+/** ArduPilot FENCE_TYPE bits. FENCE_ENABLE itself is only 0/1. */
+export const FENCE_TYPE_BITS = {
+  ALT_MAX: 1 << 0,
+  CIRCLE: 1 << 1,
+  POLYGON: 1 << 2,
+  ALT_MIN: 1 << 3,
+} as const;
+
+const FENCE_TYPE_CHIPS = [
+  { bit: FENCE_TYPE_BITS.ALT_MAX, label: "Max Altitude", icon: <ArrowUp size={10} /> },
+  { bit: FENCE_TYPE_BITS.CIRCLE, label: "Circle", icon: <Circle size={10} /> },
+  { bit: FENCE_TYPE_BITS.POLYGON, label: "Polygon", icon: <MapPin size={10} /> },
+  { bit: FENCE_TYPE_BITS.ALT_MIN, label: "Min Altitude", icon: <ArrowDown size={10} /> },
+] as const;
+
+/**
+ * FENCE_TYPE as its bitmask: one chip per fence type, each toggling only its
+ * own bit so the other enforced fences are never silently changed.
+ */
+export function FenceTypeBits({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap gap-2">
+        {FENCE_TYPE_CHIPS.map(({ bit, label, icon }) => {
+          const active = (value & bit) !== 0;
+          return (
+            <button
+              key={bit}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(value ^ bit)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors",
+                active
+                  ? "bg-accent-primary/10 border-accent-primary text-accent-primary"
+                  : "bg-bg-tertiary border-border-default text-text-tertiary hover:text-text-secondary",
+              )}
+            >
+              {icon}
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-[10px] font-mono text-text-tertiary">FENCE_TYPE = {value} (0x{value.toString(16).padStart(2, "0")})</p>
+    </div>
+  );
+}
+
+/** FENCE_ENABLE as the 0/1 switch it is. */
+export function FenceEnableToggle({ label, enabled, onChange }: {
+  label: string; enabled: boolean; onChange: (next: 0 | 1) => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors",
-        active
-          ? "bg-accent-primary/10 border-accent-primary text-accent-primary"
-          : "bg-bg-tertiary border-border-default text-text-tertiary hover:text-text-secondary",
-      )}
-    >
-      {icon}
-      {label}
-    </button>
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-text-secondary">{label}</span>
+      <button type="button" role="switch" aria-checked={enabled} aria-label={label} onClick={() => onChange(enabled ? 0 : 1)}
+        className={cn("w-10 h-5 rounded-full relative transition-colors", enabled ? "bg-accent-primary" : "bg-bg-tertiary border border-border-default")}>
+        <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform", enabled ? "translate-x-5" : "translate-x-0.5")} />
+      </button>
+      <span className="text-[10px] font-mono text-text-tertiary">{enabled ? "ENABLED" : "DISABLED"}</span>
+    </div>
   );
 }
 

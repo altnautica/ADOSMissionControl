@@ -10,14 +10,20 @@
  * @license GPL-3.0-only
  */
 
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 
 import {
   AdvancedPage,
   CloudPage,
 } from "@/components/command/settings/CorePages";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+
+const initialConnection = useAgentConnectionStore.getState();
+afterEach(() => {
+  useAgentConnectionStore.setState(initialConnection, true);
+});
 
 describe("AdvancedPage board override", () => {
   it("renders the forced board slug read-only, not in an editable input", () => {
@@ -54,11 +60,7 @@ describe("AdvancedPage board override", () => {
 });
 
 function renderCloud(config: Record<string, unknown>) {
-  const setValue = vi.fn(async () => {});
-  renderWithIntl(
-    <CloudPage config={config} readOnly={false} setValue={setValue} />,
-  );
-  return { setValue };
+  renderWithIntl(<CloudPage nodeDeviceId="node-1" config={config} />);
 }
 
 describe("CloudPage backend URL", () => {
@@ -110,22 +112,39 @@ describe("CloudPage backend URL", () => {
 });
 
 describe("CloudPage remote access", () => {
-  it("exposes editable remote-access controls wired to real keys", async () => {
-    const { setValue } = renderCloud({
+  it("offers no control that claims to start or stop the tunnel", () => {
+    renderCloud({
       server: { mode: "local" },
-      remote_access: { provider: "none", cloudflare: { enabled: false } },
+      remote_access: { provider: "cloudflare", cloudflare: { enabled: true } },
     });
-
-    // The provider control renders (its home for the remote_access block).
     expect(screen.getByText("Remote access")).toBeTruthy();
-    // The tunnel-enable toggle writes to the real config key with read-back.
-    fireEvent.click(screen.getByText("Cloudflare tunnel active"));
-    await waitFor(() =>
-      expect(setValue).toHaveBeenCalledWith(
-        "remote_access.cloudflare.enabled",
-        "true",
-      ),
-    );
+    expect(screen.queryByText("Cloudflare tunnel active")).toBeNull();
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  it("reports the node's own tunnel service state", async () => {
+    useAgentConnectionStore.setState({
+      agentUrl: "http://node.local:8080",
+      nodeDeviceId: "node-1",
+      client: {
+        getSetupStatus: vi.fn(async () => ({
+          remote_access: {
+            provider: "cloudflare",
+            enabled: false,
+            configured: false,
+            status: "running",
+            public_urls: [],
+            error: "",
+          },
+        })),
+      },
+    } as never);
+    renderCloud({
+      server: { mode: "local" },
+      remote_access: { provider: "cloudflare", cloudflare: { enabled: false } },
+    });
+    await waitFor(() => expect(screen.getByText("Running")).toBeTruthy());
   });
 
   it("shows the published tunnel endpoints read-only when present", () => {

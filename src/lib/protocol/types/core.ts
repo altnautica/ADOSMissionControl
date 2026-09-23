@@ -17,8 +17,14 @@ export interface VehicleInfo {
   autopilotType: number;
   /** Raw MAV_TYPE enum value. */
   vehicleType: number;
-  /** AP_FW_BOARD_ID from AUTOPILOT_VERSION (msg 148). Populated after first AUTOPILOT_VERSION received. */
+  /** AP_FW_BOARD_ID decoded from AUTOPILOT_VERSION (msg 148) board_version. Undefined until it arrives or when the firmware does not report one. */
   boardId?: number;
+  /**
+   * Gyro sample rate in Hz, read from MSP_BOARD_INFO (Betaflight MSP API
+   * 1.43+). Undefined when the firmware does not report one, so loop-rate
+   * consumers render "unknown" rather than assuming.
+   */
+  gyroSampleRateHz?: number;
 }
 
 /** Result of a command acknowledged by the flight controller. */

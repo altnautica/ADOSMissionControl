@@ -16,6 +16,7 @@ import {
   encodeMspSetRawRc,
   encodeMspSetMotor,
 } from '@/lib/protocol/msp/msp-encoders';
+import { encodeMspSetOsdGeneralConfig } from '@/lib/protocol/msp/encoders/osd-led';
 import {
   decodeMspPid,
   decodeMspRcTuning,
@@ -227,11 +228,38 @@ describe('MSP Encoders', () => {
       expect(dv.getUint16(1, true)).toBe(0x0801);
     });
 
-    it('encodes video system mode (2 bytes) when index is 0xFF', () => {
-      const encoded = encodeMspSetOsdConfig(0xff, 2);
-      expect(encoded.length).toBe(2);
-      expect(encoded[0]).toBe(0xff);
-      expect(encoded[1]).toBe(2); // video system
+    it('rejects the general-settings address; that block has its own encoder', () => {
+      expect(() => encodeMspSetOsdConfig(0xff, 2)).toThrow(RangeError);
+    });
+  });
+
+  describe('encodeMspSetOsdGeneralConfig', () => {
+    // Reads the payload the way Betaflight's MSP_SET_OSD_CONFIG handler does
+    // for address -1: fixed fields first, then optional fields only while
+    // enough bytes remain.
+    const bfReadGeneral = (p: Uint8Array) => {
+      const dv = toDataView(p);
+      let o = 0;
+      const u8 = () => dv.getUint8(o++);
+      const u16 = () => { const v = dv.getUint16(o, true); o += 2; return v; };
+      const u32 = () => { const v = dv.getUint32(o, true); o += 4; return v; };
+      const left = () => p.length - o;
+      if (p.length < 10) throw new Error('short -1 block: firmware reads past the payload');
+      const addr = u8();
+      const out = { addr, video: u8(), units: u8(), rssi: u8(), cap: u16(), skip: u16(), alt: u16(), warnings: -1, profile: -1 };
+      if (left() >= 2) out.warnings = u16();
+      if (left() >= 4) out.warnings = u32();
+      if (left() >= 1) out.profile = u8();
+      return out;
+    };
+
+    it('carries every field the firmware reads and leaves the OSD profile alone', () => {
+      const encoded = encodeMspSetOsdGeneralConfig({
+        videoSystem: 3, units: 1, rssiAlarm: 25, capacityWarning: 2200, altAlarm: 100, enabledWarnings: 0x0007_8421,
+      });
+      expect(bfReadGeneral(encoded)).toEqual({
+        addr: 0xff, video: 3, units: 1, rssi: 25, cap: 2200, skip: 0, alt: 100, warnings: 0x0007_8421, profile: -1,
+      });
     });
   });
 

@@ -228,7 +228,7 @@ export function CompactInfoCards({ drone }: CompactInfoCardsProps) {
     <div className="bg-bg-secondary">
       {/* Health — READ-ONLY */}
       <Section title={t("health")}>
-        <SensorHealthBar compact />
+        <SensorHealthBar compact fcLive={fcLive} />
         <div className="grid grid-cols-2 gap-2 mt-2">
           <MetricCell
             label={t("health")}

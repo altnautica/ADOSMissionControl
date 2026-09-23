@@ -398,7 +398,7 @@ export function cmdControlVideo(ctx: CommandContext, params: { cameraId: number;
 }
 
 export function cmdSetRelay(ctx: CommandContext, relayNum: number, on: boolean): Promise<CommandResult> {
-  return ctx.sendCommandLong(186, [relayNum, on ? 1 : 0, 0, 0, 0, 0, 0])
+  return ctx.sendCommandLong(181, [relayNum, on ? 1 : 0, 0, 0, 0, 0, 0]) // MAV_CMD_DO_SET_RELAY
 }
 
 export function cmdStartRxPair(ctx: CommandContext, spektrum: number): Promise<CommandResult> {

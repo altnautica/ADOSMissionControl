@@ -17,6 +17,8 @@ import { useGroundStationStore } from "./ground-station-store";
 import { useGeofenceStore } from "./geofence-store";
 import { useDiagnosticsStore } from "./diagnostics-store";
 import { usePanelCacheStore } from "./panel-cache-store";
+import { useUploadReceiptsStore } from "./upload-receipts-store";
+import { useMissionStore } from "./mission-store";
 import {
   startRecordingFor,
   stopRecordingFor,
@@ -25,6 +27,7 @@ import {
 import { bridgeTelemetry } from "./drone-manager-bridge";
 import { useNodeRegistryStore } from "./node-registry";
 import { invalidateParamCache } from "@/components/fc/parameters/ParametersPanel";
+import { bindInavConfigStores, forgetInavConfigStores } from "./inav-config-binding";
 
 export interface ConnectionMeta {
   type: "serial" | "websocket" | "mqtt-mavlink" | "udp-proxy" | "tcp";
@@ -275,12 +278,21 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     // If we just deselected, reset the downstream single-slot flight state.
     if (get().selectedDroneId === null) {
       useDroneStore.getState().setConnectionState("disconnected");
+      // The heartbeat age is a claim about the selected link; with nothing
+      // selected there is no link to call stale.
+      useDroneStore.setState({ lastHeartbeat: 0 });
       invalidateParamCache();
     }
     // The removed drone's prearm STATUSTEXT buffer is keyed by droneId and only
     // otherwise drains on arm, so a drone that connects and leaves without
     // arming would pin its lines for the session.
     usePrearmBufferStore.getState().clearForDrone(id);
+    // After a disconnect the GCS no longer knows what the FC holds (another
+    // GCS or a reflash may change it before the next link), so it stops
+    // vouching for any mission, fence or rally upload to this drone.
+    useUploadReceiptsStore.getState().clearForDrone(id);
+    // Its iNav mixer, geozone, safehome and programming tables go with it.
+    forgetInavConfigStores(id);
   },
 
   disconnectDrone: (id) => {
@@ -384,6 +396,9 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       useTrailStore.getState().clear();
       const droneStore = useDroneStore.getState();
       droneStore.setConnectionState("disconnected");
+      // The previous drone's heartbeat must not age into a LINK STALE (or back
+      // a live mode/arm reading) for the drone just selected.
+      useDroneStore.setState({ lastHeartbeat: 0 });
       droneStore.setFlightMode("STABILIZE");
       droneStore.setArmState("disarmed");
       droneStore.setSystemStatus(0);
@@ -392,6 +407,9 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       // a breach raised on the previous drone kept `FenceBreachIndicator` and
       // `CornerAlerts` lit over the newly selected aircraft.
       useGeofenceStore.getState().clearBreachState();
+      // Mission progress is the previous drone's MISSION_CURRENT; the new
+      // selection's arrives with its own next frame.
+      useMissionStore.setState({ currentWaypoint: null, progress: 0 });
       droneStore.setFirmwareType(null);
       if (previousId) {
         usePanelCacheStore.getState().clearForDrone(previousId);
@@ -440,9 +458,12 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       // Same registry contract as removeDrone: no session, no attached FC.
       registry.updateConnection(drone.id, { fcConnected: false });
       registry.detachFc(drone.id);
+      useUploadReceiptsStore.getState().clearForDrone(drone.id);
+      forgetInavConfigStores(drone.id);
     });
     set({ drones: new Map(), selectedDroneId: null });
     useDroneStore.getState().setConnectionState("disconnected");
+    useDroneStore.setState({ lastHeartbeat: 0 });
     useTelemetryStore.getState().clear();
     // Same single-slot global state as the telemetry rings; clearing one
     // without the other leaves a track on the map with no vehicle behind it.
@@ -460,3 +481,9 @@ export function onUnexpectedDisconnect(listener: DisconnectListener): () => void
   unexpectedDisconnectListeners.add(listener);
   return () => unexpectedDisconnectListeners.delete(listener);
 }
+
+// The iNav config stores always show the selected drone's tables, whichever
+// path changes the selection.
+useDroneManager.subscribe((state, prev) => {
+  if (state.selectedDroneId !== prev.selectedDroneId) bindInavConfigStores(state.selectedDroneId);
+});

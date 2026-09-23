@@ -13,6 +13,7 @@
 #        npx convex env set JWT_PRIVATE_KEY "$JWT_PRIVATE_KEY" --url http://<host>:3210 --admin-key <admin-key>
 #        npx convex env set JWKS "$JWKS"                       --url http://<host>:3210 --admin-key <admin-key>
 #        npx convex env set SITE_URL "http://<host>:4000"      --url http://<host>:3210 --admin-key <admin-key>
+#        npx convex env set VIDEO_RELAY_SECRET "$VIDEO_RELAY_SECRET" --url http://<host>:3210 --admin-key <admin-key>
 #   5. docker compose up -d
 #
 # Port wiring (critical):
@@ -109,6 +110,9 @@ services:
     environment:
       - RTSP_URL_PATTERN=${RTSP_URL_PATTERN:-rtsp://host.docker.internal:8554/{deviceId}}
       - PORT=3001
+      # Required. Same value as the Convex deployment's VIDEO_RELAY_SECRET, which
+      # mints the viewer tokens. The relay refuses to start while it is empty.
+      - VIDEO_RELAY_SECRET=${VIDEO_RELAY_SECRET}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

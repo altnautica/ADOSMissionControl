@@ -19,7 +19,7 @@ import type { UplinkSlice } from "@/stores/ground-station/types";
 const EMPTY_UPLINK: UplinkSlice = {
   active: null,
   priority: [],
-  health: "ok",
+  health: null,
   failover_log: [],
   data_cap: null,
   cloud_relay: null,
@@ -27,6 +27,7 @@ const EMPTY_UPLINK: UplinkSlice = {
   shareUplinkAppliedReason: null,
   loading: false,
   error: null,
+  fetchedAt: null,
 };
 
 /** Minimal api fake: toggleShareUplink only calls setShareUplink. */
@@ -80,7 +81,7 @@ describe("ground-station uplink slice", () => {
     useGroundStationStore.getState().resetAll();
     expect(useGroundStationStore.getState().uplink.active).toBeNull();
     expect(useGroundStationStore.getState().uplink.priority).toEqual([]);
-    expect(useGroundStationStore.getState().uplink.health).toBe("ok");
+    expect(useGroundStationStore.getState().uplink.health).toBeNull();
   });
 
   describe("toggleShareUplink", () => {

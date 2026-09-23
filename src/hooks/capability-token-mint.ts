@@ -50,10 +50,15 @@ export async function mintCloud(
   return wrapMinted(res.token, claims);
 }
 
+/**
+ * Mint an agent-issued token. `pluginId` is the manifest (reverse-DNS) plugin
+ * id: the agent's `POST /api/plugins/capability-token` looks the install up
+ * by it (see `CapabilityTokenRequest` in the agent's plugin routes).
+ */
 export async function mintLan(
   lanUrl: string | null,
   lanKey: string | null,
-  pluginInstallId: string,
+  pluginId: string,
 ): Promise<MintedToken> {
   if (!lanUrl || !lanKey) {
     throw new Error("LAN mint requires a paired agent with a known host + key");
@@ -64,7 +69,7 @@ export async function mintLan(
       "Content-Type": "application/json",
       "X-ADOS-Key": lanKey,
     },
-    body: JSON.stringify({ plugin_id: pluginInstallId }),
+    body: JSON.stringify({ plugin_id: pluginId }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => `${res.status}`);

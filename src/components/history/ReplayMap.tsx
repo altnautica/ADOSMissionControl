@@ -56,6 +56,8 @@ function MapFollower({ position, enabled }: { position: [number, number] | null;
 // ── Main Component ───────────────────────────────────────
 
 export function ReplayMap() {
+  // Position rings mutate in place; `_version` is the change signal.
+  useTelemetryStore((s) => s._version);
   const posBuffer = useTelemetryStore((s) => s.position);
   const trailVersion = useTrailStore((s) => s._version);
   const trailRing = useTrailStore((s) => s._ring);

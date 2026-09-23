@@ -30,10 +30,11 @@ export const EMPTY_SERIES: SeriesData = {
   vibration: [],
 };
 
-interface PositionFrame { relativeAlt?: number; alt?: number; groundSpeed?: number }
-interface VfrFrame { groundspeed?: number; airspeed?: number; alt?: number }
+interface PositionFrame { relativeAlt?: number; groundSpeed?: number }
+interface VfrFrame { groundspeed?: number; airspeed?: number }
 interface BatteryFrame { voltage?: number; remaining?: number }
-interface AttitudeFrame { roll: number; pitch: number; yaw: number }
+/** Recorded attitude is in degrees, the same contract as live `AttitudeData`. */
+interface AttitudeFrame { roll?: number; pitch?: number; yaw?: number }
 interface GpsFrame { satellites?: number; hdop?: number }
 interface VibrationFrame { vibrationX?: number; vibrationY?: number; vibrationZ?: number }
 
@@ -43,8 +44,11 @@ interface RawFrame {
   data: unknown;
 }
 
-const toDeg = (rad: number) => (rad * 180) / Math.PI;
-
+/**
+ * Build chart series from recorded frames. Altitude is height above home
+ * (`relativeAlt`); the AMSL `alt` of position and VFR_HUD frames is never
+ * plotted on the same axis.
+ */
 export function buildSeries(frames: RawFrame[]): SeriesData {
   const out: SeriesData = {
     altitude: [],
@@ -58,13 +62,11 @@ export function buildSeries(frames: RawFrame[]): SeriesData {
     const t = f.offsetMs / 1000;
     if (f.channel === "position" || f.channel === "globalPosition") {
       const d = f.data as PositionFrame;
-      const alt = typeof d.relativeAlt === "number" ? d.relativeAlt : d.alt;
-      if (typeof alt === "number") out.altitude.push({ t, alt });
+      if (typeof d.relativeAlt === "number") out.altitude.push({ t, alt: d.relativeAlt });
       if (typeof d.groundSpeed === "number") out.speed.push({ t, gs: d.groundSpeed });
     } else if (f.channel === "vfr") {
       const d = f.data as VfrFrame;
       out.speed.push({ t, gs: d.groundspeed, as: d.airspeed });
-      if (typeof d.alt === "number") out.altitude.push({ t, alt: d.alt });
     } else if (f.channel === "battery") {
       const d = f.data as BatteryFrame;
       out.battery.push({ t, v: d.voltage, pct: d.remaining });
@@ -72,9 +74,9 @@ export function buildSeries(frames: RawFrame[]): SeriesData {
       const d = f.data as AttitudeFrame;
       out.attitude.push({
         t,
-        roll: toDeg(d.roll ?? 0),
-        pitch: toDeg(d.pitch ?? 0),
-        yaw: toDeg(d.yaw ?? 0),
+        roll: d.roll ?? 0,
+        pitch: d.pitch ?? 0,
+        yaw: d.yaw ?? 0,
       });
     } else if (f.channel === "gps") {
       const d = f.data as GpsFrame;

@@ -42,14 +42,41 @@ export function buildMspFcVersionPayload(
 
 /** MSP_BOARD_INFO (4): 4 ASCII + U16 hw + U8 type */
 export function buildMspBoardInfoPayload(
-  opts?: { boardId?: string; hwRevision?: number; boardType?: number },
+  opts?: {
+    boardId?: string;
+    hwRevision?: number;
+    boardType?: number;
+    /** Betaflight API 1.43+ tail: append the pstrings/signature/gyro word. */
+    extended?: {
+      targetName?: string;
+      boardName?: string;
+      manufacturerId?: string;
+      gyroSampleRateHz?: number;
+    };
+  },
 ): Uint8Array {
-  const { payload, dv } = makePayload(7);
   const id = opts?.boardId ?? 'S405';
-  for (let i = 0; i < 4; i++) payload[i] = id.charCodeAt(i);
-  dv.setUint16(4, opts?.hwRevision ?? 0, true);
-  dv.setUint8(6, opts?.boardType ?? 0);
-  return payload;
+  const base = makePayload(7);
+  for (let i = 0; i < 4; i++) base.payload[i] = id.charCodeAt(i);
+  base.dv.setUint16(4, opts?.hwRevision ?? 0, true);
+  base.dv.setUint8(6, opts?.boardType ?? 0);
+  const ext = opts?.extended;
+  if (!ext) return base.payload;
+
+  // OSD support (2), comm capabilities (0), then the pstrings.
+  const tail: number[] = [2, 0];
+  for (const s of [ext.targetName ?? '', ext.boardName ?? '', ext.manufacturerId ?? '']) {
+    tail.push(s.length);
+    for (let i = 0; i < s.length; i++) tail.push(s.charCodeAt(i) & 0x7f);
+  }
+  // 32-byte empty signature, MCU-type byte, configuration-state byte.
+  for (let i = 0; i < 34; i++) tail.push(0);
+  const gyro = ext.gyroSampleRateHz ?? 0;
+  tail.push(gyro & 0xff, (gyro >> 8) & 0xff);
+  const { payload: full } = makePayload(7 + tail.length);
+  full.set(base.payload);
+  full.set(tail, 7);
+  return full;
 }
 
 /** MSP_ATTITUDE (108): S16 roll (×10), S16 pitch (×10), S16 yaw */

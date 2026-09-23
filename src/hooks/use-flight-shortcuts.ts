@@ -15,7 +15,6 @@
 
 import { useEffect } from "react";
 import { useDroneStore } from "@/stores/drone-store";
-import { useToast } from "@/components/ui/toast";
 
 interface UseFlightShortcutsParams {
   enabled: boolean;
@@ -27,7 +26,6 @@ interface UseFlightShortcutsParams {
   onAbortConfirm: () => void;
   /** Mission-aware pause/resume/hold, chosen by the caller from live state. */
   onPauseResume: () => void;
-  takeoffAlt: string;
 }
 
 export function useFlightShortcuts({
@@ -39,10 +37,7 @@ export function useFlightShortcuts({
   onLandConfirm,
   onAbortConfirm,
   onPauseResume,
-  takeoffAlt,
 }: UseFlightShortcutsParams) {
-  const { toast } = useToast();
-
   useEffect(() => {
     if (!enabled) return;
 
@@ -83,14 +78,8 @@ export function useFlightShortcuts({
           break;
         }
         case "T": {
-          // Takeoff
+          // Takeoff: the caller validates the altitude and opens the confirm.
           e.preventDefault();
-          const alt = parseFloat(takeoffAlt);
-          if (isNaN(alt) || alt <= 0) {
-            toast("Invalid takeoff altitude", "error");
-            return;
-          }
-          void alt;
           onTakeoffConfirm();
           break;
         }
@@ -125,7 +114,5 @@ export function useFlightShortcuts({
     onLandConfirm,
     onAbortConfirm,
     onPauseResume,
-    takeoffAlt,
-    toast,
   ]);
 }

@@ -21,42 +21,19 @@
  *      for back-correlation.
  *   4. Patches the job to `commanded` and links the command id.
  *
- * `advanceStage` is the agent-facing entry point, called from the
- * HTTP action that handles command ACKs. It is `internalMutation`
- * so only the HTTP layer can invoke it.
+ * `settleInstallJobFromAck` is the agent-facing transition. The command
+ * ACK mutation (`cmdDroneCommands.ackCommand`) runs it in the same
+ * transaction that records the ack, so the job reaches `completed` or
+ * `failed` exactly when its `plugin.install` command does.
  *
  * @license GPL-3.0-only
  */
 
 import { v } from "convex/values";
-import {
-  internalMutation,
-  mutation,
-  query,
-} from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireOwnedDroneByDeviceId } from "./cmdDroneAccess";
 import type { Doc, Id } from "./_generated/dataModel";
-
-// ──────────────────────────────────────────────────────────────
-// Validators
-// ──────────────────────────────────────────────────────────────
-
-const stageValidator = v.union(
-  v.literal("queued"),
-  v.literal("commanded"),
-  v.literal("downloading"),
-  v.literal("verifying"),
-  v.literal("installing"),
-  v.literal("completed"),
-  v.literal("failed"),
-  v.literal("cancelled"),
-);
-
-const errorValidator = v.object({
-  code: v.string(),
-  message: v.string(),
-});
 
 /** Hard ceiling on how long the agent has to fetch the archive blob. */
 const SIGNED_URL_TTL_MS = 5 * 60 * 1000;
@@ -178,33 +155,62 @@ export const createJob = mutation({
   },
 });
 
+/** The terminal outcome the agent reported for a command. */
+export interface CommandAck {
+  status: "completed" | "failed";
+  result?: { success: boolean; message: string };
+  data?: unknown;
+}
+
 /**
- * Agent-facing stage transition. Called from the HTTP action that
- * handles `plugin.install` command ACKs. `installId` is supplied
- * when the agent has created the `cmd_pluginInstalls` row; `error`
- * is supplied on `failed`.
+ * Settle the install job a `plugin.install` command was queued for, from the
+ * agent's ACK of that command. Any other command, a row whose `args.jobId` is
+ * not a job id, or a job not linked to this command row is left alone, so an
+ * ack can only move the job its own command belongs to. A job already
+ * completed, failed or cancelled keeps its stage: a cancel the operator made
+ * while the command was in flight is not overwritten.
+ *
+ * `completed` records `data.installId` when it names a `cmd_pluginInstalls`
+ * row. `failed` records `data.code` (default `install_failed`) and the result
+ * message as the job error.
  */
-export const advanceStage = internalMutation({
-  args: {
-    jobId: v.id("plugin_install_jobs"),
-    stage: stageValidator,
-    installId: v.optional(v.id("cmd_pluginInstalls")),
-    error: v.optional(errorValidator),
-    incrementAttempts: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
-    const patch: Partial<Doc<"plugin_install_jobs">> = {
-      stage: args.stage,
-      updatedAt: Date.now(),
-    };
-    if (args.installId !== undefined) patch.installId = args.installId;
-    if (args.error !== undefined) patch.error = args.error;
-    if (args.incrementAttempts) patch.attempts = job.attempts + 1;
-    await ctx.db.patch(args.jobId, patch);
-  },
-});
+export async function settleInstallJobFromAck(
+  ctx: Pick<MutationCtx, "db">,
+  command: Doc<"cmd_droneCommands">,
+  ack: CommandAck,
+): Promise<void> {
+  if (command.command !== "plugin.install") return;
+  const rawJobId = (command.args as { jobId?: unknown } | null | undefined)?.jobId;
+  if (typeof rawJobId !== "string") return;
+  const jobId = ctx.db.normalizeId("plugin_install_jobs", rawJobId);
+  if (jobId === null) return;
+  const job = await ctx.db.get(jobId);
+  if (!job || job.cmdId !== command._id) return;
+  if (job.stage === "completed" || job.stage === "failed" || job.stage === "cancelled") return;
+
+  const data = ack.data as { installId?: unknown; code?: unknown } | null | undefined;
+  const now = Date.now();
+  if (ack.status === "completed") {
+    const installId =
+      typeof data?.installId === "string"
+        ? ctx.db.normalizeId("cmd_pluginInstalls", data.installId)
+        : null;
+    await ctx.db.patch(jobId, {
+      stage: "completed",
+      updatedAt: now,
+      ...(installId !== null ? { installId } : {}),
+    });
+    return;
+  }
+  await ctx.db.patch(jobId, {
+    stage: "failed",
+    updatedAt: now,
+    error: {
+      code: typeof data?.code === "string" ? data.code : "install_failed",
+      message: ack.result?.message ?? "install failed on the drone",
+    },
+  });
+}
 
 /**
  * Operator cancels a job that has not yet reached `installing`.

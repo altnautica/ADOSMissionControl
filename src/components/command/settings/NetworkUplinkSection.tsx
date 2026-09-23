@@ -4,7 +4,9 @@
  * @module command/settings/NetworkUplinkSection
  * @description The node Settings "Network" page: the uplink matrix (ethernet,
  * Wi-Fi client, USB tether, cellular, access point) with the failover priority
- * ladder and the share-uplink toggle, plus the config-backed hotspot switch.
+ * ladder and the share-uplink toggle, plus the hotspot: the config-backed
+ * on/off switch on every profile, and on a ground station the AP name, channel
+ * and passphrase applied through its live AP route.
  *
  * The uplink matrix, priority ladder and share toggle are served by the
  * agent's ground-station network surface, so they render on a ground-station
@@ -15,27 +17,26 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowDown, ArrowUp, Network } from "lucide-react";
 
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { EthernetConfig, NetworkStatus } from "@/lib/api/ground-station/types";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
-import {
-  ConfigIntField,
-  ConfigSecretField,
-  ConfigTextField,
-  ConfigToggleField,
-} from "./ConfigFields";
+import { ConfigToggleField } from "./ConfigFields";
+import { HotspotApFields } from "./HotspotApFields";
 import { Section } from "./Section";
+import { useNodeDirectAgent } from "./use-node-direct-agent";
 
 const POLL_MS = 5000;
 
 interface SectionProps {
+  /** The node this page is rendered for; live reads and writes go only to a
+   * connection attached to it. */
+  nodeDeviceId: string | null;
   profile: NodeProfile;
   config: Record<string, unknown> | null;
   readOnly: boolean;
@@ -166,6 +167,7 @@ function LegRow({
 }
 
 export function NetworkUplinkSection({
+  nodeDeviceId,
   profile,
   config,
   readOnly,
@@ -173,14 +175,22 @@ export function NetworkUplinkSection({
 }: SectionProps) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const agent = useNodeDirectAgent(nodeDeviceId);
 
   const isGroundStation = profile === "ground-station";
   const api = useMemo(
-    () => (isGroundStation ? groundStationApiFromAgent(agentUrl, apiKey) : null),
-    [isGroundStation, agentUrl, apiKey],
+    () =>
+      isGroundStation && agent
+        ? groundStationApiFromAgent(agent.agentUrl, agent.apiKey)
+        : null,
+    [isGroundStation, agent],
   );
+  // Answers belong to the client they were requested on; a poll from the
+  // previously attached node that lands after a switch is dropped.
+  const apiRef = useRef(api);
+  useEffect(() => {
+    apiRef.current = api;
+  }, [api]);
 
   const [net, setNet] = useState<NetworkStatus | null>(null);
   const [ethernet, setEthernet] = useState<EthernetLive | null>(null);
@@ -192,9 +202,11 @@ export function NetworkUplinkSection({
     if (!api) return;
     try {
       const status = await api.getNetwork();
+      if (apiRef.current !== api) return;
       setNet(status);
       setLoadFailed(false);
     } catch {
+      if (apiRef.current !== api) return;
       setLoadFailed(true);
     }
     // The aggregate view's ethernet leg is a static default on current
@@ -202,19 +214,21 @@ export function NetworkUplinkSection({
     // absence (older agents) leaves the row on "not reported".
     try {
       const eth = (await api.getEthernetConfig()) as EthernetLive;
+      if (apiRef.current !== api) return;
       setEthernet(eth);
     } catch {
+      if (apiRef.current !== api) return;
       setEthernet(null);
     }
   }, [api]);
 
   useEffect(() => {
-    if (!api) {
-      setNet(null);
-      setEthernet(null);
-      setLoadFailed(false);
-      return;
-    }
+    // A new client (or none) starts from nothing: the previous node's matrix
+    // never renders under this node's name while the first poll is in flight.
+    setNet(null);
+    setEthernet(null);
+    setLoadFailed(false);
+    if (!api) return;
     let cancelled = false;
     const tick = () => {
       if (!cancelled) void refresh();
@@ -247,6 +261,7 @@ export function NetworkUplinkSection({
         // Read-back: the write returns the persisted list; render that, not
         // the optimistic order.
         const res = await api.setPriority(next);
+        if (apiRef.current !== api) return;
         setNet((n) => (n ? { ...n, priority: res.priority } : n));
         toast(t("applied"), "success");
       } catch (err) {
@@ -264,6 +279,7 @@ export function NetworkUplinkSection({
       setSavingShare(true);
       try {
         const res = await api.setShareUplink(enabled);
+        if (apiRef.current !== api) return;
         setNet((n) => (n ? { ...n, share_uplink: res.enabled } : n));
         if (res.applied === false) {
           // Persisted but not applied to a live uplink — surface the agent's
@@ -546,33 +562,16 @@ export function NetworkUplinkSection({
           readOnly={readOnly}
           setValue={setValue}
         />
-        <ConfigTextField
-          configKey="network.hotspot.ssid"
-          label={t("network.hotspotSsidLabel")}
-          hint={t("network.hotspotSsidHint")}
-          placeholder="ADOS-{device_id}"
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
-        <ConfigIntField
-          configKey="network.hotspot.channel"
-          label={t("network.hotspotChannelLabel")}
-          hint={t("network.hotspotChannelHint")}
-          min={1}
-          max={13}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
-        <ConfigSecretField
-          configKey="network.hotspot.password"
-          label={t("network.hotspotPasswordLabel")}
-          hint={t("network.hotspotPasswordHint")}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
+        {/* Name, channel and passphrase reach the running AP only through
+            the ground station's live AP route; the config document keys are
+            not read by the AP, so they are never written from here. */}
+        {isGroundStation ? (
+          <HotspotApFields
+            api={api}
+            liveSsid={typeof ap?.ssid === "string" ? ap.ssid : null}
+            readOnly={readOnly}
+          />
+        ) : null}
       </div>
     </Section>
   );

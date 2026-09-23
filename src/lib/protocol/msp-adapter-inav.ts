@@ -28,6 +28,8 @@ export {
   inavGetBatteryConfig,
   inavSetBatteryConfig,
   inavSelectBatteryProfile,
+  inavGetActiveProfiles,
+  inavSelectControlProfile,
 } from './msp-adapter/inav/battery'
 
 export {
@@ -35,7 +37,7 @@ export {
   inavSelectMixerProfile,
   inavGetOutputMapping,
   inavGetTimerOutputModes,
-  inavSetTimerOutputModes,
+  inavSetTimerOutputMode,
   inavGetServoConfigs,
   inavSetServoConfig,
   inavDownloadMotorMixer,
@@ -66,6 +68,7 @@ export {
   inavSetOsdAlarms,
   inavGetOsdPreferences,
   inavSetOsdPreferences,
+  inavGetCustomOsdElements,
   inavSetCustomOsdElement,
 } from './msp-adapter/inav/osd'
 

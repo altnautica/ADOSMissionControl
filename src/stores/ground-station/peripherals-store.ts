@@ -60,7 +60,7 @@ export interface PeripheralsSlice {
   loadGamepads: (api: GroundStationApi) => Promise<void>;
   applyPrimaryGamepad: (
     api: GroundStationApi,
-    deviceId: string | null,
+    deviceId: string,
   ) => Promise<boolean>;
   scanBluetooth: (api: GroundStationApi, durationS?: number) => Promise<void>;
   pairBluetooth: (api: GroundStationApi, mac: string) => Promise<boolean>;
@@ -127,20 +127,15 @@ export const createPeripheralsSlice: GroundStationSliceCreator<PeripheralsSlice>
 
   applyPrimaryGamepad: async (api, deviceId) => {
     try {
-      const list = await api.setPrimaryGamepad(deviceId);
-      set({
-        gamepads: {
-          devices: list.devices,
-          primary_id: list.primary_id,
-          loading: false,
-        },
-      });
-      return true;
+      await api.setPrimaryGamepad(deviceId);
     } catch (err) {
       const { message } = errorMessage(err);
       set({ lastError: message });
       return false;
     }
+    // The write reply carries no device list; read it back.
+    await get().loadGamepads(api);
+    return true;
   },
 
   scanBluetooth: (api, durationS) => scanBluetooth(api, durationS, set, get),

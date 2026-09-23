@@ -139,18 +139,29 @@ describe("iNav decoder parity", () => {
     expect(normalise(decodeMspINavNavConfigLegacy(dv(bytes)))).toMatchSnapshot();
   });
 
-  it("decodeMspINavFwApproach (two entries)", () => {
-    const entry = [
-      0x01, // number
+  it("decodeMspINavFwApproach (one slot per reply, 15 bytes)", () => {
+    // mspFwApproachOutCommand answers one requested slot: U8 idx, S32
+    // approachAlt, S32 landAlt, U8 direction, S16 heading1, S16 heading2,
+    // U8 isSeaLevelRef.
+    const bytes = [
+      0x04, // slot number
       ...s32(5000), // approachAlt cm
       ...s32(1500), // landAlt cm
-      0x02, // approachDirection
+      0x01, // approachDirection (right)
       ...s16(90), // landHeading1
       ...s16(-90), // landHeading2
       0x01, // isSeaLevelRef
     ];
-    const bytes = [...entry, ...entry.map((b, i) => (i === 0 ? 0x02 : b))];
-    expect(normalise(decodeMspINavFwApproach(dv(bytes)))).toMatchSnapshot();
+    expect(decodeMspINavFwApproach(dv(bytes))).toEqual({
+      number: 4,
+      approachAlt: 5000,
+      landAlt: 1500,
+      approachDirection: 1,
+      landHeading1: 90,
+      landHeading2: -90,
+      isSeaLevelRef: true,
+    });
+    expect(() => decodeMspINavFwApproach(dv(bytes.slice(0, 14)))).toThrow(RangeError);
   });
 
   // ── battery / power ────────────────────────────────────────
@@ -170,9 +181,38 @@ describe("iNav decoder parity", () => {
     expect(normalise(decodeMspINavAnalog(dv(bytes)))).toMatchSnapshot();
   });
 
-  it("decodeMspINavBatteryConfig", () => {
-    const bytes = Array(28).fill(0).map((_, i) => (i * 9 + 5) & 0xff);
-    expect(normalise(decodeMspINavBatteryConfig(dv(bytes)))).toMatchSnapshot();
+  it("decodeMspINavBatteryConfig (29-byte FC layout)", () => {
+    const bytes = [
+      ...u16(1100), // voltage scale
+      0x01, // voltage source (sag compensated)
+      0x04, // cells
+      ...u16(430), // cellDetect (0.01 V)
+      ...u16(330), // cellMin
+      ...u16(420), // cellMax
+      ...u16(350), // cellWarning
+      ...u16(25), // current offset
+      ...u16(400), // current scale
+      ...u32(2200), // capacity
+      ...u32(440), // capacity warning
+      ...u32(220), // capacity critical
+      0x00, // capacity unit (mAh)
+    ];
+    expect(bytes.length).toBe(29);
+    expect(decodeMspINavBatteryConfig(dv(bytes))).toEqual({
+      voltageScale: 1100,
+      voltageSource: 1,
+      cells: 4,
+      cellDetect: 430,
+      cellMin: 330,
+      cellMax: 420,
+      cellWarning: 350,
+      currentOffset: 25,
+      currentScale: 400,
+      capacityMah: 2200,
+      capacityWarningMah: 440,
+      capacityCriticalMah: 220,
+      capacityUnit: 0,
+    });
   });
 
   // ── rate / tuning ──────────────────────────────────────────
@@ -227,13 +267,17 @@ describe("iNav decoder parity", () => {
     expect(normalise(decodeMspINavServoMixer(dv(bytes)))).toMatchSnapshot();
   });
 
-  it("decodeMspINavOutputMappingExt2 (three entries)", () => {
+  it("decodeMspINavOutputMappingExt2 (6-byte entries: timer, U32 usage, label)", () => {
     const bytes = [
-      0x00, ...u16(0x0001), ...u16(0x0010),
-      0x01, ...u16(0x0002), ...u16(0x0020),
-      0x02, ...u16(0x0004), ...u16(0x0040),
+      0x00, ...u32(1 << 2), 0x00, // timer 0, MOTOR
+      0x01, ...u32(1 << 3), 0x00, // timer 1, SERVO
+      0x02, ...u32(1 << 24), 0x01, // timer 2, LED, LED label
     ];
-    expect(normalise(decodeMspINavOutputMappingExt2(dv(bytes)))).toMatchSnapshot();
+    expect(decodeMspINavOutputMappingExt2(dv(bytes))).toEqual([
+      { timerId: 0, usageFlags: 1 << 2, specialLabels: 0 },
+      { timerId: 1, usageFlags: 1 << 3, specialLabels: 0 },
+      { timerId: 2, usageFlags: 1 << 24, specialLabels: 1 },
+    ]);
   });
 
   it("decodeMspINavTimerOutputMode (three timers)", () => {
@@ -332,21 +376,35 @@ describe("iNav decoder parity", () => {
     expect(normalise(decodeMspINavGvarStatus(dv(bytes)))).toMatchSnapshot();
   });
 
-  it("decodeMspINavProgrammingPid (one rule)", () => {
+  it("decodeMspINavProgrammingPid (19-byte record, U16 gains)", () => {
     const bytes = [
       0x01, // enabled
-      0x00, // setpointType
+      0x02, // setpointType
       ...s32(1000), // setpointValue
-      0x01, // measurementType
-      ...s32(500), // measurementValue
-      50, 40, 30, 20, // gains P/I/D/FF
+      0x05, // measurementType
+      ...s32(-500), // measurementValue
+      ...u16(300), ...u16(40), ...u16(1200), ...u16(20), // P / I / D / FF
     ];
-    expect(normalise(decodeMspINavProgrammingPid(dv(bytes)))).toMatchSnapshot();
+    expect(bytes.length).toBe(19);
+    expect(decodeMspINavProgrammingPid(dv(bytes))).toEqual([
+      {
+        enabled: true,
+        setpointType: 2,
+        setpointValue: 1000,
+        measurementType: 5,
+        measurementValue: -500,
+        gains: { P: 300, I: 40, D: 1200, FF: 20 },
+      },
+    ]);
   });
 
-  it("decodeMspINavProgrammingPidStatus (two rules)", () => {
-    const bytes = [0x00, ...s32(500), 0x01, ...s32(-750)];
-    expect(normalise(decodeMspINavProgrammingPidStatus(dv(bytes)))).toMatchSnapshot();
+  it("decodeMspINavProgrammingPidStatus (one S32 per PID, no index byte)", () => {
+    const bytes = [...s32(500), ...s32(-750), ...s32(0)];
+    expect(decodeMspINavProgrammingPidStatus(dv(bytes))).toEqual([
+      { id: 0, output: 500 },
+      { id: 1, output: -750 },
+      { id: 2, output: 0 },
+    ]);
   });
 
   // ── ADS-B ─────────────────────────────────────────────────

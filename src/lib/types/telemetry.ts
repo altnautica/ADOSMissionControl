@@ -17,8 +17,8 @@ export interface PositionData {
   timestamp: number;
   lat: number;
   lon: number;
-  alt: number;        // meters AGL
-  relativeAlt: number;
+  alt: number;        // meters MSL (GLOBAL_POSITION_INT.alt)
+  relativeAlt: number; // meters above home (GLOBAL_POSITION_INT.relative_alt)
   heading: number;    // degrees 0-360
   groundSpeed: number; // m/s
   airSpeed: number;    // m/s
@@ -33,6 +33,7 @@ export interface BatteryData {
   consumed: number;    // mAh
   temperature?: number; // celsius (from BATTERY_STATUS temperature field)
   cellVoltages?: number[]; // per-cell voltages in volts (from BATTERY_STATUS voltages[10])
+  cellCount?: number; // series cells the FC reports for the pack; absent when unknown
 }
 
 export interface GpsData {

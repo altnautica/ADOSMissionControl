@@ -98,30 +98,11 @@ export function generateStructureScan(config: StructureScanConfig): PatternResul
 
   if (direction === "top-down") altitudes.reverse();
 
-  // Set ROI at structure centroid (first waypoint)
-  waypoints.push({
-    lat: center[0],
-    lon: center[1],
-    alt: (bottomAlt + topAlt) / 2,
-    speed: 0,
-    command: "ROI",
-  });
-
-  // Generate orbit for each layer
+  // Generate orbit for each layer. The ROI at the structure centroid and the
+  // camera trigger ride the first orbit point: an action fires after the
+  // navigation point it follows, so the camera starts on the structure.
   for (let layerIdx = 0; layerIdx < altitudes.length; layerIdx++) {
     const alt = altitudes[layerIdx];
-
-    // Enable camera trigger at start of each layer
-    if (cameraTriggerDistance > 0 && layerIdx === 0) {
-      waypoints.push({
-        lat: center[0],
-        lon: center[1],
-        alt,
-        speed: 0,
-        command: "DO_SET_CAM_TRIGG",
-        param1: cameraTriggerDistance,
-      });
-    }
 
     // Generate orbit points for this layer
     // Alternate direction for efficiency (clockwise on even layers, CCW on odd)
@@ -141,6 +122,26 @@ export function generateStructureScan(config: StructureScanConfig): PatternResul
         // gimbalPitch stored in param2 for DO_MOUNT_CONTROL compatibility
         param2: gimbalPitch,
       });
+
+      if (layerIdx === 0 && i === 0) {
+        waypoints.push({
+          lat: center[0],
+          lon: center[1],
+          alt: (bottomAlt + topAlt) / 2,
+          speed,
+          command: "ROI",
+        });
+        if (cameraTriggerDistance > 0) {
+          waypoints.push({
+            lat: center[0],
+            lon: center[1],
+            alt,
+            speed,
+            command: "DO_SET_CAM_TRIGG",
+            param1: cameraTriggerDistance,
+          });
+        }
+      }
     }
   }
 
@@ -150,7 +151,7 @@ export function generateStructureScan(config: StructureScanConfig): PatternResul
       lat: center[0],
       lon: center[1],
       alt: altitudes[altitudes.length - 1],
-      speed: 0,
+      speed,
       command: "DO_SET_CAM_TRIGG",
       param1: 0, // disable
     });
@@ -173,14 +174,12 @@ function computeStats(
   orbitRadius: number,
   layerCount: number,
 ): PatternStats {
+  // Distance flown between the orbit points; the ROI and trigger rows are
+  // actions at the centroid, not places the aircraft goes.
+  const nav = waypoints.filter((w) => w.command === "WAYPOINT");
   let totalDistance = 0;
-  for (let i = 1; i < waypoints.length; i++) {
-    totalDistance += haversineDistance(
-      waypoints[i - 1].lat,
-      waypoints[i - 1].lon,
-      waypoints[i].lat,
-      waypoints[i].lon,
-    );
+  for (let i = 1; i < nav.length; i++) {
+    totalDistance += haversineDistance(nav[i - 1].lat, nav[i - 1].lon, nav[i].lat, nav[i].lon);
   }
 
   const circumference = 2 * Math.PI * orbitRadius;

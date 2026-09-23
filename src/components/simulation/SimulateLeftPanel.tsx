@@ -9,6 +9,7 @@
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { ChevronRight } from "lucide-react";
 import { FlightPlanLibrary } from "@/components/library/FlightPlanLibrary";
+import { saveActivePlanFromWorkspace } from "@/lib/plan-workspace";
 import { SimReplayControl } from "./SimReplayControl";
 
 interface SimulateLeftPanelProps {
@@ -36,7 +37,7 @@ export function SimulateLeftPanel({ onPlanLoaded }: SimulateLeftPanelProps) {
   return (
     <div className="w-64 shrink-0 flex flex-col h-full border-r border-border-default bg-bg-secondary overflow-hidden">
       <div className="flex-1 overflow-hidden">
-        <FlightPlanLibrary context="simulate" onPlanLoaded={onPlanLoaded} />
+        <FlightPlanLibrary context="simulate" onPlanLoaded={onPlanLoaded} onSave={saveActivePlanFromWorkspace} />
       </div>
       <div className="shrink-0 border-t border-border-default">
         <SimReplayControl />

@@ -62,12 +62,12 @@ function makeFakeProtocol(
 ): Partial<DroneProtocol> {
   return {
     downloadLogicConditions: vi.fn().mockResolvedValue(conditions),
-    uploadLogicCondition: vi.fn().mockResolvedValue({ success: true, resultCode: 0, message: "ok" }),
+    uploadLogicConditions: vi.fn().mockResolvedValue({ success: true, resultCode: 0, message: "ok" }),
     downloadLogicConditionsStatus: vi.fn().mockResolvedValue(conditionStatuses),
     downloadGvarStatus: vi.fn().mockResolvedValue(gvarStatus),
     setGvar: vi.fn().mockResolvedValue({ success: true, resultCode: 0, message: "ok" }),
     downloadProgrammingPids: vi.fn().mockResolvedValue(pids),
-    uploadProgrammingPid: vi.fn().mockResolvedValue({ success: true, resultCode: 0, message: "ok" }),
+    uploadProgrammingPids: vi.fn().mockResolvedValue({ success: true, resultCode: 0, message: "ok" }),
     downloadProgrammingPidStatus: vi.fn().mockResolvedValue(pidStatuses),
   };
 }
@@ -159,12 +159,22 @@ describe("useProgrammingStore", () => {
 
   // ── uploadConditions ──────────────────────────────────────
 
-  it("uploadConditions calls uploadLogicCondition for each slot", async () => {
+  it("uploadConditions writes every slot in one batch", async () => {
     useProgrammingStore.getState().setCondition(0, { enabled: true });
     const proto = makeFakeProtocol();
-    await useProgrammingStore.getState().uploadConditions(proto as DroneProtocol);
-    expect(proto.uploadLogicCondition).toHaveBeenCalledTimes(LOGIC_CONDITION_MAX);
+    expect(await useProgrammingStore.getState().uploadConditions(proto as DroneProtocol)).toBe(true);
+    expect(proto.uploadLogicConditions).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(proto.uploadLogicConditions!).mock.calls[0][0]).toHaveLength(LOGIC_CONDITION_MAX);
     expect(useProgrammingStore.getState().conditionsDirty).toBe(false);
+  });
+
+  it("a failed condition upload stays dirty and reports the failure", async () => {
+    useProgrammingStore.getState().setCondition(0, { enabled: true });
+    const proto = makeFakeProtocol();
+    vi.mocked(proto.uploadLogicConditions!).mockResolvedValue({ success: false, resultCode: -1, message: "not saved" });
+    expect(await useProgrammingStore.getState().uploadConditions(proto as DroneProtocol)).toBe(false);
+    expect(useProgrammingStore.getState().conditionsDirty).toBe(true);
+    expect(useProgrammingStore.getState().error).toBe("not saved");
   });
 
   it("uploadConditions sets error when method is missing", async () => {
@@ -175,11 +185,12 @@ describe("useProgrammingStore", () => {
 
   // ── uploadPids ────────────────────────────────────────────
 
-  it("uploadPids calls uploadProgrammingPid for each slot", async () => {
+  it("uploadPids writes every slot in one batch", async () => {
     useProgrammingStore.getState().setPid(0, { enabled: true });
     const proto = makeFakeProtocol();
-    await useProgrammingStore.getState().uploadPids(proto as DroneProtocol);
-    expect(proto.uploadProgrammingPid).toHaveBeenCalledTimes(PROGRAMMING_PID_MAX);
+    expect(await useProgrammingStore.getState().uploadPids(proto as DroneProtocol)).toBe(true);
+    expect(proto.uploadProgrammingPids).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(proto.uploadProgrammingPids!).mock.calls[0][0]).toHaveLength(PROGRAMMING_PID_MAX);
     expect(useProgrammingStore.getState().pidsDirty).toBe(false);
   });
 

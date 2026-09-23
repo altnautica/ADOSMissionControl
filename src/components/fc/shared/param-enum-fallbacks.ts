@@ -49,6 +49,7 @@ export function fallbackParamKey(name: string): string {
   if (rng) return `RNGFND1_${rng[1]}`;
   const batt = /^BATT\d?_FS_(LOW|CRT)_ACT$/.exec(name);
   if (batt) return `BATT_FS_${batt[1]}_ACT`;
+  if (/^BATT\d?_MONITOR$/.test(name)) return "BATT_MONITOR";
   return name;
 }
 

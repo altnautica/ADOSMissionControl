@@ -18,7 +18,7 @@ import {
   encodeMspINavSetOsdPreferences,
   encodeMspINavSetCustomOsdElement,
 } from "@/lib/protocol/msp/msp-encoders-inav";
-import type { INavFwApproach, INavOsdAlarms, INavOsdPreferences } from "@/lib/protocol/msp/msp-decoders-inav";
+import type { INavFwApproach, INavOsdAlarms, INavOsdPreferences, INavCustomOsdElement, INavCustomOsdField, INavCustomOsdElementsInfo } from "@/lib/protocol/msp/msp-decoders-inav";
 import type { INavEzTune } from "@/lib/protocol/msp/msp-decoders-inav";
 
 // ── EzTune encoder ────────────────────────────────────────────
@@ -198,38 +198,62 @@ describe("encodeMspINavSetOsdPreferences", () => {
 // ── Custom OSD element encoder ────────────────────────────────
 
 describe("encodeMspINavSetCustomOsdElement", () => {
-  it("produces an 18-byte buffer (2 + 16 text)", () => {
-    const buf = encodeMspINavSetCustomOsdElement({ index: 0, visible: true, text: "" });
+  // The FC reports its element geometry; the encoder sizes the frame against
+  // it, so a payload always matches the length the firmware checks.
+  const INFO: INavCustomOsdElementsInfo = { maxElements: 60, partCount: 0, textLength: 14 };
+  const el = (parts: INavCustomOsdField[], visibility: INavCustomOsdField, text: string): INavCustomOsdElement =>
+    ({ index: 0, parts, visibility, text });
+  const VIS = (type: number, value: number): INavCustomOsdField => ({ type, value });
+
+  it("produces an 18-byte buffer (1 + partCount*3 + 3 + 14 text)", () => {
+    const buf = encodeMspINavSetCustomOsdElement(el([], VIS(0, 0), ""), INFO);
     expect(buf.byteLength).toBe(18);
   });
 
   it("encodes index in byte 0", () => {
-    const buf = encodeMspINavSetCustomOsdElement({ index: 5, visible: false, text: "" });
+    const buf = encodeMspINavSetCustomOsdElement(
+      { index: 5, parts: [], visibility: VIS(0, 0), text: "" },
+      INFO,
+    );
     expect(buf[0]).toBe(5);
   });
 
-  it("encodes visible as 1 in byte 1 when true", () => {
-    const buf = encodeMspINavSetCustomOsdElement({ index: 0, visible: true, text: "" });
+  it("encodes the visibility type and value in bytes 1-3", () => {
+    const buf = encodeMspINavSetCustomOsdElement(
+      el([], VIS(2, 7), ""),
+      INFO,
+    );
+    expect(buf[1]).toBe(2);
+    expect(buf[2]).toBe(7);
+    expect(buf[3]).toBe(0);
+  });
+
+  it("encodes parts as (type, U16 value) triples before the visibility rule", () => {
+    const buf = encodeMspINavSetCustomOsdElement(
+      { index: 0, parts: [VIS(1, 0x1234)], visibility: VIS(2, 7), text: "" },
+      { maxElements: 60, partCount: 1, textLength: 11 },
+    );
+    expect(buf[0]).toBe(0);
     expect(buf[1]).toBe(1);
+    expect(buf[2]).toBe(0x34);
+    expect(buf[3]).toBe(0x12);
+    expect(buf[4]).toBe(2);   // visibility type follows the parts
+    expect(buf[5]).toBe(7);
+    expect(buf.byteLength).toBe(18);
   });
 
-  it("encodes visible as 0 in byte 1 when false", () => {
-    const buf = encodeMspINavSetCustomOsdElement({ index: 0, visible: false, text: "" });
-    expect(buf[1]).toBe(0);
+  it("encodes ASCII text after the visibility rule", () => {
+    const buf = encodeMspINavSetCustomOsdElement(el([], VIS(1, 0), "AB"), INFO);
+    expect(buf[4]).toBe(0x41); // 'A'
+    expect(buf[5]).toBe(0x42); // 'B'
+    expect(buf[6]).toBe(0x00); // NUL padding
   });
 
-  it("encodes ASCII text starting at byte 2", () => {
-    const buf = encodeMspINavSetCustomOsdElement({ index: 0, visible: false, text: "AB" });
-    expect(buf[2]).toBe(0x41); // 'A'
-    expect(buf[3]).toBe(0x42); // 'B'
-    expect(buf[4]).toBe(0x00); // null padding
-  });
-
-  it("truncates text longer than 16 characters", () => {
+  it("truncates text longer than textLength characters", () => {
     const text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // 26 chars
-    const buf = encodeMspINavSetCustomOsdElement({ index: 0, visible: true, text });
-    // Bytes 2..17 should be the first 16 chars; no overflow
-    const decoded = Array.from(buf.slice(2)).map((b) => (b === 0 ? "" : String.fromCharCode(b))).join("");
-    expect(decoded).toBe("ABCDEFGHIJKLMNOP");
+    const buf = encodeMspINavSetCustomOsdElement(el([], VIS(1, 0), text), INFO);
+    // Bytes 4..17 hold the first 14 chars; no overflow
+    const decoded = Array.from(buf.slice(4)).map((b) => (b === 0 ? "" : String.fromCharCode(b))).join("");
+    expect(decoded).toBe("ABCDEFGHIJKLMN");
   });
 });

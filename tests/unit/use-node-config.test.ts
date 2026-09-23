@@ -368,4 +368,136 @@ describe("useNodeConfig transport belongs to the rendered node", () => {
     expect(result.current.config).toBeNull();
     expect(result.current.accessMode).toBe("none");
   });
+
+  it("discards node A's read when it resolves after node B's", async () => {
+    // Both nodes are LAN-paired, so both resolve the proxy lane. Each GET is
+    // held open until the test releases it, so A's answer can land last.
+    useAgentConnectionStore.setState({
+      client: null,
+      cloudMode: true,
+      nodeDeviceId: null,
+    });
+    useLocalNodesStore.setState({
+      nodes: [
+        node({ deviceId: "node-a", hostname: "http://node-a.local:8080" }),
+        node({ deviceId: "node-b", hostname: "http://node-b.local:8080" }),
+      ],
+    });
+    const pending = new Map<string, Array<() => void>>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: unknown, init?: RequestInit) => {
+        const { host } = JSON.parse((init?.body as string) ?? "{}") as {
+          host: string;
+        };
+        const name = host.includes("node-a") ? "a" : "b";
+        return new Promise<Response>((resolve) => {
+          const queue = pending.get(name) ?? [];
+          queue.push(() =>
+            resolve(
+              new Response(JSON.stringify({ owner: { name } }), {
+                status: 200,
+              }),
+            ),
+          );
+          pending.set(name, queue);
+        });
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => useNodeConfig(id),
+      { initialProps: { id: "node-a" } },
+    );
+    await waitFor(() => expect(pending.get("a")?.length).toBe(1));
+
+    rerender({ id: "node-b" });
+    await waitFor(() => expect(pending.get("b")?.length).toBe(1));
+
+    await act(async () => {
+      pending.get("b")![0]();
+    });
+    await waitFor(() =>
+      expect(readConfigPath(result.current.config, "owner.name")).toBe("b"),
+    );
+    expect(result.current.loading).toBe(false);
+
+    await act(async () => {
+      pending.get("a")![0]();
+    });
+    expect(readConfigPath(result.current.config, "owner.name")).toBe("b");
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("keeps node B's read when node A's write read-back starts after it", async () => {
+    useAgentConnectionStore.setState({
+      client: null,
+      cloudMode: true,
+      nodeDeviceId: null,
+    });
+    useLocalNodesStore.setState({
+      nodes: [
+        node({ deviceId: "node-a", hostname: "http://node-a.local:8080" }),
+        node({ deviceId: "node-b", hostname: "http://node-b.local:8080" }),
+      ],
+    });
+    // Node A answers reads at once; its write and node B's read are held.
+    const held: { write?: () => void; read?: () => void } = {};
+    const getsByNode: Record<"a" | "b", number> = { a: 0, b: 0 };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: unknown, init?: RequestInit) => {
+        const { host, method } = JSON.parse(
+          (init?.body as string) ?? "{}",
+        ) as { host: string; method: string };
+        const name = host.includes("node-a") ? "a" : "b";
+        const body =
+          method === "PUT"
+            ? { status: "ok", persisted: true }
+            : { owner: { name } };
+        const reply = new Response(JSON.stringify(body), { status: 200 });
+        if (method === "PUT") {
+          return new Promise<Response>((resolve) => {
+            held.write = () => resolve(reply);
+          });
+        }
+        getsByNode[name] += 1;
+        if (name === "b") {
+          return new Promise<Response>((resolve) => {
+            held.read = () => resolve(reply);
+          });
+        }
+        return Promise.resolve(reply);
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => useNodeConfig(id),
+      { initialProps: { id: "node-a" } },
+    );
+    await waitFor(() =>
+      expect(readConfigPath(result.current.config, "owner.name")).toBe("a"),
+    );
+
+    let write: Promise<void> = Promise.resolve();
+    act(() => {
+      write = result.current.setValue("owner.name", "x");
+    });
+    rerender({ id: "node-b" });
+    await waitFor(() => expect(held.read).toBeDefined());
+
+    // A's write lands while B's read is still in flight: the read-back for A
+    // must not run, and must not displace B's read.
+    await act(async () => {
+      held.write!();
+      await write;
+    });
+    expect(getsByNode.a).toBe(1);
+    await act(async () => {
+      held.read!();
+    });
+    await waitFor(() =>
+      expect(readConfigPath(result.current.config, "owner.name")).toBe("b"),
+    );
+  });
 });

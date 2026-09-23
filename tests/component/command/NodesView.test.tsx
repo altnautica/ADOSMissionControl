@@ -138,6 +138,7 @@ beforeEach(() => {
       alpha: {
         deviceId: "alpha",
         updatedAt: NOW,
+        fcConnected: true,
         telemetry: {
           armed: false,
           mode: "LOITER",
@@ -288,11 +289,11 @@ describe("NodesView", () => {
   it("gives a blank cell its reason as accessible text", () => {
     renderBoard();
 
-    // Bravo is live but reports no battery: the blank explains itself to a
-    // screen reader instead of reading as a bare dash.
+    // Bravo is a ground station: it flies nothing, and its blank battery and
+    // mode cells say so to a screen reader instead of reading as a bare dash.
     expect(
-      within(rowFor("Bravo")).getByText(/reports no battery/i),
-    ).toBeTruthy();
+      within(rowFor("Bravo")).getAllByText(/does not fly/i).length,
+    ).toBeGreaterThan(0);
   });
 
   it("disables an offline node's controls and names the offline cause", async () => {

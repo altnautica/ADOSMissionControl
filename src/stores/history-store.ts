@@ -86,9 +86,9 @@ interface HistoryActions {
   /** Explicitly mark a clientId as dirty so the next sync picks it up. */
   markDirty: (id: string) => void;
   /**
-   * Async: clear all flight records and demo telemetry recordings from
-   * memory + IndexedDB. Used by the History page in demo mode when the
-   * seeded dataset version changes, to drop stale records before re-seeding.
+   * Async: drop demo flight records (id prefix "demo-") and demo telemetry
+   * recordings from memory + IndexedDB, keeping every other record. Used by
+   * the History page in demo mode before re-seeding.
    */
   resetDemoData: () => Promise<void>;
   /** Store log entries for a drone from LOG_ENTRY messages. */
@@ -273,11 +273,13 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
   },
 
   resetDemoData: async () => {
-    // Finish the stored-history read first so it cannot land after the wipe
-    // and bring the deleted records back into memory.
+    // Finish the stored-history read first so it cannot land after the
+    // rewrite and bring the dropped demo records back into memory.
     await idb.ensureLoaded();
+    const keep = (r: FlightRecord) => !r.id.startsWith("demo-");
     try {
-      await idbDel(IDB_HISTORY_KEY);
+      const stored = ((await idbGet(IDB_HISTORY_KEY)) ?? []) as FlightRecord[];
+      await idbSet(IDB_HISTORY_KEY, Array.isArray(stored) ? stored.filter(keep) : []);
       // Drop demo telemetry recordings (id prefix "demo-rec-").
       const allKeys = await idbKeys();
       const demoKeys = allKeys.filter(
@@ -291,7 +293,7 @@ export const useHistoryStore = create<HistoryState & HistoryActions>((set, get) 
     } catch (err) {
       console.warn("[history-store] resetDemoData failed", err);
     }
-    set({ records: [], _seeded: false });
+    set((s) => ({ records: s.records.filter(keep), _seeded: false }));
   },
 
   setLogEntries: (droneId, entries) => {

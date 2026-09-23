@@ -12,101 +12,60 @@
  *   - `op: "list"`    -> `GET  /api/vision/models`
  *   - `op: "download"`-> `POST /api/vision/models/{modelId}/download`
  *   - `op: "status"`  -> `GET  /api/vision/models/{modelId}/status`
- * The agent's response body and status are returned verbatim so the client
- * coerces them with the same logic it uses on the direct (HTTP/Electron) path.
+ * The agent's JSON body and status are returned unchanged (see `../_proxy`)
+ * so the client coerces them with the same logic it uses on the direct (HTTP/Electron) path.
  *
  * @license GPL-3.0-only
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { normaliseAndCheckHost } from "@/lib/agent/host-validation";
-import { ipv4FetchBase } from "../_ipv4";
+import type { NextRequest } from "next/server";
+import {
+  checkAgentHost,
+  encodeSegment,
+  proxyError,
+  proxyToAgent,
+  readJsonEnvelope,
+} from "../_proxy";
 
 export const runtime = "nodejs";
 
 const UPSTREAM_TIMEOUT_MS = 12000;
 
-type VisionReadOp = "list" | "download" | "status";
-
 export async function POST(req: NextRequest) {
-  let payload: {
-    host?: string;
-    apiKey?: string;
-    op?: string;
-    modelId?: string;
-  };
-  try {
-    payload = (await req.json()) as typeof payload;
-  } catch {
-    return NextResponse.json(
-      { error: "bad_json", message: "Request body must be JSON" },
-      { status: 400 },
-    );
-  }
+  const env = await readJsonEnvelope(req);
+  if ("reject" in env) return env.reject;
+  const { payload } = env;
+  const host = checkAgentHost(payload.host);
+  if ("reject" in host) return host.reject;
 
-  const target = normaliseAndCheckHost(payload?.host ?? "");
-  if ("error" in target) {
-    return NextResponse.json(
-      { error: target.error, message: target.message },
-      { status: 400 },
-    );
-  }
-
-  const op = String(payload?.op ?? "") as VisionReadOp;
+  const op = String(payload.op ?? "");
   if (op !== "list" && op !== "download" && op !== "status") {
-    return NextResponse.json(
-      { error: "bad_op", message: "op must be list, download, or status" },
-      { status: 400 },
-    );
+    return proxyError(400, "bad_op", "op must be list, download, or status");
   }
 
-  const modelId = String(payload?.modelId ?? "").trim();
-  if ((op === "download" || op === "status") && !modelId) {
-    return NextResponse.json(
-      { error: "model_id_required", message: "modelId is required" },
-      { status: 400 },
-    );
-  }
-
-  const apiKey = String(payload?.apiKey ?? "").trim();
-
-  // Compose the upstream path + method from the op. modelId is path-encoded
-  // exactly as the direct client does so a model id with special characters
-  // round-trips identically over either path.
-  const enc = encodeURIComponent(modelId);
-  const { path, method } =
-    op === "list"
-      ? { path: "/api/vision/models", method: "GET" as const }
-      : op === "download"
-        ? { path: `/api/vision/models/${enc}/download`, method: "POST" as const }
-        : { path: `/api/vision/models/${enc}/status`, method: "GET" as const };
-
-  try {
-    // Resolve to IPv4 first so a .local host doesn't stall on AAAA (../_ipv4).
-    const base = await ipv4FetchBase(target);
-    const upstream = await fetch(`${base}${path}`, {
-      method,
-      headers: {
-        Accept: "application/json",
-        ...(apiKey ? { "X-ADOS-Key": apiKey } : {}),
-      },
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  const apiKey = String(payload.apiKey ?? "").trim();
+  if (op === "list") {
+    return proxyToAgent({
+      target: host.target,
+      path: "/api/vision/models",
+      method: "GET",
+      apiKey,
+      timeoutMs: UPSTREAM_TIMEOUT_MS,
     });
-    const body = await upstream.text();
-    return new NextResponse(body, {
-      status: upstream.status,
-      headers: {
-        "content-type":
-          upstream.headers.get("content-type") ?? "application/json",
-      },
-    });
-  } catch (e) {
-    return NextResponse.json(
-      {
-        error: "upstream_unreachable",
-        message: e instanceof Error ? e.message : String(e),
-      },
-      { status: 502 },
-    );
   }
+
+  // modelId is path-encoded exactly as the direct client does so a model id
+  // with special characters round-trips identically over either path; an
+  // empty or dot-segment id is refused.
+  const enc = encodeSegment(String(payload.modelId ?? "").trim());
+  if (!enc) {
+    return proxyError(400, "model_id_required", "modelId is required");
+  }
+  return proxyToAgent({
+    target: host.target,
+    path: `/api/vision/models/${enc}/${op}`,
+    method: op === "download" ? "POST" : "GET",
+    apiKey,
+    timeoutMs: UPSTREAM_TIMEOUT_MS,
+  });
 }

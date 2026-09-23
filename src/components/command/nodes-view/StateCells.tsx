@@ -4,11 +4,14 @@
  * @module command/nodes-view/StateCells
  * @description Battery and flight-state readouts for a board row.
  *
- * Both read the node's own telemetry snapshot and both defer to the row's
- * freshness: an unreachable node renders nothing rather than the last number it
- * sent. The mode readout is exported on its own because the actionable mode
- * control reuses it as its trigger label — the operator reads the same string
- * whether or not that row can be commanded.
+ * Both read the node's own telemetry snapshot, and both render only what the
+ * node's flight controller is actually reporting. That is narrower than the
+ * row's liveness: an agent keeps heartbeating after its FC is unplugged or its
+ * serial link dies, and its published vehicle state keeps the last values, so
+ * agent liveness alone would keep "AUTO · ARMED · 72%" on the board as fresh.
+ * The FC gate is resolved once per row by `fcReading` and every cell renders
+ * against it. The mode readout is exported on its own because the actionable
+ * mode control reuses it as its trigger label.
  *
  * @license GPL-3.0-only
  */
@@ -21,16 +24,43 @@ import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import { useBatteryBand } from "@/lib/battery-bands";
 import {
   UnknownValue,
+  readingFreshness,
   staleClass,
   type ReadingFreshness,
 } from "./cell-primitives";
 
+/** How much a row's flight-controller readings are worth, and if nothing, why. */
+export interface FcReading {
+  freshness: ReadingFreshness;
+  /** `nodesView` key naming why there is nothing to show; null when there is. */
+  absentKey: "noLiveReading" | "fc.notReachable" | "fc.notFlightNode" | null;
+}
+
+/**
+ * Resolve a row's FC reading. A ground station or workstation flies nothing;
+ * an offline node has no reading; a live node whose agent reports no reachable
+ * FC has an agent reading but no flight-controller one.
+ */
+export function fcReading(
+  summary: Pick<CommandAgentSummary, "liveness" | "profile" | "system">,
+): FcReading {
+  if (summary.profile !== "drone") {
+    return { freshness: "none", absentKey: "fc.notFlightNode" };
+  }
+  const freshness = readingFreshness(summary.liveness);
+  if (freshness === "none") return { freshness, absentKey: "noLiveReading" };
+  if (!summary.system.fcReachable) {
+    return { freshness: "none", absentKey: "fc.notReachable" };
+  }
+  return { freshness, absentKey: null };
+}
+
 export function BatteryCell({
   telemetry,
-  freshness,
+  reading,
 }: {
   telemetry: CommandAgentSummary["telemetry"];
-  freshness: ReadingFreshness;
+  reading: FcReading;
 }) {
   const t = useTranslations("nodesView");
   const remaining = telemetry.batteryRemaining;
@@ -39,8 +69,11 @@ export function BatteryCell({
   // pipeline agree on when a node's battery is a problem. Colour is never the
   // only channel: the icon changes with the band too.
   const band = useBatteryBand(remaining);
+  const freshness = reading.freshness;
 
-  if (freshness === "none") return <UnknownValue title={t("noLiveReading")} />;
+  if (reading.absentKey !== null) {
+    return <UnknownValue title={t(reading.absentKey)} />;
+  }
   if (remaining == null || band === undefined) {
     return <UnknownValue title={t("battery.noReading")} />;
   }
@@ -83,20 +116,17 @@ export function BatteryCell({
  */
 export function ModeReadout({
   telemetry,
-  freshness,
+  reading,
 }: {
   telemetry: CommandAgentSummary["telemetry"];
-  freshness: ReadingFreshness;
+  reading: FcReading;
 }) {
   const t = useTranslations("nodesView");
+  const freshness = reading.freshness;
 
-  if (freshness === "none" || telemetry.mode == null) {
+  if (reading.absentKey !== null || telemetry.mode == null) {
     return (
-      <UnknownValue
-        title={
-          freshness === "none" ? t("noLiveReading") : t("mode.noReading")
-        }
-      />
+      <UnknownValue title={t(reading.absentKey ?? "mode.noReading")} />
     );
   }
 

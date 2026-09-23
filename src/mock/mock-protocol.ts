@@ -16,7 +16,7 @@ import type {
   DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback,
   CameraImageCapturedCallback, ExtendedSysStateCallback, FencePointCallback,
   SystemTimeCallback, AutopilotVersionCallback,
-  CanFrameCallback, FenceElement,
+  CanFrameCallback, FenceElement, MspModeRange, MspAdjustmentRange,
 } from "@/lib/protocol/types";
 import { ArduCopterHandler, ArduPlaneHandler, ArduRoverHandler, ArduSubHandler } from "@/lib/protocol/firmware/ardupilot";
 import { PX4Handler } from "@/lib/protocol/firmware/px4";
@@ -31,6 +31,7 @@ import { mockStartCalibration, type CalibrationContext } from "./mock-protocol-c
 import { handleSerialCommand, startTelemetryTick, type TelemetryTickContext } from "./mock-protocol-serial";
 import { MOCK_FENCE_POLYGON, MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_INFO, PX4_VTOL_VEHICLE_INFO, ARDUPLANE_VEHICLE_INFO, ARDUPLANE_VTOL_VEHICLE_INFO, ARDUPLANE_TAILSITTER_VEHICLE_INFO, ARDUPLANE_TILTROTOR_VEHICLE_INFO, ARDUROVER_VEHICLE_INFO, ARDUBOAT_VEHICLE_INFO, ARDUSUB_VEHICLE_INFO, BETAFLIGHT_VEHICLE_INFO, INAV_FW_VEHICLE_INFO, getMockMission, getMockLogList } from "./mock-protocol-data";
 import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
+import { MockRanges } from "./mock-protocol-ranges";
 
 export { MOCK_FENCE_POLYGON } from "./mock-protocol-data";
 
@@ -395,7 +396,15 @@ export class MockProtocol implements DroneProtocol {
     out.push({ mode: 7, fun: 0, color: 0 });
     return out;
   }
-  async setLedStripModeColor(): Promise<CommandResult> { return ok("Mode colour written"); }
+  async setLedStripModeColors(): Promise<CommandResult> { return ok("Mode colours written"); }
+
+  // ── Mode and adjustment ranges (mock) ──────────────────
+  private ranges = new MockRanges();
+  async getModeBoxes() { return this.ranges.boxes(); }
+  async getModeRanges() { return this.ranges.modeRanges(); }
+  async setModeRanges(r: MspModeRange[]): Promise<CommandResult> { return this.ranges.setModeRanges(r); }
+  async getAdjustmentRanges() { return this.ranges.adjustmentRanges(); }
+  async setAdjustmentRanges(r: MspAdjustmentRange[]): Promise<CommandResult> { return this.ranges.setAdjustmentRanges(r); }
 
   // ── Betaflight serial ports (mock, MSP2 32-bit mask) ───
   async getSerialConfig() {
@@ -449,7 +458,8 @@ export class MockProtocol implements DroneProtocol {
   }
   stopMockTelemetryTick(): void { for (const t of this.tickTimers) clearInterval(t); this.tickTimers = []; }
   async requestMessage(messageId: number): Promise<CommandResult> {
-    if (messageId === 148) setTimeout(() => this.emitAutopilotVersion({ capabilities: 0xFF, flightSwVersion: 0x04050007, middlewareSwVersion: 0, osSwVersion: 0, boardVersion: 1032, uid: 0 }), 0);
+    // SpeedyBee F405 Wing: ArduPilot sends its board id in the upper 16 bits of board_version.
+    if (messageId === 148) setTimeout(() => this.emitAutopilotVersion({ capabilities: 0xFF, flightSwVersion: 0x04050007, middlewareSwVersion: 0, osSwVersion: 0, boardVersion: (1106 << 16) >>> 0, boardId: 1106, uid: 0 }), 0);
     return ok("Message requested");
   }
 

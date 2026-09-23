@@ -126,6 +126,11 @@ export function PidStepResponseChart({ event, color = "#3A82FF" }: PidStepRespon
         <span className="text-[9px] font-mono text-text-tertiary bg-bg-secondary/80 px-1.5 py-0.5">
           Overshoot: {event.overshootPercent.toFixed(1)}%
         </span>
+        {event.undershootPercent > 0 && (
+          <span className="text-[9px] font-mono text-text-tertiary bg-bg-secondary/80 px-1.5 py-0.5">
+            Undershoot: {event.undershootPercent.toFixed(1)}%
+          </span>
+        )}
         <span className="text-[9px] font-mono text-text-tertiary bg-bg-secondary/80 px-1.5 py-0.5">
           Settling: {event.settlingTimeMs.toFixed(1)}ms
         </span>

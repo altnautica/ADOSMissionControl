@@ -15,9 +15,10 @@ import {
 import { encodeMspINavSetFwApproach } from '../../msp/msp-encoders-inav'
 import { NOT_CONNECTED, dv } from './helpers'
 
-export async function inavGetFwApproach(queue: MspSerialQueue | null): Promise<INavFwApproach[]> {
+/** Read one FW approach slot; the FC answers only for the index it is sent. */
+export async function inavGetFwApproach(queue: MspSerialQueue | null, index: number): Promise<INavFwApproach> {
   if (!queue) throw new Error('Not connected')
-  const frame = await queue.send(INAV_MSP.MSP2_INAV_FW_APPROACH)
+  const frame = await queue.send(INAV_MSP.MSP2_INAV_FW_APPROACH, new Uint8Array([index & 0xff]))
   return decodeMspINavFwApproach(dv(frame.payload))
 }
 

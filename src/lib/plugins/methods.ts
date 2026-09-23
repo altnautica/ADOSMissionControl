@@ -8,6 +8,18 @@
 
 import type { PluginCapability } from "./types";
 
+/**
+ * Reserved `command.send` name a plugin's GCS half uses to write its own
+ * per-drone config. Routed to the drone's agent, never to the FC.
+ */
+export const PLUGIN_CONFIG_WRITE_COMMAND = "plugin.config.write";
+
+/**
+ * Reserved `command.send` name a plugin overlay uses to lock the vision
+ * engine's tracker onto a clicked box. Routed to the agent's designate route.
+ */
+export const VISION_DESIGNATE_COMMAND = "vision.designate";
+
 /** Resolver function so methods like telemetry.subscribe can derive
  * a per-stream capability id from their args. */
 export type CapabilityResolver = (args: unknown) => string | null;
@@ -43,7 +55,16 @@ export const PLUGIN_METHOD_RULES: Record<string, MethodRule> = {
   },
   "telemetry.unsubscribe": { capability: null },
 
-  "command.send": { capability: "command.send" },
+  "command.send": {
+    capability: "command.send",
+    // Retargeting the vision tracker is not a vehicle command, but whatever
+    // follows the tracker flies toward the new lock, so it needs its own
+    // grant rather than riding the generic command.send one.
+    resolve: (args) =>
+      (args as { command?: unknown } | null)?.command === VISION_DESIGNATE_COMMAND
+        ? "vision.track.designate"
+        : "command.send",
+  },
   "recording.start": { capability: "recording.write" },
   "recording.stop": { capability: "recording.write" },
   "recording.mark": { capability: "recording.write" },

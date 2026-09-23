@@ -213,9 +213,9 @@ describe("safehome CRUD", () => {
     expect(proto.getSafehome(5)).toBeNull();
   });
 
-  it("getAllSafehomes returns 16 slots", () => {
+  it("getAllSafehomes returns the firmware's 8 slots", () => {
     const proto = makeCopter();
-    expect(proto.getAllSafehomes()).toHaveLength(16);
+    expect(proto.getAllSafehomes()).toHaveLength(8);
   });
 });
 
@@ -252,9 +252,9 @@ describe("geozone CRUD — polygon", () => {
     expect(proto.getGeozone(0)).toBeNull();
   });
 
-  it("getAllGeozones returns 15 slots", () => {
+  it("getAllGeozones returns the firmware's 63 slots", () => {
     const proto = makePlane();
-    expect(proto.getAllGeozones()).toHaveLength(15);
+    expect(proto.getAllGeozones()).toHaveLength(63);
   });
 });
 

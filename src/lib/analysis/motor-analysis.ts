@@ -54,9 +54,16 @@ function stddev(values: number[], avg: number): number {
  * Analyze motor PWM outputs for health, saturation, oscillation, and imbalance.
  *
  * @param timeSeries  Motor PWM time series (from RCOU messages)
- * @returns Motor analysis with per-motor stats and overall health score
+ * @returns Motor analysis with per-motor stats and overall health score.
+ *   With no motor samples at all nothing was measured: the motor list is
+ *   empty and the imbalance and health scores are null.
  */
 export function analyzeMotors(timeSeries: MotorTimeSeries): MotorAnalysis {
+  const hasSamples = timeSeries.motors.some((m) => m && m.length > 0);
+  if (!hasSamples) {
+    return { motors: [], imbalanceScore: null, healthScore: null, timeSeries };
+  }
+
   const motorResults: MotorAnalysisResult[] = [];
   const averages: number[] = [];
 

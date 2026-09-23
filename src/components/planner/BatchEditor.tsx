@@ -25,7 +25,7 @@ interface BatchEditorProps {
 
 const BATCH_COMMANDS: Array<{ value: string; label: string }> = [
   { value: "WAYPOINT", label: "Waypoint" },
-  { value: "LOITER", label: "Loiter" },
+  { value: "LOITER", label: "Loiter (unlimited)" },
   { value: "LOITER_TIME", label: "Loiter (Time)" },
   { value: "SPLINE_WAYPOINT", label: "Spline" },
 ];

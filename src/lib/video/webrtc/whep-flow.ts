@@ -25,6 +25,7 @@ import {
   classifyError,
 } from "../webrtc-helpers";
 import { closePeerConnection, reportHealth } from "./peer-utils";
+import { onPeerConnectionClose } from "../webrtc-client";
 import { attachSeiTransform } from "./sei-transform";
 import {
   acquireSession,
@@ -59,20 +60,27 @@ const ICE_DISCONNECT_GRACE_MS = 3000;
  * and one asking for a feed whose handshake is in flight joins that
  * handshake. Only a genuinely different stream negotiates.
  *
- * @param whepUrl — Full WHEP URL, e.g. `http://192.168.1.50:8889/stream/whep`
+ * @param whepUrl — Full WHEP URL on the agent's front, e.g.
+ *                  `http://192.168.1.50:8080/whep` or `/whep?camera=<leg>`
+ *                  resolved against it.
  * @param signal  — Optional AbortSignal. When fired, this caller stops
  *                  waiting and throws AbortError. The underlying handshake
  *                  is only cancelled once no caller is waiting on it, so the
  *                  cascade cancelling a mode can no longer cancel a
  *                  handshake another surface still needs.
+ * @param apiKey  — The paired node's API key, sent as `X-ADOS-Key` on the
+ *                  offer and on the session DELETE. The front refuses an
+ *                  unauthenticated WHEP request on a paired node. Pass null
+ *                  only for an endpoint that is not an agent (a SITL URL).
  * @returns The MediaStream to attach to a <video> element.
  */
 export function startStream(
   whepUrl: string,
-  signal?: AbortSignal,
+  signal: AbortSignal | undefined,
+  apiKey: string | null,
 ): Promise<MediaStream> {
   return acquireSession(whepSessionKey(whepUrl), signal, (negotiationSignal) =>
-    negotiateWhep(whepUrl, negotiationSignal),
+    negotiateWhep(whepUrl, negotiationSignal, apiKey),
   );
 }
 
@@ -80,6 +88,7 @@ export function startStream(
 async function negotiateWhep(
   whepUrl: string,
   signal: AbortSignal,
+  apiKey: string | null,
 ): Promise<MediaStream> {
   const store = useVideoStore.getState();
   const startedAt = Date.now();
@@ -237,19 +246,36 @@ async function negotiateWhep(
     // own test page (no SDP munge) streams indefinitely.
     const offerSdp = localPc.localDescription!.sdp;
 
-    // Send offer to WHEP endpoint (fetch supports AbortSignal natively)
+    // Send offer to WHEP endpoint (fetch supports AbortSignal natively). The
+    // agent's front authenticates /whep like any other data-plane route.
+    const authHeaders: Record<string, string> = apiKey ? { "X-ADOS-Key": apiKey } : {};
     const response = await fetch(whepUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/sdp" },
+      headers: { "Content-Type": "application/sdp", ...authHeaders },
       body: offerSdp,
       signal,
     });
 
     if (!response.ok) {
       const msg = response.status === 404
-        ? "No video stream on agent (mediamtx 404, video pipeline not running)"
-        : `WHEP request failed: ${response.status} ${response.statusText}`;
+        ? "No video stream on agent (WHEP 404, video pipeline not running)"
+        : response.status === 401 || response.status === 403
+          ? `WHEP request refused: ${response.status} (node API key missing or rejected)`
+          : `WHEP request failed: ${response.status} ${response.statusText}`;
       throw new Error(msg);
+    }
+
+    // The server keeps a session resource at `Location` until it is deleted.
+    // Release it whenever this connection is torn down, on success or on a
+    // later failure, so closed viewers do not pile up on the agent.
+    const location = response.headers.get("Location");
+    if (location) {
+      const resourceUrl = new URL(location, whepUrl).toString();
+      onPeerConnectionClose(localPc, () => {
+        void fetch(resourceUrl, { method: "DELETE", headers: authHeaders, keepalive: true }).catch(
+          () => {},
+        );
+      });
     }
 
     const answerSdp = await abortable(response.text(), signal);

@@ -9,6 +9,8 @@ services:
     environment:
       - RTSP_URL_PATTERN=${RTSP_URL_PATTERN:-rtsp://host.docker.internal:8554/{deviceId}}
       - PORT=3001
+      # Same value as the Convex deployment's VIDEO_RELAY_SECRET, which mints the viewer tokens.
+      - VIDEO_RELAY_SECRET=${VIDEO_RELAY_SECRET:?set VIDEO_RELAY_SECRET (openssl rand -hex 32), and the same value on Convex}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

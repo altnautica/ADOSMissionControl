@@ -68,12 +68,6 @@ export interface BridgeTokenValidatorOptions {
   /** Optional clock injection point for tests. Defaults to `Date.now`. */
   now?: () => number;
   /**
-   * Allow envelopes with no `token` field to pass the validator. Default
-   * `false`. Set `true` only for legacy iframes that do not yet carry a
-   * token; the bridge still runs the capability check.
-   */
-  allowMissingToken?: boolean;
-  /**
    * Called when the validator wants the iframe to re-mint and re-send.
    * The bridge does NOT auto-retry; it returns a `capability_denied`
    * with `reason: "token_expired"` and the iframe (via the SDK) is
@@ -106,7 +100,7 @@ export interface BridgeOptions {
   onSecurityEvent?: (event: BridgeError & { method?: string }) => void;
   /**
    * Optional token validator. When set, every RPC envelope must carry a
-   * `token` field (`allowMissingToken` overrides). Each token is
+   * `token` field. Each token is
    * verified against expiry, plugin id, agent id, capability membership,
    * and the issuer's signature. Failures emit `capability_denied`.
    */
