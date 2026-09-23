@@ -8,10 +8,10 @@
  * the left listing the six sections, the active section on the right,
  * and a collapsible debug drawer pinned to the right edge.
  *
- * Three sections are live in this revision: Bus setup, Node browser,
- * and Bus monitor. The remaining three (Per-node params, Diagnostics,
- * Test utilities) render a placeholder card that surfaces in the next
- * release.
+ * Bus setup, Node browser and Bus monitor work from parameters and the
+ * frames the FC forwards. Per-node params, Diagnostics and Test utilities
+ * talk to the nodes, so they run on the DroneCAN session the operator
+ * opens from the session card; with none open they say so.
  *
  * @license GPL-3.0-only
  */
@@ -31,6 +31,8 @@ import { DiagnosticsSection } from "./DiagnosticsSection";
 import { NodeParamEditor } from "./NodeParamEditor";
 import { TestUtilitiesSection } from "./TestUtilitiesSection";
 import { DebugDrawer } from "./debug/DebugDrawer";
+import { CanSessionCard } from "./CanSessionCard";
+import { useDroneCanSession } from "./use-dronecan-session";
 
 type SectionId = "busSetup" | "nodeBrowser" | "perNodeParams" | "busMonitor" | "diagnostics" | "testUtilities";
 
@@ -60,6 +62,11 @@ export function CanConfigPage() {
 
   const selectedDrone = useDroneManager((s) => s.getSelectedDrone());
   const hasDrone = !!selectedDrone;
+  const canForward = typeof selectedDrone?.protocol?.enableCanForward === "function";
+
+  const { state: sessionState, open: openSession, close: closeSession } = useDroneCanSession();
+  const client = sessionState.status === "open" ? sessionState.session.client : null;
+  const transport = sessionState.status === "open" ? sessionState.session.transport : null;
 
   const [activeSection, setActiveSection] = useState<SectionId>("busSetup");
   const [selectedNodeIdForParams, setSelectedNodeIdForParams] = useState<number | null>(null);
@@ -104,6 +111,17 @@ export function CanConfigPage() {
         </div>
       )}
 
+      {hasDrone && (
+        <div className="px-6 pb-3">
+          <CanSessionCard
+            state={sessionState}
+            canForward={canForward}
+            onOpen={(bus) => void openSession(bus)}
+            onClose={() => void closeSession()}
+          />
+        </div>
+      )}
+
       <div className="flex-1 flex overflow-hidden border-t border-border-default">
         {/* Vertical section tabs */}
         <nav className="w-[200px] border-r border-border-default bg-bg-secondary flex-shrink-0 overflow-y-auto">
@@ -144,7 +162,7 @@ export function CanConfigPage() {
               selectedNodeIdForParams !== null ? (
                 <NodeParamEditor
                   nodeId={selectedNodeIdForParams}
-                  client={null}
+                  client={client}
                   onClose={() => setSelectedNodeIdForParams(null)}
                 />
               ) : (
@@ -156,8 +174,8 @@ export function CanConfigPage() {
               )
             )}
             {activeSection === "busMonitor" && <BusMonitorSection />}
-            {activeSection === "diagnostics" && <DiagnosticsSection client={null} />}
-            {activeSection === "testUtilities" && <TestUtilitiesSection client={null} transport={null} />}
+            {activeSection === "diagnostics" && <DiagnosticsSection client={client} />}
+            {activeSection === "testUtilities" && <TestUtilitiesSection client={client} transport={transport} />}
           </div>
         </div>
 

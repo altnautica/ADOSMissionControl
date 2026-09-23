@@ -4,9 +4,13 @@
  * @module components/fc/security/signing/use-signing-actions
  * @description Extracted state and action handlers for the signing panel.
  *
- * Owns the lifecycle of enrollment, disable, rotate, require-toggle, and the
- * cloud-sync toggle. Also runs the on-mount effect that pulls capability and
- * key presence from the agent.
+ * Owns the lifecycle of enrollment, rotation, disable, and the cloud-sync
+ * toggle, plus the two settle steps for an unconfirmed state. ArduPilot never
+ * acknowledges SETUP_SIGNING, so a key that may be on the FC is never
+ * discarded: an interrupted enrollment keeps both keys until the operator says
+ * which one the FC holds, and a disable keeps the key until the operator
+ * confirms unsigned commands are accepted. Also runs the on-mount effect that
+ * pulls capability and key presence.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -20,13 +24,10 @@ import { useAuthStore } from "@/stores/auth-store";
 import {
   clear as clearKeystoreRecord,
   getRecord,
-  importAndStore,
+  settleUnconfirmedKey,
+  updateEnrollmentState,
 } from "@/lib/protocol/signing-keystore";
-import {
-  generateRandomKey,
-  keyBytesToHex,
-  zeroize,
-} from "@/lib/protocol/mavlink-signer";
+import { AgentHttpError } from "@/lib/agent/agent-client/transport";
 import { allocateLocalLinkId } from "@/lib/protocol/link-id-allocator";
 import {
   isCloudSigningKeySyncEnabled,
@@ -35,8 +36,8 @@ import {
 } from "@/lib/api/signing-cloud-sync";
 import { emitSigningEvent } from "@/lib/api/signing-events";
 import { setCloudSyncIntent } from "@/lib/protocol/signing-prefs";
-import { ENROLL_FAIL_MS } from "../EnrollmentProgress";
 import { useCloudRowSync } from "./use-cloud-row-sync";
+import { enrollNewKey } from "./enroll-key";
 
 export interface SigningActions {
   // Local UI state
@@ -64,8 +65,11 @@ export interface SigningActions {
   handleEnable: () => Promise<void>;
   handleDisable: () => Promise<void>;
   handleRotate: () => Promise<void>;
-  handleRequireToggle: () => Promise<void>;
   handleCloudSyncToggle: () => Promise<void>;
+  /** Settle an unconfirmed enrollment: the FC took the new key, or kept the old one. */
+  handleSettleNewKey: (fcHolds: "new" | "previous") => Promise<void>;
+  /** Settle an unconfirmed disable: signing is off on the FC, or it is still on. */
+  handleSettleDisable: (signingOff: boolean) => Promise<void>;
 }
 
 export function useSigningActions(droneId: string): SigningActions {
@@ -74,7 +78,6 @@ export function useSigningActions(droneId: string): SigningActions {
   const state = useSigningStore((s) => s.drones[droneId]);
   const setCapability = useSigningStore((s) => s.setCapability);
   const setBrowserKey = useSigningStore((s) => s.setBrowserKey);
-  const setRequireOnFc = useSigningStore((s) => s.setRequireOnFc);
   const setEnrollmentState = useSigningStore((s) => s.setEnrollmentState);
 
   const [busy, setBusy] = useState(false);
@@ -109,44 +112,27 @@ export function useSigningActions(droneId: string): SigningActions {
       try {
         const cap = await client.getSigningCapability();
         if (!cancelled) setCapability(droneId, cap);
-        const req = await client.getSigningRequire();
-        if (!cancelled) setRequireOnFc(droneId, req.require);
       } catch {
         // keep whatever we had
       }
       const rec = await getRecord(droneId);
       if (cancelled) return;
-      if (rec) {
-        setBrowserKey(droneId, {
-          keyId: rec.keyId,
-          enrolledAt: rec.enrolledAt,
-          enrollmentState:
-            rec.enrollmentState === "enrolled"
-              ? "enrolled"
-              : rec.enrollmentState === "pending_fc_online"
-                ? "pending_fc_online"
-                : "fc_rejected",
-        });
-      } else {
-        // No browser key. If the agent reports SIGNING_REQUIRE=1, flip
-        // to key_missing so the recovery banner appears. If require is
-        // off, leave the drone in the "no_browser_key" resting state so
-        // the Enable button renders normally.
-        setBrowserKey(droneId, null);
-        try {
-          const req = await client.getSigningRequire();
-          if (!cancelled && req.require === true) {
-            setEnrollmentState(droneId, "key_missing");
-          }
-        } catch {
-          // non-fatal; ignore
-        }
-      }
+      setBrowserKey(
+        droneId,
+        rec
+          ? {
+              keyId: rec.keyId,
+              enrolledAt: rec.enrolledAt,
+              enrollmentState: rec.enrollmentState,
+              previousKeyId: rec.previous?.keyId ?? null,
+            }
+          : null,
+      );
     })();
     return () => {
       cancelled = true;
     };
-  }, [client, droneId, setCapability, setRequireOnFc, setBrowserKey, setEnrollmentState]);
+  }, [client, droneId, setCapability, setBrowserKey]);
 
   const handleCloudSyncToggle = useCallback(async () => {
     if (!droneId) return;
@@ -214,15 +200,9 @@ export function useSigningActions(droneId: string): SigningActions {
     setBusy(true);
     setError(null);
     setEnrollFailed(false);
-    const rawBytes = generateRandomKey();
-    const linkId = allocateLocalLinkId();
 
-    // Deferred enrollment check. If the FC is not currently connected,
-    // don't enroll yet. Surface a hint so the operator can come back when
-    // the drone is online. We intentionally do not persist the key to
-    // IndexedDB here: the agent needs the raw bytes to send SETUP_SIGNING,
-    // but non-extractable CryptoKey storage cannot hand them back. A
-    // "pending" record would be orphaned.
+    // Enrollment needs an online FC: SETUP_SIGNING is the only way the key
+    // reaches it, and nothing is kept for a later attempt.
     let capability;
     try {
       capability = await client.getSigningCapability();
@@ -230,146 +210,134 @@ export function useSigningActions(droneId: string): SigningActions {
       capability = null;
     }
     if (capability && capability.reason === "fc_not_connected") {
-      zeroize(rawBytes);
       setError(
         "Flight controller is not connected. Enrollment needs an online drone. Try again once the drone reconnects.",
       );
-      setEnrollmentState(droneId, "pending_fc_online");
       setBusy(false);
       return;
     }
 
-    // FC connected path: full enrollment with the tiered progress UI.
     setEnrollStartedAt(Date.now());
-
-    // Hard deadline. If the agent's enroll-fc call has not resolved by
-    // ENROLL_FAIL_MS, surface the "failed" tier and stop polling. The
-    // in-flight promise still settles eventually; the UI just stops
-    // waiting for it.
-    let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      setEnrollFailed(true);
-    }, ENROLL_FAIL_MS);
-
+    const userId = isAuthenticated ? (useAuthStore.getState().user?.id ?? null) : null;
+    const prevKeyId = state?.keyId ?? undefined;
+    const linkId = allocateLocalLinkId();
     try {
-      const keyHex = keyBytesToHex(rawBytes);
-      const result = await client.enrollSigningKey(keyHex, linkId);
-      if (timedOut) {
-        // The deadline already fired; the operator saw the failure UI.
-        // Discard the late success so the next action is clean.
-        zeroize(rawBytes);
+      // The outcome is honoured whenever it arrives: a late answer still
+      // decides what this browser keeps.
+      const outcome = await enrollNewKey({ client, droneId, linkId, userId });
+
+      if (outcome.kind === "failed") {
+        setError(outcome.error);
+        setEnrollFailed(true);
         return;
       }
-      // Cloud sync upload must happen while the hex string is still in
-      // scope. importAndStore zeroizes rawBytes, and the non-extractable
-      // CryptoKey cannot be exported back. This is the one moment the
-      // raw material is legible in JS memory.
+
+      if (outcome.kind === "unconfirmed") {
+        setBrowserKey(droneId, {
+          keyId: outcome.keyId,
+          enrolledAt: outcome.enrolledAt,
+          enrollmentState: "unconfirmed",
+          previousKeyId: outcome.previousKeyId,
+        });
+        setError(outcome.reason);
+        return;
+      }
+
+      // Cloud sync upload happens while the hex string is still in scope; the
+      // stored CryptoKey is non-extractable and cannot hand the bytes back.
       if (cloudSyncIntent && convexClient && isAuthenticated) {
         try {
           await uploadKey(convexClient, {
             droneId,
-            keyHex,
-            keyId: result.key_id,
+            keyHex: outcome.keyHex,
+            keyId: outcome.keyId,
             linkIdOwner: linkId,
-            enrolledAt: result.enrolled_at,
+            enrolledAt: outcome.enrolledAt,
           });
           setCloudRowPresent(true);
         } catch (e) {
-          // Non-fatal: the FC is enrolled and the local store will be
-          // populated. Surface a toast but don't roll back the enrollment.
           setCloudSyncError(
             `Cloud sync upload failed: ${e instanceof Error ? e.message : String(e)}`,
           );
         }
       }
-      // Agent zeroizes its copy. Now import browser-side as non-extractable
-      // and then zeroize the local raw buffer.
-      await importAndStore({
-        droneId,
-        userId: isAuthenticated ? (useAuthStore.getState().user?.id ?? null) : null,
-        keyBytes: rawBytes, // importAndStore zeroizes this.
-        linkId,
-      });
       setBrowserKey(droneId, {
-        keyId: result.key_id,
-        enrolledAt: result.enrolled_at,
+        keyId: outcome.keyId,
+        enrolledAt: outcome.enrolledAt,
         enrollmentState: "enrolled",
       });
       setEnrollStartedAt(null);
-      setEnrollFailed(false);
-
-      // Audit: record whether this was a fresh enrollment or a rotation.
-      const prevKeyId = state?.keyId ?? undefined;
       void emitSigningEvent(convexClient, isAuthenticated, {
         droneId,
         eventType: prevKeyId ? "rotation" : "enrollment",
         keyIdOld: prevKeyId,
-        keyIdNew: result.key_id,
+        keyIdNew: outcome.keyId,
       });
-    } catch (e) {
-      if (!timedOut) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
-      zeroize(rawBytes);
     } finally {
-      clearTimeout(timeoutId);
       setBusy(false);
     }
-  }, [client, droneId, setBrowserKey, setEnrollmentState, cloudSyncIntent, convexClient, isAuthenticated, state?.keyId, setCloudRowPresent]);
+  }, [client, droneId, setBrowserKey, cloudSyncIntent, convexClient, isAuthenticated, state?.keyId, setCloudRowPresent]);
 
   const handleDisable = useCallback(async () => {
     if (!client || !droneId) return;
-    if (!confirm("Disable MAVLink signing for this drone?\n\nThis clears the FC's signing store. Any other browsers that hold the current key will stop working.")) {
+    if (!confirm("Disable MAVLink signing for this drone?\n\nThis sends the flight controller an empty key. The flight controller does not acknowledge it, so this browser keeps its key until you confirm unsigned commands are accepted.")) {
       return;
     }
     setBusy(true);
     setError(null);
-    const prevKeyId = state?.keyId ?? undefined;
     try {
       await client.disableSigningOnFc();
-      await clearKeystoreRecord(droneId);
-      setBrowserKey(droneId, null);
-      setEnrollmentState(droneId, "no_browser_key");
-      void emitSigningEvent(convexClient, isAuthenticated, {
-        droneId,
-        eventType: "disable",
-        keyIdOld: prevKeyId,
-      });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
+      if (e instanceof AgentHttpError) {
+        // The agent answered and sent nothing: signing is unchanged.
+        setError(e.message);
+        setBusy(false);
+        return;
+      }
+      // The request may have reached the FC before it failed.
+      setError(`The disable request did not complete (${e instanceof Error ? e.message : String(e)}); it may have reached the flight controller.`);
     }
-  }, [client, droneId, setBrowserKey, setEnrollmentState, state, convexClient, isAuthenticated]);
+    await updateEnrollmentState(droneId, "disable_unconfirmed");
+    setEnrollmentState(droneId, "disable_unconfirmed");
+    setBusy(false);
+  }, [client, droneId, setEnrollmentState]);
+
+  const handleSettleDisable = useCallback(async (signingOff: boolean) => {
+    if (!droneId) return;
+    setError(null);
+    if (!signingOff) {
+      await updateEnrollmentState(droneId, "enrolled");
+      setEnrollmentState(droneId, "enrolled");
+      return;
+    }
+    const prevKeyId = state?.keyId ?? undefined;
+    await clearKeystoreRecord(droneId);
+    setBrowserKey(droneId, null);
+    void emitSigningEvent(convexClient, isAuthenticated, {
+      droneId,
+      eventType: "disable",
+      keyIdOld: prevKeyId,
+    });
+  }, [droneId, setEnrollmentState, setBrowserKey, state?.keyId, convexClient, isAuthenticated]);
+
+  const handleSettleNewKey = useCallback(async (fcHolds: "new" | "previous") => {
+    if (!droneId) return;
+    setError(null);
+    const settled = await settleUnconfirmedKey(droneId, fcHolds === "new" ? "current" : "previous");
+    if (!settled) {
+      setError("There is no retained key to restore for this drone.");
+      return;
+    }
+    setBrowserKey(droneId, { keyId: settled.keyId, enrolledAt: settled.enrolledAt, enrollmentState: "enrolled" });
+  }, [droneId, setBrowserKey]);
 
   const handleRotate = useCallback(async () => {
     if (!client || !droneId) return;
-    if (!confirm("Rotate the signing key?\n\nA new 32-byte key will be generated and enrolled with the flight controller. The old key will be discarded.")) {
+    if (!confirm("Rotate the signing key?\n\nA new 32-byte key will be generated and enrolled with the flight controller. The old key is replaced once the agent reports the new one sent.")) {
       return;
     }
     await handleEnable();
   }, [client, droneId, handleEnable]);
-
-  const handleRequireToggle = useCallback(async () => {
-    if (!client || !droneId) return;
-    const next = !state?.requireOnFc;
-    setBusy(true);
-    setError(null);
-    try {
-      await client.setSigningRequire(next);
-      setRequireOnFc(droneId, next);
-      void emitSigningEvent(convexClient, isAuthenticated, {
-        droneId,
-        eventType: next ? "require_on" : "require_off",
-        keyIdOld: state?.keyId ?? undefined,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }, [client, droneId, state?.requireOnFc, state?.keyId, setRequireOnFc, convexClient, isAuthenticated]);
 
   return {
     busy,
@@ -392,7 +360,8 @@ export function useSigningActions(droneId: string): SigningActions {
     handleEnable,
     handleDisable,
     handleRotate,
-    handleRequireToggle,
     handleCloudSyncToggle,
+    handleSettleNewKey,
+    handleSettleDisable,
   };
 }

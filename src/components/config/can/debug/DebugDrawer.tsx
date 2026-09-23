@@ -4,8 +4,8 @@
  * @module DebugDrawer
  * @description Right-side collapsible debug drawer for the DroneCAN flash
  * page and the CAN configuration page. Composes the state-machine ribbon,
- * frame log, byte counter, and three placeholder panels (RPC trace, node
- * status timeline, bus health gauges) that ship in the next release.
+ * frame log, byte counter, RPC trace, node status timeline and bus health
+ * gauges.
  *
  * Behavior:
  *  - mode="flash"  → state ribbon always rendered; drawer opens by default.

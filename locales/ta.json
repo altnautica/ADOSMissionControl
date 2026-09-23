@@ -1892,21 +1892,14 @@
       "signingReasonOk": "Supported",
       "signingReasonFcNotConnected": "No flight controller connected",
       "signingReasonFirmwareNotSupported": "Firmware does not support signing",
-      "signingReasonFirmwareTooOld": "Agent could not confirm signing support; update the drone agent",
       "signingReasonPx4NoStore": "PX4 build lacks persistent key storage",
       "signingReasonMsp": "MSP firmware (signing is MAVLink-only)",
       "signingFirmwareLabel": "Firmware",
-      "signingRequireLabel": "Require signed frames",
-      "signingRequireNotSet": "The router reports no stored preference yet.",
-      "signingRequireHint": "When on, the node's router drops unsigned MAVLink frames. Enroll a key first or the link goes silent.",
       "signingTxLabel": "Signed frames sent",
       "signingRxLabel": "Signed frames received",
       "signingLastRxLabel": "Last signed frame",
       "signingNoneSeen": "None seen",
       "signingEnrollHint": "Key enrollment, export and clearing live in the flight controller's Setup, under Security, in the MAVLink Signing panel.",
-      "signingRequireConfirmTitle": "Require signing with no signed frames seen?",
-      "signingRequireConfirmMessage": "No signed MAVLink frames have been received from the flight controller yet. Requiring signing now will reject every unsigned frame and can drop the FC link until the FC is enrolled and signing. Enrol the signing key on the FC first.",
-      "signingRequireConfirmAction": "Require signing anyway",
       "signingCountersLabel": "Signed frames",
       "signingNotMeasured": "Not measured"
     },
@@ -5630,11 +5623,6 @@
         "crcMismatches": "CRC பொருந்தாமை",
         "empty": "எந்த மாற்றமும் முன்னேற்றத்தில் இல்லை"
       },
-      "placeholder": {
-        "rpcTrace": "RPC தடம் அடுத்த வெளியீட்டில்",
-        "nodeStatusTimeline": "NodeStatus காலவரிசை அடுத்த வெளியீட்டில்",
-        "busHealthGauges": "பஸ் ஆரோக்கிய அளவுகள் அடுத்த வெளியீட்டில்"
-      },
       "rpcTrace": {
         "title": "RPC தடம்",
         "empty": "இன்னும் எந்த RPC நிகழ்வுகளும் இல்லை",
@@ -5810,9 +5798,6 @@
       "export": "CSV ஏற்றுமதி",
       "noTransfers": "இன்னும் எந்த DroneCAN மாற்றமும் டிகோடிங் செய்யப்படவில்லை."
     },
-    "placeholder": {
-      "comingNext": "அடுத்த வெளியீட்டில்."
-    },
     "nodeParamEditor": {
       "title": "Node {nodeId} · {name}",
       "quickActions": {
@@ -5913,6 +5898,17 @@
         "exportCsv": "CSV ஏற்றுமதி",
         "samples": "மாதிரிகள்"
       }
+    },
+    "session": {
+      "title": "DroneCAN session",
+      "none": "No DroneCAN session. Open one to talk to the nodes on a bus: node parameters, diagnostics and test utilities need it.",
+      "bus": "Bus",
+      "open": "Open session",
+      "opening": "Opening…",
+      "close": "Close session",
+      "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
+      "failed": "Could not open a DroneCAN session: {error}",
+      "unsupported": "This connection cannot forward CAN frames."
     }
   },
   "linkUp": {

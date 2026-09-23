@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { randomId } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/settings-store";
 
 type ToastStatus = "success" | "warning" | "error" | "info";
 
@@ -24,6 +25,18 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
+/**
+ * How long a toast stays up. Warnings and errors are the alert popups the
+ * operator sets a duration for ("never" keeps them until dismissed); info and
+ * success confirmations always clear after 3 s.
+ */
+export function toastLifetimeMs(status: ToastStatus, alertPopupDuration: string): number | null {
+  if (status !== "warning" && status !== "error") return 3000;
+  if (alertPopupDuration === "never") return null;
+  const seconds = Number(alertPopupDuration);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 3000;
+}
+
 const borderColors: Record<ToastStatus, string> = {
   success: "border-l-status-success",
   warning: "border-l-status-warning",
@@ -37,9 +50,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((message: string, status: ToastStatus = "info") => {
     const id = randomId();
     setToasts((prev) => [...prev, { id, message, status }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
+    const lifetime = toastLifetimeMs(status, useSettingsStore.getState().alertPopupDuration);
+    if (lifetime !== null) {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, lifetime);
+    }
   }, []);
 
   const dismiss = useCallback((id: string) => {

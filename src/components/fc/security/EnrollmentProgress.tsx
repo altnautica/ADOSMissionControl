@@ -4,8 +4,8 @@
  * @module components/fc/security/EnrollmentProgress
  * @description Tiered progress UI for signing-key enrollment.
  *
- * Enrollment sends SETUP_SIGNING twice then reads back SIGNING_REQUIRE.
- * On a fast serial link this completes in under a second. On a slow
+ * Enrollment sends SETUP_SIGNING twice, 200 ms apart, and the agent answers
+ * after the second send. On a fast serial link this completes in under a second. On a slow
  * radio link (57600 baud or cellular-relayed) it can take 5-10 seconds
  * or stall entirely. Instead of a static spinner, we show escalating
  * copy at 3s, 10s, and 30s boundaries so operators understand the

@@ -2,14 +2,11 @@
  * AP_Periph flash dispatcher.
  *
  * Wires the CAN flash button into a real OTA attempt:
- *   - opens a MAVLink CAN_FORWARD transport on the connected drone so the
- *     existing telemetry link stays up
- *   - constructs a DroneCanClient + DroneCanOtaOrchestrator
- *   - feeds snapshots, node status, and bus traffic into the four
- *     `useDroneCan*` Zustand stores so the debug drawer reflects reality
- *
- * SLCAN remains a manual fallback toggled from the bus setup card; that
- * path lifts in a follow-up commit once the agent side ships a relay.
+ *   - opens a CAN transport to the peripheral: MAVLink CAN_FORWARD, which
+ *     keeps the telemetry link up, or a direct SLCAN session on the USB port
+ *   - starts a DroneCAN session on it (lib/dronecan/session), which feeds
+ *     node status and bus traffic into the DroneCAN stores
+ *   - runs the OTA orchestrator, streaming its snapshots into the flash store
  *
  * @license GPL-3.0-only
  */
@@ -20,14 +17,10 @@ import {
   type CanTransport,
 } from "@/lib/protocol/transport/can-transport";
 import { enterSlcanMode } from "@/lib/protocol/transport/slcan-flash-arbiter";
-import { DroneCanClient } from "@/lib/dronecan/client";
 import { DroneCanOtaOrchestrator } from "@/lib/dronecan/ota";
+import { startDroneCanSession } from "@/lib/dronecan/session";
 import { ApPeriphManifest } from "@/lib/protocol/firmware/ap-periph-manifest";
 import { useDroneCanFlashStore } from "@/stores/dronecan/flash-store";
-import { useDroneCanNodeStore } from "@/stores/dronecan/node-store";
-import { useDroneCanBusStore } from "@/stores/dronecan/bus-store";
-import { useDroneCanRpcTraceStore } from "@/stores/dronecan/rpc-trace-store";
-import type { AnyTransferEvent } from "@/lib/dronecan/client-types";
 
 export interface FlashApPeriphParams {
   protocol: DroneProtocol;
@@ -97,18 +90,11 @@ export async function flashApPeriph(
     transport = fwdTransport;
   }
 
-  // 3. Build a DroneCanClient on top of the transport.
-  const client = new DroneCanClient(transport);
-  await client.start();
-
-  // 4. Fan client signals into the four Zustand stores.
+  // 3. Build a DroneCanClient on top of the transport, fanning its node
+  //    status and transfers into the CAN stores.
+  const session = await startDroneCanSession(transport);
+  const client = session.client;
   const unsubs: Array<() => void> = [];
-  unsubs.push(
-    client.onNodeStatus((srcNodeId, status) => {
-      useDroneCanNodeStore.getState().upsertStatus(srcNodeId, status);
-    }),
-  );
-  unsubs.push(client.onAnyTransfer((evt) => publishTransfer(evt)));
 
   // 5. Run the OTA orchestrator. Snapshots stream into the flash store
   //    until the run completes or errors out.
@@ -130,12 +116,7 @@ export async function flashApPeriph(
     dispose: async () => {
       for (const off of unsubs) off();
       try {
-        await client.stop();
-      } catch {
-        // Best effort.
-      }
-      try {
-        await transport.close();
+        await session.close();
       } catch {
         // Best effort.
       }
@@ -150,36 +131,3 @@ export async function flashApPeriph(
   };
 }
 
-/** Map a DroneCAN `AnyTransferEvent` onto the bus + rpc-trace stores. */
-function publishTransfer(evt: AnyTransferEvent): void {
-  useDroneCanBusStore.getState().pushFrame({
-    t: evt.ts,
-    dir: "in",
-    canId: 0,
-    decoded: {
-      kind: evt.kind === "message" ? "message" : "service",
-      dataTypeId: evt.dataTypeId,
-      srcNodeId: evt.srcNodeId,
-      dstNodeId: evt.dstNodeId,
-      isRequest: evt.kind === "request",
-    },
-    payload: evt.payload,
-    label: evt.typeName,
-  });
-
-  useDroneCanRpcTraceStore.getState().pushEvent({
-    t: evt.ts,
-    direction: "in",
-    kind:
-      evt.kind === "message"
-        ? "broadcast"
-        : evt.kind === "request"
-          ? "request"
-          : "response",
-    dataTypeId: evt.dataTypeId,
-    dataTypeName: evt.typeName ?? `0x${evt.dataTypeId.toString(16)}`,
-    srcNodeId: evt.srcNodeId,
-    dstNodeId: evt.dstNodeId,
-    ok: true,
-  });
-}

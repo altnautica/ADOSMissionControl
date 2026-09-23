@@ -15,8 +15,8 @@
  * The key is imported as a non-extractable Web Crypto key and stored in
  * IndexedDB. No FC enrollment happens here because the key is assumed
  * to already be on the FC. The next signed command to the FC will either
- * succeed (confirming the paste was correct) or fail silently (FC was
- * on a different key, key_missing banner returns on drone select).
+ * succeed (confirming the paste was correct) or be rejected (the FC holds a
+ * different key); the FC sends no signal either way.
  *
  * This is the "bring your own key" path for an operator whose key already
  * lives on the FC from another browser.

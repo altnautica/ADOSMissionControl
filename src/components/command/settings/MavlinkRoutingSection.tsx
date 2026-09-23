@@ -11,8 +11,10 @@
  * the shared config writer.
  *
  * The signing block (drone profile) reads the agent's own signing surface —
- * capability with the agent's reason, the router's require-signing flag
- * (writable), and the passive signed-frame counters. It needs the LAN client
+ * capability with the agent's reason and the passive signed-frame counters.
+ * No firmware exposes a require-signing parameter, so there is no toggle:
+ * ArduPilot rejects unsigned commands on every non-USB link once a key is
+ * set. It needs the LAN client
  * (the config proxy does not forward these routes); a cloud session says so,
  * and an agent build without the routes reads "not exposed", never a
  * fabricated state. Key enrollment stays in the FC Setup Security panel.
@@ -28,9 +30,6 @@ import type {
   SigningCapability,
   SigningCounters,
 } from "@/lib/agent/agent-client/types";
-import { Toggle } from "@/components/ui/toggle";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/components/ui/toast";
 import { formatLogTime } from "../shared/LogViewer";
 import { ConfigIntField, ConfigReadonlyRow } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
@@ -38,8 +37,8 @@ import { useNodeDirectAgent } from "./use-node-direct-agent";
 import { Section } from "./Section";
 
 interface SectionProps {
-  /** The node this page is rendered for. The signing reads and the
-   * require-signing write go only to a connection attached to this node. */
+  /** The node this page is rendered for. The signing reads go only to a
+   * connection attached to this node. */
   nodeDeviceId: string | null;
   profile: NodeProfile;
   config: Record<string, unknown> | null;
@@ -105,25 +104,8 @@ type SigningLoad =
   | {
       state: "loaded";
       capability: SigningCapability;
-      require: boolean | null;
       counters: SigningCounters | null;
     };
-
-/** How recent a signed frame must be for enabling require-signing to skip the
- * confirm. A cumulative count proves nothing about the FC signing now. */
-const SIGNED_RECENT_MS = 10_000;
-
-/** True only when the agent measured a signed frame from the FC within
- * {@link SIGNED_RECENT_MS}. Unmeasured counters are never evidence. */
-export function signedFramesRecent(
-  counters: SigningCounters | null,
-  nowMs: number,
-): boolean {
-  if (counters?.observed !== true || counters.last_signed_rx_at === null) {
-    return false;
-  }
-  return nowMs - counters.last_signed_rx_at * 1000 <= SIGNED_RECENT_MS;
-}
 
 function isUnexposedError(err: unknown): boolean {
   return err instanceof Error && /Agent API (404|501)/.test(err.message);
@@ -139,8 +121,6 @@ function reasonLabel(t: (key: string) => string, reason: string): string {
       return t("signingReasonFcNotConnected");
     case "firmware_not_supported":
       return t("signingReasonFirmwareNotSupported");
-    case "firmware_too_old":
-      return t("signingReasonFirmwareTooOld");
     case "firmware_px4_no_persistent_store":
       return t("signingReasonPx4NoStore");
     case "msp_protocol":
@@ -158,21 +138,13 @@ export function MavlinkRoutingSection({
   setValue,
 }: SectionProps) {
   const t = useTranslations("nodeSettings.mavlinkRouting");
-  const tRoot = useTranslations("nodeSettings");
-  const { toast } = useToast();
   const client = useNodeDirectAgent(nodeDeviceId)?.client ?? null;
 
   const isDrone = profile === "drone";
 
   const [signing, setSigning] = useState<SigningLoad>({ state: "loading" });
-  const [requirePending, setRequirePending] = useState(false);
-  // Set true when an enable is held pending confirmation because no signed
-  // frames have been observed (enabling require-signing then would reject every
-  // unsigned frame from the FC and drop the link).
-  const [confirmRequire, setConfirmRequire] = useState(false);
 
-  // Every load (and every require write) belongs to the client it started
-  // on. A newer load, or a switch to another node's client, supersedes it, so
+  // Every load belongs to the client it started on. A newer load, or a switch to another node's client, supersedes it, so
   // a slow answer from the previous node never lands on this node's page.
   const signingSeq = useRef(0);
 
@@ -182,17 +154,9 @@ export function MavlinkRoutingSection({
     setSigning({ state: "loading" });
     try {
       const capability = await client.getSigningCapability();
-      const [requireRes, counters] = await Promise.all([
-        client.getSigningRequire().catch(() => null),
-        client.getSigningCounters().catch(() => null),
-      ]);
+      const counters = await client.getSigningCounters().catch(() => null);
       if (seq !== signingSeq.current) return;
-      setSigning({
-        state: "loaded",
-        capability,
-        require: requireRes ? requireRes.require : null,
-        counters,
-      });
+      setSigning({ state: "loaded", capability, counters });
     } catch (err) {
       if (seq !== signingSeq.current) return;
       setSigning({ state: isUnexposedError(err) ? "unexposed" : "failed" });
@@ -202,31 +166,6 @@ export function MavlinkRoutingSection({
   useEffect(() => {
     void loadSigning();
   }, [loadSigning]);
-
-  const onToggleRequire = useCallback(
-    async (next: boolean) => {
-      if (!client || requirePending || readOnly) return;
-      const seq = signingSeq.current;
-      setRequirePending(true);
-      try {
-        const res = await client.setSigningRequire(next);
-        if (seq === signingSeq.current) {
-          setSigning((prev) =>
-            prev.state === "loaded" ? { ...prev, require: res.require } : prev,
-          );
-        }
-        toast(tRoot("applied"), "success");
-      } catch (err) {
-        toast(
-          err instanceof Error ? err.message : tRoot("applyFailed"),
-          "error",
-        );
-      } finally {
-        setRequirePending(false);
-      }
-    },
-    [client, requirePending, readOnly, toast, tRoot],
-  );
 
   const sourceOptions: Record<string, string> = {
     auto: t("sourceAuto"),
@@ -386,33 +325,6 @@ export function MavlinkRoutingSection({
                   }`}
                 />
               ) : null}
-              <div className="flex flex-col gap-1.5">
-                <Toggle
-                  label={t("signingRequireLabel")}
-                  checked={signing.require === true}
-                  onChange={(v) => {
-                    // Enabling require-signing unless the agent measured a
-                    // signed FC frame just now rejects every unsigned frame the
-                    // FC sends and can drop the link. Gate that transition
-                    // behind a confirm; disabling (a safe transition) never
-                    // needs one.
-                    if (v && !signedFramesRecent(signing.counters, Date.now())) {
-                      setConfirmRequire(true);
-                      return;
-                    }
-                    void onToggleRequire(v);
-                  }}
-                  disabled={requirePending || readOnly}
-                />
-                {signing.require === null ? (
-                  <p className="text-[11px] text-text-tertiary">
-                    {t("signingRequireNotSet")}
-                  </p>
-                ) : null}
-                <p className="text-[11px] text-text-tertiary">
-                  {t("signingRequireHint")}
-                </p>
-              </div>
               {signing.counters?.observed !== true ? (
                 // No observer on the agent (or an agent that predates the
                 // flag and reports hard-coded zeros): nothing was measured.
@@ -460,20 +372,6 @@ export function MavlinkRoutingSection({
         </div>
       ) : null}
 
-      {/* Require-signing enable guard: no recent signed frame was measured,
-          so enforcing signing now may drop the FC link. */}
-      <ConfirmDialog
-        open={confirmRequire}
-        title={t("signingRequireConfirmTitle")}
-        message={t("signingRequireConfirmMessage")}
-        confirmLabel={t("signingRequireConfirmAction")}
-        variant="danger"
-        onCancel={() => setConfirmRequire(false)}
-        onConfirm={() => {
-          setConfirmRequire(false);
-          void onToggleRequire(true);
-        }}
-      />
     </Section>
   );
 }

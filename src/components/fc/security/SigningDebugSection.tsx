@@ -5,11 +5,14 @@
  * @description Diagnostics panel for a drone's signing state.
  *
  * Renders a collapsed disclosure with:
- *   - Last tx/rx signed-frame timestamps (relative).
- *   - Per-session signed-frame counters from the signing store.
- *   - FC-side counter snapshot from the agent.
+ *   - The browser key's fingerprint, enrollment state, and any key kept
+ *     beside it while an enrollment is unconfirmed.
  *   - A "Copy diagnostics" button that writes a JSON blob to the
  *     clipboard for support tickets.
+ *
+ * No signed-frame counters are shown: nothing in the GCS counts signed
+ * frames, and the agent reports its counters as unobserved. A counter row
+ * belongs here only once something measures it.
  *
  * All fields are safe to share: no keyHex, only the keyId fingerprint.
  *
@@ -20,7 +23,6 @@ import { ChevronDown, ChevronRight, ClipboardCopy, Bug } from "lucide-react";
 import { useState } from "react";
 
 import { useSigningStore } from "@/stores/signing-store";
-import type { SigningCounters } from "@/lib/agent/client";
 import { getOrCreateDeviceId } from "@/lib/protocol/link-id-allocator";
 
 interface Props {
@@ -65,22 +67,10 @@ export function SigningDebugSection({ droneId }: Props) {
             <dd className="font-mono">{state?.keyId ?? "—"}</dd>
             <dt className="text-text-tertiary">Has browser key</dt>
             <dd>{state?.hasBrowserKey ? "yes" : "no"}</dd>
-            <dt className="text-text-tertiary">FC require</dt>
-            <dd>{String(state?.requireOnFc ?? "—")}</dd>
-            <dt className="text-text-tertiary">TX signed</dt>
-            <dd>{state?.txSignedCount ?? 0}</dd>
-            <dt className="text-text-tertiary">RX signed (observed)</dt>
-            <dd>{state?.rxSignedCount ?? 0}</dd>
-            <dt className="text-text-tertiary">Last signed frame</dt>
-            <dd>
-              {state?.lastSignedFrameAt
-                ? relativeTime(state.lastSignedFrameAt)
-                : "never"}
-            </dd>
-            <dt className="text-text-tertiary">Agent tx_signed</dt>
-            <dd>{state?.agentCounters?.tx_signed_count ?? "—"}</dd>
-            <dt className="text-text-tertiary">Agent rx_signed</dt>
-            <dd>{state?.agentCounters?.rx_signed_count ?? "—"}</dd>
+            <dt className="text-text-tertiary">Enrollment state</dt>
+            <dd>{state?.enrollmentState ?? "—"}</dd>
+            <dt className="text-text-tertiary">Previous key kept</dt>
+            <dd className="font-mono">{state?.previousKeyId ?? "—"}</dd>
           </dl>
           <button
             type="button"
@@ -96,24 +86,12 @@ export function SigningDebugSection({ droneId }: Props) {
   );
 }
 
-function relativeTime(ms: number): string {
-  const delta = Date.now() - ms;
-  if (delta < 1000) return "just now";
-  if (delta < 60_000) return `${Math.floor(delta / 1000)}s ago`;
-  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
-  return `${Math.floor(delta / 3_600_000)}h ago`;
-}
-
 interface SigningStateSubset {
   keyId: string | null;
   enrolledAt: string | null;
-  requireOnFc: boolean | null;
+  previousKeyId: string | null;
   hasBrowserKey: boolean;
   enrollmentState: string;
-  txSignedCount: number;
-  rxSignedCount: number;
-  lastSignedFrameAt: number | null;
-  agentCounters: SigningCounters | null;
 }
 
 export function buildDiagnostics(
@@ -130,11 +108,7 @@ export function buildDiagnostics(
       hasBrowserKey: state?.hasBrowserKey ?? false,
       enrolledAt: state?.enrolledAt ?? null,
       enrollmentState: state?.enrollmentState ?? "unknown",
-      requireOnFc: state?.requireOnFc ?? null,
-      txSignedCount: state?.txSignedCount ?? 0,
-      rxSignedCount: state?.rxSignedCount ?? 0,
-      lastSignedFrameAt: state?.lastSignedFrameAt ?? null,
-      agentCounters: state?.agentCounters ?? null,
+      previousKeyId: state?.previousKeyId ?? null,
     },
   };
 }

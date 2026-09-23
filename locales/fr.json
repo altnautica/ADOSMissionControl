@@ -1892,21 +1892,14 @@
       "signingReasonOk": "Supported",
       "signingReasonFcNotConnected": "No flight controller connected",
       "signingReasonFirmwareNotSupported": "Firmware does not support signing",
-      "signingReasonFirmwareTooOld": "Agent could not confirm signing support; update the drone agent",
       "signingReasonPx4NoStore": "PX4 build lacks persistent key storage",
       "signingReasonMsp": "MSP firmware (signing is MAVLink-only)",
       "signingFirmwareLabel": "Firmware",
-      "signingRequireLabel": "Require signed frames",
-      "signingRequireNotSet": "The router reports no stored preference yet.",
-      "signingRequireHint": "When on, the node's router drops unsigned MAVLink frames. Enroll a key first or the link goes silent.",
       "signingTxLabel": "Signed frames sent",
       "signingRxLabel": "Signed frames received",
       "signingLastRxLabel": "Last signed frame",
       "signingNoneSeen": "None seen",
       "signingEnrollHint": "Key enrollment, export and clearing live in the flight controller's Setup, under Security, in the MAVLink Signing panel.",
-      "signingRequireConfirmTitle": "Require signing with no signed frames seen?",
-      "signingRequireConfirmMessage": "No signed MAVLink frames have been received from the flight controller yet. Requiring signing now will reject every unsigned frame and can drop the FC link until the FC is enrolled and signing. Enrol the signing key on the FC first.",
-      "signingRequireConfirmAction": "Require signing anyway",
       "signingCountersLabel": "Signed frames",
       "signingNotMeasured": "Not measured"
     },
@@ -5630,11 +5623,6 @@
         "crcMismatches": "Erreurs CRC",
         "empty": "Aucun transfert en cours"
       },
-      "placeholder": {
-        "rpcTrace": "Trace RPC dans la prochaine version",
-        "nodeStatusTimeline": "Chronologie NodeStatus dans la prochaine version",
-        "busHealthGauges": "Indicateurs de bus dans la prochaine version"
-      },
       "rpcTrace": {
         "title": "Trace RPC",
         "empty": "Aucun événement RPC",
@@ -5810,9 +5798,6 @@
       "export": "Exporter en CSV",
       "noTransfers": "Aucun transfert DroneCAN décodé pour l'instant."
     },
-    "placeholder": {
-      "comingNext": "Disponible dans la prochaine version."
-    },
     "nodeParamEditor": {
       "title": "Nœud {nodeId} · {name}",
       "quickActions": {
@@ -5913,6 +5898,17 @@
         "exportCsv": "Exporter en CSV",
         "samples": "échantillons"
       }
+    },
+    "session": {
+      "title": "DroneCAN session",
+      "none": "No DroneCAN session. Open one to talk to the nodes on a bus: node parameters, diagnostics and test utilities need it.",
+      "bus": "Bus",
+      "open": "Open session",
+      "opening": "Opening…",
+      "close": "Close session",
+      "active": "Session open on bus {bus}. The flight controller is forwarding this bus.",
+      "failed": "Could not open a DroneCAN session: {error}",
+      "unsupported": "This connection cannot forward CAN frames."
     }
   },
   "linkUp": {

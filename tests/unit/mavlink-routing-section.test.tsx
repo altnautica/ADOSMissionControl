@@ -40,14 +40,9 @@ const CONFIG = {
 
 function stubSigningClient(overrides?: {
   capability?: Record<string, unknown>;
-  requireValue?: boolean | null;
   counters?: Record<string, unknown>;
   failWith?: Error;
 }) {
-  const setSigningRequire = vi.fn(async (require: boolean) => ({
-    success: true,
-    require,
-  }));
   const client = {
     getSigningCapability: vi.fn(async () => {
       if (overrides?.failWith) throw overrides.failWith;
@@ -60,9 +55,6 @@ function stubSigningClient(overrides?: {
         ...(overrides?.capability ?? {}),
       };
     }),
-    getSigningRequire: vi.fn(async () => ({
-      require: overrides?.requireValue ?? null,
-    })),
     // Default: the agent measured signed frames and the last one arrived
     // just now.
     getSigningCounters: vi.fn(async () => ({
@@ -72,14 +64,13 @@ function stubSigningClient(overrides?: {
       last_signed_rx_at: Date.now() / 1000,
       ...(overrides?.counters ?? {}),
     })),
-    setSigningRequire,
   };
   useAgentConnectionStore.setState({
     agentUrl: "http://192.168.1.50:8080",
     client: client as never,
     nodeDeviceId: "node-1",
   });
-  return { client, setSigningRequire };
+  return { client };
 }
 
 function renderSection(profile: "drone" | "ground-station" = "drone") {
@@ -202,64 +193,6 @@ describe("MavlinkRoutingSection signing block", () => {
     expect(screen.getByText("7")).toBeTruthy();
     // last_signed_rx_at null reads "none seen", never a fabricated time.
     expect(screen.getByText("None seen")).toBeTruthy();
-    // require === null states the router has no stored preference.
-    expect(
-      screen.getByText("The router reports no stored preference yet."),
-    ).toBeTruthy();
-  });
-
-  it("writes the require flag through the agent's signing route", async () => {
-    // A signed frame was measured just now, so enabling is safe and writes
-    // with no confirmation.
-    const { setSigningRequire } = stubSigningClient({
-      capability: { supported: true, reason: "ok", firmware_name: "ArduPilot" },
-      requireValue: false,
-    });
-    renderSection();
-    await waitFor(() => expect(screen.getByText("ArduPilot")).toBeTruthy());
-    fireEvent.click(screen.getByText("Require signed frames"));
-    await waitFor(() => expect(setSigningRequire).toHaveBeenCalledWith(true));
-    expect(
-      screen.queryByText("Require signing with no signed frames seen?"),
-    ).toBeNull();
-  });
-
-  it("gates enabling require-signing behind a confirm when no signed frames have arrived", async () => {
-    const { setSigningRequire } = stubSigningClient({
-      capability: { supported: true, reason: "ok", firmware_name: "ArduPilot" },
-      requireValue: false,
-      counters: { rx_signed_count: 0, last_signed_rx_at: null },
-    });
-    renderSection();
-    await waitFor(() => expect(screen.getByText("ArduPilot")).toBeTruthy());
-    fireEvent.click(screen.getByText("Require signed frames"));
-    // Held pending confirmation — the write must NOT have fired yet.
-    await waitFor(() =>
-      expect(
-        screen.getByText("Require signing with no signed frames seen?"),
-      ).toBeTruthy(),
-    );
-    expect(setSigningRequire).not.toHaveBeenCalled();
-    // Confirming applies the write.
-    fireEvent.click(screen.getByText("Require signing anyway"));
-    await waitFor(() =>
-      expect(setSigningRequire).toHaveBeenCalledWith(true),
-    );
-  });
-
-  it("does not prompt when DISABLING require-signing (a safe transition)", async () => {
-    const { setSigningRequire } = stubSigningClient({
-      capability: { supported: true, reason: "ok", firmware_name: "ArduPilot" },
-      requireValue: true,
-      counters: { rx_signed_count: 0, last_signed_rx_at: null },
-    });
-    renderSection();
-    await waitFor(() => expect(screen.getByText("ArduPilot")).toBeTruthy());
-    fireEvent.click(screen.getByText("Require signed frames"));
-    await waitFor(() => expect(setSigningRequire).toHaveBeenCalledWith(false));
-    expect(
-      screen.queryByText("Require signing with no signed frames seen?"),
-    ).toBeNull();
   });
 
   it("reads 'not measured' when the agent has no signed-frame observer", async () => {
@@ -294,56 +227,14 @@ describe("MavlinkRoutingSection signing block", () => {
     expect(screen.queryByText("0")).toBeNull();
   });
 
-  it("asks for confirmation when the only signed frames are old", async () => {
-    // A large cumulative count proves nothing about the FC signing now.
-    const { setSigningRequire } = stubSigningClient({
-      capability: { supported: true, reason: "ok", firmware_name: "ArduPilot" },
-      requireValue: false,
-      counters: {
-        rx_signed_count: 500,
-        last_signed_rx_at: Date.now() / 1000 - 3600,
-      },
-    });
-    renderSection();
-    await waitFor(() => expect(screen.getByText("ArduPilot")).toBeTruthy());
-    fireEvent.click(screen.getByText("Require signed frames"));
-    await waitFor(() =>
-      expect(screen.getByText("Require signing anyway")).toBeTruthy(),
-    );
-    expect(setSigningRequire).not.toHaveBeenCalled();
-  });
-
-  it("never reads or writes signing through another node's connection", async () => {
-    const { client, setSigningRequire } = stubSigningClient();
+  it("never reads signing through another node's connection", async () => {
+    const { client } = stubSigningClient();
     useAgentConnectionStore.setState({ nodeDeviceId: "other-node" });
     renderSection();
     expect(
       screen.getByText("Signing status needs a LAN connection to the node."),
     ).toBeTruthy();
     expect(client.getSigningCapability).not.toHaveBeenCalled();
-    expect(setSigningRequire).not.toHaveBeenCalled();
-  });
-
-  it("disables the require toggle when the page is read-only", async () => {
-    stubSigningClient({
-      capability: { supported: true, reason: "ok", firmware_name: "ArduPilot" },
-      requireValue: false,
-    });
-    renderWithIntl(
-      <MavlinkRoutingSection
-        nodeDeviceId="node-1"
-        profile="drone"
-        config={CONFIG}
-        readOnly
-        setValue={vi.fn(async () => {})}
-      />,
-    );
-    await waitFor(() => expect(screen.getByText("ArduPilot")).toBeTruthy());
-    const toggle = screen
-      .getByText("Require signed frames")
-      .closest("label")
-      ?.querySelector("input, button") as HTMLInputElement | null;
-    expect(toggle?.disabled).toBe(true);
   });
 
   it("reads 'not exposed' on an agent build without the routes", async () => {

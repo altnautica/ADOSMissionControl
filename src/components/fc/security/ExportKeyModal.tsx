@@ -19,6 +19,9 @@
  *   - Typed-phrase "EXPORT" confirm so a casual click cannot rotate a key.
  *   - Every export is a rotation, so every export is logged on the agent
  *     side (enroll-fc already logs the new key_id).
+ *   - The new key is stored in this browser before the clipboard is touched.
+ *     Once the FC may hold it, losing it here locks the operator out, so a
+ *     clipboard failure keeps the key and offers the copy again.
  *
  * @license GPL-3.0-only
  */
@@ -26,14 +29,8 @@
 import { useEffect, useRef, useState } from "react";
 import { X, AlertTriangle, Check, Clipboard, Loader2 } from "lucide-react";
 
-import {
-  generateRandomKey,
-  keyBytesToHex,
-  zeroize,
-} from "@/lib/protocol/mavlink-signer";
 import { useConvex } from "convex/react";
 
-import { importAndStore } from "@/lib/protocol/signing-keystore";
 import type { AgentClient } from "@/lib/agent/client";
 import { useSigningStore } from "@/stores/signing-store";
 import { useAuthStore } from "@/stores/auth-store";
@@ -42,6 +39,7 @@ import {
   getCloudKeyForDrone,
   uploadKey,
 } from "@/lib/api/signing-cloud-sync";
+import { enrollNewKey } from "./signing/enroll-key";
 
 interface Props {
   client: AgentClient;
@@ -55,6 +53,7 @@ type ExportState =
   | "confirm"      // user typing EXPORT
   | "rotating"     // generating + enrolling + storing new key
   | "copied"       // new key in clipboard, 60s countdown running
+  | "copy_failed"  // new key stored, clipboard write refused; retry offered
   | "cleared"      // clipboard wiped, modal about to close
   | "error";
 
@@ -66,6 +65,9 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
   const [errorMsg, setErrorMsg] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(CLIPBOARD_HOLD_MS / 1000);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // The one copy of the new key's hex this modal may still hand to the
+  // clipboard. Dropped as soon as the copy succeeds or the modal closes.
+  const pendingHexRef = useRef<string | null>(null);
 
   const setBrowserKey = useSigningStore((s) => s.setBrowserKey);
   const stateForAudit = useSigningStore((s) => s.drones[droneId]);
@@ -81,6 +83,7 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
     setSecondsLeft(CLIPBOARD_HOLD_MS / 1000);
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
+      pendingHexRef.current = null;
     };
   }, [open]);
 
@@ -104,65 +107,67 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
     };
   }, [state, onClose]);
 
+  async function copyPendingKey() {
+    const keyHex = pendingHexRef.current;
+    if (keyHex === null) return;
+    try {
+      await navigator.clipboard.writeText(keyHex);
+      pendingHexRef.current = null;
+      setErrorMsg("");
+      setState("copied");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+      setState("copy_failed");
+    }
+  }
+
   async function handleExport() {
     if (phrase !== "EXPORT") return;
     setState("rotating");
     setErrorMsg("");
-    const rawBytes = generateRandomKey();
-    try {
-      const keyHex = keyBytesToHex(rawBytes);
-      const result = await client.enrollSigningKey(keyHex, linkId);
-      // Copy to clipboard BEFORE import-as-non-extractable zeroizes the buffer.
-      await navigator.clipboard.writeText(keyHex);
-      const record = await importAndStore({
-        droneId,
-        userId: null,
-        keyBytes: rawBytes,
-        linkId,
-      });
-      setBrowserKey(droneId, {
-        keyId: result.key_id,
-        enrolledAt: result.enrolled_at,
-        enrollmentState: "enrolled",
-      });
-      // If this drone was opt-in for cloud sync, upload the new key now
-      // while keyHex is still in scope. The non-extractable CryptoKey we
-      // just created cannot be exported again, so this is the one
-      // window. Without this, cloud-synced browsers would pull the old
-      // (now-dead) key from Convex on next refresh.
-      if (isAuthenticated && convexClient) {
-        try {
-          const existingRow = await getCloudKeyForDrone(convexClient, droneId);
-          if (existingRow !== null) {
-            await uploadKey(convexClient, {
-              droneId,
-              keyHex,
-              keyId: result.key_id,
-              linkIdOwner: linkId,
-              enrolledAt: result.enrolled_at,
-            });
-          }
-        } catch {
-          // Non-fatal. The local rotation already succeeded; cloud row
-          // is stale until the next rotation retries.
-        }
-      }
-      void emitSigningEvent(convexClient, isAuthenticated, {
-        droneId,
-        eventType: "export",
-        keyIdOld: stateForAudit?.keyId ?? undefined,
-        keyIdNew: result.key_id,
-      });
-      // Discard the variable that still referenced the hex string.
-      // JS strings are immutable so we cannot zero them, but dropping
-      // the reference lets GC reclaim the memory eventually.
-      void record;
-      setState("copied");
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
-      zeroize(rawBytes);
+    const userId = isAuthenticated ? (useAuthStore.getState().user?.id ?? null) : null;
+    const outcome = await enrollNewKey({ client, droneId, linkId, userId });
+    if (outcome.kind === "failed") {
+      setErrorMsg(outcome.error);
       setState("error");
+      return;
     }
+    // The key is in the keystore now; mirror it before anything else can fail.
+    setBrowserKey(droneId, {
+      keyId: outcome.keyId,
+      enrolledAt: outcome.enrolledAt,
+      enrollmentState: outcome.kind === "enrolled" ? "enrolled" : "unconfirmed",
+      previousKeyId: outcome.kind === "unconfirmed" ? outcome.previousKeyId : null,
+    });
+    // If this drone was opt-in for cloud sync, upload the new key now while
+    // the hex is still in scope. The non-extractable CryptoKey cannot be
+    // exported again, so this is the one window. An unconfirmed key is not
+    // uploaded: other browsers must not replace a key the FC may still hold.
+    if (outcome.kind === "enrolled" && isAuthenticated && convexClient) {
+      try {
+        const existingRow = await getCloudKeyForDrone(convexClient, droneId);
+        if (existingRow !== null) {
+          await uploadKey(convexClient, {
+            droneId,
+            keyHex: outcome.keyHex,
+            keyId: outcome.keyId,
+            linkIdOwner: linkId,
+            enrolledAt: outcome.enrolledAt,
+          });
+        }
+      } catch {
+        // Non-fatal. The local rotation already succeeded; cloud row
+        // is stale until the next rotation retries.
+      }
+    }
+    void emitSigningEvent(convexClient, isAuthenticated, {
+      droneId,
+      eventType: "export",
+      keyIdOld: stateForAudit?.keyId ?? undefined,
+      keyIdNew: outcome.keyId,
+    });
+    pendingHexRef.current = outcome.keyHex;
+    await copyPendingKey();
   }
 
   if (!open) return null;
@@ -269,6 +274,38 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
                 className="px-3 py-1.5 text-sm border border-border-default hover:bg-bg-tertiary"
               >
                 Clear now
+              </button>
+            </div>
+          </div>
+        )}
+
+        {state === "copy_failed" && (
+          <div className="space-y-3">
+            <div
+              role="alert"
+              className="flex items-start gap-2 text-sm text-status-warning border border-status-warning/40 bg-status-warning/5 p-3"
+            >
+              <AlertTriangle size={14} className="mt-0.5" aria-hidden="true" />
+              <span>
+                The new key is enrolled and stored in this browser, but the clipboard refused it
+                ({errorMsg || "copy failed"}). Copy it again before closing: once this window closes the
+                key cannot be exported without another rotation.
+              </span>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 text-sm text-text-tertiary hover:text-text-secondary"
+              >
+                Close without copying
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyPendingKey()}
+                className="px-3 py-1.5 text-sm bg-accent-primary text-white"
+              >
+                Copy again
               </button>
             </div>
           </div>

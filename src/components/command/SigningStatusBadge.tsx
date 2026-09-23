@@ -7,10 +7,10 @@
  * Five variants, each with a distinct icon, color, and aria-label so the
  * state is legible to both sighted users and screen readers:
  *
- *   Signed              — browser key present, FC enrolled, require=off
- *   Signed + required   — same, plus FC rejects unsigned commands
+ *   Signed              — browser key present, FC enrolled
+ *   Unconfirmed         — an enrollment or disable the FC never acknowledged;
+ *                         the operator has to settle which key it holds
  *   Unsigned            — firmware supports signing but no browser key
- *   Key missing         — FC requires signing but this browser has no key
  *   Not available       — firmware does not expose a signing key store
  *
  * There is deliberately no "mismatch" variant. One existed, driven by a
@@ -35,9 +35,8 @@ interface Props {
 
 export type SigningBadgeVariant =
   | "signed"
-  | "signed_required"
+  | "unconfirmed"
   | "unsigned"
-  | "key_missing"
   | "na"
   | "loading";
 
@@ -45,7 +44,6 @@ export interface BadgeClassifyInput {
   capability: { supported: boolean } | null;
   hasBrowserKey: boolean;
   enrollmentState?: string;
-  requireOnFc?: boolean | null;
 }
 
 export function SigningStatusBadge({ droneId, compact = false }: Props) {
@@ -75,9 +73,10 @@ export function classifyVariant(
 ): SigningBadgeVariant {
   if (!state || state.capability === null) return "loading";
   if (!state.capability.supported) return "na";
-  if (state.enrollmentState === "key_missing") return "key_missing";
-  if (state.hasBrowserKey && state.enrollmentState === "enrolled") {
-    return state.requireOnFc === true ? "signed_required" : "signed";
+  if (!state.hasBrowserKey) return "unsigned";
+  if (state.enrollmentState === "enrolled") return "signed";
+  if (state.enrollmentState === "unconfirmed" || state.enrollmentState === "disable_unconfirmed") {
+    return "unconfirmed";
   }
   return "unsigned";
 }
@@ -98,13 +97,13 @@ export const VARIANTS: Record<SigningBadgeVariant, VariantConfig> = {
     className: "text-status-success",
     Icon: Lock,
   },
-  signed_required: {
-    label: "Signed · required",
-    ariaLabel: "MAVLink signing enabled, require mode on",
+  unconfirmed: {
+    label: "Unconfirmed",
+    ariaLabel: "MAVLink signing state unconfirmed",
     tooltip:
-      "Every command is signed. The flight controller rejects unsigned commands.",
-    className: "text-status-success border border-status-success/60 px-1",
-    Icon: Lock,
+      "A key change was sent that the flight controller never acknowledged. Open the signing panel to confirm which key it holds.",
+    className: "text-status-warning",
+    Icon: ShieldAlert,
   },
   unsigned: {
     label: "Unsigned",
@@ -112,14 +111,6 @@ export const VARIANTS: Record<SigningBadgeVariant, VariantConfig> = {
     tooltip: "This drone supports MAVLink signing but it is not enabled.",
     className: "text-text-tertiary",
     Icon: Unlock,
-  },
-  key_missing: {
-    label: "Key missing",
-    ariaLabel: "MAVLink signing key is missing on this browser",
-    tooltip:
-      "The flight controller requires signing but this browser has no matching key.",
-    className: "text-status-warning",
-    Icon: ShieldAlert,
   },
   na: {
     label: "No signing",

@@ -30,17 +30,6 @@ describe("classifyVariant", () => {
     ).toBe("na");
   });
 
-  it("returns key_missing when the enrollment state says so", () => {
-    const r = classifyVariant(
-      input({
-        capability: { supported: true },
-        hasBrowserKey: false,
-        enrollmentState: "key_missing",
-      }),
-    );
-    expect(r).toBe("key_missing");
-  });
-
   // There is no "mismatch" variant, and this pins that. The old one was
   // gated on a counter nothing incremented, so the branch was unreachable in
   // production while this very test passed by injecting the counter by hand.
@@ -56,29 +45,18 @@ describe("classifyVariant", () => {
     expect(Object.keys(VARIANTS)).not.toContain("mismatch");
   });
 
-  it("returns signed when enrolled and require is off", () => {
-    const r = classifyVariant(
-      input({
-        capability: { supported: true },
-        hasBrowserKey: true,
-        enrollmentState: "enrolled",
-        requireOnFc: false,
-      }),
-    );
-    expect(r).toBe("signed");
-  });
-
-  it("returns signed_required when enrolled and require is on", () => {
-    const r = classifyVariant(
-      input({
-        capability: { supported: true },
-        hasBrowserKey: true,
-        enrollmentState: "enrolled",
-        requireOnFc: true,
-      }),
-    );
-    expect(r).toBe("signed_required");
-  });
+  // Both unacknowledged states keep a key the FC may hold, so neither may read
+  // as "Signed" (the FC may still have the other key) nor "Unsigned" (the FC
+  // may still reject unsigned commands).
+  it.each(["unconfirmed", "disable_unconfirmed"])(
+    "returns unconfirmed for a %s key",
+    (enrollmentState) => {
+      const r = classifyVariant(
+        input({ capability: { supported: true }, hasBrowserKey: true, enrollmentState }),
+      );
+      expect(r).toBe("unconfirmed");
+    },
+  );
 
   it("returns unsigned when supported but no browser key", () => {
     const r = classifyVariant(
@@ -92,9 +70,8 @@ describe("VARIANTS", () => {
   it("has every variant present, and no more", () => {
     const expected: SigningBadgeVariant[] = [
       "signed",
-      "signed_required",
+      "unconfirmed",
       "unsigned",
-      "key_missing",
       "na",
       "loading",
     ];

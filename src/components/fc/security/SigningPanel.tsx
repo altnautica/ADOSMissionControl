@@ -6,11 +6,11 @@
  *
  * Key material lives in the browser as a non-extractable CryptoKey. The
  * agent is a transparent pipe plus a one-shot enrollment helper; it
- * never persists a key. SIGNING_REQUIRE can be toggled from this panel.
+ * never persists a key.
  *
  * This file is a thin composition. State and action handlers live in
  * `signing/use-signing-actions.ts`. Branch UIs live as sub-components in
- * `signing/`. Modals (Export, Import) and recovery banner are imported as-is.
+ * `signing/`. Modals (Export, Import) are imported as-is.
  */
 
 import { Shield } from "lucide-react";
@@ -18,7 +18,6 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSigningStore } from "@/stores/signing-store";
 import { allocateLocalLinkId } from "@/lib/protocol/link-id-allocator";
-import { KeyMissingBanner } from "./KeyMissingBanner";
 import { ExportKeyModal } from "./ExportKeyModal";
 import { ImportKeyModal } from "./ImportKeyModal";
 import { usePrivateBrowsingDetection } from "./signing/use-private-browsing-detection";
@@ -48,35 +47,25 @@ export function SigningPanel() {
   } else if (!supported) {
     bodyNode = <SigningUnsupportedNotice firmware={firmware} reason={reason} />;
   } else if (!state?.hasBrowserKey) {
-    if (state?.enrollmentState === "key_missing") {
-      bodyNode = (
-        <KeyMissingBanner
-          disabled={actions.busy}
-          onReenroll={actions.handleEnable}
-          onImport={() => actions.setImportOpen(true)}
-          onClearFc={actions.handleDisable}
-        />
-      );
-    } else {
-      bodyNode = (
-        <SigningDisabledSection
-          busy={actions.busy}
-          enrollStartedAt={actions.enrollStartedAt}
-          enrollFailed={actions.enrollFailed}
-          onEnable={actions.handleEnable}
-          onResetEnroll={() => {
-            actions.setEnrollStartedAt(null);
-            actions.setEnrollFailed(false);
-            void actions.handleEnable();
-          }}
-          onCancelEnroll={() => {
-            actions.setEnrollStartedAt(null);
-            actions.setEnrollFailed(false);
-            actions.setBusy(false);
-          }}
-        />
-      );
-    }
+    bodyNode = (
+      <SigningDisabledSection
+        busy={actions.busy}
+        enrollStartedAt={actions.enrollStartedAt}
+        enrollFailed={actions.enrollFailed}
+        onEnable={actions.handleEnable}
+        onImport={() => actions.setImportOpen(true)}
+        onResetEnroll={() => {
+          actions.setEnrollStartedAt(null);
+          actions.setEnrollFailed(false);
+          void actions.handleEnable();
+        }}
+        onCancelEnroll={() => {
+          actions.setEnrollStartedAt(null);
+          actions.setEnrollFailed(false);
+          actions.setBusy(false);
+        }}
+      />
+    );
   } else {
     bodyNode = (
       <SigningEnabledSection
@@ -91,8 +80,9 @@ export function SigningPanel() {
         isAuthenticated={actions.isAuthenticated}
         authLoading={actions.authLoading}
         onRotate={actions.handleRotate}
-        onRequireToggle={actions.handleRequireToggle}
         onDisable={actions.handleDisable}
+        onSettleNewKey={(fcHolds) => void actions.handleSettleNewKey(fcHolds)}
+        onSettleDisable={(signingOff) => void actions.handleSettleDisable(signingOff)}
         onExport={() => actions.setExportOpen(true)}
         onCloudSyncToggle={actions.handleCloudSyncToggle}
       />

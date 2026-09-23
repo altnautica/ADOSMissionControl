@@ -6,9 +6,9 @@
  * and lists every node by ID with name, hardware/software version,
  * state, uptime and a health pill.
  *
- * A row click opens a slide-over panel that shows the recent NodeStatus
- * history. Per-node parameter editing is deferred to the next release;
- * the slide-over carries a placeholder for that surface.
+ * On the CAN page a row click opens that node's parameters. Used on its
+ * own, a row click opens a slide-over with the node's recent NodeStatus
+ * history.
  *
  * The auto-refresh toggle enables/disables the live store read.
  *
@@ -64,7 +64,6 @@ interface NodeDetailDrawerProps {
 
 function NodeDetailDrawer({ node, onClose }: NodeDetailDrawerProps) {
   const t = useTranslations("canConfig.nodeBrowser");
-  const placeholder = useTranslations("canConfig.placeholder");
 
   if (!node) return null;
 
@@ -108,9 +107,6 @@ function NodeDetailDrawer({ node, onClose }: NodeDetailDrawerProps) {
             </div>
           </Card>
 
-          <Card>
-            <p className="text-xs text-text-tertiary">{placeholder("comingNext")}</p>
-          </Card>
         </div>
       </aside>
     </div>

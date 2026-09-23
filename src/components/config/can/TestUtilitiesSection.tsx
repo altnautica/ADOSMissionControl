@@ -9,9 +9,9 @@
  *   1. Node ping — GetNodeInfo RTT with a five-entry rolling history.
  *   2. Manual frame inject — single CAN frame send with echo detection.
  *   3. Node-ID conflict scanner — sweeps known nodes for duplicate ids.
- *   4. ESC RawCommand sweep — gated UI; DSDL encoder pending.
- *   5. GPS fix snapshot — gated UI; DSDL decoder pending.
- *   6. Compass raw stream — gated UI; DSDL decoder pending.
+ *   4. ESC RawCommand sweep, behind a props-off confirmation.
+ *   5. GPS fix snapshot (Fix2 subscription).
+ *   6. Compass raw stream (MagneticFieldStrength2 subscription).
  *
  * Sub-tools that need live wiring accept the `client` and `transport`
  * props on this composer. Both are optional so the section renders in

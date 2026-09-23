@@ -425,19 +425,7 @@ export class MockAgentClient {
 
   async disableSigningOnFc(): Promise<{ success: boolean }> {
     await delay(200);
-    this._mockRequire = false;
     return { success: true };
-  }
-
-  async getSigningRequire(): Promise<{ require: boolean | null }> {
-    await delay(40);
-    return { require: this._mockRequire };
-  }
-
-  async setSigningRequire(require: boolean): Promise<{ success: boolean; require: boolean }> {
-    await delay(150);
-    this._mockRequire = require;
-    return { success: true, require };
   }
 
   async getSigningCounters(): Promise<SigningCounters> {
@@ -451,8 +439,6 @@ export class MockAgentClient {
       last_signed_rx_at: Date.now() / 1000,
     };
   }
-
-  private _mockRequire = false;
 
   // ── Setup wizard ─────────────────────────────────────────
   //

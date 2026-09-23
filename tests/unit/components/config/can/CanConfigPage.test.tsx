@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithIntl } from "../../../../helpers/intl-wrapper";
 import { useDroneManager } from "@/stores/drone-manager";
 
@@ -73,7 +73,51 @@ describe("CanConfigPage", () => {
     renderWithIntl(<CanConfigPage />);
     const tab = screen.getByRole("button", { name: /Per-node params/i });
     fireEvent.click(tab);
-    // Two matches are acceptable here (one in the placeholder card, one in the tab).
     expect(screen.getAllByText("Per-node params").length).toBeGreaterThan(0);
+  });
+
+  describe("DroneCAN session", () => {
+    function withDrone() {
+      const enableCanForward = vi.fn(async () => ({ success: true, resultCode: 0, message: "OK" }));
+      const protocol = { enableCanForward, onCanFrame: () => () => {} };
+      const drone = { id: "d1", protocol };
+      useDroneManager.setState({
+        drones: new Map([["d1", drone]]),
+        selectedDroneId: "d1",
+        getSelectedProtocol: () => protocol,
+        getSelectedDrone: () => drone,
+      } as never);
+      return enableCanForward;
+    }
+
+    function fillInject() {
+      fireEvent.click(screen.getByRole("button", { name: /Test utilities/i }));
+      fireEvent.change(screen.getByPlaceholderText("0x18000000"), { target: { value: "0x123" } });
+      fireEvent.change(screen.getByPlaceholderText("0011223344556677"), { target: { value: "0011223344556677" } });
+      return screen.getByRole("button", { name: "Send" }) as HTMLButtonElement;
+    }
+
+    it("gives the node tools a live bus only after the FC forwards it", async () => {
+      const enableCanForward = withDrone();
+      renderWithIntl(<CanConfigPage />);
+      expect(fillInject().disabled).toBe(true);
+
+      fireEvent.click(screen.getByRole("button", { name: "Open session" }));
+      await waitFor(() => expect(screen.getByText(/Session open on bus 1/)).toBeDefined());
+      expect(enableCanForward).toHaveBeenCalledWith(1);
+      expect((screen.getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(false);
+
+      fireEvent.click(screen.getByRole("button", { name: "Close session" }));
+      await waitFor(() => expect(enableCanForward).toHaveBeenLastCalledWith(0));
+    });
+
+    it("turns forwarding off when the page closes", async () => {
+      const enableCanForward = withDrone();
+      const { unmount } = renderWithIntl(<CanConfigPage />);
+      fireEvent.click(screen.getByRole("button", { name: "Open session" }));
+      await waitFor(() => expect(screen.getByText(/Session open on bus 1/)).toBeDefined());
+      unmount();
+      await waitFor(() => expect(enableCanForward).toHaveBeenLastCalledWith(0));
+    });
   });
 });

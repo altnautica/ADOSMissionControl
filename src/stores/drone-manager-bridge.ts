@@ -12,6 +12,7 @@ import { useNodeRegistryStore } from "./node-registry";
 import { useSettingsStore } from "./settings-store";
 import { useTrailStore } from "./trail-store";
 import { audioEngine } from "@/lib/audio-engine";
+import { isFailsafeAnnouncement } from "@/lib/telemetry/failsafe-text";
 import { useDiagnosticsStore } from "./diagnostics-store";
 import { useGeofenceStore } from "./geofence-store";
 import { useCanMonitorStore } from "./can-monitor-store";
@@ -252,6 +253,11 @@ export function bridgeTelemetry(
     // ring buffer that the flight lifecycle drains on arm.
     protocol.onStatusText((data) => {
       usePrearmBufferStore.getState().push(droneId, data.text);
+
+      const settings = useSettingsStore.getState();
+      if (settings.audioEnabled && settings.alertFailsafe && isFailsafeAnnouncement(data.severity, data.text)) {
+        audioEngine.play("failsafe");
+      }
     }),
 
     protocol.onMissionProgress((data) => {

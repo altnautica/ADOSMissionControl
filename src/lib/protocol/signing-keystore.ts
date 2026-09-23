@@ -169,8 +169,15 @@ export async function getRecord(droneId: string): Promise<SigningKeyRecord | nul
 export async function getSigner(droneId: string): Promise<MavlinkSigner | null> {
   const rec = await getRecord(droneId);
   // An unconfirmed record signs with the new key: any SETUP_SIGNING frame
-  // that reached the FC installed it.
-  if (!rec || (rec.enrollmentState !== "enrolled" && rec.enrollmentState !== "unconfirmed")) {
+  // that reached the FC installed it. A record whose disable is unconfirmed
+  // keeps signing: if the disable never landed the FC still rejects unsigned
+  // commands, and an FC with signing off accepts signed ones.
+  if (
+    !rec ||
+    (rec.enrollmentState !== "enrolled" &&
+      rec.enrollmentState !== "unconfirmed" &&
+      rec.enrollmentState !== "disable_unconfirmed")
+  ) {
     return null;
   }
   return new MavlinkSigner(rec.droneId, rec.linkId, rec.keyId, rec.cryptoKey);

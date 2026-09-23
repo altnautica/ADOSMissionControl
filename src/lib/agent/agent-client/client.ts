@@ -330,16 +330,6 @@ export class AgentClient {
     return extras.disableSigningOnFc(this.ctx);
   }
 
-  getSigningRequire(): Promise<{ require: boolean | null }> {
-    return extras.getSigningRequire(this.ctx);
-  }
-
-  setSigningRequire(
-    require: boolean,
-  ): Promise<{ success: boolean; require: boolean }> {
-    return extras.setSigningRequire(this.ctx, require);
-  }
-
   getSigningCounters(): Promise<SigningCounters> {
     return extras.getSigningCounters(this.ctx);
   }

@@ -3,7 +3,9 @@
 /**
  * @module components/fc/security/signing/SigningDisabledSection
  * @description Rendered when the FC supports signing but no browser key is
- * enrolled. Shows the Enable button and the staged enrollment progress UI.
+ * enrolled. Shows the Enable button, the staged enrollment progress UI, and
+ * the import path for a key that is already on the FC (from another browser
+ * or an export backup).
  */
 
 import { ShieldOff } from "lucide-react";
@@ -14,6 +16,7 @@ export interface SigningDisabledSectionProps {
   enrollStartedAt: number | null;
   enrollFailed: boolean;
   onEnable: () => void;
+  onImport: () => void;
   onResetEnroll: () => void;
   onCancelEnroll: () => void;
 }
@@ -23,6 +26,7 @@ export function SigningDisabledSection({
   enrollStartedAt,
   enrollFailed,
   onEnable,
+  onImport,
   onResetEnroll,
   onCancelEnroll,
 }: SigningDisabledSectionProps) {
@@ -44,14 +48,24 @@ export function SigningDisabledSection({
           onCancel={onCancelEnroll}
         />
       ) : (
-        <button
-          type="button"
-          className="px-4 py-2 bg-accent-primary text-white text-sm font-medium disabled:opacity-50"
-          onClick={onEnable}
-          disabled={busy}
-        >
-          Enable signing
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            className="px-4 py-2 bg-accent-primary text-white text-sm font-medium disabled:opacity-50"
+            onClick={onEnable}
+            disabled={busy}
+          >
+            Enable signing
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 text-sm border border-border-default hover:bg-bg-tertiary disabled:opacity-50"
+            onClick={onImport}
+            disabled={busy}
+          >
+            Import an existing key
+          </button>
+        </div>
       )}
     </div>
   );

@@ -244,16 +244,15 @@ export function unpairAgent(ctx: RequestContext): Promise<CommandResult> {
 //
 // The agent holds no key material. These endpoints cover capability
 // detection, one-shot FC enrollment (key_hex zeroized after), FC
-// clearing, SIGNING_REQUIRE toggle, and passive signed-frame counters.
+// clearing, and passive signed-frame counters.
 //
-// The three WRITES carry a 30 s deadline rather than the 6 s default.
-// Enrollment and disable each send SETUP_SIGNING twice with a deliberate
-// 200 ms gap, over a link that may be a congested radio, and the agent
-// only answers after the second send. Aborting at 6 s does not undo the
-// first frame: the FC can end up enrolled — or with signing REQUIRED —
-// while the GCS reports failure, which is the one outcome that locks the
-// operator out of their own aircraft. Waiting is strictly safer than a
-// premature abort here, and `SIGNING_WRITE_TIMEOUT_MS` still bounds it.
+// The two WRITES carry a 30 s deadline rather than the 6 s default.
+// Enrollment sends SETUP_SIGNING twice with a deliberate 200 ms gap, over a
+// link that may be a congested radio, and the agent only answers after the
+// second send. Aborting at 6 s does not undo the first frame: the FC can end
+// up enrolled while the GCS reports failure, which is the one outcome that
+// locks the operator out of their own aircraft. Waiting is strictly safer
+// than a premature abort here, and `SIGNING_WRITE_TIMEOUT_MS` still bounds it.
 const SIGNING_WRITE_TIMEOUT_MS = 30_000;
 
 export function getSigningCapability(
@@ -324,30 +323,6 @@ export function disableSigningOnFc(
     ctx,
     "/api/mavlink/signing/disable-on-fc",
     { method: "POST", timeoutMs: SIGNING_WRITE_TIMEOUT_MS },
-  );
-}
-
-export function getSigningRequire(
-  ctx: RequestContext,
-): Promise<{ require: boolean | null }> {
-  return agentRequest<{ require: boolean | null }>(
-    ctx,
-    "/api/mavlink/signing/require",
-  );
-}
-
-export function setSigningRequire(
-  ctx: RequestContext,
-  require: boolean,
-): Promise<{ success: boolean; require: boolean }> {
-  return agentRequest<{ success: boolean; require: boolean }>(
-    ctx,
-    "/api/mavlink/signing/require",
-    {
-      method: "PUT",
-      body: JSON.stringify({ require }),
-      timeoutMs: SIGNING_WRITE_TIMEOUT_MS,
-    },
   );
 }
 

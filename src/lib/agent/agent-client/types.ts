@@ -12,7 +12,6 @@ export interface SigningCapability {
     | "ok"
     | "fc_not_connected"
     | "firmware_not_supported"
-    | "firmware_too_old"
     | "firmware_px4_no_persistent_store"
     | "msp_protocol"
     | string;
