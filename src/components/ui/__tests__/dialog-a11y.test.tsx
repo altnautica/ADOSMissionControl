@@ -9,7 +9,7 @@
  * armed vehicle, and focus must land on Cancel so a keyboard activation cannot
  * commit the write.
  */
-import { useRef, useState, type ReactNode } from "react";
+import { StrictMode, useRef, useState, type ReactNode } from "react";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -175,19 +175,30 @@ describe("dialog accessibility affordances", () => {
           <button type="button" onClick={() => setOpen(true)}>
             arm
           </button>
-          <ConfirmDialog
-            open={open}
-            onConfirm={() => setOpen(false)}
-            onCancel={() => setOpen(false)}
-            title="Arm vehicle"
-            message="Type the phrase to arm."
-            variant="danger"
-            typedPhrase="ARM"
-          />
+          {/* Mounted only while open, the way the skill confirm host mounts
+              it: the dialog's first render is already the open one. */}
+          {open ? (
+            <ConfirmDialog
+              open
+              onConfirm={() => setOpen(false)}
+              onCancel={() => setOpen(false)}
+              title="Arm vehicle"
+              message="Type the phrase to arm."
+              variant="danger"
+              typedPhrase="ARM"
+            />
+          ) : null}
         </>
       );
     }
-    renderWithIntl(<TypedConfirm />);
+    // StrictMode re-runs the modal's focus effect the way a development build
+    // does: the cleanup restores focus to the trigger, so the second pass must
+    // still land on the phrase input rather than the first focusable control.
+    renderWithIntl(
+      <StrictMode>
+        <TypedConfirm />
+      </StrictMode>,
+    );
     const trigger = screen.getByRole("button", { name: "arm" });
     trigger.focus();
     fireEvent.click(trigger);

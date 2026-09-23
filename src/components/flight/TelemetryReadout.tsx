@@ -25,13 +25,16 @@ function batteryBarColor(pct: number): string {
   return "bg-status-success";
 }
 
-function FlightCell({ label, value }: { label: string; value: string }) {
+function FlightCell({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <div className="flex flex-col items-center py-1.5">
       <span className="text-sm font-mono font-semibold tabular-nums text-text-primary">
         {value}
       </span>
-      <span className="text-[10px] text-text-tertiary mt-0.5">{label}</span>
+      <span className="text-[10px] text-text-tertiary mt-0.5">
+        {label}
+        {unit ? ` ${unit}` : null}
+      </span>
     </div>
   );
 }
@@ -77,6 +80,7 @@ export function TelemetryReadout() {
         <FlightCell label="ALT" value={alt !== undefined ? `${alt.toFixed(1)}m` : "--.-m"} />
         <FlightCell
           label="SPD"
+          unit="km/h"
           value={speedMps !== undefined ? `${mpsToKph(speedMps).toFixed(1)}` : "--.-"}
         />
         <FlightCell
@@ -87,7 +91,7 @@ export function TelemetryReadout() {
               : "---\u00B0"
           }
         />
-        <FlightCell label="VS" value={vs !== undefined ? `${vs.toFixed(1)}` : "--.-"} />
+        <FlightCell label="VS" unit="m/s" value={vs !== undefined ? `${vs.toFixed(1)}` : "--.-"} />
       </div>
 
       {/* Status bar — GPS, battery, mode, deck controls */}

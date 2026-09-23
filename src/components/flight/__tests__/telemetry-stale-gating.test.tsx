@@ -83,6 +83,15 @@ describe("TelemetryReadout flight + battery freshness gating", () => {
     expect(container.textContent).not.toContain("link silent");
   });
 
+  it("names the unit of the speed and climb readouts", () => {
+    // 5 m/s ground speed renders as 18.0 km/h; a bare "18.0" reads as m/s on
+    // every other surface, so the unit must be on screen with the number.
+    seedFlight(0);
+    const { getByText } = render(<TelemetryReadout />);
+    expect(getByText("18.0").nextElementSibling?.textContent).toBe("SPD km/h");
+    expect(getByText("1.2").nextElementSibling?.textContent).toBe("VS m/s");
+  });
+
   it("blanks stale ALT and battery and flags the link silent", () => {
     seedFlight(10_000);
     const { container } = render(<TelemetryReadout />);

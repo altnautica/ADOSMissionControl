@@ -39,6 +39,7 @@ export function ConfirmDialog({
   const t = useTranslations("common");
   const [typed, setTyped] = useState("");
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const phraseRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) setTyped("");
@@ -55,10 +56,12 @@ export function ConfirmDialog({
       className="max-w-lg"
       // A destructive confirmation is an alert, not an ordinary dialog, and
       // opening it with focus on the confirm button means one stray Enter
-      // commits the action. Pin focus to Cancel instead. The typed-phrase
-      // variant autofocuses its input, which is the correct target there.
+      // commits the action. Pin focus to Cancel instead, or to the phrase
+      // input when the dialog asks for one. The input is pinned explicitly
+      // rather than left to autoFocus: an effect re-run moves focus back to the
+      // trigger, and the modal then falls back to its first focusable control.
       role={variant === "danger" ? "alertdialog" : "dialog"}
-      initialFocusRef={typedPhrase ? undefined : cancelRef}
+      initialFocusRef={typedPhrase ? phraseRef : cancelRef}
       footer={
         <>
           <Button ref={cancelRef} variant="ghost" onClick={onCancel}>
@@ -86,11 +89,11 @@ export function ConfirmDialog({
             })}
           </label>
           <input
+            ref={phraseRef}
             id="confirm-typed-phrase"
             type="text"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
-            autoFocus
             spellCheck={false}
             autoComplete="off"
             className="w-full h-9 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary focus-ring transition-colors"
