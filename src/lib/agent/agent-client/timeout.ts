@@ -16,7 +16,7 @@
 export const AGENT_FETCH_TIMEOUT_MS = 6000;
 
 /** Upstream deadline for an agent write that restarts one of its services
- * before answering (Atlas config, active vision detector): the agent allows
+ * before answering (the active vision detector): the agent allows
  * `systemctl restart` 30 s and then confirms the restart for up to ~5 s. */
 export const AGENT_SERVICE_RESTART_TIMEOUT_MS = 40_000;
 

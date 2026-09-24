@@ -4,9 +4,9 @@
  * @module SystemTab
  * @description Unified system view composing Hardware, Services, and Fleet
  * Network sub-panels. Profile-aware: a drone or ground-station node renders the
- * full FC / radio / regulatory / mesh panel set, while a workstation (headless
- * compute box) drops those nonsensical panels and surfaces compute / GPU and
- * cluster metrics instead.
+ * full FC / radio / regulatory / mesh panel set, while a workstation or compute
+ * node (a headless box) drops those nonsensical panels and keeps the host
+ * metrics, services and access cards.
  * @license GPL-3.0-only
  */
 
@@ -23,15 +23,14 @@ import { RegulatoryRegionPanel } from "./system/RegulatoryRegionPanel";
 import { DashboardAccessPinCard } from "./system/DashboardAccessPinCard";
 import { PluginHardwarePanels } from "./system/PluginHardwarePanels";
 import { ComputeMetricsCard } from "./shared/ComputeMetricsCard";
-import { ComputeClusterCard } from "./shared/ComputeClusterCard";
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 interface SystemTabProps {
   /** The selected node's profile, from the surface render context. A
-   * workstation (headless compute node) has no flight controller, radio link,
-   * regulatory region, or fleet mesh, so those panels are hidden and the
-   * compute / GPU and cluster cards take their place. Defaults to "drone". */
+   * workstation or compute node has no flight controller, radio link,
+   * regulatory region, or fleet mesh, so those panels are hidden. Defaults to
+   * "drone". */
   profile?: NodeProfile;
   /** The node this page is rendered for. Handed to the panels that WRITE the
    * node's config so the write resolves its transport from this node rather
@@ -51,13 +50,12 @@ export function SystemTab({
   const blocked = agentGateFallback(gate);
   if (blocked) return blocked;
 
-  // Headless compute node: only compute-relevant panels.
-  if (profile === "workstation") {
+  // Headless workstation / compute node: only host-relevant panels.
+  if (profile === "workstation" || profile === "compute") {
     return (
       <div className="p-4 space-y-4 max-w-5xl overflow-y-auto">
         <ConfigErrorPanel />
         <ComputeMetricsCard />
-        <ComputeClusterCard />
         <MemoryPanel />
         <ServicesPanel />
         <DashboardAccessPinCard nodeDeviceId={nodeDeviceId} />

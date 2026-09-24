@@ -2,8 +2,8 @@
  * @module node-detail/surfaces/ground-station
  * @description Surfaces for a ground-station node in two tiers.
  *
- * A **Status** band — overview, the received-video cockpit, the drones this
- * box carries, and the Atlas relay it forwards their frames through. A
+ * A **Status** band — overview, the received-video cockpit and the drones this
+ * box carries. A
  * **Link** band — the ground radio, IP networking, the mesh and its
  * distributed-receive data plane, and the RC/ELRS control lane. A **Device**
  * band — the physical box: display, buttons, peripherals. Then Logs and the
@@ -31,7 +31,6 @@ import { PhysicalUiTab } from "@/components/command/nodes/ground-station/Physica
 import { PeripheralsTab } from "@/components/command/nodes/ground-station/PeripheralsTab";
 import { MeshTab } from "@/components/command/nodes/ground-station/MeshTab";
 import { CarriedDronesTab } from "@/components/command/nodes/ground-station/CarriedDronesTab";
-import { GroundStationAtlasRelay } from "@/components/command/nodes/ground-station/GroundStationAtlasRelay";
 import { RcElrsLinkTab } from "@/components/command/nodes/RcElrsLinkTab";
 import { LogsTab } from "@/components/drone-detail/LogsTab";
 import type { SurfaceSpec } from "../surface-types";
@@ -63,16 +62,6 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     labelKey: "groundStationOverview.carriedDrones.title",
     group: STATUS_GROUP,
     render: (ctx) => <CarriedDronesTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
-  },
-  {
-    // The GS's side of a drone's Atlas capture: a compute-pipeline surface
-    // that happens to ride the radio, so it sits with Status rather than
-    // among the transports. Opt-in per ground station (off by default).
-    id: "atlasRelay",
-    labelKey: "atlas.atlasRelay",
-    group: STATUS_GROUP,
-    when: (ctx) => ctx.isFeatureEnabled("world-model"),
-    render: () => <GroundStationAtlasRelay />,
   },
   {
     id: "radio",

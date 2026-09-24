@@ -71,12 +71,6 @@ vi.mock("@/components/drone-detail/DroneVisionTab", () => ({
 vi.mock("@/components/drone-detail/cameras/CameraManagerTab", () => ({
   CameraManagerTab: () => <div>agent-cameras-body</div>,
 }));
-vi.mock("@/components/drone-detail/DroneWorldModelTab", () => ({
-  DroneWorldModelTab: () => <div>agent-world-model-body</div>,
-}));
-vi.mock("@/components/drone-detail/DroneLiveWorldTab", () => ({
-  DroneLiveWorldTab: () => <div>agent-live-world-body</div>,
-}));
 
 import { AgentTab } from "@/components/dashboard/node-detail/agent/AgentTab";
 import type {
@@ -121,8 +115,6 @@ function ctxFor(
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: false,
-    isFeatureEnabled: () => true,
-    atlasCapturing: true,
     pluginAgentPages: [],
     ...over,
   };
@@ -217,9 +209,8 @@ describe("the Agent page has one sidebar", () => {
       (b) => b.textContent,
     );
     expect(labels).toContain("Link");
-    expect(labels).toContain("World Model");
     expect(labels).toContain("Cameras");
-    for (const retired of ["Radio", "Video", "Perception setup", "World model setup"]) {
+    for (const retired of ["Radio", "Video", "Perception setup"]) {
       expect(labels).not.toContain(retired);
     }
   });
@@ -307,9 +298,9 @@ describe("deep links and per-node memory across the merged id space", () => {
   });
 
   it("falls back when a remembered page is gated off for this node's profile", () => {
-    // World model setup is drone-only; a ground station must not land on it.
+    // MAVLink routing is drone-only; a ground station must not land on it.
     useUiPrefsStore.setState({
-      lastAgentPanelByNode: { "node:ground-station": "world-model-config" },
+      lastAgentPanelByNode: { "node:ground-station": "mavlink" },
     });
     const { container } = renderWithIntl(
       <AgentTab ctx={ctxFor("ground-station")} />,

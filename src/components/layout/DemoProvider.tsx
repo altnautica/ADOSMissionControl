@@ -17,12 +17,10 @@ import { usePairingStore } from "@/stores/pairing-store";
 import { clearDemoNodeCommands } from "@/mock/demo-node-commands";
 import { useCommandFleetStore, type CommandCloudStatus } from "@/stores/command-fleet-store";
 import { useNodeRegistryStore } from "@/stores/node-registry";
-import { useComputeStore } from "@/stores/compute-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { setMockAgentOverride } from "@/mock/agent/client";
 import { clearDemoLanNodes } from "@/lib/demo/demo-residue";
 import { DEMO_AGENTS, buildDemoStatus, seedDemoLanNodes } from "@/mock/demo-seed/fleet";
-import { seedComputeStore } from "@/mock/demo-seed/compute";
 import { seedGroundStationStore } from "@/mock/demo-seed/ground-station";
 import { seedFocusedAgentSystem, seedFocusedCapabilities } from "@/mock/demo-seed/agent-system";
 import { getDemoMcpPlugins } from "@/mock/mock-mcp-plugins";
@@ -66,10 +64,8 @@ export function DemoProvider() {
   // capability stores) on every node switch to stop one node's data bleeding
   // onto the next. In demo that wipes the ground-station overview data we seed
   // once below, so re-seed the profile-specific stores after each switch — the
-  // workstation + ground-station overviews then stay populated whenever opened.
-  // (The compute store is not reset on switch, but re-seeding it is harmless.)
+  // ground-station overview then stays populated whenever opened.
   useEffect(() => {
-    seedComputeStore(Date.now());
     seedGroundStationStore();
     seedFocusedAgentSystem(Date.now());
     seedFocusedCapabilities();
@@ -110,15 +106,8 @@ export function DemoProvider() {
     // `lan` reach kind alongside cloud (local-first).
     seedDemoLanNodes(Date.now());
 
-    // The workstation compute + jobs surfaces are a default on a workstation
-    // (Atlas is its purpose), so they render without any flag. The drone World
-    // Model is an opt-in per-node feature — the demo shows it off by default and
-    // the operator turns it on from the Status-tab Features toggle.
-
-    // Seed the profile-specific stores the workstation + ground-station
-    // overviews read (the singleton agent-system store stays drone-flavored;
-    // these carry the per-profile headline data).
-    seedComputeStore(Date.now());
+    // Seed the profile-specific stores the ground-station overview reads (the
+    // singleton agent-system store stays drone-flavored).
     seedGroundStationStore();
     seedFocusedAgentSystem(Date.now());
     seedFocusedCapabilities();
@@ -142,17 +131,11 @@ export function DemoProvider() {
       usePairingStore.getState().setPairedDrones(
         DEMO_AGENTS.map((agent) => ({ ...agent, lastSeen: now })),
       );
-      // Keep the compute cluster snapshot fresh (its card has a 15s staleness
-      // gate), re-seed the focused node's agent-system status/resources (so the
-      // Overview / Health / Logs tabs stay live), and feed the GPU sparkline.
-      seedComputeStore(now);
+      // Re-seed the focused node's agent-system status/resources so the
+      // Overview / Health / Logs tabs stay live.
       seedFocusedAgentSystem(now);
       // The ground-station link card ages its radio reading on this stamp.
       useGroundStationStore.setState({ linkHealthAt: now });
-      const gpu = useComputeStore.getState().gpu;
-      if (gpu?.utilizationPct != null) {
-        useAgentSystemStore.getState().pushGpuUtilization(gpu.utilizationPct);
-      }
     };
 
     updateCommandFleetDemo();
@@ -183,7 +166,6 @@ export function DemoProvider() {
       // FleetProjectionBridge to re-project.
       useNodeRegistryStore.getState().clear();
       // Reset the profile-specific stores so demo leaves no residue in real mode.
-      useComputeStore.getState().clear();
       useGroundStationStore.getState().resetAll();
       useMcpPluginStore.setState({ plugins: [], status: "idle" });
       delete window.__adosDemo;

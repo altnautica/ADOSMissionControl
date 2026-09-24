@@ -191,7 +191,7 @@ export function buildDemoStatus(
       mavlinkWsPort: 0,
       services: [
         { name: "ados-control", status: "running" },
-        { name: "ados-compute", status: "running" },
+        { name: "ados-plugin-host", status: "running" },
       ],
     };
   }

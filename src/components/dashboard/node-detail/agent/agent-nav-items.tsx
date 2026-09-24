@@ -1,8 +1,7 @@
 /**
  * @module node-detail/agent/agent-nav-items
  * @description The Agent page's LIVE companion-computer sub-pages (Health /
- * Battery / Link / Perception / Cameras / World Model / Live World /
- * Extensions / Logs).
+ * Battery / Link / Perception / Cameras / Extensions / Logs).
  * Each item reuses the SurfaceContext shape and the same availability gate the
  * retired top-level surface used, and renders the exact same component one
  * level down.
@@ -17,12 +16,10 @@
 import type { ReactNode } from "react";
 import {
   BatteryMedium,
-  Boxes,
   Camera,
   Eye,
   HeartPulse,
   Puzzle,
-  Radar,
   RadioTower,
 } from "lucide-react";
 import { SystemTab } from "@/components/command/SystemTab";
@@ -30,8 +27,6 @@ import { PluginsTab } from "@/components/command/PluginsTab";
 import { DroneRadioPanel } from "@/components/dashboard/DroneRadioPanel";
 import { DroneVisionTab } from "@/components/drone-detail/DroneVisionTab";
 import { CameraManagerTab } from "@/components/drone-detail/cameras/CameraManagerTab";
-import { DroneLiveWorldTab } from "@/components/drone-detail/DroneLiveWorldTab";
-import { DroneWorldModelTab } from "@/components/drone-detail/DroneWorldModelTab";
 import { BatteryHealthPanel } from "@/components/drone-detail/BatteryHealthPanel";
 import type { SurfaceContext } from "../surface-types";
 import { surfaceNodeDeviceId } from "../surface-types";
@@ -104,11 +99,7 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     icon: <Eye size={14} />,
     when: (ctx) => isDrone(ctx) && agentReachable(ctx),
     render: (ctx) => (
-      <DroneVisionTab
-        droneId={ctx.droneId}
-        nodeDeviceId={surfaceNodeDeviceId(ctx)}
-        relayReach={ctx.relayReach}
-      />
+      <DroneVisionTab droneId={ctx.droneId} nodeDeviceId={surfaceNodeDeviceId(ctx)} />
     ),
   },
   {
@@ -118,27 +109,6 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     // The node's camera roster — a companion-computer concept on a drone.
     when: (ctx) => isDrone(ctx) && companionPresent(ctx),
     render: (ctx) => <CameraManagerTab droneId={ctx.droneId} />,
-  },
-  {
-    id: "world-model",
-    labelKey: "dronePanel.worldModel",
-    icon: <Boxes size={14} />,
-    when: (ctx) =>
-      isDrone(ctx) &&
-      agentReachable(ctx) &&
-      ctx.isFeatureEnabled("world-model"),
-    render: (ctx) => <DroneWorldModelTab droneId={ctx.droneId} />,
-  },
-  {
-    id: "live-world",
-    labelKey: "dronePanel.liveWorld",
-    icon: <Radar size={14} />,
-    when: (ctx) =>
-      isDrone(ctx) &&
-      agentReachable(ctx) &&
-      ctx.isFeatureEnabled("world-model") &&
-      ctx.atlasCapturing,
-    render: (ctx) => <DroneLiveWorldTab droneId={ctx.droneId} />,
   },
   {
     id: "plugins",

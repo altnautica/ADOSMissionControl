@@ -9,8 +9,8 @@
  * `settings` sub-page was itself a two-pane surface with its own grouped nav, so
  * reaching one subsystem meant navigating two trees. There is now exactly one
  * nav, and a live surface sits beside the configuration for the same subsystem:
- * the Link page above the Radio config, the World Model viewer above its Atlas
- * setup, Cameras above Video.
+ * the Link page above the Radio config, Cameras above Video, Perception above
+ * its setup.
  *
  * Sidebar order lives here and nowhere else. Each section names its sub-page ids
  * top -> bottom, and a registry entry carries only what its page *is* (label,
@@ -81,15 +81,7 @@ export const NAV_SECTIONS: NavSectionSpec[] = [
   {
     key: "videoVision",
     labelKey: "nodeSettings.groups.videoVision",
-    items: [
-      "cameras",
-      "video",
-      "vision",
-      "vision-perception",
-      "world-model",
-      "world-model-config",
-      "live-world",
-    ],
+    items: ["cameras", "video", "vision", "vision-perception"],
   },
   {
     key: "cloud",
@@ -122,7 +114,6 @@ export const MERGED_SUBPAGE_HOSTS: Record<string, string> = {
   "radio-config": "radio",
   video: "cameras",
   "vision-perception": "vision",
-  "world-model-config": "world-model",
   "battery-config": "battery",
 };
 

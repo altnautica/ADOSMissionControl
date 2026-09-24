@@ -43,7 +43,6 @@ import {
   selectDeviceCapabilities,
   useAgentCapabilitiesStore,
 } from "@/stores/agent-capabilities-store";
-import { useNodeFeaturesStore } from "@/stores/node-features-store";
 
 type EffProfile = "drone" | "ground-station" | "workstation";
 
@@ -267,16 +266,12 @@ function DroneBody({
   const showHeartbeat = hbGated && link.level !== "warning" && !link.label.includes("(MSP)");
 
   const hasCompanion = !!node.board;
-  // Capability chips come from what this node has described about itself and
-  // what the operator enabled on it; a node never heard from shows none.
+  // Capability chips come from what this node has described about itself; a
+  // node never heard from shows none.
   const caps = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, node.deviceId));
-  const worldModelOn = useNodeFeaturesStore((s) =>
-    (s.enabled[node.deviceId] ?? []).includes("world-model"),
-  );
   const chips = [
     caps && caps.cameras.length > 0 ? "Video" : null,
     caps?.visionAvailable === true ? "Vision" : null,
-    worldModelOn ? "World Model" : null,
     caps && (caps.compute.npu_available || caps.compute.gpu_available) ? "Compute" : null,
   ].filter((c): c is string => c !== null);
 
@@ -333,7 +328,7 @@ function DroneBody({
         </section>
       ) : (
         <p className="border-t border-border-default pt-2 text-[10px] text-text-tertiary">
-          No companion computer — pair one to add video, vision, and world model.
+          No companion computer — pair one to add video and vision.
         </p>
       )}
     </>

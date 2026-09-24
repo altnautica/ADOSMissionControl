@@ -17,7 +17,6 @@ import type { AgentProfile } from "@/stores/agent-capabilities-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useComputeStore } from "@/stores/compute-store";
 import { useFreshness } from "@/lib/agent/freshness";
 import {
   deriveMavlinkLink,
@@ -54,7 +53,6 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
   // due to cross-store Zustand update batching issues
   const resources = useAgentSystemStore((s) => s.resources);
   const services = useAgentSystemStore((s) => s.services);
-  const gpu = useComputeStore((s) => s.gpu);
   const radioStackState = useAgentCapabilitiesStore((s) => s.radioStackState);
   // Control-plane RTT to the agent (LAN-direct poll). Null in cloud-relay mode
   // or before the first measurement.
@@ -141,7 +139,6 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
             value={formatDurationSeconds(uptimeSeconds)}
           />
           <InfoRow label={t("arch")} value={status.board?.arch ?? t("unknown")} />
-          <InfoRow label={t("gpu")} value={gpu?.name ?? "—"} />
           <InfoRow
             label={t("cores")}
             value={status.board?.cpu_cores ? String(status.board.cpu_cores) : "—"}

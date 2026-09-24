@@ -15,7 +15,6 @@ import { describe, expect, it } from "vitest";
 
 const MIRRORED = [
   "convex/lib/heartbeatFields.ts",
-  "convex/lib/atlasJobsIngest.ts",
   "convex/lib/changelogHtml.ts",
   "convex/lib/credentials.ts",
   "convex/lib/passwordPolicy.ts",

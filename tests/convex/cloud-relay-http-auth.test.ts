@@ -76,7 +76,6 @@ describe("device-key routes reject an unauthenticated caller", () => {
   const cases: Array<[string, string, Record<string, unknown>]> = [
     ["/agent/status", "POST", { deviceId: "d1", version: "1", uptimeSeconds: 1 }],
     ["/agent/commands/ack", "POST", { deviceId: "d1", commandId: "c1" }],
-    ["/agent/atlas-jobs", "POST", { deviceId: "d1", jobId: "j1" }],
   ];
 
   for (const [path, method, body] of cases) {

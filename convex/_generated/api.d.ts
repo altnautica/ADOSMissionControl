@@ -13,7 +13,6 @@ import type * as changelogSync from "../changelogSync.js";
 import type * as changelogSyncMutations from "../changelogSyncMutations.js";
 import type * as clientConfig from "../clientConfig.js";
 import type * as cmdAiUsage from "../cmdAiUsage.js";
-import type * as cmdAtlasJobs from "../cmdAtlasJobs.js";
 import type * as cmdDroneAccess from "../cmdDroneAccess.js";
 import type * as cmdDroneCommands from "../cmdDroneCommands.js";
 import type * as cmdDroneStatus from "../cmdDroneStatus.js";
@@ -63,7 +62,6 @@ declare const fullApi: ApiFromModules<{
   changelogSyncMutations: typeof changelogSyncMutations;
   clientConfig: typeof clientConfig;
   cmdAiUsage: typeof cmdAiUsage;
-  cmdAtlasJobs: typeof cmdAtlasJobs;
   cmdDroneAccess: typeof cmdDroneAccess;
   cmdDroneCommands: typeof cmdDroneCommands;
   cmdDroneStatus: typeof cmdDroneStatus;

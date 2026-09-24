@@ -6,9 +6,8 @@
  * live INSIDE the Agent page (the companion-computer surfaces, Perception and
  * the air-side Link), so their ids resolve the top tab to "agent" and open
  * that sub-page. Others were merged with a sibling and still exist at top
- * level under a different id (Distributed RX folded into Mesh & RX, the
- * workstation's Jobs and Viewer into one Compute tab, the legacy Flights and
- * Black Box into Logs), so their ids resolve to the survivor.
+ * level under a different id (Distributed RX folded into Mesh & RX, the legacy
+ * Flights and Black Box into Logs), so their ids resolve to the survivor.
  *
  * Pure logic so it is unit-testable away from the panel.
  * @license GPL-3.0-only
@@ -23,8 +22,6 @@ export const AGENT_SUBPAGE_IDS: Record<string, string> = {
   plugins: "plugins",
   radio: "radio",
   vision: "vision",
-  "world-model": "world-model",
-  "live-world": "live-world",
 };
 
 /**
@@ -35,9 +32,6 @@ export const AGENT_SUBPAGE_IDS: Record<string, string> = {
 export const TOP_LEVEL_ALIASES: Record<string, string> = {
   // Mesh and Distributed RX are one "Mesh & RX" surface.
   distributedRx: "mesh",
-  // The workstation's Jobs and Viewer are two segments of one Compute tab.
-  jobs: "compute",
-  viewer: "compute",
   // Logs is a top-level surface on every profile; Flights and Black Box were
   // always views of it.
   flights: "logs",

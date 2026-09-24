@@ -10,7 +10,7 @@
  *    `Content-Type: application/json` (a cross-site `<form>` can only send
  *    `text/plain`, urlencoded or multipart, and cannot set `Origin`).
  *  - **Target gate.** The host must pass `normaliseAndCheckHost` (private /
- *    mDNS / loopback / tailnet only), use one of the agent's own ports, and
+ *    mDNS / loopback / tailnet only), use the agent's own port, and
  *    resolve to a private IPv4 address server-side. A name that fails to
  *    resolve is refused rather than handed to `fetch` to resolve on its own.
  *  - **Path gate.** Caller-supplied sub-paths are checked segment by segment
@@ -31,9 +31,8 @@ import { NextResponse } from "next/server";
 import { normaliseAndCheckHost } from "@/lib/agent/host-validation";
 import { agentFetchBase } from "./_ipv4";
 
-/** The only ports a proxy call may target: the agent's control front and the
- * compute engine's job listener. */
-const AGENT_PORTS: ReadonlySet<number> = new Set([8080, 8092]);
+/** The only port a proxy call may target: the agent's control front. */
+const AGENT_PORT = 8080;
 
 /** Largest upstream body relayed back. Agent JSON replies are kilobytes. */
 const MAX_UPSTREAM_BYTES = 8 * 1024 * 1024;
@@ -175,11 +174,11 @@ export function checkAgentHost(raw: unknown): { target: AgentTarget } | Refusal 
   if ("error" in target) {
     return refuse(400, target.error ?? "bad_host", target.message ?? "");
   }
-  if (!AGENT_PORTS.has(target.port)) {
+  if (target.port !== AGENT_PORT) {
     return refuse(
       400,
       "port_not_allowed",
-      "Only the agent ports 8080 and 8092 are allowed",
+      `Only the agent port ${AGENT_PORT} is allowed`,
     );
   }
   return { target };
@@ -215,8 +214,6 @@ export interface AgentCall {
   json?: unknown;
   /** Sent as a multipart body. */
   form?: FormData;
-  /** Pin the upstream port (the compute engine's own listener). */
-  port?: number;
   /** Message for a transport failure; defaults to the error text. */
   unreachableMessage?: string;
 }
@@ -252,9 +249,8 @@ async function readCapped(res: Response): Promise<string | null> {
 export async function agentUrl(
   target: AgentTarget,
   path: string,
-  port?: number,
 ): Promise<string | Refusal> {
-  const base = await agentFetchBase(target, port);
+  const base = await agentFetchBase(target);
   if (!base) {
     return refuse(
       502,
@@ -273,7 +269,7 @@ export async function agentUrl(
 /** Make the upstream call and read a JSON answer. */
 export async function callAgent(call: AgentCall): Promise<AgentReply | Refusal> {
   try {
-    const url = await agentUrl(call.target, call.path, call.port);
+    const url = await agentUrl(call.target, call.path);
     if (typeof url !== "string") return url;
     const hasJson = call.json !== undefined;
     const headers: Record<string, string> = {

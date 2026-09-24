@@ -140,8 +140,6 @@ function ctxFor(droneId: string): SurfaceContext {
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: false,
-    isFeatureEnabled: () => false,
-    atlasCapturing: false,
     pluginAgentPages: [],
   };
 }

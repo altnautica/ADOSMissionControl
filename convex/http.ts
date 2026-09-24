@@ -15,7 +15,6 @@ import {
   canBusesField,
   commandResultField,
   commandStatusField,
-  computeClusterSlavesField,
   configErrorsField,
   crsfField,
   linkedPeersField,
@@ -33,7 +32,6 @@ import {
   stringField,
   videoStreamsField,
 } from "./lib/heartbeatFields";
-import { resolveAtlasJobPost } from "./lib/atlasJobsIngest";
 import { resolvePluginRecordPost } from "./lib/pluginRecordsIngest";
 
 
@@ -380,23 +378,6 @@ http.route({
       hasAccelerator: booleanField(body, "hasAccelerator"),
       perceptionTier: stringField(body, "perceptionTier"),
       perceptionOffloadTarget: stringField(body, "perceptionOffloadTarget"),
-      // Compute-node cluster + job-queue telemetry from a compute-profile
-      // agent's heartbeat. This route PICKS fields explicitly (it does not
-      // spread the body), so each must be listed here or pushStatus never
-      // receives them. Absent on a drone/GS heartbeat. "computeActiveSessions"
-      // is the count of live streaming perception-offload sessions the node
-      // serves (distinct from queued/active reconstruction jobs).
-      computeRole: stringField(body, "computeRole"),
-      computeClusterMasterId: stringField(body, "computeClusterMasterId"),
-      computeQueueDepth: numberField(body, "computeQueueDepth"),
-      computeActiveJobs: numberField(body, "computeActiveJobs"),
-      computeActiveSessions: numberField(body, "computeActiveSessions"),
-      computeWorkersIdle: numberField(body, "computeWorkersIdle"),
-      computeClusterAggregateWorkersIdle: numberField(
-        body,
-        "computeClusterAggregateWorkersIdle",
-      ),
-      computeClusterSlaves: computeClusterSlavesField(body),
       // Generic plugin-state channel (a free-form { pluginId: opaqueSlice }
       // map). Forwarded verbatim when the agent sends an object so each plugin
       // owns its slice end-to-end; the core never inspects the shape. Absent
@@ -500,34 +481,6 @@ http.route({
         { status: 400, headers: jsonHeaders },
       );
     }
-  }),
-});
-
-// ── Cloud Relay: compute node pushes an Atlas reconstruct job ──────────
-//
-// A workstation/compute node POSTs its reconstruct jobs so the World Model
-// tab's cloud path surfaces the drone's world models (cmd_atlasJobs; the GCS
-// reads them local-first over the LAN, this is the secondary/remote path).
-// Validation (poster auth, subject ownership, URL scheme, length caps) lives in
-// lib/atlasJobsIngest so every deployment runs the same tested decision.
-
-http.route({
-  path: "/agent/atlas-jobs",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const body = await readJsonObject(request);
-    if (body instanceof Response) return body;
-    const job = await resolveAtlasJobPost(
-      body,
-      request.headers.get("X-ADOS-Key") ?? undefined,
-      (deviceId) => ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, { deviceId }),
-    );
-    if (job instanceof Response) return job;
-    await ctx.runMutation(internal.cmdAtlasJobs.upsertJob, job);
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: jsonHeaders,
-    });
   }),
 });
 

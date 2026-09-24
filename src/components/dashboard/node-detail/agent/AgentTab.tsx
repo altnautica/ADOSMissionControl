@@ -159,8 +159,8 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
   // Remember the last sub-page per node so re-opening the Agent page returns
   // to it — but only when the node actually offered it. Writing the FALLBACK
   // id here is what destroyed the remembered position whenever a gate closed
-  // transiently: toggling the World Model feature off while parked on it
-  // rewrote the record to Health, and toggling it back on did not restore it.
+  // transiently: an extension page disabled while parked on it rewrote the
+  // record to Health, and enabling it again did not restore it.
   useEffect(() => {
     if (requestedMissing) return;
     useUiPrefsStore.getState().setLastAgentPanel(ctx.droneId, activeId);

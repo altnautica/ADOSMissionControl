@@ -18,5 +18,5 @@ export const VEHICLE_GROUP = "nodeDetail.groups.vehicle";
 export const LINK_GROUP = "nodeDetail.groups.link";
 /** The physical box: display, buttons, attached peripherals. */
 export const DEVICE_GROUP = "nodeDetail.groups.device";
-/** Reconstruction / job execution on a workstation. */
+/** Job execution pages an extension adds to a workstation. */
 export const COMPUTE_GROUP = "nodeDetail.groups.compute";

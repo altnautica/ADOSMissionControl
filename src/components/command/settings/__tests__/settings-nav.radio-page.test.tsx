@@ -30,9 +30,9 @@ function ctxFor(profile: NodeProfile): SettingsPageContext {
     nodeDeviceId: "drone-1",
     relayReach: null,
     profile,
-    // Advertise the blocks the swarm/atlas gates check so the only variable
+    // Advertise the blocks the swarm gate checks so the only variable
     // under test is the profile.
-    config: { swarm: {}, atlas: {}, video: { wfb: {} } },
+    config: { swarm: {}, video: { wfb: {} } },
     readOnly: false,
     setValue: async () => {},
   };

@@ -22,12 +22,6 @@ export type { MappedSystemUpdate } from "./status-mapper/system";
 export { buildGroundStationPatch } from "./status-mapper/ground-station";
 export type { GroundStationFanOutCurrent } from "./status-mapper/ground-station";
 
-export { buildComputePatch } from "./status-mapper/compute";
-export type { ComputeFanOutCurrent } from "./status-mapper/compute";
-
-export { buildAtlasPatch } from "./status-mapper/atlas";
-export type { AtlasFanOutCurrent } from "./status-mapper/atlas";
-
 export {
   resolveVideoUrls,
   resolveVideoStreams,

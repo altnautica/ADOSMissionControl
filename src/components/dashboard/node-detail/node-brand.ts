@@ -18,7 +18,6 @@ import { nodeGlyph } from "@/components/command/nodes/node-glyph";
 import type { StatusLevel } from "@/lib/status-level";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
-import { useComputeStore } from "@/stores/compute-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
@@ -41,7 +40,7 @@ export interface NodeBrandDescriptor {
   accentVar: string;
   title: string;
   typeBadge: string;
-  /** Secondary badge — GPU backend (workstation) or role, when present. */
+  /** Secondary badge — the WFB reach hop, when present. */
   subBadge?: string;
   statusLine: string;
   statusLevel: StatusLevel;
@@ -70,8 +69,6 @@ export function useNodeBrand(args: {
   const t = useTranslations("nodeConsole");
   const connected = useAgentConnectionStore((s) => s.connected);
   const stale = useAgentSystemStore((s) => s.stale);
-  const cluster = useComputeStore((s) => s.cluster);
-  const gpu = useComputeStore((s) => s.gpu);
   // The open node's FC heartbeat (the panel selects the node it shows), aged
   // on the shared clock so a silent link reads as reconnecting.
   const fcHeartbeatAt = useDroneStore((s) => s.lastHeartbeat);
@@ -81,25 +78,7 @@ export function useNodeBrand(args: {
   let statusLevel: StatusLevel;
   let subBadge: string | undefined;
 
-  if (profile === "workstation") {
-    const role = cluster.role;
-    const roleLabel =
-      role === "master"
-        ? t("hero.roleMaster")
-        : role === "slave"
-          ? t("hero.roleSlave")
-          : t("hero.roleStandalone");
-    const idle = cluster.aggregateWorkersIdle ?? cluster.workersIdle;
-    const queued = cluster.queueDepth;
-    if (role !== null && idle != null && queued != null) {
-      statusLine = t("hero.workstationSummary", { role: roleLabel, idle, queued });
-      statusLevel = "good";
-    } else {
-      statusLine = t("hero.awaiting");
-      statusLevel = "idle";
-    }
-    if (gpu?.metal) subBadge = gpu.metal;
-  } else if (profile === "flight-controller") {
+  if (profile === "flight-controller") {
     if (fcConnected && isFresh(fcHeartbeatAt, now)) {
       statusLine = t("hero.online");
       statusLevel = "good";
@@ -111,7 +90,7 @@ export function useNodeBrand(args: {
       statusLevel = "offline";
     }
   } else {
-    // drone / ground-station: the node's agent connection.
+    // drone / ground-station / workstation: the node's agent connection.
     if (connected) {
       statusLine = t("hero.online");
       statusLevel = "good";
@@ -125,7 +104,7 @@ export function useNodeBrand(args: {
   }
   // A WFB-linked node reached transitively through a ground node names its
   // reach hop as the sub-badge.
-  if (profile !== "workstation" && reachedViaName) {
+  if (reachedViaName) {
     subBadge = t("provenance.linkedViaWfbShort", { node: reachedViaName });
   }
 

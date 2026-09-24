@@ -18,7 +18,6 @@
 import type { ReactNode } from "react";
 import {
   BatteryMedium,
-  Boxes,
   CircleUser,
   Cloud,
   Fingerprint,
@@ -47,7 +46,6 @@ import { ProfilePage, CloudPage, AdvancedPage } from "./CorePages";
 import { VideoSection } from "./VideoSection";
 import { RadioSection } from "./RadioSection";
 import { VisionPerceptionSection } from "./VisionPerceptionSection";
-import { AtlasSection } from "./AtlasSection";
 import { SwarmSection } from "./SwarmSection";
 import { NetworkUplinkSection } from "./NetworkUplinkSection";
 import { DisplaySection } from "./DisplaySection";
@@ -104,10 +102,10 @@ export interface SettingsNavItem {
    * page gets no sidebar row of its own: it renders as the second segment of
    * the named live page.
    *
-   * Three subsystems used to be six adjacent rows whose labels the registry
+   * Two subsystems used to be four adjacent rows whose labels the registry
    * itself admitted "would otherwise read as the same thing" (Link / Radio,
-   * Perception / Perception setup, World Model / World model setup). The
-   * suffix was carrying the whole information architecture.
+   * Perception / Perception setup). The suffix was carrying the whole
+   * information architecture.
    */
   mergeInto?: string;
   render: (ctx: SettingsPageContext) => ReactNode;
@@ -115,8 +113,6 @@ export interface SettingsNavItem {
 
 const isRadioProfile = (ctx: SettingsPageContext) =>
   ctx.profile === "drone" || ctx.profile === "ground-station";
-const isVisionProfile = (ctx: SettingsPageContext) =>
-  ctx.profile === "drone" || ctx.profile === "workstation";
 const isDroneProfile = (ctx: SettingsPageContext) => ctx.profile === "drone";
 
 export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
@@ -306,47 +302,21 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   },
   // `vision-perception`, not `vision`: the live Perception dashboard (engine
   // tier, session health, usage, detection overlay) owns that id in
-  // `agent-nav-items.tsx`. This page is the detector-model + offload/serving
-  // *config* behind it — hence the distinct "Perception setup" label, so two
-  // adjacent sidebar rows can never read as the same thing.
+  // `agent-nav-items.tsx`. This page is the detector-model *config* behind it —
+  // hence the distinct "Perception setup" label, so two adjacent sidebar rows
+  // can never read as the same thing.
   {
     id: "vision-perception",
     labelKey: "nodeSettings.perception.title",
     mergeInto: "vision",
     icon: <Layers size={14} />,
-    readsConfig: true,
-    when: isVisionProfile,
+    readsConfig: false,
+    when: isDroneProfile,
     render: (ctx) => (
       <VisionPerceptionSection
         droneId={ctx.droneId}
         nodeDeviceId={ctx.nodeDeviceId}
         profile={ctx.profile}
-        config={ctx.config}
-        readOnly={ctx.readOnly}
-        setValue={ctx.setValue}
-      />
-    ),
-  },
-  {
-    // `world-model-config`, not `world-model`: the live World Model viewer owns
-    // that id (another retired top-level surface id). This page is the Atlas
-    // capture *setup* behind it — hence the distinct "World model setup" label,
-    // so two adjacent sidebar rows can never read as the same thing.
-    id: "world-model-config",
-    labelKey: "nodeSettings.atlas.title",
-    mergeInto: "world-model",
-    icon: <Boxes size={14} />,
-    readsConfig: true,
-    when: (ctx) =>
-      ctx.profile === "drone" &&
-      (configMayAdvertise(ctx.config, "atlas") || isDemoMode()),
-    render: (ctx) => (
-      <AtlasSection
-        droneId={ctx.droneId}
-        profile={ctx.profile}
-        config={ctx.config}
-        readOnly={ctx.readOnly}
-        setValue={ctx.setValue}
       />
     ),
   },

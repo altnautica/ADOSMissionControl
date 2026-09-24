@@ -635,31 +635,6 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_deviceId", ["deviceId"]),
 
-  // Reconstruction-job records for the ADOS Atlas world-model pipeline.
-  // A capturing drone's keyframe dataset is reconstructed (splat / cloud /
-  // mesh / ortho) on a compute node; one row tracks each job's lifecycle.
-  // Ownership rides the capturing device (cmd_drones.deviceId) — the table
-  // carries no userId of its own. Written by the compute agent via an
-  // internal mutation (the HTTP action validates the device API key
-  // upstream, mirroring cmd_droneStatus.pushStatus); read by the owner only.
-  cmd_atlasJobs: defineTable({
-    deviceId: v.string(),          // capturing drone deviceId
-    computeNodeId: v.string(),     // reconstructor node deviceId
-    kind: v.string(),              // "splat" | "cloud" | "mesh" | "ortho"
-    status: v.string(),            // "queued" | "running" | "done" | "error" | "cancelled"
-    sessionId: v.optional(v.string()),   // live sessions; null for post-flight
-    inputBag: v.optional(v.string()),    // dataset/bag id the job ran on
-    outputUrl: v.optional(v.string()),   // signed artifact URL
-    derivedFrom: v.optional(v.string()), // lineage to a prior job id
-    metadata: v.optional(v.any()),       // gaussian count, steps, bounds, viewerHint
-    startedAt: v.optional(v.number()),
-    finishedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_device", ["deviceId"])
-    .index("by_computeNode", ["computeNodeId"])
-    .index("by_status", ["status"]),
-
   // ── Cloud relay tables (cmd_ prefix) ──────────────────────
 
   cmd_droneStatus: defineTable({
@@ -957,39 +932,12 @@ export default defineSchema({
     // is also listed in http.ts's statusPayload pick list.
     perceptionTier: v.optional(v.string()),
     perceptionOffloadTarget: v.optional(v.string()),
-    // Compute-node cluster + job-queue telemetry, posted by a compute-profile
-    // agent's heartbeat. All optional so a drone or ground station round-trips
-    // cleanly (absent on non-compute profiles). "computeRole" is "master" |
-    // "slave"; the queue/worker counts are this node's; the cluster* fields
-    // aggregate the master/slave cluster the node fronts. "computeActiveSessions"
-    // is the count of live streaming perception-offload sessions the node serves
-    // (distinct from queued/active reconstruction jobs). This OSS-twin
-    // /agent/status route PICKS fields explicitly, so each is also listed in
-    // http.ts's statusPayload pick list.
-    computeRole: v.optional(v.string()),
-    computeClusterMasterId: v.optional(v.string()),
-    computeQueueDepth: v.optional(v.number()),
-    computeActiveJobs: v.optional(v.number()),
-    computeActiveSessions: v.optional(v.number()),
-    computeWorkersIdle: v.optional(v.number()),
-    computeClusterAggregateWorkersIdle: v.optional(v.number()),
-    computeClusterSlaves: v.optional(
-      v.array(
-        v.object({
-          nodeId: v.string(),
-          accelerators: v.array(v.string()),
-          workersIdle: v.union(v.number(), v.null()),
-          queueDepth: v.union(v.number(), v.null()),
-        }),
-      ),
-    ),
     // Generic plugin-state channel: a map from plugin id to that plugin's own
     // opaque telemetry slice, ferried verbatim by the heartbeat producer (it
     // reads /run/ados/plugins/<id>-state.json). The core knows nothing about any
     // plugin's slice shape — each plugin owns + validates its own. This is how a
-    // plugin (e.g. Atlas, under pluginState.atlas) surfaces runtime telemetry to
-    // the cloud GCS without adding core columns; the 50th plugin adds none.
-    // (compute* above is a bounded PROFILE block, not a plugin, and stays.)
+    // plugin surfaces runtime telemetry to the cloud GCS without adding core
+    // columns; the 50th plugin adds none.
     pluginState: v.optional(v.record(v.string(), v.any())),
     // Setup wizard state on the agent. Live agents report "configured"
     // once the universal webapp wizard has been completed. Older agents

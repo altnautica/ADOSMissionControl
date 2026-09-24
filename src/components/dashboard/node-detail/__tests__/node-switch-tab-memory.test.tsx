@@ -57,7 +57,6 @@ vi.mock("@/hooks/use-drone-plugin-contributions", () => ({
   useLiveInstallRows: () => null,
 }));
 vi.mock("@/hooks/use-fleet-nodes", () => ({ useFleetNodes: () => [] }));
-vi.mock("@/hooks/use-atlas-control", () => ({ useAtlasControl: () => ({}) }));
 vi.mock("@/hooks/use-forget-node", () => ({ useForgetNode: () => vi.fn() }));
 vi.mock("@/hooks/use-node-control-authority", () => ({
   useNodeControlAuthorityNotice: () => ({ show: false }),
@@ -73,7 +72,7 @@ vi.mock("../surfaces", () => ({
   resolveSurfaces: (ctx: { drone: { profile?: string } }) => {
     const ids =
       ctx.drone.profile === "workstation"
-        ? ["overview", "compute", "logs", "agent"]
+        ? ["overview", "logs", "agent"]
         : ctx.drone.profile === "ground-station"
           ? ["overview", "cockpit", "radio", "mesh", "logs", "agent"]
           : ["overview", "flight", "cockpit", "configure", "logs", "agent"];
@@ -112,7 +111,7 @@ const selected = (c: HTMLElement) =>
 describe("node-detail tab memory across a node switch", () => {
   it("returns each node to its own remembered tab", () => {
     useUiPrefsStore.setState({
-      lastTabByNode: { [DRONE]: "cockpit", [GS]: "mesh", [WS]: "compute" },
+      lastTabByNode: { [DRONE]: "cockpit", [GS]: "mesh", [WS]: "logs" },
     });
     const { container, rerender } = render(
       <NodeDetailPanel droneId={DRONE} onClose={() => {}} />,
@@ -123,7 +122,7 @@ describe("node-detail tab memory across a node switch", () => {
     expect(selected(container)).toBe("mesh");
 
     rerender(<NodeDetailPanel droneId={WS} onClose={() => {}} />);
-    expect(selected(container)).toBe("compute");
+    expect(selected(container)).toBe("logs");
 
     // ...and back, unchanged.
     rerender(<NodeDetailPanel droneId={DRONE} onClose={() => {}} />);
@@ -143,15 +142,15 @@ describe("node-detail tab memory across a node switch", () => {
     expect(useUiPrefsStore.getState().lastTabByNode[DRONE]).toBe("cockpit");
   });
 
-  it("shows the fallback without destroying a remembered tab the node has lost", () => {
-    // A ground station remembered on Radio, opened while its role hides Radio.
-    useUiPrefsStore.setState({ lastTabByNode: { [WS]: "viewer" } });
+  it("resolves a retired tab id to the surface that absorbed it", () => {
+    // A drone remembered on the retired Flights tab.
+    useUiPrefsStore.setState({ lastTabByNode: { [DRONE]: "flights" } });
     const { container } = render(
-      <NodeDetailPanel droneId={WS} onClose={() => {}} />,
+      <NodeDetailPanel droneId={DRONE} onClose={() => {}} />,
     );
-    // `viewer` merged into `compute`, so the alias resolves it rather than
+    // `flights` merged into `logs`, so the alias resolves it rather than
     // dropping the operator on the first surface.
-    expect(selected(container)).toBe("compute");
+    expect(selected(container)).toBe("logs");
   });
 
   it("falls back from a plugin tab whose plugin is gone, without persisting the dead id", () => {

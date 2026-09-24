@@ -37,8 +37,6 @@ function gs(role: AgentRole): SurfaceContext {
     role,
     capabilitiesKnown: true,
     showLockedTabs: false,
-    isFeatureEnabled: () => false,
-    atlasCapturing: false,
     pluginAgentPages: [],
   };
 }

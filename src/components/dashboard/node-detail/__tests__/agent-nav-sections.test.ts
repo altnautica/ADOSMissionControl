@@ -48,8 +48,6 @@ function ctxFor(
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: false,
-    isFeatureEnabled: () => true,
-    atlasCapturing: true,
     pluginAgentPages: [],
     ...over,
   };
@@ -62,7 +60,7 @@ function settingsCtxFor(profile: NodeProfile): SettingsPageContext {
     nodeDeviceId: "d1",
     relayReach: null,
     profile,
-    config: { swarm: {}, atlas: {}, battery: {}, video: { wfb: {} } },
+    config: { swarm: {}, battery: {}, video: { wfb: {} } },
     readOnly: false,
     setValue: async () => {},
   };
@@ -86,13 +84,11 @@ describe("the merged Agent sidebar table", () => {
     const settingsIds = SETTINGS_NAV_ITEMS.map((i) => i.id);
     expect(settingsIds.filter((id) => agentIds.includes(id))).toEqual([]);
 
-    // The two renames that made the flattening possible. The agent ids keep
+    // The rename that made the flattening possible. The agent ids keep
     // their values because each matches a retired top-level surface id that a
     // persisted or deep-linked tab still resolves through.
     expect(agentIds).toContain("radio");
-    expect(agentIds).toContain("world-model");
     expect(settingsIds).toContain("radio-config");
-    expect(settingsIds).toContain("world-model-config");
   });
 });
 
@@ -109,16 +105,16 @@ describe("resolveAgentNav", () => {
       "system",
       "software",
     ]);
-    // One row per subsystem: `battery-config`, `radio-config`, `video`,
-    // `vision-perception` and `world-model-config` are the Setup segments of
-    // the live page above them, not rows of their own.
+    // One row per subsystem: `battery-config`, `radio-config`, `video` and
+    // `vision-perception` are the Setup segments of the live page above them,
+    // not rows of their own.
     expect(sections.map((s) => s.items.map((i) => i.id))).toEqual([
       ["system", "battery", "profile"],
       ["radio"],
       // No cellular page: only a ground station runs a modem manager.
       ["network", "wifi", "mac-pin", "discovery", "mavlink"],
       ["swarm"],
-      ["cameras", "vision", "world-model", "live-world"],
+      ["cameras", "vision"],
       ["cloud"],
       ["region", "self-heal", "security", "advanced"],
       ["plugins"],
@@ -128,15 +124,14 @@ describe("resolveAgentNav", () => {
   it("gives a merged subsystem one row carrying both halves", () => {
     const byId = (id: string) =>
       nav("drone").entries.find((e) => e.id === id);
-    for (const [host, setupKey] of [
-      ["battery", "nodeSettings.battery.title"],
-      ["radio", "nodeSettings.radio.title"],
-      ["cameras", "nodeSettings.video.title"],
-      ["vision", "nodeSettings.perception.title"],
-      ["world-model", "nodeSettings.atlas.title"],
+    for (const [host, setupKey, readsConfig] of [
+      ["battery", "nodeSettings.battery.title", true],
+      ["radio", "nodeSettings.radio.title", true],
+      ["cameras", "nodeSettings.video.title", true],
+      ["vision", "nodeSettings.perception.title", false],
     ] as const) {
       expect(byId(host)?.setup?.labelKey).toBe(setupKey);
-      expect(byId(host)?.setup?.readsConfig).toBe(true);
+      expect(byId(host)?.setup?.readsConfig).toBe(readsConfig);
     }
     // ...and the retired halves are not rows.
     for (const retired of [
@@ -144,7 +139,6 @@ describe("resolveAgentNav", () => {
       "radio-config",
       "video",
       "vision-perception",
-      "world-model-config",
     ]) {
       expect(nav("drone").entries.map((e) => e.id)).not.toContain(retired);
     }
@@ -210,8 +204,6 @@ describe("resolveAgentNav", () => {
       agentIdentityKnown: false,
       showLockedTabs: true,
       radioPresent: "absent",
-      isFeatureEnabled: () => false,
-      atlasCapturing: false,
       pluginAgentPages: [],
     }).entries.map((e) => e.id);
     // Nothing at all: Logs is a top-level surface now, not a sub-page, so the

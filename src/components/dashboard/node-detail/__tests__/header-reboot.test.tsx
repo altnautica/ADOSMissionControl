@@ -45,7 +45,6 @@ vi.mock("@/hooks/use-drone-plugin-contributions", () => ({
   useLiveInstallRows: () => null,
 }));
 vi.mock("@/hooks/use-fleet-nodes", () => ({ useFleetNodes: () => [] }));
-vi.mock("@/hooks/use-atlas-control", () => ({ useAtlasControl: () => ({}) }));
 vi.mock("@/hooks/use-forget-node", () => ({ useForgetNode: () => vi.fn() }));
 vi.mock("@/hooks/use-node-control-authority", () => ({
   useNodeControlAuthorityNotice: () => ({ show: false }),

@@ -26,7 +26,7 @@ const REFRESH_MS = 5000;
 
 export function PerceptionUsageCard() {
   const tv = useTranslations("vision");
-  const ta = useTranslations("atlas");
+  const ta = useTranslations("computeMetrics");
   const resources = useAgentSystemStore((s) => s.resources);
   const fetchResources = useAgentSystemStore((s) => s.fetchResources);
   const connected = useAgentConnectionStore((s) => s.connected);

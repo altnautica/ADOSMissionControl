@@ -199,8 +199,7 @@ describe("demo mock node config", () => {
     expect(cfg.mavlink).toBeDefined();
     expect(cfg.swarm).toBeDefined();
     expect(cfg.video).toBeDefined();
-    expect(cfg.perception).toBeDefined();
-    expect(cfg.atlas).toBeDefined();
+    expect(cfg.battery).toBeDefined();
 
     // A boolean write reads back a real boolean (so a Toggle reads `raw ===
     // true`), and a number write reads back a real number.

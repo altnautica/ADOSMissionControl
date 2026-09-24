@@ -26,7 +26,6 @@ describe("agentRedirect", () => {
     expect(agentRedirect("system", DRONE_IDS)).toBe("system");
     expect(agentRedirect("plugins", DRONE_IDS)).toBe("plugins");
     expect(agentRedirect("vision", DRONE_IDS)).toBe("vision");
-    expect(agentRedirect("world-model", DRONE_IDS)).toBe("world-model");
   });
 
   it("maps the retired air-side Link id to the Agent sub-page for a drone", () => {
@@ -49,15 +48,9 @@ describe("topLevelAlias", () => {
     expect(topLevelAlias("distributedRx", GS_IDS)).toBe("mesh");
   });
 
-  it("maps the workstation's retired Jobs / Viewer tabs to Compute", () => {
-    const WS_IDS = ["overview", "compute", "logs", "agent"];
-    expect(topLevelAlias("jobs", WS_IDS)).toBe("compute");
-    expect(topLevelAlias("viewer", WS_IDS)).toBe("compute");
-  });
-
   it("never rewrites an id the profile still owns", () => {
-    // A hypothetical profile that kept `jobs` at top level keeps its meaning.
-    expect(topLevelAlias("jobs", ["jobs", "agent"])).toBe("jobs");
+    // A hypothetical profile that kept `flights` at top level keeps its meaning.
+    expect(topLevelAlias("flights", ["flights", "agent"])).toBe("flights");
   });
 
   it("leaves an id with no alias, or whose alias this profile lacks, alone", () => {

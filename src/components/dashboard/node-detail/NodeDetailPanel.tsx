@@ -29,9 +29,6 @@ import {
   selectDeviceCapabilities,
   capabilityPresence,
 } from "@/stores/agent-capabilities-store";
-import { useNodeFeaturesStore } from "@/stores/node-features-store";
-import { useAtlasReadinessStore } from "@/stores/atlas-readiness-store";
-import { useClockStore } from "@/stores/clock-store";
 import { useUiStore } from "@/stores/ui-store";
 import { Button } from "@/components/ui/button";
 import { DroneStatusBadge } from "@/components/shared/drone-status-badge";
@@ -44,7 +41,6 @@ import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
 import { useNodePluginPages } from "@/hooks/use-node-plugin-pages";
-import { useAtlasControl } from "@/hooks/use-atlas-control";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { resolveRelayReach } from "@/lib/nodes/relay-reach";
@@ -109,16 +105,6 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // (`node:<deviceId>`); every per-node store and install table below is keyed
   // by the bare id the node reports on the wire.
   const bareDeviceId = deviceIdFromNodeId(droneId) ?? droneId;
-  // An expired readiness snapshot (the node stopped answering) is not a
-  // capture; `useAtlasControl` below keeps the shared clock ticking.
-  const clockNow = useClockStore((s) => s.now);
-  const atlasCapturing = useAtlasReadinessStore((s) => s.isCapturing(bareDeviceId, clockNow));
-  // Per-node first-party feature opt-ins (World Model / Live World surfaces).
-  const nodeFeatureIds = useNodeFeaturesStore((s) => s.enabled[bareDeviceId]);
-  // Populate the per-drone Atlas readiness from the panel level so the Live
-  // World tab can auto-reveal while capturing regardless of which tab is open.
-  // The hook self-gates its poll on the per-node World Model feature.
-  useAtlasControl((drone?.profile ?? "drone") === "drone" ? droneId : null);
 
   // Companion tabs render when this node is backed by an agent the GCS can
   // reach, directly or through its ground station's relay-proxy.
@@ -188,8 +174,6 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     role: caps?.role ?? drone.role ?? null,
     capabilitiesKnown: caps !== null,
     showLockedTabs: !showAgentTabs,
-    isFeatureEnabled: (featureId: string) => (nodeFeatureIds ?? []).includes(featureId),
-    atlasCapturing,
     pluginAgentPages: pluginPages.agentPages,
   };
   const surfaces = resolveSurfaces(ctx, pluginPages.surfaces);

@@ -3,7 +3,7 @@
 /**
  * @module Sparkline
  * @description Rolling utilisation sparkline for one agent-system history ring
- * (CPU, memory or GPU). The stroke comes from a theme token, the chart data is
+ * (CPU or memory). The stroke comes from a theme token, the chart data is
  * memoised on the ring so a 1 Hz store tick that leaves the ring untouched does
  * not re-map it, and the chart dims with a "paused" overlay while the agent
  * link is stale. Renders nothing until two samples exist.
@@ -18,7 +18,7 @@ import { useFreshness } from "@/lib/agent/freshness";
 import { cn } from "@/lib/utils";
 
 /** History rings on the agent-system store; each doubles as its `agent.*` label key. */
-export type SparklineSeries = "cpuHistory" | "memoryHistory" | "gpuHistory";
+export type SparklineSeries = "cpuHistory" | "memoryHistory";
 
 interface SparklineProps {
   series: SparklineSeries;

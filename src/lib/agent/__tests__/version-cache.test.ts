@@ -20,7 +20,7 @@ const CTX: RequestContext = { baseUrl: "http://node.local:8080", apiKey: "k" };
 const VERSION_BODY = {
   api_version: "1",
   agent_version: "0.9.0",
-  capabilities: ["atlas", "swarm"],
+  capabilities: ["swarm"],
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -59,7 +59,7 @@ describe("fetchVersionInfo caching", () => {
     // node would stay capability-less for the whole 5 min TTL.
     const recovered = await fetchVersionInfo(c);
     expect(recovered).not.toBeNull();
-    expect(agentSupports(recovered, "atlas")).toBe(true);
+    expect(agentSupports(recovered, "swarm")).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -100,7 +100,7 @@ describe("fetchVersionInfo caching", () => {
       fetchVersionInfo(c),
       fetchVersionInfo(c),
     ]);
-    expect(answers.every((a) => agentSupports(a, "atlas"))).toBe(true);
+    expect(answers.every((a) => agentSupports(a, "swarm"))).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -116,7 +116,7 @@ describe("fetchVersionInfo caching", () => {
       null,
       null,
     ]);
-    expect(agentSupports(await fetchVersionInfo(c), "atlas")).toBe(true);
+    expect(agentSupports(await fetchVersionInfo(c), "swarm")).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

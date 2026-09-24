@@ -190,11 +190,11 @@ export const renameDrone = mutation({
  * Unpair a drone: delete the pairing row AND every row keyed to its device.
  *
  * Deleting `cmd_drones` alone left the status row (last LAN IP, mDNS host, the
- * whole telemetry snapshot), any queued commands, its Atlas jobs and its
- * exported log windows behind. `cmd_droneStatus` is keyed by deviceId with no
- * userId, so re-pairing the same device from a different account adopted the
- * previous operator's last-known state, and no retention sweep could reach any
- * of it. Ownership is checked here; the cascade itself is internal and bounded.
+ * whole telemetry snapshot), any queued commands and its exported log windows
+ * behind. `cmd_droneStatus` is keyed by deviceId with no userId, so re-pairing
+ * the same device from a different account adopted the previous operator's
+ * last-known state, and no retention sweep could reach any of it. Ownership is
+ * checked here; the cascade itself is internal and bounded.
  */
 export const unpairDrone = mutation({
   args: { droneId: v.id("cmd_drones") },

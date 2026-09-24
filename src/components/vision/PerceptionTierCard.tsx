@@ -4,36 +4,20 @@
  * @module vision/PerceptionTierCard
  * @description The Perception hub's execution-tier surface. Shows the tier the
  * agent resolved for this node — local (on the node's NPU), offload (to a
- * workstation), hybrid, or none — with the accelerator rationale behind it, and
- * lets the operator pin the workstation it offloads to. The tier + the current
- * offload target are read from the heartbeat (honest status, never fabricated);
- * the pinned workstation is the persisted `perception.offload.compute_node_addr`
- * config link (the same value the node Settings tab edits — two views of one
- * link), so the choice survives unmount. The node's own offload reconciler
- * reads that pin and opens the streaming session itself; the card only sets
- * the pin and reports what the node says.
+ * workstation), hybrid, or none — with the accelerator rationale behind it.
+ * The tier + the current offload target are read from the heartbeat (honest
+ * status, never fabricated). Choosing the offload workstation belongs to the
+ * World Engine extension, which owns the offload lane.
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Cpu, Layers } from "lucide-react";
 
-import { Select, type SelectOption } from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import { perceptionFeedState } from "@/lib/vision/perception-health";
-import { useLocalNodesStore } from "@/stores/local-nodes-store";
-import {
-  useNodeConfig,
-  readConfigPath,
-} from "@/components/command/settings/use-node-config";
-import { nodeToOffloadAddr } from "@/lib/vision/offload-target";
-import type { RelayReach } from "@/lib/nodes/relay-reach";
-
-/** The config key holding this node's pinned offload workstation address. */
-const PIN_KEY = "perception.offload.compute_node_addr";
 
 type Tier = "local" | "offload" | "hybrid" | "none" | "unknown";
 
@@ -47,21 +31,10 @@ const TIER_STYLE: Record<Tier, string> = {
 
 interface PerceptionTierCardProps {
   droneId: string;
-  /** The node this card is rendered for. The offload pin is a config write, so
-   * the transport resolves from THIS id rather than from the focused-node
-   * connection store, which lags the render. */
-  nodeDeviceId: string | null;
-  /** The relaying ground station's reach for a WFB-relayed drone, else null. */
-  relayReach?: RelayReach | null;
 }
 
-export function PerceptionTierCard({
-  droneId,
-  nodeDeviceId,
-  relayReach = null,
-}: PerceptionTierCardProps) {
+export function PerceptionTierCard({ droneId }: PerceptionTierCardProps) {
   const t = useTranslations("vision");
-  const { toast } = useToast();
 
   const perceptionTier = useAgentCapabilitiesStore((s) => s.perceptionTier);
   const offloadTarget = useAgentCapabilitiesStore(
@@ -85,22 +58,6 @@ export function PerceptionTierCard({
   const hasAccelerator = useAgentCapabilitiesStore((s) => s.hasAccelerator);
   const compute = useAgentCapabilitiesStore((s) => s.compute);
   const capsLoaded = useAgentCapabilitiesStore((s) => s.loaded);
-  const nodes = useLocalNodesStore((s) => s.nodes);
-
-  // The pinned workstation is the persisted config link, not local state, so it
-  // survives unmount and matches what the Settings tab shows. Scoped to THIS
-  // node: the pin names where this drone offloads, so a write resolved from the
-  // ambient connection could re-point a different aircraft.
-  const { config, readOnly, setValue } = useNodeConfig(
-    nodeDeviceId,
-    relayReach,
-  );
-  const storedAddr =
-    (readConfigPath(config, PIN_KEY) as string | undefined) ?? "";
-  // A local override while a write is in flight.
-  const [pendingAddr, setPendingAddr] = useState<string | null>(null);
-
-  const effectiveAddr = pendingAddr ?? storedAddr;
 
   const tier: Tier = perceptionTier ?? "unknown";
   // Fall back to the compute block when the top-level mirrors are absent. Until
@@ -116,33 +73,6 @@ export function PerceptionTierCard({
   // A GPU-only node reports no NPU TOPS; never render that as "0.0 TOPS".
   else if (tops > 0) acceleratorLine = t("acceleratorPresent", { tops: tops.toFixed(1) });
   else acceleratorLine = t("acceleratorPresentNoTops");
-
-  const workstations = useMemo(
-    () => nodes.filter((n) => n.profile === "workstation"),
-    [nodes],
-  );
-  // Options mirror the Settings "Pin workstation" control: an Auto entry
-  // (auto-discover any serving workstation) plus each paired workstation, keyed
-  // by the offload address the agent stores.
-  const options: SelectOption[] = [
-    { value: "", label: t("offloadAutoAny") },
-    ...workstations.map((n) => ({
-      value: nodeToOffloadAddr(n),
-      label: n.name || n.hostname,
-    })),
-  ];
-
-  const onPick = async (addr: string) => {
-    if (readOnly) return;
-    setPendingAddr(addr);
-    try {
-      await setValue(PIN_KEY, addr);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : t("offloadFailed"), "error");
-    } finally {
-      setPendingAddr(null);
-    }
-  };
 
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-5">
@@ -203,27 +133,6 @@ export function PerceptionTierCard({
           </span>
         </div>
       ) : null}
-
-      {/* Offload target picker + request. */}
-      {workstations.length === 0 ? (
-        <p className="text-[11px] text-text-tertiary">
-          {t("offloadNoWorkstation")}
-        </p>
-      ) : (
-        <div className="min-w-[200px]">
-          <Select
-            label={t("offloadTarget")}
-            options={options}
-            value={effectiveAddr}
-            onChange={(v) => void onPick(v)}
-            placeholder={t("offloadTargetPlaceholder")}
-            disabled={readOnly}
-          />
-        </div>
-      )}
-      <p className="mt-2 text-[11px] text-text-tertiary">
-        {t("offloadPinHint")}
-      </p>
     </section>
   );
 }

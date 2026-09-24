@@ -34,7 +34,6 @@ import messages from "../../../../../locales/en.json";
 import { NodeStatusHoverCard } from "../NodeStatusHoverCard";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
-import { useNodeFeaturesStore } from "@/stores/node-features-store";
 
 const companionDrone: FleetNodeEntry = {
   _id: "node:drone-a",
@@ -60,19 +59,18 @@ function renderCard() {
 afterEach(() => {
   cleanup();
   useAgentCapabilitiesStore.setState({ byDevice: {} });
-  useNodeFeaturesStore.setState({ enabled: {} });
 });
 
 describe("NodeStatusHoverCard — onboard computer", () => {
   it("shows no service count and no capability chips for a node that reported neither", () => {
     renderCard();
     expect(screen.queryByText(/services running/)).toBeNull();
-    for (const chip of ["Video", "Vision", "World Model", "Compute"]) {
+    for (const chip of ["Video", "Vision", "Compute"]) {
       expect(screen.queryByText(chip)).toBeNull();
     }
   });
 
-  it("shows only the capabilities the node described and the features enabled on it", () => {
+  it("shows only the capabilities the node described", () => {
     useAgentCapabilitiesStore.setState({
       byDevice: {
         "drone-a": {
@@ -82,10 +80,8 @@ describe("NodeStatusHoverCard — onboard computer", () => {
         },
       } as never,
     });
-    useNodeFeaturesStore.setState({ enabled: { "drone-a": ["world-model"] } });
     renderCard();
     expect(screen.getByText("Vision")).toBeTruthy();
-    expect(screen.getByText("World Model")).toBeTruthy();
     expect(screen.queryByText("Video")).toBeNull();
     expect(screen.queryByText("Compute")).toBeNull();
   });

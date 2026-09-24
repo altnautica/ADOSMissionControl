@@ -221,7 +221,7 @@ describe("buildSystemUpdate", () => {
       ...base,
       configErrors: [
         { service: "ados-video", error: "invalid type: string, expected u32" },
-        { service: "ados-atlas", error: "missing field `camera`" },
+        { service: "ados-cloud", error: "missing field `url`" },
         { service: "ados-broken" }, // no error → dropped
         { error: "orphan error" }, // no service → dropped
         "not-an-object", // wrong shape → dropped
@@ -231,7 +231,7 @@ describe("buildSystemUpdate", () => {
     const update = buildSystemUpdate(mapped, cloudStatus, true);
     expect(update.configErrors).toEqual([
       { service: "ados-video", error: "invalid type: string, expected u32" },
-      { service: "ados-atlas", error: "missing field `camera`" },
+      { service: "ados-cloud", error: "missing field `url`" },
     ]);
   });
 

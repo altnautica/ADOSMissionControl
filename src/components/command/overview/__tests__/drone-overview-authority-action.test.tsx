@@ -95,8 +95,6 @@ function ctx(): SurfaceContext {
     role: "drone",
     capabilitiesKnown: true,
     showLockedTabs: false,
-    isFeatureEnabled: () => false,
-    atlasCapturing: false,
   } as unknown as SurfaceContext;
 }
 

@@ -40,23 +40,16 @@ import {
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { connectVisionDetections } from "@/lib/agent/vision-detections-ws";
 import { isDemoMode } from "@/lib/utils";
-import type { RelayReach } from "@/lib/nodes/relay-reach";
 
 interface DroneVisionTabProps {
   droneId: string;
-  /** The node's agent device id (or a relayed drone's peer id). Forwarded to
-   * the execution-tier card, whose offload pin is a config WRITE: it must
-   * resolve its transport from this node, not from the focused-node store. */
+  /** The node's agent device id (or a relayed drone's peer id). The detection
+   * feed and the engine gate resolve from this node, not from the focused-node
+   * store. */
   nodeDeviceId: string | null;
-  /** The relaying ground station's reach for a WFB-relayed drone, else null. */
-  relayReach?: RelayReach | null;
 }
 
-export function DroneVisionTab({
-  droneId,
-  nodeDeviceId,
-  relayReach = null,
-}: DroneVisionTabProps) {
+export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
   const t = useTranslations("vision");
   // The detection feed and the engine gate come from THIS node's agent, never
   // from whichever node's connection happens to be attached.
@@ -146,11 +139,7 @@ export function DroneVisionTab({
           </Section>
 
           <Section title={t("sectionExecution")}>
-            <PerceptionTierCard
-              droneId={droneId}
-              nodeDeviceId={nodeDeviceId}
-              relayReach={relayReach}
-            />
+            <PerceptionTierCard droneId={droneId} />
           </Section>
 
           <Section title={t("sectionHealth")}>

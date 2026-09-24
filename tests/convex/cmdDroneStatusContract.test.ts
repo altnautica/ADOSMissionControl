@@ -76,15 +76,6 @@ const SYSTEM_RESOURCE_FIELDS: ReadonlyArray<[string, string]> = [
   ["boardRamMb", "v.optional(v.number())"],
 ];
 
-const COMPUTE_FIELDS: ReadonlyArray<[string, string]> = [
-  ["computeRole", "v.optional(v.string())"],
-  ["computeClusterMasterId", "v.optional(v.string())"],
-  ["computeQueueDepth", "v.optional(v.number())"],
-  ["computeActiveJobs", "v.optional(v.number())"],
-  ["computeWorkersIdle", "v.optional(v.number())"],
-  ["computeClusterAggregateWorkersIdle", "v.optional(v.number())"],
-];
-
 const LINKED_PEER_ENTRY_KEYS = [
   "deviceId",
   "role",
@@ -254,13 +245,6 @@ describe("pushStatus argument shape", () => {
 
   it("declares every optional system-resource field as optional", () => {
     for (const [key] of SYSTEM_RESOURCE_FIELDS) {
-      expect(ARGS[key], `${key} missing from pushStatus args`).toBeDefined();
-      expect(isOptional(ARGS[key]), `${key} must be optional`).toBe(true);
-    }
-  });
-
-  it("declares every compute field as optional", () => {
-    for (const [key] of COMPUTE_FIELDS) {
       expect(ARGS[key], `${key} missing from pushStatus args`).toBeDefined();
       expect(isOptional(ARGS[key]), `${key} must be optional`).toBe(true);
     }

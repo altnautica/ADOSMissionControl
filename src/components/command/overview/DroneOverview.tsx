@@ -220,7 +220,6 @@ function CompanionBand({ droneId }: { droneId: string }) {
             <AgentStatusCard status={status} profile="drone" />
           </OverviewTile>
         )}
-        {/* First-party features (World Model, …) now live in the Settings tab. */}
         <OverviewTile span="half">
           <ComputeMetricsCard />
         </OverviewTile>

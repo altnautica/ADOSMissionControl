@@ -5,9 +5,9 @@
  * reads: the node's profile, and whether the node's own config surface
  * advertises the feature block.
  *
- * Two of these ids were renamed when the pages were hoisted (`radio` ->
- * `radio-config`, `world-model` -> `world-model-config`) because the live Link
- * and World Model surfaces own the originals in the same sidebar.
+ * One of these ids was renamed when the pages were hoisted (`radio` ->
+ * `radio-config`) because the live Link surface owns the original in the same
+ * sidebar.
  *
  * @license GPL-3.0-only
  */
@@ -41,19 +41,17 @@ function gate(id: string) {
 describe("settings page availability gates", () => {
   it("hides the feature pages a node does not advertise", () => {
     const bare = ctxWith({ config: {} });
-    expect(gate("world-model-config")(bare)).toBe(false);
     expect(gate("swarm")(bare)).toBe(false);
 
-    const advertised = ctxWith({ config: { atlas: {}, swarm: {} } });
-    expect(gate("world-model-config")(advertised)).toBe(true);
+    const advertised = ctxWith({ config: { swarm: {} } });
     expect(gate("swarm")(advertised)).toBe(true);
   });
 
   it("keeps the profile fits the pages already enforce", () => {
-    const ws = ctxWith({ profile: "workstation", config: { atlas: {} } });
+    const ws = ctxWith({ profile: "workstation", config: {} });
     expect(gate("video")(ws)).toBe(false);
-    expect(gate("world-model-config")(ws)).toBe(false);
-    expect(gate("vision-perception")(ws)).toBe(true);
+    // The detector model is a drone page; serving belongs to an extension.
+    expect(gate("vision-perception")(ws)).toBe(false);
     // A workstation carries no radio, so neither fleet-radio page appears.
     expect(gate("radio-config")(ws)).toBe(false);
 

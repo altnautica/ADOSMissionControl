@@ -422,50 +422,6 @@ export function peripheralStatesField(
   return out;
 }
 
-export interface ComputeSlaveEntry {
-  nodeId: string;
-  accelerators: string[];
-  /** Idle workers, or null when the slave did not report it. */
-  workersIdle: number | null;
-  /** Queued jobs, or null when the slave did not report it. */
-  queueDepth: number | null;
-}
-
-// Build the compute cluster's slave list, forwarding only well-formed entries
-// and coercing each field to the validator-accepted shape so a malformed agent
-// payload cannot fail the whole heartbeat. An entry without a node id is
-// dropped; a missing counter is forwarded as null (not measured), never as a
-// fabricated 0. Returns undefined when absent.
-export function computeClusterSlavesField(
-  body: Record<string, unknown>,
-): ComputeSlaveEntry[] | undefined {
-  const raw = body.computeClusterSlaves;
-  if (!Array.isArray(raw)) return undefined;
-  const out: ComputeSlaveEntry[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-    // The heartbeat producer serializes slave entries camelCase already
-    // (nodeId / workersIdle / queueDepth), so this generic snake->camel remap is
-    // a defensive no-op on the live wire — it also accepts the snake_case
-    // cluster-registration shape, coercing either to the camelCase the strict
-    // inner validator expects.
-    const row: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(item as Record<string, unknown>)) {
-      const camelKey = k.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
-      row[camelKey] = v;
-    }
-    const nodeId = stringField(row, "nodeId");
-    if (!nodeId) continue;
-    out.push({
-      nodeId,
-      accelerators: stringArrayField(row, "accelerators") ?? [],
-      workersIdle: numberField(row, "workersIdle") ?? null,
-      queueDepth: numberField(row, "queueDepth") ?? null,
-    });
-  }
-  return out;
-}
-
 export interface LinkedPeerEntry {
   deviceId: string;
   role?: string | null;

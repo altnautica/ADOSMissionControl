@@ -10,7 +10,6 @@
 
 import {
   Activity,
-  Boxes,
   Cloud,
   Eye,
   Gamepad2,
@@ -31,7 +30,6 @@ export const AGENT_SHOWCASE_ITEMS: AgentShowcaseItem[] = [
   { key: "liveVideo", icon: Video },
   { key: "flightControl", icon: Gamepad2 },
   { key: "perception", icon: Eye },
-  { key: "worldModel", icon: Boxes },
   { key: "radioLink", icon: RadioTower },
   { key: "fleetCloud", icon: Cloud },
   { key: "extensions", icon: Puzzle },

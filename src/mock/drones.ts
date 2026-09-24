@@ -23,7 +23,7 @@ export interface DemoDroneConfig {
  * vehicle-gated configuration panel is reachable in demo. Every drone is a
  * companion (SBC + one FC): an ADOS Drone Agent on an onboard computer bridging
  * to a single flight controller (`hasAgent: true`), so it shows the onboard-
- * computer band (live video / Vision / Atlas world-model / compute / services).
+ * computer band (live video / Vision / compute / services).
  * The one exception is Bravo-02, the single ArduPilot Copter kept as the FC-only
  * baseline (a direct MAVLink connection, no companion → the node console's
  * FC-only overview + "add a companion computer" CTA). The airframe/firmware
@@ -117,8 +117,8 @@ export const DEMO_DRONES: DemoDroneConfig[] = [
  * presence (seeded in `engine.ts`) and the paired-agent seed (in
  * `DemoProvider`), so `resolveNodeId(deviceId)` and `nodeIdForDevice(deviceId)`
  * collapse to the same `node:<deviceId>` — a fleet card opens a matching
- * profile-aware detail panel. No flight controller: a workstation reconstructs
- * and offloads, it does not fly.
+ * profile-aware detail panel. No flight controller: a workstation runs
+ * extensions, it does not fly.
  */
 export const DEMO_WORKSTATION = {
   deviceId: "forge-1",

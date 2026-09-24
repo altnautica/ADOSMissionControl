@@ -8,8 +8,6 @@ export const CONTRACT_VERSIONS = {
   "framebus.descriptor": 1,
   "tap.frame": 1,
   "vision.detection": 2,
-  "atlas.envelope": 1,
-  "compute": 1,
   "state.v2": 4,
   "frame": 0,
   "mavlink.socket": 0,
@@ -24,10 +22,6 @@ export const CONTRACT_VERSIONS = {
 } as const;
 
 export const SIDECAR_VERSIONS = {
-  "atlas-state": 1,
-  "atlas-forward": 1,
-  "compute-jobs": 1,
-  "compute-heartbeat": 1,
   "cloud-link": 1,
   "offload-link": 1,
   "wfb-stats": 1,
@@ -111,20 +105,6 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     status: "active",
     description: "Self-describing detection/percept batches published on the vision.detection topic (v2 adds optional mask, keypoints, depth, world position, and an optional 2D box).",
   },
-  "atlas.envelope": {
-    version: 1,
-    wire: "msgpack",
-    transport: "event-bus",
-    status: "active",
-    description: "Pose-tagged keyframe envelope carried on the atlas topics.",
-  },
-  "compute": {
-    version: 1,
-    wire: "msgpack",
-    transport: "event-bus",
-    status: "active",
-    description: "Compute-offload job submit and read contract.",
-  },
   "state.v2": {
     version: 4,
     wire: "msgpack",
@@ -205,34 +185,6 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
 };
 
 export const SIDECAR_CATALOG: Record<string, ContractMeta> = {
-  "atlas-state": {
-    version: 1,
-    wire: "json",
-    transport: "/run/ados/plugins/atlas-state.json",
-    status: "sidecar",
-    description: "Atlas capture and world-model state for the GCS plugin panel.",
-  },
-  "atlas-forward": {
-    version: 1,
-    wire: "json",
-    transport: "/run/ados/atlas-forward.json",
-    status: "sidecar",
-    description: "Atlas forward-stream state the capture service folds into atlas-state.",
-  },
-  "compute-jobs": {
-    version: 1,
-    wire: "json",
-    transport: "/run/ados/compute-jobs.json",
-    status: "sidecar",
-    description: "Compute-node job queue snapshot.",
-  },
-  "compute-heartbeat": {
-    version: 1,
-    wire: "json",
-    transport: "/run/ados/compute-heartbeat.json",
-    status: "sidecar",
-    description: "Compute-node heartbeat folded into the agent heartbeat.",
-  },
   "cloud-link": {
     version: 1,
     wire: "json",

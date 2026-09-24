@@ -158,8 +158,8 @@ class MockFlightEngine {
     // with its own profile (workstation / ground-station) and hides the
     // FC-gated battery/GPS telemetry. Their liveness rides the command-fleet
     // status `updatedAt` (refreshed by DemoProvider), the same path a real
-    // cloud-only node uses. The profile-specific stores (compute cluster/GPU,
-    // ground-station link/uplink/mesh) are seeded in DemoProvider.
+    // cloud-only node uses. The ground-station store (link/uplink/mesh) is seeded
+    // in DemoProvider.
     registry.upsertPresence(
       nid(DEMO_WORKSTATION.deviceId),
       {

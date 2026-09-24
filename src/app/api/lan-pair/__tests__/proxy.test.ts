@@ -20,10 +20,9 @@ vi.mock("node:dns", () => ({
   promises: { lookup },
 }));
 
-import { POST as atlasPost } from "../atlas/route";
-import { POST as computePost } from "../compute/route";
+import { POST as pinStatusPost } from "../pin-status/route";
 import { POST as probePost } from "../probe/route";
-import { POST as artifactPost, GET as artifactGet } from "../artifact/route";
+import { GET as pluginGetRoute } from "../plugin/route";
 import { POST as visionUploadPost } from "../vision-upload/route";
 
 const ORIGIN = "http://localhost:4000";
@@ -62,11 +61,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const ATLAS = { host: "192.168.1.50", apiKey: "k", path: "readiness" };
+const PIN = { host: "192.168.1.50", apiKey: "k" };
 
 describe("caller gate", () => {
   it("refuses a request with no Origin", async () => {
-    const res = await call(atlasPost, ATLAS, {
+    const res = await call(pinStatusPost, PIN, {
       "content-type": "application/json",
     });
     expect(res.status).toBe(403);
@@ -74,7 +73,7 @@ describe("caller gate", () => {
   });
 
   it("refuses a cross-site Origin", async () => {
-    const res = await call(atlasPost, ATLAS, {
+    const res = await call(pinStatusPost, PIN, {
       "content-type": "application/json",
       origin: "https://evil.example.com",
     });
@@ -83,34 +82,24 @@ describe("caller gate", () => {
   });
 
   it("refuses a text/plain body that a cross-site form could send", async () => {
-    const res = await call(atlasPost, ATLAS, {
+    const res = await call(pinStatusPost, PIN, {
       "content-type": "text/plain",
       origin: ORIGIN,
     });
     expect(res.status).toBe(415);
     expect(fetchMock).not.toHaveBeenCalled();
   });
-
-  it("refuses a grant cookie mint from another site", async () => {
-    const res = await call(
-      artifactPost,
-      { host: "192.168.1.50:8092", key: "k" },
-      { "content-type": "application/json", origin: "https://evil.example.com" },
-    );
-    expect(res.status).toBe(403);
-    expect(res.headers.get("set-cookie")).toBeNull();
-  });
 });
 
 describe("target gate", () => {
   it("refuses a public host", async () => {
-    const res = await call(atlasPost, { ...ATLAS, host: "8.8.8.8" });
+    const res = await call(pinStatusPost, { ...PIN, host: "8.8.8.8" });
     expect(res.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("refuses a private host on a port that is not the agent's", async () => {
-    const res = await call(atlasPost, { ...ATLAS, host: "172.18.0.2:3210" });
+    const res = await call(pinStatusPost, { ...PIN, host: "172.18.0.2:3210" });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("port_not_allowed");
     expect(fetchMock).not.toHaveBeenCalled();
@@ -118,67 +107,58 @@ describe("target gate", () => {
 
   it("refuses a .local name that does not resolve to a private address", async () => {
     lookup.mockResolvedValue({ address: "203.0.113.9", family: 4 });
-    const res = await call(atlasPost, { ...ATLAS, host: "drone.local" });
+    const res = await call(pinStatusPost, { ...PIN, host: "drone.local" });
     expect(res.status).toBe(502);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
 describe("path gate", () => {
-  it.each([
-    ["%2e%2e/%2e%2e/x"],
-    [".%2e/x"],
-    ["../x"],
-    ["./readiness"],
-    ["capture//start"],
-    ["capture/"],
-    ["readiness?x=1"],
-    [""],
-  ])("refuses atlas path %j", async (path) => {
-    const res = await call(atlasPost, { ...ATLAS, path });
-    expect(res.status).toBe(400);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("refuses an encoded traversal on the compute proxy", async () => {
-    const res = await call(computePost, {
-      host: "192.168.1.50",
-      path: "%2e%2e/%2e%2e/api/config",
-    });
-    expect(res.status).toBe(400);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("refuses an artifact path that leaves artifacts/", async () => {
-    const res = await artifactGet(
-      new NextRequest(
-        "http://localhost:4000/api/lan-pair/artifact?host=192.168.1.50:8092&path=artifacts/%252e%252e/x",
-      ),
+  function pluginGet(path: string): Promise<Response> {
+    const q = new URLSearchParams({ host: "192.168.1.50", path });
+    return pluginGetRoute(
+      new NextRequest(`http://localhost:4000/api/lan-pair/plugin?${q.toString()}`, {
+        headers: { host: "localhost:4000", "x-ados-key": "k" },
+      }),
     );
+  }
+
+  it.each([
+    ["/api/plugins/com.example.p/x/%2e%2e/%2e%2e/x"],
+    ["/api/plugins/com.example.p/x/.%2e/x"],
+    ["/api/plugins/com.example.p/x/../x"],
+    ["/api/plugins/com.example.p/x/./readiness"],
+    ["/api/plugins/com.example.p/x/capture//start"],
+    ["/api/plugins/com.example.p/x/capture/"],
+    ["/api/plugins/com.example.p/x/readiness?x=1"],
+    ["/api/config"],
+    [""],
+  ])("refuses plugin path %j", async (path) => {
+    const res = await pluginGet(path);
     expect(res.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("forwards a plain sub-path under the fixed prefix", async () => {
-    upstream('{"ready":true}', { status: 200 });
-    const res = await call(atlasPost, { ...ATLAS, path: "capture/start", method: "POST" });
+  it("forwards a plain plugin sub-path unchanged", async () => {
+    upstream('{"ready":true}', { status: 200, headers: { "content-type": "application/json" } });
+    const res = await pluginGet("/api/plugins/com.example.p/x/capture/start");
     expect(res.status).toBe(200);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("http://192.168.1.50:8080/api/atlas/capture/start");
+    expect(url).toBe("http://192.168.1.50:8080/api/plugins/com.example.p/x/capture/start");
     expect(init.redirect).toBe("manual");
-    expect((init.headers as Record<string, string>)["X-ADOS-Key"]).toBe("k");
+    expect(new Headers(init.headers).get("X-ADOS-Key")).toBe("k");
   });
 });
 
 describe("response", () => {
   it("passes a JSON body and status through with fixed JSON headers", async () => {
-    upstream('{"error":"capture service down"}', {
+    upstream('{"error":"pin service down"}', {
       status: 503,
       headers: { "content-type": "application/json" },
     });
-    const res = await call(atlasPost, ATLAS);
+    const res = await call(pinStatusPost, PIN);
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ error: "capture service down" });
+    expect(await res.json()).toEqual({ error: "pin service down" });
     expect(res.headers.get("content-type")).toBe("application/json");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-security-policy")).toBe("sandbox");
@@ -202,7 +182,7 @@ describe("response", () => {
       status: 404,
       headers: { "content-type": "text/html" },
     });
-    const res = await call(atlasPost, ATLAS);
+    const res = await call(pinStatusPost, PIN);
     expect(res.status).toBe(404);
     expect(res.headers.get("content-type")).toBe("application/json");
     expect(await res.text()).not.toContain("<html>");
@@ -210,7 +190,7 @@ describe("response", () => {
 
   it("does not follow an upstream redirect", async () => {
     upstream("", { status: 302, headers: { location: "http://10.0.0.1:2375/" } });
-    const res = await call(atlasPost, ATLAS);
+    const res = await call(pinStatusPost, PIN);
     expect(res.status).toBe(502);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

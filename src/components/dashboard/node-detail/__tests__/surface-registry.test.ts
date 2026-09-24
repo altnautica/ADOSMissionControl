@@ -27,8 +27,6 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: false,
-    isFeatureEnabled: () => false,
-    atlasCapturing: false,
     pluginAgentPages: [],
     ...over,
   };

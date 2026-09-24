@@ -5,18 +5,9 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
-import type { AgentProfile } from "@/stores/agent-capabilities-store";
-import { useComputeStore } from "@/stores/compute-store";
-import { getFreshness, useClockTick } from "@/lib/agent/freshness";
-import type { ComputeGpuInfo } from "@/stores/compute-store";
-import { ResourceBar } from "./SystemResourceGauges";
 
 interface ComputeMetricsCardProps {
   className?: string;
-  /** Node profile. "workstation" swaps the NPU/Tier (SBC) view for the GPU
-   * card — a workstation runs a GPU, not a tiered NPU. Absent / drone /
-   * ground-station keep the existing NPU + vision + models + cameras card. */
-  profile?: AgentProfile;
 }
 
 const RUNTIME_LABELS: Record<string, string> = {
@@ -53,8 +44,8 @@ function visionStateColor(
   }
 }
 
-/** The `atlas` i18n key for a vision engine state, or null for an unknown state
- * (rendered raw). */
+/** The `computeMetrics` i18n key for a vision engine state, or null for an
+ * unknown state (rendered raw). */
 function visionStateKey(state: string): string | null {
   switch (state) {
     case "off":
@@ -74,114 +65,14 @@ function visionStateKey(state: string): string | null {
   }
 }
 
-/** Whole-GB label for an MB figure, or "—" when absent. */
-function gbLabel(mb: number | null): string {
-  if (mb == null || !Number.isFinite(mb)) return "—";
-  return `${Math.round(mb / 1024)} GB`;
-}
-
-/**
- * Workstation GPU card: identity (name / cores / unified memory / Metal) plus a
- * LIVE utilisation bar from the compute-status poll. Reuses {@link ResourceBar}
- * so the bar reads on the same scale as the CPU/memory gauges. Renders a calm
- * "awaiting GPU telemetry" line before the first poll, and is truthful when a
- * field is absent (no fabricated 0% — the bar is dropped when util is null).
- */
-function WorkstationGpuCard({
-  gpu,
-  className,
-}: {
-  gpu: ComputeGpuInfo | null;
-  className?: string;
-}) {
-  const t = useTranslations("atlas");
-  const util = gpu?.utilizationPct ?? null;
-  // Age the GPU reading on its own poll stamp, on the same thresholds and
-  // 1 Hz clock the sparklines use, so a silent compute poll dims the bar.
-  const gpuUpdatedAt = useComputeStore((s) => s.gpuUpdatedAt);
-  useClockTick();
-  const gpuFreshness = getFreshness(gpuUpdatedAt);
-  const gpuStale = gpuFreshness.state === "stale" || gpuFreshness.state === "offline";
-  return (
-    <div className={cn("border border-border-default rounded-lg p-4 space-y-3", className)}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Cpu className="w-3.5 h-3.5 text-text-tertiary" />
-          <span className="text-xs font-medium text-text-secondary">{t("gpu")}</span>
-        </div>
-        {gpu?.metal && (
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent-primary/15 text-accent-primary">
-            {t("metal")}
-          </span>
-        )}
-      </div>
-
-      {gpu === null ? (
-        <div className="text-[10px] text-text-tertiary text-center py-3">
-          {t("gpuAwaiting")}
-        </div>
-      ) : (
-        <>
-          {/* Identity */}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-mono text-text-primary truncate">
-              {gpu.name ?? "—"}
-            </span>
-            {gpu.cores != null && (
-              <span className="text-[10px] font-mono text-text-tertiary flex-shrink-0">
-                {t("gpuCores", { cores: gpu.cores })}
-              </span>
-            )}
-          </div>
-
-          {/* Live utilisation — truthful: only when the node reports it. */}
-          {util != null ? (
-            <ResourceBar
-              icon={Activity}
-              label={t("gpu")}
-              percent={util}
-              detail={t("utilization", { pct: util.toFixed(1) })}
-              stale={gpuStale}
-              staleLabel={gpuFreshness.label}
-            />
-          ) : (
-            <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary">
-              <Activity size={10} className="flex-shrink-0" />
-              <span>{t("gpuAwaiting")}</span>
-            </div>
-          )}
-
-          {gpu.unifiedMemoryMb != null && (
-            <div className="flex items-center justify-between border-t border-border-default pt-2">
-              <span className="text-[10px] text-text-secondary">
-                {t("unifiedMemory")}
-              </span>
-              <span className="text-[10px] font-mono text-text-primary">
-                {gbLabel(gpu.unifiedMemoryMb)}
-              </span>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardProps) {
-  const t = useTranslations("atlas");
-  const gpu = useComputeStore((s) => s.gpu);
+export function ComputeMetricsCard({ className }: ComputeMetricsCardProps) {
+  const t = useTranslations("computeMetrics");
   const tier = useAgentCapabilitiesStore((s) => s.tier);
   const cameras = useAgentCapabilitiesStore((s) => s.cameras);
   const compute = useAgentCapabilitiesStore((s) => s.compute);
   const vision = useAgentCapabilitiesStore((s) => s.vision);
   const models = useAgentCapabilitiesStore((s) => s.models);
   const loaded = useAgentCapabilitiesStore((s) => s.loaded);
-
-  // A workstation runs a GPU, not a tiered NPU — show the GPU card and skip the
-  // NPU/Tier/vision/models view entirely.
-  if (profile === "workstation") {
-    return <WorkstationGpuCard gpu={gpu} className={className} />;
-  }
 
   if (!loaded) {
     return (

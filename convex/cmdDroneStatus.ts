@@ -248,33 +248,10 @@ export const pushStatusArgs = {
     // fields explicitly, so each is also listed in http.ts's statusPayload.
     perceptionTier: v.optional(v.string()),
     perceptionOffloadTarget: v.optional(v.string()),
-    // Compute-node cluster + job-queue telemetry from a compute-profile agent.
-    // All optional so the drone/GS heartbeat round-trips cleanly; persisted
-    // verbatim via the args spread. "computeActiveSessions" is the count of live
-    // streaming perception-offload sessions the node serves. This OSS-twin
-    // /agent/status route PICKS fields explicitly, so each is also listed in
-    // http.ts's statusPayload.
-    computeRole: v.optional(v.string()),
-    computeClusterMasterId: v.optional(v.string()),
-    computeQueueDepth: v.optional(v.number()),
-    computeActiveJobs: v.optional(v.number()),
-    computeActiveSessions: v.optional(v.number()),
-    computeWorkersIdle: v.optional(v.number()),
-    computeClusterAggregateWorkersIdle: v.optional(v.number()),
-    computeClusterSlaves: v.optional(
-      v.array(
-        v.object({
-          nodeId: v.string(),
-          accelerators: v.array(v.string()),
-          workersIdle: v.union(v.number(), v.null()),
-          queueDepth: v.union(v.number(), v.null()),
-        }),
-      ),
-    ),
     // Generic plugin-state channel: { "<plugin id>": <opaque slice> }. A plugin
-    // surfaces its own telemetry (e.g. Atlas under pluginState.atlas) without
-    // core columns. The OSS-twin /agent/status route picks this one field; the
-    // slice is opaque (the plugin owns it).
+    // surfaces its own telemetry under its plugin id without core columns. The
+    // OSS-twin /agent/status route picks this one field; the slice is opaque
+    // (the plugin owns it).
     pluginState: v.optional(v.record(v.string(), v.any())),
     setupState: v.optional(v.string()),
     profileSource: v.optional(v.string()),

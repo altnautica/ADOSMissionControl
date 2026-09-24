@@ -289,10 +289,6 @@ describe("wipePairStateForOwnedDevice", () => {
       { deviceId: "dev-1", userId: "user-1", command: "reboot", status: "completed", createdAt: NOW, completedAt: NOW },
       { deviceId: "dev-2", userId: "user-1", command: "reboot", status: "pending", createdAt: NOW },
     ]);
-    ctx.db.seed("cmd_atlasJobs", [
-      { deviceId: "dev-1", computeNodeId: "ws-1", kind: "splat", status: "done" },
-      { deviceId: "dev-2", computeNodeId: "ws-1", kind: "splat", status: "done" },
-    ]);
     ctx.db.seed("plugin_records", [
       { userId: "user-1", pluginId: "com.example.a", deviceId: "dev-1", collection: "jobs", key: "j1" },
       { userId: "user-1", pluginId: "com.example.a", deviceId: "dev-2", collection: "jobs", key: "j2" },
@@ -318,7 +314,6 @@ describe("wipePairStateForOwnedDevice", () => {
       removedDrones: 1,
       removedStatus: 1,
       removedCommands: 2,
-      removedAtlasJobs: 1,
       removedPluginRecords: 1,
       removedLogWindows: 1,
       truncated: false,
@@ -328,7 +323,6 @@ describe("wipePairStateForOwnedDevice", () => {
     expect(ctx.db.rows("cmd_droneStatus")).toHaveLength(0);
     // Another device's rows are untouched.
     expect(ctx.db.rows("cmd_droneCommands").map((r) => r.deviceId)).toEqual(["dev-2"]);
-    expect(ctx.db.rows("cmd_atlasJobs").map((r) => r.deviceId)).toEqual(["dev-2"]);
     // The wiped node's plugin records go, and the plugin's live count follows.
     expect(ctx.db.rows("plugin_records").map((r) => r.deviceId)).toEqual(["dev-2"]);
     expect(ctx.db.rows("plugin_record_counts").map((r) => r.count)).toEqual([1]);

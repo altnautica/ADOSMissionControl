@@ -68,7 +68,7 @@ function demoServices(agent: PairedDrone): ServiceInfo[] {
     agent.profile === "workstation"
       ? [
           ["ados-control", "running"],
-          ["ados-compute", "running"],
+          ["ados-plugin-host", "running"],
         ]
       : agent.profile === "ground-station"
         ? [
@@ -115,13 +115,13 @@ function demoResources(): SystemResources {
 function demoLogs(agent: PairedDrone, now: number): LogEntry[] {
   const svc =
     agent.profile === "workstation"
-      ? "ados-compute"
+      ? "ados-plugin-host"
       : agent.profile === "ground-station"
         ? "ados-wfb-receiver"
         : "ados-mavlink";
   const line =
     agent.profile === "workstation"
-      ? "reconstruct job-recon-04 at 62% (30000 steps)"
+      ? "plugin host ready, 0 extensions running"
       : agent.profile === "ground-station"
         ? "RX link locked -58 dBm ch149, relay mesh 2 peers"
         : "MAVLink heartbeat healthy, 3D fix 16 sats";

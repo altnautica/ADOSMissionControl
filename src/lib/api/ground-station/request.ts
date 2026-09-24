@@ -2,7 +2,7 @@
 //
 // Every request carries a DEADLINE. `gsRequest` is the shared helper behind
 // ~60 call sites across fleet / mesh / network / peripherals / pic / status /
-// ui / wfb / atlas — including PIC claim and release, mesh role transitions
+// ui / wfb — including PIC claim and release, mesh role transitions
 // and WFB pair/unpair — and it called `fetch` with no `signal` at all. On a
 // half-open socket (the peer vanished without an RST) each one awaited the
 // browser default, ~300 s in Chromium, so a handful of stalled requests

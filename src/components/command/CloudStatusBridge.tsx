@@ -27,8 +27,6 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { useVideoStore } from "@/stores/video-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
-import { useComputeStore } from "@/stores/compute-store";
-import { useAtlasStore } from "@/stores/atlas-store";
 import { usePluginCloudStateStore } from "@/stores/plugin-cloud-state-store";
 import { cmdDroneStatusApi, cmdDroneCommandsApi } from "@/lib/community-api-drones";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
@@ -45,8 +43,6 @@ import type {
   PeripheralInfo,
 } from "@/lib/agent/types";
 import {
-  buildAtlasPatch,
-  buildComputePatch,
   buildGroundStationPatch,
   buildHeartbeatExtras,
   buildSystemUpdate,
@@ -71,16 +67,6 @@ export function CloudStatusBridge() {
 
   const { isAuthenticated } = useConvexAuth();
   const enqueueCommand = useMutation(cmdDroneCommandsApi.enqueueCommand);
-
-  // Reset the single-slice focused-node stores on a device switch. Their
-  // mappers only write when the new device's heartbeat carries their fields
-  // (a non-compute / non-capturing node sends none), so without this the
-  // previous device's compute cluster / Atlas capture stats would bleed under
-  // the newly-focused node. The next matching heartbeat repopulates the slice.
-  useEffect(() => {
-    useAtlasStore.getState().clear();
-    useComputeStore.getState().clear();
-  }, [cloudDeviceId]);
 
   // Heartbeat monitoring: initial timeout (15s) + staleness detection (10s interval)
   useEffect(() => {
@@ -247,7 +233,7 @@ export function CloudStatusBridge() {
       );
     }
 
-    // Ground-station, compute and atlas fan-out. Only writes when the
+    // Ground-station fan-out. Only writes when the
     // corresponding heartbeat field is present — LAN polls keep their
     // authority on every other field — and only from a fresh row: a stale
     // row's values would otherwise land as current readings.
@@ -261,19 +247,6 @@ export function CloudStatusBridge() {
     }, (cloudRecord.updatedAt as number) ?? 0);
     if (isDataFresh && gsPatch) {
       useGroundStationStore.setState(gsPatch);
-    }
-
-    // Compute fan-out. Mirrors the ground-station fan-out: writes only when the
-    // heartbeat carries compute fields, so a future LAN poll keeps authority on
-    // every other field. Absent on a drone / ground-station heartbeat.
-    const computeState = useComputeStore.getState();
-    const computePatch = buildComputePatch(
-      cloudRecord,
-      { cluster: computeState.cluster },
-      (cloudRecord.updatedAt as number) ?? 0,
-    );
-    if (isDataFresh && computePatch) {
-      useComputeStore.getState().setCluster(computePatch.cluster);
     }
 
     // Generic plugin-state fan-out: ferry each plugin's opaque slice
@@ -293,19 +266,6 @@ export function CloudStatusBridge() {
           pluginState as Record<string, Record<string, unknown>>,
           typeof cloudRecord.updatedAt === "number" ? cloudRecord.updatedAt : Date.now(),
         );
-    }
-
-    // Atlas fan-out (the Atlas plugin reads its own pluginState.atlas slice).
-    // Writes only when the heartbeat carries the atlas slice, so a non-capturing
-    // drone's heartbeat leaves the live state untouched.
-    const atlasState = useAtlasStore.getState();
-    const atlasPatch = buildAtlasPatch(
-      cloudRecord,
-      { live: atlasState.live },
-      (cloudRecord.updatedAt as number) ?? 0,
-    );
-    if (isDataFresh && atlasPatch) {
-      useAtlasStore.getState().setLive(atlasPatch.live);
     }
 
     // Map video status from cloud heartbeat to video store

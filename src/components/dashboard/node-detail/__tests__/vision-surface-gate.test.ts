@@ -21,8 +21,6 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: true,
-    isFeatureEnabled: () => false,
-    atlasCapturing: false,
     pluginAgentPages: [],
     ...over,
   };
@@ -98,17 +96,5 @@ describe("Perception section extra gates", () => {
         }),
       ),
     ).toBe(false);
-  });
-
-  it("World Model needs the feature enabled; Live World also needs capturing", () => {
-    const base = { agentDeviceId: "dev-1", showLockedTabs: false } as const;
-    expect(shows("world-model", ctx({ ...base, isFeatureEnabled: () => false }))).toBe(false);
-    expect(shows("world-model", ctx({ ...base, isFeatureEnabled: () => true }))).toBe(true);
-    expect(
-      shows("live-world", ctx({ ...base, isFeatureEnabled: () => true, atlasCapturing: false })),
-    ).toBe(false);
-    expect(
-      shows("live-world", ctx({ ...base, isFeatureEnabled: () => true, atlasCapturing: true })),
-    ).toBe(true);
   });
 });

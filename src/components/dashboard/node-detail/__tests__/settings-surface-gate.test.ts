@@ -24,8 +24,6 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     role: "drone" as SurfaceContext["role"],
     capabilitiesKnown: true,
     showLockedTabs: true,
-    isFeatureEnabled: () => false,
-    atlasCapturing: false,
     pluginAgentPages: [],
     ...over,
   };
@@ -82,7 +80,7 @@ describe("Configuration pages in the merged Agent sidebar", () => {
       nodeDeviceId: c.agentDeviceId,
       relayReach: c.relayReach,
       profile: c.drone.profile ?? "drone",
-      config: { swarm: {}, atlas: {} },
+      config: { swarm: {} },
       readOnly: false,
       setValue: async () => {},
     };

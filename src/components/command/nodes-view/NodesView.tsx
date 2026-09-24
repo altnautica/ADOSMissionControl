@@ -53,7 +53,6 @@ const COLUMNS = [
   "columnBattery",
   "columnMode",
   "columnRelay",
-  "columnFeatures",
   "columnLastSeen",
   "columnActions",
 ] as const;

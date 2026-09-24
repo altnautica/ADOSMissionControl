@@ -30,7 +30,6 @@ import { LinkCell } from "./LinkCell";
 import { BatteryCell } from "./StateCells";
 import { FlightModeCell } from "./FlightModeCell";
 import { RelayModeCell } from "./RelayModeCell";
-import { FeaturesCell } from "./FeaturesCell";
 import { NodeActionsMenu } from "./NodeActionsMenu";
 import { useNodeSkills } from "./use-node-skills";
 import { fcReading, readingFreshness } from "@/lib/nodes/fc-reading";
@@ -114,9 +113,6 @@ export function NodeBoardRow({
       </td>
       <td className={CELL}>
         <RelayModeCell node={node} reach={reach} />
-      </td>
-      <td className={CELL}>
-        <FeaturesCell node={node} />
       </td>
       <td className={CELL}>
         <span className="flex items-center gap-1.5 whitespace-nowrap">

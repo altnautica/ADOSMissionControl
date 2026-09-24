@@ -6,8 +6,8 @@
  * control, instead of two adjacent navigation rows whose labels differ by a
  * suffix.
  *
- * Three subsystems used to present as six sidebar rows — Link / Radio,
- * Perception / Perception setup, World Model / World model setup — where the
+ * Subsystems used to present as paired sidebar rows — Link / Radio,
+ * Perception / Perception setup — where the
  * registry's own comments admitted the pair "would otherwise read as the same
  * thing". The disambiguating word was carrying the entire information
  * architecture. One row per subsystem, with the live view and its setup as

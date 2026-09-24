@@ -56,7 +56,7 @@ export const usePluginCloudStateStore = create<PluginCloudStateStore>((set) => (
 
 /**
  * Selector: one plugin's cloud slice for a device, or undefined.
- * Usage: `usePluginCloudStateStore(selectPluginCloudSlice(deviceId, "atlas"))`.
+ * Usage: `usePluginCloudStateStore(selectPluginCloudSlice(deviceId, "follow-me"))`.
  */
 export function selectPluginCloudSlice(
   deviceId: string | null | undefined,

@@ -26,11 +26,6 @@ interface AgentSystemState {
   logs: LogEntry[];
   cpuHistory: number[];
   memoryHistory: number[];
-  /** Rolling GPU-utilisation ring for the focused workstation/compute node,
-   * appended on each compute-status poll. Mirrors `cpuHistory` so the GPU
-   * sparkline reads the same store + freshness model as CPU/memory. Empty on
-   * any node that does not report a GPU. */
-  gpuHistory: number[];
   processCpuPercent: number | null;
   processMemoryMb: number | null;
   /** Services whose config file failed to parse on the agent (it ran on
@@ -55,9 +50,6 @@ interface AgentSystemActions {
   /** @see fetchStatus */
   fetchResources: () => Promise<boolean>;
   fetchLogs: (level?: string) => Promise<void>;
-  /** Append one GPU-utilisation sample to `gpuHistory` (capped, ring-buffered).
-   * Non-finite values are ignored. Fed by the compute-status poll. */
-  pushGpuUtilization: (pct: number) => void;
   /** Restart one agent unit. Resolves with the agent's confirmation, or null
    * when the request was queued over the cloud relay (its outcome arrives as
    * a command result). Rejects with the agent's reason on a failed, refused
@@ -79,7 +71,6 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
   logs: [],
   cpuHistory: [],
   memoryHistory: [],
-  gpuHistory: [],
   processCpuPercent: null,
   processMemoryMb: null,
   configErrors: [],
@@ -201,20 +192,6 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     } catch { /* silent — logs are best-effort */ }
   },
 
-  pushGpuUtilization(pct: number) {
-    // Same bounded-append helper as cpuHistory / memoryHistory: one path for
-    // all three series so a non-finite reading is skipped rather than charted
-    // as a dip, and the cap cannot drift between them.
-    set((state) => {
-      const gpuHistory = appendHistorySample(
-        state.gpuHistory,
-        pct,
-        MAX_CPU_HISTORY,
-      );
-      return gpuHistory === state.gpuHistory ? state : { gpuHistory };
-    });
-  },
-
   async restartService(name: string) {
     const link = agentConnectionLink();
     if (!link) throw new Error("Agent not connected");
@@ -266,7 +243,6 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
       logs: [],
       cpuHistory: [],
       memoryHistory: [],
-      gpuHistory: [],
       processCpuPercent: null,
       processMemoryMb: null,
       configErrors: [],

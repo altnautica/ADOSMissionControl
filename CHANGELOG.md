@@ -4,6 +4,36 @@ All notable changes to ADOS Mission Control are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project follows [Semantic Versioning](https://semver.org/).
 
+## [0.59.0] - 2026-09-24
+
+The World Model, Live World, Atlas relay and the workstation compute pages now
+ship in the World Engine extension (`com.altnautica.world-engine`). Mission
+Control keeps the generic mechanisms that host it: inline first-party modules,
+Agent sidebar pages, node surfaces and plugin cloud records.
+
+### Removed
+
+- The World Model and Live World Agent pages, the World model setup page, the
+  ground-station Atlas relay surface, and the workstation Compute tab with its
+  jobs, viewer and drone-access panes.
+- The per-node first-party feature toggle and the fleet board's Features
+  column. Installing the extension replaces the opt-in.
+- The offload and serving controls on the Perception setup page and the
+  offload workstation picker on the Perception tier card. The detector model
+  picker stays, and the tier card still reports the active offload target.
+- The workstation GPU card, GPU sparkline, cluster card and cluster status
+  line. None of these has a core data source any more.
+- The `/api/lan-pair/{atlas,compute,artifact,workstation-credential}` proxy
+  routes. The LAN proxy now reaches only the agent port 8080; extensions use
+  `/api/lan-pair/plugin`.
+- The `@mkkellogg/gaussian-splats-3d` and `@rerun-io/web-viewer` dependencies.
+
+### Changed
+
+- A workstation or compute node opens on a host Overview (system metrics,
+  services, access), then Logs and the Agent page. An extension's node
+  surfaces join the band they declare.
+
 ## [0.58.0] - 2026-09-08
 
 This release covers everything since 0.57.3, about six weeks of work. Two

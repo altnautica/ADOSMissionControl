@@ -847,7 +847,6 @@ export const wipePairStateForOwnedDevice = mutation({
     removedDrones: number;
     removedStatus: number;
     removedCommands: number;
-    removedAtlasJobs: number;
     removedPluginRecords: number;
     removedLogWindows: number;
     truncated: boolean;
@@ -941,8 +940,8 @@ const WIPE_BATCH = 256;
 
 /**
  * Wipe every row keyed to a device: pairing requests, the drone row, its
- * status snapshot, its queued/settled commands, its Atlas jobs, the plugin
- * records about it and its exported log windows (blobs included).
+ * status snapshot, its queued/settled commands, the plugin records about it
+ * and its exported log windows (blobs included).
  *
  * Used by admin recovery AND by `cmdDrones.unpairDrone`. Unpairing used to
  * delete the `cmd_drones` row alone, which left the status row — last LAN IP,
@@ -962,7 +961,6 @@ export const wipeByDeviceIds = internalMutation({
     let removedDrones = 0;
     let removedStatus = 0;
     let removedCommands = 0;
-    let removedAtlasJobs = 0;
     let removedPluginRecords = 0;
     let removedLogWindows = 0;
     let truncated = false;
@@ -1006,15 +1004,6 @@ export const wipeByDeviceIds = internalMutation({
         await ctx.db.delete(c._id);
         removedCommands++;
       }
-      const atlasJobs = await ctx.db
-        .query("cmd_atlasJobs")
-        .withIndex("by_device", (q) => q.eq("deviceId", deviceId))
-        .take(WIPE_BATCH + 1);
-      if (atlasJobs.length > WIPE_BATCH) truncated = true;
-      for (const j of atlasJobs.slice(0, WIPE_BATCH)) {
-        await ctx.db.delete(j._id);
-        removedAtlasJobs++;
-      }
       // Records a plugin kept about this node, under any account: a re-paired
       // node must not surface its previous operator's plugin history.
       // Batched smaller than WIPE_BATCH because a record body runs to 64 KiB.
@@ -1040,7 +1029,6 @@ export const wipeByDeviceIds = internalMutation({
       removedDrones,
       removedStatus,
       removedCommands,
-      removedAtlasJobs,
       removedPluginRecords,
       removedLogWindows,
       truncated,
