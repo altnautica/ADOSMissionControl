@@ -55,16 +55,4 @@ describe("first-party registry demo fixture", () => {
       (summary.contributesTools ?? []).some((tool) => tool.half === "agent"),
     ).toBe(true);
   });
-
-  it("the battery panel is a GCS-only plugin", () => {
-    const entry = DEMO_REGISTRY_ENTRIES.find(
-      (e) => e.row.plugin_id === "com.altnautica.battery-health-panel",
-    );
-    const summary = toInstallSummary(
-      parseManifestYaml(entry!.manifestYaml),
-      entry!.archiveSha256,
-      { signatureState: "verified", signerId: entry!.signerKeyId },
-    );
-    expect(summary.halves).toEqual(["gcs"]);
-  });
 });

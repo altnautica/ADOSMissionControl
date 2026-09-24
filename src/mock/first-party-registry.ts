@@ -312,37 +312,6 @@ gcs:
         ui: { widget: boolean, label: "settings.gimbalPoint", order: 30 }
 `;
 
-const BATTERY_MANIFEST = `schema_version: 2
-id: com.altnautica.battery-health-panel
-name: "ADOS Battery Health Panel"
-version: "1.2.0"
-icon: "battery"
-description: "Cell-level battery diagnostics, predictive time-to-min, and anomaly alerts."
-homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/battery-health-panel"
-author: "Altnautica"
-license: "GPL-3.0-or-later"
-risk: low
-gcs:
-  permissions:
-    - id: ui.slot.node-detail-tab
-    - id: ui.slot.notification-channel
-    - id: telemetry.subscribe.battery
-    - id: telemetry.subscribe.mavlink
-    - id: recording.write
-  contributes:
-    tabs:
-      - id: battery-health-tab
-        slot: node.detail.tab
-        profile: ["drone"]
-        title: "Battery Health"
-        icon: "battery"
-        order: 30
-    notifications:
-      - id: battery-anomaly
-        title: "Battery anomaly"
-        severity: warning
-`;
-
 const GIMBAL_MANIFEST = `schema_version: 3
 id: com.altnautica.mavlink-gimbal-v2
 name: "ADOS MAVLink Gimbal v2 Controller"
@@ -692,25 +661,6 @@ export const DEMO_REGISTRY_ENTRIES: ReadonlyArray<DemoRegistryEntry> = [
       "a733",
       "sun60iw2",
     ],
-  },
-  {
-    row: row({
-      plugin_id: "com.altnautica.battery-health-panel",
-      name: "ADOS Battery Health Panel",
-      description:
-        "Cell-level battery diagnostics, predictive time-to-min, and anomaly alerts.",
-      category: "telemetry",
-      latest_version: "1.2.0",
-      icon: "battery",
-    }),
-    manifestYaml: BATTERY_MANIFEST,
-    downloadUrl:
-      "https://github.com/altnautica/ADOSExtensions/releases/download/battery-health-panel-v1.2.0/com.altnautica.battery-health-panel-1.2.0.signed.adosplug",
-    archiveSha256:
-      "02bf5e3b530e6e1b7c8516a83bd8b5c24de9c82b18baa6c3a1fd7095b6a93c83",
-    archiveSizeBytes: 10485,
-    signerKeyId: "altnautica-2026-A",
-    supportedBoards: ["*"],
   },
   {
     row: row({

@@ -102,7 +102,6 @@ const FIRST_PARTY_CHIPS: ReadonlyArray<[string, string[]]> = [
   ["siyi-pod", ["camera"]],
   ["follow-me", ["camera"]],
   ["mavlink-gimbal-v2", []],
-  ["battery-health-panel", []],
 ];
 
 describe("permissionsToChips on first-party manifests", () => {

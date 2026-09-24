@@ -109,7 +109,6 @@ const CATEGORY_STYLE: Record<
 const PLUGIN_ICON_NAME: Record<string, string> = {
   "com.altnautica.follow-me": "follow",
   "com.altnautica.vision-nav": "navigation",
-  "com.altnautica.battery-health-panel": "battery",
   "com.altnautica.thermal-flir-lepton-usb": "thermal",
   "com.altnautica.mavlink-gimbal-v2": "gimbal",
   "com.altnautica.siyi-pod": "camera",

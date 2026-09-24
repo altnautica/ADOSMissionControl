@@ -251,13 +251,13 @@ describe("useLocalAgentPlugins", () => {
         // a drone-bound install must NOT leak into the fleet surface
         { pluginId: "com.altnautica.follow-me", deviceId: "drone-1" },
         {
-          pluginId: "com.altnautica.battery-health",
+          pluginId: "com.example.sample-panel",
           deviceId: null,
           version: "1.2.0",
-          name: "Battery Health Panel",
+          name: "Sample Panel",
           grantedCaps: ["ui.slot.settings-section", "telemetry.read"],
           gcsContributes: [
-            { slot: "settings.section", panelId: "battery-health" },
+            { slot: "settings.section", panelId: "sample-panel" },
           ],
           gcsParameters: [{ key: "warn_v" }],
           bundle: {
@@ -271,12 +271,12 @@ describe("useLocalAgentPlugins", () => {
       const { result } = renderHook(() => useLocalAgentPlugins(null));
       expect(result.current).toHaveLength(1);
       const row = result.current![0];
-      expect(row.installId).toBe("fleet::com.altnautica.battery-health");
-      expect(row.pluginId).toBe("com.altnautica.battery-health");
+      expect(row.installId).toBe("fleet::com.example.sample-panel");
+      expect(row.pluginId).toBe("com.example.sample-panel");
       expect(row.status).toBe("enabled");
       expect(row.entrypoint).toBe("gcs/plugin.bundle.js");
       expect(row.gcsContributes).toEqual([
-        { slot: "settings.section", panelId: "battery-health" },
+        { slot: "settings.section", panelId: "sample-panel" },
       ]);
       expect(row.gcsParameters).toEqual([{ key: "warn_v" }]);
       expect(row.bundle).toEqual({

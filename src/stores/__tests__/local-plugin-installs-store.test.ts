@@ -32,7 +32,7 @@ describe("local-plugin-installs-store", () => {
     s.record(mk());
     s.record(
       mk({
-        pluginId: "com.altnautica.battery-health-panel",
+        pluginId: "com.example.sample-panel",
         deviceId: null,
         halves: ["gcs"],
         bundle: {

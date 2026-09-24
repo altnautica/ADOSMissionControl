@@ -53,7 +53,7 @@ export const NAV_SECTIONS: NavSectionSpec[] = [
     // anything the word predicts.
     key: "node",
     labelKey: "dronePanel.agentGroups.node",
-    items: ["system", "profile"],
+    items: ["system", "battery", "battery-config", "profile"],
   },
   {
     // Radio physics. On a drone, `radio-config` merges into `radio` as its
@@ -122,6 +122,7 @@ export const MERGED_SUBPAGE_HOSTS: Record<string, string> = {
   video: "cameras",
   "vision-perception": "vision",
   "world-model-config": "world-model",
+  "battery-config": "battery",
 };
 
 /** Which pane of a (possibly merged) sub-page a requested id names. */

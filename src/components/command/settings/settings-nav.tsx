@@ -17,6 +17,7 @@
 
 import type { ReactNode } from "react";
 import {
+  BatteryMedium,
   Boxes,
   CircleUser,
   Cloud,
@@ -57,6 +58,7 @@ import { DiscoverySection } from "./DiscoverySection";
 import { SelfHealSection } from "./SelfHealSection";
 import { MavlinkRoutingSection } from "./MavlinkRoutingSection";
 import { SecuritySection } from "./SecuritySection";
+import { BatterySection } from "./BatterySection";
 
 /** Everything a settings page (or its availability gate) needs.
  *
@@ -253,6 +255,29 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
       (configMayAdvertise(ctx.config, "swarm") || isDemoMode()),
     render: (ctx) => (
       <SwarmSection
+        config={ctx.config}
+        readOnly={ctx.readOnly}
+        setValue={ctx.setValue}
+      />
+    ),
+  },
+  {
+    // `battery-config`, not `battery`: the live Battery page owns that id in
+    // `agent-nav-items.tsx`. This page is the threshold setup behind it and
+    // renders as its Setup segment.
+    id: "battery-config",
+    labelKey: "nodeSettings.battery.title",
+    mergeInto: "battery",
+    icon: <BatteryMedium size={14} />,
+    readsConfig: true,
+    // The battery engine reads the flight controller's battery reports, so
+    // only a drone runs it. Drone profile AND the node advertising the block
+    // (or demo), the same gate the swarm page uses.
+    when: (ctx) =>
+      isDroneProfile(ctx) &&
+      (configMayAdvertise(ctx.config, "battery") || isDemoMode()),
+    render: (ctx) => (
+      <BatterySection
         config={ctx.config}
         readOnly={ctx.readOnly}
         setValue={ctx.setValue}

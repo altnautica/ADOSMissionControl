@@ -61,7 +61,7 @@ function settingsCtxFor(profile: NodeProfile): SettingsPageContext {
     nodeDeviceId: "d1",
     relayReach: null,
     profile,
-    config: { swarm: {}, atlas: {}, video: { wfb: {} } },
+    config: { swarm: {}, atlas: {}, battery: {}, video: { wfb: {} } },
     readOnly: false,
     setValue: async () => {},
   };
@@ -108,11 +108,11 @@ describe("resolveAgentNav", () => {
       "system",
       "software",
     ]);
-    // One row per subsystem: `radio-config`, `video`, `vision-perception` and
-    // `world-model-config` are the Setup segments of the live page above
-    // them, not rows of their own.
+    // One row per subsystem: `battery-config`, `radio-config`, `video`,
+    // `vision-perception` and `world-model-config` are the Setup segments of
+    // the live page above them, not rows of their own.
     expect(sections.map((s) => s.items.map((i) => i.id))).toEqual([
-      ["system", "profile"],
+      ["system", "battery", "profile"],
       ["radio"],
       // No cellular page: only a ground station runs a modem manager.
       ["network", "wifi", "mac-pin", "discovery", "mavlink"],
@@ -128,6 +128,7 @@ describe("resolveAgentNav", () => {
     const byId = (id: string) =>
       nav("drone").entries.find((e) => e.id === id);
     for (const [host, setupKey] of [
+      ["battery", "nodeSettings.battery.title"],
       ["radio", "nodeSettings.radio.title"],
       ["cameras", "nodeSettings.video.title"],
       ["vision", "nodeSettings.perception.title"],
@@ -138,6 +139,7 @@ describe("resolveAgentNav", () => {
     }
     // ...and the retired halves are not rows.
     for (const retired of [
+      "battery-config",
       "radio-config",
       "video",
       "vision-perception",

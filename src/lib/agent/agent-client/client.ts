@@ -30,6 +30,7 @@ import * as system from "./system";
 import * as setup from "./setup";
 import * as extras from "./extras";
 import * as camera from "./camera";
+import * as battery from "./battery";
 import { LoggingService } from "./logging";
 import type { RequestContext } from "./transport";
 import { agentSupports, fetchVersionInfo } from "./version-cache";
@@ -42,6 +43,7 @@ import type {
   SigningEnrollResult,
 } from "./types";
 import type { CameraLegInput, RosterCamera } from "../feature-types";
+import type { BatteryHealth } from "../schemas/battery";
 
 export class AgentClient {
   private ctx: RequestContext;
@@ -162,6 +164,11 @@ export class AgentClient {
   /** Measure control-plane RTT to the agent (`GET /api/ping`). */
   ping(): Promise<{ rttMs: number; pong: number } | null> {
     return system.pingAgent(this.ctx);
+  }
+
+  /** Per-pack battery health, prediction and anomalies (`GET /api/v1/battery`). */
+  getBatteryHealth(): Promise<BatteryHealth> {
+    return battery.getBatteryHealth(this.ctx);
   }
 
   // ── Setup wizard + LCD display ─────────────────────────────────

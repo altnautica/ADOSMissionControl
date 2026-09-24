@@ -39,6 +39,7 @@ import { MOCK_PEERS } from "./fleet";
 import { getMockCapabilities } from "./capabilities";
 import { getMockCameraRoster } from "./cameras";
 import { MOCK_LOGS } from "./logs";
+import { buildMockBatteryHealth } from "./battery";
 import { MockLoggingService } from "./logging";
 import {
   buildMockHardwareCheck,
@@ -194,6 +195,11 @@ export class MockAgentClient extends MockAgentClientExtras {
   async ping() {
     await delay(jitter(12, 6));
     return { rttMs: Math.round(jitter(14, 6)), pong: Date.now() };
+  }
+
+  async getBatteryHealth() {
+    await delay(40);
+    return buildMockBatteryHealth(Date.now());
   }
 
   async getServices(): Promise<ServiceInfo[]> {

@@ -1352,7 +1352,8 @@
     },
     "forgetCloudUnavailable": "The cloud is unreachable, so the node was not removed: its cloud pairing would bring it back. Try again when the cloud is reachable.",
     "forgetCloudFailed": "The node was not removed: its cloud pairing could not be deleted ({error}).",
-    "nodeRemoved": "Node \"{name}\" removed"
+    "nodeRemoved": "Node \"{name}\" removed",
+    "battery": "Battery"
   },
   "vision": {
     "title": "Vision Engine",
@@ -2058,7 +2059,28 @@
     "segmentLive": "Langsung",
     "segmentSetup": "Penyiapan",
     "notReported": "not reported",
-    "staleSnapshot": "Showing the last successful read, from {age}."
+    "staleSnapshot": "Showing the last successful read, from {age}.",
+    "battery": {
+      "title": "Battery setup",
+      "blurb": "The limits the node's battery engine checks every flight-controller battery report against. A crossing raises an anomaly on the Live view, in the node's event log, and as an alert here.",
+      "orderNote": "Critical cell must stay below Low cell. The node rejects a pair that crosses and keeps the previous values.",
+      "enabledLabel": "Battery health monitoring",
+      "enabledHint": "Evaluate the cell, sag, temperature and time-to-reserve rules on the node. The flight controller's own battery failsafes are not affected either way.",
+      "lowCellMvLabel": "Low cell (mV)",
+      "lowCellMvHint": "A cell below this raises a warning. 2500 to 4200 mV, above Critical cell.",
+      "criticalCellMvLabel": "Critical cell (mV)",
+      "criticalCellMvHint": "A cell below this raises a critical alert. 2500 to 4000 mV, below Low cell.",
+      "cellDivergenceMvLabel": "Cell divergence (mV)",
+      "cellDivergenceMvHint": "Spread between the highest and lowest cell that raises a warning. 10 to 500 mV.",
+      "voltageDropMvPerSLabel": "Voltage sag (mV/s)",
+      "voltageDropMvPerSHint": "Pack voltage falling faster than this raises a warning. 100 to 5000 mV per second.",
+      "tempSpikeDcPerSLabel": "Temperature rise (0.1 °C/s)",
+      "tempSpikeDcPerSHint": "Pack temperature rising faster than this raises a warning, in tenths of a degree per second (50 is 5 °C/s). 5 to 200.",
+      "predictiveWindowSLabel": "Prediction window (s)",
+      "predictiveWindowSHint": "How much recent discharge history the time-to-reserve estimate uses. 5 to 300 seconds.",
+      "reservePercentLabel": "Reserve (%)",
+      "reservePercentHint": "The charge the time-to-reserve estimate counts down to. 5 to 50 percent."
+    }
   },
   "dronePlugins": {
     "titleForDrone": "Extensions on {drone}",
@@ -7539,5 +7561,56 @@
     "install": "Restart and install",
     "failed": "Update failed: {message}",
     "dismiss": "Dismiss"
+  },
+  "batteryHealth": {
+    "title": "Battery",
+    "subtitle": "Per-pack cell health, voltage sag and time to reserve, evaluated on the node from the flight controller's battery reports.",
+    "unavailable": "Battery health is read from this node's agent, and this session has no connection to it.",
+    "loadFailed": "Could not read battery health from this node.",
+    "loading": "Reading battery health…",
+    "disabled": "Battery health monitoring is off on this node. Turn it on under Setup.",
+    "noPacks": "The flight controller has not reported a battery yet.",
+    "stale": "No new battery report from the flight controller for over 5 seconds. The values below are the last ones received.",
+    "packTitle": "Pack {id}",
+    "cellsTitle": "Cells",
+    "cellsNotReported": "Per-cell data not reported by the FC",
+    "cellLabel": "Cell {index}: {volts} V",
+    "weakestCell": "Weakest: cell {index}",
+    "spread": "Spread {mv} mV",
+    "voltage": "Voltage",
+    "current": "Current",
+    "remaining": "Remaining",
+    "temperature": "Temperature",
+    "consumed": "Consumed",
+    "energy": "Energy",
+    "predictionTitle": "Time to reserve",
+    "predictionIdle": "Not discharging",
+    "predictionNormal": "{eta} to {reserve}% reserve",
+    "predictionHigh": "{eta} to {reserve}% reserve, fast drain",
+    "predictionPast": "At or below {reserve}% reserve",
+    "predictionUnknown": "Not enough discharge history yet",
+    "drainRate": "Drain {rate} %/s",
+    "meanCurrent": "Average {current} A",
+    "anomaliesTitle": "Active anomalies",
+    "anomaliesNone": "No active anomalies.",
+    "clearing": "Clearing",
+    "limit": "limit {threshold}",
+    "historyTitle": "Recent events",
+    "historyEmpty": "No battery events yet.",
+    "raised": "Raised",
+    "cleared": "Cleared",
+    "severity": {
+      "warning": "Warning",
+      "critical": "Critical"
+    },
+    "rule": {
+      "cell_critical": "Cell critical",
+      "cell_low": "Cell low",
+      "cell_divergence": "Cell divergence",
+      "voltage_drop": "Voltage sag",
+      "temp_spike": "Temperature spike",
+      "predictive_low": "Reserve imminent"
+    },
+    "alert": "Pack {pack}: {rule} ({value})"
   }
 }

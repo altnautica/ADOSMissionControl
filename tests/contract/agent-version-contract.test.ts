@@ -39,6 +39,7 @@ const AGENT_CAPABILITIES_FROZEN: readonly string[] = [
   "ground_station.profile",
   "signing.mavlink",
   "webrtc.signaling.last_error",
+  "battery.health",
 ];
 
 describe("agent /api/version contract", () => {

@@ -1,7 +1,8 @@
 /**
  * @module node-detail/agent/agent-nav-items
  * @description The Agent page's LIVE companion-computer sub-pages (Health /
- * Link / Perception / Cameras / World Model / Live World / Extensions / Logs).
+ * Battery / Link / Perception / Cameras / World Model / Live World /
+ * Extensions / Logs).
  * Each item reuses the SurfaceContext shape and the same availability gate the
  * retired top-level surface used, and renders the exact same component one
  * level down.
@@ -15,6 +16,7 @@
 
 import type { ReactNode } from "react";
 import {
+  BatteryMedium,
   Boxes,
   Camera,
   Eye,
@@ -30,6 +32,7 @@ import { DroneVisionTab } from "@/components/drone-detail/DroneVisionTab";
 import { CameraManagerTab } from "@/components/drone-detail/cameras/CameraManagerTab";
 import { DroneLiveWorldTab } from "@/components/drone-detail/DroneLiveWorldTab";
 import { DroneWorldModelTab } from "@/components/drone-detail/DroneWorldModelTab";
+import { BatteryHealthPanel } from "@/components/drone-detail/BatteryHealthPanel";
 import type { SurfaceContext } from "../surface-types";
 import { surfaceNodeDeviceId } from "../surface-types";
 
@@ -65,6 +68,21 @@ export const AGENT_NAV_ITEMS: AgentNavItem[] = [
     render: (ctx) => (
       <SystemTab
         profile={ctx.drone.profile ?? "drone"}
+        nodeDeviceId={surfaceNodeDeviceId(ctx)}
+        relayReach={ctx.relayReach}
+      />
+    ),
+  },
+  {
+    id: "battery",
+    labelKey: "dronePanel.battery",
+    icon: <BatteryMedium size={14} />,
+    // Cell health, sag and time-to-reserve from the node's battery engine,
+    // which reads the flight controller's battery reports — a drone concept.
+    when: (ctx) => isDrone(ctx) && agentReachable(ctx),
+    render: (ctx) => (
+      <BatteryHealthPanel
+        droneId={ctx.droneId}
         nodeDeviceId={surfaceNodeDeviceId(ctx)}
         relayReach={ctx.relayReach}
       />

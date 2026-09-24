@@ -8,10 +8,11 @@
  *
  * The block set matches the dot-paths the settings sections read: identity
  * (`agent.*`), network (`network.*`), MAVLink routing, swarm, video + WFB,
- * perception offload, Atlas, discovery, cloud/remote, and security. A single
- * config carries every block; the settings-nav gates hide the pages that do not
- * apply to a profile (a ground station has no MAVLink router, a workstation no
- * radio), so the config stays profile-agnostic apart from `agent.profile`.
+ * perception offload, Atlas, battery health, discovery, cloud/remote, and
+ * security. A single config carries every block; the settings-nav gates hide
+ * the pages that do not apply to a profile (a ground station has no MAVLink
+ * router, a workstation no radio), so the config stays profile-agnostic apart
+ * from `agent.profile`.
  * @license GPL-3.0-only
  */
 
@@ -106,6 +107,16 @@ function buildConfig(profile: MockConfigProfile): ConfigObject {
       capture_profile: "balanced",
       pose_tier: "vio",
       reconstruct_steps: 30000,
+    },
+    battery: {
+      enabled: true,
+      low_cell_mv: 3500,
+      critical_cell_mv: 3300,
+      cell_divergence_mv: 50,
+      voltage_drop_mv_per_s: 500,
+      temp_spike_dc_per_s: 50,
+      predictive_window_s: 30,
+      reserve_percent: 25,
     },
     discovery: { mdns_enabled: true, service_type: "_ados._tcp" },
     security: {
