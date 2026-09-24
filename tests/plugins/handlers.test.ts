@@ -123,6 +123,20 @@ describe("buildPluginHandlers", () => {
     expect(pluginNotify).toHaveBeenCalledWith("p", "Boom", "error");
   });
 
+  it("notification.publish shows the SDK body with its title", async () => {
+    const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
+    const { ctx } = makeCtx();
+    await handlers["notification.publish"](
+      { severity: "warning", title: "Cell imbalance", body: "Cell 3 is 180 mV low" },
+      ctx,
+    );
+    expect(pluginNotify).toHaveBeenCalledWith(
+      "p",
+      "Cell imbalance: Cell 3 is 180 mV low",
+      "warning",
+    );
+  });
+
   it("mission.read returns a copy that cannot mutate store state", async () => {
     const { handlers } = buildPluginHandlers("p", "node:d1", DEPS);
     const { ctx } = makeCtx();

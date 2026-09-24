@@ -35,6 +35,9 @@ import {
   stopRecordingFor,
 } from "@/lib/telemetry-recorder";
 import { buildTelemetryHandlers } from "./telemetry";
+
+/** Longest plugin notification a toast shows. */
+const NOTIFICATION_MAX_CHARS = 280;
 import { buildPerceptionHandlers } from "./perception";
 import { buildEventHandlers } from "./events";
 import { buildControlHandlers } from "./control";
@@ -126,11 +129,14 @@ export function buildPluginHandlers(
         : { ok: false, error: "rate_limited" },
 
     "notification.publish": (args) => {
-      const message =
-        readString(args, "title") ??
-        readString(args, "message") ??
-        readString(args, "body") ??
-        "";
+      const title = readString(args, "title") ?? readString(args, "message");
+      const body = readString(args, "body");
+      // The SDK payload is `{title, body}`: the body carries the detail the
+      // operator acts on, so it rides with the title, bounded like any toast.
+      const message = [title, body]
+        .filter((part): part is string => !!part && part.trim().length > 0)
+        .join(": ")
+        .slice(0, NOTIFICATION_MAX_CHARS);
       return pluginNotify(pluginId, message, toNotifyStatus(asRecord(args).severity))
         ? { ok: true }
         : { ok: false, error: "rate_limited" };
