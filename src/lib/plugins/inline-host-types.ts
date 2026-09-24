@@ -80,6 +80,10 @@ export interface InlineNodeSummary {
   name: string;
   profile: PairedNodeProfile;
   reachable: boolean;
+  /** Host of the node's paired LAN agent URL (no scheme or port; an IPv6
+   * literal keeps its brackets), or null when it is reachable only through
+   * a relay or the cloud. */
+  lanHost: string | null;
 }
 
 /** The plugin's own HTTP server on one node, behind the agent passthrough

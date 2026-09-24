@@ -116,6 +116,18 @@ describe("host.nodes.agent", () => {
   });
 });
 
+describe("host.nodes.list", () => {
+  it("reports a LAN node's own host and no host for a relay-only drone", () => {
+    const registry = useNodeRegistryStore.getState();
+    registry.upsertPresence("node:drone-lan", { deviceId: "drone-lan", name: "lan" }, "local");
+    registry.upsertPresence("node:drone-r", { deviceId: "drone-r", reachedVia: "node:gs-1" }, "relayed");
+    const byId = new Map(session().api.nodes.list().map((n) => [n.deviceId, n]));
+    expect(byId.get("drone-lan")).toMatchObject({ reachable: true, lanHost: "192.168.1.20" });
+    // Reachable through its ground station, whose address is not the drone's.
+    expect(byId.get("drone-r")).toMatchObject({ reachable: true, lanHost: null });
+  });
+});
+
 describe("host.readAsset", () => {
   it("serves a gcs/ file's bytes typed by extension, and refuses after unmount", async () => {
     const s = session();

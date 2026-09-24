@@ -188,12 +188,26 @@ export function createInlineHostSession(input: {
       list: (): InlineNodeSummary[] =>
         Object.values(useNodeRegistryStore.getState().nodes)
           .filter((e) => e.nodeId.startsWith("node:"))
-          .map((e) => ({
-            deviceId: e.presence.deviceId,
-            name: e.presence.name,
-            profile: e.presence.profile,
-            reachable: resolveNodeAgentReach(e.presence.deviceId) !== null,
-          })),
+          .map((e) => {
+            const reach = resolveNodeAgentReach(e.presence.deviceId);
+            // A direct reach's host is the node's own paired LAN address; a
+            // relay reach's host belongs to the ground station.
+            let lanHost: string | null = null;
+            if (reach && reach.peerDeviceId === null) {
+              try {
+                lanHost = new URL(reach.hostUrl).hostname || null;
+              } catch {
+                lanHost = null;
+              }
+            }
+            return {
+              deviceId: e.presence.deviceId,
+              name: e.presence.name,
+              profile: e.presence.profile,
+              reachable: reach !== null,
+              lanHost,
+            };
+          }),
       agent: (target) => pluginAgent(pluginId, target, "node_unreachable", trackSocket),
       pluginConfig: (target) => ({
         get: () => clientFor(target).getConfig(pluginId),
