@@ -214,10 +214,10 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "network.outbound": {
     label: "Open outbound network connections",
-    description: "Lets the plugin make outbound TCP, UDP, and HTTP connections from the agent host. Required by plugins that talk to external services.",
+    description: "Lets the plugin make outbound TCP, UDP, and HTTP connections from the agent host, and find services on the local network over mDNS through the agent. Required by plugins that talk to external services.",
     category: "data_network",
     risk: "medium",
-    risk_reason: "Exfiltration risk; outbound traffic can carry telemetry off the aircraft. Enforced by the generated unit's socket policy: without this grant the unit carries RestrictAddressFamilies=AF_UNIX and IPAddressDeny=any, so socket(AF_INET) fails with EAFNOSUPPORT.",
+    risk_reason: "Exfiltration risk; outbound traffic can carry telemetry off the aircraft. Enforced by the generated unit's socket policy: without this grant the unit carries RestrictAddressFamilies=AF_UNIX and IPAddressDeny=any, so socket(AF_INET) fails with EAFNOSUPPORT. The mdns.browse host method is gated on it at dispatch.",
   },
   "filesystem.host": {
     label: "Read and write files on the host filesystem",
@@ -340,10 +340,10 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "network.listen": {
     label: "Accept inbound network connections",
-    description: "Lets a declared plugin service bind the TCP ports it lists in its manifest (listen_ports) so other nodes on the network can reach it. Every other port stays closed to the plugin, and the plugin's main process never listens.",
+    description: "Lets a declared plugin service bind the TCP ports it lists in its manifest (listen_ports) so other nodes on the network can reach it, and advertise those ports on the local network over mDNS through the agent. Every other port stays closed to the plugin, and the plugin's main process never listens.",
     category: "data_network",
     risk: "high",
-    risk_reason: "Opens a network entry point into a plugin process on the agent host. Enforced by the generated unit: every plugin unit carries SocketBindDeny=any, and only a granted service unit gets SocketBindAllow for its declared ports.",
+    risk_reason: "Opens a network entry point into a plugin process on the agent host. Enforced by the generated unit: every plugin unit carries SocketBindDeny=any, and only a granted service unit gets SocketBindAllow for its declared ports. The mdns.advertise host method is gated on it at dispatch and publishes only a declared port.",
   },
   "cloud.publish": {
     label: "Publish data to the cloud relay",
