@@ -170,12 +170,11 @@ export function CommandFleetLocalBridge({
           }
         }
 
-        // A workstation/compute node has no flight-controller status; its
-        // telemetry comes from the compute hooks (useComputeLocalState /
-        // useComputeJobs). Keep only reachability + presence (which drives the
-        // online badge) and skip the drone /api/status/full poll — it returned a
-        // boardless status the drone schema rejected and churned the fleet grid
-        // on every tick.
+        // A workstation/compute node has no flight-controller status. Keep
+        // only reachability + presence (which drives the online badge) and
+        // skip the drone /api/status/full poll — it returned a boardless
+        // status the drone schema rejected and churned the fleet grid on
+        // every tick.
         if (live.profile === "workstation") {
           if (probeReachable) {
             useLocalNodesStore.getState().touchLastSeen(deviceId);

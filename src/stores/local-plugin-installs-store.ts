@@ -1,31 +1,24 @@
 /**
  * @module LocalPluginInstallsStore
- * @description Browser-local record of plugin installs the operator made
- * over the LAN without a cloud (Convex) session. Mirrors
- * `local-nodes-store`: the GCS works fully local-first, so a
- * plugin installed on a LAN-paired drone (or a GCS-only plugin added to
- * Mission Control) is remembered here and its GCS half mounts from a
- * local source — never requiring sign-in.
+ * @description Browser-local record of GCS-only plugins (no agent half) the
+ * operator installed from the registry without a cloud (Convex) session.
+ * Mirrors `local-nodes-store`: the GCS works fully local-first, so a
+ * GCS-only plugin is remembered here and its GCS half mounts from a local
+ * source — never requiring sign-in.
  *
- * This is the LOCAL counterpart to the Convex `cmd_pluginInstalls` row.
- * When signed in, the Convex path also runs (cross-device / fleet view)
- * and these records reconcile up; when signed out, this is the only
- * record and the contribution producers read it directly.
+ * This is the LOCAL counterpart to the Convex `cmd_pluginInstalls` row for
+ * a plugin no node holds. A plugin with an agent half is never recorded
+ * here: the node's own install list (`GET /api/plugins`) is the source of
+ * truth for what is installed on a node, however it got there.
  *
- * Bundle source is one of:
- *   - `agent`: the plugin was installed on a drone, and that agent holds
- *     the unpacked `gcs/` bundle. The mount fetches it over the LAN from
- *     the agent (resolved via `local-nodes-store` by `deviceId`).
- *   - `archive`: a GCS-only plugin with no drone; the bundle is fetched
- *     from the published archive URL (via the same-origin archive proxy)
- *     and extracted client-side, but only when the bytes still match the
- *     hash and signer pinned at install.
+ * The bundle comes from the published archive URL (via the same-origin
+ * archive proxy) and is extracted client-side, but only when the bytes still
+ * match the hash and signer pinned at install.
  *
  * THREAT MODEL: same as `local-nodes-store` — localStorage is plaintext;
  * an XSS on the GCS origin can read these records. They carry no
- * credentials themselves (the agent apiKey lives in `local-nodes-store`,
- * looked up by `deviceId` at fetch time). Persisted with a version /
- * migrate handler per project convention.
+ * credentials. Persisted with a version / migrate handler per project
+ * convention.
  *
  * @license GPL-3.0-only
  */
@@ -40,18 +33,22 @@ import type { GcsContributeRow } from "@/lib/plugins/types";
 export type LocalGcsContribution = GcsContributeRow;
 
 /** Where the GCS iframe bundle is fetched from for this install. */
-export type LocalPluginBundleSource =
-  | { kind: "agent"; deviceId: string; entrypoint: string }
-  | { kind: "archive"; archiveUrl: string; entrypoint: string; pin: ArchivePin };
+export type LocalPluginBundleSource = {
+  kind: "archive";
+  archiveUrl: string;
+  entrypoint: string;
+  pin: ArchivePin;
+};
 
 export interface LocalPluginInstall {
   pluginId: string;
-  /** Target drone wire id, or null for a GCS-only / fleet-wide install. */
+  /** The drone the install dialog was opened from, or null for a
+   * fleet-wide install from the Settings home. */
   deviceId: string | null;
   version: string;
   name: string;
   halves: Array<"agent" | "gcs">;
-  /** Slot contributions for the GCS half (empty for agent-only plugins). */
+  /** Slot contributions for the GCS half. */
   gcsContributes: LocalGcsContribution[];
   /** Declarative parameter contributions the native panel renders. Absent
    * when the plugin declares none (the panel then renders nothing). */
@@ -144,15 +141,21 @@ export const useLocalPluginInstallsStore = create<LocalPluginInstallsState>()(
       // (some test DOM shims), so resolveStorage feature-detects it and
       // falls back to a no-op store instead of throwing.
       storage: createJSONStorage(resolveStorage),
-      version: 3,
+      version: 4,
       // v1 → v2 added optional `gcsParameters` and a slot `profile`, both
       // additive. v2 → v3 pins archive installs to their verified bytes; a v2
       // archive record was never verified, so it is dropped and the plugin
-      // must be reinstalled rather than mounted unchecked.
+      // must be reinstalled rather than mounted unchecked. v3 → v4 stops
+      // recording plugins with an agent half (their node's own install list
+      // is the source of truth), so those records are dropped.
       migrate: (persisted, version) => {
         const state = persisted as LocalPluginInstallsState;
-        if (version >= 3 || !Array.isArray(state?.installs)) return state;
-        return { ...state, installs: state.installs.filter((i) => i.bundle.kind !== "archive") };
+        if (version >= 4 || !Array.isArray(state?.installs)) return state;
+        // Only a pinned (v3) GCS-only record survives; an agent-bundle record
+        // always belonged to a plugin with an agent half.
+        const installs =
+          version < 3 ? [] : state.installs.filter((i) => !i.halves.includes("agent"));
+        return { ...state, installs };
       },
     },
   ),

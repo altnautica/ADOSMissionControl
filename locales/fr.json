@@ -126,7 +126,7 @@
     },
     "companionCta": {
       "title": "Ajouter un ordinateur compagnon",
-      "body": "Ce contrôleur de vol n'a aucun ordinateur de bord appairé. Appairez-en un pour ajouter la vidéo, la vision, le modèle du monde et les extensions.",
+      "body": "Ce contrôleur de vol n'a aucun ordinateur de bord appairé. Appairez-en un pour ajouter la vidéo, la vision et les extensions.",
       "action": "Appairer un ordinateur"
     }
   },
@@ -5220,8 +5220,7 @@
     "uplink": "Liaison montante",
     "mesh": "Maillage",
     "disk": "Disque",
-    "gpuNodes": "Nœuds GPU",
-    "jobs": "Tâches"
+    "gpuNodes": "Nœuds GPU"
   },
   "flashTool": {
     "ados": {

@@ -438,7 +438,7 @@ function WorkstationBody({
         </p>
       )}
       <p className="text-[9px] text-text-tertiary">
-        Open the node {"→"} Compute for cluster + jobs.
+        Open the node {"→"} Agent for health and extensions.
       </p>
     </section>
   );

@@ -41,12 +41,6 @@ import {
 } from "@/lib/plugins/types";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 
-/** Live install statuses that surface a contribution (matches the
- * `listForDeviceWithDetail` server filter for the cloud path). */
-function isLiveStatus(status: string): boolean {
-  return status === "enabled" || status === "running";
-}
-
 /**
  * One plugin's `node.detail.tab` contribution for a specific drone.
  * Stripped down from the full `PluginSlotContribution` to the fields
@@ -120,12 +114,11 @@ export function useLiveInstallRows(
 
   return useMemo(() => {
     if (!agentId) return null;
-    // Both sources land in the same row shape. Cloud:
-    // `listForDeviceWithDetail` already filters to enabled/running. Local: the
-    // agent reports live status, so filter to the same set here so a header
-    // never renders without an enabled body behind it. The cloud row stores
-    // parameters as loosely-typed JSON, so it is narrowed through the
-    // manifest parser the local path already went through.
+    // Both sources land in the same row shape, both already narrowed to
+    // enabled / running installs: the cloud `listForDeviceWithDetail` filters
+    // server-side, the local source reads only the node's live installs. The
+    // cloud row stores parameters as loosely-typed JSON, so it is narrowed
+    // through the manifest parser the local path already went through.
     if (isAuthenticated) {
       return installs
         ? installs.map((r) => ({
@@ -139,16 +132,14 @@ export function useLiveInstallRows(
         : null;
     }
     return localDetail
-      ? localDetail
-          .filter((r) => isLiveStatus(r.status))
-          .map((r) => ({
-            installId: r.installId,
-            pluginId: r.pluginId,
-            version: r.version,
-            name: r.name,
-            gcsContributes: r.gcsContributes,
-            gcsParameters: r.gcsParameters,
-          }))
+      ? localDetail.map((r) => ({
+          installId: r.installId,
+          pluginId: r.pluginId,
+          version: r.version,
+          name: r.name,
+          gcsContributes: r.gcsContributes,
+          gcsParameters: r.gcsParameters,
+        }))
       : null;
   }, [agentId, isAuthenticated, installs, localDetail]);
 }

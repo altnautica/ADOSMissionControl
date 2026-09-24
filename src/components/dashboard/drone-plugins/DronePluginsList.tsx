@@ -17,17 +17,14 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../../../../convex/_generated/api";
 
 import { isDemoMode } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
 import { useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
-import { PluginAgentClient } from "@/lib/agent/plugin-client";
-import type { PluginAgentManifestDetail } from "@/lib/agent/plugin-client-types";
-import { useLocalNodesStore } from "@/stores/local-nodes-store";
-import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
+import { useNodePluginList } from "@/hooks/use-node-plugin-list";
 import {
   getDemoDronePluginSummaries,
   getDemoDronePluginInstalls,
@@ -71,52 +68,6 @@ const PLUGIN_SOURCES: readonly PluginSource[] = [
   "agent_webapp",
 ];
 
-type LanInstall = PluginAgentManifestDetail["install"];
-
-const NO_LAN_INSTALLS: LanInstall[] = [];
-
-/** The node's own install list over the LAN, when it is LAN-paired. Empty
- * until it answers, on a failed read, or for a node with no LAN pairing.
- * Re-read when a local install for this node lands. */
-function useLanInstalls(deviceId: string): LanInstall[] {
-  const node = useLocalNodesStore((s) =>
-    s.nodes.find((n) => n.deviceId === deviceId),
-  );
-  const agentUrl = node?.hostname ?? null;
-  const apiKey = node?.apiKey ?? null;
-  const localInstalls = useLocalPluginInstallsStore((s) => s.installs);
-  const installKey = useMemo(
-    () =>
-      localInstalls
-        .filter((i) => i.deviceId === deviceId)
-        .map((i) => i.pluginId)
-        .sort()
-        .join(","),
-    [localInstalls, deviceId],
-  );
-  const [read, setRead] = useState<{ key: string; rows: LanInstall[] } | null>(
-    null,
-  );
-  const key = `${deviceId}|${agentUrl ?? ""}`;
-
-  useEffect(() => {
-    if (isDemoMode() || !agentUrl || !apiKey) return;
-    let current = true;
-    new PluginAgentClient(agentUrl, apiKey)
-      .list()
-      .then(({ installs }) => {
-        if (current) setRead({ key, rows: installs });
-      })
-      .catch(() => {});
-    return () => {
-      current = false;
-    };
-  }, [key, agentUrl, apiKey, installKey]);
-
-  // A list read from another node never renders here.
-  return read !== null && read.key === key ? read.rows : NO_LAN_INSTALLS;
-}
-
 export function DronePluginsList({
   agentId,
   className,
@@ -138,7 +89,8 @@ export function DronePluginsList({
       enabled: Boolean(agentId) && !isDemoMode(),
     },
   );
-  const lanInstalls = useLanInstalls(agentId);
+  // The node's own install list over the LAN, when it is LAN-paired.
+  const lanInstalls = useNodePluginList(agentId);
 
   // Webapp-side installs the agent reported via heartbeat. The Convex
   // table stays the authority; this surfaces only entries that the
@@ -186,7 +138,7 @@ export function DronePluginsList({
     // The node's own install list: authoritative for what is on the node,
     // but carries none of the GCS-side install metadata.
     const fromLan: DronePluginCardData[] = [];
-    for (const install of lanInstalls) {
+    for (const install of lanInstalls ?? []) {
       if (!PLUGIN_ID_RE.test(install.plugin_id) || seen.has(install.plugin_id)) {
         continue;
       }

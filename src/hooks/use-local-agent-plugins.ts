@@ -2,14 +2,16 @@
 
 /**
  * @module use-local-agent-plugins
- * @description The local-first source of truth for a drone's installed
+ * @description The local-first source of truth for a node's installed
  * plugin contributions. When the operator is NOT signed in to the cloud
  * (local-first), the Convex contribution queries are skipped and
  * this hook stands in: it resolves the LAN-paired agent for `deviceId`
- * (host + apiKey from `local-nodes-store`), reads which plugins the
- * operator installed locally (`local-plugin-installs-store` is the index),
- * and fetches each plugin's authoritative detail straight from the agent's
+ * (host + apiKey from `local-nodes-store`), reads what that agent reports
+ * installed and live (`GET /api/plugins`, via `useNodePluginList`), and
+ * fetches each live plugin's authoritative detail from the agent's
  * `GET /api/plugins/{id}` — exactly the role Convex plays in cloud mode.
+ * A plugin installed by the agent installer or the agent CLI mounts like
+ * one installed from this browser.
  *
  * The agent's detail carries the live install `status`, the granted
  * capabilities, and the full `gcs.contributes` block (panels / overlays /
@@ -23,7 +25,8 @@
  * `agentUrl` / `apiKey` / `entrypoint` / `isolation` it needs to do so.
  *
  * Returns `null` while loading (or when not in local mode), and an array
- * (possibly empty) once the agent has answered.
+ * (possibly empty) of the node's enabled / running plugins once the agent
+ * has answered.
  *
  * @license GPL-3.0-only
  */
@@ -33,6 +36,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isDemoMode } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
+import { NODE_PLUGIN_LIST_POLL_MS, useNodePluginList } from "@/hooks/use-node-plugin-list";
 import {
   useLocalPluginInstallsStore,
   type LocalPluginInstall,
@@ -107,7 +111,7 @@ export interface LocalAgentPluginDetail {
   pluginId: string;
   version: string;
   name: string;
-  /** Live agent install status (enabled / running / disabled / ...). */
+  /** Live agent install status (enabled / running). */
   status: string;
   /** Capability ids the agent reports as granted. */
   grantedCaps: string[];
@@ -211,32 +215,12 @@ function mapTargetAction(raw: unknown): LocalAgentTargetActionRow | null {
 /**
  * Map a fleet / GCS-only local install record (`deviceId === null`) to the
  * normalized detail shape, straight from `local-plugin-installs-store`.
- * Unlike a per-drone install, a fleet plugin has no LAN agent to query — its
+ * Unlike a per-node install, a fleet plugin has no LAN agent to query — its
  * authoritative detail (contributes, granted caps, version) was captured into
  * the store at install time, and its bundle comes from the published archive.
- * Returns null when the record has no offline-loadable bundle (e.g. a
- * local-file GCS-only install with neither an agent nor an archive URL — that
- * one relies on the Convex cloud mirror), so it is simply omitted offline.
  */
-function fleetRecordToDetail(
-  install: LocalPluginInstall,
-): LocalAgentPluginDetail | null {
-  let bundle: LocalAgentBundleSource | null = null;
-  let entrypoint: string | null = null;
-  if (install.bundle.kind === "archive") {
-    bundle = {
-      kind: "archive",
-      archiveUrl: install.bundle.archiveUrl,
-      entrypoint: install.bundle.entrypoint,
-      pin: install.bundle.pin,
-    };
-    entrypoint = install.bundle.entrypoint;
-  }
-  // An `agent`-kind bundle on a fleet (null-device) record cannot resolve
-  // offline — it needs a deviceId to find the LAN agent — so it is dropped
-  // from the fleet surface (such a record should carry a real deviceId
-  // anyway). A GCS-only plugin with no offline bundle is dropped likewise.
-  if (!bundle) return null;
+function fleetRecordToDetail(install: LocalPluginInstall): LocalAgentPluginDetail {
+  const { archiveUrl, entrypoint, pin } = install.bundle;
   return {
     installId: `fleet::${install.pluginId}`,
     pluginId: install.pluginId,
@@ -252,7 +236,7 @@ function fleetRecordToDetail(
     flightSkills: [],
     targetActions: [],
     entrypoint,
-    bundle,
+    bundle: { kind: "archive", archiveUrl, entrypoint, pin },
   };
 }
 
@@ -261,9 +245,9 @@ function fleetRecordToDetail(
  * local mode (signed in, or demo) or while the agent fetch is in flight;
  * an array (possibly empty) once resolved.
  *
- * Two shapes share one hook:
- *   - `deviceId` set → per-drone: resolve the LAN-paired agent and fetch each
- *     locally-installed plugin's authoritative detail from its agent.
+ *   - `deviceId` set → per-node: the node's own install list names what is
+ *     installed and live; each live plugin's authoritative detail comes from
+ *     the same agent.
  *   - `deviceId === null` → fleet / GCS-only: read the fleet installs straight
  *     from `local-plugin-installs-store` (their detail was captured at install
  *     time; their bundle comes from the published archive), so a GCS-level
@@ -287,13 +271,10 @@ export function useLocalAgentPlugins(
   // producer wins, and `[]` when local-first with no fleet installs.
   const fleetRows = useMemo<LocalAgentPluginDetail[] | null>(() => {
     if (!localMode || deviceId !== null) return null;
-    return localInstalls
-      .filter((i) => i.deviceId === null)
-      .map(fleetRecordToDetail)
-      .filter((r): r is LocalAgentPluginDetail => r !== null);
+    return localInstalls.filter((i) => i.deviceId === null).map(fleetRecordToDetail);
   }, [localMode, deviceId, localInstalls]);
 
-  // Active only when local-first per-drone: signed out, not demo, a real
+  // Active only when local-first per-node: signed out, not demo, a real
   // device, and we hold a LAN key for it. Otherwise the cloud producers own
   // the surface (or the fleet branch above handles the null-device case).
   const active =
@@ -305,37 +286,46 @@ export function useLocalAgentPlugins(
   const agentUrl = node?.hostname ?? "";
   const apiKey = node?.apiKey ?? "";
 
-  // The plugin ids the operator installed locally for this device — the
-  // index the agent detail is fetched against. Stable key drives the fetch.
-  const pluginIds = useMemo(() => {
-    if (!deviceId) return [] as string[];
-    return localInstalls
-      .filter((i) => i.deviceId === deviceId)
-      .map((i) => i.pluginId)
-      .sort();
-  }, [localInstalls, deviceId]);
-  const fetchKey = useMemo(
-    () => (active ? `${deviceId}|${agentUrl}|${pluginIds.join(",")}` : ""),
-    [active, deviceId, agentUrl, pluginIds],
+  // What the node itself reports installed. Only an enabled or running
+  // install contributes (the cloud `listForDeviceWithDetail` filter), so
+  // only those are fetched. Null until the node answers.
+  const nodeList = useNodePluginList(active ? deviceId : null);
+  const liveInstalls = useMemo(
+    () =>
+      nodeList?.filter((i) => i.status === "enabled" || i.status === "running") ??
+      null,
+    [nodeList],
   );
+  // A detail is re-read when the live set or a version changes, not on every
+  // poll of the list.
+  const fetchKey = useMemo(() => {
+    if (!active || liveInstalls === null) return "";
+    const ids = liveInstalls.map((i) => `${i.plugin_id}@${i.version}`).sort();
+    return `${deviceId}|${agentUrl}|${ids.join(",")}`;
+  }, [active, liveInstalls, deviceId, agentUrl]);
 
-  const [rows, setRows] = useState<LocalAgentPluginDetail[] | null>(null);
+  // Rows are held with the key they were read for, so a stale read never
+  // renders under a new node or a new live set.
+  const [read, setRead] = useState<{
+    key: string;
+    rows: LocalAgentPluginDetail[];
+  } | null>(null);
+  // Bumped to re-read a detail that failed, on the same fixed interval as
+  // the list poll.
+  const [retry, setRetry] = useState(0);
   // Hold the latest apiKey without re-running the fetch when only the key
   // identity changes (it rarely does); the fetchKey gates real reloads.
   const apiKeyRef = useRef(apiKey);
   apiKeyRef.current = apiKey;
 
   useEffect(() => {
-    if (!active || !deviceId || pluginIds.length === 0) {
-      setRows(active ? [] : null);
-      return;
-    }
+    if (!fetchKey || !deviceId || !liveInstalls) return;
     let cancelled = false;
-    setRows(null);
+    let stopRetry = () => {};
     const client = new PluginAgentClient(agentUrl, apiKeyRef.current);
 
     void Promise.all(
-      pluginIds.map(async (pluginId): Promise<LocalAgentPluginDetail | null> => {
+      liveInstalls.map(async ({ plugin_id: pluginId }): Promise<LocalAgentPluginDetail | null> => {
         try {
           const detail = await client.get(pluginId);
           const gcs = detail.manifest.gcs ?? null;
@@ -401,25 +391,36 @@ export function useLocalAgentPlugins(
               : null,
           };
         } catch {
-          // A plugin in the local index the agent no longer knows about
-          // (removed out-of-band) is skipped, not fatal to the others.
+          // An unreadable detail (the plugin removed between the list and
+          // this read, or a dropped request) is skipped, not fatal to the
+          // others, and re-read on the next retry tick.
           return null;
         }
       }),
     ).then((results) => {
       if (cancelled) return;
-      setRows(results.filter((r): r is LocalAgentPluginDetail => r !== null));
+      setRead({
+        key: fetchKey,
+        rows: results.filter((r): r is LocalAgentPluginDetail => r !== null),
+      });
+      if (results.includes(null)) {
+        const retryTimer = setTimeout(() => setRetry((n) => n + 1), NODE_PLUGIN_LIST_POLL_MS);
+        stopRetry = () => clearTimeout(retryTimer);
+      }
     });
 
     return () => {
       cancelled = true;
+      stopRetry();
     };
-    // fetchKey captures (deviceId, agentUrl, pluginIds); apiKey via ref.
+    // fetchKey captures (deviceId, agentUrl, the live set); apiKey via ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchKey]);
+  }, [fetchKey, retry]);
 
-  // Fleet (null-device) resolves synchronously from the store; the per-drone
-  // branch resolves via the async agent fetch above.
+  // Fleet (null-device) resolves synchronously from the store; the per-node
+  // branch resolves via the async agent reads above.
   if (deviceId === null) return fleetRows;
-  return active ? rows : null;
+  if (!fetchKey) return null;
+  if (liveInstalls?.length === 0) return [];
+  return read !== null && read.key === fetchKey ? read.rows : null;
 }

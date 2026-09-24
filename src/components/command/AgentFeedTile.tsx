@@ -15,13 +15,11 @@ import { useTranslations } from "next-intl";
 import {
   Activity,
   Battery,
-  Boxes,
   Cpu,
   Expand,
   Gauge,
   HardDrive,
   HeartPulse,
-  ListChecks,
   Loader2,
   MapPin,
   Network,
@@ -33,14 +31,12 @@ import {
   Radio,
   RefreshCw,
   Satellite,
-  Server,
   SignalHigh,
   Thermometer,
   TrendingDown,
   Video,
   VideoOff,
   Wifi,
-  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -289,8 +285,6 @@ function TileBadges({
           )}
         </>
       )}
-      {/* workstation: cluster role + GPU backend are not on the fleet summary
-          yet, so only the honest liveness + type badges are shown here. */}
     </div>
   );
 }
@@ -450,19 +444,6 @@ function ConsoleAgentFeedTile({
               onRetry={retry}
             />
           </div>
-
-          {effProfile === "workstation" && (
-            // Compute activity strip. Cluster role / workers / jobs / GPU
-            // utilisation ride the LAN poll only and are not on the fleet
-            // summary yet, so they render as honest grey until the agent
-            // telemetry track lands them on the heartbeat.
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <StatTile icon={<Zap size={12} />} label="GPU" value="--" level="idle" />
-              <StatTile icon={<Server size={12} />} label="Role" value="--" level="idle" />
-              <StatTile icon={<Boxes size={12} />} label="Workers" value="--" level="idle" />
-              <StatTile icon={<ListChecks size={12} />} label="Jobs" value="--" level="idle" />
-            </div>
-          )}
         </div>
       )}
 

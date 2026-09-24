@@ -126,7 +126,7 @@
     },
     "companionCta": {
       "title": "Add a companion computer",
-      "body": "This flight controller has no onboard computer paired. Pair one to add video, vision, world model, and extensions.",
+      "body": "This flight controller has no onboard computer paired. Pair one to add video, vision, and extensions.",
       "action": "Pair a computer"
     }
   },
@@ -5220,8 +5220,7 @@
     "uplink": "Uplink",
     "mesh": "Mesh",
     "disk": "Disk",
-    "gpuNodes": "GPU nodes",
-    "jobs": "Jobs"
+    "gpuNodes": "GPU nodes"
   },
   "flashTool": {
     "ados": {

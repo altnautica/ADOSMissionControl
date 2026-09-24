@@ -126,7 +126,7 @@
     },
     "companionCta": {
       "title": "Adicionar um computador companheiro",
-      "body": "Este controlador de voo não tem computador de bordo emparelhado. Emparelhe um para acrescentar vídeo, visão, modelo do mundo e extensões.",
+      "body": "Este controlador de voo não tem computador de bordo emparelhado. Emparelhe um para acrescentar vídeo, visão e extensões.",
       "action": "Emparelhar um computador"
     }
   },
@@ -5220,8 +5220,7 @@
     "uplink": "Enlace de subida",
     "mesh": "Malha",
     "disk": "Disco",
-    "gpuNodes": "Nós GPU",
-    "jobs": "Trabalhos"
+    "gpuNodes": "Nós GPU"
   },
   "flashTool": {
     "ados": {

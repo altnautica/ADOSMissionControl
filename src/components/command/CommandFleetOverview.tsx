@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Activity, Cpu, ListChecks, Radio, Server, Video, WifiOff } from "lucide-react";
+import { Activity, Cpu, Radio, Server, Video, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { useCommandFleetStore, type CommandCloudStatus } from "@/stores/command-fleet-store";
@@ -157,21 +157,12 @@ export function CommandFleetOverview({
             <StatTile icon={<Cpu size={13} />} label={t("fc")} value={stats.fc} className="min-w-24 p-2.5" />
           )}
           {presence.workstationCount > 0 && (
-            <>
-              <StatTile
-                icon={<Server size={13} />}
-                label={t("gpuNodes")}
-                value={presence.workstationCount}
-                className="min-w-24 p-2.5"
-              />
-              <StatTile
-                icon={<ListChecks size={13} />}
-                label={t("jobs")}
-                value="--"
-                level="idle"
-                className="min-w-24 p-2.5"
-              />
-            </>
+            <StatTile
+              icon={<Server size={13} />}
+              label={t("gpuNodes")}
+              value={presence.workstationCount}
+              className="min-w-24 p-2.5"
+            />
           )}
         </div>
       </div>

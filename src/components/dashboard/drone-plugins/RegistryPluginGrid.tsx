@@ -30,6 +30,7 @@ import { api } from "../../../../convex/_generated/api";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
+import { useNodePluginList } from "@/hooks/use-node-plugin-list";
 import { isDemoMode, cn } from "@/lib/utils";
 
 import { PluginInstallDialog } from "@/components/plugins/PluginInstallDialog";
@@ -108,24 +109,26 @@ export function RegistryPluginGrid({
 
   // Already-installed plugin ids so we can mark cards. The Convex
   // per-device query returns an empty list for unauthenticated callers
-  // (correct for LAN-only mode), and the local-first install store is
-  // merged in so a plugin installed with no cloud session still shows
-  // the Installed pill.
+  // (correct for LAN-only mode); a LAN-paired node's own install list
+  // covers what is on it however it got there, and the local-first record
+  // covers a GCS-only plugin installed with no cloud session.
   const installs = useConvexSkipQuery(api.cmdPlugins.listForDevice, {
     args: { deviceId: deviceId ?? "" },
     enabled: !isDemoMode() && deviceId !== null,
   });
+  const nodeInstalls = useNodePluginList(deviceId);
   const localInstalls = useLocalPluginInstallsStore((s) => s.installs);
   const installedIds = useMemo(() => {
     const ids = new Set<string>();
     if (installs) for (const row of installs) ids.add(row.pluginId);
+    if (nodeInstalls) for (const row of nodeInstalls) ids.add(row.plugin_id);
     // Local records for this scope (a specific drone, or the fleet/GCS
     // bucket when there is no drone).
     for (const i of localInstalls) {
       if (i.deviceId === deviceId) ids.add(i.pluginId);
     }
     return ids;
-  }, [installs, localInstalls, deviceId]);
+  }, [installs, nodeInstalls, localInstalls, deviceId]);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");

@@ -126,7 +126,7 @@
     },
     "companionCta": {
       "title": "Tambahkan komputer pendamping",
-      "body": "Pengendali terbang ini belum disandingkan dengan komputer onboard. Sandingkan satu untuk menambahkan video, visi, model dunia, dan ekstensi.",
+      "body": "Pengendali terbang ini belum disandingkan dengan komputer onboard. Sandingkan satu untuk menambahkan video, visi, dan ekstensi.",
       "action": "Sandingkan komputer"
     }
   },
@@ -5220,8 +5220,7 @@
     "uplink": "Uplink",
     "mesh": "Mesh",
     "disk": "Disk",
-    "gpuNodes": "Node GPU",
-    "jobs": "Pekerjaan"
+    "gpuNodes": "Node GPU"
   },
   "flashTool": {
     "ados": {

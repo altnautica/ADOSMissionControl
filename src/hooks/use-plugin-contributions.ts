@@ -99,12 +99,6 @@ interface NormalizedRow {
   inlineUnavailable?: string;
 }
 
-/** Local install statuses that mount a contribution (matches the cloud
- * `listForDeviceWithDetail` server filter). */
-function isLiveStatus(status: string): boolean {
-  return status === "enabled" || status === "running";
-}
-
 const EMPTY: ReadonlyArray<SlottedContribution> = Object.freeze([]);
 
 const KNOWN_SLOTS = new Set<string>(PLUGIN_SLOTS);
@@ -231,28 +225,26 @@ export function usePluginContributions(
       }));
     }
     if (!localDetail) return null;
-    return localDetail
-      .filter((r) => isLiveStatus(r.status))
-      .map((r): NormalizedRow => {
-        const base = {
-          installId: r.installId,
-          pluginId: r.pluginId,
-          version: r.version,
-          name: r.name,
-          grantedCaps: r.grantedCaps,
-          gcsContributes: r.gcsContributes,
-        };
-        if (r.bundle?.kind === "agent") {
-          if (r.bundle.isolation === "inline") return { ...base, ...inlineSource(r.pluginId) };
-          const { agentUrl, apiKey, entrypoint } = r.bundle;
-          return { ...base, bundle: { kind: "agent", agentUrl, apiKey, pluginId: r.pluginId, entrypoint } };
-        }
-        if (r.bundle?.kind === "archive") {
-          const { archiveUrl, entrypoint, pin } = r.bundle;
-          return { ...base, bundle: { kind: "archive", archiveUrl, entrypoint, pin, pluginId: r.pluginId } };
-        }
-        return { ...base, bundle: null };
-      });
+    return localDetail.map((r): NormalizedRow => {
+      const base = {
+        installId: r.installId,
+        pluginId: r.pluginId,
+        version: r.version,
+        name: r.name,
+        grantedCaps: r.grantedCaps,
+        gcsContributes: r.gcsContributes,
+      };
+      if (r.bundle?.kind === "agent") {
+        if (r.bundle.isolation === "inline") return { ...base, ...inlineSource(r.pluginId) };
+        const { agentUrl, apiKey, entrypoint } = r.bundle;
+        return { ...base, bundle: { kind: "agent", agentUrl, apiKey, pluginId: r.pluginId, entrypoint } };
+      }
+      if (r.bundle?.kind === "archive") {
+        const { archiveUrl, entrypoint, pin } = r.bundle;
+        return { ...base, bundle: { kind: "archive", archiveUrl, entrypoint, pin, pluginId: r.pluginId } };
+      }
+      return { ...base, bundle: null };
+    });
   }, [isAuthenticated, installs, localDetail, deviceId]);
 
   // Stable translator for the plugin handler factory. next-intl's `t`

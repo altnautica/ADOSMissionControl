@@ -126,7 +126,7 @@
     },
     "companionCta": {
       "title": "Begleitrechner hinzufügen",
-      "body": "Dieser Flight Controller hat keinen gekoppelten Bordrechner. Koppeln Sie einen, um Video, Bilderkennung, Weltmodell und Erweiterungen zu ergänzen.",
+      "body": "Dieser Flight Controller hat keinen gekoppelten Bordrechner. Koppeln Sie einen, um Video, Bilderkennung und Erweiterungen zu ergänzen.",
       "action": "Rechner koppeln"
     }
   },
@@ -5220,8 +5220,7 @@
     "uplink": "Uplink",
     "mesh": "Mesh",
     "disk": "Speicher",
-    "gpuNodes": "GPU-Knoten",
-    "jobs": "Jobs"
+    "gpuNodes": "GPU-Knoten"
   },
   "flashTool": {
     "ados": {

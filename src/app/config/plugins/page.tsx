@@ -9,6 +9,7 @@ import { communityApi } from "@/lib/community-api";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
+import { useLanNodePluginLists } from "@/hooks/use-node-plugin-list";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +52,7 @@ export default function PluginsIndexPage() {
     enabled: isAuthenticated,
   });
   const localInstalls = useLocalPluginInstallsStore((s) => s.installs);
+  const nodeLists = useLanNodePluginLists();
   const fleetNodes = useFleetNodes();
 
   // Node display name for a device id, so the table reads "Hangar Quad A7S",
@@ -61,9 +63,11 @@ export default function PluginsIndexPage() {
     return m;
   }, [fleetNodes]);
 
-  // Merge cloud + local-first installs into one list. Cloud rows win on a
-  // collision (they carry status + risk); a local-only install renders with
-  // a neutral pill so a signed-out operator still sees what they installed.
+  // Merge cloud, node-reported and local-first installs into one list.
+  // Cloud rows win on a collision (they carry the detail link). A LAN-paired
+  // node's own install list covers whatever is on it, however it got there;
+  // a GCS-only local install renders with a neutral pill so a signed-out
+  // operator still sees what they added.
   const installs = useMemo<InstalledRow[] | undefined>(() => {
     // Still loading the cloud list (signed in, query pending).
     if (isAuthenticated && cloudInstalls === undefined) return undefined;
@@ -81,6 +85,19 @@ export default function PluginsIndexPage() {
         deviceId: i.deviceId,
       });
     }
+    for (const [deviceId, rows] of Object.entries(nodeLists)) {
+      for (const r of rows) {
+        const key = keyOf(deviceId, r.plugin_id);
+        byKey.set(key, {
+          key,
+          pluginId: r.plugin_id,
+          name: r.plugin_id,
+          version: r.version,
+          status: r.status,
+          deviceId,
+        });
+      }
+    }
     for (const c of cloudInstalls ?? []) {
       const deviceId = c.droneId ?? null;
       const key = keyOf(deviceId, c.pluginId);
@@ -95,7 +112,7 @@ export default function PluginsIndexPage() {
       });
     }
     return Array.from(byKey.values());
-  }, [isAuthenticated, cloudInstalls, localInstalls]);
+  }, [isAuthenticated, cloudInstalls, localInstalls, nodeLists]);
 
   // Group by node so the fleet-wide table answers "what is installed
   // where" rather than a flat, node-agnostic list.

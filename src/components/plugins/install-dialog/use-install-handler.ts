@@ -40,10 +40,7 @@ import {
   buildGcsParameters,
 } from "../transports/build-install-contributions";
 import { useAuthStore } from "@/stores/auth-store";
-import {
-  useLocalPluginInstallsStore,
-  type LocalPluginBundleSource,
-} from "@/stores/local-plugin-installs-store";
+import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
 import { fetchRegistryArchive, pinArchive } from "@/lib/plugins/archive-pin";
 import { usePairingStore } from "@/stores/pairing-store";
 import type {
@@ -323,48 +320,38 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
         };
       }
 
-      // Local-first GCS-half record: remember the install so the
-      // contribution producers mount the iframe with no cloud. The bundle
-      // source depends on the install shape:
-      //   - hybrid on a drone  → the drone's agent serves gcs/plugin.bundle.js
-      //   - GCS-only from the registry → the published archive serves it
-      // A local-file install with neither has no offline source and relies
-      // on the signed-in Convex finalize below (it was refused above when
-      // there is no sign-in). A registry archive is hashed and its signature
-      // verified here, and the record pins both so a later mount refuses
-      // replaced bytes.
-      // Independent of sign-in; the Convex finalize is the optional cloud
-      // mirror for fleet view / cross-device.
-      if (hasGcsHalf) {
-        const recordDeviceId = targetDevice?.deviceId ?? null;
-        const gcsContributes = buildGcsContributes(manifest);
+      // Local-first record of a GCS-only plugin: no node holds it, so this
+      // browser remembers the install and its bundle comes from the
+      // published archive, hashed and signature-verified here and pinned so
+      // a later mount refuses replaced bytes. A plugin with an agent half is
+      // never recorded here: its node's own install list is the source of
+      // truth, whoever installed it. A local-file GCS-only install has no
+      // offline source and relies on the signed-in Convex finalize below (it
+      // was refused above when there is no sign-in).
+      if (hasGcsHalf && !hasAgentHalf && source.kind === "registry") {
         const gcsParameters = buildGcsParameters(manifest);
-        let bundle: LocalPluginBundleSource | null = null;
-        const entrypoint = manifest.gcsEntrypoint ?? "gcs/plugin.bundle.js";
-        if (hasAgentHalf && targetDevice && lanTarget) {
-          bundle = { kind: "agent", deviceId: targetDevice.deviceId, entrypoint };
-        } else if (source.kind === "registry") {
-          const pin = await pinArchive(await fetchRegistryArchive(source.url), {
-            expectedSha256: source.expectedSha256,
-            manifestSignerId: manifest.signerId,
-          });
-          bundle = { kind: "archive", archiveUrl: source.url, entrypoint, pin };
-        }
-        if (bundle) {
-          useLocalPluginInstallsStore.getState().record({
-            pluginId: manifest.pluginId,
-            deviceId: recordDeviceId,
-            version: manifest.version,
-            name: manifest.name,
-            halves: [...manifest.halves],
-            gcsContributes,
-            ...(gcsParameters ? { gcsParameters } : {}),
-            grantedCaps: [...grantedArr],
-            manifestHash,
-            bundle,
-            installedAt: Date.now(),
-          });
-        }
+        const pin = await pinArchive(await fetchRegistryArchive(source.url), {
+          expectedSha256: source.expectedSha256,
+          manifestSignerId: manifest.signerId,
+        });
+        useLocalPluginInstallsStore.getState().record({
+          pluginId: manifest.pluginId,
+          deviceId: targetDevice?.deviceId ?? null,
+          version: manifest.version,
+          name: manifest.name,
+          halves: [...manifest.halves],
+          gcsContributes: buildGcsContributes(manifest),
+          ...(gcsParameters ? { gcsParameters } : {}),
+          grantedCaps: [...grantedArr],
+          manifestHash,
+          bundle: {
+            kind: "archive",
+            archiveUrl: source.url,
+            entrypoint: manifest.gcsEntrypoint ?? "gcs/plugin.bundle.js",
+            pin,
+          },
+          installedAt: Date.now(),
+        });
       }
 
       // Record the install on the GCS side and, for a plugin with a GCS

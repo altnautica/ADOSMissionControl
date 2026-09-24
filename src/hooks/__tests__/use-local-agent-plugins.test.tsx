@@ -3,20 +3,22 @@
  *
  * Tests for the local-first plugin source hook. Covers:
  *   - cloud / demo mode → inert (returns null so the cloud path wins)
- *   - signed-out + LAN node + local install record → fetches the agent
- *     detail and normalizes the raw manifest dicts (panels → slot entries,
- *     skills → camelCase rows with arm_requirement / activation.config_key /
- *     state.topic flattened)
+ *   - signed-out + LAN node → the node's own install list names what is
+ *     installed; each enabled / running plugin's agent detail is fetched and
+ *     the raw manifest dicts normalized (panels → slot entries, skills →
+ *     camelCase rows with arm_requirement / activation.config_key /
+ *     state.topic flattened). No browser-local install record is involved.
  */
 
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import { useSettingsStore } from "@/stores/settings-store";
 import { renderHook, waitFor } from "@testing-library/react";
 
-const { authState, nodesRef, installsRef, getImpl } = vi.hoisted(() => ({
+const { authState, nodesRef, installsRef, listImpl, getImpl } = vi.hoisted(() => ({
   authState: { value: false },
   nodesRef: { value: [] as Array<Record<string, unknown>> },
   installsRef: { value: [] as Array<Record<string, unknown>> },
+  listImpl: { value: (async () => ({ installs: [] })) as () => Promise<unknown> },
   getImpl: { value: (async () => ({})) as (id: string) => Promise<unknown> },
 }));
 
@@ -38,6 +40,9 @@ vi.mock("@/lib/agent/plugin-client", () => ({
       public baseUrl: string,
       public apiKey: string,
     ) {}
+    list() {
+      return listImpl.value();
+    }
     get(id: string) {
       return getImpl.value(id);
     }
@@ -123,9 +128,14 @@ describe("useLocalAgentPlugins", () => {
         apiKey: "key-abc",
       },
     ];
-    installsRef.value = [
-      { pluginId: "com.altnautica.follow-me", deviceId: "drone-1" },
-    ];
+    // The browser holds no install record for the node: the node's own list
+    // is the only source.
+    installsRef.value = [];
+    listImpl.value = async () => ({
+      installs: [
+        { plugin_id: "com.altnautica.follow-me", version: "0.1.0", status: "enabled" },
+      ],
+    });
     getImpl.value = async () => FOLLOW_ME_DETAIL;
   });
 
@@ -227,6 +237,51 @@ describe("useLocalAgentPlugins", () => {
     expect(result.current).toEqual([]);
   });
 
+  it("surfaces the pages of a plugin installed outside this browser", async () => {
+    listImpl.value = async () => ({
+      installs: [
+        { plugin_id: "com.altnautica.world-engine", version: "1.0.0", status: "running" },
+      ],
+    });
+    getImpl.value = async () => ({
+      install: { status: "running" },
+      manifest: {
+        version: "1.0.0",
+        name: "World Engine",
+        gcs: {
+          entrypoint: "gcs/plugin.bundle.js",
+          isolation: "inline",
+          contributes: {
+            agent_pages: [{ id: "world-model", title: "World Model", profile: ["drone"] }],
+            node_surfaces: [{ id: "compute", title: "Compute", profile: ["compute"] }],
+          },
+          locales: [],
+        },
+      },
+      granted_capabilities: ["ui.slot.node-agent-page", "ui.slot.node-surface"],
+    });
+    const { result } = renderHook(() => useLocalAgentPlugins("drone-1"));
+    await waitFor(() => expect(result.current).not.toBeNull());
+    expect(result.current).toHaveLength(1);
+    expect(result.current![0].gcsContributes).toEqual([
+      { slot: "node.agent.page", panelId: "world-model", title: "World Model", profile: ["drone"] },
+      { slot: "node.surface", panelId: "compute", title: "Compute", profile: ["compute"] },
+    ]);
+  });
+
+  it("contributes nothing for a plugin the node reports disabled", async () => {
+    const get = vi.fn(async () => FOLLOW_ME_DETAIL);
+    getImpl.value = get;
+    listImpl.value = async () => ({
+      installs: [
+        { plugin_id: "com.altnautica.follow-me", version: "0.1.0", status: "disabled" },
+      ],
+    });
+    const { result } = renderHook(() => useLocalAgentPlugins("drone-1"));
+    await waitFor(() => expect(result.current).toEqual([]));
+    expect(get).not.toHaveBeenCalled();
+  });
+
   describe("fleet (null device) branch", () => {
     it("is inert (null) when signed in", () => {
       authState.value = true;
@@ -287,27 +342,6 @@ describe("useLocalAgentPlugins", () => {
         entrypoint: "gcs/plugin.bundle.js",
         pin: { sha256: "ab".repeat(32), signerId: "example-2026-A" },
       });
-    });
-
-    it("drops a fleet record with no offline-loadable bundle", () => {
-      installsRef.value = [
-        {
-          pluginId: "com.altnautica.agent-only",
-          deviceId: null,
-          version: "1.0.0",
-          name: "Agent Only",
-          grantedCaps: [],
-          gcsContributes: [],
-          // an `agent`-kind bundle cannot resolve without a deviceId
-          bundle: {
-            kind: "agent",
-            deviceId: "drone-1",
-            entrypoint: "gcs/plugin.bundle.js",
-          },
-        },
-      ];
-      const { result } = renderHook(() => useLocalAgentPlugins(null));
-      expect(result.current).toEqual([]);
     });
   });
 });
