@@ -10,7 +10,6 @@
  * @license GPL-3.0-only
  */
 
-import JSZip from "jszip";
 import YAML from "yaml";
 
 import {
@@ -73,6 +72,9 @@ export async function inspectArchive(file: File): Promise<{
   manifestYaml: string;
   signature: ArchiveSignatureResult;
 }> {
+  // Loaded on demand rather than statically: the registry grid imports this
+  // module on every node page, and only an archive pick needs the unzipper.
+  const { default: JSZip } = await import("jszip");
   const zip = await JSZip.loadAsync(file);
   const entry = zip.file("manifest.yaml") ?? zip.file("MANIFEST.yaml");
   if (!entry) {

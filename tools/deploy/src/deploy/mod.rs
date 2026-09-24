@@ -165,7 +165,7 @@ fn print_completion(
     if matches!(cfg.tls, crate::wizard::state::Tls::HttpLan) {
         println!(
             "\n{}",
-            theme.dim("HTTP on the LAN: browser cloud mode stays off; add a tunnel for internet fleet control.")
+            theme.dim("HTTP on the LAN: browser cloud mode stays off; put a TLS reverse proxy in front for internet fleet control.")
         );
     }
     println!(

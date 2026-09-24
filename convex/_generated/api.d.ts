@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as airportData from "../airportData.js";
 import type * as auth from "../auth.js";
 import type * as changelogSync from "../changelogSync.js";
 import type * as changelogSyncMutations from "../changelogSyncMutations.js";
@@ -48,7 +47,6 @@ import type * as mosquittoPasswd from "../mosquittoPasswd.js";
 import type * as operatorHmacSecrets from "../operatorHmacSecrets.js";
 import type * as paramRegistry from "../paramRegistry.js";
 import type * as pluginRegistry from "../pluginRegistry.js";
-import type * as pluginRegistryDownload from "../pluginRegistryDownload.js";
 import type * as profiles from "../profiles.js";
 import type * as storage from "../storage.js";
 
@@ -59,7 +57,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  airportData: typeof airportData;
   auth: typeof auth;
   changelogSync: typeof changelogSync;
   changelogSyncMutations: typeof changelogSyncMutations;
@@ -99,7 +96,6 @@ declare const fullApi: ApiFromModules<{
   operatorHmacSecrets: typeof operatorHmacSecrets;
   paramRegistry: typeof paramRegistry;
   pluginRegistry: typeof pluginRegistry;
-  pluginRegistryDownload: typeof pluginRegistryDownload;
   profiles: typeof profiles;
   storage: typeof storage;
 }>;

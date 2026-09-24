@@ -13,7 +13,7 @@ import { WaypointActionTimeline } from "@/components/planner/WaypointActionTimel
 import { ActionRow } from "@/components/planner/ActionRow";
 import { JumpArrowOverlay } from "@/components/planner/JumpArrowOverlay";
 import { expandToItems } from "@/lib/mission/mission-expand";
-import { cmdMap } from "@/lib/mission-io-formats";
+import { cmdMap } from "@/lib/mission/command-map";
 import { validateMission } from "@/lib/validation/mission-validator";
 import { renderWithIntl } from "../../helpers/intl-wrapper";
 

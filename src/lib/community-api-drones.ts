@@ -13,11 +13,6 @@ export const cmdDronesApi = {
   getAgentKey: api.cmdDrones.getAgentKey,
   renameDrone: api.cmdDrones.renameDrone,
   unpairDrone: api.cmdDrones.unpairDrone,
-  // `updateHeartbeat` is deliberately absent: it is an internal mutation
-  // reached only through the `/heartbeat` HTTP route, which authenticates the
-  // agent. Exposing it to the browser gave any caller a directly-invokable
-  // write path that bypassed that route's checks.
-  //
   // `listMyDrones` and `getDrone` return an explicit owner projection, so a
   // credential-shaped column added to `cmd_drones` later is omitted unless it
   // is named there deliberately. The device `apiKey` is named, because a
@@ -35,12 +30,10 @@ export const cmdPairingApi = {
   getMyPendingCodes: api.cmdPairing.getMyPendingCodes,
   getPreGeneratedClaim: api.cmdPairing.getPreGeneratedClaim,
   wipePairStateForOwnedDevice: api.cmdPairing.wipePairStateForOwnedDevice,
-  // `getPairingStatus` and `registerAgent` are deliberately absent: both are
-  // internal, reached only through their HTTP routes, which supply the device's
-  // own API key and the source-address rate-limit bucket respectively. As
-  // public functions the first was a claim oracle for any guessed deviceId and
-  // the second let any browser write an attacker-chosen apiKey keyed by any
-  // deviceId. Nothing in the GCS ever called either one.
+  // `registerAgent` is deliberately absent: it is internal, reached only
+  // through its HTTP route, which supplies the source-address rate-limit
+  // bucket. As a public function it let any browser write an attacker-chosen
+  // apiKey keyed by any deviceId.
 };
 
 export const cmdDroneStatusApi = {

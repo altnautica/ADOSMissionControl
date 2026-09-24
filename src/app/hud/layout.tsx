@@ -10,7 +10,7 @@
 
 export default function HudLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-screen w-screen bg-black text-white overflow-hidden">
+    <div className="h-screen w-screen bg-media text-on-media overflow-hidden">
       {children}
     </div>
   );

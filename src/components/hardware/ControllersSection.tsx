@@ -165,7 +165,7 @@ export function ControllersSection() {
               )}
               <button
                 onClick={() => setShowCalWizard(true)}
-                className="px-3 py-1 text-xs font-medium bg-accent-primary text-white rounded hover:opacity-90 transition-opacity"
+                className="px-3 py-1 text-xs font-medium bg-accent-primary text-accent-foreground rounded hover:opacity-90 transition-opacity"
               >
                 {calibration ? "Recalibrate" : "Calibrate"}
               </button>

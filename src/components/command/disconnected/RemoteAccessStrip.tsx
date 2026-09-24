@@ -62,7 +62,7 @@ export function RemoteAccessStrip({ onSignIn }: RemoteAccessStripProps) {
           <button
             type="button"
             onClick={onSignIn}
-            className="w-full px-4 py-2 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors inline-flex items-center justify-center gap-1.5"
+            className="w-full px-4 py-2 text-xs font-medium bg-accent-primary text-accent-foreground rounded hover:bg-accent-primary/90 transition-colors inline-flex items-center justify-center gap-1.5"
           >
             {t("signInButton")}
             <ChevronRight size={12} />

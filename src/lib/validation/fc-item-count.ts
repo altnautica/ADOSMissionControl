@@ -24,14 +24,16 @@ export type FcFamily = "ardupilot" | "px4" | "betaflight" | "inav";
  * These are advisory best-effort defaults, not authoritative per-board limits
  * (real ceilings depend on FC storage, parameters, and board revision):
  *  - ArduPilot: ~700-item storage default on common boards.
- *  - PX4: larger dataman-backed storage, kept conservative here.
- *  - iNav / Betaflight: much smaller waypoint tables.
+ *  - PX4: the dataman mission store is sized by the build option
+ *    NUM_MISSION_ITEMS_SUPPORTED, default 500.
+ *  - iNav: NAV_MAX_WAYPOINTS, 120 on the common targets.
+ *  - Betaflight: no mission storage; kept small so a plan reads as unfit.
  */
 export const FC_ITEM_COUNT_LIMITS: Record<FcFamily, number> = {
   ardupilot: 724,
-  px4: 1000,
+  px4: 500,
   betaflight: 60,
-  inav: 60,
+  inav: 120,
 };
 
 /** Fallback ceiling when no firmware or explicit limit is supplied. */

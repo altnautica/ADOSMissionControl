@@ -20,7 +20,7 @@
 import { useCallback } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useToast } from "@/components/ui/toast";
 import { cmdDronesApi } from "@/lib/community-api-drones";
 import {

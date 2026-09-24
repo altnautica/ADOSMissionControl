@@ -18,23 +18,28 @@ import {
   NEGOTIATED_JITTER_TARGET_MS,
 } from "@/lib/video/webrtc/jitter-controller";
 
+/** Deadline for the WHEP offer/answer exchange of one thumbnail. */
+const WHEP_TIMEOUT_MS = 8000;
+
 /** Resolve once ICE gathering completes, or after a short cap (a LAN peer
  * gathers host candidates almost immediately). */
 function waitIceComplete(pc: RTCPeerConnection): Promise<void> {
-  return new Promise((resolve) => {
-    if (pc.iceGatheringState === "complete") {
-      resolve();
-      return;
-    }
-    const check = () => {
-      if (pc.iceGatheringState === "complete") {
-        pc.removeEventListener("icegatheringstatechange", check);
-        resolve();
-      }
-    };
-    pc.addEventListener("icegatheringstatechange", check);
-    setTimeout(resolve, 1500);
-  });
+  const { promise, resolve } = Promise.withResolvers<void>();
+  if (pc.iceGatheringState === "complete") {
+    resolve();
+    return promise;
+  }
+  const done = () => {
+    pc.removeEventListener("icegatheringstatechange", check);
+    clearTimeout(timer);
+    resolve();
+  };
+  const check = () => {
+    if (pc.iceGatheringState === "complete") done();
+  };
+  pc.addEventListener("icegatheringstatechange", check);
+  const timer = setTimeout(done, 1500);
+  return promise;
 }
 
 export function CameraThumbnail({
@@ -75,6 +80,16 @@ export function CameraThumbnail({
 
     let cancelled = false;
     let pc: RTCPeerConnection | null = null;
+    // The server keeps a reader session at the answer's Location until it is
+    // deleted; a card that unmounts must not leave it behind.
+    let sessionUrl: string | null = null;
+    const abort = new AbortController();
+    const release = () => {
+      if (!sessionUrl) return;
+      const url = sessionUrl;
+      sessionUrl = null;
+      void fetch(url, { method: "DELETE", keepalive: true }).catch(() => undefined);
+    };
     const video = videoRef.current;
 
     (async () => {
@@ -95,7 +110,14 @@ export function CameraThumbnail({
           method: "POST",
           headers: { "Content-Type": "application/sdp" },
           body: pc.localDescription?.sdp ?? offer.sdp,
+          signal: AbortSignal.any([abort.signal, AbortSignal.timeout(WHEP_TIMEOUT_MS)]),
         });
+        const location = res.headers.get("Location");
+        if (location) sessionUrl = new URL(location, whepUrl).toString();
+        if (cancelled) {
+          release();
+          return;
+        }
         if (!res.ok) throw new Error(`WHEP ${res.status}`);
         const answer = await res.text();
         if (cancelled) return;
@@ -112,6 +134,8 @@ export function CameraThumbnail({
 
     return () => {
       cancelled = true;
+      abort.abort();
+      release();
       if (video) video.srcObject = null;
       if (pc) {
         try {

@@ -10,7 +10,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ const MOTOR_OPTIONS = [
 ];
 
 export function BfDshotCommands({ connected }: { connected: boolean }) {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const { toast } = useToast();
   const [propsRemoved, setPropsRemoved] = useState(false);
@@ -33,7 +33,7 @@ export function BfDshotCommands({ connected }: { connected: boolean }) {
 
   const run = useCallback(
     async (commandType: number, motorIndex: number, cmds: number[]) => {
-      const protocol = getSelectedProtocol();
+      const protocol = selectedProtocol;
       if (!protocol?.sendDshotCommand) {
         toast("DShot commands are not available on this connection", "error");
         return false;
@@ -61,7 +61,7 @@ export function BfDshotCommands({ connected }: { connected: boolean }) {
         setBusy(false);
       }
     },
-    [getSelectedProtocol, isHardBlocked, toast],
+    [selectedProtocol, isHardBlocked, toast],
   );
 
   const disabled = !connected || isHardBlocked || busy || !propsRemoved;

@@ -135,7 +135,11 @@ export function DeviceCard({ device }: { device: PeripheralInfo }) {
     ...DEFAULT_CATEGORY,
     label: device.category || DEFAULT_CATEGORY.label,
   };
-  const endpointCount = (device as unknown as Record<string, unknown>).endpoint_count as number | undefined;
+  // Sent by the agent for multi-endpoint devices; not part of the typed shape.
+  const endpointCount =
+    "endpoint_count" in device && typeof device.endpoint_count === "number"
+      ? device.endpoint_count
+      : undefined;
   return (
     <div className="border border-border-default rounded-lg p-3 bg-bg-secondary hover:border-border-strong transition-colors">
       <div className="flex items-start justify-between mb-2">

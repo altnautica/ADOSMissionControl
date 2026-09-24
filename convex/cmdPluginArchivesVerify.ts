@@ -29,7 +29,7 @@ import { v } from "convex/values";
 import { createHash } from "node:crypto";
 import { inflateRawSync } from "node:zlib";
 
-import { action } from "./_generated/server";
+import { action, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
@@ -90,57 +90,17 @@ export const verifyArchive = action({
       throw new Error("storage object not owned by caller");
     }
 
-    // (2) Storage-layer SHA-256.
-    const meta = await ctx.storage.getMetadata(args.storageId);
-    if (!meta) {
-      throw new Error("storage object not found");
-    }
-    if (meta.size > ARCHIVE_MAX_BYTES) {
-      throw new Error(
-        `archive too large: ${meta.size} bytes (cap ${ARCHIVE_MAX_BYTES})`,
-      );
-    }
-
-    const claimedSha = args.sha256.toLowerCase();
-    const storageSha = (meta.sha256 ?? "").toLowerCase();
-
-    // (3) Stream the blob exactly once. We need the bytes for both
-    // the (optional) fallback hash recompute and the manifest extract.
-    const blob = await ctx.storage.get(args.storageId);
-    if (!blob) {
-      throw new Error("storage object not found");
-    }
-    const archiveBytes = Buffer.from(await blob.arrayBuffer());
-    if (archiveBytes.byteLength > ARCHIVE_MAX_BYTES) {
-      throw new Error(
-        `archive too large: ${archiveBytes.byteLength} bytes (cap ${ARCHIVE_MAX_BYTES})`,
-      );
-    }
-    if (storageSha) {
-      if (storageSha !== claimedSha) {
-        throw new Error("archive sha256 mismatch");
+    // (2)-(4) Integrity. A rejected upload is referenced by nothing, so it is
+    // deleted here rather than left in storage where no one can find it. A
+    // blob an existing row of this caller already holds is left alone.
+    let checked: CheckedArchive;
+    try {
+      checked = await checkArchive(ctx, args.storageId, args.sha256, args.manifestHash);
+    } catch (err) {
+      if (!priorClaim) {
+        await ctx.storage.delete(args.storageId).catch(() => undefined);
       }
-    } else {
-      // Self-host backends sometimes omit `sha256` on metadata; fall
-      // back to recomputing from the bytes we just streamed.
-      const streamedSha = createHash("sha256")
-        .update(archiveBytes)
-        .digest("hex");
-      if (streamedSha !== claimedSha) {
-        throw new Error("archive sha256 mismatch");
-      }
-    }
-
-    // (4) Manifest hash.
-    const manifestBytes = extractZipEntry(archiveBytes, MANIFEST_ENTRY_NAME);
-    if (!manifestBytes) {
-      throw new Error("manifest missing");
-    }
-    const serverManifestHash = createHash("sha256")
-      .update(manifestBytes)
-      .digest("hex");
-    if (serverManifestHash !== args.manifestHash.toLowerCase()) {
-      throw new Error("manifest hash mismatch");
+      throw err;
     }
 
     // (5) All gates passed. Insert via the internal mutation. The row
@@ -149,17 +109,95 @@ export const verifyArchive = action({
       userId,
       storageId: args.storageId,
       fileName: args.fileName,
-      sizeBytes: meta.size,
-      sha256: storageSha || claimedSha,
+      sizeBytes: checked.sizeBytes,
+      sha256: checked.sha256,
       pluginId: args.pluginId,
       version: args.version,
-      manifestHash: serverManifestHash,
+      manifestHash: checked.manifestHash,
       declaredPermissions: args.declaredPermissions,
       signerId: args.signerId,
       signatureB64: args.signatureB64,
     });
   },
 });
+
+/** The server-computed facts about an archive that passed every gate. */
+interface CheckedArchive {
+  sizeBytes: number;
+  sha256: string;
+  manifestHash: string;
+}
+
+/**
+ * Verify a stored archive against the client's claims: size cap, storage-layer
+ * (or recomputed) SHA-256, and the SHA-256 of the extracted manifest. Throws
+ * with the documented rejection text on the first failed gate.
+ */
+async function checkArchive(
+  ctx: ActionCtx,
+  storageId: Id<"_storage">,
+  claimedShaRaw: string,
+  claimedManifestHash: string,
+): Promise<CheckedArchive> {
+  // (2) Storage-layer SHA-256.
+  const meta = await ctx.storage.getMetadata(storageId);
+  if (!meta) {
+    throw new Error("storage object not found");
+  }
+  if (meta.size > ARCHIVE_MAX_BYTES) {
+    throw new Error(
+      `archive too large: ${meta.size} bytes (cap ${ARCHIVE_MAX_BYTES})`,
+    );
+  }
+
+  const claimedSha = claimedShaRaw.toLowerCase();
+  const storageSha = (meta.sha256 ?? "").toLowerCase();
+
+  // (3) Stream the blob exactly once. We need the bytes for both
+  // the (optional) fallback hash recompute and the manifest extract.
+  const blob = await ctx.storage.get(storageId);
+  if (!blob) {
+    throw new Error("storage object not found");
+  }
+  const archiveBytes = Buffer.from(await blob.arrayBuffer());
+  if (archiveBytes.byteLength > ARCHIVE_MAX_BYTES) {
+    throw new Error(
+      `archive too large: ${archiveBytes.byteLength} bytes (cap ${ARCHIVE_MAX_BYTES})`,
+    );
+  }
+  if (storageSha) {
+    if (storageSha !== claimedSha) {
+      throw new Error("archive sha256 mismatch");
+    }
+  } else {
+    // Self-host backends sometimes omit `sha256` on metadata; fall
+    // back to recomputing from the bytes we just streamed.
+    const streamedSha = createHash("sha256")
+      .update(archiveBytes)
+      .digest("hex");
+    if (streamedSha !== claimedSha) {
+      throw new Error("archive sha256 mismatch");
+    }
+  }
+
+  // (4) Manifest hash.
+  const manifestBytes = extractZipEntry(archiveBytes, MANIFEST_ENTRY_NAME);
+  if (!manifestBytes) {
+    throw new Error("manifest missing");
+  }
+  const serverManifestHash = createHash("sha256")
+    .update(manifestBytes)
+    .digest("hex");
+  if (serverManifestHash !== claimedManifestHash.toLowerCase()) {
+    throw new Error("manifest hash mismatch");
+  }
+
+  return {
+    sizeBytes: meta.size,
+    sha256: storageSha || claimedSha,
+    manifestHash: serverManifestHash,
+  };
+}
 
 // ──────────────────────────────────────────────────────────────
 // Zip helpers (Node runtime)

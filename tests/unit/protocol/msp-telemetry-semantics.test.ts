@@ -310,6 +310,19 @@ describe('MSP_STATUS_EX system status', () => {
     expect(cb.mock.calls[0][0].voltageMv).toBeUndefined();
     expect(cb.mock.calls[0][0].currentCa).toBeUndefined();
   });
+
+  it('stores the Betaflight arming word with the flag count sent before it', () => {
+    useTelemetryStore.getState().clear();
+    // No extra mode-flag bytes: count at 16, word at 17, config state at 21.
+    const payload = new Uint8Array(22);
+    payload[15] = 0;
+    payload[16] = 30;
+    new DataView(payload.buffer).setUint32(17, (1 << 25) | (1 << 29), true);
+    dispatchMspTelemetry(MSP.MSP_STATUS_EX, payload, createCallbackStore(), vehicle('betaflight'), [], createMspTelemetryState());
+    const s = useTelemetryStore.getState();
+    expect(s.armingFlags).toBe(((1 << 25) | (1 << 29)) >>> 0);
+    expect(s.armingFlagCount).toBe(30);
+  });
 });
 
 describe('MSP_NAV_STATUS', () => {

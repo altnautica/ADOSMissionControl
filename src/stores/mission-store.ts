@@ -18,7 +18,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Mission, Waypoint, MissionState } from "@/lib/types";
 import type { DroneProtocol, MissionItem } from "@/lib/protocol/types";
-import { useDroneManager } from "./drone-manager";
+import { droneSelection, selectedDroneProtocol } from "./drone-selection";
 import { useTelemetryStore } from "./telemetry-store";
 import { indexedDBStorage } from "@/lib/storage";
 import {
@@ -102,7 +102,7 @@ export function missionPartialize(
 export function migrateMissionStore(
   persisted: unknown,
   version: number,
-): MissionStoreState {
+): Partial<MissionStoreState> {
   const state = persisted as Record<string, unknown>;
   if (version < 2) {
     // v2 retired the suite framework. Strip the dropped ``suiteType`` field off
@@ -140,7 +140,7 @@ export function migrateMissionStore(
       state.waypoints = migrateWaypointSlots(state.waypoints as Waypoint[]);
     }
   }
-  return state as unknown as MissionStoreState;
+  return state as Partial<MissionStoreState>;
 }
 
 /**
@@ -150,7 +150,7 @@ export function migrateMissionStore(
  * its own home on arming, so the fallback only has to be a valid position.
  */
 export function uploadHome(protocol: DroneProtocol, waypoints: readonly Waypoint[]): HomeSlot {
-  const isSelected = useDroneManager.getState().getSelectedProtocol() === protocol;
+  const isSelected = selectedDroneProtocol() === protocol;
   const home = isSelected ? useTelemetryStore.getState().homePosition.latest() : undefined;
   if (home) return { lat: home.lat, lon: home.lon, alt: home.alt };
   return { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
@@ -214,14 +214,14 @@ interface MissionStoreState {
 
 /** The drone id a protocol instance belongs to, if it is still managed. */
 function droneIdOf(protocol: DroneProtocol): string | null {
-  for (const [id, drone] of useDroneManager.getState().drones) {
+  for (const [id, drone] of droneSelection().drones) {
     if (drone.protocol === protocol) return id;
   }
   return null;
 }
 
 export const useMissionStore = create<MissionStoreState>()(
-  persist(
+  persist<MissionStoreState, [], [], Partial<MissionStoreState>>(
     (set, get) => ({
   activeMission: null,
   waypoints: [],
@@ -354,7 +354,7 @@ export const useMissionStore = create<MissionStoreState>()(
     // The target is explicit for callers scoped to a specific drone (the
     // plugin host, which must never fall back to the operator's selection);
     // it defaults to the selected drone for the planner's own Upload button.
-    const protocol = target ?? useDroneManager.getState().getSelectedProtocol();
+    const protocol = target ?? selectedDroneProtocol();
     if (!protocol) return false;
     const { waypoints } = get();
     if (waypoints.length === 0) return false;
@@ -401,7 +401,7 @@ export const useMissionStore = create<MissionStoreState>()(
   },
 
   downloadMission: async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
+    const protocol = selectedDroneProtocol();
     if (!protocol) return [];
 
     set({ downloadState: "downloading", downloadWarnings: [] });
@@ -424,7 +424,10 @@ export const useMissionStore = create<MissionStoreState>()(
       const waypoints: Waypoint[] = collapseFromItems(items, (dropped) => {
         downloadWarnings.push(droppedItemWarning(dropped));
       }, home);
-      set({ waypoints, downloadState: "downloaded", downloadWarnings });
+      // Replacing the operator's plan with the FC's is a planner edit: one
+      // undo step brings the local plan back.
+      withPlannerHistory(() => set({ waypoints }));
+      set({ downloadState: "downloaded", downloadWarnings });
       // The planner now shows what the FC holds, unless an item could not be
       // kept (then the two differ and nothing vouches for the plan).
       const droneId = droneIdOf(protocol);

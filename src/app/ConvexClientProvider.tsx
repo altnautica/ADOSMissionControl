@@ -1,10 +1,11 @@
 "use client";
 
-import { ReactNode, createContext, useContext, useMemo } from "react";
+import { ReactNode, useMemo } from "react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ConvexAuthNextjsProvider } from "@convex-dev/auth/nextjs";
 import { AuthBridge } from "@/components/auth/AuthBridge";
 import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";
+import { ConvexAvailableContext } from "@/hooks/use-convex-available";
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -15,9 +16,6 @@ const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 // convexAvailable=false, so queries pass "skip" (no subscription) and
 // mutations are gated off at every call site.
 const LOCAL_ONLY_ADDRESS = "https://ados-local.invalid";
-
-const ConvexAvailableContext = createContext(false);
-export const useConvexAvailable = () => useContext(ConvexAvailableContext);
 
 export default function ConvexClientProvider({
   children,

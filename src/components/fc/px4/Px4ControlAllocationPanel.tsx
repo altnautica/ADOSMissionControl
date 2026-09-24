@@ -15,7 +15,7 @@ import { Save, RotateCcw, HardDrive, Sliders } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -45,7 +45,7 @@ const AIRFRAME_FIELDS: CaField[] = [
 ];
 
 export function Px4ControlAllocationPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
@@ -61,7 +61,7 @@ export function Px4ControlAllocationPanel() {
   } = usePanelParams({ paramNames, optionalParams: paramNames, panelId: "px4-control-allocation", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const rotorCount = Math.min(CA_MAX_ROTORS, Math.max(0, Math.trunc(params.get("CA_ROTOR_COUNT") ?? 0)));

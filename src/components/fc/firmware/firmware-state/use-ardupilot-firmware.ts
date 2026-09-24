@@ -2,8 +2,8 @@
  * @module fc/firmware/firmware-state/use-ardupilot-firmware
  * @description Owns the ArduPilot slice of the firmware picker: board /
  * version catalog state, the manifest + version loaders, and the
- * effects that load versions on a board/vehicle change and auto-select
- * the board from a connected drone's firmware string.
+ * effects that load versions on a board/vehicle change and preselect the
+ * vehicle firmware (Copter / Plane / Rover / Sub) of a connected drone.
  * @license GPL-3.0-only
  */
 
@@ -13,6 +13,15 @@ import { useEffect, useState } from "react";
 import type { ManagedDrone } from "@/stores/drone-manager";
 import type { FirmwareStack, ManifestBoard } from "@/lib/protocol/firmware/types";
 import { apManifest } from "./manifests";
+
+/** The ArduPilot firmware a connected vehicle class runs (a QuadPlane is Plane). */
+const FIRMWARE_FOR_CLASS: Record<string, string> = {
+  copter: "Copter",
+  plane: "Plane",
+  vtol: "Plane",
+  rover: "Rover",
+  sub: "Sub",
+};
 
 export function useArduPilotFirmware(
   firmwareStack: FirmwareStack,
@@ -55,17 +64,14 @@ export function useArduPilotFirmware(
     }
   }, [selectedApBoard, selectedVehicleType, firmwareStack]);
 
+  // Preselect the connected vehicle's firmware whenever its class becomes
+  // known or changes; the operator's own pick stands until then.
+  const vehicleClass = drone?.vehicleInfo.vehicleClass;
   useEffect(() => {
-    if (drone && apBoards.length > 0 && !selectedApBoard && firmwareStack === "ardupilot") {
-      const info = drone.vehicleInfo;
-      const firmwareStr = info.firmwareVersionString?.toLowerCase() ?? "";
-      const match = apBoards.find((b) => firmwareStr.includes(b.name.toLowerCase()));
-      if (match) setSelectedApBoard(match.name);
-      const classMap: Record<string, string> = { copter: "Copter", plane: "Plane", rover: "Rover", sub: "Sub" };
-      const vc = info.vehicleClass;
-      if (vc && classMap[vc]) setSelectedVehicleType(classMap[vc]);
-    }
-  }, [drone, apBoards, selectedApBoard, firmwareStack]);
+    if (firmwareStack !== "ardupilot" || !vehicleClass) return;
+    const type = FIRMWARE_FOR_CLASS[vehicleClass];
+    if (type) setSelectedVehicleType(type);
+  }, [vehicleClass, firmwareStack]);
 
   return {
     apBoards, apLoading, apError, apVersions,

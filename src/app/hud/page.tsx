@@ -139,10 +139,10 @@ function GamepadIndicator() {
 
   return (
     <div className="absolute top-12 right-4 flex flex-col items-end gap-1 pointer-events-none">
-      <div className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 bg-black/50 text-white/80 border border-white/20 rounded">
+      <div className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 bg-scrim/50 text-on-media/80 border border-on-media/20 rounded">
         {label}
       </div>
-      <div className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 bg-black/50 text-white/60 border border-white/10 rounded">
+      <div className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 bg-scrim/50 text-on-media/60 border border-on-media/10 rounded">
         {picLabel}
       </div>
     </div>

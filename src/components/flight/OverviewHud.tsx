@@ -6,20 +6,15 @@ import { useDroneStore } from "@/stores/drone-store";
 import { readHudFrame } from "@/lib/hud-readings";
 import { batteryBand } from "@/lib/battery-bands";
 import { useSettingsStore } from "@/stores/settings-store";
+import { drawSkyGround, drawPitchLadder, drawRollArc, drawCrosshair } from "@/lib/hud-draw-attitude";
+import { drawSpeedTape, drawAltTape, drawHeadingCompass } from "@/lib/hud-draw-nav";
 import {
-  drawSkyGround,
-  drawPitchLadder,
-  drawRollArc,
-  drawCrosshair,
-  drawSpeedTape,
-  drawAltTape,
-  drawHeadingCompass,
   drawBatteryHud,
   drawGpsAndMode,
   drawArmedStatus,
   drawSignalBars,
   drawFlightTimer,
-} from "@/lib/hud-draw";
+} from "@/lib/hud-draw-status";
 import { useToast } from "@/components/ui/toast";
 import { popupRefusedMessage } from "@/components/flight/telemetry-deck/deck-utils";
 
@@ -198,7 +193,7 @@ export function OverviewHud() {
 
   const hudContent = useMemo(() => (
     <div
-      className="relative w-full h-full border border-border-default overflow-hidden bg-[#0a1428]"
+      className="relative w-full h-full border border-border-default overflow-hidden bg-bg-secondary"
       onDoubleClick={handleToggleDetach}
       title={isDetached ? "Double-click to reattach" : "Double-click to detach into a new window"}
     >

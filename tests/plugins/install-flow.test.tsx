@@ -38,7 +38,7 @@ vi.mock("convex/react", () => ({
   useQuery: () => undefined,
   useConvex: () => undefined,
 }));
-vi.mock("@/app/ConvexClientProvider", () => ({ useConvexAvailable: () => true }));
+vi.mock("@/hooks/use-convex-available", () => ({ useConvexAvailable: () => true }));
 
 const relay = vi.hoisted(() => ({ target: null as null | { url: string; apiKey: string; relay: true } }));
 vi.mock("@/components/plugins/transports/resolve-lan-url", async (importOriginal) => {

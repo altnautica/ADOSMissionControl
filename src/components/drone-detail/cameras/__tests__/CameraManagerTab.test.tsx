@@ -3,7 +3,9 @@
  *
  * The Cameras tab schedules a post-write pipeline-restart re-read. That timer
  * must be cleared on unmount so it never fires a load against a drone slice the
- * operator has navigated away from (the orphan-timer race).
+ * operator has navigated away from (the orphan-timer race). It also resolves
+ * its transport from the node it is rendered for, never from whichever agent
+ * happens to be attached.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -33,13 +35,30 @@ const client = {
   setCameraRoster: vi.fn(),
 };
 
+// The attached connection: which node's agent the store currently holds.
+const attached = { nodeDeviceId: "dev-1" };
+
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: (sel: (s: unknown) => unknown) =>
-    sel({ client, cloudMode: false }),
+    sel({
+      client,
+      cloudMode: false,
+      agentUrl: "http://192.168.1.50:8080",
+      apiKey: "k",
+      nodeDeviceId: attached.nodeDeviceId,
+    }),
 }));
 vi.mock("@/stores/agent-capabilities-store", () => ({
   useAgentCapabilitiesStore: (sel: (s: unknown) => unknown) =>
-    sel({ videoStreams: [] }),
+    sel({ byDevice: { "dev-1": { videoStreams: [] } } }),
+  selectDeviceCapabilities: (
+    s: { byDevice: Record<string, unknown> },
+    id: string | null,
+  ) => (id ? (s.byDevice[id] ?? null) : null),
+}));
+vi.mock("@/stores/fleet-store", () => ({
+  useFleetStore: (sel: (s: unknown) => unknown) =>
+    sel({ drones: [{ id: "d1", cloudDeviceId: "dev-1" }] }),
 }));
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
@@ -66,6 +85,7 @@ describe("CameraManagerTab · restart timer lifecycle", () => {
     client.getCameraRoster.mockReset().mockResolvedValue([{ ...camera }]);
     client.setCameraRoster.mockReset().mockResolvedValue(undefined);
     useCameraManagerStore.setState({ byDrone: {} });
+    attached.nodeDeviceId = "dev-1";
   });
 
   afterEach(() => {
@@ -89,5 +109,13 @@ describe("CameraManagerTab · restart timer lifecycle", () => {
     vi.advanceTimersByTime(5000);
     await flush();
     expect(client.getCameraRoster).toHaveBeenCalledTimes(1);
+  });
+
+  it("never reads or writes another node's attached agent", async () => {
+    attached.nodeDeviceId = "dev-other";
+    render(wrap(<CameraManagerTab droneId="d1" />));
+    await flush();
+    expect(client.getCameraRoster).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /add/i })).toBeDisabled();
   });
 });

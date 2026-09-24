@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useSafehomeStore, SAFEHOME_MAX } from "@/stores/safehome-store";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 // ── Component ─────────────────────────────────────────────────
 
 export function SafehomePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
 
   const safehomes = useSafehomeStore((s) => s.safehomes);
@@ -40,10 +40,10 @@ export function SafehomePanel() {
   useUnsavedGuard(dirty);
 
   const hasLoaded = useSafehomeStore((s) => s.loaded);
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -55,10 +55,10 @@ export function SafehomePanel() {
     } else {
       toast("Safehome slots loaded from FC", "success");
     }
-  }, [getSelectedProtocol, loadFromFc, toast]);
+  }, [selectedProtocol, loadFromFc, toast]);
 
   const handleWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -70,7 +70,7 @@ export function SafehomePanel() {
     } else {
       toast("Safehome slots written to FC", "success");
     }
-  }, [getSelectedProtocol, uploadToFc, toast]);
+  }, [selectedProtocol, uploadToFc, toast]);
 
   const formatCoord = (val: number) => val.toFixed(7);
 
@@ -141,7 +141,7 @@ export function SafehomePanel() {
                   >
                     <div
                       className={cn(
-                        "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform",
+                        "absolute top-0.5 w-3 h-3 rounded-full bg-text-primary transition-transform",
                         sh.enabled ? "translate-x-4" : "translate-x-0.5",
                       )}
                     />

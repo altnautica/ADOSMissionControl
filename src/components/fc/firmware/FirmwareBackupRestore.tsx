@@ -5,6 +5,7 @@ import { Download, Upload, HardDrive, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import { downloadBlob } from "@/lib/download";
+import { parseParamFile, serializeParamFile } from "@/lib/formats/param-file-parser";
 
 interface FirmwareBackupRestoreProps {
   protocol: DroneProtocol | null;
@@ -14,6 +15,8 @@ interface FirmwareBackupRestoreProps {
   serialSupported: boolean;
   usbSupported: boolean;
   onFlash: () => void;
+  /** Why flashing is refused right now (the vehicle is armed), or null. */
+  blockedReason: string | null;
   onMessage: (msg: string) => void;
   onParamBackupChecked: () => void;
 }
@@ -26,6 +29,7 @@ export function FirmwareBackupRestore({
   serialSupported,
   usbSupported,
   onFlash,
+  blockedReason,
   onMessage,
   onParamBackupChecked,
 }: FirmwareBackupRestoreProps) {
@@ -38,8 +42,11 @@ export function FirmwareBackupRestore({
     onMessage("Downloading parameters...");
     try {
       const params = await protocol.getAllParameters();
-      const lines = params.map((p) => `${p.name}\t${p.value}`);
-      const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+      const text = serializeParamFile(
+        params.map((p) => ({ name: p.name, value: p.value, type: p.type })),
+        { format: "mp" },
+      );
+      const blob = new Blob([text], { type: "text/plain" });
       downloadBlob(blob, `params-backup-${Date.now()}.param`);
       onMessage(`Backed up ${params.length} parameters`);
       onParamBackupChecked();
@@ -53,7 +60,7 @@ export function FirmwareBackupRestore({
   const handleRestoreParams = useCallback(async () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".param,.txt";
+    input.accept = ".param,.params,.txt";
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
@@ -63,18 +70,14 @@ export function FirmwareBackupRestore({
         return;
       }
 
-      const text = await file.text();
-      const lines = text.split("\n").filter((l) => l.trim() && !l.startsWith("#"));
-      onMessage(`Restoring ${lines.length} parameters...`);
+      // Mission Planner (NAME,VALUE / NAME VALUE) and QGC
+      // (SYSID COMPID NAME VALUE TYPE) files both parse here.
+      const entries = parseParamFile(await file.text());
+      onMessage(`Restoring ${entries.length} parameters...`);
 
       let success = 0;
       let failed = 0;
-      for (const line of lines) {
-        const [name, valueStr] = line.split(/\s+/);
-        if (!name || !valueStr) continue;
-        const value = parseFloat(valueStr);
-        if (isNaN(value)) continue;
-
+      for (const { name, value } of entries) {
         try {
           const result = await protocol.setParameter(name, value);
           if (result.success) success++;
@@ -115,8 +118,9 @@ export function FirmwareBackupRestore({
     <div className="flex items-center gap-3">
       <button
         onClick={onFlash}
-        disabled={!allChecked || isFlashing || (!serialSupported && !usbSupported)}
-        className="flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-accent-primary text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-accent-primary/80 transition-colors"
+        disabled={!allChecked || isFlashing || blockedReason !== null || (!serialSupported && !usbSupported)}
+        title={blockedReason ?? undefined}
+        className="flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-accent-primary text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-accent-primary/80 transition-colors"
       >
         <Zap size={14} />
         {isFlashing ? "Flashing..." : "Flash Firmware"}

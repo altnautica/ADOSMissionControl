@@ -14,7 +14,7 @@ import { Radio, Upload } from "lucide-react";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
@@ -53,8 +53,8 @@ function NumField({ label, value, disabled, onChange, min = 0, max = 2500 }: {
 }
 
 export function BfReceiverPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
   const { isArmed, lockMessage } = useArmedLock();
   const channels = useFreshTelemetry("rc")?.channels ?? [];
 
@@ -70,7 +70,7 @@ export function BfReceiverPanel() {
   const [bootProvider, setBootProvider] = useState<number | null>(null);
 
   const read = useCallback(async () => {
-    const p = getSelectedProtocol();
+    const p = selectedProtocol;
     if (!p?.getRxConfig || !p.getRxMap) {
       setError("Receiver config is not available on this connection");
       return;
@@ -89,10 +89,10 @@ export function BfReceiverPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const write = useCallback(async () => {
-    const p = getSelectedProtocol();
+    const p = selectedProtocol;
     if (!p?.setRxConfig || !p.setRxMap || !cfg || !isRxMapPermutation(rxMap)) return;
     setLoading(true);
     setError(null);
@@ -109,7 +109,7 @@ export function BfReceiverPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, cfg, rxMap]);
+  }, [selectedProtocol, cfg, rxMap]);
 
   const updateCfg = (patch: Partial<BfRxConfig>) => setCfg((prev) => (prev ? { ...prev, ...patch } : prev));
   const dirty = hasLoaded && cfg !== null && snapshot(cfg, rxMap) !== baseline;

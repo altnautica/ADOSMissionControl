@@ -3,8 +3,7 @@
  * (channel + bitrate profile), link health metrics (RSSI, FEC), and the
  * high-level paired-drone status.
  *
- * Consumers can subscribe through the aggregator hook `useGroundStationStore`
- * or via the narrower selector hook `useLinkSlice`.
+ * Consumers subscribe through `useGroundStationStore` with a field selector.
  *
  * @license GPL-3.0-only
  */

@@ -93,7 +93,11 @@ export function CameraEditor({
       patch.orientation = orientation === "" ? null : orientation;
     }
     if (!sameSet(purpose, camera.purpose)) patch.purpose = purpose;
-    if (!discovered && enabled !== camera.enabled) patch.enabled = enabled;
+    // The primary stream is always served, so it is always enabled.
+    const effectiveEnabled = primary || enabled;
+    if (!discovered && effectiveEnabled !== camera.enabled) {
+      patch.enabled = effectiveEnabled;
+    }
     const wasPrimary = camera.role === "primary";
     if (!discovered && primary !== wasPrimary) {
       patch.role = primary ? "primary" : null;
@@ -180,9 +184,15 @@ export function CameraEditor({
           <div className="space-y-2 rounded-md border border-border-default bg-bg-tertiary/40 p-3">
             <Toggle
               label={t("editor.enabled")}
-              checked={enabled}
+              checked={primary || enabled}
               onChange={setEnabled}
+              disabled={primary}
             />
+            {primary ? (
+              <p className="text-[11px] text-text-tertiary">
+                {t("editor.primaryAlwaysOn")}
+              </p>
+            ) : null}
             <Toggle
               label={t("editor.primary")}
               checked={primary}

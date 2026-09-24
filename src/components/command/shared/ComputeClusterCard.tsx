@@ -48,13 +48,13 @@ function num(v: number | null): string {
 
 function roleBadgeClass(role: string): string {
   if (role === "master") return "bg-accent-primary/15 text-accent-primary";
-  if (role === "slave") return "bg-white/[0.06] text-text-secondary";
-  return "bg-white/[0.04] text-text-tertiary";
+  if (role === "slave") return "bg-text-primary/[0.06] text-text-secondary";
+  return "bg-text-primary/[0.04] text-text-tertiary";
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded bg-white/[0.02] px-2 py-1.5 text-center">
+    <div className="rounded bg-text-primary/[0.02] px-2 py-1.5 text-center">
       <div className="text-sm font-mono text-text-primary tabular-nums">{value}</div>
       <div className="text-[9px] uppercase tracking-wide text-text-tertiary">
         {label}
@@ -203,7 +203,7 @@ export function ComputeClusterCard({ className }: ComputeClusterCardProps) {
           {cluster.slaves.map((s) => (
             <div
               key={s.nodeId}
-              className="flex items-center gap-2 px-2 py-1 rounded bg-white/[0.02]"
+              className="flex items-center gap-2 px-2 py-1 rounded bg-text-primary/[0.02]"
             >
               <Cpu size={10} className="text-text-tertiary flex-shrink-0" />
               <span

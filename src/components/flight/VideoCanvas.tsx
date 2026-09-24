@@ -355,7 +355,7 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
           data-video-degraded={degradedReason}
           role="status"
         >
-          <span className="text-[11px] font-mono font-semibold tracking-wider text-white">
+          <span className="text-[11px] font-mono font-semibold tracking-wider text-on-status">
             {degradedReason === "ice-disconnect"
               ? "LINK LOST — PICTURE FROZEN, RECONNECTING"
               : "NO FRAMES — PICTURE FROZEN, RECONNECTING"}
@@ -400,7 +400,7 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
             </div>
             <button
               onClick={handleSaveConfig}
-              className="w-full py-1.5 text-xs font-semibold bg-accent-primary text-white hover:bg-accent-primary/90 transition-colors cursor-pointer"
+              className="w-full py-1.5 text-xs font-semibold bg-accent-primary text-accent-foreground hover:bg-accent-primary/90 transition-colors cursor-pointer"
             >
               {configUrl ? "Connect" : "Use Agent Camera"}
             </button>

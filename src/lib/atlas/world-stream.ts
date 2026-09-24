@@ -23,6 +23,7 @@
  */
 
 import { openReconnectingSocket, type ReconnectingSocketLike } from "@/lib/net/reconnecting-socket";
+import { WS_TICKET_PROTOCOL } from "@/lib/api/ground-station/ws-ticket";
 
 /** The route the node serves, one path per device (the agent's own constant). */
 export const WORLD_WS_ROUTE = "/ws/atlas/:device_id";
@@ -70,8 +71,13 @@ export interface WorldStreamOptions {
   /** One decoded-nothing frame: raw envelope bytes. */
   onFrame: (frame: Uint8Array) => void;
   onState: (state: WorldStreamState) => void;
+  /** A fresh short-lived ticket before each dial, offered as the
+   * `ados-ws-ticket` subprotocol: a paired node refuses the stream without
+   * one, and a browser cannot set a header on the handshake. `null` dials
+   * without one (an unpaired node serves the stream open). */
+  ticket?: () => Promise<string | null>;
   /** Socket constructor; defaults to the global `WebSocket`. */
-  socketFactory?: (url: string) => WorldStreamSocket;
+  socketFactory?: (url: string, protocols?: string[]) => WorldStreamSocket;
 }
 
 /**
@@ -81,15 +87,20 @@ export interface WorldStreamOptions {
 export function subscribeWorldStream(opts: WorldStreamOptions): () => void {
   const factory =
     opts.socketFactory ??
-    (typeof WebSocket !== "undefined" ? (url: string) => new WebSocket(url) : null);
+    (typeof WebSocket !== "undefined"
+      ? (url: string, protocols?: string[]) => new WebSocket(url, protocols)
+      : null);
   if (factory === null) return () => {};
 
+  const dial = (ticket: string | null): WorldStreamSocket => {
+    const ws = factory(opts.url, ticket ? [WS_TICKET_PROTOCOL, ticket] : undefined);
+    ws.binaryType = "arraybuffer";
+    return ws;
+  };
+
   return openReconnectingSocket({
-    open: () => {
-      const ws = factory(opts.url);
-      ws.binaryType = "arraybuffer";
-      return ws;
-    },
+    // A ticket lives seconds, so each dial (and each redial) mints its own.
+    open: () => (opts.ticket ? opts.ticket().then(dial) : dial(null)),
     onMessage: (data) => {
       // Descriptors are binary. A text frame is off-contract; ignoring it keeps
       // a chatty proxy from being counted as a malformed descriptor.

@@ -15,7 +15,7 @@ import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { Activity, Power, Trash2, Cpu } from "lucide-react";
 import { cn, isDemoMode } from "@/lib/utils";
 import { useCanMonitorStore } from "@/stores/can-monitor-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useClockTick } from "@/lib/agent/freshness";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
@@ -45,6 +45,9 @@ function sourceNodeId(canId: number): number {
   return canId & 0x7f;
 }
 
+/** Refresh period for the FC-side forwarding request; ArduPilot times it out after 5 s. */
+const CAN_FORWARD_REFRESH_MS = 2000;
+
 export function CanMonitorPanel() {
   // Subscribe to version so the UI re-renders on each frame
   const version = useCanMonitorStore((s) => s._version);
@@ -54,7 +57,7 @@ export function CanMonitorPanel() {
   const totalFrames = useCanMonitorStore((s) => s.totalFrames);
   const fps = useCanMonitorStore((s) => s.framesPerSecond);
   const lastTallyAt = useCanMonitorStore((s) => s._lastTallyAt);
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const [bus, setBus] = useState("1");
   const [starting, setStarting] = useState(false);
@@ -74,8 +77,8 @@ export function CanMonitorPanel() {
   const stopForwarding = useCallback(() => {
     if (!forwardingRef.current) return;
     forwardingRef.current = false;
-    void getSelectedProtocol()?.enableCanForward?.(0).catch(() => {});
-  }, [getSelectedProtocol]);
+    void selectedProtocol?.enableCanForward?.(0).catch(() => {});
+  }, [selectedProtocol]);
 
   const toggleCapture = useCallback(async () => {
     if (enabled) {
@@ -84,7 +87,7 @@ export function CanMonitorPanel() {
       return;
     }
     if (isDemoMode()) { setEnabled(true); return; }
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.enableCanForward) {
       toast("This connection cannot forward CAN frames", "error");
       return;
@@ -103,7 +106,20 @@ export function CanMonitorPanel() {
     } finally {
       setStarting(false);
     }
-  }, [enabled, bus, getSelectedProtocol, setEnabled, stopForwarding, toast]);
+  }, [enabled, bus, selectedProtocol, setEnabled, stopForwarding, toast]);
+
+  // ArduPilot drops forwarding once 5 s pass without a fresh
+  // MAV_CMD_CAN_FORWARD from the client, so the request is repeated while
+  // capturing. A refused refresh leaves the capture running; the frame rate
+  // falling to 0 shows the loss.
+  useEffect(() => {
+    if (!enabled || isDemoMode()) return;
+    const id = setInterval(() => {
+      if (!forwardingRef.current) return;
+      void selectedProtocol?.enableCanForward?.(Number(bus)).catch(() => {});
+    }, CAN_FORWARD_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [enabled, bus, selectedProtocol]);
 
   // Unmount only: a re-render must never tear forwarding down.
   const stopForwardingRef = useRef(stopForwarding);

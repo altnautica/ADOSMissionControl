@@ -15,7 +15,7 @@ import type {
   ConfigError,
 } from "@/lib/agent/types";
 import { appendHistorySample } from "@/lib/agent/history";
-import { useAgentConnectionStore } from "./agent-connection-store";
+import { agentConnectionLink, isCurrentAgentClient } from "./agent-connection/link";
 
 const MAX_CPU_HISTORY = 60;
 
@@ -91,46 +91,55 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
   },
 
   async fetchStatus() {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) return false;
+    const { client, cloudMode } = link;
     if (cloudMode) return false; // Cloud status arrives via reactive query
     if (!client) return false;
     try {
       const status = await client.getStatus();
+      if (!isCurrentAgentClient(client)) return false;
       set({ status, lastUpdatedAt: Date.now(), stale: false });
-      useAgentConnectionStore.getState().noteFetchSuccess();
+      link.noteFetchSuccess();
       return true;
     } catch {
-      useAgentConnectionStore.getState().noteFetchFailure();
+      if (isCurrentAgentClient(client)) link.noteFetchFailure();
       return false;
     }
   },
 
   async fetchServices() {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) return false;
+    const { client, cloudMode } = link;
     if (cloudMode) {
       // A queued cloud command is a dispatch, not an answer, so it is not a
       // reading this poll can claim.
-      useAgentConnectionStore.getState().sendCloudCommand("get_services");
+      link.sendCloudCommand("get_services");
       return false;
     }
     if (!client) return false;
     try {
       const services = await client.getServices();
+      if (!isCurrentAgentClient(client)) return false;
       set({ services, lastUpdatedAt: Date.now(), stale: false });
-      useAgentConnectionStore.getState().noteFetchSuccess();
+      link.noteFetchSuccess();
       return true;
     } catch {
-      useAgentConnectionStore.getState().noteFetchFailure();
+      if (isCurrentAgentClient(client)) link.noteFetchFailure();
       return false;
     }
   },
 
   async fetchResources() {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) return false;
+    const { client, cloudMode } = link;
     if (cloudMode) return false; // Cloud resources arrive via status push
     if (!client) return false;
     try {
       const resources = await client.getSystemResources();
+      if (!isCurrentAgentClient(client)) return false;
       set((state) => {
         // A poll that returned no reading contributes no history point, so the
         // chart never shows a dip the node did not report.
@@ -146,18 +155,20 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
         );
         return { resources, cpuHistory, memoryHistory, lastUpdatedAt: Date.now(), stale: false };
       });
-      useAgentConnectionStore.getState().noteFetchSuccess();
+      link.noteFetchSuccess();
       return true;
     } catch {
-      useAgentConnectionStore.getState().noteFetchFailure();
+      if (isCurrentAgentClient(client)) link.noteFetchFailure();
       return false;
     }
   },
 
   async fetchLogs(level?: string) {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) return;
+    const { client, cloudMode } = link;
     if (cloudMode) {
-      useAgentConnectionStore.getState().sendCloudCommand("get_logs", { level, limit: 200 });
+      link.sendCloudCommand("get_logs", { level, limit: 200 });
       return;
     }
     if (!client) return;
@@ -169,6 +180,7 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     try {
       if (client.logging) {
         const envelope = await client.logging.query({ level, limit: 200 });
+        if (!isCurrentAgentClient(client)) return;
         // Newest-first from the store; the viewer expects chronological.
         const logs: LogEntry[] = [...envelope.data]
           .reverse()
@@ -179,12 +191,13 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
             message: row.message,
           }));
         set({ logs, lastUpdatedAt: Date.now(), stale: false });
-        useAgentConnectionStore.getState().noteFetchSuccess();
+        link.noteFetchSuccess();
         return;
       }
       const logs = await client.getLogs({ level, limit: 200 });
+      if (!isCurrentAgentClient(client)) return;
       set({ logs, lastUpdatedAt: Date.now(), stale: false });
-      useAgentConnectionStore.getState().noteFetchSuccess();
+      link.noteFetchSuccess();
     } catch { /* silent — logs are best-effort */ }
   },
 
@@ -203,9 +216,11 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
   },
 
   async restartService(name: string) {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) throw new Error("Agent not connected");
+    const { client, cloudMode } = link;
     if (cloudMode) {
-      useAgentConnectionStore.getState().sendCloudCommand("restart_service", { name });
+      link.sendCloudCommand("restart_service", { name });
       return null;
     }
     if (!client) throw new Error("Agent not connected");
@@ -219,16 +234,20 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
   },
 
   async restartAll() {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) throw new Error("Agent not connected");
+    const { client, cloudMode } = link;
     if (cloudMode || !client) throw new Error("Agent not connected");
     const res = await client.restartSupervisor();
     return res.message;
   },
 
   async sendCommand(cmd: string, args?: unknown[]) {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) return null;
+    const { client, cloudMode } = link;
     if (cloudMode) {
-      useAgentConnectionStore.getState().sendCloudCommand("send_command", { cmd, args });
+      link.sendCloudCommand("send_command", { cmd, args });
       return null;
     }
     if (!client) return null;

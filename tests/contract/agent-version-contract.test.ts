@@ -7,13 +7,13 @@ import type { AgentVersionInfo } from "@/lib/agent/types";
  * Cross-repo contract test for /api/version capability negotiation.
  *
  * The agent has the mirror test at:
- *   ADOSDroneAgent/tests/test_api_version.py
+ *   ADOSDroneAgent/crates/ados-control/src/routes/system.rs
+ *   (served_capabilities_match_the_gcs_contract)
  *
- * Both AGENT_CAPABILITIES_FROZEN tuples below must stay in lockstep.
- * When you add or remove a flag from CAPABILITIES in the agent's
- * version.py, update BOTH:
+ * Both AGENT_CAPABILITIES_FROZEN lists must stay in lockstep, in order.
+ * When a flag is added to CAPABILITIES in that file, update BOTH:
  *   1. AGENT_CAPABILITIES_FROZEN here
- *   2. AGENT_CAPABILITIES_FROZEN in the agent contract test
+ *   2. AGENT_CAPABILITIES_FROZEN in the agent test
  *
  * The two-sided lock catches a prior seam regression where
  * /api/status/full landed without GCS knowing whether the agent
@@ -31,11 +31,9 @@ const AGENT_CAPABILITIES_FROZEN: readonly string[] = [
   // this flag per its append-only capability contract (a shipped flag is never
   // removed). The GCS no longer acts on it; it stays here to hold lockstep.
   "scripts.runtime",
-  "ota.updater",
   "pairing.mnemonic",
   "pairing.bind_state",
   "peripherals.registry",
-  "suites.activation",
   "fleet.roster",
   "features.catalog",
   "ground_station.profile",

@@ -93,12 +93,22 @@ export function useAtlasLocalState(droneId: string | null | undefined): void {
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
+    // One request at a time: a slow or unreachable node answers after the
+    // client timeout, and interval ticks would otherwise stack requests.
+    let inFlight = false;
 
     const pollOnce = async () => {
-      // Build the client per poll so it reads the latest committed key (the
-      // client freezes the key at construction).
-      const client = new PluginAgentClient(host, apiKeyRef.current);
-      const slice = await client.getRawState(ATLAS_PLUGIN_ID);
+      if (inFlight) return;
+      inFlight = true;
+      let slice: Record<string, unknown> | null;
+      try {
+        // Build the client per poll so it reads the latest committed key (the
+        // client freezes the key at construction).
+        const client = new PluginAgentClient(host, apiKeyRef.current);
+        slice = await client.getRawState(ATLAS_PLUGIN_ID);
+      } finally {
+        inFlight = false;
+      }
       if (cancelled || !slice) return;
       const patch = mapAtlasSlice(
         slice,

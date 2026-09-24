@@ -124,10 +124,16 @@ describe('checkItemCount', () => {
     expect(result.limit).toBe(FC_ITEM_COUNT_LIMITS.inav);
   });
 
-  it('warns near the small iNav ceiling', () => {
-    // inav default 60, warn at >= 54.
-    expect(checkItemCount(wps(53), { firmware: 'inav' }).level).toBe('info');
-    expect(checkItemCount(wps(54), { firmware: 'inav' }).level).toBe('warn');
+  it('warns near the iNav waypoint table ceiling', () => {
+    // iNav holds 120 waypoints (NAV_MAX_WAYPOINTS), warn at >= 108.
+    expect(checkItemCount(wps(107), { firmware: 'inav' }).level).toBe('info');
+    expect(checkItemCount(wps(108), { firmware: 'inav' }).level).toBe('warn');
+  });
+
+  it('warns before a plan outgrows the default PX4 mission store', () => {
+    // PX4 stores 500 items by default, warn at >= 450.
+    expect(checkItemCount(wps(449), { firmware: 'px4' }).level).toBe('info');
+    expect(checkItemCount(wps(450), { firmware: 'px4' }).level).toBe('warn');
   });
 
   it('lets an explicit limit override the firmware default', () => {

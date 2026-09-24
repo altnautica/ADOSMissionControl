@@ -39,7 +39,6 @@ export interface DroneMetadata {
 
 interface DroneMetadataStoreState {
   profiles: Record<string, DroneMetadata>;
-  _hasHydrated: boolean;
 
   /** Get a profile by drone ID. */
   getProfile: (id: string) => DroneMetadata | undefined;
@@ -78,10 +77,9 @@ function makeDefaults(id: string, partial: Partial<Omit<DroneMetadata, "droneId"
 }
 
 export const useDroneMetadataStore = create<DroneMetadataStoreState>()(
-  persist(
+  persist<DroneMetadataStoreState, [], [], Partial<DroneMetadataStoreState>>(
     (set, get) => ({
       profiles: {},
-      _hasHydrated: false,
 
       getProfile: (id) => get().profiles[id],
 
@@ -111,7 +109,7 @@ export const useDroneMetadataStore = create<DroneMetadataStoreState>()(
     {
       name: "altcmd:drone-metadata",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 4,
+      version: 5,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -154,14 +152,12 @@ export const useDroneMetadataStore = create<DroneMetadataStoreState>()(
             }
           }
         }
-        return state as unknown as DroneMetadataStoreState;
-      },
-      onRehydrateStorage: () => {
-        return (state) => {
-          if (state) {
-            state._hasHydrated = true;
-          }
-        };
+        if (version < 5) {
+          // v5 dropped a hydration flag nothing read; persisted copies of it
+          // would otherwise merge back into the state.
+          delete state._hasHydrated;
+        }
+        return state as Partial<DroneMetadataStoreState>;
       },
     }
   )

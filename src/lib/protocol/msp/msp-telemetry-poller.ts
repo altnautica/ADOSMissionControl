@@ -19,6 +19,7 @@
 import { MSP } from './msp-constants'
 import { INAV_MSP } from './msp-decoders-inav'
 import type { MspSerialQueue } from './msp-serial-queue'
+import type { FirmwareType } from '../types'
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -39,7 +40,14 @@ const MAX_PENDING_BEFORE_SKIP = 5
 
 // ── Default Poll Groups ────────────────────────────────────
 
-function createDefaultGroups(): PollGroup[] {
+/**
+ * Poll groups for one firmware. iNav-only commands go to iNav alone (any other
+ * firmware answers them with an error frame, a wasted round trip each), and
+ * the battery comes from the frame the dispatcher reads for that firmware:
+ * MSP2_INAV_ANALOG on iNav, MSP_BATTERY_STATE elsewhere.
+ */
+function createDefaultGroups(firmwareType: FirmwareType): PollGroup[] {
+  const isInav = firmwareType === 'inav'
   return [
     {
       name: 'fast',
@@ -55,8 +63,7 @@ function createDefaultGroups(): PollGroup[] {
         MSP.MSP_ANALOG,       // 110
         MSP.MSP_STATUS_EX,    // 150
         MSP.MSP_MOTOR,        // 104
-        MSP.MSP_BATTERY_STATE, // 130
-        INAV_MSP.MSP2_INAV_ANALOG, // 0x2002 iNav battery incl. the FC's state of charge
+        isInav ? INAV_MSP.MSP2_INAV_ANALOG : MSP.MSP_BATTERY_STATE,
       ],
       intervalMs: 100,
     },
@@ -66,9 +73,13 @@ function createDefaultGroups(): PollGroup[] {
         MSP.MSP_RAW_IMU,                    // 102
         MSP.MSP_ALTITUDE,                   // 109
         MSP.MSP_RAW_GPS,                    // 106
-        INAV_MSP.MSP2_INAV_STATUS,          // 0x2000 iNav extended status
-        INAV_MSP.MSP_NAV_STATUS,            // 121 iNav nav state / WP action
-        INAV_MSP.MSP2_ADSB_VEHICLE_LIST,    // 0x2090 ADS-B traffic (2 Hz via slow-group 500 ms)
+        ...(isInav
+          ? [
+              INAV_MSP.MSP2_INAV_STATUS,       // 0x2000 iNav extended status
+              INAV_MSP.MSP_NAV_STATUS,         // 121 iNav nav state / WP action
+              INAV_MSP.MSP2_ADSB_VEHICLE_LIST, // 0x2090 ADS-B traffic
+            ]
+          : []),
       ],
       intervalMs: 500,
     },
@@ -83,6 +94,7 @@ export class MspTelemetryPoller {
 
   constructor(
     private queue: MspSerialQueue,
+    private firmwareType: FirmwareType,
     private onData: (command: number, payload: Uint8Array) => void,
   ) {}
 
@@ -91,7 +103,7 @@ export class MspTelemetryPoller {
     if (this.running) return
     this.running = true
 
-    const defaults = createDefaultGroups()
+    const defaults = createDefaultGroups(this.firmwareType)
     for (const group of defaults) {
       this.startGroup(group)
     }

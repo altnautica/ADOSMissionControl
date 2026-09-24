@@ -8,17 +8,13 @@
  * the same link_id will have their frames rejected as replays when their
  * timestamps interleave.
  *
- * Today this uses a deterministic browser-fingerprint hash: a stable
- * per-browser device id is hashed into the 1..254 range. Collision
- * probability is low enough for single-user, 2-3 device scenarios.
- * Reserved values:
+ * A stable per-browser device id is hashed into the 1..254 range, so the
+ * same browser always takes the same link id with no coordination service.
+ * Collision probability is low enough for single-user, 2-3 device
+ * scenarios. Signing keys stay in this browser's IndexedDB; nothing about
+ * the allocation leaves the browser. Reserved values:
  *   0   - reserved for the "single-browser direct" default
  *   255 - reserved for future use (broadcast or coordination channel)
- *
- * A Convex-coordinated allocator (`cmdSigningKeys.allocateLinkId` storing
- * `linkIdsInUse[]` in the cloud row) is the next replacement. This module
- * keeps the deterministic fingerprint behavior for users who are signed
- * out, for demo mode, and as a fallback when Convex is unreachable.
  *
  * @license GPL-3.0-only
  */

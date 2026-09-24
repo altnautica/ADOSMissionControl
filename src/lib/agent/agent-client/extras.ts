@@ -81,24 +81,6 @@ export function listCameras(ctx: RequestContext): Promise<CameraListResponse> {
   return agentRequest<CameraListResponse>(ctx, "/api/video/cameras");
 }
 
-/** Reassign a camera role (primary or secondary) to a specific
- * device path. The agent restarts the encoder before returning, so
- * callers should expect a brief gap in the live stream. */
-export function switchCamera(
-  ctx: RequestContext,
-  role: "primary" | "secondary",
-  devicePath: string,
-): Promise<{ ok?: boolean; restarting?: boolean }> {
-  return agentRequest<{ ok?: boolean; restarting?: boolean }>(
-    ctx,
-    "/api/video/camera/switch",
-    {
-      method: "POST",
-      body: JSON.stringify({ role, device_path: devicePath }),
-    },
-  );
-}
-
 /** Live snapshot of the adaptive bitrate / FEC / radio config. */
 export async function getVideoConfig(
   ctx: RequestContext,
@@ -163,34 +145,35 @@ export async function getTime(
 
 // ── Recording ─────────────────────────────────────────────────
 
-/** Start recording on the agent. Drone profile uses `/api/video/record/start`;
- * ground-station profile uses the same shape under `/api/v1/ground-station/`.
- * The drone-profile route is picked here as the default; callers can branch
- * on the agent's profile when a ground-station-only deployment is in use. */
+/** Start the ground station's recorder (`POST
+ * /api/v1/ground-station/recording/start`). The recorder is the ground
+ * station's own capture of the received feed; the drone profile has no HTTP
+ * recorder (its `/api/video/record/*` routes answer 501, and this route 404s
+ * off a ground station). The route parses a JSON body, so an empty object is
+ * sent when there is no filename hint. A capture already running is a 409. */
 export function startRecording(
   ctx: RequestContext,
 ): Promise<RecordingControlResponse> {
   return agentRequest<RecordingControlResponse>(
     ctx,
-    "/api/video/record/start",
-    { method: "POST" },
+    "/api/v1/ground-station/recording/start",
+    { method: "POST", body: "{}" },
   );
 }
 
+/** Stop the ground station's in-flight capture. No active capture is a 409. */
 export function stopRecording(
   ctx: RequestContext,
 ): Promise<RecordingControlResponse> {
   return agentRequest<RecordingControlResponse>(
     ctx,
-    "/api/video/record/stop",
+    "/api/v1/ground-station/recording/stop",
     { method: "POST" },
   );
 }
 
-/** List recording files written to disk. The drone-profile video
- * pipeline does not currently expose a list endpoint, so this hits
- * the ground-station listing route. A failure throws so the caller can
- * say the list could not be read instead of showing an empty, idle list. */
+/** List the ground station's recording files. A failure throws so the caller
+ * can say the list could not be read instead of showing an empty, idle list. */
 export function listRecordings(
   ctx: RequestContext,
 ): Promise<RecordingListResponse> {

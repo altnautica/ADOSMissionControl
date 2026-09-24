@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { usePatternStore } from "@/stores/pattern-store";
+import { selectPatternType } from "@/stores/pattern-selection";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { formatDistance, formatArea } from "@/lib/units/format";
@@ -52,7 +53,6 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
   const t = useTranslations("planner");
   const units = useSettingsStore((s) => s.units);
   const activeType = usePatternStore((s) => s.activePatternType);
-  const setPatternType = usePatternStore((s) => s.setPatternType);
   const surveyConfig = usePatternStore((s) => s.surveyConfig);
   const orbitConfig = usePatternStore((s) => s.orbitConfig);
   const structureScanConfig = usePatternStore((s) => s.structureScanConfig);
@@ -73,9 +73,9 @@ export function PatternEditor({ onApply }: PatternEditorProps) {
 
   const handleTypeChange = useCallback(
     (value: string) => {
-      if (VALID_PATTERN_TYPES.has(value)) setPatternType(value as typeof activeType);
+      if (VALID_PATTERN_TYPES.has(value)) selectPatternType(value as typeof activeType);
     },
-    [setPatternType]
+    []
   );
 
   const handleGenerate = useCallback(() => {

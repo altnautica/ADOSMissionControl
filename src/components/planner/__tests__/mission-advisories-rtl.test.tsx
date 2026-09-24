@@ -25,7 +25,7 @@ vi.mock("@/lib/storage", () => ({
 
 import { MissionAdvisories } from "@/components/planner/MissionAdvisories";
 import { useGeofenceStore } from "@/stores/geofence-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { selectTestProtocol } from "../../../../tests/helpers/selected-drone";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { RingBuffer } from "@/lib/ring-buffer";
 import type { Waypoint, HomePositionData } from "@/lib/types";
@@ -45,7 +45,7 @@ beforeEach(() => {
   getElevation.mockReset();
   getElevation.mockResolvedValue(null);
   useGeofenceStore.setState({ enabled: false });
-  useDroneManager.setState({ getSelectedProtocol: () => null });
+  selectTestProtocol(null);
   useTelemetryStore.setState({
     homePosition: new RingBuffer<HomePositionData>(12),
   });
@@ -126,7 +126,7 @@ describe("MissionAdvisories — DO_LAND_START on a plane", () => {
       getVehicleInfo: () => ({ firmwareType: "ardupilot-plane" }),
       getParameter: vi.fn(async (name: string) => ({ name, value, type: 9, index: 0, count: 1 })),
     };
-    useDroneManager.setState({ getSelectedProtocol: () => protocol as never });
+    selectTestProtocol(protocol);
     return protocol;
   }
 

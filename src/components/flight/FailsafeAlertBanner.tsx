@@ -162,12 +162,12 @@ export function FailsafeAlertBanner() {
           : "bg-status-warning/80"
       }`}
     >
-      <AlertTriangle size={16} className="text-white flex-shrink-0" />
+      <AlertTriangle size={16} className="text-on-status flex-shrink-0" />
       <div className="flex items-center gap-2 flex-wrap flex-1">
         {conditions.map((c) => (
           <span
             key={c.type}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-black/20 text-white text-xs font-semibold"
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-scrim/20 text-on-status text-xs font-semibold"
           >
             {c.icon}
             {c.label}
@@ -181,7 +181,7 @@ export function FailsafeAlertBanner() {
           for (const c of conditions) severity[c.type] = c.severity;
           setDismissal({ droneId, severity, at: Date.now() });
         }}
-        className="text-white/80 hover:text-white flex-shrink-0 cursor-pointer"
+        className="text-on-status/80 hover:text-on-status flex-shrink-0 cursor-pointer"
       >
         <X size={14} />
       </button>

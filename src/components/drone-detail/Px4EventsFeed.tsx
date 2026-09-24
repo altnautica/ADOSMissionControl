@@ -12,7 +12,8 @@
 
 import { useMemo, useState } from "react";
 import { ScrollText, Search } from "lucide-react";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
+import { StatusDot } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
 import { Input } from "@/components/ui/input";
 import { usePx4EventsStore } from "@/stores/px4-events-store";
 

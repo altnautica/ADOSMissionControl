@@ -159,7 +159,7 @@ export function SigningEnabledSection({
             className={`relative inline-flex h-5 w-9 shrink-0 items-center border transition-colors disabled:opacity-40 ${cloudSyncIntent ? "bg-accent-primary border-accent-primary" : "bg-bg-primary border-border-default"}`}
           >
             <span
-              className={`inline-block h-3 w-3 transform bg-white transition-transform ${cloudSyncIntent ? "translate-x-5" : "translate-x-1"}`}
+              className={`inline-block h-3 w-3 transform bg-text-primary transition-transform ${cloudSyncIntent ? "translate-x-5" : "translate-x-1"}`}
             />
           </button>
         </div>

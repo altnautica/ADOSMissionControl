@@ -90,9 +90,8 @@ const NOOP_STORAGE = {
 
 function resolveStorage() {
   if (typeof window === "undefined") return NOOP_STORAGE;
-  const ls = window.localStorage as unknown as
-    | { getItem?: unknown; setItem?: unknown; removeItem?: unknown }
-    | undefined;
+  // Some embedded browsers expose a stub without the methods.
+  const ls: Partial<Storage> | undefined = window.localStorage;
   if (
     ls &&
     typeof ls.getItem === "function" &&

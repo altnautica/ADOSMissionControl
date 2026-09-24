@@ -206,7 +206,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
           <span className="text-xs font-medium text-text-secondary">{t("compute")}</span>
         </div>
         <div className="space-y-2">
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.02]">
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-text-primary/[0.02]">
             <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary/60 flex-shrink-0" />
             <span className="text-[10px] font-mono text-text-tertiary">
               {t("npuNotAvailable", { tier: tier ?? NO_DATA_GLYPH })}
@@ -220,7 +220,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
           {cameras.length > 0 && (
             <div className="pt-2 border-t border-border-default space-y-1.5">
               {cameras.map((cam, i) => (
-                <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-white/[0.02]">
+                <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-text-primary/[0.02]">
                   <Camera size={10} className="text-text-tertiary flex-shrink-0" />
                   <span className="text-[10px] font-mono text-text-secondary truncate">
                     {cam.name}
@@ -297,7 +297,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
       </div>
 
       {/* Inference row */}
-      <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.02]">
+      <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-text-primary/[0.02]">
         <Activity size={10} className="text-text-tertiary flex-shrink-0" />
         <div className="min-w-0 flex-1">
           {vision.fps > 0 ? (
@@ -323,7 +323,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
       </div>
 
       {/* Vision row */}
-      <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-white/[0.02]">
+      <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-text-primary/[0.02]">
         <Eye size={10} className={cn("flex-shrink-0", vs.text)} />
         <div className="min-w-0 flex-1 flex items-center gap-2">
           <span className={cn("text-[10px] font-mono flex items-center gap-1", vs.text)}>
@@ -400,7 +400,7 @@ export function ComputeMetricsCard({ className, profile }: ComputeMetricsCardPro
       {cameras.length > 0 && (
         <div className="space-y-1.5 pt-2 border-t border-border-default">
           {cameras.map((cam, i) => (
-            <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-white/[0.02]">
+            <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-text-primary/[0.02]">
               <Camera size={10} className="text-text-tertiary flex-shrink-0" />
               <span className="text-[10px] font-mono text-text-secondary truncate">
                 {cam.name}

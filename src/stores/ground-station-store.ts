@@ -21,12 +21,6 @@ export {
   roleSwitchErrorMessage,
 } from "./ground-station/error-handler";
 export type * from "./ground-station/types";
-export {
-  useLinkSlice,
-  usePairSlice,
-  useUplinkSlice,
-  useMeshSlice,
-} from "./ground-station/hooks";
 
 export const useGroundStationStore = create<GroundStationState>((set, get) => ({
   ...createLinkSlice(set, get),

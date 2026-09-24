@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useFleetStore } from "@/stores/fleet-store";
@@ -41,11 +42,31 @@ export function clampAlt(alt: number): number {
 
 /** Set up all store connections and local state for the planner hook. */
 export function usePlannerState() {
+  // Both stores are selected field by field: they also carry per-map-move view
+  // state, upload receipts and warnings, and a whole-store subscription
+  // re-rendered the whole planner tree on every one of those writes.
   const {
     waypoints, addWaypoint, removeWaypoint, updateWaypoint, insertWaypoint,
     reorderWaypoints, uploadMission, downloadMission, uploadState, downloadState,
     undo, redo, clearMission, setWaypoints,
-  } = useMissionStore();
+  } = useMissionStore(
+    useShallow((s) => ({
+      waypoints: s.waypoints,
+      addWaypoint: s.addWaypoint,
+      removeWaypoint: s.removeWaypoint,
+      updateWaypoint: s.updateWaypoint,
+      insertWaypoint: s.insertWaypoint,
+      reorderWaypoints: s.reorderWaypoints,
+      uploadMission: s.uploadMission,
+      downloadMission: s.downloadMission,
+      uploadState: s.uploadState,
+      downloadState: s.downloadState,
+      undo: s.undo,
+      redo: s.redo,
+      clearMission: s.clearMission,
+      setWaypoints: s.setWaypoints,
+    })),
+  );
   // Selected field by field on purpose. The history store republishes on every
   // timeline event, so a whole-store subscription re-rendered the planner on
   // each edit to deliver two flags that only flip at the ends of the timeline.
@@ -60,7 +81,25 @@ export function usePlannerState() {
     selectedWaypointId, setSelectedWaypoint,
     defaultAlt, defaultSpeed, defaultAcceptRadius, defaultFrame,
     setDefaults,
-  } = usePlannerStore();
+  } = usePlannerStore(
+    useShallow((s) => ({
+      activeTool: s.activeTool,
+      setActiveTool: s.setActiveTool,
+      panelCollapsed: s.panelCollapsed,
+      togglePanel: s.togglePanel,
+      altProfileCollapsed: s.altProfileCollapsed,
+      toggleAltProfile: s.toggleAltProfile,
+      expandedWaypointId: s.expandedWaypointId,
+      setExpandedWaypoint: s.setExpandedWaypoint,
+      selectedWaypointId: s.selectedWaypointId,
+      setSelectedWaypoint: s.setSelectedWaypoint,
+      defaultAlt: s.defaultAlt,
+      defaultSpeed: s.defaultSpeed,
+      defaultAcceptRadius: s.defaultAcceptRadius,
+      defaultFrame: s.defaultFrame,
+      setDefaults: s.setDefaults,
+    })),
+  );
 
   const drones = useFleetStore((s) => s.drones);
   const { toast } = useToast();

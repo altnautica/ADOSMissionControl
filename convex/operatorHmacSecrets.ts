@@ -27,13 +27,11 @@ import { v } from "convex/values";
 import {
   internalAction,
   internalMutation,
-  internalQuery,
   query,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { deriveCapabilityTokenKey } from "./lib/capabilityTokenKeys";
 import { internal } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
 
 /** 30 days; matches the rotation cadence in the spec. */
 const ROTATION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
@@ -63,73 +61,55 @@ function generateSecretBase64(): string {
  * since the last rotation. Always returns the secret as a
  * base64-encoded string.
  *
- * This is the only entry point the capability-token issuer uses; it
- * is an action because rotation writes to the table and needs to run
- * outside the read-only query path.
+ * This is the only entry point the capability-token issuer uses. The
+ * candidate secret is drawn here, in the action, from the platform CSPRNG;
+ * whether it is used is decided inside one mutation (`currentOrRotate`), so
+ * two concurrent mints at a rotation boundary agree on one secret instead of
+ * the second overwriting the first's.
  */
 export const getOrCreateCurrent = internalAction({
   args: { userId: v.string() },
   handler: async (ctx, { userId }): Promise<string> => {
-    const existing = await ctx.runQuery(
-      internal.operatorHmacSecrets.getCurrentInternal,
-      { userId },
-    );
-    if (existing && Date.now() - existing.rotatedAt < ROTATION_PERIOD_MS) {
-      return existing.secretBase64;
-    }
-    const newSecret = generateSecretBase64();
-    await ctx.runMutation(internal.operatorHmacSecrets.rotate, {
+    return await ctx.runMutation(internal.operatorHmacSecrets.currentOrRotate, {
       userId,
-      newSecretBase64: newSecret,
-      previousSecretBase64: existing?.secretBase64,
+      candidateSecretBase64: generateSecretBase64(),
     });
-    return newSecret;
   },
 });
 
 // ──────────────────────────────────────────────────────────────
-// Internal queries / mutations
+// Internal mutations
 // ──────────────────────────────────────────────────────────────
 
-/** Read the current row for `userId`. Internal because the root
- * secret is never returned to a caller: the only public read is
- * `getMyVerificationKey`, which returns a scope-derived key. */
-export const getCurrentInternal = internalQuery({
-  args: { userId: v.string() },
-  handler: async (
-    ctx,
-    { userId },
-  ): Promise<Doc<"operator_hmac_secrets"> | null> => {
-    return await ctx.db
+/**
+ * Return the live secret for `userId`, or install `candidateSecretBase64` as
+ * the new one when there is none or it is past its rotation period. The read
+ * and the write are one transaction, so the retained previous secret is always
+ * the one that was actually current.
+ */
+export const currentOrRotate = internalMutation({
+  args: { userId: v.string(), candidateSecretBase64: v.string() },
+  handler: async (ctx, { userId, candidateSecretBase64 }): Promise<string> => {
+    const existing = await ctx.db
       .query("operator_hmac_secrets")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-  },
-});
-
-/** Insert or rotate the secret row for `userId`. */
-export const rotate = internalMutation({
-  args: {
-    userId: v.string(),
-    newSecretBase64: v.string(),
-    previousSecretBase64: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("operator_hmac_secrets")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
-    const patch = {
-      userId: args.userId,
-      secretBase64: args.newSecretBase64,
-      rotatedAt: Date.now(),
-      previousSecretBase64: args.previousSecretBase64,
+    const now = Date.now();
+    if (existing && now - existing.rotatedAt < ROTATION_PERIOD_MS) {
+      return existing.secretBase64;
+    }
+    const row = {
+      userId,
+      secretBase64: candidateSecretBase64,
+      rotatedAt: now,
+      previousSecretBase64: existing?.secretBase64,
     };
     if (existing) {
-      await ctx.db.patch(existing._id, patch);
-      return existing._id;
+      await ctx.db.patch(existing._id, row);
+    } else {
+      await ctx.db.insert("operator_hmac_secrets", row);
     }
-    return await ctx.db.insert("operator_hmac_secrets", patch);
+    return candidateSecretBase64;
   },
 });
 

@@ -15,7 +15,7 @@ import { patternToMission } from "@/lib/patterns/pattern-to-mission";
 import { expandToItems } from "@/lib/mission/mission-expand";
 import { isNavCommand } from "@/lib/mission/command-classes";
 import { validateMission } from "@/lib/validation/mission-validator";
-import { cmdMap, reverseCmd } from "@/lib/mission-io-formats";
+import { cmdMap, reverseCmd } from "@/lib/mission/command-map";
 
 const CENTER: [number, number] = [12.9716, 77.5946];
 

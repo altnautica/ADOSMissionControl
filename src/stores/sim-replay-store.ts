@@ -70,17 +70,29 @@ interface SimReplayState {
   clear: () => void;
 }
 
-/** The in-flight parse worker, so a second load cancels the first. */
-let activeWorker: Worker | null = null;
+/**
+ * Cancels the in-flight parse worker, so a second load (or `clear()`) stops
+ * the first. Cancelling settles the first load's promise with `null` rather
+ * than leaving it pending forever.
+ */
+let cancelActiveWorker: (() => void) | null = null;
+
+/**
+ * Bumped by every load and by `clear()`. A load whose read or parse settles
+ * after a newer load or a clear belongs to a file the operator replaced, so it
+ * must not write the track, the error, or the loading flag.
+ */
+let loadGeneration = 0;
 
 /**
  * Parse in a worker when the environment has one, otherwise in-thread.
  * The in-thread path is the SSR / test environment, not a silent degradation:
- * both run the same pure {@link parseLogTrack}.
+ * both run the same pure {@link parseLogTrack}. Resolves `null` when a newer
+ * load or `clear()` cancelled this parse.
  */
 function parseInWorker(
   request: LogTrackWorkerRequest,
-): Promise<LogTrackWorkerResponse> {
+): Promise<LogTrackWorkerResponse | null> {
   if (typeof Worker === "undefined") {
     const result = parseLogTrack(request.ext, request.buffer, request.name);
     return Promise.resolve(
@@ -90,32 +102,31 @@ function parseInWorker(
     );
   }
 
-  return new Promise<LogTrackWorkerResponse>((resolve) => {
-    const worker = new Worker(
-      new URL("../lib/simulation/log-track-worker.ts", import.meta.url),
-      { type: "module" },
-    );
-    activeWorker?.terminate();
-    activeWorker = worker;
+  const { promise, resolve } = Promise.withResolvers<LogTrackWorkerResponse | null>();
+  const worker = new Worker(
+    new URL("../lib/simulation/log-track-worker.ts", import.meta.url),
+    { type: "module" },
+  );
+  cancelActiveWorker?.();
+  const finish = (response: LogTrackWorkerResponse | null) => {
+    worker.terminate();
+    if (cancelActiveWorker === cancel) cancelActiveWorker = null;
+    resolve(response);
+  };
+  const cancel = () => finish(null);
+  cancelActiveWorker = cancel;
 
-    worker.onmessage = (e: MessageEvent<LogTrackWorkerResponse>) => {
-      worker.terminate();
-      if (activeWorker === worker) activeWorker = null;
-      resolve(e.data);
-    };
-    worker.onerror = (e) => {
-      worker.terminate();
-      if (activeWorker === worker) activeWorker = null;
-      resolve({
-        ok: false,
-        error: { code: "parse-failed", detail: e.message || "log parse worker crashed" },
-      });
-    };
+  worker.onmessage = (e: MessageEvent<LogTrackWorkerResponse>) => finish(e.data);
+  worker.onerror = (e) =>
+    finish({
+      ok: false,
+      error: { code: "parse-failed", detail: e.message || "log parse worker crashed" },
+    });
 
-    // Transfer the buffer: a flight log is tens to hundreds of megabytes and
-    // structured-cloning it would double peak memory for no reason.
-    worker.postMessage(request, [request.buffer]);
-  });
+  // Transfer the buffer: a flight log is tens to hundreds of megabytes and
+  // structured-cloning it would double peak memory for no reason.
+  worker.postMessage(request, [request.buffer]);
+  return promise;
 }
 
 export const useSimReplayStore = create<SimReplayState>((set) => ({
@@ -124,15 +135,18 @@ export const useSimReplayStore = create<SimReplayState>((set) => ({
   loading: false,
 
   loadFromFile: async (file: File) => {
+    const generation = ++loadGeneration;
     const name = file.name;
     const ext = extensionOf(name);
     set({ loading: true, error: null });
 
-    let response: LogTrackWorkerResponse;
+    let response: LogTrackWorkerResponse | null;
     try {
       const buffer = await file.arrayBuffer();
+      if (generation !== loadGeneration) return;
       response = await parseInWorker({ ext, name, buffer });
     } catch (err) {
+      if (generation !== loadGeneration) return;
       set({
         loading: false,
         track: null,
@@ -143,6 +157,7 @@ export const useSimReplayStore = create<SimReplayState>((set) => ({
       });
       return;
     }
+    if (response === null || generation !== loadGeneration) return;
 
     if (!response.ok) {
       set({ loading: false, error: response.error, track: null });
@@ -161,8 +176,8 @@ export const useSimReplayStore = create<SimReplayState>((set) => ({
   },
 
   clear: () => {
-    activeWorker?.terminate();
-    activeWorker = null;
+    loadGeneration += 1;
+    cancelActiveWorker?.();
     set({ track: null, error: null, loading: false });
   },
 }));

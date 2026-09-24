@@ -48,6 +48,18 @@
   --color-gcs-hud-green: var(--gcs-hud-green);
   --color-gcs-armed: var(--gcs-armed);
   --color-gcs-disarmed: var(--gcs-disarmed);
+  /* Surfaces drawn over or around live video, the 3D viewport and the HUD.
+     Video is not themed, so these hold in every theme: the letterbox behind a
+     picture, the dimming scrim over it (and behind modals), and the
+     foreground laid on top of both. Use them with an opacity modifier
+     (`bg-scrim/60`, `text-on-media/70`), never raw white/black. */
+  --color-media: #000000;
+  --color-scrim: #000000;
+  --color-on-media: #ffffff;
+  /* Foreground on a solid status fill (error/warning/success banners and
+     badges): black or white, whichever reads better against the theme's own
+     status colours. Set per theme as --alt-on-status. */
+  --color-on-status: var(--alt-on-status);
   --font-display: "Space Grotesk", sans-serif;
   --font-body: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
@@ -79,6 +91,7 @@
   --alt-status-success: #22c55e;
   --alt-status-warning: #f59e0b;
   --alt-status-error: #ef4444;
+  --alt-on-status: #000000;
 
   /* Node profile accent hues (identity). Cool, distinct from the warm status
      palette. Blended with the live surface at use via color-mix for theme-safe
@@ -181,6 +194,7 @@ html[data-theme="solarized-light"] {
 }
 
 html[data-theme="nvg"] {
+  --alt-on-status: #ffffff;
   --alt-bg-primary: #000000;
   --alt-bg-secondary: #001100;
   --alt-bg-tertiary: #002200;
@@ -493,6 +507,7 @@ html[data-theme="catppuccin-latte"] {
 }
 
 html[data-theme="gruvbox-light"] {
+  --alt-on-status: #ffffff;
   --alt-bg-primary: #fbf1c7;
   --alt-bg-secondary: #f2e5bc;
   --alt-bg-tertiary: #ebdbb2;

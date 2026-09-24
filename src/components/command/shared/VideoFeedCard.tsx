@@ -221,7 +221,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         // In fullscreen the container expands to fill the
         // screen; switch to flex layout so the 16:9 aspect inner div can
         // scale up properly.
-        isFullscreen && "flex items-center justify-center bg-black",
+        isFullscreen && "flex items-center justify-center bg-media",
         className
       )}
     >
@@ -234,7 +234,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           muted
           playsInline
           className={cn(
-            "absolute inset-0 w-full h-full object-cover bg-black",
+            "absolute inset-0 w-full h-full object-cover bg-media",
             !hasVideo && "hidden"
           )}
         />
@@ -285,12 +285,12 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
                     ? "text-status-serious"
                     : "text-status-error";
           return (
-            <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1 bg-black/60 backdrop-blur-sm text-[10px] font-mono text-text-secondary">
+            <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 px-2 py-1 bg-scrim/60 backdrop-blur-sm text-[10px] font-mono text-text-secondary">
               <span>{fps !== null && fps > 0 ? `${fps} FPS` : "-- FPS"}</span>
               <VideoLatencyBreakdown
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded px-1 -mx-1",
-                  "hover:bg-white/5 transition-colors",
+                  "hover:bg-on-media/5 transition-colors",
                   colorClass,
                 )}
               >
@@ -396,7 +396,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             </span>
             <button
               onClick={handleRetry}
-              className="mt-1 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono text-text-secondary bg-white/10 hover:bg-white/20 transition-colors"
+              className="mt-1 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono text-text-secondary bg-on-media/10 hover:bg-on-media/20 transition-colors"
             >
               <RefreshCw className="w-3 h-3" />
               RETRY
@@ -408,7 +408,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
 
       {/* REC indicator (top-center, inside the video frame) */}
       {hasVideo && isRecording && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm">
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-0.5 rounded bg-scrim/70 backdrop-blur-sm">
           <span className="w-2 h-2 rounded-full bg-status-error animate-pulse" />
           <span className="text-[10px] font-mono font-semibold text-status-error tracking-widest">
             REC
@@ -423,7 +423,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
           <>
             <button
               onClick={handleSnapshot}
-              className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+              className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
               title="Capture screenshot"
             >
               <Camera className="w-3.5 h-3.5" />
@@ -431,7 +431,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             <button
               onClick={handleRecordToggle}
               className={cn(
-                "p-1 rounded bg-black/50 hover:bg-black/70 transition-colors",
+                "p-1 rounded bg-scrim/50 hover:bg-scrim/70 transition-colors",
                 isRecording
                   ? "text-status-error hover:text-status-error/80"
                   : "text-text-tertiary hover:text-text-primary"
@@ -446,14 +446,14 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
             </button>
             <button
               onClick={handlePip}
-              className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+              className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
               title="Picture in picture"
             >
               <PictureInPicture2 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={handleFullscreenToggle}
-              className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+              className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
               title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             >
               {isFullscreen ? (
@@ -466,7 +466,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         )}
         <button
           onClick={handleRetry}
-          className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+          className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
           title="Reconnect video"
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -474,7 +474,7 @@ export function VideoFeedCard({ className, onPopOut }: VideoFeedCardProps) {
         {onPopOut && (
           <button
             onClick={onPopOut}
-            className="p-1 rounded bg-black/50 hover:bg-black/70 text-text-tertiary hover:text-text-primary transition-colors"
+            className="p-1 rounded bg-scrim/50 hover:bg-scrim/70 text-text-tertiary hover:text-text-primary transition-colors"
             title="Pop out video"
           >
             <Maximize2 className="w-3.5 h-3.5" />

@@ -24,7 +24,7 @@ import {
 import { connectLocalNode } from "@/lib/agent/node-click-handler";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 
 /** How far the post-pair connect got: the agent answered on the LAN, or the
@@ -322,7 +322,7 @@ function ProbeResultCardInner({
         <button
           onClick={handlePair}
           disabled={pairing}
-          className="flex-1 px-4 py-2 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-2 text-xs font-medium bg-accent-primary text-accent-foreground rounded hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
         >
           {pairing ? (
             <>

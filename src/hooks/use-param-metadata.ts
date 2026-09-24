@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
 import { loadParamMetadata, type ParamMetadata } from "@/lib/protocol/param-metadata";
 
 const EMPTY_MAP = new Map<string, ParamMetadata>();
@@ -13,7 +13,7 @@ const EMPTY_MAP = new Map<string, ParamMetadata>();
  */
 export function useParamMetadataMap(): Map<string, ParamMetadata> {
   const [metadata, setMetadata] = useState<Map<string, ParamMetadata>>(EMPTY_MAP);
-  const drone = useDroneManager((s) => s.getSelectedDrone)();
+  const drone = useDroneManager(selectSelectedDrone);
 
   useEffect(() => {
     const info = drone?.vehicleInfo;

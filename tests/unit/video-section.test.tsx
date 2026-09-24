@@ -32,7 +32,6 @@ const BASE_CONFIG = {
       height: 720,
       fps: 30,
       bitrate_kbps: 4000,
-      codec_preference: "auto",
     },
     cameras: [],
     wfb: {

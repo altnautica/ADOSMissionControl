@@ -1,7 +1,7 @@
 "use client";
 
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { cn } from "@/lib/utils";
 import type { CompassParams } from "./calibration-types";
 
@@ -20,13 +20,13 @@ function Pending({ value }: { value: number | null | undefined }) {
 }
 
 export function CompassPreflightChecks({ compassParams, setCompassParams }: CompassPreflightChecksProps) {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
 
   // Only a write the FC confirmed updates the check; a refused or timed-out
   // write leaves the old value on screen.
   async function writeParam(name: "COMPASS_AUTO_ROT" | "COMPASS_OFFS_MAX", value: number) {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     const result = await protocol.setParameter(name, value).catch(() => null);
     if (!result?.success) {

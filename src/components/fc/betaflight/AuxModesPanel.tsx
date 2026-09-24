@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
@@ -46,7 +46,7 @@ function AuxCard({ icon, title, description, children }: {
 // ── Component ─────────────────────────────────────────────────
 
 export function AuxModesPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const scrollRef = usePanelScroll("aux-modes");
 
@@ -59,8 +59,8 @@ export function AuxModesPanel() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const connected = !!getSelectedProtocol();
-  const protocolCanSave = !!getSelectedProtocol()?.setModeRanges;
+  const connected = !!selectedProtocol;
+  const protocolCanSave = !!selectedProtocol?.setModeRanges;
 
   const modeName = useCallback(
     (boxId: number) => boxes.find((b) => b.id === boxId)?.name ?? `Mode ${boxId}`,
@@ -75,7 +75,7 @@ export function AuxModesPanel() {
   const latestRc = useFreshTelemetry("rc");
 
   const readFromFc = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol || !protocol.isConnected) { setError("Not connected to flight controller"); return; }
     if (!protocol.getModeBoxes || !protocol.getModeRanges) {
       setError("Mode ranges are not available on this connection");
@@ -97,14 +97,14 @@ export function AuxModesPanel() {
       setError("Could not read mode ranges from the flight controller");
       toast("Could not read mode ranges — nothing loaded", "error");
     } finally { setLoading(false); }
-  }, [getSelectedProtocol, toast]);
+  }, [selectedProtocol, toast]);
 
   const readRef = useRef(readFromFc);
   readRef.current = readFromFc;
   useEffect(() => { readRef.current(); }, []);
 
   const saveToFc = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol || !protocol.isConnected || !protocol.setModeRanges) return;
     setSaving(true);
     try {
@@ -118,7 +118,7 @@ export function AuxModesPanel() {
     } catch (err) {
       toast(err instanceof Error ? err.message : "Failed to save mode ranges", "error");
     } finally { setSaving(false); }
-  }, [getSelectedProtocol, ranges, toast]);
+  }, [selectedProtocol, ranges, toast]);
 
   const addRange = useCallback((boxId: number) => {
     if (ranges.length >= MAX_RANGES) { toast(`Maximum ranges reached (${MAX_RANGES})`, "warning"); return; }

@@ -123,7 +123,7 @@ export function LcdCameraSwitch() {
     setOptimisticPrimary(devicePath);
     setPending(true);
     try {
-      await client.switchCamera("primary", devicePath);
+      await client.switchCamera(devicePath);
       setRestarting(true);
       window.setTimeout(() => {
         setRestarting(false);

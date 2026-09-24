@@ -35,7 +35,7 @@
  * @license GPL-3.0-only
  */
 
-import JSZip from "jszip";
+import type JSZip from "jszip";
 
 import { PLUGIN_FRAME_HEAD } from "@/lib/plugins/iframe-csp";
 import type { InstallManifestSummary } from "../install-dialog/types";
@@ -269,7 +269,11 @@ export async function finalizeGcsInstall(
     let signature: ArchiveSignatureResult;
     let zip: JSZip;
     try {
-      zip = await JSZip.loadAsync(archive);
+      // Loaded on demand rather than statically: this module sits in the
+      // static graph of every page, and the unzip library is only needed
+      // while an install runs.
+      const { default: Zip } = await import("jszip");
+      zip = await Zip.loadAsync(archive);
       signature = await verifyArchiveSignature(zip, manifest.signerId);
     } catch (err) {
       throw new FinalizeGcsInstallError(

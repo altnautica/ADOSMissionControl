@@ -1,5 +1,8 @@
 "use client";
 
+// Exempt from the 500-line rule: one picker with a full and a compact mode that
+// share the board filter, cache and upload state; splitting would thread that
+// state through both halves.
 /**
  * @module vision/ModelPicker
  * @description Board-filtered vision model picker. One component, two modes:

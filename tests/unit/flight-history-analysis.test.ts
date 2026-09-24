@@ -96,6 +96,12 @@ describe("recorded attitude is degrees", () => {
     expect(roll?.extract({ roll: 3 })).toBe(3);
   });
 
+  it("plots recorded servo outputs from the servos array", () => {
+    const servo = CHANNEL_REGISTRY.find((c) => c.channel === "servoOutput");
+    const out3 = servo?.fields.find((f) => f.key === "ch3");
+    expect(out3?.extract({ port: 0, servos: [1100, 1200, 1300, 1400] })).toBe(1300);
+  });
+
   it("imports dataflash ATT (degrees) unchanged", () => {
     const log = dataflashLog({
       EV: [{ TimeUS: 0, Id: 10 }, { TimeUS: 2 * S, Id: 11 }],

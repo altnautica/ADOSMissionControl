@@ -102,7 +102,9 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
 
 export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
   const t = useTranslations("logs");
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  // This drone's live protocol: a reconnect installs a new one, and the
+  // STATUSTEXT subscription follows it.
+  const protocol = useDroneManager((s) => s.drones.get(droneId)?.protocol ?? null);
 
   // Status message log
   const [messages, setMessages] = useState<LogMessage[]>([]);
@@ -139,7 +141,6 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
   // ── Subscribe to STATUSTEXT messages from the protocol ─────
 
   useEffect(() => {
-    const protocol = getProtocol();
     if (!protocol) return;
 
     const unsub = protocol.onStatusText((data) => {
@@ -159,7 +160,7 @@ export function DroneLogsPanel({ droneId }: DroneLogsPanelProps) {
     });
 
     return unsub;
-  }, [getProtocol, droneId]);
+  }, [protocol, droneId]);
 
   // ── Auto-scroll log to bottom ──────────────────────────────
 

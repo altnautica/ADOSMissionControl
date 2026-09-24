@@ -1,7 +1,7 @@
 /**
  * @module command/bridges/status-mapper/system
  * @description Builds the System-tab update payload (resources,
- * cpu/memory history, service list, process metrics, logs) from the
+ * cpu/memory history, service list, process metrics) from the
  * already-mapped `AgentStatus` plus the raw Convex row. Pure.
  * @license GPL-3.0-only
  */
@@ -35,7 +35,6 @@ export interface MappedSystemUpdate {
   services?: ServiceInfo[];
   processCpuPercent?: number | null;
   processMemoryMb?: number | null;
-  logs?: unknown[];
   /** Services whose config failed to parse on the agent. Always present (a
    * clean heartbeat clears any prior errors); empty when every config
    * loaded. */
@@ -104,11 +103,6 @@ export function buildSystemUpdate(
       (cloudStatus.processCpuPercent as number | null | undefined) ?? null;
     update.processMemoryMb =
       (cloudStatus.processMemoryMb as number | null | undefined) ?? null;
-  }
-
-  const logs = cloudStatus.logs;
-  if (Array.isArray(logs)) {
-    update.logs = logs;
   }
 
   return update;

@@ -6,9 +6,8 @@
  * only reads: the FC transport (source / port / baud, managed from the node
  * Overview's FC connection picker so this page never runs a second writer for
  * the same keys) and the configured MAVLink endpoints list. Writable where the
- * agent genuinely accepts the write: the router's own system / component id
- * and the cloud-relay forwarding rates, each an integer-validated field over
- * the shared config writer.
+ * agent genuinely accepts the write: the router's own system / component id,
+ * each an integer-validated field over the shared config writer.
  *
  * The signing block (drone profile) reads the agent's own signing surface —
  * capability with the agent's reason and the passive signed-frame counters.
@@ -242,32 +241,6 @@ export function MavlinkRoutingSection({
           hint={t("componentIdHint")}
           min={AUTOPILOT_COMPONENT_ID + 1}
           max={255}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
-      </div>
-
-      {/* Cloud-relay forwarding rates — the agent's own throttles for the
-          relay path, not the FC's stream rates. */}
-      <div className="space-y-4 border-t border-border-default pt-3">
-        <div className="text-xs text-text-secondary">{t("ratesTitle")}</div>
-        <ConfigIntField
-          configKey="server.telemetry_rate"
-          label={t("telemetryRateLabel")}
-          hint={t("telemetryRateHint")}
-          min={1}
-          max={50}
-          config={config}
-          readOnly={readOnly}
-          setValue={setValue}
-        />
-        <ConfigIntField
-          configKey="server.heartbeat_interval"
-          label={t("heartbeatIntervalLabel")}
-          hint={t("heartbeatIntervalHint")}
-          min={1}
-          max={3600}
           config={config}
           readOnly={readOnly}
           setValue={setValue}

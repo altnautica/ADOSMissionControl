@@ -113,7 +113,16 @@ export function dispatchMspTelemetry(
       const _cycleTime = u16(payload, 0)
       const i2cErrors = u16(payload, 2)
       const sensorFlags = u16(payload, 4)
-      const modeFlags = u32(payload, 6)
+      // The first 32 box flags sit at offset 6. Betaflight appends the rest
+      // after a byte count at offset 15; a box past bit 31 (GPS Rescue on a
+      // feature-rich target) would otherwise read as inactive. iNav's frame
+      // carries 32 flags only, and offset 15 there is something else.
+      const extraFlagBytes = vehicleInfo?.firmwareType === 'betaflight' && payload.length >= 16
+        ? Math.min(payload[15], payload.length - 16)
+        : 0
+      const modeFlags = new Uint8Array(4 + extraFlagBytes)
+      modeFlags.set(payload.subarray(6, 10))
+      modeFlags.set(payload.subarray(16, 16 + extraFlagBytes), 4)
       const cpuLoad = u16(payload, 11)
       // The box ids are firmware-specific, so the decode needs to know which
       // firmware reported them; an iNav navigation box read against the
@@ -138,15 +147,18 @@ export function dispatchMspTelemetry(
         })
       }
       // Betaflight reports its arming-disable flags after the variable-length
-      // flight-mode-flags block; surface them so BF arming blockers show up like
-      // iNav's do. iNav publishes its own arming-flags word via MSP2_INAV_STATUS
-      // (below), so only Betaflight is read from here.
+      // flight-mode-flags block, preceded by ARMING_DISABLE_FLAGS_COUNT (the
+      // last flag is ARM_SWITCH, so the count fixes the bit layout); surface
+      // both so BF arming blockers show up like iNav's do. iNav publishes its
+      // own arming-flags word via MSP2_INAV_STATUS (below), so only Betaflight
+      // is read from here.
       if (vehicleInfo?.firmwareType === 'betaflight' && payload.length >= 16) {
         const flagBytes = u8(payload, 15)
         const afterFlags = 16 + flagBytes
         if (afterFlags + 5 <= payload.length) {
+          const armDisableCount = u8(payload, afterFlags)
           const armDisableFlags = u32(payload, afterFlags + 1)
-          useTelemetryStore.getState().setArmingFlags(armDisableFlags)
+          useTelemetryStore.getState().setArmingFlags(armDisableFlags, armDisableCount)
         }
       }
       break
@@ -254,7 +266,7 @@ export function dispatchMspTelemetry(
       // as arming blockers (an active box at bit 7 rendered "Failsafe system",
       // bit 8 "Not level") and the nav-state readout was fabricated.
       if (payload.length < 13) break
-      useTelemetryStore.getState().setArmingFlags(u32(payload, 9))
+      useTelemetryStore.getState().setArmingFlags(u32(payload, 9), null)
       break
     }
 

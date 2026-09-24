@@ -103,6 +103,9 @@ interface TelemetryStoreState {
   navAction: number | null;
   navStatusUpdated: number;
   armingFlags: number | null;
+  /** Betaflight ARMING_DISABLE_FLAGS_COUNT sent beside the word (the last flag
+   * is ARM_SWITCH, so it fixes the bit layout); null for iNav, which has none. */
+  armingFlagCount: number | null;
   /** When `armingFlags` was last received; 0 before any MSP status. */
   armingFlagsUpdatedAt: number;
   adsbVehicles: INavAdsbVehicle[];
@@ -110,7 +113,7 @@ interface TelemetryStoreState {
   adsbUpdatedAt: number;
 
   setNavStatus: (mode: number, state: number, action: number) => void;
-  setArmingFlags: (flags: number) => void;
+  setArmingFlags: (flags: number, flagCount: number | null) => void;
   setAdsbVehicles: (vehicles: INavAdsbVehicle[]) => void;
 
   pushBatch: (batch: Partial<{
@@ -222,13 +225,15 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
   navAction: null,
   navStatusUpdated: 0,
   armingFlags: null,
+  armingFlagCount: null,
   armingFlagsUpdatedAt: 0,
   adsbVehicles: [],
   adsbUpdatedAt: 0,
 
   setNavStatus: (mode, state, action) =>
     set({ navMode: mode, navState: state, navAction: action, navStatusUpdated: Date.now() }),
-  setArmingFlags: (flags) => set({ armingFlags: flags, armingFlagsUpdatedAt: Date.now() }),
+  setArmingFlags: (flags, flagCount) =>
+    set({ armingFlags: flags, armingFlagCount: flagCount, armingFlagsUpdatedAt: Date.now() }),
   setAdsbVehicles: (vehicles) => set({ adsbVehicles: vehicles.slice(0, 32), adsbUpdatedAt: Date.now() }),
 
   pushBatch: (batch) => {
@@ -265,7 +270,11 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
     // Drop any bump scheduled by a push that landed in this frame; without
     // this it fires after the reset and notifies against the fresh rings.
     bumper.cancelVersionBump();
-    set({
+    // One synchronous bump for the reset itself: surfaces that select only
+    // `_version` and read the rings through getState() must re-render against
+    // the empty rings, not keep drawing the previous drone's last sample.
+    set((s) => ({
+      _version: s._version + 1,
       attitude: new RingBuffer<AttitudeData>(600),
       position: new RingBuffer<PositionData>(300),
       battery: new RingBuffer<BatteryData>(120),
@@ -300,9 +309,10 @@ export const useTelemetryStore = create<TelemetryStoreState>((set, get) => ({
       navAction: null,
       navStatusUpdated: 0,
       armingFlags: null,
+      armingFlagCount: null,
       armingFlagsUpdatedAt: 0,
       adsbVehicles: [],
       adsbUpdatedAt: 0,
-    });
+    }));
   },
 }));

@@ -10,7 +10,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ const OUTPUT_OPTIONS = [
 const isMotor = (fn: number) => fn >= 1 && fn <= 16;
 
 export function Px4ActuatorTest({ connected }: { connected: boolean }) {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const { toast } = useToast();
   const [propsRemoved, setPropsRemoved] = useState(false);
@@ -45,7 +45,7 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
   // dropped link is toasted with the FC's reason, never reported as running.
   const send = useCallback(
     async (value: number, timeoutS: number) => {
-      const protocol = getSelectedProtocol();
+      const protocol = selectedProtocol;
       if (!protocol?.actuatorTest) {
         toast("Actuator test is not available on this connection", "error");
         return false;
@@ -68,7 +68,7 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
         setBusy(false);
       }
     },
-    [getSelectedProtocol, isHardBlocked, toast, func],
+    [selectedProtocol, isHardBlocked, toast, func],
   );
 
   const selectFn = (v: string) => {

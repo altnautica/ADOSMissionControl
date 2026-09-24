@@ -49,6 +49,8 @@ export interface MspStatusEx {
   cpuLoad: number;
   profileCount: number;
   rateProfile: number;
+  /** ARMING_DISABLE_FLAGS_COUNT: how many flags the word defines; the last is ARM_SWITCH. */
+  armDisableCount: number;
   armDisableFlags: number;
   configStateFlags: number;
 }
@@ -235,6 +237,7 @@ export function decodeMspStatusEx(dv: DataView): MspStatusEx {
   const afterFlags = 16 + byteCount;
 
   // armDisableCount at afterFlags, then U32 armDisableFlags, then U8 configStateFlags
+  const armDisableCount = readU8(dv, afterFlags);
   const armDisableFlags = readU32(dv, afterFlags + 1);
   const configStateFlags = readU8(dv, afterFlags + 5);
 
@@ -247,6 +250,7 @@ export function decodeMspStatusEx(dv: DataView): MspStatusEx {
     cpuLoad,
     profileCount,
     rateProfile,
+    armDisableCount,
     armDisableFlags,
     configStateFlags,
   };

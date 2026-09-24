@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -37,8 +37,8 @@ const DEFAULT: INavMcBraking = {
 // ── Component ─────────────────────────────────────────────────
 
 export function McBrakingPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -51,14 +51,14 @@ export function McBrakingPanel() {
   useUnsavedGuard(dirty);
 
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getMixerConfig) return;
     protocol.getMixerConfig().then((m) => {
       setPlatformType(m.platformType);
     }).catch(() => {
       // Leave platformType null on unsupported firmware.
     });
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   function update<K extends keyof INavMcBraking>(key: K, value: INavMcBraking[K]) {
     setBraking((prev) => ({ ...prev, [key]: value }));
@@ -66,7 +66,7 @@ export function McBrakingPanel() {
   }
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getMcBraking) { setError("MC braking config not supported"); return; }
     setLoading(true); setError(null);
     try {
@@ -77,10 +77,10 @@ export function McBrakingPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const handleWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setMcBraking) { setError("MC braking write not supported"); return; }
     // Values outside the firmware range would wrap on the wire (bank angle 300
     // arrives as 44), so they are brought into range and shown before writing.
@@ -100,7 +100,7 @@ export function McBrakingPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, braking]);
+  }, [selectedProtocol, braking]);
 
   const fields: Array<{ key: keyof INavMcBraking; label: string; unit: string }> = [
     { key: "speedThreshold", label: "Engage speed", unit: "cm/s" },

@@ -12,7 +12,7 @@
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useAuthStore } from "@/stores/auth-store";
 import { isDemoMode } from "@/lib/utils";
 import { communityApi } from "@/lib/community-api";

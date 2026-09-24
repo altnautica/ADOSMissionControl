@@ -57,7 +57,7 @@ export function ModeSlotRow({
           className={cn(
             "w-7 h-7 flex items-center justify-center text-xs font-mono font-bold shrink-0",
             isActive
-              ? "bg-accent-primary text-white"
+              ? "bg-accent-primary text-accent-foreground"
               : "bg-bg-tertiary text-text-secondary",
           )}
         >

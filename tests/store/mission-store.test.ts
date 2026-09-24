@@ -20,16 +20,13 @@ let mockProtocol: {
 } | null = null;
 
 // Mock dependencies
-vi.mock('@/stores/drone-manager', () => ({
-  useDroneManager: {
-    // The stub protocol is drone "d1", the selected drone.
-    getState: () => ({
-      getSelectedProtocol: () => mockProtocol,
-      selectedDroneId: mockProtocol ? 'd1' : null,
-      drones: new Map(mockProtocol ? [['d1', { protocol: mockProtocol }]] : []),
-    }),
-    setState: vi.fn(),
-  },
+vi.mock('@/stores/drone-selection', () => ({
+  // The stub protocol is drone "d1", the selected drone.
+  droneSelection: () => ({
+    selectedDroneId: mockProtocol ? 'd1' : null,
+    drones: new Map(mockProtocol ? [['d1', { protocol: mockProtocol }]] : []),
+  }),
+  selectedDroneProtocol: () => mockProtocol,
 }));
 vi.mock('@/stores/planner-store', () => ({
   usePlannerStore: {

@@ -20,23 +20,28 @@ export function isMspVariant(fcVariant: string | null | undefined): boolean {
 }
 
 /**
+ * Construct the adapter for a protocol family. Both adapters stay dynamically
+ * imported so the code-split boundary the agent bridge relies on is preserved.
+ */
+export async function createProtocolAdapter(protocol: "mavlink" | "msp"): Promise<DroneProtocol> {
+  if (protocol === "msp") {
+    const { MSPAdapter } = await import("./msp-adapter");
+    return new MSPAdapter();
+  }
+  const { MAVLinkAdapter } = await import("./mavlink-adapter");
+  return new MAVLinkAdapter();
+}
+
+/**
  * Choose the protocol adapter for an FC reached through the ADOS agent.
  *
  * The agent advertises `fc_variant` once it identifies the FC on the serial
  * link. Betaflight/iNav speak MSP, so they must be driven with the MSP adapter
  * over the same byte-transparent agent transport; ArduPilot / PX4 / an
  * unidentified FC / an older agent (variant absent) default to MAVLink.
- *
- * Both adapters stay dynamically imported so the code-split boundary the
- * agent bridge already relies on is preserved.
  */
-export async function createFcAdapter(
+export function createFcAdapter(
   fcVariant: string | null | undefined,
 ): Promise<DroneProtocol> {
-  if (isMspVariant(fcVariant)) {
-    const { MSPAdapter } = await import("./msp-adapter");
-    return new MSPAdapter();
-  }
-  const { MAVLinkAdapter } = await import("./mavlink-adapter");
-  return new MAVLinkAdapter();
+  return createProtocolAdapter(isMspVariant(fcVariant) ? "msp" : "mavlink");
 }

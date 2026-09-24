@@ -196,13 +196,6 @@ export function rehomeReading(
     const attempt = typeof attempts === "number" && attempts > 0 ? ` (attempt ${attempts})` : "";
     return { value: `Rehoming${attempt}`, tone: "warning", note: null };
   }
-  if (state === "exhausted") {
-    return {
-      value: "Rehome exhausted",
-      tone: "error",
-      note: "The adapter is on a slow USB port and a rehome could not recover it. Move it to a high-speed (480 Mbps) USB port.",
-    };
-  }
   if (state === "guard_blocked") {
     return {
       value: "Rehome held back",

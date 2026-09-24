@@ -32,17 +32,17 @@ export function HudOfflineFallback({ timeoutMs = 3000 }: HudOfflineFallbackProps
   }, [timeoutMs]);
 
   return (
-    <div className="w-full h-full bg-black text-white font-mono flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3 px-6 py-8 rounded border border-white/20 bg-black/60">
-        <div className="text-sm uppercase tracking-wider text-white/90">
+    <div className="w-full h-full bg-media text-on-media font-mono flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3 px-6 py-8 rounded border border-on-media/20 bg-scrim/60">
+        <div className="text-sm uppercase tracking-wider text-on-media/90">
           {expired ? "Agent unreachable" : "Agent offline"}
         </div>
-        <div className="text-xs text-white/60">
+        <div className="text-xs text-on-media/60">
           {expired
             ? `No response for ${elapsedS}s. Check the ground station agent.`
             : "Retrying..."}
         </div>
-        <div className="text-[10px] text-white/40">
+        <div className="text-[10px] text-on-media/40">
           elapsed {elapsedS}s
         </div>
       </div>

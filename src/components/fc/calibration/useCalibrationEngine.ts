@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
@@ -34,7 +34,7 @@ const CAL_SNAPSHOT_PARAMS: Record<string, string[]> = {
 };
 
 export function useCalibrationEngine() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
@@ -74,7 +74,7 @@ export function useCalibrationEngine() {
 
   // Global log subscription
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     const unsub = protocol.onStatusText(({ severity, text }) => {
       const lower = text.toLowerCase();
@@ -86,46 +86,46 @@ export function useCalibrationEngine() {
       }
     });
     return unsub;
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   // PX4 calibration STATUSTEXT parser
   useEffect(() => {
     if (!isPx4) return;
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     return subscribePx4CalStatus(protocol, px4CalActiveTypeRef, px4CalCompletedSidesRef, {
       setAccel, setCompass, setGyro, setLevel, setPx4QuickLevel, setPx4GnssMagCal, setPx4CalActiveType,
     }, toast, manager);
   // manager wraps stable refs (subsRef/timeoutRef); excluded so the parser isn't re-subscribed every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPx4, getSelectedProtocol, toast]);
+  }, [isPx4, selectedProtocol, toast]);
 
   // Fetch compass params. A failed read is `null` ("unavailable"), not a
   // permanent "loading".
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     Promise.allSettled(COMPASS_PARAM_NAMES.map((n) => protocol.getParameter(n))).then((results) => {
       const vals: CompassParams = { COMPASS_USE: null, COMPASS_ORIENT: null, COMPASS_AUTO_ROT: null, COMPASS_OFFS_MAX: null, COMPASS_LEARN: null, COMPASS_EXTERNAL: null };
       COMPASS_PARAM_NAMES.forEach((n, i) => { const r = results[i]; vals[n] = r.status === "fulfilled" ? r.value.value : null; });
       setCompassParams(vals);
     });
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   // Subscribe to SCALED_PRESSURE
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.onScaledPressure) return;
     const unsub = protocol.onScaledPressure(({ pressAbs, temperature }) => { setBaroPressure({ pressAbs, temperature }); });
     return unsub;
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   // Cleanup on unmount
   useEffect(() => { return () => { for (const type of subsRef.current.keys()) cleanupSubs(manager, type); }; }, []);
 
   // Before/after diff
   const fetchCalDiff = useCallback(async (type: string, snapshot: Map<string, number>) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     const paramNames = CAL_SNAPSHOT_PARAMS[type];
     if (!paramNames || paramNames.length === 0) return;
@@ -133,7 +133,7 @@ export function useCalibrationEngine() {
     const diffs: Array<{ name: string; before: number; after: number }> = [];
     paramNames.forEach((name, i) => { const r = results[i]; if (r.status !== "fulfilled") return; const after = r.value.value; const before = snapshot.get(name); if (before !== undefined && before !== after) diffs.push({ name, before, after }); });
     if (diffs.length > 0) { setCalDiff(diffs); setCalDiffType(type); }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const calStates = useMemo(() => [
     { type: "accel", state: accel }, { type: "gyro", state: gyro },
@@ -162,23 +162,23 @@ export function useCalibrationEngine() {
   }, [accel.waitingForConfirm, accel.accelCalPosition]);
 
   const confirmAccelPosition = useCallback(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.confirmAccelCalPos || accel.accelCalPosition === null) return;
     protocol.confirmAccelCalPos(accel.accelCalPosition);
     setAccel((prev) => ({ ...prev, waitingForConfirm: false }));
-  }, [getSelectedProtocol, accel.accelCalPosition]);
+  }, [selectedProtocol, accel.accelCalPosition]);
 
   const cancelCalibration = useCallback(async (type: string, setter: React.Dispatch<React.SetStateAction<CalibrationState>>) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (protocol) { if (type === "compass" && protocol.cancelCompassCal) protocol.cancelCompassCal(); else if (protocol.cancelCalibration) protocol.cancelCalibration(); }
     cleanupSubs(manager, type);
     useDiagnosticsStore.getState().logCalibration(type, "cancelled");
     setPx4CalActiveType(null);
     setter(INITIAL_STATE);
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const forceCompassSave = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     // Only fits the FC reported as successful are written; a rejected fit
     // (bad radius, bad orientation) never lands in COMPASS_OFS*.
@@ -202,10 +202,10 @@ export function useCalibrationEngine() {
       setCompass((prev) => ({ ...prev, status: "success", waitingForConfirm: false, needsReboot: true, message: savedNote }));
       toast(message, skipped.length > 0 || outcome.flash === "unacknowledged" ? "info" : "success");
     } catch { toast("Failed to write compass offsets", "error"); }
-  }, [getSelectedProtocol, compass.compassResults, calSnapshot, toast]);
+  }, [selectedProtocol, compass.compassResults, calSnapshot, toast]);
 
   const acceptCompass = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.acceptCompassCal) return;
     try {
       const result = await protocol.acceptCompassCal();
@@ -220,14 +220,14 @@ export function useCalibrationEngine() {
       cleanupSubs(manager, "compass");
       toast(`Compass calibration accepted. ${flashNote}`, flashResult.success ? "success" : "warning");
     } catch { toast("Accept failed — try Force Save", "error"); }
-  }, [getSelectedProtocol, forceCompassSave, toast]);
+  }, [selectedProtocol, forceCompassSave, toast]);
 
   const startCalibration = useCallback(async (
     type: "accel" | "gyro" | "compass" | "level" | "airspeed" | "baro" | "rc" | "esc" | "compassmot",
     setter: React.Dispatch<React.SetStateAction<CalibrationState>>,
     stepCount: number,
   ) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     setCalDiff(null); setCalDiffType(null);
     const paramNames = CAL_SNAPSHOT_PARAMS[type];
@@ -265,10 +265,10 @@ export function useCalibrationEngine() {
       setter((prev) => ({ ...prev, status: "error", message: "Failed to send calibration command" }));
       toast("Failed to send calibration command", "error");
     }
-  }, [getSelectedProtocol, toast, compassParams.COMPASS_AUTO_ROT, setCompassParams, isPx4]);
+  }, [selectedProtocol, toast, compassParams.COMPASS_AUTO_ROT, setCompassParams, isPx4]);
 
   const startPx4QuickLevel = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     setPx4CalActiveType("quick-level");
     setPx4QuickLevel({ ...INITIAL_STATE, status: "in_progress", message: "Starting quick level calibration..." });
@@ -278,10 +278,10 @@ export function useCalibrationEngine() {
       if (!result.success) { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: result.message || "Quick level command rejected" })); toast("Quick level calibration failed", "error"); }
       else toast("Quick level calibration started", "info");
     } catch { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: "Failed to send quick level command" })); toast("Failed to send quick level command", "error"); }
-  }, [getSelectedProtocol, toast]);
+  }, [selectedProtocol, toast]);
 
   const startPx4GnssMagCal = useCallback(async (yawDeg: number) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     setPx4CalActiveType("gnss-mag");
     setPx4GnssMagCal({ ...INITIAL_STATE, status: "in_progress", message: `Calibrating compass for a vehicle yaw of ${yawDeg}°...` });
@@ -290,7 +290,7 @@ export function useCalibrationEngine() {
       if (!result.success) { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: result.message || "Known-heading compass calibration was rejected. Ensure the vehicle has a position fix." })); toast("Compass calibration failed", "error"); }
       else { setPx4GnssMagCal(() => ({ ...INITIAL_STATE, status: "success", progress: 100, message: `Compass calibrated against the magnetic model for a vehicle yaw of ${yawDeg}°.`, needsReboot: true })); setPx4CalActiveType(null); toast("Compass calibration complete", "success"); useDiagnosticsStore.getState().logCalibration("gnss-mag", "success"); }
     } catch { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: "Failed to send the compass calibration command" })); toast("Failed to send the compass calibration command", "error"); }
-  }, [getSelectedProtocol, toast]);
+  }, [selectedProtocol, toast]);
 
   return {
     accel, setAccel, gyro, setGyro, compass, setCompass,

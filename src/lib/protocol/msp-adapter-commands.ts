@@ -345,7 +345,8 @@ export async function mspDoPreArmCheck(ctx: MspCommandContext): Promise<CommandR
       // one-byte flag count.
       if (payload.length < 16 || payload.length < 16 + payload[15] + 5) return invalid
       const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
-      decoded = decodeBetaflightArmingFlags(decodeMspStatusEx(dv).armDisableFlags)
+      const status = decodeMspStatusEx(dv)
+      decoded = decodeBetaflightArmingFlags(status.armDisableFlags, status.armDisableCount)
     } else {
       return { success: false, resultCode: -1, message: 'This firmware reports no arming status over MSP' }
     }

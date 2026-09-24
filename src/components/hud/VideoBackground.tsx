@@ -49,16 +49,16 @@ export function VideoBackground() {
     session.state === "connecting" || agentVideoState === "starting";
 
   return (
-    <div className="absolute inset-0 bg-black">
+    <div className="absolute inset-0 bg-media">
       <video
         ref={setVideoRef}
         autoPlay
         muted
         playsInline
-        className="absolute inset-0 w-full h-full object-cover bg-black"
+        className="absolute inset-0 w-full h-full object-cover bg-media"
       />
       {!hasVideo && (
-        <div className="absolute inset-0 flex items-center justify-center text-white/30 text-xs font-mono uppercase tracking-widest pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center text-on-media/30 text-xs font-mono uppercase tracking-widest pointer-events-none">
           {connecting
             ? "connecting video..."
             : session.state === "failed"

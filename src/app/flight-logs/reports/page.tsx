@@ -17,57 +17,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useHistoryStore } from "@/stores/history-store";
 import { useClockStore } from "@/stores/clock-store";
-import type { FlightRecord } from "@/lib/types";
 import Link from "next/link";
-
-interface AggregateKpis {
-  totalFlights: number;
-  totalHours: number;
-  totalDistanceKm: number;
-  totalBatteryUsed: number;
-  avgDurationMin: number;
-  avgDistanceKm: number;
-  avgMaxAlt: number;
-  byDrone: { drone: string; count: number; hours: number }[];
-}
-
-function computeAggregateKpis(records: readonly FlightRecord[]): AggregateKpis {
-  const totalFlights = records.length;
-  const totalSeconds = records.reduce((acc, r) => acc + (r.duration ?? 0), 0);
-  const totalHours = totalSeconds / 3600;
-  const totalDistanceKm =
-    records.reduce((acc, r) => acc + (r.distance ?? 0), 0) / 1000;
-  const totalBatteryUsed = records.reduce(
-    (acc, r) => acc + (r.batteryUsed ?? 0),
-    0,
-  );
-  const avgDurationMin = totalFlights ? totalSeconds / totalFlights / 60 : 0;
-  const avgDistanceKm = totalFlights ? totalDistanceKm / totalFlights : 0;
-  const avgMaxAlt = totalFlights
-    ? records.reduce((acc, r) => acc + (r.maxAlt ?? 0), 0) / totalFlights
-    : 0;
-  const droneMap = new Map<string, { count: number; hours: number }>();
-  for (const r of records) {
-    const key = r.droneName || r.droneId || "(unknown)";
-    const cur = droneMap.get(key) ?? { count: 0, hours: 0 };
-    cur.count += 1;
-    cur.hours += (r.duration ?? 0) / 3600;
-    droneMap.set(key, cur);
-  }
-  const byDrone = Array.from(droneMap.entries())
-    .map(([drone, v]) => ({ drone, ...v }))
-    .sort((a, b) => b.hours - a.hours);
-  return {
-    totalFlights,
-    totalHours,
-    totalDistanceKm,
-    totalBatteryUsed,
-    avgDurationMin,
-    avgDistanceKm,
-    avgMaxAlt,
-    byDrone,
-  };
-}
+import { computeAggregateKpis } from "./kpis";
 
 type DatePreset = "all" | "7d" | "30d" | "90d" | "year";
 
@@ -90,10 +41,12 @@ export default function ReportsPage() {
   );
 
   const filtered = useMemo(() => {
-    if (preset === "all") return records;
+    // Trashed flights are out of every report until restored.
+    const live = records.filter((r) => !r.deleted);
+    if (preset === "all") return live;
     const days = preset === "7d" ? 7 : preset === "30d" ? 30 : preset === "90d" ? 90 : 365;
     const cutoff = clockNow - days * 86_400_000;
-    return records.filter((r) => (r.startTime ?? r.date) >= cutoff);
+    return live.filter((r) => (r.startTime ?? r.date) >= cutoff);
   }, [records, preset, clockNow]);
 
   const kpis = useMemo(() => computeAggregateKpis(filtered), [filtered]);
@@ -157,9 +110,9 @@ export default function ReportsPage() {
           {/* Averages */}
           <Card title={tr("averages")} padding={true}>
             <div className="grid grid-cols-3 gap-3">
-              <DataValue label={tr("avgDuration")} value={kpis.avgDurationMin.toFixed(1)} unit="min" />
-              <DataValue label={tr("avgDistance")} value={kpis.avgDistanceKm.toFixed(2)} unit="km" />
-              <DataValue label={tr("avgMaxAlt")} value={kpis.avgMaxAlt.toFixed(0)} unit="m" />
+              <DataValue label={tr("avgDuration")} value={kpis.avgDurationMin === null ? "—" : kpis.avgDurationMin.toFixed(1)} unit="min" />
+              <DataValue label={tr("avgDistance")} value={kpis.avgDistanceKm === null ? "—" : kpis.avgDistanceKm.toFixed(2)} unit="km" />
+              <DataValue label={tr("avgMaxAlt")} value={kpis.avgMaxAlt === null ? "—" : kpis.avgMaxAlt.toFixed(0)} unit="m" />
             </div>
           </Card>
 

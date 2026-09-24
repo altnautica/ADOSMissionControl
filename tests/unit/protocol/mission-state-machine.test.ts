@@ -73,6 +73,7 @@ function makeState(overrides?: Partial<FrameHandlerState>): FrameHandlerState {
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
     statusText: new StatusTextAssembler(),
+    homeAltitudeAmsl: null,
     ...overrides,
   };
 }
@@ -109,11 +110,8 @@ function makeContext(t: FakeTransport): MissionContext & FrameHandlerState {
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
     statusText: new StatusTextAssembler(),
+    homeAltitudeAmsl: null,
     sendCommandLong: vi.fn(async (): Promise<CommandResult> => ({ success: true, resultCode: 0, message: 'ok' })),
-    onParameter: () => () => {},
-    onFencePoint: () => () => {},
-    getParameter: vi.fn(async () => ({ value: 0 })),
-    setParameter: vi.fn(async () => ({ success: true, resultCode: 0, message: 'ok' })),
   };
 }
 

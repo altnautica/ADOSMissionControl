@@ -6,15 +6,15 @@
  * Display surface. It surfaces the resolved local-display path and the
  * HDMI + touch status, lets the operator edit the reconciled kiosk target
  * URL (`ground_station.kiosk.target_url`, via the agent config write path),
- * and drives the on-panel touch-calibration wizard over the display
- * calibrate routes with live step progress. The crosshairs render on the
- * HDMI panel itself — touch calibration is physical — so the card arms the
- * wizard remotely and polls the live step counter while the operator taps.
+ * and asks the HDMI panel to open its touch-calibration wizard. The
+ * crosshairs render on the panel itself — touch calibration is physical — and
+ * the agent reports only whether a request is still queued and whether a fit
+ * is stored, so the card shows those two facts and no step progress.
  * Renders beside LocalDisplayCard on the ground-station Display tab.
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MonitorPlay } from "lucide-react";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
@@ -40,11 +40,9 @@ import { useStableRelayReach } from "@/hooks/use-stable-relay-reach";
  * the string to the underlying field type at the agent's config boundary. */
 const KIOSK_URL_CONFIG_KEY = "ground_station.kiosk.target_url";
 const CALIBRATE_POLL_MS = 1000;
-/** Stop auto-polling a calibration the operator abandoned so the loop can't run
- * forever if nobody ever taps the panel. */
+/** Stop polling a request nobody acts on, so the loop cannot run forever when
+ * the panel never opens the wizard or nobody taps it. */
 const CALIBRATE_DEADLINE_MS = 180_000;
-/** Fall back to a 3x3 grid if the agent's start response omits the count. */
-const DEFAULT_TARGET_COUNT = 9;
 
 /** Read `ground_station.kiosk.target_url` out of the raw agent config blob,
  * degrading to "" for any missing / non-string node. */
@@ -108,12 +106,15 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
   const [urlLoaded, setUrlLoaded] = useState(false);
   const [savingUrl, setSavingUrl] = useState(false);
 
-  // Touch-calibration flow state.
+  // Touch-calibration flow state. `calibrating` holds from the start request
+  // until the panel has taken it (and, on an uncalibrated panel, until the
+  // first fit lands). `calibratedAtStart` decides whether `calibrated` flipping
+  // can mean anything: on a panel that already had a fit it cannot.
   const [calibStatus, setCalibStatus] = useState<TouchCalibrationStatus | null>(
     null,
   );
   const [calibrating, setCalibrating] = useState(false);
-  const [calibTotal, setCalibTotal] = useState(DEFAULT_TARGET_COUNT);
+  const [calibratedAtStart, setCalibratedAtStart] = useState(false);
 
   // Load the persisted kiosk URL once (config changes are infrequent and we
   // re-read after a save to reflect the reconciled value).
@@ -153,15 +154,16 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
     };
   }, [nodeClient]);
 
-  // While a calibration is in flight, poll the live status so the step counter
-  // advances as the operator taps each crosshair on the panel. The wizard is
-  // terminal once `in_progress` drops back to false after having been true.
-  const sawInProgressRef = useRef(false);
+  // While a request is out, poll: `requested` is true until the display
+  // service picks it up. Once it has, a panel that had no fit is done when
+  // `calibrated` flips; a panel that already had one cannot report the new fit,
+  // so the card hands off to the panel.
   useEffect(() => {
     if (!calibrating || !nodeClient) return;
     let cancelled = false;
     const startedAt = Date.now();
     let failures = 0;
+    let lastRequested = true;
 
     const tick = async () => {
       if (cancelled) return;
@@ -169,22 +171,18 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
         const status = await nodeClient.getTouchCalibrationStatus();
         if (cancelled) return;
         failures = 0;
+        lastRequested = status.requested;
         setCalibStatus(status);
-        if (status.in_progress) {
-          sawInProgressRef.current = true;
-        } else if (sawInProgressRef.current) {
-          // Terminal: the on-panel wizard finished (or the fit was rejected).
-          setCalibrating(false);
-          if (status.calibrated) {
-            const rms = status.rms_residual_px;
-            toast(
-              rms != null
-                ? t("calibrateCompleteResidual", { residual: rms.toFixed(1) })
-                : t("calibrateComplete"),
-              "success",
-            );
-          } else {
-            toast(t("calibrateRejected"), "warning");
+        if (!status.requested) {
+          if (status.calibrated && !calibratedAtStart) {
+            setCalibrating(false);
+            toast(t("calibrateComplete"), "success");
+            return;
+          }
+          if (calibratedAtStart) {
+            setCalibrating(false);
+            toast(t("calibrateHandedOff"), "info");
+            return;
           }
         }
       } catch {
@@ -193,10 +191,12 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
         if (failures >= 3) {
           setCalibrating(false);
           toast(t("calibrateLostContact"), "error");
+          return;
         }
       }
       if (!cancelled && Date.now() - startedAt > CALIBRATE_DEADLINE_MS) {
         setCalibrating(false);
+        if (lastRequested) toast(t("calibrateNotPickedUp"), "warning");
       }
     };
 
@@ -206,11 +206,14 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
       cancelled = true;
       clearInterval(timer);
     };
-  }, [calibrating, nodeClient, t, toast]);
+  }, [calibrating, calibratedAtStart, nodeClient, t, toast]);
 
   if (!loaded) return null;
 
   const dirty = urlLoaded && urlValue !== savedUrl;
+  // Calibration state: prefer the agent's status, fall back to the heartbeat flag.
+  const isCalibrated =
+    calibStatus?.calibrated ?? display?.touchCalibrated ?? undefined;
 
   const onSaveUrl = async () => {
     if (access.mode === "none" || savingUrl) return;
@@ -241,18 +244,12 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
 
   const onStartCalibrate = async () => {
     if (!nodeClient || calibrating) return;
-    sawInProgressRef.current = false;
-    setCalibrating(true);
     try {
-      const started = await nodeClient.startTouchCalibration();
-      setCalibTotal(
-        typeof started.target_count === "number" && started.target_count > 0
-          ? started.target_count
-          : DEFAULT_TARGET_COUNT,
-      );
+      await nodeClient.startTouchCalibration();
+      setCalibratedAtStart(isCalibrated === true);
+      setCalibrating(true);
       toast(t("calibrateStarted"), "info");
     } catch (err) {
-      setCalibrating(false);
       const msg = err instanceof Error ? err.message : t("calibrateError");
       toast(msg, "error");
     }
@@ -283,9 +280,6 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
         ? t("touchNotDetected")
         : t("touchUnknown");
 
-  // Calibration state: prefer the live status, fall back to the heartbeat flag.
-  const isCalibrated =
-    calibStatus?.calibrated ?? display?.touchCalibrated ?? undefined;
   const calibLabel = calibrating
     ? t("calibrating")
     : isCalibrated === true
@@ -293,8 +287,6 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
       : isCalibrated === false
         ? t("notCalibrated")
         : t("calibrationUnknown");
-
-  const currentStep = calibStatus?.current_step ?? 0;
 
   return (
     <section className="mb-4 rounded border border-border-default bg-bg-secondary">
@@ -369,9 +361,7 @@ export function HdmiKioskCard({ nodeDeviceId, relayReach }: HdmiKioskCardProps) 
 
       <footer className="flex flex-col gap-2 border-t border-border-default px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-[11px] text-text-tertiary">
-          {calibrating
-            ? t("calibrateProgress", { current: currentStep, total: calibTotal })
-            : t("calibrateHint")}
+          {calibrating ? t("calibrateRequested") : t("calibrateHint")}
         </span>
         <Button
           variant="secondary"

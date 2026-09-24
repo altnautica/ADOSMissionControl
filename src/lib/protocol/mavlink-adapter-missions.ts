@@ -6,10 +6,9 @@
  * @module protocol/mavlink-adapter-missions
  */
 
-import type { Transport, CommandResult, MissionItem, FirmwareHandler, FencePointCallback, ParameterCallback, FenceElement } from './types'
+import type { Transport, CommandResult, MissionItem, FirmwareHandler, FenceElement } from './types'
 import {
   encodeMissionCount, encodeMissionRequestList, encodeMissionClearAll,
-  encodeFencePoint, encodeFenceFetchPoint,
   encodeMissionRequestInt,
   MAV_MISSION_TYPE_FENCE,
 } from './mavlink-encoder'
@@ -198,10 +197,6 @@ export interface MissionContext {
   fenceUpload: FenceUploadState | null
   fenceDownload: FenceDownloadState | null
   sendCommandLong: (command: number, params: [number, number, number, number, number, number, number], timeoutMs?: number) => Promise<CommandResult>
-  onParameter: (cb: ParameterCallback) => () => void
-  onFencePoint: (cb: FencePointCallback) => () => void
-  getParameter: (name: string) => Promise<{ value: number }>
-  setParameter: (name: string, value: number) => Promise<CommandResult>
 }
 
 /**
@@ -371,160 +366,15 @@ export async function clearMission(ctx: MissionContext): Promise<CommandResult> 
 }
 
 /**
- * Upload the geofence over the legacy FENCE_POINT protocol.
- *
- * The legacy protocol has no per-point acknowledgement: the FC sizes its fence
- * table from `FENCE_TOTAL` and then accepts that many FENCE_POINT writes. So
- * this does three things, and reports failure at each — it previously sent the
- * points blind, never wrote FENCE_TOTAL at all (leaving the FC's table at its
- * previous size, silently truncating or ignoring the upload), and returned an
- * unconditional `success: true`:
- *
- *  1. write `FENCE_TOTAL` and require the FC's PARAM_VALUE echo to match,
- *  2. emit the FENCE_POINTs,
- *  3. fetch every index back and compare coordinates.
- */
-export async function uploadFence(ctx: MissionContext, points: Array<{ lat: number; lon: number }>): Promise<CommandResult> {
-  if (!ctx.transport?.isConnected) {
-    return { success: false, resultCode: -1, message: 'Not connected' }
-  }
-
-  const totalWrite = await ctx.setParameter('FENCE_TOTAL', points.length)
-  if (!totalWrite.success) {
-    return {
-      success: false,
-      resultCode: -1,
-      message: `Flight controller did not accept FENCE_TOTAL=${points.length}: ${totalWrite.message}`,
-    }
-  }
-  if (points.length === 0) {
-    return { success: true, resultCode: 0, message: 'Fence cleared' }
-  }
-
-  for (let i = 0; i < points.length; i++) {
-    ctx.transport.send(encodeFencePoint(
-      ctx.targetSysId, ctx.targetCompId,
-      i, points.length, points[i].lat, points[i].lon,
-      ctx.sysId, ctx.compId,
-    ))
-  }
-
-  const readback = await fetchFencePoints(ctx, points.length)
-  if (readback.size < points.length) {
-    const missing = points.length - readback.size
-    return {
-      success: false,
-      resultCode: -1,
-      message: `Fence upload unverified: flight controller returned ${readback.size} of ${points.length} points (${missing} missing)`,
-    }
-  }
-  for (let i = 0; i < points.length; i++) {
-    const got = readback.get(i)
-    if (!got) continue
-    if (Math.abs(got.lat - points[i].lat) > FENCE_COORD_EPSILON || Math.abs(got.lon - points[i].lon) > FENCE_COORD_EPSILON) {
-      return {
-        success: false,
-        resultCode: -1,
-        message: `Fence upload mismatch at point ${i}: sent ${points[i].lat.toFixed(7)},${points[i].lon.toFixed(7)} but flight controller holds ${got.lat.toFixed(7)},${got.lon.toFixed(7)}`,
-      }
-    }
-  }
-  return { success: true, resultCode: 0, message: `Uploaded and verified ${points.length} fence points` }
-}
-
-/** ~1.1 cm at the equator — a FENCE_POINT is transported as float32 degrees. */
-const FENCE_COORD_EPSILON = 1e-7 * 1000
-
-/** Fetch fence indices `0..total-1` back from the FC. Resolves with whatever
- *  arrived when the deadline expires, so the caller reports a short readback as
- *  an unverified upload rather than as a success. */
-function fetchFencePoints(
-  ctx: MissionContext,
-  total: number,
-): Promise<Map<number, { lat: number; lon: number }>> {
-  const { promise, resolve } = Promise.withResolvers<Map<number, { lat: number; lon: number }>>()
-  const received = new Map<number, { lat: number; lon: number }>()
-
-  const timeout = setTimeout(() => {
-    unsub()
-    resolve(received)
-  }, 10000)
-
-  const unsub = ctx.onFencePoint((data) => {
-    if (data.idx < 0 || data.idx >= total) return
-    received.set(data.idx, { lat: data.lat, lon: data.lon })
-    if (received.size >= total) {
-      clearTimeout(timeout)
-      unsub()
-      resolve(received)
-    }
-  })
-
-  for (let i = 0; i < total; i++) {
-    ctx.transport!.send(encodeFenceFetchPoint(
-      ctx.targetSysId, ctx.targetCompId,
-      i, ctx.sysId, ctx.compId,
-    ))
-  }
-
-  return promise
-}
-
-export async function downloadFence(ctx: MissionContext): Promise<Array<{ idx: number; lat: number; lon: number }>> {
-  if (!ctx.transport?.isConnected) throw new Error('Not connected')
-
-  let fenceTotal: number
-  try {
-    const result = await ctx.getParameter('FENCE_TOTAL')
-    fenceTotal = result.value
-  } catch {
-    return []
-  }
-
-  if (fenceTotal <= 0) return []
-
-  const points: Array<{ idx: number; lat: number; lon: number }> = []
-  const received = new Set<number>()
-
-  return new Promise<Array<{ idx: number; lat: number; lon: number }>>((resolve) => {
-    const timeout = setTimeout(() => {
-      unsub()
-      points.sort((a, b) => a.idx - b.idx)
-      resolve(points)
-    }, 10000)
-
-    const unsub = ctx.onFencePoint((data) => {
-      if (!received.has(data.idx)) {
-        received.add(data.idx)
-        points.push({ idx: data.idx, lat: data.lat, lon: data.lon })
-      }
-      if (received.size >= fenceTotal) {
-        clearTimeout(timeout)
-        unsub()
-        points.sort((a, b) => a.idx - b.idx)
-        resolve(points)
-      }
-    })
-
-    for (let i = 0; i < fenceTotal; i++) {
-      ctx.transport!.send(encodeFenceFetchPoint(
-        ctx.targetSysId, ctx.targetCompId,
-        i, ctx.sysId, ctx.compId,
-      ))
-    }
-  })
-}
-
-/**
- * Upload the geofence as a fence-type mission (mission_type = fence). Used by
- * firmwares (PX4) that store the fence as a mission plan rather than the legacy
- * FENCE_POINT protocol. Kept separate from the waypoint-mission and rally state
- * machines so uploading a fence never touches the waypoint mission.
+ * Upload the geofence as a fence-type mission (mission_type = fence), the
+ * fence protocol ArduPilot (4.0 and later) and PX4 both speak. Kept separate
+ * from the waypoint-mission and rally state machines so uploading a fence
+ * never touches the waypoint mission. An empty element list uploads a count
+ * of 0, which clears the fence on the vehicle.
  */
 export async function uploadFenceMission(ctx: MissionContext, elements: FenceElement[]): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
   const items = encodeFenceMissionItems(elements)
-  if (items.length === 0) return { success: true, resultCode: 0, message: 'No fence items to upload' }
 
   const { promise, resolve } = Promise.withResolvers<CommandResult>()
   const onIdle = () => {
@@ -547,8 +397,7 @@ export async function uploadFenceMission(ctx: MissionContext, elements: FenceEle
 
 /**
  * Download the geofence as a fence-type mission (mission_type = fence) and
- * reassemble it into the fence model. Used by firmwares (PX4) that store the
- * fence as a mission plan.
+ * reassemble it into the fence model.
  */
 export async function downloadFenceMission(ctx: MissionContext): Promise<FenceElement[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
@@ -579,9 +428,9 @@ export async function downloadFenceMission(ctx: MissionContext): Promise<FenceEl
   return promise
 }
 
+/** Upload rally points; an empty list uploads a count of 0, which clears them on the vehicle. */
 export async function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
-  if (points.length === 0) return { success: true, resultCode: 0, message: 'No rally points to upload' }
 
   const { promise, resolve } = Promise.withResolvers<CommandResult>()
   const onIdle = () => {

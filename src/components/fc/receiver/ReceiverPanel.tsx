@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -25,8 +25,7 @@ import {
 } from "./receiver-constants";
 
 export function ReceiverPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const protocol = getSelectedProtocol();
+  const protocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);

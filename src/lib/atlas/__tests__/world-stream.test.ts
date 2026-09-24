@@ -207,4 +207,46 @@ describe("subscribeWorldStream", () => {
     expect(calls).toBe(2);
     stop();
   });
+
+  it("offers a freshly minted ticket as the subprotocol on every dial", async () => {
+    const offered: (string[] | undefined)[] = [];
+    const sockets: FakeSocket[] = [];
+    let minted = 0;
+    const stop = subscribeWorldStream({
+      url: "ws://node:8092/ws/atlas/d",
+      onFrame: () => {},
+      onState: () => {},
+      ticket: async () => `v1|compute.atlas_world|${++minted}`,
+      socketFactory: (_url, protocols) => {
+        offered.push(protocols);
+        const s = new FakeSocket();
+        sockets.push(s);
+        return s;
+      },
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(offered).toEqual([["ados-ws-ticket", "v1|compute.atlas_world|1"]]);
+    // A redial never reuses the short-lived ticket.
+    sockets[0].onclose?.();
+    await vi.advanceTimersByTimeAsync(SOCKET_RETRY_MS);
+    expect(offered[1]).toEqual(["ados-ws-ticket", "v1|compute.atlas_world|2"]);
+    stop();
+  });
+
+  it("dials without a subprotocol when no ticket is available", async () => {
+    const offered: (string[] | undefined)[] = [];
+    const stop = subscribeWorldStream({
+      url: "ws://node:8092/ws/atlas/d",
+      onFrame: () => {},
+      onState: () => {},
+      ticket: async () => null,
+      socketFactory: (_url, protocols) => {
+        offered.push(protocols);
+        return new FakeSocket();
+      },
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(offered).toEqual([undefined]);
+    stop();
+  });
 });

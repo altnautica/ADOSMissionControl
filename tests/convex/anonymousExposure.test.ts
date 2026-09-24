@@ -14,7 +14,6 @@
  *     caller whose only credential was that six-character code, and took the
  *     OWNER as an argument, so knowing another browser's id was enough to
  *     assert ownership of its nodes.
- *   - `getPairingStatus` was a public claim oracle keyed on `deviceId` alone.
  *   - Nothing anywhere in either Convex tree counted a failed attempt, so the
  *     code space was walkable at whatever rate a script could manage.
  *
@@ -77,7 +76,6 @@ describe("exposure of the pairing surface", () => {
     // These two are reached only through their HTTP routes, which supply the
     // source-address rate-limit bucket and the device's own API key.
     expect(isPublic(pairing.registerAgent)).toBe(false);
-    expect(isPublic(pairing.getPairingStatus)).toBe(false);
     expect(isPublic(pairing.listMqttAuthEntries)).toBe(false);
     expect(isPublic(pairing.wipeByDeviceIds)).toBe(false);
     expect(isPublic(pairing.cleanExpiredRequests)).toBe(false);
@@ -412,41 +410,6 @@ describe("registerAgent (internal, agent-facing)", () => {
       userId: "user_alice",
       deviceId: "ados-x-0001",
       apiKey: AGENT_KEY,
-    });
-  });
-});
-
-describe("getPairingStatus (internal, key-authenticated)", () => {
-  it("answers identically for an unknown device and a wrong key", async () => {
-    const ctx = makeCtx();
-    seedLiveRequest(ctx);
-
-    const wrongKey = await invoke(pairing.getPairingStatus, ctx, {
-      deviceId: "ados-x-0001",
-      apiKey: "guessed",
-    });
-    const unknownDevice = await invoke(pairing.getPairingStatus, ctx, {
-      deviceId: "does-not-exist",
-      apiKey: AGENT_KEY,
-    });
-
-    // One answer for both, so the route cannot be walked to enumerate device
-    // ids or to learn that a given device is mid-pairing.
-    expect(wrongKey).toEqual({ authorized: false });
-    expect(unknownDevice).toEqual({ authorized: false });
-  });
-
-  it("answers the device that holds the key", async () => {
-    const ctx = makeCtx();
-    seedLiveRequest(ctx, { claimedBy: "user_alice", claimedAt: NOW_ISH });
-    const result = await invoke(pairing.getPairingStatus, ctx, {
-      deviceId: "ados-x-0001",
-      apiKey: AGENT_KEY,
-    });
-    expect(result).toMatchObject({
-      authorized: true,
-      claimed: true,
-      claimedBy: "user_alice",
     });
   });
 });

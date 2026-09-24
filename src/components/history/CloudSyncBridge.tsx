@@ -26,7 +26,7 @@ import { useMutation, usePaginatedQuery } from "convex/react";
 import { useHistoryStore } from "@/stores/history-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { cmdFlightLogsApi } from "@/lib/cmd-flight-logs-api";
 import { toCloudShape, fromCloudShape } from "./cloud-sync-shape";
 

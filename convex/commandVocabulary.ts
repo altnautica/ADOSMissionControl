@@ -135,3 +135,41 @@ export function requiredScopeForCommand(
   }
   return RELAY_COMMAND_SCOPE[command];
 }
+
+/**
+ * Bounds on a queue row's delivery window. The ceiling keeps a queued command
+ * from executing long after it was sent; the floor leaves room for at least one
+ * agent poll.
+ */
+export const MIN_COMMAND_TTL_MS = 1_000;
+export const MAX_COMMAND_TTL_MS = 60_000;
+
+/**
+ * Delivery window of a flight-class command queued without one. Matches the
+ * window the GCS sends, so a caller that omits it (the MCP reach path, a
+ * hand-made call) gets the same bound instead of the open-ended default.
+ */
+export const FLIGHT_COMMAND_TTL_MS = 10_000;
+
+/**
+ * The server-clock delivery deadline for a new queue row, or undefined for a
+ * row whose delivery window is the queue's default.
+ *
+ * Every flight-class command gets a deadline whoever queues it: a command that
+ * moves the vehicle and was queued while the node was unreachable must fail
+ * rather than run when the node comes back minutes later. A supplied TTL is
+ * clamped to [MIN_COMMAND_TTL_MS, MAX_COMMAND_TTL_MS].
+ */
+export function deliveryDeadline(
+  command: RelayCommandName,
+  ttlMs: number | undefined,
+  now: number,
+): number | undefined {
+  if (ttlMs !== undefined && !Number.isFinite(ttlMs)) {
+    throw new Error("ttlMs must be a finite number of milliseconds");
+  }
+  const window =
+    ttlMs ?? (RELAY_COMMAND_SCOPE[command] === "flight" ? FLIGHT_COMMAND_TTL_MS : undefined);
+  if (window === undefined) return undefined;
+  return now + Math.min(Math.max(window, MIN_COMMAND_TTL_MS), MAX_COMMAND_TTL_MS);
+}

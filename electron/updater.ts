@@ -143,6 +143,9 @@ export function setupAutoUpdater(
   autoUpdater.logger = console;
 
   let status: UpdateStatus = { state: "idle" };
+  // The newest version the channel offered. Kept apart from `status` so a
+  // failed download, which publishes `error`, can still be retried.
+  let availableVersion: string | null = null;
   const publish = (next: UpdateStatus): void => {
     status = next;
     if (!win.isDestroyed()) win.webContents.send("update:status", next);
@@ -164,6 +167,7 @@ export function setupAutoUpdater(
         `[updater] version ${info.version} is available but this build cannot install it: ${describe(capability)}`,
       );
     }
+    availableVersion = info.version;
     publish({
       state: "available",
       version: info.version,
@@ -188,10 +192,13 @@ export function setupAutoUpdater(
       console.error(`[updater] ${message}`);
       throw new Error(message);
     }
-    if (status.state !== "available") {
+    if (availableVersion === null) {
       throw new Error("Cannot download an update: no newer version has been found");
     }
-    publish({ state: "downloading", version: status.version });
+    if (status.state === "downloading" || status.state === "downloaded") {
+      throw new Error(`Cannot download an update: it is already ${status.state}`);
+    }
+    publish({ state: "downloading", version: availableVersion });
     // A failure is published by the `error` listener and rejects the invoke.
     await autoUpdater.downloadUpdate();
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { VibrationGauges } from "@/components/indicators/VibrationGauges";
 import { EkfStatusBars } from "@/components/indicators/EkfStatusBars";
@@ -17,7 +17,7 @@ import {
 import { XYZ_COLORS } from "../chart-theme";
 
 export function SensorGraphPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { firmwareType } = useFirmwareCapabilities();
   const attitudeRing = useTelemetryStore((s) => s.attitude);
@@ -36,7 +36,7 @@ export function SensorGraphPanel() {
 
   useEffect(() => {
     samplesRef.current = new Map();
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.onScaledImu) return;
     const unsub = protocol.onScaledImu((data) => {
       if (frozenRef.current) return;
@@ -49,7 +49,7 @@ export function SensorGraphPanel() {
       if (series.length > MAX_SAMPLES) series.splice(0, series.length - MAX_SAMPLES);
     });
     return () => { unsub(); samplesRef.current = new Map(); };
-  }, [getSelectedProtocol, selectedDroneId]);
+  }, [selectedProtocol, selectedDroneId]);
 
   useEffect(() => {
     if (frozen) return;

@@ -38,6 +38,22 @@ describe("video-streams-store", () => {
     expect(st.activeStream(DRONE)?.id).toBe("eo");
   });
 
+  it("never defaults the main view to a known-dead leg when a live one exists", () => {
+    const s = useVideoStreamsStore.getState();
+    s.setStreams(DRONE, [{ ...concurrent("eo", 1, "eo"), live: false }, concurrent("ir", 2, "ir")]);
+    expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("ir");
+  });
+
+  it("moves off an active leg that a refresh reports dead, and hides a PiP that would duplicate it", () => {
+    const s = useVideoStreamsStore.getState();
+    s.setStreams(DRONE, [concurrent("eo", 1, "eo"), concurrent("ir", 2, "ir")]);
+    s.setPip(DRONE, "ir");
+    s.setStreams(DRONE, [{ ...concurrent("eo", 1, "eo"), live: false }, concurrent("ir", 2, "ir")]);
+    const st = useVideoStreamsStore.getState();
+    expect(st.activeStream(DRONE)?.id).toBe("ir");
+    expect(st.pipStream(DRONE)).toBeNull();
+  });
+
   it("auto-detect: switcher shows only when more than one stream", () => {
     const s = useVideoStreamsStore.getState();
     s.setStreams(DRONE, [concurrent("eo", 1, "eo")]);

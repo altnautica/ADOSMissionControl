@@ -96,7 +96,8 @@ export function DroneFlightsTab({ droneId }: DroneFlightsTabProps) {
   // in sync with live recordings, imported logs, and demo seed data alike.
   const allRecords = useHistoryStore((s) => s.records);
   const flights = useMemo(
-    () => allRecords.filter((f) => f.droneId === droneId),
+    // Trashed flights are not this drone's flights until restored.
+    () => allRecords.filter((f) => f.droneId === droneId && !f.deleted),
     [allRecords, droneId],
   );
 

@@ -25,7 +25,8 @@ import {
 import { NodeGlyph } from "./node-glyph";
 import { NodeStatusHoverCard } from "./NodeStatusHoverCard";
 import { Tooltip } from "@/components/ui/tooltip";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
+import { StatusDot } from "@/components/ui/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { droneLiveness } from "../fleet/types";
 import { NodeBadgeSet } from "./NodeBadgeSet";

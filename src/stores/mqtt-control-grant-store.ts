@@ -111,6 +111,12 @@ let backend: GrantBackend | null = null;
 let renewTimer: ReturnType<typeof setTimeout> | null = null;
 let inFlight: Promise<void> | null = null;
 let lastAppliedAt = 0;
+/**
+ * Bumped whenever the held grant is dropped. A mint or renewal started before
+ * the drop belongs to a session that has ended: its result must never become
+ * the held credential, and its failure must never arm another retry.
+ */
+let grantEpoch = 0;
 
 function clearRenewTimer(): void {
   if (renewTimer === null) return;
@@ -170,21 +176,29 @@ function mintNow(): Promise<void> {
   if (active === null) {
     return Promise.reject(new Error("No MQTT control grant backend attached"));
   }
+  const epoch = grantEpoch;
   const replaces = useMqttControlGrantStore.getState().principal;
   useMqttControlGrantStore.setState({ minting: true, lastError: null });
-  const run = active
+  const run: Promise<void> = active
     .mint(replaces)
     .then(
       (minted) => {
+        if (epoch !== grantEpoch) {
+          // Released (sign-out) while the mint was in flight. The revoke that
+          // release sent may have reached the server before this row existed,
+          // so revoke again rather than leave a live write grant behind.
+          void active.revoke().catch(() => {});
+          return;
+        }
         applyMintedGrant(minted);
       },
       (err: unknown) => {
-        recordMintFailure(err);
+        if (epoch === grantEpoch) recordMintFailure(err);
         throw err;
       },
     )
     .finally(() => {
-      inFlight = null;
+      if (inFlight === run) inFlight = null;
     });
   inFlight = run;
   return run;
@@ -192,9 +206,13 @@ function mintNow(): Promise<void> {
 
 async function renew(): Promise<void> {
   const held = useMqttControlGrantStore.getState().grant;
+  const epoch = grantEpoch;
   try {
     await mintNow();
   } catch {
+    // A renewal that failed after the grant was dropped or the backend was
+    // detached has nothing left to keep alive.
+    if (epoch !== grantEpoch || backend === null) return;
     // Failure is already recorded as `renewalFailed`. Keep trying while the
     // held grant has time left: a transient network fault must not cost the
     // operator their command authority until the next page load.
@@ -234,6 +252,10 @@ function dropHeldGrant(): void {
   clearRenewTimer();
   setMqttBrokerCredential(null);
   lastAppliedAt = 0;
+  grantEpoch += 1;
+  // A mint still in flight belongs to the dropped session; the next ensure or
+  // request starts a fresh one instead of joining it.
+  inFlight = null;
   useMqttControlGrantStore.setState((s) => ({
     ...INITIAL,
     credentialEpoch: s.credentialEpoch + 1,

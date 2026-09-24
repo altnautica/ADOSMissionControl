@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -10,10 +10,11 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { PluginAgentClient, PluginAgentError } from "@/lib/agent/plugin-client";
+import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import { communityApi } from "@/lib/community-api";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 
@@ -31,15 +32,10 @@ export default function PluginDetailPage() {
   const [pendingRevoke, setPendingRevoke] = useState<{
     permissionId: string;
   } | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const t = useTranslations("plugins");
   const { toast } = useToast();
-
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
-  const agentClient = useMemo(
-    () => (agentUrl ? new PluginAgentClient(agentUrl, apiKey ?? "") : null),
-    [agentUrl, apiKey],
-  );
+  const router = useRouter();
 
   const data = useConvexSkipQuery(
     communityApi.plugins.getInstallWithPermissions,
@@ -53,9 +49,44 @@ export default function PluginDetailPage() {
     enabled: !!installId && tab === "events",
   });
 
+  // A drone-bound install's agent half lives on THAT drone: its grants,
+  // revokes and removal go to that node's agent only, never to whichever
+  // node happens to be attached. A GCS-only install has no agent half.
+  const installDroneId = data?.install.droneId ?? null;
+  const installNode = useNodeDirectAgent(
+    installDroneId ? (deviceIdFromNodeId(installDroneId) ?? installDroneId) : null,
+  );
+  const agentClient = useMemo(
+    () =>
+      installNode ? new PluginAgentClient(installNode.agentUrl, installNode.apiKey ?? "") : null,
+    [installNode],
+  );
+
   const grant = useMutation(communityApi.plugins.grantPermission);
   const revoke = useMutation(communityApi.plugins.revokePermission);
   const remove = useMutation(communityApi.plugins.removeInstall);
+
+  /** Run the agent half of an action, then the cloud record. Stops (with a
+   * toast) at the first refusal so the two never disagree. */
+  const applyChange = async (
+    onAgent: (client: PluginAgentClient) => Promise<unknown>,
+    onCloud: () => Promise<unknown>,
+  ): Promise<boolean> => {
+    try {
+      if (installDroneId) {
+        if (!agentClient) {
+          toast(t("needsNodeAgent"), "error");
+          return false;
+        }
+        await onAgent(agentClient);
+      }
+      await onCloud();
+      return true;
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), "error");
+      return false;
+    }
+  };
 
   if (data === undefined) {
     return <p className="p-4 text-sm text-text-tertiary">Loading...</p>;
@@ -96,18 +127,7 @@ export default function PluginDetailPage() {
           variant="danger"
           size="sm"
           icon={<Trash2 className="h-3 w-3" />}
-          onClick={async () => {
-            if (!installId) return;
-            if (agentClient) {
-              try {
-                await agentClient.remove(install.pluginId);
-              } catch (err) {
-                console.error("agent remove failed", err);
-              }
-            }
-            await remove({ installId });
-            window.location.href = "/config/plugins";
-          }}
+          onClick={() => setConfirmRemove(true)}
         >
           Remove
         </Button>
@@ -180,13 +200,10 @@ export default function PluginDetailPage() {
                     if (perm.granted) {
                       setPendingRevoke({ permissionId: perm.permissionId });
                     } else {
-                      if (agentClient) {
-                        await agentClient.grant(
-                          install.pluginId,
-                          perm.permissionId,
-                        );
-                      }
-                      await grant({ installId, permissionId: perm.permissionId });
+                      await applyChange(
+                        (client) => client.grant(install.pluginId, perm.permissionId),
+                        () => grant({ installId, permissionId: perm.permissionId }),
+                      );
                     }
                   }}
                 >
@@ -209,25 +226,32 @@ export default function PluginDetailPage() {
         onConfirm={async () => {
           if (!installId || !pendingRevoke) return;
           const { permissionId } = pendingRevoke;
-          try {
-            if (agentClient) {
-              await agentClient.revoke(install.pluginId, permissionId);
-            }
-            await revoke({ installId, permissionId });
-            toast(t("revokeSuccess"), "success");
-          } catch (err) {
-            const message =
-              err instanceof PluginAgentError
-                ? err.message
-                : err instanceof Error
-                  ? err.message
-                  : String(err);
-            toast(message, "error");
-          } finally {
-            setPendingRevoke(null);
-          }
+          const ok = await applyChange(
+            (client) => client.revoke(install.pluginId, permissionId),
+            () => revoke({ installId, permissionId }),
+          );
+          if (ok) toast(t("revokeSuccess"), "success");
+          setPendingRevoke(null);
         }}
         onCancel={() => setPendingRevoke(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmRemove}
+        title={t("removeConfirmTitle")}
+        message={t("removeConfirmMessage", { name: install.name })}
+        variant="danger"
+        confirmLabel={t("removeConfirmAction")}
+        onConfirm={async () => {
+          setConfirmRemove(false);
+          if (!installId) return;
+          const ok = await applyChange(
+            (client) => client.remove(install.pluginId),
+            () => remove({ installId }),
+          );
+          if (ok) router.push("/config/plugins");
+        }}
+        onCancel={() => setConfirmRemove(false)}
       />
 
       {tab === "events" && (

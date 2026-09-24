@@ -98,7 +98,7 @@ export function OsdScreenPreview({
             {Array.from({ length: GRID_COLS - 1 }, (_, i) => (
               <div
                 key={`v${i}`}
-                className="absolute top-0 bottom-0 border-l border-white/5"
+                className="absolute top-0 bottom-0 border-l border-on-media/5"
                 style={{ left: `${((i + 1) / GRID_COLS) * 100}%` }}
               />
             ))}
@@ -106,7 +106,7 @@ export function OsdScreenPreview({
             {Array.from({ length: GRID_ROWS - 1 }, (_, i) => (
               <div
                 key={`h${i}`}
-                className="absolute left-0 right-0 border-t border-white/5"
+                className="absolute left-0 right-0 border-t border-on-media/5"
                 style={{ top: `${((i + 1) / GRID_ROWS) * 100}%` }}
               />
             ))}
@@ -132,8 +132,8 @@ export function OsdScreenPreview({
 
         {/* Center crosshair */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div className="w-8 h-[1px] bg-white/20" />
-          <div className="w-[1px] h-8 bg-white/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+          <div className="w-8 h-[1px] bg-on-media/20" />
+          <div className="w-[1px] h-8 bg-on-media/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
 
         {/* "NO SIGNAL" if not connected */}

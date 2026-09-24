@@ -88,9 +88,8 @@ export class FlashManager {
   ): Promise<void> {
     if (options.method === "dronecan-ota") {
       throw new Error(
-        "DroneCAN OTA flashes must be driven by a DroneCanOtaFlasher constructed " +
-          "with a live DroneCanClient (peripheral target node + source node id). " +
-          "FlashManager's bootloader-poll path does not own the CAN bus.",
+        "DroneCAN OTA flashes run through the AP_Periph flow (DroneCanOtaOrchestrator " +
+          "over a live DroneCAN bus). FlashManager's bootloader-poll path does not own the CAN bus.",
       );
     }
     this.onLog = onLog ?? null;

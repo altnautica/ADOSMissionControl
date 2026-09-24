@@ -191,6 +191,7 @@ export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
               serialSupported={fw.serialSupported}
               usbSupported={fw.usbSupported}
               onFlash={fw.handleFlash}
+              blockedReason={fw.flashBlockedReason}
               onMessage={fw.setFlashMessage}
               onParamBackupChecked={() => fw.setChecked("paramBackup", true)}
             />
@@ -264,7 +265,7 @@ function NavRow({
       <button
         onClick={onNext}
         disabled={nextDisabled}
-        className="flex items-center gap-1 px-4 py-2 text-xs font-semibold bg-accent-primary text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent-primary/80 cursor-pointer transition-colors"
+        className="flex items-center gap-1 px-4 py-2 text-xs font-semibold bg-accent-primary text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent-primary/80 cursor-pointer transition-colors"
       >
         {nextLabel} <ChevronRight size={14} />
       </button>

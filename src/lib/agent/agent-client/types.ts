@@ -58,13 +58,17 @@ export interface CameraListResponse {
   assignments: Record<string, string | null | unknown>;
 }
 
+/** A ground-station recorder start / stop reply. Start carries
+ * `{filename, started_at, path}`; stop carries `{filename, stopped_at,
+ * duration_seconds, size_bytes}`. A refusal is a non-2xx (409 / 503 / 507)
+ * that the client throws, never a 2xx body. */
 export interface RecordingControlResponse {
+  filename?: string;
   path?: string;
-  status?: string;
-  error?: string;
-  recording?: boolean;
-  recording_filename?: string | null;
-  recording_started_at?: string | null;
+  started_at?: string | number;
+  stopped_at?: string | number;
+  duration_seconds?: number;
+  size_bytes?: number;
 }
 
 export interface RecordingFileEntry {

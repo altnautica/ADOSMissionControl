@@ -5,7 +5,8 @@ import { useFleetStore } from "@/stores/fleet-store";
 import { selectFleetSummary } from "@/stores/node-registry/fleet-summary";
 import { useBatteryThresholds } from "@/lib/battery-bands";
 import { Card } from "@/components/ui/card";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
+import { StatusDot } from "@/components/ui/status-dot";
 import type { DroneStatus } from "@/lib/types";
 
 const statusDotMap: Record<DroneStatus, StatusLevel> = {

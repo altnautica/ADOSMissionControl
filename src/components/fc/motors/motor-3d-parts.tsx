@@ -180,14 +180,14 @@ export const MotorAssembly = memo(function MotorAssembly({
       )}
 
       <Html position={[0, 0.35, 0]} center distanceFactor={6} style={{ pointerEvents: "none" }}>
-        <span className="text-[10px] font-mono text-white pointer-events-none select-none drop-shadow-md">
+        <span className="text-[10px] font-mono text-on-media pointer-events-none select-none drop-shadow-md">
           {motor.number}
         </span>
       </Html>
 
       {isHovered && (
         <Html position={[0, 0.55, 0]} center distanceFactor={5} style={{ pointerEvents: "none" }}>
-          <div className="bg-black/90 px-2 py-1 text-[11px] font-mono text-white whitespace-nowrap pointer-events-none select-none border border-white/10">
+          <div className="bg-scrim/90 px-2 py-1 text-[11px] font-mono text-on-media whitespace-nowrap pointer-events-none select-none border border-on-media/10">
             Motor {motor.number} ({motor.rotation}) &middot; Test: {motor.testOrder}
           </div>
         </Html>
@@ -300,14 +300,14 @@ export function AttitudeHUD() {
 
   if (!latest) {
     return (
-      <div className="absolute bottom-2 left-2 bg-black/70 border border-white/10 px-2 py-1.5 font-mono text-[10px] text-text-tertiary select-none pointer-events-none">
+      <div className="absolute bottom-2 left-2 bg-scrim/70 border border-on-media/10 px-2 py-1.5 font-mono text-[10px] text-text-tertiary select-none pointer-events-none">
         NO TELEMETRY
       </div>
     );
   }
 
   return (
-    <div className="absolute bottom-2 left-2 bg-black/70 border border-white/10 px-2 py-1.5 font-mono text-[10px] select-none pointer-events-none space-y-0.5">
+    <div className="absolute bottom-2 left-2 bg-scrim/70 border border-on-media/10 px-2 py-1.5 font-mono text-[10px] select-none pointer-events-none space-y-0.5">
       <div className="flex items-center gap-2">
         <span className="text-text-tertiary">R</span>
         <span className="text-accent-primary">{latest.roll.toFixed(1)}&deg;</span>

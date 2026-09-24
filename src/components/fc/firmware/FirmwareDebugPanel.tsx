@@ -244,7 +244,7 @@ export function FirmwareDebugPanel({ isFlashing, defaultOpen }: FirmwareDebugPan
         {!autoScroll && (
           <button
             onClick={jumpToLatest}
-            className="absolute bottom-2 right-3 flex items-center gap-1 px-2 py-1 text-[10px] bg-accent-primary text-white rounded shadow cursor-pointer"
+            className="absolute bottom-2 right-3 flex items-center gap-1 px-2 py-1 text-[10px] bg-accent-primary text-accent-foreground rounded shadow cursor-pointer"
           >
             <ArrowDown size={10} />
             {t("jumpToLatest")}

@@ -9,7 +9,7 @@ import { EkfStatusBars } from "@/components/indicators/EkfStatusBars";
 import { VibrationGauges } from "@/components/indicators/VibrationGauges";
 import { GpsSkyView } from "@/components/indicators/GpsSkyView";
 import { PreArmChecks } from "@/components/indicators/PreArmChecks";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockStore } from "@/stores/clock-store";
 import { getFreshness, useClockTick } from "@/lib/agent/freshness";
@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 export function PreArmPanel() {
   const t = useTranslations("navigation.panel");
   const { healthyCount, presentCount: totalPresent } = useSensorHealth();
-  const protocol = useDroneManager.getState().getSelectedProtocol();
+  const protocol = useDroneManager(selectSelectedProtocol);
   const firmwareType = protocol?.getVehicleInfo()?.firmwareType;
 
   // Arming flags come from the connected MSP firmware. The word means different
@@ -53,6 +53,7 @@ export function PreArmPanel() {
         ? "inav"
         : null;
   const armingFlags = useTelemetryStore((s) => s.armingFlags);
+  const armingFlagCount = useTelemetryStore((s) => s.armingFlagCount);
   const armingFlagsAt = useTelemetryStore((s) => s.armingFlagsUpdatedAt);
   // The word is a scalar that keeps its last value when MSP status stops, so
   // the verdict is shown only while it is current; re-evaluated on the shared
@@ -62,11 +63,11 @@ export function PreArmPanel() {
   const now = useClockStore((s) => s.now);
   const flagsLive = armingFlagsAt > 0 && isFresh(armingFlagsAt, now);
   const decodedFlags =
-    armingFlags !== null && armingFirmware !== null
-      ? (armingFirmware === "betaflight"
-          ? decodeBetaflightArmingFlags
-          : decodeArmingFlags)(armingFlags)
-      : null;
+    armingFlags === null || armingFirmware === null
+      ? null
+      : armingFirmware === "betaflight"
+        ? decodeBetaflightArmingFlags(armingFlags, armingFlagCount ?? undefined)
+        : decodeArmingFlags(armingFlags);
 
   // Vision-navigation pre-arm channel. The drone-manager telemetry
   // bridge fills this in once the vision-nav plugin's emitter ships

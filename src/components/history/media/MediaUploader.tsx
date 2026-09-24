@@ -165,7 +165,7 @@ function MediaUploaderDialog({ onClose }: { onClose: () => void }) {
   const pendingCount = parsed.filter((p) => p.matchedFlightId && !p.result?.ok).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70 backdrop-blur-sm">
       <div className="w-[600px] max-w-[95vw] max-h-[80vh] overflow-y-auto rounded-md border border-border-default bg-bg-secondary shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
           <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useToast } from "@/components/ui/toast";
 import { slotToCapability, type PluginSlotName } from "@/lib/plugins/types";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";

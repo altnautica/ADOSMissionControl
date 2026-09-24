@@ -1,8 +1,8 @@
 /**
  * @module cmdDrones
  * @description Convex functions for paired drones management.
- * User-facing functions require authentication. Heartbeat uses
- * deviceId + apiKey validation instead.
+ * User-facing functions require authentication; the agent-facing reads are
+ * internal and reached through HTTP routes that validate the device API key.
  * @license GPL-3.0-only
  */
 
@@ -10,7 +10,6 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
-import { agentKeyMatches } from "./lib/credentials";
 import type { Doc, Id } from "./_generated/dataModel";
 
 /**
@@ -234,38 +233,5 @@ export const deduplicateDrones = internalMutation({
       }
     }
     return { deleted };
-  },
-});
-
-/**
- * Agent heartbeat — called from HTTP handler.
- * Validates using deviceId + apiKey (no user auth).
- */
-export const updateHeartbeat = internalMutation({
-  args: {
-    deviceId: v.string(),
-    apiKey: v.string(),
-    lastIp: v.optional(v.string()),
-    mdnsHost: v.optional(v.string()),
-    fcConnected: v.optional(v.boolean()),
-    agentVersion: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const drone = await ctx.db
-      .query("cmd_drones")
-      .withIndex("by_deviceId", (q) => q.eq("deviceId", args.deviceId))
-      .first();
-    if (!drone) return { error: "not_found" };
-    if (!agentKeyMatches(drone.apiKey, args.apiKey)) {
-      return { error: "invalid_key" };
-    }
-    await ctx.db.patch(drone._id, {
-      lastSeen: Date.now(),
-      lastIp: args.lastIp,
-      mdnsHost: args.mdnsHost,
-      fcConnected: args.fcConnected,
-      agentVersion: args.agentVersion,
-    });
-    return { ok: true };
   },
 });

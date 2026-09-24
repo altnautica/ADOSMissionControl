@@ -95,7 +95,7 @@ const OverviewMap = dynamic(
   () => import("@/components/flight/OverviewMap").then((m) => m.OverviewMap),
   {
     ssr: false,
-    loading: () => <div className="w-full h-full bg-[#0a0a0a]" />,
+    loading: () => <div className="w-full h-full bg-media" />,
   },
 );
 
@@ -258,7 +258,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
           "flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide transition-colors",
           recording.isRecording
             ? "text-status-error"
-            : "text-white/70 hover:text-white",
+            : "text-on-media/70 hover:text-on-media",
         )}
       >
         {recording.isRecording ? (
@@ -274,7 +274,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
           onClick={enterImmersiveMode}
           aria-label={tCockpit("immersive")}
           title={tCockpit("immersiveTitle")}
-          className="flex items-center gap-1 px-1.5 py-0.5 text-white/70 hover:text-white transition-colors"
+          className="flex items-center gap-1 px-1.5 py-0.5 text-on-media/70 hover:text-on-media transition-colors"
         >
           <Maximize2 size={12} />
         </button>
@@ -287,7 +287,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
       ref={containerRef}
       tabIndex={0}
       data-density={density}
-      className="ados-cockpit relative flex-1 min-h-0 overflow-hidden bg-black outline-none"
+      className="ados-cockpit relative flex-1 min-h-0 overflow-hidden bg-media outline-none"
     >
       {/* Registers plugin-contributed flight skills for the active drone into
           the Skill Bar registry and seeds their default bindings. Renders null. */}
@@ -342,7 +342,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
               }}
               title={tCockpit("openFlight")}
               aria-label={tCockpit("openFlight")}
-              className="absolute inset-0 z-[1001] cursor-pointer transition-colors hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-primary"
+              className="absolute inset-0 z-[1001] cursor-pointer transition-colors hover:bg-on-media/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-primary"
             />
             {/* Map-type selector collapsed behind a layers icon so it does not
                 cover the minimap; click to reveal DARK / OSM / SAT / TOPO.
@@ -358,7 +358,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
                 aria-label={tCockpit("mapLayer")}
                 aria-expanded={basemapOpen}
                 title={tCockpit("mapLayer")}
-                className="flex h-6 w-6 items-center justify-center rounded bg-bg-primary/70 text-white/80 backdrop-blur-sm transition-colors hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+                className="flex h-6 w-6 items-center justify-center rounded bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
               >
                 <Layers size={13} aria-hidden="true" />
               </button>

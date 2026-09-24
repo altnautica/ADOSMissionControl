@@ -24,7 +24,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import type { FtpDirEntry } from "@/lib/protocol/types/protocol";
 import {
   SCRIPTS_DIR,
@@ -46,7 +46,7 @@ export function ScriptFileManager({
   /** Bump this to force a re-list (e.g. after an applet is added elsewhere). */
   reloadSignal?: number;
 }) {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
 
   const [entries, setEntries] = useState<FtpDirEntry[]>([]);
@@ -58,7 +58,7 @@ export function ScriptFileManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
-    const protocol = getProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.listDirectoryViaFtp) {
       setError("This connection does not support file transfer.");
       return;
@@ -84,7 +84,7 @@ export function ScriptFileManager({
     } finally {
       setListing(false);
     }
-  }, [getProtocol]);
+  }, [selectedProtocol]);
 
   useEffect(() => {
     void refresh();
@@ -92,7 +92,7 @@ export function ScriptFileManager({
 
   const doUpload = useCallback(
     async (file: File) => {
-      const protocol = getProtocol();
+      const protocol = selectedProtocol;
       if (!protocol?.uploadFileViaFtp) {
         toast("This connection does not support file upload.", "error");
         return;
@@ -124,11 +124,11 @@ export function ScriptFileManager({
         setUpload(null);
       }
     },
-    [getProtocol, toast, onUploaded, refresh],
+    [selectedProtocol, toast, onUploaded, refresh],
   );
 
   async function doDownload(entry: FtpDirEntry) {
-    const protocol = getProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.downloadFileViaFtp) return;
     try {
       const bytes = await protocol.downloadFileViaFtp(`${SCRIPTS_DIR}/${entry.name}`);
@@ -144,7 +144,7 @@ export function ScriptFileManager({
     const entry = deleteTarget;
     setDeleteTarget(null);
     if (!entry) return;
-    const protocol = getProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.removeFileViaFtp) return;
     try {
       await protocol.removeFileViaFtp(`${SCRIPTS_DIR}/${entry.name}`);

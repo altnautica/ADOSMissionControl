@@ -11,8 +11,6 @@
  * test red. If it does not, this file is decoration.
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { agentKeyMatches, constantTimeEqual } from "../convex/lib/credentials";
 
 describe("agentKeyMatches", () => {
@@ -53,25 +51,5 @@ describe("constantTimeEqual", () => {
     // A short-circuiting compare is what leaks key material through timing.
     expect(constantTimeEqual("Xbcdefgh", "abcdefgh")).toBe(false);
     expect(constantTimeEqual("abcdefgX", "abcdefgh")).toBe(false);
-  });
-});
-
-describe("heartbeat write path is not publicly callable", () => {
-  const source = readFileSync(
-    join(__dirname, "..", "convex", "cmdDrones.ts"),
-    "utf8"
-  );
-
-  it("declares updateHeartbeat as an internalMutation", () => {
-    // Reached only through the authenticated `/heartbeat` HTTP route. As a
-    // public `mutation` it was directly invokable by any browser client,
-    // bypassing that route's validation entirely.
-    expect(source).toContain("export const updateHeartbeat = internalMutation({");
-    expect(source).not.toContain("export const updateHeartbeat = mutation({");
-  });
-
-  it("compares the stored key with agentKeyMatches, not with !==", () => {
-    expect(source).toContain("agentKeyMatches(drone.apiKey, args.apiKey)");
-    expect(source).not.toContain("drone.apiKey !== args.apiKey");
   });
 });

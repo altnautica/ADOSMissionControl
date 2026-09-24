@@ -17,9 +17,11 @@ vi.mock("@/components/indicators/VibrationGauges", () => ({ VibrationGauges: () 
 vi.mock("@/components/indicators/GpsSkyView", () => ({ GpsSkyView: () => null }));
 vi.mock("@/components/indicators/PreArmChecks", () => ({ PreArmChecks: () => null }));
 
-const protocol = { getVehicleInfo: () => ({ firmwareType: "inav" }) };
+let firmwareType = "inav";
+const protocol = { getVehicleInfo: () => ({ firmwareType }) };
 vi.mock("@/stores/drone-manager", () => ({
-  useDroneManager: { getState: () => ({ getSelectedProtocol: () => protocol }) },
+  useDroneManager: (sel: (s: unknown) => unknown) => sel(null),
+  selectSelectedProtocol: () => protocol,
 }));
 
 import { PreArmPanel } from "../PreArmPanel";
@@ -29,6 +31,7 @@ import { useClockStore } from "@/stores/clock-store";
 const NOW = 1_800_000_000_000;
 
 beforeEach(() => {
+  firmwareType = "inav";
   useClockStore.setState({ now: NOW });
 });
 
@@ -50,5 +53,19 @@ describe("PreArmPanel MSP arming badge", () => {
     useTelemetryStore.setState({ armingFlags: 0, armingFlagsUpdatedAt: NOW - 1_000 });
     render(<PreArmPanel />);
     expect(screen.queryByRole("button", { name: /refresh/i })).toBeNull();
+  });
+
+  it("decodes a Betaflight word with the flag count the firmware sent", () => {
+    // A 30-flag build: CRASHFLIP is bit 25 and ARM_SWITCH moved to bit 29.
+    firmwareType = "betaflight";
+    useTelemetryStore.setState({
+      armingFlags: (1 << 25) | (1 << 29),
+      armingFlagCount: 30,
+      armingFlagsUpdatedAt: NOW - 1_000,
+    });
+    render(<PreArmPanel />);
+    expect(screen.getByText("Crash flip mode")).toBeTruthy();
+    expect(screen.getByText("Arm switch")).toBeTruthy();
+    expect(screen.queryByText(/Unknown flag/)).toBeNull();
   });
 });

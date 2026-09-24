@@ -88,7 +88,6 @@ describe("normalizeCapabilities usbRehomeState clamp", () => {
     for (const state of [
       "idle",
       "rehoming",
-      "exhausted",
       "guard_blocked",
     ] as const) {
       const caps = normalizeCapabilities({

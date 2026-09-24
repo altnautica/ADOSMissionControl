@@ -53,6 +53,14 @@ function buildIpv4Fallback(baseUrl: string, ipv4: string): string | null {
 // the store because Zustand's strict typing doesn't allow ad-hoc extra fields.
 let _visibilityCleanup: (() => void) | undefined;
 
+/**
+ * Bumped by every connect() and disconnect(). A connect that awaited across a
+ * newer connect or a disconnect belongs to a connection the operator already
+ * left: it must not write `connected`, a node id, a status or capabilities, or
+ * start a poll loop, or the old node's answer is filed under the new node.
+ */
+let connectGeneration = 0;
+
 // Poll-cadence math (base/backoff/jitter) lives in the store-free
 // ./poll-backoff module so it can be imported and tested without constructing
 // the agent-connection store.
@@ -86,15 +94,19 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
 > = (set, get) => ({
   async connect(url, apiKey, deviceId, opts) {
     const resolvedKey = apiKey ?? get().apiKey;
+    const generation = ++connectGeneration;
+    const superseded = () => generation !== connectGeneration;
 
-    // Attempt a real-agent connect at the given URL. Returns null on
-    // success (state is set and polling started); returns the error
-    // message string on failure so the caller can decide whether to
-    // try a fallback.
+    // Attempt a real-agent connect at the given URL. Returns null when the
+    // connect is finished (success: state is set and polling started; or
+    // superseded by a newer connect/disconnect, which then owns the state);
+    // returns the error message string on failure so the caller can decide
+    // whether to try a fallback.
     async function attempt(attemptUrl: string): Promise<string | null> {
       let client: AgentClient;
       if (attemptUrl === "mock://demo") {
         const { MockAgentClient } = await import("@/mock/mock-agent");
+        if (superseded()) return null;
         client = new MockAgentClient() as unknown as AgentClient;
       } else {
         client = new AgentClient(attemptUrl, resolvedKey, {
@@ -115,6 +127,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         const status = opts?.relay
           ? await retryGetStatus(client, 3, 400)
           : await client.getStatus();
+        if (superseded()) return null;
         // The device id this connection is registered under. Starts as the id
         // the caller asked for; the identity gate below heals it to the
         // agent's live id when a re-flashed box answers our key.
@@ -142,6 +155,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
           } catch {
             answeredId = null; // indeterminate — fall through and connect
           }
+          if (superseded()) return null;
           if (answeredId && answeredId !== deviceId) {
             const ln = useLocalNodesStore.getState();
             if (ln.nodes.some((n) => n.deviceId === deviceId)) {
@@ -175,13 +189,14 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         useAgentSystemStore.getState().fetchServices();
         useAgentSystemStore.getState().fetchResources();
         useAgentSystemStore.getState().fetchLogs();
-        const clientWithCaps = client as unknown as {
-          getCapabilities?: () => Promise<unknown>;
-        };
+        // Only the demo client serves a capability document; a real agent's
+        // capabilities are inferred from its status below.
+        const getCapabilities = "getCapabilities" in client ? client.getCapabilities : undefined;
         let capsLoaded = false;
-        if (typeof clientWithCaps.getCapabilities === "function") {
+        if (typeof getCapabilities === "function") {
           try {
-            const caps = await clientWithCaps.getCapabilities();
+            const caps: unknown = await getCapabilities.call(client);
+            if (superseded()) return null;
             if (caps && typeof caps === "object") {
               useAgentCapabilitiesStore
                 .getState()
@@ -193,6 +208,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             }
           } catch { /* capabilities optional */ }
         }
+        if (superseded()) return null;
         if (!capsLoaded) {
           const peripherals = useAgentPeripheralsStore.getState().peripherals;
           const inferred = inferCapabilities(status, peripherals);
@@ -204,6 +220,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         get().startPolling();
         return null;
       } catch (err) {
+        if (superseded()) return null;
         return err instanceof Error ? err.message : "Connection failed";
       }
     }
@@ -256,6 +273,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
           // Unreachable on this candidate; try the next, else stay transient.
         }
       }
+      if (superseded()) return;
       set({ ...base, stalePairing: stale });
     }
 
@@ -329,10 +347,12 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
           }
         }
       } catch { /* discover failed; surface firstError below */ }
+      if (superseded()) return;
     }
 
     if (fallbackUrl) {
       const secondError = await attempt(fallbackUrl);
+      if (superseded()) return;
       if (secondError === null) {
         // Persist the working URL back to the store so future clicks
         // hit it directly without paying the failed-mDNS round-trip.
@@ -356,6 +376,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
   },
 
   disconnect() {
+    connectGeneration += 1;
     get().stopPolling();
     set({
       connected: false,
@@ -428,7 +449,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
 
       try {
         // Try consolidated endpoint first (1 request instead of 4).
-        if (useFullEndpoint !== false && typeof client.getFullStatus === "function") {
+        if (useFullEndpoint !== false) {
           // Time the request as the control-plane RTT surface. The LAN-direct
           // status round-trip is the cheapest always-available timing signal;
           // it is FC-independent (transport latency to the agent, not to the

@@ -18,7 +18,7 @@
  * @license GPL-3.0-only
  */
 
-import type { StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
 import type { EffProfile, NodeSwatch } from "@/lib/nodes/node-profile";
 import { livenessFromTimestamp } from "@/lib/nodes/presence";
 

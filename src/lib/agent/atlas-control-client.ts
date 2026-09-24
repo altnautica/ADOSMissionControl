@@ -51,13 +51,18 @@ export type AtlasCaptureState =
  * actively ingesting, paused, or finalizing. Derived from `state` so a surface
  * never depends on how an agent populates the standalone `capturing` bool during
  * a paused session — an agent that reports `capturing:false` while `state:"paused"`
- * must still read as an active session (consistent reading).
+ * must still read as an active session (consistent reading). An unknown state
+ * (`null`) is not an active session.
  */
-export function isActiveCaptureState(state: string): boolean {
+export function isActiveCaptureState(state: string | null): boolean {
   return state === "capturing" || state === "paused" || state === "finalizing";
 }
 
-/** The `GET /api/atlas/readiness` snapshot, coerced to camelCase. */
+/**
+ * The `GET /api/atlas/readiness` snapshot, coerced to camelCase. The live
+ * fields are `null` when the agent could not read them (the capture service
+ * did not answer, or is not running): unknown, never "not running" or 0.
+ */
 export interface AtlasReadiness {
   enabled: boolean;
   profile: string;
@@ -68,13 +73,13 @@ export interface AtlasReadiness {
   reconstructSteps: number;
   camerasConfigured: number;
   poseSource: AtlasPoseSource;
-  serviceRunning: boolean;
-  capturing: boolean;
-  state: AtlasCaptureState;
+  serviceRunning: boolean | null;
+  capturing: boolean | null;
+  state: AtlasCaptureState | null;
   sessionId: string | null;
-  cameraCount: number;
-  keyframes: number;
-  ingestRateHz: number;
+  cameraCount: number | null;
+  keyframes: number | null;
+  ingestRateHz: number | null;
 }
 
 /** The `POST /api/atlas/capture/*` reply, coerced to camelCase. */
@@ -112,8 +117,18 @@ function bool(v: unknown): boolean {
   return v === true;
 }
 
+/** A reported boolean, or null when the agent sent none (unknown). */
+function boolOrNull(v: unknown): boolean | null {
+  return typeof v === "boolean" ? v : null;
+}
+
 function num(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+/** A reported finite number, or null when the agent sent none (unknown). */
+function numOrNull(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
 function str(v: unknown): string {
@@ -146,13 +161,13 @@ export function coerceReadiness(raw: unknown): AtlasReadiness | null {
         : DEFAULT_RECONSTRUCTION_STEPS,
     camerasConfigured: num(e.cameras_configured),
     poseSource: str(e.pose_source) || "local_vio",
-    serviceRunning: bool(e.service_running),
-    capturing: bool(e.capturing),
-    state: (str(e.state) || "idle") as AtlasCaptureState,
+    serviceRunning: boolOrNull(e.service_running),
+    capturing: boolOrNull(e.capturing),
+    state: strOrNull(e.state),
     sessionId: strOrNull(e.session_id),
-    cameraCount: num(e.camera_count),
-    keyframes: num(e.keyframes),
-    ingestRateHz: num(e.ingest_rate_hz),
+    cameraCount: numOrNull(e.camera_count),
+    keyframes: numOrNull(e.keyframes),
+    ingestRateHz: numOrNull(e.ingest_rate_hz),
   };
 }
 

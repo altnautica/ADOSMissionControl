@@ -305,8 +305,9 @@ describe("coalesced version bumper", () => {
 
     await nextFrame();
 
-    // clear() resets _version to nothing higher; a leaked bump would raise it.
-    expect(useTelemetryStore.getState()._version).toBe(v0);
+    // clear() bumps exactly once itself, so _version subscribers re-render
+    // against the empty rings; the push's pending bump must not land on top.
+    expect(useTelemetryStore.getState()._version).toBe(v0 + 1);
     expect(useTelemetryStore.getState().position.length).toBe(0);
   });
 

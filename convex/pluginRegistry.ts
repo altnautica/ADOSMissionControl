@@ -64,10 +64,16 @@ export const listPlugins = query({
     }
 
     results.sort((a, b) => b.updated_at - a.updated_at);
-    const page = results.slice(0, limit);
+    // The cursor is the offset of the next page in this sorted result, as
+    // handed back in `nextCursor`.
+    const offset = args.cursor === undefined ? 0 : Number(args.cursor);
+    if (!Number.isInteger(offset) || offset < 0) {
+      throw new Error("cursor must be a nextCursor value from a previous page");
+    }
+    const end = offset + limit;
     return {
-      items: page,
-      nextCursor: results.length > limit ? String(limit) : null,
+      items: results.slice(offset, end),
+      nextCursor: results.length > end ? String(end) : null,
       total: results.length,
     };
   },

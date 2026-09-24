@@ -173,7 +173,6 @@ export function applyFullStatus(
     "mgmtFailoverReason",
     "usbRehomeState",
     "usbRehomeAttempts",
-    "usbRehomeMaxAttempts",
     "usbRehomeLastResult",
     "wifiPowersave",
     // Per-adapter stable-MAC verdicts. Six readers and three cards
@@ -253,7 +252,7 @@ export function applyFullStatus(
     if (inferred) {
       useAgentCapabilitiesStore.getState().setCapabilities(
         {
-          ...(inferred as unknown as Record<string, unknown>),
+          ...inferred,
           ...statusExtras,
         },
         nodeDeviceId,
@@ -281,7 +280,7 @@ export function applyFullStatus(
         // them would drop the lane the write above just established.
         useAgentCapabilitiesStore.getState().setCapabilities(
           {
-            ...(inferred as unknown as Record<string, unknown>),
+            ...inferred,
             ...statusExtras,
           },
           nodeDeviceId,

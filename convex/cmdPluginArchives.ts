@@ -163,7 +163,7 @@ export const _findByStorageId = internalQuery({
   ): Promise<Doc<"plugin_archives"> | null> => {
     return await ctx.db
       .query("plugin_archives")
-      .filter((q) => q.eq(q.field("storageId"), storageId))
+      .withIndex("by_storageId", (q) => q.eq("storageId", storageId))
       .first();
   },
 });

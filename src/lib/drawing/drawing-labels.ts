@@ -16,6 +16,7 @@ export const DRAW_COLORS = {
   measureDash: "6 4",
   label: "rgba(10, 10, 15, 0.85)",
   labelText: "#ffffff",
+  labelBorder: "rgba(58, 130, 255, 0.4)",
 } as const;
 
 export function makeVertexIcon(color: string = DRAW_COLORS.vertex): L.DivIcon {
@@ -50,6 +51,6 @@ export function makeTotalLabel(text: string): L.DivIcon {
     className: "",
     iconSize: [140, 24],
     iconAnchor: [70, 12],
-    html: `<div style="font-size:11px;font-family:JetBrains Mono,monospace;color:#3a82ff;white-space:nowrap;text-align:center;background:${DRAW_COLORS.label};padding:3px 8px;border:1px solid rgba(58,130,255,0.4);font-weight:600">${text}</div>`,
+    html: `<div style="font-size:11px;font-family:JetBrains Mono,monospace;color:${DRAW_COLORS.stroke};white-space:nowrap;text-align:center;background:${DRAW_COLORS.label};padding:3px 8px;border:1px solid ${DRAW_COLORS.labelBorder};font-weight:600">${text}</div>`,
   });
 }

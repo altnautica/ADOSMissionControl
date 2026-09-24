@@ -1,64 +1,72 @@
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// A real Storage-shaped backing so any write a store makes is observable.
+vi.hoisted(() => {
+  for (const name of ["localStorage", "sessionStorage"]) {
+    const mem = new Map<string, string>();
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      writable: true,
+      value: {
+        getItem: (k: string) => mem.get(k) ?? null,
+        setItem: (k: string, v: string) => void mem.set(k, String(v)),
+        removeItem: (k: string) => void mem.delete(k),
+        clear: () => mem.clear(),
+        key: (i: number) => [...mem.keys()][i] ?? null,
+        get length() {
+          return mem.size;
+        },
+      },
+    });
+  }
+});
+
+import { usePairingStore } from "@/stores/pairing-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 /**
- * Regression net for auth credential storage.
- *
- * The agent's X-ADOS-Key (and the per-paired-drone apiKey it derives
- * from) must live in-memory only. Persisting them to localStorage would
- * make them readable by every script on the page and recoverable from
- * a shared computer or a public-WiFi cache. Today the apiKey-bearing
- * stores have no `persist` middleware, and the only auth-adjacent
- * localStorage value is the deterministic browser fingerprint (which
- * is not a credential — see link-id-allocator.ts SECURITY NOTE).
- *
- * These tests fail if anyone wires Zustand `persist` onto the auth
- * stores, or if the apiKey field starts being written to localStorage
- * directly.
+ * The pairing store and the ambient agent connection hold an agent key in
+ * memory only: nothing they do writes it to web storage, where every script
+ * on the page could read it. (Paired LAN nodes keep their key in the
+ * local-nodes store by design so they can reconnect offline; that store is
+ * not covered here.)
  */
-function read(p: string): string {
-  return readFileSync(resolve(__dirname, p), "utf-8");
+
+const SECRET = "agent-key-7f3c9e1d";
+
+function webStorageText(): string {
+  const dump = (s: Storage) =>
+    Array.from({ length: s.length }, (_, i) => `${s.key(i)}=${s.getItem(s.key(i) ?? "")}`).join("\n");
+  return `${dump(localStorage)}\n${dump(sessionStorage)}`;
 }
 
-describe("auth credential storage discipline", () => {
-  const pairingStore = read("../../src/stores/pairing-store.ts");
-  const connStore = read("../../src/stores/agent-connection-store.ts");
+afterEach(() => {
+  usePairingStore.getState().clear();
+  useAgentConnectionStore.getState().setApiKey(null);
+});
 
-  it("pairing-store does not import zustand persist middleware", () => {
-    expect(pairingStore).not.toMatch(/from "zustand\/middleware"/);
-    expect(pairingStore).not.toContain("persist(");
+describe("agent keys stay out of web storage", () => {
+  it("pairing a drone, renaming and selecting it never persists its key", () => {
+    const pairing = usePairingStore.getState();
+    pairing.setPairedDrones([
+      {
+        _id: "d1",
+        deviceId: "dev-1",
+        name: "Alpha",
+        apiKey: SECRET,
+      } as Parameters<typeof pairing.setPairedDrones>[0][number],
+    ]);
+    pairing.updatePairedDroneName("d1", "Bravo");
+    pairing.selectPairedDrone("d1");
+
+    expect(usePairingStore.getState().pairedDrones[0]?.apiKey).toBe(SECRET);
+    expect(webStorageText()).not.toContain(SECRET);
   });
 
-  it("pairing-store does not write apiKey to localStorage", () => {
-    // The store may setItem for unrelated UI keys, but the apiKey field
-    // must never appear in a localStorage write context.
-    const writes = pairingStore.match(/localStorage\.setItem\([^)]*\)/g) ?? [];
-    for (const w of writes) {
-      expect(w).not.toContain("apiKey");
-    }
-  });
+  it("setting the ambient connection's key never persists it", () => {
+    useAgentConnectionStore.getState().setApiKey(SECRET);
 
-  it("agent-connection-store does not import zustand persist middleware", () => {
-    expect(connStore).not.toMatch(/from "zustand\/middleware"/);
-    expect(connStore).not.toContain("persist(");
-  });
-
-  it("agent-connection-store does not write apiKey to localStorage", () => {
-    const writes = connStore.match(/localStorage\.setItem\([^)]*\)/g) ?? [];
-    for (const w of writes) {
-      expect(w).not.toContain("apiKey");
-    }
-  });
-
-  it("agent-connection-store does not call localStorage at all", () => {
-    // Defensive: it currently doesn't, and there's no reason for it to.
-    expect(connStore).not.toContain("localStorage");
-  });
-
-  it("link-id-allocator carries the SECURITY NOTE explaining why its localStorage use is safe", () => {
-    const src = read("../../src/lib/protocol/link-id-allocator.ts");
-    expect(src).toContain("SECURITY NOTE");
-    expect(src).toContain("NOT an authentication credential");
+    expect(useAgentConnectionStore.getState().apiKey).toBe(SECRET);
+    expect(webStorageText()).not.toContain(SECRET);
   });
 });

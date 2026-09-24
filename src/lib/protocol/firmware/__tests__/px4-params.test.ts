@@ -13,6 +13,8 @@ describe("PX4_PARAM_MAP canonical name mappings", () => {
   const handler = createPX4Handler("copter");
 
   const NEW_MAPPINGS: Array<[string, string]> = [
+    // Camera trigger distance (camera_trigger_params.yaml names it TRIG_DISTANCE)
+    ["CAM1_TRIGG_DIST", "TRIG_DISTANCE"],
     // Accelerometer calibration (offset + scale)
     ["INS_ACCOFFS_X", "CAL_ACC0_XOFF"],
     ["INS_ACCOFFS_Y", "CAL_ACC0_YOFF"],

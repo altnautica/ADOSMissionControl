@@ -15,8 +15,9 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
-import { useDroneManager } from "@/stores/drone-manager";
+import type { StatusLevel } from "@/lib/status-level";
+import { StatusDot } from "@/components/ui/status-dot";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 
 const MAX_LINES = 6;
 
@@ -40,7 +41,7 @@ interface StatusTextCardProps {
 
 export function StatusTextCard({ className }: StatusTextCardProps) {
   const t = useTranslations("nodeConsole");
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedId = useDroneManager((s) => s.selectedDroneId);
   const [lines, setLines] = useState<StatusLine[]>([]);
   const idRef = useRef(0);
@@ -50,7 +51,7 @@ export function StatusTextCard({ className }: StatusTextCardProps) {
     // messages never show under the new one.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLines([]);
-    const protocol = getProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     const unsub = protocol.onStatusText((data) => {
       setLines((prev) => {
@@ -62,7 +63,7 @@ export function StatusTextCard({ className }: StatusTextCardProps) {
       });
     });
     return unsub;
-  }, [getProtocol, selectedId]);
+  }, [selectedProtocol, selectedId]);
 
   return (
     <div

@@ -10,7 +10,7 @@
  */
 
 import type { CameraLegInput, RosterCamera } from "../feature-types";
-import { coerceRoster } from "../camera-roster";
+import { coerceRoster, legsWithEdit } from "../camera-roster";
 import { agentRequest, type RequestContext } from "./transport";
 
 /** The reconciled camera roster (declared legs + discovered devices + live
@@ -40,4 +40,28 @@ export async function setCameraRoster(
     // headroom than a plain read.
     timeoutMs: 15000,
   });
+}
+
+/** Make the camera at `devicePath` the primary stream. Camera roles live in
+ * the roster, so this reads it, designates the matching row (by device path,
+ * else by source) as `primary` through the same leg builder the Cameras
+ * surface uses, and writes the list back; the agent restarts the pipeline
+ * (~3 s). Throws when no roster row names the device, and with the agent's
+ * message when the write is refused. */
+export async function switchPrimaryCamera(
+  ctx: RequestContext,
+  devicePath: string,
+): Promise<void> {
+  const roster = await getCameraRoster(ctx);
+  const cam =
+    roster.find((c) => c.device_path === devicePath) ??
+    roster.find((c) => c.source === devicePath);
+  if (!cam) {
+    throw new Error(`No camera at ${devicePath} in the node's camera roster`);
+  }
+  if (cam.role === "primary" && cam.enabled) return;
+  await setCameraRoster(
+    ctx,
+    legsWithEdit(roster, cam.id, { role: "primary", enabled: true }),
+  );
 }

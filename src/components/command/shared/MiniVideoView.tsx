@@ -164,7 +164,7 @@ export function MiniVideoView() {
           autoPlay
           muted
           playsInline
-          className="w-full h-[112px] object-cover bg-black"
+          className="w-full h-[112px] object-cover bg-media"
         />
         {!cloudStreaming && !directStreaming && (
           <div className="absolute inset-0 flex items-center justify-center p-1 text-text-tertiary">
@@ -196,7 +196,7 @@ export function MiniVideoView() {
           autoPlay
           muted
           playsInline
-          className="w-full h-[112px] object-cover bg-black"
+          className="w-full h-[112px] object-cover bg-media"
         />
         {!directStreaming && (
           <div className="absolute inset-0 flex items-center justify-center text-text-tertiary">

@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { confirmArmedParamWrite, describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
 import { RcCalibrationWizard } from "../calibration/RcCalibrationWizard";
@@ -39,7 +39,7 @@ export function ReceiverBindingUI({
   onWritten,
 }: ReceiverBindingUIProps) {
   const { toast } = useToast();
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const [showTrimPreview, setShowTrimPreview] = useState(false);
   const [settingTrims, setSettingTrims] = useState(false);
@@ -51,7 +51,7 @@ export function ReceiverBindingUI({
   ], [rollCh, pitchCh, yawCh]);
 
   async function handleSetTrims() {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     const entries = trimTargets
       .filter(({ ch }) => (channels[ch - 1] ?? 0) > 0)

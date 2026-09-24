@@ -31,7 +31,7 @@ export {
 export { migrateSettings } from "./settings-store/migrations";
 
 export const useSettingsStore = create<SettingsStoreState>()(
-  persist(
+  persist<SettingsStoreState, [], [], Partial<SettingsStoreState>>(
     (set, get) => ({
       ...(displayDefaults as SettingsStoreState),
       ...(networkDefaults as SettingsStoreState),
@@ -51,20 +51,26 @@ export const useSettingsStore = create<SettingsStoreState>()(
       storage: createJSONStorage(indexedDBStorage.storage),
       version: 49,
       migrate: migrateSettings,
-      onRehydrateStorage: () => (state) => {
-        if (!state) return;
-        state._hasHydrated = true;
-        // `?demo=true` URL is an explicit per-session opt-in: flip the
-        // toggle on so DemoProvider activates this load. The env var no
-        // longer overrides the persisted toggle here — env seeds the
-        // first-install default in display-slice, then the user's choice
-        // wins on subsequent loads.
-        if (typeof window !== "undefined") {
-          const params = new URLSearchParams(window.location.search);
-          if (params.get("demo") === "true" && !state.demoMode) {
-            state.demoMode = true;
-          }
-        }
+      // Runs after a successful rehydrate AND after a failed one (state is
+      // undefined then): either way the persisted read is over and every gate
+      // waiting on `_hasHydrated` must open, on the defaults if need be.
+      // The flags go through setState so subscribers are notified; mutating
+      // the state object here would change the value no selector re-reads.
+      // Deferred a microtask because a synchronous storage hydrates inside
+      // create(), before `useSettingsStore` is bound.
+      onRehydrateStorage: () => () => {
+        queueMicrotask(() => {
+          // `?demo=true` URL is an explicit opt-in: flip the toggle on so
+          // DemoProvider activates this load. The env var no longer overrides
+          // the persisted toggle here — env seeds the first-install default in
+          // display-slice, then the user's choice wins on subsequent loads.
+          const demoFromUrl =
+            typeof window !== "undefined" &&
+            new URLSearchParams(window.location.search).get("demo") === "true";
+          useSettingsStore.setState(
+            demoFromUrl ? { _hasHydrated: true, demoMode: true } : { _hasHydrated: true },
+          );
+        });
       },
     },
   ),

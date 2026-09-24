@@ -565,8 +565,8 @@ export interface AgentCapabilities {
   cameraState?: string | null;
   /** Optional. Air-side USB camera recovery state, mirroring the agent's
    * camera-recovery supervisor (idle / monitoring / rebinding /
-   * port_cycling / hub_resetting / needs_hub_reset / guard_blocked /
-   * exhausted). Lets the GCS show a self-heal in flight, or a camera
+   * port_cycling / hub_resetting / retrying / needs_hub_reset /
+   * guard_blocked). Lets the GCS show a self-heal in flight, or a camera
    * that needs a physical reseat, without SSH'ing in. Undefined on
    * agents that predate the surface. */
   cameraUsbRecovery?: CameraUsbRecovery;
@@ -627,13 +627,14 @@ export interface AgentCapabilities {
   /** Why the box failed over (e.g. "primary_carrier_down"). */
   mgmtFailoverReason?: string | null;
   /** USB-rehome self-heal state for a WFB adapter on a slow USB port:
-   * "idle" | "rehoming" (unbind/rebind in progress) | "exhausted" (gave up
-   * after the attempt budget) | "guard_blocked" (held back to protect the
-   * management link). Undefined on agents that predate the self-heal. */
-  usbRehomeState?: "idle" | "rehoming" | "exhausted" | "guard_blocked";
+   * "idle" | "rehoming" (unbind/rebind in progress, or retrying on the
+   * cooldown) | "guard_blocked" (held back to protect the management link).
+   * Recovery has no attempt budget, so it never gives up. Undefined on agents
+   * that predate the self-heal. */
+  usbRehomeState?: "idle" | "rehoming" | "guard_blocked";
   /** Rehome attempts in the current episode. */
   usbRehomeAttempts?: number | null;
-  /** The last rehome outcome (e.g. "success", "retry", "exhausted"). */
+  /** The last rehome outcome (e.g. "success", "retry", "guard_blocked"). */
   usbRehomeLastResult?: string | null;
   /** NPU compute headroom in TOPS — a top-level mirror of
    * `compute.npu_tops` the tier signal keys off. Undefined on agents that

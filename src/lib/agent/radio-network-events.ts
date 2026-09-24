@@ -10,9 +10,12 @@
  *
  *   radio.reg_reasserted     the global regulatory domain was re-pinned off
  *                            the adapter EEPROM country
- *   radio.reg_gate           a reg-gate verdict (allowed / blocked)
- *   radio.bind               a bind cycle succeeded
- *   radio.bind_failed        a bind cycle failed, with a reason enum
+ *   radio.reg_gate           a reg-gate verdict: ok / blocked (the radio
+ *                            parks and retries) / failed (the escape hatch
+ *                            let the bring-up proceed anyway)
+ *   radio.bind               a bind session opened (not a pairing outcome)
+ *   radio.bind_failed        a bind session ended without pairing, with a
+ *                            reason enum
  *   radio.rf_unverified      TX advancing while reception is absent
  *                            (state=entry), or that state clearing
  *                            (state=clear)
@@ -119,7 +122,10 @@ export function summarizeRadioNetworkEvent(
     case "radio.reg_gate": {
       const result = str(data, "result");
       const reason = str(data, "reason");
-      if (result === "blocked" || result === "deny" || result === "denied") {
+      if (result === "ok") {
+        return { summary: "Reg-gate passed", severity: "success" };
+      }
+      if (result === "blocked") {
         return {
           summary: reason
             ? `Reg-gate blocked: ${reason}`
@@ -127,14 +133,25 @@ export function summarizeRadioNetworkEvent(
           severity: "warning",
         };
       }
-      if (result) {
-        return { summary: `Reg-gate ${result}`, severity: "success" };
+      if (result === "failed") {
+        return {
+          summary: reason
+            ? `Reg-gate failed, bring-up continued: ${reason}`
+            : "Reg-gate failed, bring-up continued",
+          severity: "warning",
+        };
       }
-      return { summary: "Reg-gate verdict", severity: "success" };
+      // A verdict this build does not know: say what arrived, claim nothing.
+      return {
+        summary: result ? `Reg-gate ${result}` : "Reg-gate verdict",
+        severity: "warning",
+      };
     }
 
+    // The agent emits `radio.bind` when a session OPENS; it is not evidence
+    // the pairing succeeded. A failed session follows as `radio.bind_failed`.
     case "radio.bind":
-      return { summary: "Bind succeeded", severity: "success" };
+      return { summary: "Bind session started", severity: "success" };
 
     case "radio.bind_failed":
       return {
@@ -144,7 +161,7 @@ export function summarizeRadioNetworkEvent(
 
     case "radio.rf_unverified": {
       const state = str(data, "state");
-      if (state === "clear" || state === "cleared" || state === "exit") {
+      if (state === "clear") {
         return { summary: "Link verified: reception confirmed", severity: "success" };
       }
       // state=entry (or absent): TX advancing with no received-side signal.

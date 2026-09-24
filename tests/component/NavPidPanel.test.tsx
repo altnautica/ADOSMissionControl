@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithIntl } from '../helpers/intl-wrapper'
 import { NavPidPanel } from '@/components/fc/inav/NavPidPanel'
-import { useDroneManager } from '@/stores/drone-manager'
+import { selectTestProtocol } from '../helpers/selected-drone'
 import { SettingsError } from '@/lib/protocol/msp/settings'
 
 vi.mock('@/hooks/use-armed-lock', () => ({
@@ -43,7 +43,7 @@ function stubProtocol(requested: string[]) {
 
 describe('NavPidPanel', () => {
   beforeEach(() => {
-    useDroneManager.setState({ getSelectedProtocol: () => null } as never)
+    selectTestProtocol(null)
   })
 
   it('renders the panel title', () => {
@@ -69,7 +69,7 @@ describe('NavPidPanel', () => {
   it('loads against a firmware that only has the real navigation gains', async () => {
     const requested: string[] = []
     const mockAdapter = stubProtocol(requested)
-    useDroneManager.setState({ getSelectedProtocol: () => mockAdapter } as never)
+    selectTestProtocol(mockAdapter)
 
     renderWithIntl(<NavPidPanel />)
     fireEvent.click(screen.getByRole('button', { name: /read/i }))

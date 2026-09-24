@@ -1,8 +1,9 @@
 /**
  * Tests for the node Settings "MAVLink" page: the endpoint list parsed from
  * the node's own config (absent vs empty as distinct facts), the validated
- * integer writes for router identity and relay rates, the read-only FC
- * transport rows, and the signing block reading the agent's own surface —
+ * integer writes for router identity, no relay-rate knobs the agent never
+ * reads, the read-only FC transport rows, and the signing block reading the
+ * agent's own surface —
  * with the honest absences (no LAN client, route not exposed).
  *
  * @license GPL-3.0-only
@@ -35,7 +36,6 @@ const CONFIG = {
     component_id: 191,
     endpoints: [{ type: "websocket", host: "0.0.0.0", port: 8765, enabled: true }],
   },
-  server: { telemetry_rate: 2, heartbeat_interval: 5 },
 };
 
 function stubSigningClient(overrides?: {
@@ -159,19 +159,15 @@ describe("MavlinkRoutingSection config surface", () => {
     );
   });
 
-  it("writes the relay telemetry rate through the shared config writer", async () => {
+  it("offers no relay rate knobs, since the agent reads neither key", () => {
     stubSigningClient();
-    const { setValue } = renderSection();
+    renderSection();
 
-    const rate = screen.getByLabelText("Telemetry rate (Hz)") as HTMLInputElement;
-    expect(rate.value).toBe("2");
-    fireEvent.change(rate, { target: { value: "4" } });
-    // Apply buttons order: system id, component id, telemetry rate, heartbeat.
-    const applyButtons = screen.getAllByText("Apply");
-    fireEvent.click(applyButtons[2]);
-    await waitFor(() =>
-      expect(setValue).toHaveBeenCalledWith("server.telemetry_rate", "4"),
-    );
+    // Only the router identity fields write; the relay forwards every frame
+    // and heartbeats on a fixed period.
+    expect(screen.getAllByText("Apply")).toHaveLength(2);
+    expect(screen.queryByLabelText("Telemetry rate (Hz)")).toBeNull();
+    expect(screen.queryByLabelText("Heartbeat interval (s)")).toBeNull();
   });
 });
 

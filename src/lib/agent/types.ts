@@ -422,8 +422,6 @@ export interface SetupStatus {
     public_urls: string[];
     error: string;
   };
-  services: Array<Record<string, unknown>>;
-  telemetry: Record<string, unknown>;
   cloud_choice?: CloudChoiceStatus;
   profile_suggestion?: ProfileSuggestion;
   hardware_check?: HardwareCheckStatus | null;
@@ -602,9 +600,11 @@ export interface FullStatusResponse {
   mgmtLinkMode?: "primary" | "wifi_heartbeat" | "none";
   mgmtFailoverIface?: string | null;
   mgmtFailoverReason?: string | null;
-  usbRehomeState?: "idle" | "rehoming" | "exhausted" | "guard_blocked";
+  /** USB-rehome self-heal state: "idle" | "rehoming" (unbind/rebind in
+   * progress or retrying on the cooldown) | "guard_blocked". Recovery has no
+   * attempt budget; `usbRehomeAttempts` counts the current episode. */
+  usbRehomeState?: "idle" | "rehoming" | "guard_blocked";
   usbRehomeAttempts?: number | null;
-  usbRehomeMaxAttempts?: number | null;
   usbRehomeLastResult?: string | null;
   /** Per-adapter stable-MAC verdicts (`{adapters: [...]}`) from the agent's
    * mac-pins state. Absent on a node that has pinned nothing. Already camelCase

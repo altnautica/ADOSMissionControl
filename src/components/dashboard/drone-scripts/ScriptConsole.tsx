@@ -14,8 +14,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Terminal, Trash2 } from "lucide-react";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
-import { useDroneManager } from "@/stores/drone-manager";
+import type { StatusLevel } from "@/lib/status-level";
+import { StatusDot } from "@/components/ui/status-dot";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 
 const MAX_LINES = 40;
 
@@ -36,7 +37,7 @@ function severityLevel(sev: number): StatusLevel {
 }
 
 export function ScriptConsole() {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedId = useDroneManager((s) => s.selectedDroneId);
   const [lines, setLines] = useState<Line[]>([]);
   const [scriptsOnly, setScriptsOnly] = useState(false);
@@ -46,7 +47,7 @@ export function ScriptConsole() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLines([]);
-    const protocol = getProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     const unsub = protocol.onStatusText((data) => {
       setLines((prev) => {
@@ -58,7 +59,7 @@ export function ScriptConsole() {
       });
     });
     return unsub;
-  }, [getProtocol, selectedId]);
+  }, [selectedProtocol, selectedId]);
 
   const shown = useMemo(
     () => (scriptsOnly ? lines.filter((l) => SCRIPT_MARKER.test(l.text)) : lines),

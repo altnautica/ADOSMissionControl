@@ -1,10 +1,9 @@
 /**
  * Streaming MSP byte parser (state machine).
  *
- * Handles interleaved MSPv1 and MSPv2 frames in a single byte stream,
- * plus CLI mode detection (STX/ETX framing).
- *
- * 19-state streaming parser (states 0-18).
+ * Handles interleaved MSPv1 and MSPv2 frames in a single byte stream. Only
+ * replies ('>') and error replies ('!') are emitted; a request frame ('<'),
+ * such as one echoed back by a half-duplex link, is parsed and dropped.
  *
  * @module protocol/msp/msp-parser
  */
@@ -21,7 +20,6 @@ export interface ParsedMspFrame {
 }
 
 type FrameCallback = (frame: ParsedMspFrame) => void;
-type CliCallback = (text: string) => void;
 
 // ── Parser States ──────────────────────────────────────────
 
@@ -44,7 +42,6 @@ const enum State {
   PAYLOAD_V2 = 15,
   CHECKSUM_V1 = 16,
   CHECKSUM_V2 = 17,
-  CLI_COMMAND = 18,
 }
 
 // ── Protocol bytes ─────────────────────────────────────────
@@ -55,10 +52,6 @@ const X_CHAR = 0x58;
 const FROM_FC = 0x3e; // '>'
 const TO_FC = 0x3c; // '<'
 const ERROR_CHAR = 0x21; // '!'
-const STX = 0x02;
-const ETX = 0x03;
-const LF = 0x0a;
-const CR = 0x0d;
 
 const JUMBO_FRAME_MIN_SIZE = 255;
 
@@ -75,6 +68,8 @@ export class MspParser {
   private state: State = State.IDLE;
   private version: 1 | 2 = 1;
   private isError = false;
+  /** The frame being parsed is a request ('<'): checked, then dropped. */
+  private isRequest = false;
   private code = 0;
   private expectedLength = 0;
   private receivedLength = 0;
@@ -82,8 +77,6 @@ export class MspParser {
   private crcV2 = 0;
 
   private frameCallbacks: FrameCallback[] = [];
-  private cliCallbacks: CliCallback[] = [];
-  private cliBuffer: string[] = [];
 
   /** Feed raw bytes from transport. Parsed frames fire onFrame callbacks. */
   feed(data: Uint8Array): void {
@@ -101,54 +94,25 @@ export class MspParser {
     };
   }
 
-  /** Register a callback for CLI text output. Returns unsubscribe function. */
-  onCliData(callback: CliCallback): () => void {
-    this.cliCallbacks.push(callback);
-    return () => {
-      const idx = this.cliCallbacks.indexOf(callback);
-      if (idx !== -1) this.cliCallbacks.splice(idx, 1);
-    };
-  }
-
   /** Reset parser state (call on disconnect). */
   reset(): void {
     this.state = State.IDLE;
     this.version = 1;
     this.isError = false;
+    this.isRequest = false;
     this.code = 0;
     this.expectedLength = 0;
     this.receivedLength = 0;
     this.buffer = new Uint8Array(0);
     this.crcV2 = 0;
-    this.cliBuffer.length = 0;
   }
 
   private processByte(byte: number): void {
     switch (this.state) {
-      // ── CLI Mode ───────────────────────────────────────
-      case State.CLI_COMMAND:
-        if (byte === ETX) {
-          // End of CLI output block
-          const text = this.cliBuffer.join('');
-          this.cliBuffer.length = 0;
-          for (const cb of this.cliCallbacks) cb(text);
-          this.state = State.IDLE;
-        } else if (byte === LF) {
-          // Line break in CLI output, emit accumulated line
-          const line = this.cliBuffer.join('');
-          this.cliBuffer.length = 0;
-          for (const cb of this.cliCallbacks) cb(line);
-        } else if (byte !== CR) {
-          this.cliBuffer.push(String.fromCharCode(byte));
-        }
-        break;
-
       // ── Sync char 1 ────────────────────────────────────
       case State.IDLE:
         if (byte === DOLLAR) {
           this.state = State.PROTO_IDENTIFIER;
-        } else if (byte === STX) {
-          this.state = State.CLI_COMMAND;
         }
         break;
 
@@ -175,6 +139,7 @@ export class MspParser {
           break;
         }
         this.isError = byte === ERROR_CHAR;
+        this.isRequest = byte === TO_FC;
         this.state = this.state === State.DIRECTION_V1 ? State.PAYLOAD_LENGTH_V1 : State.FLAG_V2;
         break;
 
@@ -303,6 +268,7 @@ export class MspParser {
   }
 
   private emitFrame(): void {
+    if (this.isRequest) return;
     const frame: ParsedMspFrame = {
       version: this.version,
       command: this.code,

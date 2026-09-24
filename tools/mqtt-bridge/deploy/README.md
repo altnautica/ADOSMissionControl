@@ -17,30 +17,20 @@ quick anonymous bench broker (CI fixtures), see the comments at the bottom of
 
 ## Auth model
 
-Four principal types connect to the broker:
+Three principal types connect to the broker:
 
 | Principal | Username | Password source | Permissions |
 |---|---|---|---|
-| Drone agent | `<device_id>` (current firmware) or `ados-<device_id>` (legacy firmware; transitional) | `cmd_drones.apiKey` from Convex; same value the agent uses for HTTP `X-ADOS-Key` | `readwrite ados/<device_id>/#` |
+| Drone agent | `ados-<device_id>` | `cmd_drones.apiKey` from Convex; same value the agent uses for HTTP `X-ADOS-Key` | `readwrite ados/<device_id>/#` |
 | Bridge service account | `ados` | `MQTT_PASSWORD` env var on the broker host | `read ados/#` |
-| GCS browser session | `gcs-op-<random>` | minted per operator by Convex `cmdMqttControlGrants.mint`, returned in plaintext once and held in the tab's memory | `readwrite ados/<device_id>/#` for each drone that operator owns |
-| Legacy shared viewer | `gcs-viewer` | `MQTT_VIEWER_PASSWORD` env var on the broker host | `read ados/#` |
+| GCS browser session | `gcs-op-<random>` | minted per operator by Convex `cmdMqttControlGrants.mint`, returned in plaintext once and held in the tab's memory | for each drone that operator owns: `read ados/<device_id>/#`, `write` on `ados/<device_id>/mavlink/rx`, `msp/rx` and `webrtc/offer` |
 
-No browser reads `gcs-viewer` any more. It granted every operator read access to
-every topic of every drone in the fleet and could not publish at all, so no
-browser session could command over the relay; per-operator write grants replaced
-it on both counts. The principal is still generated so a broker mid-rollout keeps
-serving a Mission Control build that predates the grant path; retiring it means
-removing it from `regenerate-passwd.sh`, which currently refuses to run without
-`MQTT_VIEWER_PASSWORD`.
+A browser grant writes only the three topics a GCS sends on. Write on the whole
+device subtree would also let it publish `/tx`, `/status` and `/webrtc/answer`,
+the agent's own topics, and so fabricate telemetry for the aircraft.
 
 The ACL is generated alongside the passwd file from the device list in
-Convex; both files are atomic-swapped into place on every regen.
-
-`regenerate-passwd.sh` writes BOTH username conventions (legacy prefixed +
-canonical bare) for each device so a fleet midway through a firmware
-upgrade keeps working. Set `DROP_LEGACY_USERNAMES=1` in the script env
-once every agent has rolled over to the canonical username.
+Convex; both files are rewritten in place on every regen.
 
 ## Production deployment
 
@@ -70,23 +60,18 @@ it** — see `.gitignore` in this directory.
    `MQTT_AUTH_RELAY_SECRET` BOTH on the Convex deployment AND in
    `/opt/relay/.env` on the broker host. This gates the
    `/admin/mqtt-auth-entries` httpAction that the regen script reads.
-3. Pick a strong viewer password (`openssl rand -base64 24`) and set
-   `MQTT_VIEWER_PASSWORD` in `/opt/relay/.env` on the broker host. Nothing
-   publishes it to a browser: it exists only for Mission Control builds that
-   predate per-operator grants. `regenerate-passwd.sh` still aborts without it,
-   so it is required until that principal is retired from the script.
-4. Deploy the Convex functions (`npx convex deploy`) so the
+3. Deploy the Convex functions (`npx convex deploy`) so the
    `clientConfig`, `cmdMqttControlGrants`, `cmdPairing.listMqttAuthEntries`, and
    `/admin/mqtt-auth-entries` paths are live.
-5. Make sure Mission Control has been rebuilt with the grant path landed (this
+4. Make sure Mission Control has been rebuilt with the grant path landed (this
    monorepo's `src/stores/mqtt-control-grant-store.ts` mints the credential and
    injects it into `src/lib/mqtt-broker-credential.ts`, which every MQTT client
    reads at connect time). **A push alone does not rebuild anything** — rebuild
    and redeploy Mission Control explicitly before relying on the grant path.
-6. Copy `mosquitto.conf`, `acl.conf` (will be auto-generated; see below),
+5. Copy `mosquitto.conf`, `acl.conf` (will be auto-generated; see below),
    `regenerate-passwd.sh`, `activate-auth.sh`, and `deactivate-auth.sh`
    from this directory to the broker host's `/opt/relay/`.
-7. Update `docker-compose.yml` on the broker host to mount `acl.conf`
+6. Update `docker-compose.yml` on the broker host to mount `acl.conf`
    alongside the existing `mosquitto.conf` + `passwd` mounts. The full
    volumes block looks like:
    ```yaml
@@ -98,22 +83,22 @@ it** — see `.gitignore` in this directory.
          - ./mosquitto/passwd:/mosquitto/config/passwd:ro
          - mosquitto-data:/mosquitto/data
    ```
-8. Generate the initial `passwd` + `acl.conf` (the script writes both):
+7. Generate the initial `passwd` + `acl.conf` (the script writes both):
    ```bash
    cd /opt/relay
    set -a; source .env; set +a
    ./regenerate-passwd.sh
    ```
-9. Flip auth on:
+8. Flip auth on:
    ```bash
    ./activate-auth.sh
    ```
    To roll back: `./deactivate-auth.sh`. Both scripts are idempotent and
    take backups before changing `mosquitto.conf`.
-10. Watch the broker logs for any `not authorised` lines and confirm the
-    GCS reconnects with the viewer credential. If the GCS isn't picking
-    up the new credential, do a hard refresh — the Convex query result is
-    cached client-side until the page reloads.
+9. Watch the broker logs for any `not authorised` lines and confirm each
+   agent (`ados-<device_id>`) and each open GCS session (`gcs-op-…`)
+   connects. A GCS grant minted after the last regen is refused until the
+   script runs again (the 60-second timer below keeps that window short).
 
 ### Generating passwd
 
@@ -121,7 +106,7 @@ it** — see `.gitignore` in this directory.
 
 Use the helper script. It hits a Convex httpAction (gated by
 `MQTT_AUTH_RELAY_SECRET`) to pull paired devices, runs `mosquitto_passwd`
-inside the broker container, atomic-renames the new passwd into place,
+inside the broker container, rewrites the passwd file in place,
 and SIGHUPs the broker.
 
 One-time setup (operator):
@@ -151,15 +136,17 @@ set -a; source .env; set +a
 
 #### Manual: mosquitto_passwd
 
-Use `mosquitto_passwd` directly. For each paired device, you'll need its
-`device_id` (the username) and its `api_key` (the password). Both are stored
-in your Convex deployment on the `cmd_drones` table after pairing.
+Use `mosquitto_passwd` directly. For each paired device, the username is
+`ados-<device_id>` and the password is its `api_key`, both from the
+`cmd_drones` table in your Convex deployment. Each device also needs its
+`user ados-<device_id>` / `topic readwrite ados/<device_id>/#` block in
+`acl.conf` (a mosquitto pattern cannot express the prefixed username).
 
 ```bash
 # First entry creates the file:
-mosquitto_passwd -c /opt/relay/mosquitto/passwd <device_id>
+mosquitto_passwd -c /opt/relay/mosquitto/passwd ados-<device_id>
 # Subsequent entries append:
-mosquitto_passwd /opt/relay/mosquitto/passwd <another_device_id>
+mosquitto_passwd /opt/relay/mosquitto/passwd ados-<another_device_id>
 # Add the bridge service account last:
 mosquitto_passwd /opt/relay/mosquitto/passwd ados
 # Reload the broker:
@@ -198,28 +185,28 @@ docker exec -it relay-mosquitto-1 sh
 
 # 1. Device can publish to its own subtree.
 mosquitto_pub -h localhost -p 1883 \
-  -u <device_id> -P <api_key> \
+  -u ados-<device_id> -P <api_key> \
   -t "ados/<device_id>/test" -m "hello"
 # Should succeed.
 
 # 2. Device CANNOT publish to another device's subtree.
 mosquitto_pub -h localhost -p 1883 \
-  -u <device_id> -P <api_key> \
+  -u ados-<device_id> -P <api_key> \
   -t "ados/<other_device>/test" -m "should fail"
 # Should be silently dropped by the ACL (return code 0 but no message
 # delivered). Confirm by watching the broker logs for "Denied".
 
-# 3. GCS viewer can subscribe to any device's status topic.
-mosquitto_sub -h localhost -p 1883 \
-  -u gcs-viewer -P <MQTT_VIEWER_PASSWORD> \
-  -t "ados/+/status" -C 1 -W 5
-# Should print one status message OR time out cleanly (return 27).
-
-# 4. GCS viewer CANNOT publish.
+# 3. An operator grant can write a command topic of a device it covers.
 mosquitto_pub -h localhost -p 1883 \
-  -u gcs-viewer -P <MQTT_VIEWER_PASSWORD> \
-  -t "ados/<device_id>/command" -m "should fail"
-# Should be denied by the ACL.
+  -u gcs-op-<random> -P <grant secret> \
+  -t "ados/<device_id>/mavlink/rx" -m "hello"
+# Should be delivered (subscribe as the device to confirm arrival).
+
+# 4. An operator grant CANNOT publish on the agent's own topics.
+mosquitto_pub -h localhost -p 1883 \
+  -u gcs-op-<random> -P <grant secret> \
+  -t "ados/<device_id>/status" -m "should fail"
+# Should be dropped by the ACL.
 ```
 
 ## Limitations

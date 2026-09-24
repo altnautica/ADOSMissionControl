@@ -75,6 +75,7 @@ function makeContext(t: FakeTransport): ParamContext & FrameHandlerState {
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
     statusText: new StatusTextAssembler(),
+    homeAltitudeAmsl: null,
   };
 }
 

@@ -12,7 +12,7 @@
  */
 
 import type { Waypoint } from "@/lib/types";
-import { haversineDistance } from "@/lib/geo/distance";
+import { haversineDistance, interpolateLatLon } from "@/lib/geo/distance";
 
 /** A camera trigger position, with the altitude in the waypoints' own frame. */
 export interface TriggerPoint {
@@ -49,8 +49,7 @@ export function computeTriggerPoints(waypoints: Waypoint[]): TriggerPoint[] {
       for (let t = 1; t <= count; t++) {
         const ratio = (t * triggerDistance) / segDist;
         points.push({
-          lat: prev.lat + (wp.lat - prev.lat) * ratio,
-          lon: prev.lon + (wp.lon - prev.lon) * ratio,
+          ...interpolateLatLon(prev.lat, prev.lon, wp.lat, wp.lon, ratio),
           alt: prev.alt + (wp.alt - prev.alt) * ratio,
         });
       }

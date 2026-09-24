@@ -81,14 +81,18 @@ describe("inferCapabilities vision flag", () => {
     expect(caps!.visionSummary).toBeUndefined();
   });
 
-  it("leaves visionAvailable undefined on a no-real-NPU board with no surface", () => {
-    // Pi-class board (NPU TOPS 0) and no advertised vision surface →
-    // the tab stays hidden. The Pi entries carry npu_tops 0, so the
-    // gate is on TOPS > 0, not the npu_available boolean.
-    const caps = inferCapabilities(statusWithSoc("BCM2711"), []);
-    expect(caps!.compute.npu_tops).toBe(0);
-    expect(caps!.visionAvailable).toBeUndefined();
-    expect(caps!.visionSummary).toBeUndefined();
+  it("reports no accelerator and no vision on a Pi-class board with no surface", () => {
+    // A Broadcom Pi SoC has no NPU: inference must not claim one (no
+    // `npu_available`, no RKNN runtime) or light the vision tab.
+    for (const soc of ["BCM2711", "BCM2712"]) {
+      const caps = inferCapabilities(statusWithSoc(soc), []);
+      expect(caps!.compute.npu_available).toBe(false);
+      expect(caps!.compute.npu_runtime).toBeNull();
+      expect(caps!.compute.npu_tops).toBe(0);
+      expect(caps!.hasAccelerator).toBe(false);
+      expect(caps!.visionAvailable).toBeUndefined();
+      expect(caps!.visionSummary).toBeUndefined();
+    }
   });
 });
 

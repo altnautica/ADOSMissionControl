@@ -110,7 +110,7 @@ export function ImportKeyModal({ droneId, open, onClose }: Props) {
       role="dialog"
       aria-labelledby="import-key-title"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70"
       onClick={(e) => e.target === e.currentTarget && state !== "importing" && onClose()}
     >
       <div className="bg-bg-secondary border border-border-default max-w-md w-full mx-4 p-6 space-y-4">
@@ -173,7 +173,7 @@ export function ImportKeyModal({ droneId, open, onClose }: Props) {
                 type="button"
                 onClick={handleImport}
                 disabled={!validation.valid}
-                className="px-3 py-1.5 text-sm bg-accent-primary text-white disabled:opacity-40"
+                className="px-3 py-1.5 text-sm bg-accent-primary text-accent-foreground disabled:opacity-40"
               >
                 Import
               </button>

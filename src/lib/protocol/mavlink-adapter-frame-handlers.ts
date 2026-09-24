@@ -98,6 +98,8 @@ export interface FrameHandlerState {
    * (same rationale as `ftpCtx`); always set in production.
    */
   componentMetadataUri?: string | null
+  /** Home altitude AMSL (m) from the vehicle's last HOME_POSITION; null until one arrives. */
+  homeAltitudeAmsl: number | null
 }
 
 /**
@@ -155,7 +157,11 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
   if (MISSION_TARGETED_MSG_IDS.has(frame.msgId) && !isMissionFrameForUs(s, frame)) return
   switch (frame.msgId) {
     case 0:   handleHeartbeat(s, frame); break
-    case 22:  handleParamValueFrame(s, frame); break
+    // PARAM_VALUE and AUTOPILOT_VERSION are broadcast, and a camera, gimbal or
+    // companion on the vehicle's system id answers other GCSs with its own.
+    // Only the locked autopilot component may feed the autopilot's parameter
+    // download and vehicle identity.
+    case 22:  if (frame.componentId === s.targetCompId) handleParamValueFrame(s, frame); break
     case 77:  { const ack = decodeCommandAck(frame.payload); s.commandQueue.handleAck(ack.command, ack.result, frame.systemId, ack.targetSystem, ack.targetComponent); break }
     case 40:  handleMissionRequestFrame(s, frame); break
     case 44:  handleMissionCountResponse(s, frame); break
@@ -165,7 +171,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 110: if (s.ftpCtx) { handleFileTransferProtocolAck(s.ftpCtx, frame); handleFtpOpAck(s.ftpCtx, frame) } break
     case 118: handleLogEntry({ transport: s.transport, targetSysId: s.targetSysId, targetCompId: s.targetCompId, sysId: s.sysId, compId: s.compId, logListDownload: s.logListDownload, logDataDownload: s.logDataDownload }, frame); break
     case 120: handleLogData({ transport: s.transport, targetSysId: s.targetSysId, targetCompId: s.targetCompId, sysId: s.sysId, compId: s.compId, logListDownload: s.logListDownload, logDataDownload: s.logDataDownload }, frame); break
-    case 148: handleAutopilotVersionFrame(s, frame); break
+    case 148: if (frame.componentId === s.targetCompId) handleAutopilotVersionFrame(s, frame); break
     case 397: handleComponentMetadataFrame(s, frame); break
     case 1:   handleSysStatus(p, c.sysStatusCallbacks); break
     case 24:  handleGpsRaw(p, c.gpsCallbacks); break
@@ -197,7 +203,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 168: handleWind(p, c.windCallbacks); break
     case 231: handleWindCov(p, c.windCovCallbacks); break
     case 241: handleVibration(p, c.vibrationCallbacks); break
-    case 242: handleHomePosition(p, c.homePositionCallbacks); break
+    case 242: s.homeAltitudeAmsl = handleHomePosition(p, c.homePositionCallbacks); break
     case 193: handleEkfStatus(p, c.ekfCallbacks); break
     case 230: handleEstimatorStatus(p, c.estimatorStatusCallbacks); break
     case 76:  handleIncomingCommandLong(p, c.accelCalPosCallbacks); break

@@ -3,13 +3,14 @@
 /**
  * @module node-detail/surfaces/workstation
  * @description Surfaces for a workstation node: Overview, one Compute tab
- * (Jobs | Viewer), Logs, and the Agent page.
+ * (Jobs | Viewer | Drone access), Logs, and the Agent page.
  *
  * Jobs and Viewer used to be two tabs that a freshly-paired node rendered as
  * two identical empty cards, so the profile advertised depth it had none of
  * for the whole first-run experience. They are two views of the same job list
  * — the Viewer previews the artifact of a finished one — so they are one tab
- * with a segmented control.
+ * with a segmented control. Drone access sits beside them: which paired drones
+ * hold a credential for this workstation's lanes.
  * @license GPL-3.0-only
  */
 
@@ -24,6 +25,7 @@ import { surfaceNodeDeviceId, type SurfaceSpec } from "../surface-types";
 import { SegmentedPane } from "../SegmentedPane";
 import { STATUS_GROUP, COMPUTE_GROUP } from "../surface-groups";
 import { AGENT_SURFACE } from "../agent/agent-surface";
+import { DroneAccessPanel } from "../workstation-access/DroneAccessPanel";
 
 /** The Viewer half: the reconstruction viewer over the node's finished jobs.
  * Calm state when the compute node is unreachable (local-first). */
@@ -45,7 +47,8 @@ function WorkstationViewer({ nodeId }: { nodeId?: string }) {
   return <ForgeOutputs jobs={jobs} client={client} />;
 }
 
-/** The one Compute surface: the job queue and the artifact viewer over it. */
+/** The one Compute surface: the job queue, the artifact viewer over it, and
+ * which drones may use this node's lanes. */
 function ComputePane({ nodeId }: { nodeId: string }) {
   const t = useTranslations("atlas");
   return (
@@ -61,6 +64,11 @@ function ComputePane({ nodeId }: { nodeId: string }) {
           id: "viewer",
           label: t("viewerGroupLabel"),
           render: () => <WorkstationViewer nodeId={nodeId} />,
+        },
+        {
+          id: "access",
+          label: t("droneAccess.segment"),
+          render: () => <DroneAccessPanel nodeId={nodeId} />,
         },
       ]}
     />

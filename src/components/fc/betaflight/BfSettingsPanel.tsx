@@ -15,7 +15,7 @@ import { useCallback, useState } from "react";
 import { Sliders, Upload, Save, RotateCcw } from "lucide-react";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { loadBfSettingsMetadata } from "@/lib/protocol/param-metadata/bf-settings";
@@ -24,8 +24,8 @@ import type { CliSetting } from "@/lib/protocol/types";
 import { BfSettingsTable } from "./BfSettingsTable";
 
 export function BfSettingsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
   const { isArmed, lockMessage } = useArmedLock();
 
   const [settings, setSettings] = useState<CliSetting[]>([]);
@@ -38,7 +38,7 @@ export function BfSettingsPanel() {
   const [showModifiedOnly, setShowModifiedOnly] = useState(false);
 
   const read = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.cliSettings) {
       setError("Betaflight CLI is not available on this connection");
       return;
@@ -59,7 +59,7 @@ export function BfSettingsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const onModify = useCallback((name: string, value: string) => {
     setModified((prev) => {
@@ -72,7 +72,7 @@ export function BfSettingsPanel() {
   }, [settings]);
 
   const write = useCallback(async (persist: boolean) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.cliSettings || modified.size === 0) return;
     setLoading(true);
     setError(null);
@@ -90,7 +90,7 @@ export function BfSettingsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, modified]);
+  }, [selectedProtocol, modified]);
 
   const revert = useCallback(() => setModified(new Map()), []);
   const dirty = modified.size > 0;

@@ -80,7 +80,7 @@ export function UPlotChart({ frames, traces }: UPlotChartProps) {
       series,
     };
 
-    const data: uPlot.AlignedData = [times, ...values] as unknown as uPlot.AlignedData;
+    const data: uPlot.AlignedData = [times, ...values];
 
     // Destroy previous instance
     if (chartRef.current) {

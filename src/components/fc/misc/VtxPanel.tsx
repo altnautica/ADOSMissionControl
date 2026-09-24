@@ -4,7 +4,7 @@ import { useMemo, useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
@@ -21,7 +21,7 @@ import {
 import type { MspVtxTablePowerLevel } from "@/lib/protocol/msp/msp-decoders-ext";
 
 export function VtxPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("vtx");
 
   const panelParams = usePanelParams({ paramNames: vtxParamNames, panelId: "vtx", autoLoad: true });
@@ -33,7 +33,7 @@ export function VtxPanel() {
   const { saving, save: handleSave, flash: handleFlash } = useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
@@ -45,7 +45,7 @@ export function VtxPanel() {
   // from that table, since the mW behind each index depends on the device.
   const [powerLevels, setPowerLevels] = useState<MspVtxTablePowerLevel[] | null>(null);
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!hasLoaded || !protocol?.getVtxPowerLevels) return;
     let cancelled = false;
     protocol.getVtxPowerLevels().then(
@@ -53,7 +53,7 @@ export function VtxPanel() {
       () => { if (!cancelled) setPowerLevels([]); },
     );
     return () => { cancelled = true; };
-  }, [getSelectedProtocol, hasLoaded]);
+  }, [selectedProtocol, hasLoaded]);
   const powerValue = params.get("BF_VTX_POWER");
   const powerOptions = useMemo(() => {
     const options = (powerLevels ?? []).map((l) => ({

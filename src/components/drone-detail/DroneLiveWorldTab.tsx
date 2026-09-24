@@ -13,7 +13,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Activity, Boxes, Clock, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,8 @@ import { cmdAtlasJobsApi } from "@/lib/community-api-drones";
 import { useAtlasStore } from "@/stores/atlas-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useAtlasLocalState } from "@/hooks/use-atlas-local-state";
+import { useClockStore } from "@/stores/clock-store";
+import { useClockTick } from "@/lib/agent/freshness";
 import type { Doc } from "../../../convex/_generated/dataModel";
 
 type AtlasJob = Doc<"cmd_atlasJobs">;
@@ -52,16 +54,6 @@ function num(v: number | null): string {
 
 function rate(v: number | null): string {
   return v === null ? "—" : v.toFixed(1);
-}
-
-/** A 1 Hz re-render tick so the age-derived staleness recomputes live. */
-function useNowTick(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
 }
 
 // The agent's CaptureState vocabulary (idle/capturing/paused/finalizing/bagged),
@@ -92,7 +84,7 @@ const BEARER_LABEL_KEY: Record<string, string> = {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded bg-white/[0.02] px-2 py-1.5 text-center">
+    <div className="rounded bg-text-primary/[0.02] px-2 py-1.5 text-center">
       <div className="text-sm font-mono text-text-primary tabular-nums">
         {value}
       </div>
@@ -127,7 +119,9 @@ export function DroneLiveWorldTab({ droneId }: { droneId?: string }) {
   const t = useTranslations("atlas");
   const live = useAtlasStore((s) => s.live);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const now = useNowTick();
+  // The shared 1 Hz clock re-derives heartbeat age and staleness.
+  useClockTick();
+  const now = useClockStore((s) => s.now);
   // Local-first: poll this drone's agent for its Atlas state when LAN-paired
   // (signed out), feeding the same store the cloud heartbeat path feeds.
   useAtlasLocalState(droneId);
@@ -269,7 +263,7 @@ export function DroneLiveWorldTab({ droneId }: { droneId?: string }) {
             </span>
             <span
               className={cn(
-                "text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/[0.04]",
+                "text-[10px] font-medium px-1.5 py-0.5 rounded bg-text-primary/[0.04]",
                 stateTone,
               )}
             >

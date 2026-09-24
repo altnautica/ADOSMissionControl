@@ -31,24 +31,24 @@ export const SEVERITY_LABELS = [
 ] as const;
 
 export const SEVERITY_COLORS: Record<number, string> = {
-  0: "text-red-500",
-  1: "text-red-500",
-  2: "text-red-400",
-  3: "text-red-400",
-  4: "text-yellow-400",
-  5: "text-blue-400",
-  6: "text-green-400",
+  0: "text-status-error",
+  1: "text-status-error",
+  2: "text-status-error",
+  3: "text-status-error",
+  4: "text-status-warning",
+  5: "text-accent-primary",
+  6: "text-status-success",
   7: "text-text-tertiary",
 };
 
 export const SEVERITY_BG: Record<number, string> = {
-  0: "bg-red-500/10",
-  1: "bg-red-500/10",
-  2: "bg-red-400/10",
-  3: "bg-red-400/10",
-  4: "bg-yellow-400/10",
-  5: "bg-blue-400/10",
-  6: "bg-green-400/10",
+  0: "bg-status-error/10",
+  1: "bg-status-error/10",
+  2: "bg-status-error/10",
+  3: "bg-status-error/10",
+  4: "bg-status-warning/10",
+  5: "bg-accent-primary/10",
+  6: "bg-status-success/10",
   7: "bg-transparent",
 };
 

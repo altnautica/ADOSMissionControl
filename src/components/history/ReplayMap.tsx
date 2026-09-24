@@ -14,6 +14,7 @@ import { useTrailStore, type TrailPoint } from "@/stores/trail-store";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
 import { TILE_PROVIDERS } from "@/lib/tile-math";
 import { Crosshair } from "lucide-react";
+import { MapFollower } from "@/components/map/MapFollower";
 import "leaflet/dist/leaflet.css";
 
 // ── Drone Icon ───────────────────────────────────────────
@@ -38,18 +39,6 @@ const homeIcon = L.divIcon({
     <circle cx="8" cy="8" r="2" fill="#3A82FF"/>
   </svg>`,
 });
-
-// ── Map Follower ─────────────────────────────────────────
-
-function MapFollower({ position, enabled }: { position: [number, number] | null; enabled: boolean }) {
-  const map = useMap();
-  useEffect(() => {
-    if (enabled && position) {
-      map.setView(position, map.getZoom(), { animate: true, duration: 0.3 });
-    }
-  }, [map, position, enabled]);
-  return null;
-}
 
 // ── Main Component ───────────────────────────────────────
 
@@ -97,7 +86,7 @@ export function ReplayMap() {
         zoomControl={false}
       >
         <TileLayer url={TILE_PROVIDERS.dark.url} attribution={TILE_PROVIDERS.dark.attribution} />
-        <MapFollower position={dronePos} enabled={autoFollow} />
+        <MapFollower position={dronePos} follow={autoFollow} />
         <MapDragDetector onDrag={handleMapDrag} />
 
         {/* Trail */}

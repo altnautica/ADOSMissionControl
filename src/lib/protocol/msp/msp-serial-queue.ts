@@ -50,10 +50,10 @@ export class MspSerialQueue {
    * If another request is in flight, this queues behind it.
    */
   send(command: number, payload?: Uint8Array): Promise<ParsedMspFrame> {
-    return new Promise<ParsedMspFrame>((resolve, reject) => {
-      this.queue.push({ command, payload, resolve, reject, retries: 0 });
-      this.processNext();
-    });
+    const { promise, resolve, reject } = Promise.withResolvers<ParsedMspFrame>();
+    this.queue.push({ command, payload, resolve, reject, retries: 0 });
+    this.processNext();
+    return promise;
   }
 
   /**
@@ -107,11 +107,23 @@ export class MspSerialQueue {
     this.sendActive();
   }
 
+  /**
+   * Write the active request and arm its timeout. A write that throws (the
+   * transport closed, a serial or BLE write error) fails that request and
+   * moves on; left active with no timer, it would block every later request.
+   */
   private sendActive(): void {
-    if (!this.active) return;
-
-    const encoded = encodeMsp(this.active.command, this.active.payload);
-    this.sendFn(encoded);
+    const req = this.active;
+    if (!req) return;
+    try {
+      this.sendFn(encodeMsp(req.command, req.payload));
+    } catch (err) {
+      this.clearTimeout();
+      this.active = null;
+      req.reject(err instanceof Error ? err : new Error(String(err)));
+      this.processNext();
+      return;
+    }
     this.startTimeout();
   }
 

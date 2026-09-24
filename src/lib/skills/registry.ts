@@ -193,12 +193,10 @@ export const useSkillRegistry = create<SkillRegistryState>((set, get) => ({
     const visible: Skill[] = [];
     for (const skill of skills.values()) {
       // A skill with no meaning without an argument has nothing to bind and no
-      // slot to occupy; it is dispatched from its own control.
+      // slot to occupy; it is dispatched from its own control. Plugin skills
+      // need no install check here: the plugin skill host registers only the
+      // selected drone's installed contributions and swaps them on selection.
       if (skill.bindable === false) continue;
-      // Plugin skills appear only for drones that have the plugin installed.
-      if (skill.source === "plugin" && !isPluginInstalledFor(skill, droneId)) {
-        continue;
-      }
       // A skill that needs autonomous nav is filtered out only when the
       // firmware is KNOWN to lack it (an acro flight controller), driven off the
       // node's real capability. A node whose capability is merely unknown — one
@@ -278,20 +276,6 @@ function mergeDispatcherState(
   }
 
   return state;
-}
-
-/**
- * Whether a plugin skill's contributing plugin is installed on a given drone.
- * The plugin host registers a plugin skill only for drones where the plugin is
- * installed (per-drone install model), so a registered plugin skill is, by
- * construction, available for that drone. This guard is a defensive second
- * check for the resolve path and a seam for a future cross-drone registry.
- */
-function isPluginInstalledFor(_skill: Skill, _droneId: string): boolean {
-  // Plugin skills are registered per-drone by the host; presence in the
-  // registry is the install signal in v1. Returns true so a registered plugin
-  // skill resolves for the drone it was registered against.
-  return true;
 }
 
 export type { SkillContext };

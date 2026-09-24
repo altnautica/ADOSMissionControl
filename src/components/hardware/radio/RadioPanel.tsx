@@ -53,7 +53,6 @@ import { PairingCard } from "./PairingCard";
 import { TxPowerCard } from "./TxPowerCard";
 import { WfbTuningCard } from "./WfbTuningCard";
 import { CalibrateLinkWizard } from "./CalibrateLinkWizard";
-import { BenchTestCard } from "./BenchTestCard";
 import type { LinkPreset } from "@/lib/api/ground-station/wfb";
 import type { VideoConfigResponse } from "@/lib/api/ground-station/types";
 import type { CalMeasurement, CalTrio } from "@/lib/api/ground-station/calibration";
@@ -139,9 +138,11 @@ export function RadioPanel() {
         : cloudRadio?.state
           ? (cloudRadio.state as RadioLinkState)
           : "disconnected";
-  const topology: RadioTopology = cloudRadio?.topology
+  // Unknown until a fresh radio row reports it: no chip and no brownout
+  // warning are raised on a guessed bus-powered topology.
+  const topology: RadioTopology | null = cloudRadio?.topology
     ? (cloudRadio.topology as RadioTopology)
-    : "host_vbus";
+    : null;
   const rssiDbm = shared(lan?.rssi_dbm, cloudRadio?.rssiDbm);
   const bitrateMbps = shared(
     lan?.bitrate_mbps,
@@ -587,7 +588,6 @@ export function RadioPanel() {
         receiverName={receiverName}
       />
 
-      <BenchTestCard />
     </div>
   );
 }

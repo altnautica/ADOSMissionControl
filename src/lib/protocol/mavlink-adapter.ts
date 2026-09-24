@@ -16,6 +16,7 @@ import type {
   DroneProtocol, Transport, TransportMiddleware, VehicleInfo, CommandResult, ParameterValue,
   MissionItem, FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
   LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo, GuidedGotoOptions,
+  FenceElement,
 } from './types'
 import { MAVLinkParser, type MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat, MAV_CMD_SET_EKF_SOURCE_SET } from './mavlink-encoder'
@@ -37,6 +38,7 @@ import * as ftpOps from './mavlink-adapter-ftp'
 import * as ftpWriteOps from './mavlink-adapter-ftp-ops'
 import { SigningTransport } from './signing-transport'
 import type { MavlinkSigner } from './mavlink-signer'
+import type { ConnectionMeta } from '@/lib/connection-meta'
 
 /** Per-link state for multi-link support. Each link is a Transport that can reach this drone. */
 interface LinkState {
@@ -44,14 +46,22 @@ interface LinkState {
   transport: Transport
   /** `transport` as seen by senders: signs each v2 frame while a signer is set. */
   outbound: SigningTransport
+  /**
+   * This link's own frame parser. A parser holds partial frames between
+   * chunks, so two links sharing one would splice a chunk from one link into
+   * a frame from the other and lose both to the CRC check.
+   */
+  parser: MAVLinkParser
   label: string
-  connectionMeta?: import('@/lib/connection-meta').ConnectionMeta
+  connectionMeta?: ConnectionMeta
   connectedAt: number
   /** Last time bytes were received on this link (ms) — used for "primary" selection */
   lastByteAt: number
   dataHandler: (data: Uint8Array) => void
   closeHandler: () => void
 }
+
+type LinkFrameListener = (frame: MAVLinkFrame, linkId: string) => void
 
 let _linkIdCounter = 0
 const nextLinkId = () => `link-${++_linkIdCounter}-${Date.now()}`
@@ -60,14 +70,13 @@ export class MAVLinkAdapter implements DroneProtocol {
   readonly protocolName = 'mavlink'
 
   // Internal state
-  private parser = new MAVLinkParser()
-  /** Releases the per-connection `parser.onFrame` subscription. */
-  private frameUnsub: (() => void) | null = null
+  /** True while this adapter routes link frames into its state machines. */
+  private routing = false
+  /** Frame observers across every link, told which link delivered each frame. */
+  private frameListeners: LinkFrameListener[] = []
   private commandQueue = new CommandQueue(3000)
   /** Multi-link support — Map of active transports reaching this drone. */
   private links = new Map<string, LinkState>()
-  /** Link whose bytes are currently being fed to the shared parser. */
-  private feedingLinkId: string | null = null
   private firmwareHandler: FirmwareHandler | null = null
   private vehicleInfo: VehicleInfo | null = null
   private targetSysId = 1
@@ -142,6 +151,8 @@ export class MAVLinkAdapter implements DroneProtocol {
   private middleware: TransportMiddleware | null = null
   /** Latched once on PX4 to keep the console clean if the UI retries the call. */
   private px4EkfSourceWarned = false
+  /** Home altitude AMSL (m) from the last HOME_POSITION; null until one arrives. */
+  private homeAltitudeAmsl: number | null = null
 
   // Protocol state machines
   private parameterDownload: prm.ParamDownloadState | null = null
@@ -183,7 +194,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     rallyUpload: null, rallyDownload: null, fenceUpload: null, fenceDownload: null,
     logListDownload: null, logDataDownload: null, ftpCtx: this._ftpCtx,
     lastVehicleHeartbeat: 0, linkIsLost: false, HEARTBEAT_TIMEOUT_MS: TELEMETRY_STALE_MS,
-    componentMetadataUri: null, statusText: new StatusTextAssembler(),
+    componentMetadataUri: null, statusText: new StatusTextAssembler(), homeAltitudeAmsl: null,
   }
   private get fhs(): FrameHandlerState {
     const s = this._fhs
@@ -195,7 +206,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     s.logListDownload = this.logListDownload; s.logDataDownload = this.logDataDownload
     s.ftpCtx = this.fc
     s.lastVehicleHeartbeat = this.lastVehicleHeartbeat; s.linkIsLost = this.linkIsLost
-    s.componentMetadataUri = this.componentMetadataUri
+    s.componentMetadataUri = this.componentMetadataUri; s.homeAltitudeAmsl = this.homeAltitudeAmsl
     return s
   }
   private syncFhs(s: FrameHandlerState) {
@@ -208,46 +219,60 @@ export class MAVLinkAdapter implements DroneProtocol {
     // FTP state lives on the shared _ftpCtx (see s.ftpCtx); no copy-back needed.
     this.lastVehicleHeartbeat = s.lastVehicleHeartbeat; this.linkIsLost = s.linkIsLost
     this.componentMetadataUri = s.componentMetadataUri ?? null
+    this.homeAltitudeAmsl = s.homeAltitudeAmsl
   }
 
   /** Attach a transport as a link. Returns the link state. */
-  private attachLink(transport: Transport, label: string, meta?: import('@/lib/connection-meta').ConnectionMeta): LinkState {
+  private attachLink(transport: Transport, label: string, meta?: ConnectionMeta): LinkState {
     const id = nextLinkId()
+    const parser = new MAVLinkParser()
     const link: LinkState = {
       id,
       transport,
       outbound: new SigningTransport(transport, () => this.signer),
+      parser,
       label,
       connectionMeta: meta,
       connectedAt: Date.now(),
       lastByteAt: 0,
       dataHandler: (data: Uint8Array) => {
         link.lastByteAt = Date.now()
-        // Every link feeds one shared parser, so a frame handler has no way to
-        // tell which link delivered the frame it is looking at. Record it for
-        // the duration of the feed: `addLink` needs to attribute a heartbeat
-        // to a specific link, and inferring that from byte-recency is a race
-        // that mis-attributes whenever two links land in the same millisecond.
-        const previous = this.feedingLinkId
-        this.feedingLinkId = link.id
-        try {
-          this.parser.feed(this.middleware ? this.middleware.unwrapInbound(data) : data)
-        } finally {
-          this.feedingLinkId = previous
-        }
+        parser.feed(this.middleware ? this.middleware.unwrapInbound(data) : data)
       },
       closeHandler: () => this.handleLinkClose(id),
     }
+    parser.onFrame((frame) => this.dispatchLinkFrame(frame, id))
     transport.on('data', link.dataHandler)
     transport.on('close', link.closeHandler as (data: void) => void)
     this.links.set(id, link)
     return link
   }
 
+  /** Route one link's frame into the adapter state machines, then to every listener. */
+  private dispatchLinkFrame(frame: MAVLinkFrame, linkId: string): void {
+    if (this.routing) this.handleFrame(frame)
+    for (const listener of [...this.frameListeners]) {
+      try {
+        listener(frame, linkId)
+      } catch (err) {
+        console.warn('[MAVLink] frame listener threw, continuing', err)
+      }
+    }
+  }
+
+  private listenFrames(listener: LinkFrameListener): () => void {
+    this.frameListeners.push(listener)
+    return () => {
+      const i = this.frameListeners.indexOf(listener)
+      if (i !== -1) this.frameListeners.splice(i, 1)
+    }
+  }
+
   /** Detach a single link's transport handlers (does not disconnect the transport). */
   private detachLink(link: LinkState): void {
     link.transport.off('data', link.dataHandler)
     link.transport.off('close', link.closeHandler as (data: void) => void)
+    link.parser.reset()
     this.links.delete(link.id)
   }
 
@@ -256,13 +281,10 @@ export class MAVLinkAdapter implements DroneProtocol {
     this._disconnected = false
     const label = this.formatLinkLabel(transport)
     const link = this.attachLink(transport, label)
-    // One frame subscription per connection, released in handleDisconnect.
-    // It used to be registered here and never removed, so reconnecting through
-    // the same adapter instance double-dispatched every frame: two telemetry
-    // emissions per packet, and the mission and param state machines driven
-    // twice per frame.
-    this.frameUnsub?.()
-    this.frameUnsub = this.parser.onFrame((frame) => this.handleFrame(frame))
+    // Route frames for this connection; handleDisconnect stops it. The router
+    // is on before the heartbeat wait so nothing arriving with the first
+    // heartbeat is lost.
+    this.routing = true
 
     // The heartbeat wait, with BOTH exits cleaned up. The timeout used to
     // reject without calling `unsub()`, so every failed connect left a
@@ -274,8 +296,8 @@ export class MAVLinkAdapter implements DroneProtocol {
       () => gate.reject(new Error('No heartbeat received within 10 seconds')),
       10000,
     )
-    const unsub = this.parser.onFrame((frame) => {
-      if (frame.msgId === 0) {
+    const unsub = this.listenFrames((frame, linkId) => {
+      if (linkId === link.id && frame.msgId === 0) {
         const hb = decodeHeartbeat(frame.payload)
         // A companion computer, gimbal or camera on the vehicle's sysid must
         // not win the lock: every command would target it instead of the FC.
@@ -298,8 +320,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     } catch (err) {
       clearTimeout(timeout)
       unsub()
-      this.frameUnsub?.()
-      this.frameUnsub = null
+      this.routing = false
       this.detachLink(link)
       throw err
     }
@@ -357,13 +378,12 @@ export class MAVLinkAdapter implements DroneProtocol {
         this.detachLink(link)
         resolve({ ok: false, error: 'No heartbeat received on new link within 10 seconds' })
       }, 10000)
-      const unsub = this.parser.onFrame((frame) => {
-        if (frame.msgId !== 0) return
-        const hb = decodeHeartbeat(frame.payload)
-        if (!isAutopilotHeartbeat(hb)) return
+      const unsub = this.listenFrames((frame, linkId) => {
         // Only a heartbeat that arrived on *this* link says anything about
         // where this link reaches.
-        if (this.feedingLinkId !== link.id) return
+        if (linkId !== link.id || frame.msgId !== 0) return
+        const hb = decodeHeartbeat(frame.payload)
+        if (!isAutopilotHeartbeat(hb)) return
         if (frame.systemId !== expectedSysId) {
           clearTimeout(timeout); unsub()
           this.detachLink(link)
@@ -440,10 +460,10 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (this.heartbeatInterval) { clearInterval(this.heartbeatInterval); this.heartbeatInterval = null }
     if (this.streamRequestInterval) { clearInterval(this.streamRequestInterval); this.streamRequestInterval = null }
     if (this.linkLostCheckInterval) { clearInterval(this.linkLostCheckInterval); this.linkLostCheckInterval = null }
-    this.commandQueue.clear(); this._fhs.statusText.clear(); this.paramCache.clear(); this.downloadedParamNames = null; this.parser.reset()
-    this.frameUnsub?.(); this.frameUnsub = null
-    this.componentMetadataUri = null
-    if (this.logListDownload) { clearTimeout(this.logListDownload.timer); this.logListDownload.resolve(Array.from(this.logListDownload.entries.values())); this.logListDownload = null }
+    this.commandQueue.clear(); this._fhs.statusText.clear(); this.paramCache.clear(); this.downloadedParamNames = null
+    this.routing = false
+    this.componentMetadataUri = null; this.homeAltitudeAmsl = null
+    if (this.logListDownload) { logOps.cancelLogList(this.lc, 'Disconnected during log list'); this.logListDownload = null }
     if (this.logDataDownload) { logOps.cancelLogDownload(this.lc, 'Disconnected during log download'); this.logDataDownload = null }
     if (this.ftpDownload) { if (this.ftpDownload.inactivityTimer) clearTimeout(this.ftpDownload.inactivityTimer); clearTimeout(this.ftpDownload.hardTimer); this.ftpDownload.reject(new Error('Disconnected during FTP download')); this.ftpDownload = null }
     if (this.parameterDownload) { prm.finishParamDownload(this.pc); this.parameterDownload = null }
@@ -455,7 +475,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   }
 
   /** Every frame the link parser accepts (reassembled, CRC-checked, signature stripped). */
-  onMavlinkFrame(callback: (frame: MAVLinkFrame) => void): () => void { return this.parser.onFrame(callback) }
+  onMavlinkFrame(callback: (frame: MAVLinkFrame) => void): () => void { return this.listenFrames((frame) => callback(frame)) }
 
   /** Set to true when the MAVLink Inspector / diagnostics panel is open. */
   diagnosticsEnabled = false
@@ -488,9 +508,9 @@ export class MAVLinkAdapter implements DroneProtocol {
   }
 
   // ── Context helpers ────────────────────────────────────
-  private get cc(): cmds.CommandContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, commandQueue: this.commandQueue, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, sendCommandLong: this.sendCommandLong.bind(this), sendCommandInt: this.sendCommandIntTracked.bind(this) } }
+  private get cc(): cmds.CommandContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, commandQueue: this.commandQueue, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, homeAltitudeAmsl: this.homeAltitudeAmsl, sendCommandLong: this.sendCommandLong.bind(this), sendCommandInt: this.sendCommandIntTracked.bind(this) } }
   private get pc(): prm.ParamContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, paramCache: this.paramCache, PARAM_CACHE_TTL_MS: 300000, parameterDownload: this.parameterDownload, downloadedParamNames: this.downloadedParamNames, onParameter: this.onParameter.bind(this) } }
-  private get mc(): msn.MissionContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, missionUpload: this.missionUpload, missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload, fenceUpload: this.fenceUpload, fenceDownload: this.fenceDownload, sendCommandLong: this.sendCommandLong.bind(this), onParameter: this.onParameter.bind(this), onFencePoint: this.onFencePoint.bind(this), getParameter: this.getParameter.bind(this), setParameter: this.setParameter.bind(this) } }
+  private get mc(): msn.MissionContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, missionUpload: this.missionUpload, missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload, fenceUpload: this.fenceUpload, fenceDownload: this.fenceDownload, sendCommandLong: this.sendCommandLong.bind(this) } }
   private get lc(): logOps.LogContext { return { transport: this.commandTransport, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, logListDownload: this.logListDownload, logDataDownload: this.logDataDownload } }
   private get fc(): ftpOps.FtpContext { const c = this._ftpCtx; c.transport = this.commandTransport; c.targetSysId = this.targetSysId; c.targetCompId = this.targetCompId; c.sysId = this.sysId; c.compId = this.compId; return c }
 
@@ -637,9 +657,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async downloadMission() { const c = this.mc; const p = msn.downloadMission(c); this.missionDownload = c.missionDownload as msn.MissionDownloadState | null; const r = await p; this.missionDownload = c.missionDownload as msn.MissionDownloadState | null; return r }
   async setCurrentMissionItem(seq: number) { return msn.setCurrentMissionItem(this.mc, seq) }
   async clearMission() { const c = this.mc; const r = await msn.clearMission(c); this.missionUpload = c.missionUpload as msn.MissionUploadState | null; return r }
-  async uploadFence(pts: Array<{ lat: number; lon: number }>) { return msn.uploadFence(this.mc, pts) }
-  async downloadFence() { return msn.downloadFence(this.mc) }
-  async uploadFenceMission(elements: import('./types').FenceElement[]) { const c = this.mc; const p = msn.uploadFenceMission(c, elements); this.fenceUpload = c.fenceUpload; const r = await p; this.fenceUpload = c.fenceUpload; return r }
+  async uploadFenceMission(elements: FenceElement[]) { const c = this.mc; const p = msn.uploadFenceMission(c, elements); this.fenceUpload = c.fenceUpload; const r = await p; this.fenceUpload = c.fenceUpload; return r }
   async downloadFenceMission() { const c = this.mc; const p = msn.downloadFenceMission(c); this.fenceDownload = c.fenceDownload; const r = await p; this.fenceDownload = c.fenceDownload; return r }
   async uploadRallyPoints(pts: Array<{ lat: number; lon: number; alt: number }>) { const c = this.mc; const p = msn.uploadRallyPoints(c, pts); this.rallyUpload = c.rallyUpload as msn.RallyUploadState | null; const r = await p; this.rallyUpload = c.rallyUpload as msn.RallyUploadState | null; return r }
   async downloadRallyPoints() { const c = this.mc; const p = msn.downloadRallyPoints(c); this.rallyDownload = c.rallyDownload as msn.RallyDownloadState | null; const r = await p; this.rallyDownload = c.rallyDownload as msn.RallyDownloadState | null; return r }

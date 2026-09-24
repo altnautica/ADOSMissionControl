@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, memo } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useProgrammingStore, LOGIC_CONDITION_MAX } from "@/stores/programming-store";
 import type { INavLogicCondition } from "@/lib/protocol/msp/msp-decoders-inav";
 import { PanelHeader } from "../../shared/PanelHeader";
@@ -91,7 +91,7 @@ const LogicConditionRow = memo(function LogicConditionRow({ idx, cond, status, s
       >
         <div
           className={cn(
-            "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform",
+            "absolute top-0.5 w-3 h-3 rounded-full bg-text-primary transition-transform",
             cond.enabled ? "translate-x-4" : "translate-x-0.5",
           )}
         />
@@ -178,7 +178,7 @@ const LogicConditionRow = memo(function LogicConditionRow({ idx, cond, status, s
 // ── Component ─────────────────────────────────────────────────
 
 export function LogicConditionsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { isArmed } = useArmedLock();
 
@@ -195,12 +195,12 @@ export function LogicConditionsPanel() {
   const startPolling = useProgrammingStore((s) => s.startPolling);
   const stopPolling = useProgrammingStore((s) => s.stopPolling);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasLoaded = useProgrammingStore((s) => s.loaded);
 
   // Live status polling while armed
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     if (isArmed) {
       startPolling(protocol);
@@ -208,10 +208,10 @@ export function LogicConditionsPanel() {
       stopPolling();
     }
     return () => stopPolling();
-  }, [isArmed, getSelectedProtocol, startPolling, stopPolling]);
+  }, [isArmed, selectedProtocol, startPolling, stopPolling]);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -223,10 +223,10 @@ export function LogicConditionsPanel() {
     } else {
       toast("Logic conditions loaded from FC", "success");
     }
-  }, [getSelectedProtocol, loadFromFc, toast]);
+  }, [selectedProtocol, loadFromFc, toast]);
 
   const handleWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -238,7 +238,7 @@ export function LogicConditionsPanel() {
     } else {
       toast("Logic conditions written to FC", "success");
     }
-  }, [getSelectedProtocol, uploadConditions, toast]);
+  }, [selectedProtocol, uploadConditions, toast]);
 
   // Live values are shown only while the last status read is recent.
   useClockTick();

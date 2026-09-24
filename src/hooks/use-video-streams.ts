@@ -58,7 +58,7 @@ function inferRole(cam: CameraCapability): StreamRole | undefined {
 }
 
 /** Build `switchable` descriptors from the capability roster (order preserved;
- * every camera switches the encoder's `primary` slot to its device). */
+ * selecting one switches the encoder to that camera's device). */
 function camerasToDescriptors(cameras: CameraCapability[]): StreamDescriptor[] {
   return cameras.map((cam, i) => ({
     id: cam.device || cam.name || `camera-${i}`,
@@ -66,7 +66,6 @@ function camerasToDescriptors(cameras: CameraCapability[]): StreamDescriptor[] {
     label: cam.name,
     role: inferRole(cam),
     kind: "switchable" as const,
-    cameraRole: "primary" as const,
     devicePath: cam.device,
   }));
 }
@@ -204,9 +203,7 @@ export function useVideoStreams(droneId: string): void {
       // across the restart), so the timer is the clear mechanism, with the tabs
       // disabled meanwhile to keep restarts from stacking.
       useVideoStreamsStore.getState().setSwitching(droneId, true);
-      Promise.resolve(
-        client.switchCamera(target.cameraRole ?? "primary", target.devicePath),
-      )
+      Promise.resolve(client.switchCamera(target.devicePath))
         .catch(() => {
           // Leave the population effect to reconcile the roster on the next poll.
         })

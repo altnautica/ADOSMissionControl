@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -21,7 +21,7 @@ const MAX_ADJUSTMENTS = 30;
 const clampPwm = (pwm: number) => Math.max(900, Math.min(2100, pwm));
 
 export function AdjustmentsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const scrollRef = usePanelScroll("adjustments");
 
@@ -32,15 +32,15 @@ export function AdjustmentsPanel() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const connected = !!getSelectedProtocol();
-  const canSave = !!getSelectedProtocol()?.setAdjustmentRanges;
+  const connected = !!selectedProtocol;
+  const canSave = !!selectedProtocol?.setAdjustmentRanges;
   const hasDirty = useMemo(() => JSON.stringify(ranges) !== JSON.stringify(original), [ranges, original]);
   useUnsavedGuard(hasDirty);
 
   const latestRc = useFreshTelemetry("rc");
 
   const read = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getAdjustmentRanges) {
       setError("Adjustment ranges are not available on this connection");
       return;
@@ -57,14 +57,14 @@ export function AdjustmentsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const readRef = useRef(read);
   readRef.current = read;
   useEffect(() => { readRef.current(); }, []);
 
   async function handleSave() {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setAdjustmentRanges) return;
     setSaving(true);
     try {

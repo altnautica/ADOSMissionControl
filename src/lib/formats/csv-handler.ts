@@ -14,7 +14,7 @@
  */
 
 import type { AltitudeFrame, Waypoint, WaypointCommand } from "@/lib/types";
-import { cmdMap } from "@/lib/mission-io-formats";
+import { cmdMap } from "@/lib/mission/command-map";
 import {
   flattenForSerialization,
   foldLegacyWaypoints,

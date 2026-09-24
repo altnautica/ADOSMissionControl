@@ -8,23 +8,29 @@
  */
 
 import type { Waypoint } from "@/lib/types";
-import { EARTH_RADIUS_M } from "@/lib/geo/distance";
+import { EARTH_RADIUS_M, lonDelta, normalizeLon } from "@/lib/geo/distance";
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
 
 /**
- * Compute the geographic centroid of a set of waypoints.
+ * Compute the geographic centroid of a set of waypoints. Longitudes are
+ * averaged as offsets from the first waypoint, so a mission straddling the
+ * antimeridian centres on it rather than on the far side of the planet.
  */
 function centroid(waypoints: Waypoint[]): [number, number] {
   if (waypoints.length === 0) return [0, 0];
+  const refLon = waypoints[0].lon;
   let sumLat = 0;
-  let sumLon = 0;
+  let sumDLon = 0;
   for (const wp of waypoints) {
     sumLat += wp.lat;
-    sumLon += wp.lon;
+    sumDLon += lonDelta(refLon, wp.lon);
   }
-  return [sumLat / waypoints.length, sumLon / waypoints.length];
+  return [
+    sumLat / waypoints.length,
+    normalizeLon(refLon + sumDLon / waypoints.length),
+  ];
 }
 
 type PointMap = (lat: number, lon: number) => [number, number];
@@ -35,13 +41,13 @@ type PointMap = (lat: number, lon: number) => [number, number];
  */
 function mapPositions(waypoints: Waypoint[], f: PointMap): Waypoint[] {
   return waypoints.map((wp) => {
-    const [lat, lon] = f(wp.lat, wp.lon);
-    const next: Waypoint = { ...wp, lat, lon };
+    const [lat, rawLon] = f(wp.lat, wp.lon);
+    const next: Waypoint = { ...wp, lat, lon: normalizeLon(rawLon) };
     if (wp.actions?.some((a) => a.command !== "RAW" && a.lat !== undefined && a.lon !== undefined)) {
       next.actions = wp.actions.map((a) => {
         if (a.command === "RAW" || a.lat === undefined || a.lon === undefined) return a;
         const [aLat, aLon] = f(a.lat, a.lon);
-        return { ...a, lat: aLat, lon: aLon };
+        return { ...a, lat: aLat, lon: normalizeLon(aLon) };
       });
     }
     return next;
@@ -143,7 +149,7 @@ export function scaleMissionFromPoint(
   if (waypoints.length === 0 || factor === 1) return [...waypoints];
   return mapPositions(waypoints, (lat, lon) => [
     centerLat + (lat - centerLat) * factor,
-    centerLon + (lon - centerLon) * factor,
+    centerLon + lonDelta(centerLon, lon) * factor,
   ]);
 }
 
@@ -160,7 +166,7 @@ export function mirrorMission(
   const [cLat, cLon] = centroid(waypoints);
   return mapPositions(waypoints, (lat, lon) => [
     axis === "lon" ? 2 * cLat - lat : lat,
-    axis === "lat" ? 2 * cLon - lon : lon,
+    axis === "lat" ? cLon - lonDelta(cLon, lon) : lon,
   ]);
 }
 
@@ -183,7 +189,7 @@ function rotatePoint(
   const sinA = Math.sin(angleRad);
   // Apply longitude correction for latitude
   const lonScale = Math.cos(centerLat * DEG_TO_RAD);
-  const dx = (lon - centerLon) * lonScale;
+  const dx = lonDelta(centerLon, lon) * lonScale;
   const dy = lat - centerLat;
   const rx = dx * cosA + dy * sinA;
   const ry = -dx * sinA + dy * cosA;

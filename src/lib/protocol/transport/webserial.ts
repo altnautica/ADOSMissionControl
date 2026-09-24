@@ -12,6 +12,12 @@ type TransportEventMap = {
   error: Error;
 };
 
+/**
+ * Receive buffer requested from the browser. Its default is 255 bytes, which a
+ * MAVLink stream overruns whenever the page stalls for a few milliseconds.
+ */
+const SERIAL_RX_BUFFER_BYTES = 1 << 16;
+
 export class WebSerialTransport implements Transport {
   readonly type = "webserial" as const;
   /**
@@ -82,18 +88,15 @@ export class WebSerialTransport implements Transport {
     if (!this.port) throw new Error("No serial port");
     await WebSerialTransport.ensurePortClosed(this.port);
     try {
-      await this.port.open({ baudRate });
+      await this.port.open({ baudRate, bufferSize: SERIAL_RX_BUFFER_BYTES });
     } catch (err) {
       throw WebSerialTransport.formatOpenError(err);
     }
     this._connected = true;
-    if (this.port.readable) {
-      this.reader = this.port.readable.getReader();
-    }
     if (this.port.writable) {
       this.writer = this.port.writable.getWriter();
     }
-    this.readLoop();
+    void this.readLoop(this.port);
   }
 
   /**
@@ -140,22 +143,39 @@ export class WebSerialTransport implements Transport {
     }
   }
 
-  /** Continuous read loop — runs until disconnect or device removal. */
-  private async readLoop(): Promise<void> {
-    if (!this.reader) return;
-
+  /**
+   * Continuous read loop — runs until disconnect or device removal.
+   *
+   * A buffer overrun, framing, parity or break error errors only the current
+   * stream: the port then offers a fresh `readable` and the link carries on.
+   * Treating that as a disconnect dropped a live vehicle whenever the page
+   * stalled long enough to overrun the receive buffer. The link ends when the
+   * port has no readable left (device lost) or the reader is cancelled.
+   */
+  private async readLoop(port: SerialPort): Promise<void> {
     try {
-      while (this._connected) {
-        const { value, done } = await this.reader.read();
-        if (done) break;
-        if (value) {
-          this.emit("data", value);
+      while (this._connected && port.readable) {
+        const reader = port.readable.getReader();
+        this.reader = reader;
+        let ended = false;
+        try {
+          while (this._connected) {
+            const { value, done } = await reader.read();
+            if (done) {
+              ended = true;
+              break;
+            }
+            if (value) this.emit("data", value);
+          }
+        } catch (err) {
+          if (this._connected) {
+            this.emit("error", err instanceof Error ? err : new Error(String(err)));
+          }
+        } finally {
+          reader.releaseLock();
+          if (this.reader === reader) this.reader = null;
         }
-      }
-    } catch (err) {
-      // Device disconnected or read error
-      if (this._connected) {
-        this.emit("error", err instanceof Error ? err : new Error(String(err)));
+        if (ended) break;
       }
     } finally {
       if (this._connected && !this._disconnecting) {
@@ -187,7 +207,6 @@ export class WebSerialTransport implements Transport {
     try {
       if (this.reader) {
         await this.reader.cancel().catch(() => {});
-        this.reader.releaseLock();
         this.reader = null;
       }
       if (this.writer) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { Radio, Filter, Pause, Play, Download, Trash2, ArrowUpDown } from "lucide-react";
 import { RingBuffer } from "@/lib/ring-buffer";
 import { MSG_NAMES } from "@/lib/protocol/mavlink-adapter-frame-handlers";
@@ -26,7 +26,7 @@ function formatTime(ts: number): string {
 
 export function MavlinkInspectorPanel() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
 
   // Frames live in a ring mutated in place; `version` re-renders at most once a frame.
   const [ring] = useState(() => new RingBuffer<InspectorMessage>(MAX_MESSAGES));
@@ -46,7 +46,7 @@ export function MavlinkInspectorPanel() {
   useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     ratesRef.current = new Map();
     if (!protocol?.onMavlinkFrame) return;
     return protocol.onMavlinkFrame((frame) => {
@@ -61,7 +61,7 @@ export function MavlinkInspectorPanel() {
         setVersion((v) => v + 1);
       });
     });
-  }, [selectedDroneId, getSelectedProtocol, ring]);
+  }, [selectedDroneId, selectedProtocol, ring]);
 
   useEffect(() => () => cancelAnimationFrame(frameRef.current ?? 0), []);
 

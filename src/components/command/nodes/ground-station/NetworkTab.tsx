@@ -79,7 +79,8 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
   const [ssid, setSsid] = useState("");
   const [passphrase, setPassphrase] = useState("");
   const [channel, setChannel] = useState<number>(6);
-  const [enabled, setEnabled] = useState<boolean>(true);
+  // Null while the agent cannot say whether the AP is enabled.
+  const [enabled, setEnabled] = useState<boolean | null>(true);
   const [revealPass, setRevealPass] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -133,7 +134,7 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
     if (!client || !ap) return;
     setSaving(true);
     const update: { enabled?: boolean; ssid?: string; passphrase?: string; channel?: number } = {};
-    if (enabled !== ap.enabled) update.enabled = enabled;
+    if (enabled !== null && enabled !== ap.enabled) update.enabled = enabled;
     if (ssid !== ap.ssid) update.ssid = ssid;
     if (passphrase !== ap.passphrase) update.passphrase = passphrase;
     if (channel !== ap.channel) update.channel = channel;

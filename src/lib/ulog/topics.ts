@@ -1,6 +1,12 @@
 /**
  * PX4 uORB topic → canonical TelemetryFrame channel mapping.
  *
+ * A topic maps to a channel only when its rows normalize to that channel's
+ * contract (the live telemetry shapes in `@/lib/types/telemetry`, in the same
+ * units). A topic whose row has no faithful mapping is left out rather than
+ * passed through raw: a raw uORB row under a channel's name renders as empty
+ * or wrong-unit series, and interleaves with the rows that do conform.
+ *
  * @module ulog/topics
  * @license GPL-3.0-only
  */
@@ -12,67 +18,40 @@ export const TOPIC_TO_CHANNEL: Record<string, string> = {
   vehicle_local_position: "localPosition",
   vehicle_global_position: "globalPosition",
 
-  // Attitude
   vehicle_attitude: "attitude",
-
-  // Battery
   battery_status: "battery",
 
-  // GPS
+  // The blended solution the estimator uses. The per-receiver sensor_gps
+  // instances would interleave a second receiver's fixes into the same series.
   vehicle_gps_position: "gps",
-  sensor_gps: "gps",
 
-  // VFR-equivalent (airdata)
+  // Barometric altitude.
   vehicle_air_data: "vfr",
-  airspeed_validated: "vfr",
 
-  // IMU
+  // Accelerometer + gyro in one row.
   sensor_combined: "scaledImu",
-  sensor_accel: "scaledImu",
-  sensor_gyro: "scaledImu",
-  vehicle_imu: "scaledImu",
 
-  // Vibration
-  sensor_accel_fifo: "vibration",
-  estimator_sensor_bias: "vibration",
-
-  // Servo / actuator outputs
   actuator_outputs: "servoOutput",
-  actuator_controls_0: "servoOutput",
-
-  // RC input
-  manual_control_setpoint: "rc",
   input_rc: "rc",
-  rc_channels: "rc",
 
-  // Wind
+  // The topic was renamed; a log carries one or the other.
   wind_estimate: "wind",
   wind: "wind",
 
-  // EKF
   estimator_status: "ekf",
-  estimator_states: "ekf",
-  vehicle_local_position_groundtruth: "ekf",
-
-  // Vehicle status (for arm/disarm detection)
-  vehicle_status: "sysStatus",
-
-  // Magnetometer
-  vehicle_magnetometer: "scaledImu",
-  sensor_mag: "scaledImu",
-
-  // Terrain
   distance_sensor: "distanceSensor",
-
-  // Home
   home_position: "homePosition",
 };
+
+/** Standard gravity, m/s², for the m/s² → mg conversion. */
+const G = 9.80665;
 
 /**
  * Transform a PX4 uORB topic row into the GCS-expected data shape.
  *
- * PX4 field names differ from MAVLink. This normalizes the most common
- * fields so the existing telemetry store and chart infrastructure works.
+ * PX4 field names and units differ from MAVLink. This normalizes each mapped
+ * topic to the live telemetry contract; a field the row does not carry stays
+ * absent rather than defaulting to 0.
  */
 export function normalizeTopicData(
   topic: string,
@@ -90,16 +69,22 @@ export function normalizeTopicData(
       };
 
     // `relativeAlt` (height above home) is not a field of this topic; the
-    // flight builder derives it from `alt` and the home altitude.
+    // flight builder derives it from `alt` and the home altitude. Current PX4
+    // carries no velocity or yaw here (they live in vehicle_local_position,
+    // which the flight builder joins in); an older log that still has
+    // vel_n/vel_e/yaw is read directly.
     case "vehicle_global_position": {
-      // PositionData.heading is degrees 0..360; the topic's yaw is radians.
+      const velN = num(row.vel_n);
+      const velE = num(row.vel_e);
       const yaw = num(row.yaw);
       return {
         lat: num(row.lat),
         lon: num(row.lon),
         alt: num(row.alt),
-        groundSpeed: Math.sqrt((num(row.vel_n) ?? 0) ** 2 + (num(row.vel_e) ?? 0) ** 2),
-        heading: yaw === undefined ? undefined : ((yaw * RAD_TO_DEG) % 360 + 360) % 360,
+        ...(velN !== undefined && velE !== undefined
+          ? { groundSpeed: Math.hypot(velN, velE) }
+          : {}),
+        ...(yaw !== undefined ? { heading: radToHeading(yaw) } : {}),
       };
     }
 
@@ -116,25 +101,38 @@ export function normalizeTopicData(
       };
     }
 
-    case "battery_status":
+    // `remaining` is a 0..1 fraction, negative when the estimator has none;
+    // the battery contract marks "not estimated" with -1.
+    case "battery_status": {
+      const remaining = num(row.remaining);
       return {
         voltage: num(row.voltage_v) ?? num(row.voltage_filtered_v),
         current: num(row.current_a) ?? num(row.current_filtered_a),
-        remaining: num(row.remaining) !== undefined ? (num(row.remaining)! * 100) : undefined,
+        remaining: remaining === undefined || remaining < 0 ? -1 : remaining * 100,
         consumed: num(row.discharged_mah),
         temperature: num(row.temperature),
       };
+    }
 
-    case "vehicle_gps_position":
-    case "sensor_gps":
+    // PX4 1.14 moved the fix to float64 degrees / metres
+    // (latitude_deg, longitude_deg, altitude_msl_m); older logs carry the
+    // int32 1e-7 degree / mm fields.
+    case "vehicle_gps_position": {
+      const latDeg = num(row.latitude_deg);
+      const lonDeg = num(row.longitude_deg);
+      const altM = num(row.altitude_msl_m);
+      const lat = num(row.lat);
+      const lon = num(row.lon);
+      const alt = num(row.alt);
       return {
         fixType: num(row.fix_type),
         satellites: num(row.satellites_used),
         hdop: num(row.hdop),
-        lat: num(row.lat) !== undefined ? num(row.lat)! / 1e7 : undefined,
-        lon: num(row.lon) !== undefined ? num(row.lon)! / 1e7 : undefined,
-        alt: num(row.alt) !== undefined ? num(row.alt)! / 1e3 : undefined,
+        lat: latDeg ?? (lat !== undefined ? lat / 1e7 : undefined),
+        lon: lonDeg ?? (lon !== undefined ? lon / 1e7 : undefined),
+        alt: altM ?? (alt !== undefined ? alt / 1e3 : undefined),
       };
+    }
 
     // Barometric altitude only: the topic carries no throttle, airspeed,
     // groundspeed or heading, so none is reported.
@@ -142,36 +140,74 @@ export function normalizeTopicData(
       return { alt: num(row.baro_alt_meter) };
 
     case "wind_estimate":
-    case "wind":
+    case "wind": {
+      const north = num(row.windspeed_north);
+      const east = num(row.windspeed_east);
+      if (north === undefined || east === undefined) return {};
       return {
-        direction: num(row.windspeed_north) !== undefined
-          ? (Math.atan2(-(num(row.windspeed_east) ?? 0), -(num(row.windspeed_north) ?? 0)) * 180 / Math.PI + 360) % 360
-          : undefined,
-        speed: Math.sqrt((num(row.windspeed_north) ?? 0) ** 2 + (num(row.windspeed_east) ?? 0) ** 2),
+        // The direction the wind blows FROM, degrees.
+        direction: (Math.atan2(-east, -north) * RAD_TO_DEG + 360) % 360,
+        speed: Math.hypot(north, east),
       };
+    }
 
-    case "manual_control_setpoint":
+    // PWM microseconds, the same unit as MAVLink RC_CHANNELS.
     case "input_rc":
-    case "rc_channels":
       return {
-        channels: row.values ?? row.channels ?? [
-          num(row.x) ?? 0, num(row.y) ?? 0, num(row.z) ?? 0, num(row.r) ?? 0,
-        ],
+        channels: Array.isArray(row.values) ? row.values : [],
+        rssi: num(row.rssi),
       };
 
+    // Output values in the actuator's own unit (PWM microseconds on a PWM
+    // output), the live ServoOutputData shape.
     case "actuator_outputs":
-      return { channels: row.output ?? [] };
+      return { servos: Array.isArray(row.output) ? row.output : [] };
 
+    // SCALED_IMU units: accelerometer in mg, gyro in mrad/s.
     case "sensor_combined": {
       const acc = Array.isArray(row.accelerometer_m_s2) ? row.accelerometer_m_s2 as number[] : [];
       const gyro = Array.isArray(row.gyro_rad) ? row.gyro_rad as number[] : [];
+      const mg = (v: unknown) => {
+        const n = num(v);
+        return n === undefined ? undefined : (n / G) * 1000;
+      };
+      const mrad = (v: unknown) => {
+        const n = num(v);
+        return n === undefined ? undefined : n * 1000;
+      };
       return {
-        xacc: num(acc[0]),
-        yacc: num(acc[1]),
-        zacc: num(acc[2]),
-        xgyro: num(gyro[0]),
-        ygyro: num(gyro[1]),
-        zgyro: num(gyro[2]),
+        xacc: mg(acc[0]),
+        yacc: mg(acc[1]),
+        zacc: mg(acc[2]),
+        xgyro: mrad(gyro[0]),
+        ygyro: mrad(gyro[1]),
+        zgyro: mrad(gyro[2]),
+      };
+    }
+
+    // The innovation test ratios, which is what PX4 itself reports in the
+    // variance fields of MAVLink EKF_STATUS_REPORT.
+    case "estimator_status":
+      return {
+        velocityVariance: num(row.vel_test_ratio),
+        posHorizVariance: num(row.pos_test_ratio),
+        posVertVariance: num(row.hgt_test_ratio),
+        compassVariance: num(row.mag_test_ratio),
+        terrainAltVariance: num(row.hagl_test_ratio),
+        flags: num(row.solution_status_flags),
+      };
+
+    // Metres on the topic; centimetres in the live DISTANCE_SENSOR contract.
+    case "distance_sensor": {
+      const cm = (v: unknown) => {
+        const n = num(v);
+        return n === undefined ? undefined : n * 100;
+      };
+      return {
+        currentDistance: cm(row.current_distance),
+        minDistance: cm(row.min_distance),
+        maxDistance: cm(row.max_distance),
+        orientation: num(row.orientation),
       };
     }
 
@@ -186,6 +222,11 @@ const RAD_TO_DEG = 180 / Math.PI;
 
 function num(v: unknown): number | undefined {
   return typeof v === "number" && isFinite(v) ? v : undefined;
+}
+
+/** Radians (any range) → compass heading degrees in [0, 360). */
+export function radToHeading(rad: number): number {
+  return ((rad * RAD_TO_DEG) % 360 + 360) % 360;
 }
 
 function quatToEulerRoll(q: number[]): number {

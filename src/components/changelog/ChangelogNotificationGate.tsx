@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";
 import { ChangelogNotificationModal } from "./ChangelogNotificationModal";
 

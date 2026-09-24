@@ -8,12 +8,12 @@
  * EXPOSURE RULES for this file, because every function here sits on the
  * boundary between an unauthenticated caller and an agent credential:
  *
- *   - `registerAgent` and `getPairingStatus` are INTERNAL. They are the
- *     agent-facing half of the flow and are reached only through their HTTP
- *     routes in `http.ts`, which supply the source-address bucket key and the
- *     device's own API key respectively. As public mutations they let any
+ *   - `registerAgent` is INTERNAL. It is the agent-facing half of the flow,
+ *     reached only through the `/pairing/register` route in `http.ts`, which
+ *     supplies the source-address bucket key. As a public mutation it let any
  *     browser holding a `ConvexReactClient` write an attacker-chosen `apiKey`
- *     keyed by `deviceId`, and read a claim oracle for any guessed device id.
+ *     keyed by `deviceId`. The agent learns it was claimed from that route's
+ *     answer, so there is no separate claim-status read.
  *   - `claimPairingCodeAnon` never returns an agent API key. The browser gets
  *     the agent's network address and pairs LAN-direct, taking the key from the
  *     agent itself over `/api/pairing/claim`. A six-character code is a weak
@@ -445,39 +445,6 @@ export const preGenerateCode = mutation({
   },
 });
 
-/**
- * Agent polls to check if its code was claimed.
- *
- * INTERNAL, and it authorizes the caller itself rather than trusting its route:
- * the presented key must match the one this device registered with. As a public
- * `query({ deviceId })` this was a claim oracle — anyone who guessed or scraped
- * a device id learned whether it was registered, whether it had been claimed,
- * and (in the production twin) the claiming account's user id.
- */
-export const getPairingStatus = internalQuery({
-  args: { deviceId: v.string(), apiKey: v.string() },
-  handler: async (ctx, { deviceId, apiKey }) => {
-    const request = await ctx.db
-      .query("cmd_pairingRequests")
-      .withIndex("by_deviceId", (q) => q.eq("deviceId", deviceId))
-      .first();
-
-    // One answer for "no such device" and "wrong key", so the route cannot be
-    // walked to enumerate device ids.
-    if (!request || !agentKeyMatches(request.apiKey, apiKey)) {
-      return { authorized: false as const };
-    }
-
-    return {
-      authorized: true as const,
-      registered: true,
-      claimed: !!request.claimedBy,
-      claimedBy: request.claimedBy,
-      claimedAt: request.claimedAt,
-    };
-  },
-});
-
 /** User sees their pre-generated (unclaimed) codes. */
 export const getMyPendingCodes = query({
   args: {},
@@ -775,10 +742,10 @@ const CLEAN_EXPIRED_BATCH = 256;
  * next tick.
  *
  * A CLAIMED row is never deleted. `expiresAt` bounds how long an unclaimed
- * CODE stays offerable; it is not a lifetime for the pairing itself. Deleting
- * claimed rows made `/pairing/status` answer `{authorized:false}` -> 401 about
- * fifteen minutes after a SUCCESSFUL pairing, and a re-registering agent then
- * displayed a fresh pairing code for a drone that was already paired.
+ * CODE stays offerable; it is not a lifetime for the pairing itself. A
+ * re-registering agent reads `alreadyClaimed` off its claimed row; deleting
+ * that row would make it display a fresh pairing code for a drone that was
+ * already paired.
  */
 export const cleanExpiredRequests = internalMutation({
   args: {},

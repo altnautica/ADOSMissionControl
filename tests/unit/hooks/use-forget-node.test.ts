@@ -27,7 +27,7 @@ vi.mock("next-intl", () => ({
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: toastFn }),
 }));
-vi.mock("@/app/ConvexClientProvider", () => ({
+vi.mock("@/hooks/use-convex-available", () => ({
   useConvexAvailable: () => convexState.available,
 }));
 vi.mock("@/lib/agent/forget-node", async (importOriginal) => {

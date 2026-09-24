@@ -10,7 +10,7 @@ const isDemoModeMock = vi.fn(() => false);
 vi.mock("convex/react", () => ({
   useQuery: (...args: unknown[]) => useQueryMock(...args),
 }));
-vi.mock("@/app/ConvexClientProvider", () => ({
+vi.mock("@/hooks/use-convex-available", () => ({
   useConvexAvailable: () => useConvexAvailableMock(),
 }));
 vi.mock("@/lib/utils", async () => {

@@ -13,6 +13,7 @@ import {
   applyJitterTarget,
   NEGOTIATED_JITTER_TARGET_MS,
 } from "@/lib/video/webrtc/jitter-controller";
+import { closePeerConnection } from "@/lib/video/webrtc/teardown";
 
 export type AgentVideoSessionState = "idle" | "connecting" | "connected" | "failed";
 
@@ -28,21 +29,6 @@ interface AgentVideoSessionResult {
 }
 
 const emptyStats: AgentVideoSessionStats = { fps: 0, bitrateKbps: 0 };
-
-function closePeerConnection(pc: RTCPeerConnection | null): void {
-  if (!pc) return;
-  try {
-    pc.ontrack = null;
-    pc.onconnectionstatechange = null;
-    pc.onicegatheringstatechange = null;
-  } catch { /* noop */ }
-  try {
-    pc.getReceivers().forEach((receiver) => receiver.track?.stop());
-  } catch { /* noop */ }
-  try {
-    pc.close();
-  } catch { /* noop */ }
-}
 
 export function useAgentVideoSession({
   whepUrl,

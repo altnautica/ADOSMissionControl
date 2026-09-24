@@ -19,7 +19,7 @@
  */
 
 import { useSettingsStore } from "@/stores/settings-store";
-import type { StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
 
 /** The severities a battery reading can carry, as shared status levels. */
 export type BatteryBand = Extract<StatusLevel, "critical" | "warning" | "good">;

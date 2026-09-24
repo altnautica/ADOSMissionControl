@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { NAV_COMMAND_OPTIONS } from "../../../src/components/planner/waypoint-constants";
-import { cmdMap } from "../../../src/lib/mission-io-formats";
+import { cmdMap } from "../../../src/lib/mission/command-map";
 import { createPX4Handler } from "../../../src/lib/protocol/firmware/px4";
 
 /** The same predicate WaypointListItem applies to NAV_COMMAND_OPTIONS. */

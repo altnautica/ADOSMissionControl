@@ -10,7 +10,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { formatErrorMessage } from "@/lib/utils";
 import { openForwardedDroneCanSession, type DroneCanSession } from "@/lib/dronecan/session";
 
@@ -20,7 +20,7 @@ export type DroneCanSessionState =
   | { status: "open"; bus: number; session: DroneCanSession };
 
 export function useDroneCanSession() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const [state, setState] = useState<DroneCanSessionState>({ status: "closed", error: null });
   const live = useRef<DroneCanSession | null>(null);
@@ -33,7 +33,7 @@ export function useDroneCanSession() {
   }, []);
 
   const open = useCallback(async (bus: number) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     await close();
     setState({ status: "opening", bus });
@@ -44,7 +44,7 @@ export function useDroneCanSession() {
     } catch (err) {
       setState({ status: "closed", error: formatErrorMessage(err) });
     }
-  }, [getSelectedProtocol, close]);
+  }, [selectedProtocol, close]);
 
   // A session belongs to the drone it was opened on.
   useEffect(() => {

@@ -136,12 +136,12 @@ describe("cmd_droneStatus twin parity", () => {
     const http = readFileSync(OSS_HTTP, "utf-8");
 
     // Server-stamped / route-supplied fields never come off the body, plus the
-    // four the route does not forward because the cloud heartbeat does not
+    // three the route does not forward because the cloud heartbeat does not
     // carry them at the root (see the comment beside `peripherals` in
     // `convex/http.ts`). `peripherals` is NOT among them: the agent does send
     // it, and dropping it left cmd_drones.attachedDisplayType permanently
     // undefined. Every other declared arg MUST be picked; the list is asserted
-    // below so an eighth entry has to be added on purpose.
+    // below so a seventh entry has to be added on purpose.
     const NOT_FROM_BODY: Record<string, true> = {
       updatedAt: true,
       apiKey: true,
@@ -149,13 +149,11 @@ describe("cmd_droneStatus twin parity", () => {
       scripts: true,
       peers: true,
       enrollment: true,
-      logs: true,
     };
     expect(Object.keys(NOT_FROM_BODY).sort()).toEqual([
       "agentVersion",
       "apiKey",
       "enrollment",
-      "logs",
       "peers",
       "scripts",
       "updatedAt",

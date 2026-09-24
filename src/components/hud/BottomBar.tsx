@@ -42,19 +42,19 @@ export function BottomBar() {
 
   return (
     <div className="absolute bottom-0 left-0 right-0 h-48 px-6 pb-4 flex items-end justify-between pointer-events-none">
-      <div className="flex flex-col items-center gap-1 bg-black/40 backdrop-blur-sm px-3 py-2 rounded">
-        <span className="text-[10px] uppercase tracking-wider text-white/60 font-mono">{t("strip.hdg")}</span>
-        <span className="text-xl font-mono text-white">{headingDeg}</span>
+      <div className="flex flex-col items-center gap-1 bg-scrim/40 backdrop-blur-sm px-3 py-2 rounded">
+        <span className="text-[10px] uppercase tracking-wider text-on-media/60 font-mono">{t("strip.hdg")}</span>
+        <span className="text-xl font-mono text-on-media">{headingDeg}</span>
       </div>
 
       <div className="flex flex-col items-center">
         <HorizonSvg pitchDeg={pitchDeg} rollDeg={rollDeg} size={180} />
       </div>
 
-      <div className="flex flex-col items-center gap-1 bg-black/40 backdrop-blur-sm px-3 py-2 rounded">
-        <span className="text-[10px] uppercase tracking-wider text-white/60 font-mono">{t("strip.alt")}</span>
-        <span className="text-xl font-mono text-white">{altitudeM}</span>
-        <span className="text-[10px] uppercase tracking-wider text-white/60 font-mono">m</span>
+      <div className="flex flex-col items-center gap-1 bg-scrim/40 backdrop-blur-sm px-3 py-2 rounded">
+        <span className="text-[10px] uppercase tracking-wider text-on-media/60 font-mono">{t("strip.alt")}</span>
+        <span className="text-xl font-mono text-on-media">{altitudeM}</span>
+        <span className="text-[10px] uppercase tracking-wider text-on-media/60 font-mono">m</span>
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { Waves, Save, RotateCcw, HardDrive, Gamepad2, ShieldAlert } from "lucide
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -75,7 +75,7 @@ const SHIFT_BUTTONS: Field[] = Array.from({ length: 16 }, (_, i) => ({
 const ALL_FIELDS = [...DEPTH, ...HORIZ, ...FAILSAFE, ...BUTTONS, ...SHIFT_BUTTONS];
 
 export function SubConfigPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
@@ -93,7 +93,7 @@ export function SubConfigPanel() {
   } = usePanelParams({ paramNames, optionalParams: paramNames, panelId: "sub-config", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   async function handleSave() {

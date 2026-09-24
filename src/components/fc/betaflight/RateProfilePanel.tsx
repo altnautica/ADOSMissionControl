@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -22,7 +22,7 @@ const optionalParams = [...BF_RATE_OPTIONAL_PARAM_NAMES];
 const RATE_LIMIT_MAX = 1998;
 
 export function RateProfilePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("rate-profiles");
 
   const panelParams = usePanelParams({ paramNames, optionalParams, panelId: "rate-profiles", autoLoad: true });
@@ -35,7 +35,7 @@ export function RateProfilePanel() {
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
   const p = (name: string, fallback = 0) => params.get(name) ?? fallback;
   // Firmware without rates_type only has Betaflight rates.

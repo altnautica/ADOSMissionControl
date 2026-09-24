@@ -14,7 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Camera, Save, HardDrive, Aperture, Ruler, Calculator, Timer } from "lucide-react";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
-import { CAMERA_PARAMS, OPTIONAL_CAMERA_PARAMS, CAM_TYPE_OPTIONS, CameraCard as Card } from "./camera-constants";
+import {
+  CAMERA_PARAMS, OPTIONAL_CAMERA_PARAMS, CAM_TYPE_OPTIONS, PX4_TRIG_MODE_OPTIONS,
+  CameraCard as Card,
+} from "./camera-constants";
+import { withCurrent as withCurrentOption } from "../frame/enum-options";
 
 export function CameraPanel() {
   const {
@@ -42,10 +46,20 @@ export function CameraPanel() {
 
   const connected = !!getProtocol();
   const hasDirty = dirtyParams.size > 0;
+  // CAM1_TYPE is ArduPilot's camera type; on PX4 the handler maps it to
+  // TRIG_MODE, whose 0 is likewise "disabled".
   const camEnabled = (params.get("CAM1_TYPE") ?? 0) !== 0;
-  const isServoType = (params.get("CAM1_TYPE") ?? 0) === 1;
+  // ArduPilot type 1 is a servo shutter. PX4's PWM trigger values are shown
+  // whenever the vehicle reports them.
+  const showServo = isPx4
+    ? params.has("CAM1_SERVO_ON") || params.has("CAM1_SERVO_OFF")
+    : params.get("CAM1_TYPE") === 1;
+  const typeOptions = withCurrentOption(
+    isPx4 ? PX4_TRIG_MODE_OPTIONS : CAM_TYPE_OPTIONS,
+    params.get("CAM1_TYPE"),
+  );
 
-  const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
+  const p = (name: string) => String(params.get(name) ?? "");
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
 
   const calculatedTriggerDist = useMemo(() => {
@@ -67,12 +81,16 @@ export function CameraPanel() {
     showFlashResult(ok);
   }
 
-  function handleTrigger() {
+  async function handleTrigger() {
     const protocol = getProtocol();
     if (!protocol) return;
-    // MAV_CMD_DO_DIGICAM_CONTROL would be sent here
-    setImageCount((c) => c + 1);
-    toast("Camera triggered", "success");
+    const result = await protocol.cameraTrigger();
+    if (result.success) {
+      setImageCount((c) => c + 1);
+      toast("Camera triggered", "success");
+    } else {
+      toast(result.message || "Camera trigger refused", "error");
+    }
   }
 
   function applyCalculatedDistance() {
@@ -82,11 +100,12 @@ export function CameraPanel() {
     }
   }
 
-  const doIntervalTrigger = useCallback(() => {
+  // Counts only the captures the vehicle acknowledged.
+  const doIntervalTrigger = useCallback(async () => {
     const protocol = getProtocol();
     if (!protocol) return;
-    protocol.cameraTrigger();
-    setImageCount((c) => c + 1);
+    const result = await protocol.cameraTrigger();
+    if (result.success) setImageCount((c) => c + 1);
   }, [getProtocol]);
 
   function toggleIntervalTrigger() {
@@ -100,8 +119,8 @@ export function CameraPanel() {
         toast("Enter a positive interval", "warning");
         return;
       }
-      doIntervalTrigger();
-      intervalRef.current = setInterval(doIntervalTrigger, intervalSec * 1000);
+      void doIntervalTrigger();
+      intervalRef.current = setInterval(() => void doIntervalTrigger(), intervalSec * 1000);
       setIntervalActive(true);
       toast(`Triggering every ${intervalSec}s`, "success");
     }
@@ -139,50 +158,58 @@ export function CameraPanel() {
           {/* Camera Type */}
           <Card icon={<Camera size={14} />} title="Camera Configuration" description="Camera type and trigger method">
             <Select
-              label={lbl("CAM1_TYPE — Camera Type")}
-              options={CAM_TYPE_OPTIONS}
+              label={lbl(isPx4 ? "CAM1_TYPE — Trigger Mode" : "CAM1_TYPE — Camera Type")}
+              options={typeOptions}
               value={p("CAM1_TYPE")}
               onChange={(v) => set("CAM1_TYPE", v)}
             />
           </Card>
 
           {/* Servo Trigger Settings */}
-          {camEnabled && isServoType && (
+          {camEnabled && showServo && (
             <Card icon={<Aperture size={14} />} title="Servo Trigger" description="PWM values for servo-based shutter">
-              <Input
-                label={lbl("CAM1_SERVO_OFF — Servo Off PWM")}
-                type="number"
-                step="10"
-                min="500"
-                max="2500"
-                unit="μs"
-                value={p("CAM1_SERVO_OFF", "1000")}
-                onChange={(e) => set("CAM1_SERVO_OFF", e.target.value)}
-              />
-              <Input
-                label={lbl("CAM1_SERVO_ON — Servo On PWM")}
-                type="number"
-                step="10"
-                min="500"
-                max="2500"
-                unit="μs"
-                value={p("CAM1_SERVO_ON", "1500")}
-                onChange={(e) => set("CAM1_SERVO_ON", e.target.value)}
-              />
-              <Input
-                label={lbl("CAM1_DURATION — Pulse Duration")}
-                type="number"
-                step="1"
-                min="1"
-                unit="ds (0.1s)"
-                value={p("CAM1_DURATION", "10")}
-                onChange={(e) => set("CAM1_DURATION", e.target.value)}
-              />
+              {params.has("CAM1_SERVO_OFF") && (
+                <Input
+                  label={lbl("CAM1_SERVO_OFF — Servo Off PWM")}
+                  type="number"
+                  step="10"
+                  min="500"
+                  max="2500"
+                  unit="μs"
+                  value={p("CAM1_SERVO_OFF")}
+                  onChange={(e) => set("CAM1_SERVO_OFF", e.target.value)}
+                />
+              )}
+              {params.has("CAM1_SERVO_ON") && (
+                <Input
+                  label={lbl("CAM1_SERVO_ON — Servo On PWM")}
+                  type="number"
+                  step="10"
+                  min="500"
+                  max="2500"
+                  unit="μs"
+                  value={p("CAM1_SERVO_ON")}
+                  onChange={(e) => set("CAM1_SERVO_ON", e.target.value)}
+                />
+              )}
+              {params.has("CAM1_DURATION") && (
+                // ArduPilot holds the shutter for CAM1_DURATION seconds; PX4's
+                // TRIG_ACT_TIME is in milliseconds.
+                <Input
+                  label={lbl("CAM1_DURATION — Pulse Duration")}
+                  type="number"
+                  step={isPx4 ? "1" : "0.1"}
+                  min="0"
+                  unit={isPx4 ? "ms" : "s"}
+                  value={p("CAM1_DURATION")}
+                  onChange={(e) => set("CAM1_DURATION", e.target.value)}
+                />
+              )}
             </Card>
           )}
 
           {/* Distance Trigger */}
-          {camEnabled && (
+          {camEnabled && params.has("CAM1_TRIGG_DIST") && (
             <Card icon={<Ruler size={14} />} title="Distance Trigger" description="Automatic capture at distance intervals">
               <Input
                 label={lbl("CAM1_TRIGG_DIST — Trigger Distance")}

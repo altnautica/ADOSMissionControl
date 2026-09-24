@@ -97,6 +97,24 @@ describe("MavlinkCanForwardTransport — open / close", () => {
     await t.close();
     await expect(t.close()).resolves.toBeUndefined();
   });
+
+  it("re-sends CAN_FORWARD while open so ArduPilot's 5 s forwarding timeout never lapses", async () => {
+    vi.useFakeTimers();
+    try {
+      const { protocol, raw } = makeStubProtocol();
+      const t = new MavlinkCanForwardTransport(protocol, { bus: 1 });
+      await t.open({ bitrate: 1_000_000 });
+      raw.enableCanForward.mockClear();
+      await vi.advanceTimersByTimeAsync(4500);
+      expect(raw.enableCanForward.mock.calls.filter(([bus]) => bus === 1).length).toBeGreaterThanOrEqual(2);
+      await t.close();
+      raw.enableCanForward.mockClear();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(raw.enableCanForward).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("MavlinkCanForwardTransport — send", () => {

@@ -6,7 +6,7 @@ import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
@@ -26,7 +26,7 @@ import {
 } from "./sensor-constants";
 
 export function SensorsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { firmwareType } = useFirmwareCapabilities();
@@ -50,7 +50,7 @@ export function SensorsPanel() {
   } = usePanelParams({ paramNames: SENSOR_PARAMS, optionalParams: OPTIONAL_SENSOR_PARAMS, panelId: "sensors" });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
@@ -129,7 +129,7 @@ export function SensorsPanel() {
                         onClick={() => setLocalValue(param, (params.get(param) ?? 0) ? 0 : 1)}
                         className={`w-10 h-5 rounded-full transition-colors ${(params.get(param) ?? 0) ? "bg-accent-primary" : "bg-bg-tertiary"}`}
                       >
-                        <div className={`w-4 h-4 rounded-full bg-white transition-transform ${(params.get(param) ?? 0) ? "translate-x-5" : "translate-x-0.5"}`} />
+                        <div className={`w-4 h-4 rounded-full bg-text-primary transition-transform ${(params.get(param) ?? 0) ? "translate-x-5" : "translate-x-0.5"}`} />
                       </button>
                     </div>
                   ))}

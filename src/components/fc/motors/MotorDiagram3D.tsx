@@ -103,7 +103,7 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
 export function MotorDiagram3D({ layout }: { layout: FrameLayout }) {
   return (
     <WebGLErrorBoundary>
-      <div className="relative h-[360px] w-full min-h-[360px] max-h-[500px] bg-[#0a0a0a]">
+      <div className="relative h-[360px] w-full min-h-[360px] max-h-[500px] bg-bg-secondary">
         <Canvas camera={{ position: [4, 3.5, 4], fov: 45 }} gl={{ antialias: true }}
           onCreated={({ gl }) => { gl.setClearColor(0x0a0a0a, 1); }}>
           <DroneScene layout={layout} />

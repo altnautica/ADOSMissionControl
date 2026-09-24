@@ -1,7 +1,7 @@
 //! The deploy wizard's interactive stages, in the installer's house style.
 //!
 //! Each stage reads/writes the shared [`DeployConfig`] via the widget grammar
-//! (`select_list`, `checklist`, `confirm_card`, `text_input`, `password_input`).
+//! (`select_list`, `checklist`, `confirm_card`, `text_input`).
 //! Esc goes back a stage; Ctrl-C aborts the whole wizard. The Review stage
 //! offers Deploy / change an answer / cancel. The wizard returns the finished
 //! config (or `None` on cancel); the caller runs the plan or the state machine.
@@ -11,10 +11,9 @@ use std::path::Path;
 use crate::cli::Args;
 use crate::ui::tty::Tty;
 use crate::ui::Theme;
-use crate::wizard::state::{DeployConfig, Provision, Scope, Tls};
+use crate::wizard::state::{mint_hex, DeployConfig, Provision, Scope, Tls};
 use crate::wizard::widgets::{
-    checklist, confirm_card, password_input, select_list, summary_select, text_input, CheckItem,
-    Choice, Flow,
+    checklist, confirm_card, select_list, summary_select, text_input, CheckItem, Choice, Flow,
 };
 
 /// The wizard stages, in order.
@@ -141,6 +140,11 @@ pub fn config_from_env(repo_root: &Path) -> Option<DeployConfig> {
     if let Some(v) = get("MQTT_PASSWORD") {
         cfg.mqtt_password = v;
     }
+    // A stack deployed before the relay secret was provisioned has none on disk;
+    // mint one so the next upgrade writes it to both the relay and Convex.
+    cfg.video_relay_secret = get("VIDEO_RELAY_SECRET").unwrap_or_else(|| mint_hex(32));
+    // Same for the broker auth-sync bearer: minted when absent, reused after.
+    cfg.mqtt_auth_relay_secret = get("MQTT_AUTH_RELAY_SECRET").unwrap_or_else(|| mint_hex(32));
     // Convex is managed when the browser URL points somewhere other than the
     // local backend host.
     if let Some(npc) = get("NEXT_PUBLIC_CONVEX_URL") {
@@ -172,6 +176,8 @@ fn prefill_from_existing(cfg: &mut DeployConfig, repo_root: &Path) {
         cfg.instance_secret = existing.instance_secret;
         cfg.mqtt_username = existing.mqtt_username;
         cfg.mqtt_password = existing.mqtt_password;
+        cfg.video_relay_secret = existing.video_relay_secret;
+        cfg.mqtt_auth_relay_secret = existing.mqtt_auth_relay_secret;
         cfg.convex = existing.convex;
     }
 }
@@ -203,11 +209,6 @@ fn prefill_from_args(cfg: &mut DeployConfig, args: &Args) {
     }
     if args.no_video {
         cfg.video = Provision::Managed { url: String::new() };
-    }
-    if let Some(token) = &args.tunnel_token {
-        cfg.tls = Tls::CloudflareTunnel {
-            token: token.clone(),
-        };
     }
 }
 
@@ -460,11 +461,6 @@ fn stage_tls(tty: &mut Tty, theme: &Theme, cfg: &mut DeployConfig) -> Move {
             Some("simplest; browser cloud mode stays off"),
         ),
         Choice::new(
-            "cf",
-            "Cloudflare Tunnel",
-            Some("public HTTPS with no open ports (token)"),
-        ),
-        Choice::new(
             "proxy",
             "My own reverse proxy",
             Some("you terminate TLS in front of the stack"),
@@ -472,8 +468,7 @@ fn stage_tls(tty: &mut Tty, theme: &Theme, cfg: &mut DeployConfig) -> Move {
     ];
     let default = match cfg.tls {
         Tls::HttpLan => 0,
-        Tls::CloudflareTunnel { .. } => 1,
-        Tls::CustomProxy => 2,
+        Tls::CustomProxy => 1,
     };
     match select_list(
         tty,
@@ -488,7 +483,7 @@ fn stage_tls(tty: &mut Tty, theme: &Theme, cfg: &mut DeployConfig) -> Move {
             let detail = vec![
                 theme.dim("Mission Control's browser cloud mode only activates over HTTPS."),
                 theme.dim("On HTTP, drones appear over the LAN / direct-agent path."),
-                theme.dim("For internet fleet control, pick a tunnel."),
+                theme.dim("For internet fleet control, terminate TLS with a reverse proxy."),
             ];
             match confirm_card(
                 tty,
@@ -505,16 +500,6 @@ fn stage_tls(tty: &mut Tty, theme: &Theme, cfg: &mut DeployConfig) -> Move {
                     Move::Next
                 }
                 Flow::Value(false) => Move::Jump(idx_of(Stage::Tls)),
-                Flow::Back => Move::Back,
-                Flow::Abort => Move::Abort,
-            }
-        }
-        Flow::Value(1) => {
-            match password_input(tty, theme, "Access", "Cloudflare Tunnel token", 1) {
-                Flow::Value(token) => {
-                    cfg.tls = Tls::CloudflareTunnel { token };
-                    Move::Next
-                }
                 Flow::Back => Move::Back,
                 Flow::Abort => Move::Abort,
             }
@@ -681,10 +666,9 @@ fn review_summary(theme: &Theme, cfg: &DeployConfig) -> Vec<String> {
         Scope::AllInOne => "all-in-one",
         Scope::RelayOnly => "relay only",
     };
-    let tls = match &cfg.tls {
-        Tls::HttpLan => "HTTP on the LAN".to_string(),
-        Tls::CloudflareTunnel { .. } => "Cloudflare Tunnel".to_string(),
-        Tls::CustomProxy => "custom reverse proxy".to_string(),
+    let tls = match cfg.tls {
+        Tls::HttpLan => "HTTP on the LAN",
+        Tls::CustomProxy => "custom reverse proxy",
     };
     vec![
         kv("Address", &cfg.host),
@@ -708,7 +692,7 @@ fn review_summary(theme: &Theme, cfg: &DeployConfig) -> Vec<String> {
                 "custom"
             },
         ),
-        kv("Access", &tls),
+        kv("Access", tls),
     ]
 }
 

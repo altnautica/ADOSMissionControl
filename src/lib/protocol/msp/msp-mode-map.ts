@@ -93,11 +93,13 @@ function modePriority(mode: UnifiedFlightMode): number {
  * exactly the state we cannot vouch for — including navigation boxes not in the
  * table — so it decodes to UNKNOWN and the gate holds the stream off.
  *
+ * @param modeFlags - every flag byte the FC sent, little-endian: bit `i` of the
+ *   whole run is box index `i`. A box past the bytes given reads as inactive.
  * @param firmwareType - selects the box table; when absent the firmware has not
  *   been identified yet and the result falls closed to UNKNOWN.
  */
 export function resolveActiveMode(
-  modeFlags: number,
+  modeFlags: Uint8Array,
   boxIds: number[],
   firmwareType?: FirmwareType,
 ): { mode: UnifiedFlightMode; armed: boolean } {
@@ -116,19 +118,8 @@ export function resolveActiveMode(
   let bestPriority = -1
 
   for (let i = 0; i < boxIds.length; i++) {
-    // Check if bit `i` is set in mode flags
-    // modeFlags can exceed 32 bits in BF 4.x, but JS bitwise ops work on 32 bits.
-    // For boxes beyond bit 31, use BigInt-style check.
-    const wordIndex = Math.floor(i / 32)
-    const bitIndex = i % 32
-    // modeFlags is typically passed as a single number for first 32 bits.
-    // For extended flags (BF 4.3+), caller should combine flag words.
-    // We handle the simple case here (first 32 boxes).
-    if (wordIndex > 0) continue // Skip boxes beyond bit 31 for now
-
-    const isActive = (modeFlags & (1 << bitIndex)) !== 0
-    if (!isActive) continue
-
+    const flagByte = modeFlags[i >> 3]
+    if (flagByte === undefined || (flagByte & (1 << (i & 7))) === 0) continue
     const boxId = boxIds[i]
 
     // ARM is special

@@ -66,10 +66,10 @@ const mockClient = {
   setConfigValue: vi.fn().mockResolvedValue({ status: "ok" }),
   startTouchCalibration: vi
     .fn()
-    .mockResolvedValue({ target_count: 9, current_step: 0 }),
+    .mockResolvedValue({ requested: true, target_count: 9 }),
   getTouchCalibrationStatus: vi
     .fn()
-    .mockResolvedValue({ calibrated: true, in_progress: false }),
+    .mockResolvedValue({ calibrated: true, requested: false }),
   startDisplayCalibration: vi.fn().mockResolvedValue({ ok: true }),
   getDisplayCalibrationStatus: vi
     .fn()

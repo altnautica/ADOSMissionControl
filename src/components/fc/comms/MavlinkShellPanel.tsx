@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import { Terminal, Send, Trash2, Copy, Download } from "lucide-react";
@@ -26,7 +26,7 @@ const COMMON_COMMANDS = [
 // ── Component ────────────────────────────────────────────────
 
 export function MavlinkShellPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   // Subscribed so the panel re-renders when the selected drone or its link changes.
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const connectionState = useDroneStore((s) => s.connectionState);
@@ -45,7 +45,7 @@ export function MavlinkShellPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const protocol = selectedDroneId ? getSelectedProtocol() : null;
+  const protocol = selectedDroneId ? selectedProtocol : null;
   const linkUp = protocol !== null && protocol.isConnected && connectionState !== "disconnected" && connectionState !== "connecting";
   const shellReplied = reply !== null && reply.link === protocol;
   const pending = shellReplied ? reply.pending : "";

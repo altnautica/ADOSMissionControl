@@ -140,11 +140,6 @@ export function mcpJsonSnippet(credential: string, clonePath = CLONE_PATH_PLACEH
   );
 }
 
-/** The one-line check that confirms a credential connects, without an MCP client. */
-export function verifyRecipe(credential: string, clonePath = CLONE_PATH_PLACEHOLDER): string {
-  return `ADOS_MCP_TOKEN=${credential} node ${clonePath}/dist/index.js --target fleet --gcs prod --verify`;
-}
-
 // --- LOCAL-FIRST (agent-mode) recipes (local-first) -----------------------------
 //
 // The LAN-direct path is the primary, default way to connect: the server runs on
@@ -284,17 +279,6 @@ export function localFleetConnectRecipe(
   clonePath = CLONE_PATH_PLACEHOLDER,
 ): string {
   return `claude mcp add ados -- node ${clonePath}/dist/index.js --target local-fleet ${fleetPath}${discoverFlag(opts)}`;
-}
-
-/** A project-scoped `.mcp.json` for the local-fleet FILE path. */
-export function localFleetMcpJsonSnippet(
-  fleetPath = DEFAULT_FLEET_PATH,
-  opts: FleetRecipeOpts = {},
-  clonePath = CLONE_PATH_PLACEHOLDER,
-): string {
-  const args = [`${clonePath}/dist/index.js`, "--target", "local-fleet", fleetPath];
-  if (opts.discover) args.push("--discover");
-  return JSON.stringify({ mcpServers: { ados: { command: "node", args } } }, null, 2);
 }
 
 /** The one-line check that confirms the fleet answers (per-node ✓/✗), no client. */

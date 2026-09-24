@@ -185,4 +185,19 @@ describe("useComputeLocalState", () => {
     rerender("node-2");
     expect(clearSpy.fn).toHaveBeenCalledTimes(2);
   });
+
+  it("does not stack a new request while the previous poll is still waiting", () => {
+    vi.useFakeTimers();
+    const calls = vi.fn();
+    getStatusImpl.value = () => {
+      calls();
+      return Promise.withResolvers<unknown>().promise;
+    };
+    const { unmount } = renderHook(() => useComputeLocalState("node-1"));
+    vi.advanceTimersByTime(5_000);
+    unmount();
+    vi.useRealTimers();
+
+    expect(calls).toHaveBeenCalledTimes(1);
+  });
 });

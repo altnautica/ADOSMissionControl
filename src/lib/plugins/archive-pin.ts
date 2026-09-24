@@ -13,7 +13,7 @@
  * @license GPL-3.0-only
  */
 
-import JSZip from "jszip";
+import type JSZip from "jszip";
 
 import {
   verifyArchiveSignature,
@@ -65,7 +65,9 @@ export async function pinArchive(
   if (expected && expected !== sha256) {
     throw new Error("archive does not match the hash its registry entry publishes");
   }
-  const zip = await JSZip.loadAsync(bytes);
+  // jszip is loaded on first use so it stays out of every route's first-load bundle.
+  const { default: JSZipLib } = await import("jszip");
+  const zip = await JSZipLib.loadAsync(bytes);
   const signature = await verifyArchiveSignature(
     zip,
     opts.manifestSignerId,
@@ -90,7 +92,9 @@ export async function openPinnedArchive(
   if ((await sha256Hex(bytes)) !== pin.sha256) {
     throw new Error("archive changed since it was installed; reinstall the plugin to accept it");
   }
-  const zip = await JSZip.loadAsync(bytes);
+  // jszip is loaded on first use so it stays out of every route's first-load bundle.
+  const { default: JSZipLib } = await import("jszip");
+  const zip = await JSZipLib.loadAsync(bytes);
   const signature = await verifyArchiveSignature(zip, pin.signerId, resolveKey);
   if (signature.state === "invalid") {
     throw new Error(`archive signature did not verify: ${signature.reason ?? "unknown reason"}`);

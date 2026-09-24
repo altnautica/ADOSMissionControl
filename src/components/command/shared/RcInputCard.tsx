@@ -67,13 +67,13 @@ export function RcInputCard({ className }: RcInputCardProps) {
               <span className="text-[10px] text-text-tertiary w-5 text-right font-mono shrink-0">
                 {i + 1}
               </span>
-              <div className="flex-1 h-1.5 rounded-sm bg-white/5 relative overflow-hidden">
+              <div className="flex-1 h-1.5 rounded-sm bg-text-primary/5 relative overflow-hidden">
                 <div
                   className="absolute inset-y-0 left-0 rounded-sm bg-accent-primary/60 transition-all"
                   style={{ width: hasVal ? `${pct}%` : "0%" }}
                 />
                 {/* Center marker at 1500 */}
-                <div className="absolute inset-y-0 left-1/2 w-px bg-white/10" />
+                <div className="absolute inset-y-0 left-1/2 w-px bg-text-primary/10" />
               </div>
               <span className="text-[10px] font-mono text-text-tertiary w-8 text-right shrink-0">
                 {hasVal ? val : "----"}

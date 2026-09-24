@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePairingStore } from "@/stores/pairing-store";

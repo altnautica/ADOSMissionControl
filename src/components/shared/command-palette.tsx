@@ -166,7 +166,7 @@ export function CommandPalette() {
     <>
     {rthConfirm}
     <div
-      className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh] bg-black/60"
+      className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh] bg-scrim/60"
       onClick={() => setOpen(false)}
     >
       {/* The app's primary command surface had no dialog semantics at all: no

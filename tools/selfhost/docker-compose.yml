@@ -14,6 +14,10 @@
 #        npx convex env set JWKS "$JWKS"                       --url http://<host>:3210 --admin-key <admin-key>
 #        npx convex env set SITE_URL "http://<host>:4000"      --url http://<host>:3210 --admin-key <admin-key>
 #        npx convex env set VIDEO_RELAY_SECRET "$VIDEO_RELAY_SECRET" --url http://<host>:3210 --admin-key <admin-key>
+#        npx convex env set MQTT_AUTH_RELAY_SECRET "$MQTT_AUTH_RELAY_SECRET" --url http://<host>:3210 --admin-key <admin-key>
+#      and seed the broker's credential files (mqtt-auth-sync keeps them current):
+#        cp ../mqtt-bridge/deploy/acl.conf ./acl.conf
+#        docker run --rm -v "$PWD:/work" eclipse-mosquitto:2 mosquitto_passwd -b -c /work/passwd ados "$MQTT_PASSWORD"
 #   5. docker compose up -d
 #
 # Port wiring (critical):
@@ -77,13 +81,37 @@ services:
       - "9001:9001"
     volumes:
       - ../mqtt-bridge/deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ../mqtt-bridge/deploy/acl.conf:/mosquitto/config/acl.conf:ro
+      # Both credential files are generated (gitignored) and rewritten in place
+      # by mqtt-auth-sync; they must exist before the first `up` (step 4), or
+      # Docker creates directories at these paths.
+      - ./acl.conf:/mosquitto/config/acl.conf:ro
       - ./passwd:/mosquitto/config/passwd:ro
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
-    # First run: generate the password file before starting the bridge.
-    #   docker compose up -d mosquitto
-    #   docker exec -it selfhost-mosquitto-1 mosquitto_passwd -c /mosquitto/config/passwd ados
+
+  # Materializes every paired agent (`ados-<device_id>` + its apiKey) and every
+  # live operator grant from Convex into passwd/acl.conf, then SIGHUPs the
+  # broker. Without it only the bridge principal can log in. It shares the
+  # broker's PID namespace for the signal; no docker socket is mounted.
+  mqtt-auth-sync:
+    build:
+      context: ../mqtt-bridge/deploy
+      dockerfile: auth-sync.Dockerfile
+    restart: unless-stopped
+    pid: "service:mosquitto"
+    depends_on:
+      - mosquitto
+    environment:
+      - CONVEX_HTTP_URL=${CONVEX_URL}
+      - MQTT_AUTH_RELAY_SECRET=${MQTT_AUTH_RELAY_SECRET}
+      - BRIDGE_MQTT_USERNAME=${MQTT_USERNAME:-ados}
+      - BRIDGE_MQTT_PASSWORD=${MQTT_PASSWORD}
+      - PASSWD_PATH=/work/passwd
+      - ACL_PATH=/work/acl.conf
+      - SYNC_INTERVAL_SECONDS=30
+    volumes:
+      - ./passwd:/work/passwd
+      - ./acl.conf:/work/acl.conf
 
   mqtt-bridge:
     build:

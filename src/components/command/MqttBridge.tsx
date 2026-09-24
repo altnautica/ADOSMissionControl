@@ -129,19 +129,7 @@ export function MqttBridge({
         // mqtt.js fires 'connect' on every (re)connect with the broker.
         // We resubscribe each time because the previous session's
         // subscriptions are dropped on a `clean: true` reconnect.
-        // Cast loosely because the dynamic-import client type omits the
-        // (topicObject, callback) subscribe overload.
-        const c = client as unknown as {
-          on: (event: string, cb: (...args: unknown[]) => void) => void;
-          removeAllListeners: () => void;
-          subscribe: (
-            topics: Record<string, { qos: 0 | 1 | 2 }>,
-            cb: (err: Error | null) => void,
-          ) => void;
-          unsubscribe: (topics: string[], cb?: (err?: Error) => void) => void;
-          end: (force?: boolean) => void;
-        };
-
+        const c = client;
         // The subscription SET, computed once from the effect's own inputs.
         //
         // QoS is split by what a lost message costs. Status and plugin-update

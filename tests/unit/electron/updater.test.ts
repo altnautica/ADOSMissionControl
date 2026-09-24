@@ -215,6 +215,20 @@ describe("setupAutoUpdater", () => {
     });
   });
 
+  it("lets the operator retry a download that failed", async () => {
+    setupAutoUpdater(fakeWindow(), PACKAGED_APPIMAGE);
+    emit("update-available", { version: "1.2.3" });
+    await ipcHandlers.get("update:download")!();
+    emit("error", new Error("connection reset"));
+
+    await ipcHandlers.get("update:download")!();
+    expect(autoUpdater.downloadUpdate).toHaveBeenCalledTimes(2);
+    expect(ipcHandlers.get("update:status")!()).toEqual({
+      state: "downloading",
+      version: "1.2.3",
+    });
+  });
+
   it("refuses a download on a build that cannot install", async () => {
     setupAutoUpdater(fakeWindow(), PACKAGED_MAC);
     emit("update-available", { version: "1.2.3" });

@@ -56,7 +56,6 @@ export const BF_LED_COLOR_COUNT = 16;
 export const BF_LED_MODES: readonly string[] = [
   "Orientation", "Head-free", "Horizon", "Angle", "Mag", "Baro",
 ];
-export const BF_LED_MODE_COUNT = 6;
 
 /**
  * Special-colour slots (ledSpecialColorIds_e, 11 total). Slots 8-10 exist in

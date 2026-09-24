@@ -14,8 +14,8 @@
  * @module hooks/use-settings-params
  */
 
-import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -78,7 +78,8 @@ export function useSettingsParams<T>(options: SettingsPanelOptions<T>): Settings
   } = options;
 
   const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const connected = useDroneManager(selectSelectedProtocol) !== null;
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
 
   const [values, setValuesState] = useState<T>(initial);
   const [loading, setLoading] = useState(false);
@@ -89,7 +90,35 @@ export function useSettingsParams<T>(options: SettingsPanelOptions<T>): Settings
   const { isArmed, lockMessage } = useArmedLock();
   useUnsavedGuard(dirty);
 
+  // Bumped on a drone switch and on unmount: a read or write that settles
+  // afterwards belongs to a drone this panel no longer shows.
+  const sessionRef = useRef(0);
+  // Bumped on every local edit, so a write only marks the panel clean when
+  // nothing was edited while it was in flight.
+  const editRef = useRef(0);
+  const initialRef = useRef(initial);
+  initialRef.current = initial;
+
+  useEffect(() => () => {
+    sessionRef.current += 1;
+  }, []);
+
+  // Values read from one drone must never be written to another: a switch
+  // returns the panel to its unread state.
+  const seenDroneRef = useRef(selectedDroneId);
+  useEffect(() => {
+    if (seenDroneRef.current === selectedDroneId) return;
+    seenDroneRef.current = selectedDroneId;
+    sessionRef.current += 1;
+    setValuesState(initialRef.current);
+    setHasLoaded(false);
+    setDirty(false);
+    setError(null);
+    setLoading(false);
+  }, [selectedDroneId]);
+
   const setValues = useCallback((next: T | ((prev: T) => T)) => {
+    editRef.current += 1;
     setValuesState((prev) => (typeof next === "function" ? (next as (p: T) => T)(prev) : next));
     setDirty(true);
   }, []);
@@ -99,12 +128,14 @@ export function useSettingsParams<T>(options: SettingsPanelOptions<T>): Settings
     if (!protocol) { setError("Not connected to flight controller"); return; }
     if (!supported(protocol)) { setError(unsupportedMessage); return; }
 
+    const session = sessionRef.current;
     setLoading(true);
     setError(null);
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const result = await readFn(protocol);
+        if (session !== sessionRef.current) return;
         setValuesState(result);
         setHasLoaded(true);
         setDirty(false);
@@ -117,6 +148,7 @@ export function useSettingsParams<T>(options: SettingsPanelOptions<T>): Settings
           await new Promise((r) => setTimeout(r, delay));
         }
       }
+      if (session !== sessionRef.current) return;
     }
     setError(lastErr instanceof Error ? lastErr.message : String(lastErr));
     setLoading(false);
@@ -127,6 +159,7 @@ export function useSettingsParams<T>(options: SettingsPanelOptions<T>): Settings
     if (!protocol) { setError("Not connected to flight controller"); return; }
     if (!supported(protocol)) { setError(unsupportedMessage); return; }
 
+    const session = sessionRef.current;
     // Armed-write guard : identical flow to usePanelParams.saveAllToRam. The
     // Write button is also disabled while armed, so this is belt-and-suspenders.
     const armState = useDroneStore.getState().armState;
@@ -135,9 +168,12 @@ export function useSettingsParams<T>(options: SettingsPanelOptions<T>): Settings
       const confirmed = await useArmedConfirmStore
         .getState()
         .requestConfirm({ panelId, paramNames: [] });
-      if (!confirmed) return;
+      // The panel moved to another drone while the dialog was open: these
+      // values were read from the previous one.
+      if (!confirmed || session !== sessionRef.current) return;
     }
 
+    const edit = editRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -146,15 +182,18 @@ export function useSettingsParams<T>(options: SettingsPanelOptions<T>): Settings
       // EEPROM write is what makes them survive a power cycle, so the panel
       // stays dirty until it succeeds.
       const saved = await protocol.commitParamsToFlash();
+      if (session !== sessionRef.current) return;
       if (!saved.success) {
         setError(`Written to the flight controller's RAM but not saved: ${saved.message}`);
         return;
       }
-      setDirty(false);
+      // An edit made while the write was in flight was not written.
+      if (editRef.current === edit) setDirty(false);
     } catch (err) {
+      if (session !== sessionRef.current) return;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      if (session === sessionRef.current) setLoading(false);
     }
   }, [getSelectedProtocol, supported, unsupportedMessage, writeFn, values, panelId]);
 

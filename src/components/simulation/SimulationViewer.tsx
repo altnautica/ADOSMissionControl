@@ -28,7 +28,7 @@ import { useSimCamera } from "@/hooks/use-sim-camera";
 import { useSimAutoFollow } from "@/hooks/use-sim-auto-follow";
 import { useSimCompletion } from "@/hooks/use-sim-completion";
 import { useTerrainReady } from "@/hooks/use-terrain-ready";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { communityApi } from "@/lib/community-api";
 

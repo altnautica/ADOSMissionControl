@@ -482,4 +482,29 @@ describe("mqtt control grant — the server's view", () => {
     // released principal.
     expect(useMqttControlGrantStore.getState().credentialEpoch).toBe(2);
   });
+
+  it("never holds a grant whose mint lands after sign-out, and revokes it", async () => {
+    const pending = ensureGrant();
+    expect(useMqttControlGrantStore.getState().minting).toBe(true);
+
+    await releaseGrant();
+    b.mints[0].resolve(minted(1));
+    await pending;
+    await settle();
+
+    expect(getMqttBrokerCredential()).toBeNull();
+    expect(relayWriteAuthFor(DEVICE)).toBeUndefined();
+    expect(useMqttControlGrantStore.getState().grant).toBeNull();
+    expect(reason()).toBe("no-grant");
+    // Release sent nothing (no grant was held yet); the orphaned row is
+    // revoked once it exists.
+    expect(b.revokes()).toBe(1);
+
+    // The next sign-in mints afresh instead of joining the dead mint.
+    const again = ensureGrant();
+    expect(b.mints).toHaveLength(2);
+    b.mints[1].resolve(minted(2));
+    await again;
+    expect(getMqttBrokerCredential()?.username).toBe("gcs-op-2");
+  });
 });

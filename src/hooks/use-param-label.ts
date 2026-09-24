@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
 
 /**
  * Returns firmware-aware label helpers.
@@ -15,8 +15,7 @@ import { useDroneManager } from "@/stores/drone-manager";
  * connected or no firmware handler is available.
  */
 export function useParamLabel() {
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
-  const handler = getSelectedDrone()?.protocol?.getFirmwareHandler() ?? null;
+  const handler = useDroneManager(selectSelectedDrone)?.protocol?.getFirmwareHandler() ?? null;
 
   const label = useCallback(
     (raw: string): string => {

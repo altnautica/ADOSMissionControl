@@ -62,7 +62,7 @@ export function ComplianceAlertBell() {
         {total > 0 && (
           <span
             className={`absolute -top-0.5 -right-0.5 text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center ${
-              errorCount > 0 ? "bg-status-error text-white" : "bg-status-warning text-black"
+              errorCount > 0 ? "bg-status-error text-on-status" : "bg-status-warning text-on-status"
             }`}
           >
             {total > 9 ? "9+" : total}

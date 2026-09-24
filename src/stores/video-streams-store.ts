@@ -70,8 +70,7 @@ export interface StreamDescriptor {
     whepUrl?: string;
     codec?: "h264" | "h265";
   };
-  /** `switchable` only: which encoder slot + device the agent switches. */
-  cameraRole?: "primary" | "secondary";
+  /** `switchable` only: the device the agent switches the encoder to. */
   devicePath?: string;
   /** Agent-sampled per-leg liveness: `false` = a known-dead leg (rendered
    * disabled, never auto-selected / re-pointed to); `true` = live; absent/`null`
@@ -162,16 +161,22 @@ export const useVideoStreamsStore = create<VideoStreamsState>((set, get) => ({
 
   setStreams: (droneId, streams) =>
     set((state) => {
+      // The same invariant selectStream enforces: a known-dead leg is never
+      // made the main view while a selectable one exists. The previous active
+      // leg survives a refresh unless it has since been reported dead.
+      const selectable = (s: StreamDescriptor) => s.live !== false;
       const prevActive = state.activeStreamIdByDrone[droneId] ?? null;
-      const activeStillPresent =
-        prevActive != null && streams.some((s) => s.id === prevActive);
-      const nextActive = activeStillPresent
-        ? prevActive
-        : (streams[0]?.id ?? null);
-      // Drop a PiP id that no longer exists.
+      const prevActiveStream = streams.find((s) => s.id === prevActive);
+      const firstLive = streams.find(selectable);
+      const nextActive =
+        prevActiveStream && (selectable(prevActiveStream) || !firstLive)
+          ? prevActiveStream.id
+          : (firstLive ?? streams[0])?.id ?? null;
+      // A PiP must show a different, live leg; otherwise it hides.
       const prevPip = state.pipStreamIdByDrone[droneId] ?? null;
+      const pipStream = streams.find((s) => s.id === prevPip);
       const nextPip =
-        prevPip != null && streams.some((s) => s.id === prevPip) ? prevPip : null;
+        pipStream && selectable(pipStream) && pipStream.id !== nextActive ? pipStream.id : null;
       return {
         streamsByDrone: { ...state.streamsByDrone, [droneId]: streams },
         activeStreamIdByDrone: {

@@ -9,8 +9,6 @@ import {
   encodeMissionRequestInt,
   encodeMissionAck,
   encodeMissionClearAll,
-  encodeFencePoint,
-  encodeFenceFetchPoint,
   encodeSetGpsGlobalOrigin,
   encodeCommandLong,
   buildFrame,
@@ -324,33 +322,6 @@ describe('encodeMissionClearAll (ID 45)', () => {
 });
 
 // ── Byte-exact peripheral encoders ──
-
-describe('encodeFencePoint (ID 160)', () => {
-  it('encodes lat/lon as float32 and idx/count as the trailing uint8 fields', () => {
-    const frame = encodeFencePoint(1, 1, 2, 5, 12.9716, 77.5946, 255, 190);
-    assertFrameEnvelope(frame, 160, 12, 255, 190);
-    const dv = payloadView(frame);
-    expect(dv.getFloat32(0, true)).toBeCloseTo(12.9716, 4); // lat
-    expect(dv.getFloat32(4, true)).toBeCloseTo(77.5946, 4); // lon
-    expect(dv.getUint8(8)).toBe(1);  // targetSys
-    expect(dv.getUint8(9)).toBe(1);  // targetComp
-    expect(dv.getUint8(10)).toBe(2); // idx
-    expect(dv.getUint8(11)).toBe(5); // count
-    expect(roundTrip(frame)).not.toBeNull();
-  });
-});
-
-describe('encodeFenceFetchPoint (ID 161)', () => {
-  it('encodes the three-byte message: target system/component and idx', () => {
-    const frame = encodeFenceFetchPoint(1, 1, 4, 255, 190);
-    assertFrameEnvelope(frame, 161, 3, 255, 190);
-    const dv = payloadView(frame);
-    expect(dv.getUint8(0)).toBe(1); // targetSys
-    expect(dv.getUint8(1)).toBe(1); // targetComp
-    expect(dv.getUint8(2)).toBe(4); // idx
-    expect(roundTrip(frame)).not.toBeNull();
-  });
-});
 
 describe('encodeSetGpsGlobalOrigin (ID 48)', () => {
   it('encodes lat/lon/alt as int32 degE7/mm, target_system, and the zero time_usec extension', () => {

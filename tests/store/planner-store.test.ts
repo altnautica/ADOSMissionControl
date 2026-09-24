@@ -22,6 +22,7 @@ vi.mock("@/lib/storage", () => {
 
 import { usePlannerStore } from "@/stores/planner-store";
 import { usePatternStore } from "@/stores/pattern-store";
+import { selectPatternType } from "@/stores/pattern-selection";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { DEFAULT_PLANNER_MODE } from "@/lib/planner-mode";
 
@@ -110,15 +111,15 @@ describe("planner-store interaction mode", () => {
   });
 
   it("re-points an armed datum at the newly-active pattern (no stale datum target)", () => {
-    usePatternStore.getState().setPatternType("expandingSquare");
+    selectPatternType("expandingSquare");
     usePlannerStore.getState().setActiveTool("datum");
     expect(usePlannerStore.getState().mode).toEqual({ kind: "datum", pattern: "expandingSquare" });
     // Switching the active pattern while datum stays armed re-points the datum,
     // so the next click can never set the previously-active pattern's origin.
-    usePatternStore.getState().setPatternType("parallelTrack");
+    selectPatternType("parallelTrack");
     expect(usePlannerStore.getState().mode).toEqual({ kind: "datum", pattern: "parallelTrack" });
     // A landing pattern is not a datum pattern, so it disarms the origin.
-    usePatternStore.getState().setPatternType("vtolLanding");
+    selectPatternType("vtolLanding");
     expect(usePlannerStore.getState().mode).toEqual({ kind: "datum", pattern: null });
   });
 

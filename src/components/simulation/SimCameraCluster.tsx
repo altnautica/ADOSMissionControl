@@ -204,7 +204,7 @@ export function SimCameraCluster({ viewer }: SimCameraClusterProps) {
         >
           <span
             className={cn(
-              "absolute top-0.5 w-2 h-2 rounded-full bg-white transition-all",
+              "absolute top-0.5 w-2 h-2 rounded-full bg-text-primary transition-all",
               autoFollowOnPlay ? "left-3.5" : "left-0.5",
             )}
           />

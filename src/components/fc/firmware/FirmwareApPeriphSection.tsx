@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plug, Power, Send, RotateCcw } from "lucide-react";
+import { Plug, Send } from "lucide-react";
 import {
   ApPeriphManifest,
   EMBEDDED_BOARD_LIST,
@@ -78,14 +78,6 @@ export function FirmwareApPeriphSection({
 
   // Flash store mirror for post-flash UI
   const flashState = useDroneCanFlashStore((s) => s.state);
-
-  // Post-flash actions
-  const [newNodeIdRaw, setNewNodeIdRaw] = useState("");
-  const newNodeIdParsed = useMemo(() => {
-    const n = Number.parseInt(newNodeIdRaw, 10);
-    if (Number.isFinite(n) && n >= 1 && n <= 127) return n;
-    return null;
-  }, [newNodeIdRaw]);
 
   // Look up current node SW version for diff line
   const nodesMap = useDroneCanNodeStore((s) => s.nodes);
@@ -181,13 +173,25 @@ export function FirmwareApPeriphSection({
     });
   };
 
+  // SLCAN needs the FC's own USB byte stream; without it the flash rides
+  // CAN_FORWARD regardless of the last radio choice.
+  const effectiveTransport = transport === "slcan" && !slcanCapable ? "can-forward" : transport;
+
+  // A DroneCAN OTA in progress (the flash store, not the FC flasher) blocks a
+  // second start: FirmwarePanel would dispose the running session under it.
+  const flashInFlight =
+    flashState !== "IDLE" &&
+    flashState !== "DONE" &&
+    flashState !== "ABORTED" &&
+    flashState !== "FAILED";
+
   const flashEnabled =
     checklistAllChecked &&
     selectedNodeId != null &&
     !!selectedBoard &&
     !!selectedChannel &&
     manifest?.files.some((f) => f.kind === "app") === true &&
-    !isFlashing;
+    !isFlashing && !flashInFlight;
 
   const handleFlashClick = () => {
     if (!flashEnabled || selectedNodeId == null) return;
@@ -195,20 +199,11 @@ export function FirmwareApPeriphSection({
       targetNodeId: selectedNodeId,
       board: selectedBoard,
       channel: selectedChannel,
-      transport,
+      transport: effectiveTransport,
     });
   };
-  // Show the debug drawer while a flash is mid-flight. The drawer renders
-  // the state-machine ribbon, the byte counter, and the live frame log so
-  // operators can diagnose hangs without leaving the page. Once the flow
-  // hits a terminal state the post-flash prompts take over and the drawer
-  // hides so it doesn't crowd the success / failure summary.
-  const flashInFlight =
-    flashState !== "IDLE" &&
-    flashState !== "DONE" &&
-    flashState !== "ABORTED" &&
-    flashState !== "FAILED";
-
+  // The debug drawer shows the state ribbon, byte counter and live frame log
+  // while a flash is mid-flight; the terminal summary replaces it after.
   return (
     <>
       {/* Connection card */}
@@ -225,7 +220,7 @@ export function FirmwareApPeriphSection({
         >
           <button
             role="radio"
-            aria-checked={transport === "slcan"}
+            aria-checked={effectiveTransport === "slcan"}
             disabled={!slcanCapable}
             onClick={() => {
               if (slcanCapable) setTransport("slcan");
@@ -238,7 +233,7 @@ export function FirmwareApPeriphSection({
             className={`flex-1 px-3 py-2 text-xs font-semibold border cursor-pointer transition-colors ${
               !slcanCapable
                 ? "border-border-default text-text-tertiary opacity-40 cursor-not-allowed"
-                : transport === "slcan"
+                : effectiveTransport === "slcan"
                   ? "border-accent-primary text-accent-primary bg-accent-primary/10"
                   : "border-border-default text-text-secondary hover:text-text-primary"
             }`}
@@ -247,7 +242,7 @@ export function FirmwareApPeriphSection({
           </button>
           <button
             role="radio"
-            aria-checked={transport === "can-forward"}
+            aria-checked={effectiveTransport === "can-forward"}
             disabled={!canForwardEnabled}
             onClick={() => {
               if (canForwardEnabled) setTransport("can-forward");
@@ -260,7 +255,7 @@ export function FirmwareApPeriphSection({
             className={`flex-1 px-3 py-2 text-xs font-semibold border cursor-pointer transition-colors ${
               !canForwardEnabled
                 ? "border-border-default text-text-tertiary opacity-40 cursor-not-allowed"
-                : transport === "can-forward"
+                : effectiveTransport === "can-forward"
                   ? "border-accent-primary text-accent-primary bg-accent-primary/10"
                   : "border-border-default text-text-secondary hover:text-text-primary"
             }`}
@@ -278,39 +273,9 @@ export function FirmwareApPeriphSection({
           </p>
         )}
 
-        {slcanActive ? (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] text-status-success">
-              {t("connection.slcanActive", {
-                port: "CAN1",
-                bitrate: "1 Mbps",
-                eta: "4:32",
-              })}
-            </p>
-            <button
-              disabled
-              title={t("connection.configureHint")}
-              className="px-3 py-1.5 text-[10px] font-semibold border border-border-default text-text-tertiary opacity-40 cursor-not-allowed"
-            >
-              <Power size={10} className="inline mr-1.5" />
-              {t("connection.resumeMavlink")}
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] text-text-tertiary">
-              {t("connection.slcanInactive")}
-            </p>
-            <button
-              disabled
-              title={t("connection.configureHint")}
-              className="px-3 py-1.5 text-[10px] font-semibold border border-border-default text-text-tertiary opacity-40 cursor-not-allowed"
-            >
-              <Power size={10} className="inline mr-1.5" />
-              {t("connection.enterSlcan")}
-            </button>
-          </div>
-        )}
+        <p className={slcanActive ? "text-[10px] text-status-success" : "text-[10px] text-text-tertiary"}>
+          {slcanActive ? t("connection.slcanSessionActive") : t("connection.slcanInactive")}
+        </p>
       </div>
 
       {/* Target node card */}
@@ -349,44 +314,18 @@ export function FirmwareApPeriphSection({
         {t("flashButton")}
       </button>
 
-      {/* Post-flash prompts */}
+      {/* Post-flash result */}
       {flashState === "DONE" && selectedNodeId != null && (
         <div
           data-testid="ap-periph-post-flash"
-          className="bg-bg-secondary border border-status-success/40 p-4 space-y-3"
+          className="bg-bg-secondary border border-status-success/40 p-4 space-y-1"
         >
           <h2 className="text-xs font-semibold text-status-success">
-            {t("postFlash.title")}
+            {t("postFlash.doneTitle")}
           </h2>
           <p className="text-[10px] text-text-tertiary">
-            {t("postFlash.subtitle")}
+            {t("postFlash.doneBody")}
           </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="px-3 py-1.5 text-[10px] font-semibold border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-tertiary cursor-pointer"
-            >
-              <RotateCcw size={10} className="inline mr-1.5" />
-              {t("postFlash.flashBootloader")}
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              max={127}
-              value={newNodeIdRaw}
-              onChange={(e) => setNewNodeIdRaw(e.target.value)}
-              placeholder={t("postFlash.newNodeIdPlaceholder")}
-              className="w-24 px-2 py-1 text-[10px] bg-bg-tertiary border border-border-default text-text-primary"
-              aria-label={t("postFlash.newNodeIdAria")}
-            />
-            <button
-              disabled={newNodeIdParsed == null}
-              className="px-3 py-1.5 text-[10px] font-semibold border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {t("postFlash.changeNodeId")}
-            </button>
-          </div>
         </div>
       )}
 

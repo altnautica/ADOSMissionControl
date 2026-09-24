@@ -1,5 +1,7 @@
 "use client";
 
+// Exempt from the 500-line rule: status, scan/join, disconnect and saved
+// networks share one request sequence guard and one node client.
 /**
  * @module command/settings/WifiClientSection
  * @description The node Settings "Wi-Fi" page: current station connection,

@@ -266,61 +266,6 @@ describe('Parser handles interleaved V1/V2 frames', () => {
   });
 });
 
-// ── Parser CLI Mode Tests ──────────────────────────────────
-
-describe('Parser CLI mode detection', () => {
-  it('detects CLI data between STX and ETX', () => {
-    // STX(0x02) + "hello" + ETX(0x03)
-    const cliData = new Uint8Array([0x02, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x03]);
-    const parser = new MspParser();
-    const texts: string[] = [];
-    parser.onCliData((t) => texts.push(t));
-    parser.feed(cliData);
-    assert.equal(texts.length, 1);
-    assert.equal(texts[0], 'hello');
-  });
-
-  it('handles CLI line breaks (LF)', () => {
-    // STX + "line1" + LF + "line2" + ETX
-    const data = new Uint8Array([
-      0x02,
-      0x6c, 0x31, // "l1"
-      0x0a,       // LF
-      0x6c, 0x32, // "l2"
-      0x03,       // ETX
-    ]);
-    const parser = new MspParser();
-    const texts: string[] = [];
-    parser.onCliData((t) => texts.push(t));
-    parser.feed(data);
-    // Should get "l1" on LF, then "l2" on ETX
-    assert.equal(texts.length, 2);
-    assert.equal(texts[0], 'l1');
-    assert.equal(texts[1], 'l2');
-  });
-
-  it('resumes MSP parsing after CLI block', () => {
-    // CLI block then MSP frame
-    const cli = new Uint8Array([0x02, 0x41, 0x03]); // STX + 'A' + ETX
-    const msp = encodeResponseV1(108, new Uint8Array(0));
-    const combined = new Uint8Array(cli.length + msp.length);
-    combined.set(cli, 0);
-    combined.set(msp, cli.length);
-
-    const parser = new MspParser();
-    const cliTexts: string[] = [];
-    const frames: ParsedMspFrame[] = [];
-    parser.onCliData((t) => cliTexts.push(t));
-    parser.onFrame((f) => frames.push(f));
-    parser.feed(combined);
-
-    assert.equal(cliTexts.length, 1);
-    assert.equal(cliTexts[0], 'A');
-    assert.equal(frames.length, 1);
-    assert.equal(frames[0].command, 108);
-  });
-});
-
 // ── Parser reset and CRC failure ───────────────────────────
 
 describe('Parser edge cases', () => {

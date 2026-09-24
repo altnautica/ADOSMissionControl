@@ -8,11 +8,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, cleanup } from "@testing-library/react";
 import type { Waypoint } from "@/lib/types";
 
-vi.mock("@/stores/drone-manager", () => {
-  const state = { getSelectedProtocol: () => null, getSelectedDrone: () => null };
+vi.mock("@/stores/drone-manager", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/stores/drone-manager")>();
+  const state = {
+    drones: new Map(),
+    selectedDroneId: null,
+    getSelectedProtocol: () => null,
+    getSelectedDrone: () => null,
+  };
   const useDroneManager = (sel: (s: typeof state) => unknown) => sel(state);
   useDroneManager.getState = () => state;
-  return { useDroneManager };
+  return { ...actual, useDroneManager };
 });
 vi.mock("@/lib/storage", () => ({
   indexedDBStorage: {

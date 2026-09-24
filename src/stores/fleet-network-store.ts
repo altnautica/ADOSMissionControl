@@ -7,7 +7,7 @@
 
 import { create } from "zustand";
 import type { NetworkPeer } from "@/lib/agent/types";
-import { useAgentConnectionStore } from "./agent-connection-store";
+import { agentConnectionLink } from "./agent-connection/link";
 
 interface FleetNetworkState {
   peers: NetworkPeer[];
@@ -24,9 +24,11 @@ export const useFleetNetworkStore = create<FleetNetworkStore>((set) => ({
   peers: [],
 
   async fetchPeers() {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) return;
+    const { client, cloudMode } = link;
     if (cloudMode) {
-      useAgentConnectionStore.getState().sendCloudCommand("get_peers");
+      link.sendCloudCommand("get_peers");
       return;
     }
     if (!client) return;

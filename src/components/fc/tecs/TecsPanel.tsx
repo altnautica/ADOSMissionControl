@@ -6,7 +6,7 @@ import { Wind, Save, RotateCcw, HardDrive, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -49,7 +49,7 @@ const L1: Field[] = [
 const ALL_FIELDS = [...TECS, ...L1];
 
 export function TecsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
@@ -64,7 +64,7 @@ export function TecsPanel() {
   } = usePanelParams({ paramNames, panelId: "tecs", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   async function handleSave() {

@@ -117,7 +117,7 @@ function MediaGrid({ media, flightId }: { media: FlightMedia[]; flightId: string
                 {m.lat !== undefined && (
                   <MapPin size={10} className="absolute top-1 right-1 text-accent-primary" />
                 )}
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 text-[8px] text-text-tertiary truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-0 left-0 right-0 bg-scrim/60 px-1 py-0.5 text-[8px] text-text-tertiary truncate opacity-0 group-hover:opacity-100 transition-opacity">
                   {m.name}
                 </div>
               </button>
@@ -175,7 +175,7 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/90"
       onClick={onClose}
     >
       <div

@@ -14,10 +14,12 @@ import { useCanMonitorStore } from "@/stores/can-monitor-store";
 
 const h = vi.hoisted(() => ({ enableCanForward: vi.fn(), toast: vi.fn() }));
 
-vi.mock("@/stores/drone-manager", () => {
+vi.mock("@/stores/drone-manager", async (importOriginal) => {
   const protocol = { isConnected: true, enableCanForward: h.enableCanForward };
   return {
-    useDroneManager: (sel: (s: unknown) => unknown) => sel({ getSelectedProtocol: () => protocol }),
+    ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
+    useDroneManager: (sel: (s: unknown) => unknown) =>
+      sel({ drones: new Map([["d1", { protocol }]]), selectedDroneId: "d1" }),
   };
 });
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: h.toast }) }));
@@ -42,6 +44,19 @@ describe("CanMonitorPanel forwarding", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Capturing/ })); });
     expect(h.enableCanForward).toHaveBeenLastCalledWith(0);
     expect(useCanMonitorStore.getState().enabled).toBe(false);
+  });
+
+  it("keeps forwarding alive while capturing, since the FC drops it after 5 s", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    h.enableCanForward.mockResolvedValue({ success: true, resultCode: 0, message: "ok" });
+    renderWithIntl(<CanMonitorPanel />);
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Start/ })); });
+    const afterStart = h.enableCanForward.mock.calls.length;
+
+    await act(async () => { vi.advanceTimersByTime(4_500); });
+    expect(h.enableCanForward.mock.calls.length - afterStart).toBeGreaterThanOrEqual(2);
+    expect(h.enableCanForward).toHaveBeenLastCalledWith(1);
+    vi.useRealTimers();
   });
 
   it("stays stopped when the FC refuses forwarding", async () => {

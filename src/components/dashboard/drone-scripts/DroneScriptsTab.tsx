@@ -14,7 +14,7 @@
 
 import { useState } from "react";
 import { FileWarning } from "lucide-react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { ScrConfigCard } from "./ScrConfigCard";
 import { ScriptFileManager } from "./ScriptFileManager";
 import { AppletCatalog } from "./AppletCatalog";
@@ -22,8 +22,8 @@ import { ScriptConsole } from "./ScriptConsole";
 
 export function DroneScriptsTab({ droneId }: { droneId?: string }) {
   void droneId; // the tab operates on the selected protocol (this node is selected)
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const supportsFtp = !!getProtocol()?.uploadFileViaFtp;
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const supportsFtp = !!selectedProtocol?.uploadFileViaFtp;
   // Bumped when an applet is added so the file manager re-lists.
   const [reloadSignal, setReloadSignal] = useState(0);
 

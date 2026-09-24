@@ -136,10 +136,7 @@ export function LcdRecordingMonitor() {
     setOptimisticRecording(true);
     setPending(true);
     try {
-      const res = await client.startRecording();
-      if (res?.error) {
-        throw new Error(res.error);
-      }
+      await client.startRecording();
       void fetchList();
     } catch (err) {
       setOptimisticRecording(false);
@@ -155,10 +152,7 @@ export function LcdRecordingMonitor() {
     setOptimisticRecording(false);
     setPending(true);
     try {
-      const res = await client.stopRecording();
-      if (res?.error) {
-        throw new Error(res.error);
-      }
+      await client.stopRecording();
       void fetchList();
     } catch (err) {
       setOptimisticRecording(true);

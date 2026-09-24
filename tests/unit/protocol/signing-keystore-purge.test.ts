@@ -44,7 +44,7 @@ import {
   clear,
 } from "@/lib/protocol/signing-keystore";
 
-describe("signing keystore purgeForUser (audit B3)", () => {
+describe("signing keystore purgeForUser", () => {
   beforeEach(async () => {
     // Wipe the mock map between tests.
     for (const s of storeById.values()) s.clear();

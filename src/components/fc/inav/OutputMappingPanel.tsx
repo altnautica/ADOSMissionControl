@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -25,8 +25,8 @@ import { TIMER_OUTPUT_MODE_OPTIONS, timerUsageLabel } from "./inav-output-mappin
 // ── Component ─────────────────────────────────────────────────
 
 export function OutputMappingPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -39,7 +39,7 @@ export function OutputMappingPanel() {
   useUnsavedGuard(dirty);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getOutputMapping || !protocol?.getTimerOutputModes) {
       setError("Output mapping not supported"); return;
     }
@@ -56,10 +56,10 @@ export function OutputMappingPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const handleWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setTimerOutputMode) { setError("Timer mode write not supported"); return; }
     setLoading(true); setError(null);
     try {
@@ -71,7 +71,7 @@ export function OutputMappingPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, timerModes]);
+  }, [selectedProtocol, timerModes]);
 
   function updateTimerMode(timerId: number, mode: number) {
     setTimerModes((prev) =>

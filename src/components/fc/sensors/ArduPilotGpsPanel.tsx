@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
@@ -38,7 +38,7 @@ import {
  * Rescue) is a separate component routed for Betaflight connections.
  */
 export function ArduPilotGpsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("ap-gps");
   const { bitmaskBits } = useParamEnums(useParamMetadataMap());
 
@@ -56,7 +56,7 @@ export function ArduPilotGpsPanel() {
   const { saving, save: handleSave, flash: handleFlash } = useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const has = (name: string) => params.has(name);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import {
   ACCEL_STEPS, GYRO_STEPS, COMPASS_STEPS,
@@ -21,12 +21,12 @@ import { MspCalibrationSection } from "./MspCalibrationSection";
 
 export function CalibrationPanel() {
   const t = useTranslations("calibration");
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
   // MSP firmwares get their own calibration surfaces; the ArduPilot/PX4
   // wizards below depend on MAVLink calibration feedback they never send.
   const mspFirmware = firmwareType === "betaflight" || firmwareType === "inav" ? firmwareType : null;
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
 
   const cal = useCalibrationEngine();
 
@@ -120,7 +120,7 @@ export function CalibrationPanel() {
 
           {/* Compass Reboot Required Banner */}
           {!mspFirmware && cal.compass.needsReboot && cal.compass.status === "success" && (
-            <CalibrationRebootBanner label={t("compassOffsetsSaved")} onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+            <CalibrationRebootBanner label={t("compassOffsetsSaved")} onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
           )}
 
           {/* Orientation change alert */}
@@ -137,7 +137,7 @@ export function CalibrationPanel() {
 
           {/* Accel Reboot Banner */}
           {!mspFirmware && cal.accel.needsReboot && cal.accel.status === "success" && (
-            <CalibrationRebootBanner label={t("accelCalibrationSaved")} onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+            <CalibrationRebootBanner label={t("accelCalibrationSaved")} onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
           )}
 
           {/* Level through CompassMot: ArduPilot/PX4 only */}

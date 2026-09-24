@@ -38,7 +38,11 @@ export function usePanelParams(
   const originalValues = useRef<Map<string, number>>(new Map());
   const undoStack = useRef<UndoEntry[]>([]);
   const [undoCount, setUndoCount] = useState(0);
-  const abortedRef = useRef(false);
+  // Bumped by every load, by a param-set change and by a drone switch. A load
+  // that settles after a newer one started (or after the drone changed) must
+  // not write its values, originals or cache entry: they describe what the
+  // panel asked of another drone or another parameter set.
+  const loadGenRef = useRef(0);
 
   const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
@@ -48,6 +52,8 @@ export function usePanelParams(
   const getCachedPanel = usePanelCacheStore((s) => s.getCachedPanel);
 
   const loadParams = useCallback(async () => {
+    const gen = ++loadGenRef.current;
+    const stale = () => gen !== loadGenRef.current;
     const protocol = getProtocol();
     if (!protocol || !protocol.isConnected) {
       const msg = "Not connected to flight controller";
@@ -66,11 +72,11 @@ export function usePanelParams(
     let completedCount = 0;
 
     const fetchOne = async (name: string): Promise<void> => {
-      if (abortedRef.current) return;
+      if (stale()) return;
       onEvent?.({ type: "read", message: `Reading ${name}...` });
       let success = false;
       for (let attempt = 0; attempt < maxRetries && !success; attempt++) {
-        if (abortedRef.current) return;
+        if (stale()) return;
         try {
           const result = await protocol.getParameter(name);
           loaded.set(name, result.value);
@@ -101,16 +107,16 @@ export function usePanelParams(
 
     try {
       for (let i = 0; i < loadNames.length; i += batchSize) {
-        if (abortedRef.current) return;
+        if (stale()) return;
         const batch = loadNames.slice(i, i + batchSize);
         await Promise.allSettled(batch.map((name) => fetchOne(name)));
         completedCount = Math.min(i + batchSize, loadNames.length);
-        if (abortedRef.current) return;
+        if (stale()) return;
         setParams(new Map(loaded));
         setLoadProgress({ loaded: completedCount, total: loadNames.length });
       }
 
-      if (abortedRef.current) return;
+      if (stale()) return;
 
       originalValues.current = new Map(loaded);
       undoStack.current = [];
@@ -120,10 +126,9 @@ export function usePanelParams(
       setHasRamWrites(false);
       setLoadProgress(null);
 
+      setMissingOptional(new Set(failed.filter((f) => optionalSet.has(f))));
       if (failed.length > 0) {
         const criticalFailed = failed.filter((f) => !optionalSet.has(f));
-        const optionalFailed = failed.filter((f) => optionalSet.has(f));
-        if (optionalFailed.length > 0) setMissingOptional(new Set(optionalFailed));
         if (criticalFailed.length > 0) {
           setError(`Failed to load: ${criticalFailed.join(", ")}`);
         } else {
@@ -140,7 +145,7 @@ export function usePanelParams(
       }
       setIdbCacheTimestamp(null);
     } finally {
-      if (!abortedRef.current) setLoading(false);
+      if (!stale()) setLoading(false);
     }
   }, [getProtocol, selectedDroneId, loadNames, optionalSet, panelId, maxRetries, batchSize, markPanelLoaded, cachePanel, onEvent]);
 
@@ -160,8 +165,10 @@ export function usePanelParams(
       const protocol = getProtocol();
       const isDisconnected = !protocol || !protocol.isConnected;
       if (isDisconnected && selectedDroneId) {
+        const gen = loadGenRef.current;
         getCachedPanelFromIDB(selectedDroneId, panelId).then((idbData) => {
-          if (idbData) {
+          // A load or a drone switch since then owns the panel now.
+          if (idbData && gen === loadGenRef.current) {
             const paramMap = new Map(Object.entries(idbData.params).map(([k, v]) => [k, v]));
             setParams(paramMap);
             originalValues.current = new Map(paramMap);
@@ -190,9 +197,8 @@ export function usePanelParams(
   // flight controller with PARAM_REQUEST_READ.
   const paramSetKey = loadNames.join("\u0000");
   useEffect(() => {
-    abortedRef.current = false;
     if (autoLoad) loadParamsRef.current();
-    return () => { abortedRef.current = true; };
+    return () => { loadGenRef.current += 1; };
   }, [autoLoad, paramSetKey]);
 
   // Belt and braces for per-drone isolation.
@@ -207,11 +213,16 @@ export function usePanelParams(
   useEffect(() => {
     if (seenDroneRef.current === selectedDroneId) return;
     seenDroneRef.current = selectedDroneId;
+    // Whatever the previous drone's load was still fetching is now stale.
+    loadGenRef.current += 1;
     setParams(new Map());
     originalValues.current = new Map();
     setDirtyParams(new Set());
     setHasRamWrites(false);
     setHasLoaded(false);
+    setLoading(false);
+    setLoadProgress(null);
+    setMissingOptional(new Set());
     setError(null);
     undoStack.current = [];
     setUndoCount(0);
@@ -366,7 +377,7 @@ export function usePanelParams(
     };
     const wrappedRefresh = async () => { await loadParams(); };
     registerActions(wrappedSave, wrappedRefresh);
-    return () => unregisterActions();
+    return () => unregisterActions(wrappedSave);
   }, [registerActions, unregisterActions, saveAllToRam, loadParams, dirtyParams]);
 
   useEffect(() => {

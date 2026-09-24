@@ -22,8 +22,9 @@ vi.mock("@/hooks/use-panel-params", () => ({
     hasLoaded: true, refresh: vi.fn(), setLocalValue: vi.fn(), saveAllToRam: vi.fn(), commitToFlash: vi.fn(),
   }),
 }));
-const droneState = { getSelectedProtocol: () => ({ setServo }) };
-vi.mock("@/stores/drone-manager", () => ({
+const droneState = { drones: new Map([["d1", { protocol: { setServo } }]]), selectedDroneId: "d1" };
+vi.mock("@/stores/drone-manager", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
   useDroneManager: (selector: (s: unknown) => unknown) => selector(droneState),
 }));
 const telemetryState = { servoOutput: { latest: () => undefined }, _version: 0 };

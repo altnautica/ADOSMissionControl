@@ -7,9 +7,10 @@
  * add network cameras. Reads the reconciled roster from the agent, groups it by
  * state (Assigned / Discovered / Plugin-managed / Offline), and persists edits
  * as a whole declared-leg-list write. Roster reads/writes ride the direct LAN
- * client only (the config proxy does not forward them), so the tab resolves
- * read-only through the shared client-path check whenever no client is
- * attached — which includes cloud mode, where the client is detached.
+ * client of THIS node only (the config proxy does not forward them): the tab
+ * resolves its transport through `useNodeDirectAgent`, so the attached agent
+ * of another node is never read or written, and it renders read-only whenever
+ * this node has no client path — which includes cloud mode.
  * @license GPL-3.0-only
  */
 
@@ -17,7 +18,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Camera, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
+import { useFleetStore } from "@/stores/fleet-store";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useCameraManagerStore } from "@/stores/camera-manager-store";
 import { useToast } from "@/components/ui/toast";
 import type { CameraLegInput, RosterCamera } from "@/lib/agent/feature-types";
@@ -50,9 +56,17 @@ const GROUPS: ReadonlyArray<{
 export function CameraManagerTab({ droneId }: { droneId: string }) {
   const t = useTranslations("cameras");
   const { toast } = useToast();
-  const client = useAgentConnectionStore((s) => s.client);
+  // The node's own agent identity: a node page never borrows the attached
+  // connection of another node.
+  const nodeDeviceId = useFleetStore(
+    (s) => s.drones.find((d) => d.id === droneId)?.cloudDeviceId ?? null,
+  );
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const client = direct?.client ?? null;
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
-  const videoStreams = useAgentCapabilitiesStore((s) => s.videoStreams);
+  const videoStreams = useAgentCapabilitiesStore(
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.videoStreams,
+  );
 
   const state = useCameraManagerStore((s) => s.byDrone[droneId]);
   const beginLoad = useCameraManagerStore((s) => s.beginLoad);
@@ -173,7 +187,7 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
   const whepById = useMemo(() => {
     const map = new Map<string, string>();
     if (cloudMode || isDemoMode()) return map;
-    for (const s of videoStreams) {
+    for (const s of videoStreams ?? []) {
       if (s.whepUrl && s.live !== false) map.set(s.id, s.whepUrl);
     }
     return map;

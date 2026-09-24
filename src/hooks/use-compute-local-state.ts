@@ -80,10 +80,20 @@ export function useComputeLocalState(nodeId: string | null | undefined): void {
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
+    // One request at a time: a slow or unreachable node answers after the
+    // client timeout, and interval ticks would otherwise stack requests.
+    let inFlight = false;
 
     const pollOnce = async () => {
-      const client = new ComputeAgentClient(host, apiKeyRef.current);
-      const status = await client.getStatus();
+      if (inFlight) return;
+      inFlight = true;
+      let status: Record<string, unknown> | null;
+      try {
+        const client = new ComputeAgentClient(host, apiKeyRef.current);
+        status = await client.getStatus();
+      } finally {
+        inFlight = false;
+      }
       if (cancelled || !status) return;
       // The sidecar carries the `compute*` fields verbatim; inject the profile
       // so buildComputePatch's `profile === "workstation"` gate passes.

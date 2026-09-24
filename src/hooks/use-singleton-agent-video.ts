@@ -9,10 +9,11 @@
  * placeholder (exactly the Fly-tab-vs-Agent-tab divergence this hook removes).
  *
  * Wraps {@link useVideoTransportCascade} and adds:
- * - a synchronous enable gate (3-strikes debounce on `agentVideoState`) so a
- *   single flaky agent poll can't tear down a healthy session, and so the gate
- *   is `true` on the first render when video is already running (a deferred
- *   effect-based gate was the bug — it missed the first cascade pass);
+ * - a synchronous enable gate (a ~9 s grace on `agentVideoState` leaving
+ *   "running") so a single flaky agent poll can't tear down a healthy session,
+ *   and so the gate is `true` on the first render when video is already
+ *   running (a deferred effect-based gate was the bug — it missed the first
+ *   cascade pass);
  * - indefinite fixed-interval auto-retry while the agent reports the video
  *   service running, so the feed self-heals whenever the link recovers;
  * - a stall re-cascade driven by the frozen-stream watchdog and by a
@@ -41,6 +42,14 @@ type TransportMode = "auto" | "lan-whep" | "p2p-mqtt" | "off";
  * failed state is a state that needs a human to clear.
  */
 const RETRY_DELAY_SEC = 3;
+
+/**
+ * How long the agent may report video as not running before the session is
+ * disabled: three of its ~3 s status polls. Measured in time, not in renders,
+ * because a steady "stopped" report does not change the prop and so never
+ * re-runs an effect that counts changes.
+ */
+const NOT_RUNNING_GRACE_MS = 9_000;
 
 interface SingletonAgentVideoOpts {
   /** Effective LAN WHEP URL to dial (a manual override URL wins over the
@@ -91,28 +100,22 @@ export function useSingletonAgentVideo({
     setRetryKey((k) => k + 1);
   }, []);
 
-  // Stabilise the enabled flag: require 3 consecutive non-"running" polls
-  // (~9s) before disabling so a single transient agent poll doesn't kill a
-  // healthy WebRTC session, and so the gate is already true on the first
-  // render when video is running. A manual override forces it on regardless
-  // of the agent's reported state.
-  //
-  // The backoff counter must NOT be mutated during render (a `useMemo` side
-  // effect was the bug): React 19 StrictMode double-invokes render bodies in
-  // dev, which double-counted every strike and halved the 3-strike debounce.
-  // Mutating the ref in an effect (once per committed update) keeps the count
-  // exact.
-  const nonRunningCountRef = useRef(0);
+  // Stabilise the enabled flag: the agent must report video as not running
+  // for the whole grace window before the session is disabled, so a single
+  // transient poll doesn't kill a healthy WebRTC session, and the gate is
+  // already true on the first render when video is running. A manual override
+  // forces it on regardless of the agent's reported state.
+  const liveGate = forceEnabled || agentVideoState === "running";
   const [stableEnabled, setStableEnabled] = useState(true);
   useEffect(() => {
-    if (forceEnabled || agentVideoState === "running") {
-      nonRunningCountRef.current = 0;
+    if (liveGate) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStableEnabled(true);
       return;
     }
-    nonRunningCountRef.current += 1;
-    setStableEnabled(nonRunningCountRef.current < 3);
-  }, [agentVideoState, forceEnabled]);
+    const handle = setTimeout(() => setStableEnabled(false), NOT_RUNNING_GRACE_MS);
+    return () => clearTimeout(handle);
+  }, [liveGate]);
 
   const cascade = useVideoTransportCascade({
     agentWhepUrl: whepUrl,

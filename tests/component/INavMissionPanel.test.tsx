@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithIntl } from '../helpers/intl-wrapper'
 import { INavMissionPanel } from '@/components/fc/inav/INavMissionPanel'
-import { useDroneManager } from '@/stores/drone-manager'
+import { selectTestProtocol } from '../helpers/selected-drone'
 import { useMissionStore } from '@/stores/mission-store'
 import type { MissionItem } from '@/lib/protocol/types'
 
@@ -33,7 +33,7 @@ function connect(download: () => Promise<MissionItem[]>) {
     downloadMission: download,
     getVehicleInfo: () => ({ firmwareType: 'inav' }),
   }
-  useDroneManager.setState({ getSelectedProtocol: () => protocol } as never)
+  selectTestProtocol(protocol)
 }
 
 describe('INavMissionPanel read', () => {

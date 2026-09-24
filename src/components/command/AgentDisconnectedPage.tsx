@@ -13,7 +13,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle } from "lucide-react";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { SignInModal } from "@/components/auth/SignInModal";
 import { AddNodeForm } from "./disconnected/AddNodeForm";
 import { InstallAgentStrip } from "./disconnected/InstallAgentStrip";

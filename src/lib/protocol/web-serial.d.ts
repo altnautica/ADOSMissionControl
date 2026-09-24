@@ -11,6 +11,8 @@ interface SerialPort {
     parity?: "none" | "even" | "odd";
     stopBits?: 1 | 2;
     dataBits?: 7 | 8;
+    /** Receive/transmit buffer size in bytes; the browser default is 255. */
+    bufferSize?: number;
   }): Promise<void>;
   close(): Promise<void>;
   getInfo(): { usbVendorId?: number; usbProductId?: number };

@@ -195,12 +195,12 @@ export class AgentClient {
     return setup.startDisplayCalibration(this.ctx);
   }
 
-  /** Arm the HDMI-kiosk touch-calibration wizard (`/api/v1/display/calibrate`). */
+  /** Ask the HDMI kiosk panel to open its touch-calibration wizard. */
   startTouchCalibration(): Promise<setup.TouchCalibrationStart> {
     return setup.startTouchCalibration(this.ctx);
   }
 
-  /** Poll the live HDMI-kiosk touch-calibration state. */
+  /** Read the stored fit and whether a wizard request is still queued. */
   getTouchCalibrationStatus(): Promise<setup.TouchCalibrationStatus> {
     return setup.getTouchCalibrationStatus(this.ctx);
   }
@@ -248,11 +248,10 @@ export class AgentClient {
     return camera.setCameraRoster(this.ctx, cameras);
   }
 
-  switchCamera(
-    role: "primary" | "secondary",
-    devicePath: string,
-  ): Promise<{ ok?: boolean; restarting?: boolean }> {
-    return extras.switchCamera(this.ctx, role, devicePath);
+  /** Make the camera at `devicePath` the primary stream (a roster write; the
+   * agent restarts the video pipeline). */
+  switchCamera(devicePath: string): Promise<void> {
+    return camera.switchPrimaryCamera(this.ctx, devicePath);
   }
 
   getVideoConfig(): Promise<unknown | null> {

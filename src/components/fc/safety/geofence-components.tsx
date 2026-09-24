@@ -90,7 +90,7 @@ export function FenceEnableToggle({ label, enabled, onChange }: {
       <span className="text-xs text-text-secondary">{label}</span>
       <button type="button" role="switch" aria-checked={enabled} aria-label={label} onClick={() => onChange(enabled ? 0 : 1)}
         className={cn("w-10 h-5 rounded-full relative transition-colors", enabled ? "bg-accent-primary" : "bg-bg-tertiary border border-border-default")}>
-        <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform", enabled ? "translate-x-5" : "translate-x-0.5")} />
+        <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-text-primary transition-transform", enabled ? "translate-x-5" : "translate-x-0.5")} />
       </button>
       <span className="text-[10px] font-mono text-text-tertiary">{enabled ? "ENABLED" : "DISABLED"}</span>
     </div>

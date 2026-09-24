@@ -66,14 +66,24 @@ client-API origin), or sign-in works but commands never reach the agent.
    npx convex env set JWT_PRIVATE_KEY "$JWT_PRIVATE_KEY" --url http://<host>:3210 --admin-key <admin-key>
    npx convex env set JWKS "$JWKS"                       --url http://<host>:3210 --admin-key <admin-key>
    npx convex env set SITE_URL "http://<host>:4000"      --url http://<host>:3210 --admin-key <admin-key>
+   npx convex env set MQTT_AUTH_RELAY_SECRET "$MQTT_AUTH_RELAY_SECRET" --url http://<host>:3210 --admin-key <admin-key>
    ```
 
-5. Create the MQTT password file:
+   `MQTT_AUTH_RELAY_SECRET` is any long random value, the same one in `.env`.
+
+5. Seed the broker's credential files before its first start. The broker
+   mounts both as files, so they must exist first:
 
    ```bash
-   docker compose up -d mosquitto
-   docker exec -it selfhost-mosquitto-1 mosquitto_passwd -c /mosquitto/config/passwd ados
+   cp ../mqtt-bridge/deploy/acl.conf ./acl.conf
+   docker run --rm -v "$PWD:/work" eclipse-mosquitto:2 \
+     mosquitto_passwd -b -c /work/passwd ados "$MQTT_PASSWORD"
    ```
+
+   From then on the `mqtt-auth-sync` service keeps both current: every 30 s
+   it pulls the paired devices and live operator grants from Convex, rewrites
+   the files and reloads the broker, so a newly paired agent can log in
+   without any manual step.
 
 6. Bring up everything:
 

@@ -162,10 +162,9 @@ describe("buildSystemUpdate", () => {
     }
     expect(update.resources.swap_percent).toBeUndefined();
     expect(update.resources.temperature).toBeNull();
-    // No history / services / logs blocks when the row omits them.
+    // No history / services blocks when the row omits them.
     expect(update.cpuHistory).toBeUndefined();
     expect(update.services).toBeUndefined();
-    expect(update.logs).toBeUndefined();
   });
 
   it("leaves an unreported utilisation or capacity absent rather than 0", () => {

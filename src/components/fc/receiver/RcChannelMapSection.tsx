@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { Select } from "@/components/ui/select";
@@ -25,7 +25,7 @@ const RCMAP_LABELS: Record<string, string> = {
 };
 
 export function RcChannelMapSection() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
@@ -36,7 +36,7 @@ export function RcChannelMapSection() {
   } = usePanelParams({ paramNames: RCMAP_PARAMS, panelId: "rc-channel-map", autoLoad: false });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   async function handleSave() {

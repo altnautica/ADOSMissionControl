@@ -16,7 +16,7 @@ import { Save, RotateCcw, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import type { VehicleClass } from "@/lib/protocol/types";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -72,7 +72,7 @@ export function ParamFieldsPanel({
   sections,
   gate,
 }: ParamFieldsPanelProps) {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { vehicleClass } = useFirmwareCapabilities();
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
@@ -106,7 +106,7 @@ export function ParamFieldsPanel({
   } = usePanelParams({ paramNames: allParams, optionalParams: allParams, panelId, autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   async function handleSave() {

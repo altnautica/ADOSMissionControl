@@ -21,7 +21,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { notifySkill } from "@/lib/skills";

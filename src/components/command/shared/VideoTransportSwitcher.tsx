@@ -227,9 +227,9 @@ export function VideoTransportSwitcher(props: Props) {
         ref={pillRef}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "absolute top-2 left-2 z-20 px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm",
+          "absolute top-2 left-2 z-20 px-2 py-0.5 rounded bg-scrim/60 backdrop-blur-sm",
           "text-[10px] font-mono text-text-secondary flex items-center gap-1.5",
-          "hover:bg-black/80 transition-colors select-none cursor-pointer",
+          "hover:bg-scrim/80 transition-colors select-none cursor-pointer",
           "focus:outline-none focus:ring-1 focus:ring-accent-primary",
         )}
         title="Switch video transport"
@@ -307,8 +307,8 @@ function DropdownPanel(props: DropdownProps) {
     <div
       id="video-transport-dropdown"
       className={cn(
-        "absolute top-9 left-2 z-50 w-64 rounded bg-black/90 backdrop-blur-md",
-        "border border-white/10 text-[10px] font-mono text-text-secondary",
+        "absolute top-9 left-2 z-50 w-64 rounded bg-scrim/90 backdrop-blur-md",
+        "border border-on-media/10 text-[10px] font-mono text-text-secondary",
         "shadow-2xl py-1",
       )}
       role="menu"
@@ -372,7 +372,7 @@ function DropdownPanel(props: DropdownProps) {
             <div className="text-text-tertiary">{cascadeError}</div>
             <button
               onClick={onRetry}
-              className="mt-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-text-primary text-[10px] transition-colors"
+              className="mt-1 px-2 py-0.5 rounded bg-on-media/10 hover:bg-on-media/20 text-text-primary text-[10px] transition-colors"
             >
               Retry
             </button>
@@ -419,10 +419,10 @@ function Option(props: OptionProps) {
       disabled={!available}
       className={cn(
         "w-full px-2 py-1.5 flex items-center gap-2 text-left",
-        "hover:bg-white/5 transition-colors",
+        "hover:bg-on-media/5 transition-colors",
         !available && "opacity-40 cursor-not-allowed",
-        selected && "bg-white/5",
-        focused && "ring-1 ring-inset ring-accent-primary/60 bg-white/10",
+        selected && "bg-on-media/5",
+        focused && "ring-1 ring-inset ring-accent-primary/60 bg-on-media/10",
       )}
       title={tooltip}
       role="menuitemradio"
@@ -442,5 +442,5 @@ function Option(props: OptionProps) {
 }
 
 function Divider() {
-  return <div className="my-0.5 border-t border-white/5" />;
+  return <div className="my-0.5 border-t border-on-media/5" />;
 }

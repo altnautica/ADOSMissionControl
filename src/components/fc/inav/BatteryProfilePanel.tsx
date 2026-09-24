@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -57,8 +57,8 @@ const DEFAULT_CFG: INavBatteryConfig = {
 // ── Component ─────────────────────────────────────────────────
 
 export function BatteryProfilePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -76,7 +76,7 @@ export function BatteryProfilePanel() {
   }
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getBatteryConfig || !protocol.getActiveProfiles) { setError("Battery config not supported"); return; }
     setLoading(true); setError(null);
     try {
@@ -89,10 +89,10 @@ export function BatteryProfilePanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const handleWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setBatteryConfig) { setError("Battery config not supported"); return; }
     setLoading(true); setError(null);
     try {
@@ -104,10 +104,10 @@ export function BatteryProfilePanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, cfg]);
+  }, [selectedProtocol, cfg]);
 
   const handleSwitchProfile = useCallback(async (idx: number) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.selectBatteryProfile || !protocol.getActiveProfiles || !protocol.getBatteryConfig) {
       setError("Profile switch not supported");
       return;
@@ -126,7 +126,7 @@ export function BatteryProfilePanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const capacityUnit = cfg.capacityUnit === 1 ? "mWh" : "mAh";
 

@@ -21,6 +21,8 @@ export const FENCE_TYPE_BITS = {
   ALT_MAX: 1 << 0,
   CIRCLE: 1 << 1,
   POLYGON: 1 << 2,
+  /** ArduPilot 4.1+ altitude floor (AC_Fence AC_FENCE_TYPE_ALT_MIN). */
+  ALT_MIN: 1 << 3,
 } as const;
 
 /**
@@ -182,16 +184,24 @@ async function writeParam(
 
 /**
  * Write the fence parameters that make the FC enforce the uploaded geometry.
- * ArduPilot: FENCE_ACTION, FENCE_TYPE (polygon, plus the altitude ceiling when
- * one is set), FENCE_ALT_MAX, then FENCE_ENABLE last so the fence only turns on
- * once it is configured. PX4: GF_MAX_VER_DIST, then GF_ACTION (0 = disabled).
+ * ArduPilot: FENCE_ACTION, FENCE_TYPE (polygon, plus the altitude ceiling and
+ * floor bits when each is set), FENCE_ALT_MAX, FENCE_ALT_MIN, then
+ * FENCE_ENABLE last so the fence only turns on once it is configured. PX4:
+ * GF_MAX_VER_DIST, then GF_ACTION (0 = disabled); PX4's geofence has no
+ * altitude floor, so a non-zero floor is refused rather than silently dropped.
  * Stops at the first failed write.
  */
 export async function writeFenceParams(
   protocol: DroneProtocol,
   isPx4: boolean,
-  s: Pick<GeofenceSnapshot, "enabled" | "maxAltitude" | "breachAction">,
+  s: Pick<GeofenceSnapshot, "enabled" | "maxAltitude" | "minAltitude" | "breachAction">,
 ): Promise<FenceParamResult> {
+  if (isPx4 && s.minAltitude > 0) {
+    return {
+      success: false,
+      message: "PX4 has no geofence altitude floor; set the fence minimum altitude to 0",
+    };
+  }
   const writes: Array<[string, number]> = isPx4
     ? [
         ["GF_MAX_VER_DIST", s.maxAltitude],
@@ -199,8 +209,14 @@ export async function writeFenceParams(
       ]
     : [
         ["FENCE_ACTION", AP_FENCE_ACTION[s.breachAction]],
-        ["FENCE_TYPE", FENCE_TYPE_BITS.POLYGON | (s.maxAltitude > 0 ? FENCE_TYPE_BITS.ALT_MAX : 0)],
+        [
+          "FENCE_TYPE",
+          FENCE_TYPE_BITS.POLYGON |
+            (s.maxAltitude > 0 ? FENCE_TYPE_BITS.ALT_MAX : 0) |
+            (s.minAltitude > 0 ? FENCE_TYPE_BITS.ALT_MIN : 0),
+        ],
         ...(s.maxAltitude > 0 ? [["FENCE_ALT_MAX", s.maxAltitude] as [string, number]] : []),
+        ...(s.minAltitude > 0 ? [["FENCE_ALT_MIN", s.minAltitude] as [string, number]] : []),
         ["FENCE_ENABLE", s.enabled ? 1 : 0],
       ];
   for (const [name, value] of writes) {
@@ -214,6 +230,8 @@ export async function writeFenceParams(
 export interface FenceParams {
   enabled: boolean;
   maxAltitude: number;
+  /** Altitude floor above home; 0 when the FC enforces none. */
+  minAltitude: number;
   /** `undefined` when the FC's breach action has no planner equivalent. */
   breachAction: BreachAction | undefined;
 }
@@ -230,11 +248,19 @@ export async function readFenceParams(protocol: DroneProtocol, isPx4: boolean): 
     return {
       enabled: action !== 0,
       maxAltitude,
+      minAltitude: 0,
       breachAction: action === 0 ? undefined : actionFromValue(PX4_GF_ACTION, action),
     };
   }
   const enabled = (await protocol.getParameter("FENCE_ENABLE")).value !== 0;
   const maxAltitude = (await protocol.getParameter("FENCE_ALT_MAX")).value;
   const action = (await protocol.getParameter("FENCE_ACTION")).value;
-  return { enabled, maxAltitude, breachAction: actionFromValue(AP_FENCE_ACTION, action) };
+  const type = (await protocol.getParameter("FENCE_TYPE")).value;
+  // The floor is enforced only when its FENCE_TYPE bit is set; firmware that
+  // predates FENCE_ALT_MIN never sets the bit, so it is not read there.
+  const minAltitude =
+    (type & FENCE_TYPE_BITS.ALT_MIN) !== 0
+      ? (await protocol.getParameter("FENCE_ALT_MIN")).value
+      : 0;
+  return { enabled, maxAltitude, minAltitude, breachAction: actionFromValue(AP_FENCE_ACTION, action) };
 }

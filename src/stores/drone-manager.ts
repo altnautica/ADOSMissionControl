@@ -30,6 +30,7 @@ import { bindSigning } from "@/lib/protocol/signing-binding";
 import { useNodeRegistryStore } from "./node-registry";
 import { invalidateParamList } from "./param-list-cache";
 import { bindInavConfigStores, forgetInavConfigStores } from "./inav-config-binding";
+import { bindDroneSelection } from "./drone-selection";
 
 export interface ManagedDrone {
   id: string;
@@ -58,7 +59,7 @@ export interface ManagedDrone {
 type DisconnectListener = (droneId: string, droneName: string, meta: ConnectionMeta | undefined) => void;
 const unexpectedDisconnectListeners = new Set<DisconnectListener>();
 
-interface DroneManagerState {
+export interface DroneManagerState {
   drones: Map<string, ManagedDrone>;
   selectedDroneId: string | null;
 
@@ -257,10 +258,15 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     // The singleton telemetry ring only ever holds the SELECTED drone's
     // history (the bridge gates pushes on selection), so only wipe it when
     // the drone being removed is the selected one — removing a background
-    // drone must not blow away the drone the operator is watching. FC params
-    // are per-drone, so always clear the removed drone's slot.
+    // drone must not blow away the drone the operator is watching. The trail
+    // and the latched fence breach are the same single-slot state under the
+    // same gate: left behind, the map keeps a track with no vehicle on it and
+    // the breach alarm stays lit for an aircraft the GCS no longer hears.
+    // FC params are per-drone, so always clear the removed drone's slot.
     if (get().selectedDroneId === id) {
       useTelemetryStore.getState().clear();
+      useTrailStore.getState().clear();
+      useGeofenceStore.getState().clearBreachState();
     }
     usePanelCacheStore.getState().clearForDrone(id);
 
@@ -480,6 +486,23 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     useGeofenceStore.getState().clearBreachState();
   },
 }));
+
+bindDroneSelection(() => useDroneManager.getState());
+
+/**
+ * The selected node's managed FC session, or null. Use as a selector:
+ * `getSelectedDrone` is a stable action, so selecting it subscribes to nothing
+ * and a component built on it never re-renders on a drone switch, connect or
+ * disconnect. The entry this returns changes identity on each of those.
+ */
+export function selectSelectedDrone(s: DroneManagerState): ManagedDrone | null {
+  return s.selectedDroneId ? s.drones.get(s.selectedDroneId) ?? null : null;
+}
+
+/** The selected node's protocol, or null. Reactive, like {@link selectSelectedDrone}. */
+export function selectSelectedProtocol(s: DroneManagerState): DroneProtocol | null {
+  return selectSelectedDrone(s)?.protocol ?? null;
+}
 
 /** Subscribe to unexpected disconnect events. Returns unsubscribe function. */
 export function onUnexpectedDisconnect(listener: DisconnectListener): () => void {

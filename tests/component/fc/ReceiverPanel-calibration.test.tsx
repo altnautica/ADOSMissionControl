@@ -19,15 +19,16 @@ const h = vi.hoisted(() => ({
   commitParamsToFlash: vi.fn(),
 }));
 
-vi.mock("@/stores/drone-manager", () => {
+vi.mock("@/stores/drone-manager", async (importOriginal) => {
   const protocol = {
     isConnected: false,
     setParameter: h.setParameter,
     commitParamsToFlash: h.commitParamsToFlash,
   };
   return {
+    ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
     useDroneManager: (sel: (s: unknown) => unknown) =>
-      sel({ getSelectedProtocol: () => protocol, getSelectedDrone: () => ({ protocol }) }),
+      sel({ drones: new Map([["d1", { protocol }]]), selectedDroneId: "d1" }),
   };
 });
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: h.toast }) }));

@@ -12,7 +12,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Type } from "lucide-react";
@@ -54,8 +54,8 @@ function fromWire(el: INavCustomOsdElement): OsdElement {
 // ── Component ─────────────────────────────────────────────────
 
 export function CustomOsdElementsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -74,7 +74,7 @@ export function CustomOsdElementsPanel() {
   }, []);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getCustomOsdElements) { setError("Custom OSD elements not available on this firmware"); return; }
     setLoading(true); setError(null);
     try {
@@ -87,7 +87,7 @@ export function CustomOsdElementsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   function updateElement(idx: number, key: keyof OsdElement, value: unknown) {
     setElements((prev) =>
@@ -96,7 +96,7 @@ export function CustomOsdElementsPanel() {
   }
 
   const handleSave = useCallback(async (idx: number) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setCustomOsdElement) { setError("Custom OSD elements not available on this firmware"); return; }
     setSavingIdx(idx); setError(null);
     try {
@@ -107,7 +107,7 @@ export function CustomOsdElementsPanel() {
     } finally {
       setSavingIdx(null);
     }
-  }, [getSelectedProtocol, elements]);
+  }, [selectedProtocol, elements]);
 
   const textLength = info?.textLength ?? MAX_TEXT_LEN;
 

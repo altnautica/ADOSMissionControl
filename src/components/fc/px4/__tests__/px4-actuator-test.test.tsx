@@ -14,8 +14,9 @@ const actuatorTest = vi.fn<(fn: number, value: number, timeoutS: number) => Prom
 
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast }) }));
 vi.mock("@/hooks/use-armed-lock", () => ({ useArmedLock: () => ({ isHardBlocked: false }) }));
-const droneState = { getSelectedProtocol: () => ({ actuatorTest }) };
-vi.mock("@/stores/drone-manager", () => ({
+const droneState = { drones: new Map([["d1", { protocol: { actuatorTest } }]]), selectedDroneId: "d1" };
+vi.mock("@/stores/drone-manager", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
   useDroneManager: (selector: (s: unknown) => unknown) => selector(droneState),
 }));
 

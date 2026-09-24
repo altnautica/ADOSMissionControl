@@ -5,14 +5,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  cmdMap,
-  reverseCmd,
-  parseWaypointsFile,
-  parseQGCPlan,
-  exportWaypointsFormat,
-  exportQGCPlan,
-} from "@/lib/mission-io-formats";
+import { parseWaypointsFile, parseQGCPlan, exportWaypointsFormat, exportQGCPlan } from "@/lib/mission-io-formats";
+import { cmdMap, reverseCmd } from "@/lib/mission/command-map";
 import type { Waypoint } from "@/lib/types";
 import type { GeofenceSnapshot } from "@/stores/geofence-store";
 import { withImportedFenceZones } from "@/lib/mission/qgc-plan-extras";

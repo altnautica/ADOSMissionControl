@@ -16,7 +16,7 @@ import { Fan, Save, HardDrive, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EnumSelect } from "../parameters/EnumSelect";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
@@ -78,7 +78,6 @@ function MetaField({
 }
 
 export function ArduPilotHeliPanel() {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const scrollRef = usePanelScroll("ap-heli");
   const metadata = useParamMetadataMap();
 
@@ -97,7 +96,7 @@ export function ArduPilotHeliPanel() {
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getProtocol();
+  const connected = useDroneManager(selectSelectedProtocol) !== null;
   const hasDirty = dirtyParams.size > 0;
   const field = (name: string, label: string) => (
     <MetaField key={name} name={name} label={label} metadata={metadata} params={params} setLocalValue={setLocalValue} />

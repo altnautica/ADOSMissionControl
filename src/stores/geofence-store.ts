@@ -9,7 +9,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
-import { useDroneManager } from "./drone-manager";
+import { droneSelection, selectedDroneProtocol } from "./drone-selection";
 import { withPlannerHistory } from "@/lib/planner-history-adapter";
 import { polygonBounds } from "@/lib/drawing/geo-utils";
 import type { FenceElement } from "@/lib/protocol/types";
@@ -135,7 +135,7 @@ interface GeofenceStoreState {
 }
 
 export const useGeofenceStore = create<GeofenceStoreState>()(
-  persist(
+  persist<GeofenceStoreState, [], [], Partial<GeofenceStoreState>>(
     (set, get) => ({
   enabled: false,
   fenceType: "circle",
@@ -223,20 +223,23 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     ),
 
   uploadFence: async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol?.uploadFence) {
+    const protocol = selectedDroneProtocol();
+    if (!protocol) {
       return { success: false, message: "No flight controller connected" };
+    }
+    // The mission-type fence protocol carries every element (the primary
+    // boundary plus each inclusion/exclusion zone) and is what ArduPilot and
+    // PX4 both implement, so it wins whenever the adapter offers it. The
+    // point-list path is a single boundary polygon only.
+    const useMissionFence = typeof protocol.uploadFenceMission === "function";
+    if (!useMissionFence && !protocol.uploadFence) {
+      return { success: false, message: "This flight controller does not support fence upload" };
     }
 
     const snap = get().snapshot();
     const { fenceType, polygonPoints, circleCenter, circleRadius, zones } = snap;
-    const droneId = useDroneManager.getState().selectedDroneId;
+    const droneId = droneSelection().selectedDroneId;
     const firmware = protocol.getVehicleInfo()?.firmwareType;
-    // PX4 stores the geofence as a mission plan (mission_type = fence). ArduPilot
-    // and other firmwares use the legacy FENCE_POINT protocol. Branch here so a
-    // PX4 upload is no longer a silent no-op against the legacy path.
-    const useMissionFence =
-      firmware === "px4" && typeof protocol.uploadFenceMission === "function";
 
     // Build the payload before flipping upload state so an empty fence is a no-op.
     let elements: FenceElement[] = [];
@@ -247,6 +250,15 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
         return { success: false, message: "Nothing to upload — the fence is empty" };
       }
     } else {
+      // A zone the transfer cannot carry must stop the upload: reporting the
+      // boundary as uploaded would vouch for exclusion zones the FC never got.
+      if (zones.length > 0) {
+        return {
+          success: false,
+          message:
+            "This flight controller's fence protocol carries one boundary only; remove the inclusion and exclusion zones to upload",
+        };
+      }
       points = flattenToPolygon(fenceType, polygonPoints, circleCenter, circleRadius);
       if (points.length < 3) {
         return { success: false, message: "A fence needs at least 3 boundary points" };
@@ -260,7 +272,7 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     try {
       const result = useMissionFence
         ? await protocol.uploadFenceMission!(elements)
-        : await protocol.uploadFence(points);
+        : await protocol.uploadFence!(points);
       // The geometry alone enforces nothing: the enable flag, fence type,
       // altitude ceiling and breach action are parameters. A fence the FC
       // holds but does not enforce is not "uploaded", so any failed write
@@ -285,15 +297,18 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
   },
 
   downloadFence: async () => {
-    const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol?.downloadFence) {
+    const protocol = selectedDroneProtocol();
+    if (!protocol) {
       return { success: false, message: "No flight controller connected" };
+    }
+    const useMissionFence = typeof protocol.downloadFenceMission === "function";
+    if (!useMissionFence && !protocol.downloadFence) {
+      return { success: false, message: "This flight controller does not support fence download" };
     }
 
     const firmware = protocol.getVehicleInfo()?.firmwareType;
     const isPx4 = firmware === "px4";
-    const useMissionFence = isPx4 && typeof protocol.downloadFenceMission === "function";
-    const droneId = useDroneManager.getState().selectedDroneId;
+    const droneId = droneSelection().selectedDroneId;
     const noFence = { success: true, message: "No fence stored on the flight controller" };
 
     set({ downloadState: "downloading" });
@@ -329,25 +344,34 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
               };
         message = `Loaded ${elements.length} fence elements`;
       } else {
-        const points = await protocol.downloadFence();
+        const points = await protocol.downloadFence!();
         if (points.length < 3) {
           set({ downloadState: "downloaded" });
           return noFence;
         }
+        // The point-list protocol holds one boundary and no zones, so any
+        // local zone is not on the FC and must not survive into what the
+        // planner now presents as the FC's fence.
         geometry = {
           fenceType: "polygon",
           polygonPoints: points.map((p) => [p.lat, p.lon] as [number, number]),
+          zones: [],
         };
         message = `Loaded ${points.length} fence points`;
       }
       const params = await readFenceParams(protocol, isPx4);
-      set({
-        ...geometry,
-        enabled: params.enabled,
-        maxAltitude: params.maxAltitude,
-        ...(params.breachAction ? { breachAction: params.breachAction } : {}),
-        downloadState: "downloaded",
-      });
+      // Replacing the operator's fence with the FC's is an edit like any
+      // other: one undo step brings the local fence back.
+      withPlannerHistory(() =>
+        set({
+          ...geometry,
+          enabled: params.enabled,
+          maxAltitude: params.maxAltitude,
+          minAltitude: params.minAltitude,
+          ...(params.breachAction ? { breachAction: params.breachAction } : {}),
+        }),
+      );
+      set({ downloadState: "downloaded" });
       // The planner now shows what the FC holds, unless its breach action has
       // no planner equivalent (the local action was kept, so they differ).
       if (droneId && params.breachAction) {
@@ -454,7 +478,7 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
         }
         if (!Array.isArray(state.zones)) state.zones = [];
         if (!Array.isArray(state.polygonPoints)) state.polygonPoints = [];
-        return state as unknown as GeofenceStoreState;
+        return state as Partial<GeofenceStoreState>;
       },
     },
   ),

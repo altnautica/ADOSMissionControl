@@ -29,7 +29,8 @@ import { StatRow } from "./StatRow";
 import { AdapterHealthPills } from "./AdapterHealthPills";
 
 export interface LinkHealthCardProps {
-  topology: RadioTopology;
+  /** Null until the radio reports how it is powered. */
+  topology: RadioTopology | null;
   linkState: RadioLinkState;
   showBrownoutWarning: boolean;
   pollError: string | null;
@@ -169,12 +170,14 @@ export function LinkHealthCard({
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-5">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${topologyClass(topology)}`}
-        >
-          <RadioIcon size={12} />
-          {topologyLabel(t, topology)}
-        </span>
+        {topology !== null ? (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${topologyClass(topology)}`}
+          >
+            <RadioIcon size={12} />
+            {topologyLabel(t, topology)}
+          </span>
+        ) : null}
         <span
           className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs ${linkStateBadgeClass(linkState)}`}
         >

@@ -165,7 +165,7 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
       role="dialog"
       aria-labelledby="export-key-title"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70"
       onClick={(e) => e.target === e.currentTarget && state !== "rotating" && onClose()}
     >
       <div className="bg-bg-secondary border border-border-default max-w-md w-full mx-4 p-6 space-y-4">
@@ -221,7 +221,7 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
                 type="button"
                 onClick={handleExport}
                 disabled={phrase !== "EXPORT"}
-                className="px-3 py-1.5 text-sm bg-accent-primary text-white disabled:opacity-40"
+                className="px-3 py-1.5 text-sm bg-accent-primary text-accent-foreground disabled:opacity-40"
               >
                 Rotate and copy
               </button>
@@ -287,7 +287,7 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
               <button
                 type="button"
                 onClick={() => void copyPendingKey()}
-                className="px-3 py-1.5 text-sm bg-accent-primary text-white"
+                className="px-3 py-1.5 text-sm bg-accent-primary text-accent-foreground"
               >
                 Copy again
               </button>

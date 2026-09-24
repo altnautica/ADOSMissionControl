@@ -15,6 +15,11 @@ pub const ENV_FILE: &str = "tools/selfhost/.env";
 pub const OVERRIDE_FILE: &str = "tools/selfhost/docker-compose.override.yml";
 /// The generated MQTT password file, relative to the repo root.
 pub const PASSWD_FILE: &str = "tools/selfhost/passwd";
+/// The generated broker ACL, relative to the repo root. Seeded from
+/// [`ACL_POLICY_FILE`] and kept current by the `mqtt-auth-sync` sidecar.
+pub const ACL_FILE: &str = "tools/selfhost/acl.conf";
+/// The committed bridge-only ACL policy the seed starts as.
+pub const ACL_POLICY_FILE: &str = "tools/mqtt-bridge/deploy/acl.conf";
 
 const REDACTED: &str = "<redacted>";
 
@@ -98,6 +103,8 @@ fn planned_files(cfg: &DeployConfig) -> Vec<PlannedFile> {
     let mut redacted = cfg.clone();
     redacted.instance_secret = REDACTED.to_string();
     redacted.mqtt_password = REDACTED.to_string();
+    redacted.video_relay_secret = REDACTED.to_string();
+    redacted.mqtt_auth_relay_secret = REDACTED.to_string();
 
     let mut files = vec![PlannedFile {
         path: ENV_FILE.to_string(),
@@ -116,6 +123,11 @@ fn planned_files(cfg: &DeployConfig) -> Vec<PlannedFile> {
             path: PASSWD_FILE.to_string(),
             note: "hashed MQTT principal".to_string(),
             redacted_content: format!("{}:{REDACTED}\n", cfg.mqtt_username),
+        });
+        files.push(PlannedFile {
+            path: ACL_FILE.to_string(),
+            note: "broker ACL seed (bridge only; mqtt-auth-sync adds devices)".to_string(),
+            redacted_content: format!("user {}\ntopic read ados/#\n", cfg.mqtt_username),
         });
     }
     files
@@ -188,6 +200,13 @@ fn planned_commands(cfg: &DeployConfig) -> Vec<PlannedCommand> {
                 format!("npx convex env set -- {k} {v}"),
             );
         }
+        for (k, _) in env_files::convex_secret_env_vars(cfg) {
+            push(
+                &mut c,
+                &format!("Set Convex env {k}"),
+                format!("npx convex env set -- {k} {REDACTED}"),
+            );
+        }
     }
 
     if !cfg.mqtt.is_managed() {
@@ -198,6 +217,11 @@ fn planned_commands(cfg: &DeployConfig) -> Vec<PlannedCommand> {
                 "docker run --rm -v <selfhost>:/work eclipse-mosquitto:2 mosquitto_passwd -b -c /work/passwd {} {REDACTED}",
                 cfg.mqtt_username
             ),
+        );
+        push(
+            &mut c,
+            "Seed the broker ACL (mqtt-auth-sync keeps it current)",
+            format!("cp {ACL_POLICY_FILE} {ACL_FILE}   # only when absent"),
         );
     }
 
@@ -225,7 +249,7 @@ fn planned_commands(cfg: &DeployConfig) -> Vec<PlannedCommand> {
         push(
             &mut c,
             "Note: HTTP-only",
-            "browser cloud mode needs HTTPS — add a tunnel for internet fleet control".to_string(),
+            "browser cloud mode needs HTTPS — put a TLS reverse proxy in front for internet fleet control".to_string(),
         );
     }
     c
@@ -242,6 +266,8 @@ mod tests {
         c.host = "192.168.1.50".to_string();
         c.instance_secret = "sekret".to_string();
         c.mqtt_password = "pw".to_string();
+        c.video_relay_secret = "vidrelaykey".to_string();
+        c.mqtt_auth_relay_secret = "authsynckey".to_string();
         c
     }
 
@@ -262,6 +288,16 @@ mod tests {
                 .map(|f| f.redacted_content.clone())
                 .collect::<String>();
         assert!(!text.contains("sekret"), "instance secret leaked into plan");
+        assert!(
+            !text.contains("vidrelaykey"),
+            "video relay secret leaked into plan"
+        );
+        assert!(labels.iter().any(|l| l.contains("VIDEO_RELAY_SECRET")));
+        assert!(
+            !text.contains("authsynckey"),
+            "broker auth-sync secret leaked into plan"
+        );
+        assert!(labels.iter().any(|l| l.contains("MQTT_AUTH_RELAY_SECRET")));
         assert!(!text.contains("pw\n"), "mqtt password leaked into plan");
         assert!(text.contains("<redacted>"));
     }

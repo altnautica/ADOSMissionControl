@@ -3,8 +3,9 @@
 //!
 //! The content builders are pure (they feed both the `--plan` preview and the
 //! real write). Secrets only ever land in these gitignored files; `.env`
-//! carries the instance secret + MQTT password, and the write path refuses to
-//! write to a path git does not ignore.
+//! carries the instance secret, the MQTT password, the broker auth-sync secret
+//! and the video relay secret, and the write path refuses to write to a path
+//! git does not ignore.
 
 use std::path::Path;
 
@@ -39,6 +40,14 @@ pub fn render_env(cfg: &DeployConfig) -> String {
     out.push_str("# --- MQTT principals ---\n");
     kv(&mut out, "MQTT_USERNAME", &cfg.mqtt_username);
     kv(&mut out, "MQTT_PASSWORD", &cfg.mqtt_password);
+    out.push_str(
+        "# Broker auth-sync bearer; the same value is set on Convex, which serves the entries.\n",
+    );
+    kv(
+        &mut out,
+        "MQTT_AUTH_RELAY_SECRET",
+        &cfg.mqtt_auth_relay_secret,
+    );
     out.push('\n');
 
     out.push_str("# --- Video relay ---\n");
@@ -47,6 +56,10 @@ pub fn render_env(cfg: &DeployConfig) -> String {
         "RTSP_URL_PATTERN",
         "rtsp://host.docker.internal:8554/{deviceId}",
     );
+    out.push_str(
+        "# Viewer-token secret; the same value is set on Convex, which mints the tokens.\n",
+    );
+    kv(&mut out, "VIDEO_RELAY_SECRET", &cfg.video_relay_secret);
     out
 }
 
@@ -109,6 +122,22 @@ pub fn convex_env_vars(cfg: &DeployConfig) -> Vec<(&'static str, String)> {
     v
 }
 
+/// The secret Convex environment variables, set alongside [`convex_env_vars`] and
+/// shown redacted in the plan. Each is shared with a container this deploy
+/// starts: the relay's viewer-token secret (Convex mints the tokens) and the
+/// broker auth-sync bearer (Convex serves `/admin/mqtt-auth-entries`). A managed
+/// relay or broker keeps its own secret.
+pub fn convex_secret_env_vars(cfg: &DeployConfig) -> Vec<(&'static str, String)> {
+    let mut v = Vec::new();
+    if !cfg.mqtt.is_managed() {
+        v.push(("MQTT_AUTH_RELAY_SECRET", cfg.mqtt_auth_relay_secret.clone()));
+    }
+    if !cfg.video.is_managed() {
+        v.push(("VIDEO_RELAY_SECRET", cfg.video_relay_secret.clone()));
+    }
+    v
+}
+
 fn kv(out: &mut String, key: &str, value: &str) {
     out.push_str(&format!("{key}={value}\n"));
 }
@@ -121,18 +150,6 @@ pub fn read_env_var(repo_root: &Path, key: &str) -> Option<String> {
         .find_map(|l| l.strip_prefix(&format!("{key}=")))
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
-}
-
-/// Read the generated instance secret + MQTT password from an existing
-/// `tools/selfhost/.env`, so a re-run reuses them instead of minting new ones.
-/// This keeps the deploy idempotent: the Convex admin key is derived from the
-/// instance secret, so a stable secret means a re-run/upgrade targets the same
-/// backend and never needlessly recreates the container.
-pub fn read_existing_secrets(repo_root: &Path) -> Option<(String, String)> {
-    Some((
-        read_env_var(repo_root, "CONVEX_INSTANCE_SECRET")?,
-        read_env_var(repo_root, "MQTT_PASSWORD")?,
-    ))
 }
 
 /// Recover the host-facing ports from an existing `docker-compose.override.yml`
@@ -220,6 +237,8 @@ mod tests {
         c.instance_name = "ados-selfhosted".to_string();
         c.instance_secret = "aabbcc".to_string();
         c.mqtt_password = "secretpw".to_string();
+        c.video_relay_secret = "relaysecret".to_string();
+        c.mqtt_auth_relay_secret = "authsyncsecret".to_string();
         c
     }
 
@@ -234,9 +253,30 @@ mod tests {
             "MQTT_USERNAME=ados",
             "MQTT_PASSWORD=secretpw",
             "RTSP_URL_PATTERN=rtsp://host.docker.internal:8554/{deviceId}",
+            "VIDEO_RELAY_SECRET=relaysecret",
+            "MQTT_AUTH_RELAY_SECRET=authsyncsecret",
         ] {
             assert!(e.contains(k), "env missing {k}\n---\n{e}");
         }
+    }
+
+    #[test]
+    fn shared_secrets_are_set_on_convex_only_for_services_this_deploy_starts() {
+        assert_eq!(
+            convex_secret_env_vars(&cfg()),
+            vec![
+                ("MQTT_AUTH_RELAY_SECRET", "authsyncsecret".to_string()),
+                ("VIDEO_RELAY_SECRET", "relaysecret".to_string()),
+            ]
+        );
+        let mut managed = cfg();
+        managed.video = Provision::Managed {
+            url: "wss://video.example.com".to_string(),
+        };
+        managed.mqtt = Provision::Managed {
+            url: "mqtts://mqtt.example.com".to_string(),
+        };
+        assert!(convex_secret_env_vars(&managed).is_empty());
     }
 
     #[test]
@@ -266,19 +306,19 @@ mod tests {
     }
 
     #[test]
-    fn read_existing_secrets_and_vars_round_trip() {
+    fn read_env_var_reads_trimmed_non_empty_values() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
         let sh = root.join("tools/selfhost");
         std::fs::create_dir_all(&sh).unwrap();
         std::fs::write(
             sh.join(".env"),
-            "CONVEX_INSTANCE_SECRET=deadbeef\nMQTT_PASSWORD=hunter2\nEMPTY=\nOTHER=x\n",
+            "CONVEX_INSTANCE_SECRET=deadbeef\nEMPTY=\nOTHER=x\n",
         )
         .unwrap();
         assert_eq!(
-            read_existing_secrets(root),
-            Some(("deadbeef".to_string(), "hunter2".to_string()))
+            read_env_var(root, "CONVEX_INSTANCE_SECRET").as_deref(),
+            Some("deadbeef")
         );
         assert_eq!(read_env_var(root, "OTHER").as_deref(), Some("x"));
         assert!(read_env_var(root, "EMPTY").is_none()); // blank value → None

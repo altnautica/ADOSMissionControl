@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { isFresh } from "@/lib/telemetry/freshness";
@@ -39,8 +39,8 @@ function addrHex(addr: number[]): string {
 // ── Component ─────────────────────────────────────────────────
 
 export function TempSensorsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -52,7 +52,7 @@ export function TempSensorsPanel() {
   // Poll live readings once the configuration is loaded. A failed read keeps
   // the old stamp, so the freshness gate below blanks the values.
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     const getTemperatures = protocol?.getTemperatures?.bind(protocol);
     if (!hasLoaded || !getTemperatures) return;
     let inFlight = false;
@@ -69,7 +69,7 @@ export function TempSensorsPanel() {
     void poll();
     const timer = setInterval(poll, READINGS_POLL_MS);
     return () => clearInterval(timer);
-  }, [hasLoaded, getSelectedProtocol]);
+  }, [hasLoaded, selectedProtocol]);
 
   useClockTick();
   const now = useClockStore((s) => s.now);
@@ -81,7 +81,7 @@ export function TempSensorsPanel() {
   };
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getTempSensorConfigs) { setError("Temperature sensor config not supported"); return; }
     setLoading(true); setError(null);
     try {
@@ -92,7 +92,7 @@ export function TempSensorsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const activeSensors = sensors.filter((s) => s.type !== 0);
 

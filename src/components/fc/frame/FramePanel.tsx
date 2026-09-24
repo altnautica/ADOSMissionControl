@@ -6,7 +6,7 @@ import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,12 @@ import {
 import { Select } from "@/components/ui/select";
 import { Save, HardDrive, Box, Zap, Info } from "lucide-react";
 import { FrameConfigLog, FrameCard, type ConfigLogEntry } from "./FrameConfigLog";
+import {
+  ROVER_FRAME_CLASS_OPTIONS,
+  ROVER_FRAME_TYPE_OPTIONS,
+  SUB_FRAME_CONFIG_OPTIONS,
+} from "./ardupilot-frame-enums";
+import { withCurrent } from "./enum-options";
 
 const MotorDiagram3D = dynamic(
   () => import("../motors/MotorDiagram3D").then((m) => ({ default: m.MotorDiagram3D })),
@@ -27,6 +33,7 @@ const MotorDiagram3D = dynamic(
 
 const COPTER_FRAME_PARAMS = ["FRAME_CLASS", "FRAME_TYPE"];
 const PLANE_FRAME_PARAMS = ["Q_FRAME_CLASS", "Q_FRAME_TYPE"];
+const SUB_FRAME_PARAMS = ["FRAME_CONFIG"];
 
 const FRAME_CLASS_OPTIONS = Object.entries(FRAME_CLASS_NAMES).map(([value, label]) => ({
   value: String(Number(value)),
@@ -41,14 +48,16 @@ export function FramePanel() {
   // Save button is soft — goes through usePanelParams confirm dialog.
   const { isHardBlocked } = useArmedLock();
   const { firmwareType } = useFirmwareCapabilities();
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const connected = useDroneManager(selectSelectedProtocol) !== null;
 
   const isPlane = firmwareType === "ardupilot-plane";
   const isCopter = firmwareType === "ardupilot-copter";
   const isRover = firmwareType === "ardupilot-rover";
   const isSub = firmwareType === "ardupilot-sub";
-  const paramNames = useMemo(() => isPlane ? PLANE_FRAME_PARAMS : COPTER_FRAME_PARAMS, [isPlane]);
+  const paramNames = useMemo(
+    () => (isPlane ? PLANE_FRAME_PARAMS : isSub ? SUB_FRAME_PARAMS : COPTER_FRAME_PARAMS),
+    [isPlane, isSub],
+  );
   const optionalParams = useMemo(() => {
     if (isPlane || (!isCopter && !isRover && !isSub)) return paramNames;
     return [];
@@ -72,11 +81,16 @@ export function FramePanel() {
   const [committing, setCommitting] = useState(false);
 
   const isFixedWingOnly = isPlane && hasLoaded && paramNames.every((p) => missingOptional.has(p));
+  // Rover and sub frames are not multirotor motor layouts: they get their own
+  // enums and no motor diagram.
+  const multirotorFrame = !isRover && !isSub;
+  // Nothing is shown as the vehicle's frame until its values have been read.
+  const showMultirotor = hasLoaded && multirotorFrame && !isFixedWingOnly;
 
   const classParam = isPlane ? "Q_FRAME_CLASS" : "FRAME_CLASS";
   const typeParam = isPlane ? "Q_FRAME_TYPE" : "FRAME_TYPE";
-  const frameClass = params.get(classParam) ?? 1;
-  const frameType = params.get(typeParam) ?? 1;
+  const frameClass = params.get(classParam) ?? 0;
+  const frameType = params.get(typeParam) ?? 0;
   const hasDirty = dirtyParams.size > 0;
 
   const uniqueTypes = useMemo(() => getUniqueTypesForClass(frameClass), [frameClass]);
@@ -161,7 +175,22 @@ export function FramePanel() {
               </FrameCard>
             )}
 
-            {!isFixedWingOnly && (
+            {hasLoaded && isRover && (
+              <FrameCard icon={<Box size={14} />} title="Frame Selection" description="Rover frame class and motor arrangement">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Select label="FRAME_CLASS" options={withCurrent(ROVER_FRAME_CLASS_OPTIONS, params.get("FRAME_CLASS"))} value={String(params.get("FRAME_CLASS") ?? "")} onChange={(v) => handleLocalChange("FRAME_CLASS", Number(v))} disabled={isHardBlocked} />
+                  <Select label="FRAME_TYPE" options={withCurrent(ROVER_FRAME_TYPE_OPTIONS, params.get("FRAME_TYPE"))} value={String(params.get("FRAME_TYPE") ?? "")} onChange={(v) => handleLocalChange("FRAME_TYPE", Number(v))} disabled={isHardBlocked} />
+                </div>
+              </FrameCard>
+            )}
+
+            {hasLoaded && isSub && (
+              <FrameCard icon={<Box size={14} />} title="Frame Selection" description="Thruster configuration">
+                <Select label="FRAME_CONFIG" options={withCurrent(SUB_FRAME_CONFIG_OPTIONS, params.get("FRAME_CONFIG"))} value={String(params.get("FRAME_CONFIG") ?? "")} onChange={(v) => handleLocalChange("FRAME_CONFIG", Number(v))} disabled={isHardBlocked} />
+              </FrameCard>
+            )}
+
+            {showMultirotor && (
               <FrameCard icon={<Box size={14} />} title="Frame Selection" description="Select airframe class and configuration type">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Select label={classParam} options={FRAME_CLASS_OPTIONS} value={String(frameClass)} onChange={(v) => handleLocalChange(classParam, Number(v))} disabled={isHardBlocked} searchable />
@@ -197,7 +226,7 @@ export function FramePanel() {
               </FrameCard>
             )}
 
-            {!isFixedWingOnly && (
+            {showMultirotor && (
               <FrameCard icon={<Zap size={14} />} title="Motor Layout" description={`${className} ${typeName} — ${motorCountStr}`}>
                 {loading && !layout ? (
                   <div className="h-[360px] flex items-center justify-center text-xs text-text-tertiary bg-bg-tertiary animate-pulse">Loading parameters...</div>
@@ -212,7 +241,7 @@ export function FramePanel() {
               </FrameCard>
             )}
 
-            {!isFixedWingOnly && (
+            {showMultirotor && (
               <div className="flex items-center gap-4 text-xs text-text-secondary">
                 <div><span className="text-text-tertiary">Motors: </span><span className="font-mono text-text-primary">{layout ? motorCountStr : "—"}</span></div>
                 <div><span className="text-text-tertiary">Class: </span><span className="font-mono text-text-primary">{className}</span></div>
@@ -220,7 +249,7 @@ export function FramePanel() {
               </div>
             )}
 
-            {!isFixedWingOnly && (
+            {hasLoaded && !isFixedWingOnly && (
               <div className="flex items-center gap-3 pt-2 pb-4">
                 <Button variant="primary" size="lg" icon={<Save size={14} />} disabled={!hasDirty} loading={saving} onClick={handleSave}>Save to RAM</Button>
                 {hasRamWrites && <Button variant="secondary" size="lg" icon={<HardDrive size={14} />} loading={committing} onClick={handleFlash}>Write to Flash</Button>}

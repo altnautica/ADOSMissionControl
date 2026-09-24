@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import type { ComponentType } from 'react'
 import { renderWithIntl } from '../helpers/intl-wrapper'
-import { useDroneManager } from '@/stores/drone-manager'
+import { selectTestProtocol } from '../helpers/selected-drone'
 import { INavMockProtocol } from '@/mock/inav-mock-protocol'
 import { INavFailsafePanel } from '@/components/fc/inav/INavFailsafePanel'
 import { NavConfigPanel } from '@/components/fc/inav/NavConfigPanel'
@@ -32,7 +32,7 @@ const PANELS: Array<[string, ComponentType]> = [
 describe('iNav settings panels load against real setting names', () => {
   beforeEach(() => {
     const fc = new INavMockProtocol({ vehicleClass: 'copter' })
-    useDroneManager.setState({ getSelectedProtocol: () => fc } as never)
+    selectTestProtocol(fc)
   })
 
   for (const [name, Panel] of PANELS) {

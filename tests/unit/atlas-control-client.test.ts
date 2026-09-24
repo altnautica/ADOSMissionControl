@@ -70,16 +70,16 @@ describe("coerceReadiness", () => {
     });
   });
 
-  it("defaults missing fields (empty object)", () => {
+  it("reads fields the agent did not report as unknown, never as idle", () => {
     const r = coerceReadiness({});
     expect(r).toMatchObject({
       enabled: false,
-      capturing: false,
+      capturing: null,
       camerasConfigured: 0,
       poseSource: "local_vio",
-      state: "idle",
+      state: null,
       sessionId: null,
-      ingestRateHz: 0,
+      ingestRateHz: null,
     });
   });
 

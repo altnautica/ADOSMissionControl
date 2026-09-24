@@ -136,9 +136,7 @@ export function VideoLatencyBreakdown({
   // Render-only state derivations. Kept inline so the popover stays
   // a single self-contained component.
   const supportsScriptTransform =
-    typeof window !== "undefined" &&
-    typeof (window as unknown as { RTCRtpScriptTransform?: unknown })
-      .RTCRtpScriptTransform !== "undefined";
+    typeof window !== "undefined" && "RTCRtpScriptTransform" in window;
 
   const hasG2G = latency.trueG2GMs !== null;
   // There is no cloud-transport branch here any more. It read

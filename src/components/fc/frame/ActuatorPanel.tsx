@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Cpu, Save, HardDrive, RotateCcw } from "lucide-react";
 import { Px4ActuatorTest } from "../px4/Px4ActuatorTest";
+import { PX4_OUTPUT_FUNCTION_OPTIONS } from "./px4-output-functions";
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -29,30 +30,9 @@ const ACTUATOR_PARAMS: string[] = [
   "CA_SV_CS_COUNT",
 ];
 
-const PWM_FUNCTION_OPTIONS = [
-  { value: "0", label: "Disabled" },
-  { value: "101", label: "Motor 1" },
-  { value: "102", label: "Motor 2" },
-  { value: "103", label: "Motor 3" },
-  { value: "104", label: "Motor 4" },
-  { value: "105", label: "Motor 5" },
-  { value: "106", label: "Motor 6" },
-  { value: "107", label: "Motor 7" },
-  { value: "108", label: "Motor 8" },
-  { value: "201", label: "Servo 1" },
-  { value: "202", label: "Servo 2" },
-  { value: "203", label: "Servo 3" },
-  { value: "204", label: "Servo 4" },
-  { value: "401", label: "Landing Gear" },
-  { value: "402", label: "Parachute" },
-  { value: "403", label: "Gripper" },
-  { value: "2000", label: "Camera Trigger" },
-];
-
 // ── Component ────────────────────────────────────────────────
 
 export function ActuatorPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
@@ -64,7 +44,7 @@ export function ActuatorPanel() {
   } = usePanelParams({ paramNames: ACTUATOR_PARAMS, panelId: "actuator", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = useDroneManager(selectSelectedProtocol) !== null;
   const hasDirty = dirtyParams.size > 0;
   const rotorCount = params.get("CA_ROTOR_COUNT") ?? 4;
 
@@ -80,9 +60,8 @@ export function ActuatorPanel() {
         .sort((a, b) => a[0] - b[0])
         .map(([code, label]) => ({ value: String(code), label: `${code}: ${label}` }));
     }
-    return PWM_FUNCTION_OPTIONS;
+    return [...PX4_OUTPUT_FUNCTION_OPTIONS];
   }, [metadata]);
-  const liveLabels = functionOptions !== PWM_FUNCTION_OPTIONS;
   // Keep the current value selectable even if it is not in the enum list.
   const optionsFor = (current: number) =>
     functionOptions.some((o) => o.value === String(current))
@@ -211,7 +190,7 @@ export function ActuatorPanel() {
                         value={String(params.get(param) ?? 0)}
                         onChange={(v) => setLocalValue(param, Number(v))}
                         options={optionsFor(params.get(param) ?? 0)}
-                        searchable={liveLabels}
+                        searchable
                         className="flex-1"
                       />
                     </div>

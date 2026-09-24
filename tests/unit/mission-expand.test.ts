@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { expandToItems, collapseFromItems } from "@/lib/mission/mission-expand";
 import { flattenForSerialization, foldLegacyWaypoints } from "@/lib/mission/flat-rows";
-import { cmdMap, frameToMav } from "@/lib/mission-io-formats";
+import { frameToMav } from "@/lib/mission-io-formats";
+import { cmdMap } from "@/lib/mission/command-map";
 import { encodeMissionItemInt } from "@/lib/protocol/encoders/mission";
 import type { MissionItem } from "@/lib/protocol/types/mission";
 import type {

@@ -67,11 +67,50 @@ function encodeLongAsCommandInt(a: PendingCommand["encodeArgs"]): Uint8Array {
   );
 }
 
+/**
+ * Commands whose repeat leaves the vehicle in the same state, so they are sent
+ * again when no COMMAND_ACK arrives, as the MAVLink command protocol expects of
+ * the sender (confirmation incremented on each COMMAND_LONG resend). A command
+ * that acts again when repeated (camera trigger or capture, calibration, motor
+ * or actuator test, relative yaw) or that the vehicle refuses when already done
+ * (takeoff while airborne) is sent once.
+ */
+const RESEND_SAFE_COMMANDS: ReadonlySet<number> = new Set([
+  400, // COMPONENT_ARM_DISARM
+  176, // DO_SET_MODE
+  20, // NAV_RETURN_TO_LAUNCH
+  21, // NAV_LAND
+  185, // DO_FLIGHTTERMINATION
+  192, // DO_REPOSITION
+  193, // DO_PAUSE_CONTINUE
+  178, // DO_CHANGE_SPEED
+  179, // DO_SET_HOME
+  207, // DO_FENCE_ENABLE
+  181, // DO_SET_RELAY
+  183, // DO_SET_SERVO
+  204, // DO_MOUNT_CONFIGURE
+  205, // DO_MOUNT_CONTROL
+  195, // DO_SET_ROI_LOCATION
+  197, // DO_SET_ROI_NONE
+  34, // DO_ORBIT
+  511, // SET_MESSAGE_INTERVAL
+  512, // REQUEST_MESSAGE
+  32000, // CAN_FORWARD
+  42007, // SET_EKF_SOURCE_SET
+]);
+
+/** Resends of a silent command within its timeout (so three transmissions in all). */
+const MAX_SILENT_RESENDS = 2;
+
 interface PendingCommand {
   command: number;
   resolve: (result: CommandResult) => void;
   timer: ReturnType<typeof setTimeout>;
   retryCount: number;
+  /** COMMAND_LONG confirmation byte of the last transmission. */
+  confirmation: number;
+  /** Next resend of a silent command, while one is scheduled. */
+  resendTimer?: ReturnType<typeof setTimeout>;
   frame: Uint8Array;
   sendFn: (data: Uint8Array) => void;
   timeoutMs: number;
@@ -189,7 +228,7 @@ export class CommandQueue {
 
       // Track the pending command
       this.pending.set(ticket, {
-        command, resolve, timer, retryCount: 0,
+        command, resolve, timer, retryCount: 0, confirmation: 0,
         frame, sendFn, timeoutMs: effectiveTimeout,
         targetSys, sysId, compId, encodeArgs,
       });
@@ -209,6 +248,7 @@ export class CommandQueue {
           message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
         });
       }
+      this.armResend(ticket);
     });
   }
 
@@ -263,7 +303,7 @@ export class CommandQueue {
       }, effectiveTimeout);
 
       this.pending.set(ticket, {
-        command, resolve, timer, retryCount: 0,
+        command, resolve, timer, retryCount: 0, confirmation: 0,
         frame: encoded, sendFn, timeoutMs: effectiveTimeout,
         targetSys, sysId, compId, isCommandInt: true,
         // Retained only to satisfy the shared entry shape; the retry path
@@ -286,7 +326,55 @@ export class CommandQueue {
           message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
         });
       }
+      this.armResend(ticket);
     });
+  }
+
+  /**
+   * Send a resend-safe command again each time a third of its timeout passes
+   * without any COMMAND_ACK, at most {@link MAX_SILENT_RESENDS} times. Any ack
+   * (IN_PROGRESS included) stops it: the vehicle has the command.
+   */
+  private armResend(ticket: number): void {
+    const entry = this.pending.get(ticket);
+    if (!entry || !RESEND_SAFE_COMMANDS.has(entry.command)) return;
+    const interval = entry.timeoutMs / (MAX_SILENT_RESENDS + 1);
+    let resends = 0;
+    const tick = () => {
+      entry.resendTimer = undefined;
+      if (this.pending.get(ticket) !== entry || resends >= MAX_SILENT_RESENDS) return;
+      resends++;
+      if (!entry.isCommandInt) {
+        entry.confirmation++;
+        entry.frame = this.encodeLong(entry);
+      }
+      try {
+        entry.sendFn(entry.frame);
+      } catch (err) {
+        clearTimeout(entry.timer);
+        this.pending.delete(ticket);
+        entry.resolve({
+          success: false,
+          resultCode: -1,
+          message: `Send failed: ${err instanceof Error ? err.message : String(err)}`,
+        });
+        return;
+      }
+      entry.resendTimer = setTimeout(tick, interval);
+    };
+    entry.resendTimer = setTimeout(tick, interval);
+  }
+
+  /** Re-encode a pending COMMAND_LONG with its current confirmation byte. */
+  private encodeLong(entry: PendingCommand): Uint8Array {
+    const a = entry.encodeArgs;
+    return encodeCommandLong(
+      a.targetSys, a.targetComp, a.command,
+      a.params[0], a.params[1], a.params[2], a.params[3],
+      a.params[4], a.params[5], a.params[6],
+      a.sysId, a.compId,
+      entry.confirmation,
+    );
   }
 
   /**
@@ -328,7 +416,9 @@ export class CommandQueue {
       break;
     }
     if (ticket === undefined || entry === undefined) return;
-
+    // The vehicle answered, so it has the command: no more silent resends.
+    clearTimeout(entry.resendTimer);
+    entry.resendTimer = undefined;
     // IN_PROGRESS: reset timeout, keep waiting for final ACK
     if (result === MAV_RESULT.IN_PROGRESS) {
       clearTimeout(entry.timer);
@@ -347,19 +437,13 @@ export class CommandQueue {
     if (result === MAV_RESULT.TEMPORARILY_REJECTED && entry.retryCount < 3) {
       clearTimeout(entry.timer);
       entry.retryCount++;
-      // Re-encode the COMMAND_LONG with the confirmation byte set to the
-      // retry count. ArduPilot/PX4 distinguish a fresh command from a repeat
-      // by this byte; resending confirmation=0 looks like a duplicate first
-      // attempt rather than a confirmation.
+      // Re-encode the COMMAND_LONG with the confirmation byte incremented.
+      // ArduPilot/PX4 distinguish a fresh command from a repeat by this byte;
+      // resending confirmation=0 looks like a duplicate first attempt rather
+      // than a confirmation.
       if (!entry.isCommandInt) {
-        const a = entry.encodeArgs;
-        entry.frame = encodeCommandLong(
-          a.targetSys, a.targetComp, a.command,
-          a.params[0], a.params[1], a.params[2], a.params[3],
-          a.params[4], a.params[5], a.params[6],
-          a.sysId, a.compId,
-          entry.retryCount,
-        );
+        entry.confirmation++;
+        entry.frame = this.encodeLong(entry);
       }
       setTimeout(() => {
         // Entry may have been cleared during the delay
@@ -436,6 +520,7 @@ export class CommandQueue {
   clear(): void {
     for (const [, entry] of this.pending) {
       clearTimeout(entry.timer);
+      clearTimeout(entry.resendTimer);
       entry.resolve({
         success: false,
         resultCode: -1,

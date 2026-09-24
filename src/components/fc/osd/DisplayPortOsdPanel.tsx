@@ -10,14 +10,14 @@
 
 import { useEffect } from "react";
 import { Tv } from "lucide-react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDisplayPortStore } from "@/stores/displayport-store";
 import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { isFresh } from "@/lib/telemetry/freshness";
 
 export function DisplayPortOsdPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const lines = useDisplayPortStore((s) => s.lines);
   const resolutionLabel = useDisplayPortStore((s) => s.resolutionLabel);
@@ -28,10 +28,10 @@ export function DisplayPortOsdPanel() {
   // Re-attached on a drone switch, so the preview never keeps painting the
   // previously selected drone's OSD.
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (protocol) attach(protocol);
     return () => detach();
-  }, [getSelectedProtocol, selectedDroneId, attach, detach]);
+  }, [selectedProtocol, selectedDroneId, attach, detach]);
 
   // Re-evaluated on the shared 1 Hz clock so a stream that stops turns stale.
   useClockTick();
@@ -58,7 +58,7 @@ export function DisplayPortOsdPanel() {
         </div>
 
         <div className="overflow-x-auto">
-          <div className="inline-block bg-black border border-border-default p-3">
+          <div className="inline-block bg-media border border-border-default p-3">
             <div
               className="font-mono text-[11px] leading-[1.35] text-gcs-hud-green"
               style={{ letterSpacing: "0.08em" }}

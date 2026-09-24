@@ -83,23 +83,38 @@ export function useDroneCanNodeParams(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
-  const mountedRef = useRef(true);
+  // Bumped on unmount and whenever the node or client changes. Work started
+  // under an older session belongs to a node this editor no longer shows: a
+  // walk stops and its result is dropped, and a save stops writing.
+  const sessionRef = useRef(0);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
+  useEffect(() => () => {
+    sessionRef.current += 1;
   }, []);
+
+  // One node's parameters and dirty edits never carry over to another node,
+  // or a Save would write them there.
+  const seenRef = useRef({ client, nodeId });
+  useEffect(() => {
+    if (seenRef.current.client === client && seenRef.current.nodeId === nodeId) return;
+    seenRef.current = { client, nodeId };
+    sessionRef.current += 1;
+    setParams(new Map());
+    setDirty(new Set());
+    setError(null);
+    setLoading(false);
+  }, [client, nodeId]);
 
   const refresh = useCallback(async () => {
     if (!client) return;
+    const session = sessionRef.current;
     setLoading(true);
     setError(null);
     try {
       const next = new Map<string, ParamEntry>();
       for (let i = 0; i < MAX_INDEX_WALK; i++) {
         const res = await client.paramGet(nodeId, i);
+        if (session !== sessionRef.current) return;
         if (!res.name || res.name.length === 0) break;
         next.set(res.name, {
           name: res.name,
@@ -112,15 +127,13 @@ export function useDroneCanNodeParams(
           dirty: false,
         });
       }
-      if (mountedRef.current) {
-        setParams(next);
-        setDirty(new Set());
-      }
+      setParams(next);
+      setDirty(new Set());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (mountedRef.current) setError(msg);
+      if (session === sessionRef.current) setError(msg);
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (session === sessionRef.current) setLoading(false);
     }
   }, [client, nodeId]);
 
@@ -142,10 +155,12 @@ export function useDroneCanNodeParams(
 
   const saveAllDirty = useCallback(async () => {
     if (!client) return { saved: 0, failed: 0 };
+    const session = sessionRef.current;
     let saved = 0;
     let failed = 0;
     const cleared: string[] = [];
     for (const name of dirty) {
+      if (session !== sessionRef.current) break;
       const entry = params.get(name);
       if (!entry) continue;
       try {
@@ -163,7 +178,7 @@ export function useDroneCanNodeParams(
         failed++;
       }
     }
-    if (mountedRef.current && cleared.length > 0) {
+    if (session === sessionRef.current && cleared.length > 0) {
       setParams((prev) => {
         const next = new Map(prev);
         for (const name of cleared) {

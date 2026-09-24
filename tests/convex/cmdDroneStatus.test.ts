@@ -131,18 +131,6 @@ describe("cloud-relay /agent/status forwards the agent-emitted fields", () => {
       "peripherals: Array.isArray(body.peripherals) ? body.peripherals : undefined,",
     );
   });
-
-  it("does not forward the four reserved fields the heartbeat does not carry", async () => {
-    const text = await readFile(HTTP_PATH, "utf8");
-    // Declared on pushStatus and reserved: the current heartbeat carries none
-    // of them at the root, so a pick would round-trip as permanently
-    // undefined. The twin gate holds this same list of four, so a fifth
-    // unpicked field fails there rather than joining them silently.
-    expect(text).not.toContain("scripts: body.scripts,");
-    expect(text).not.toContain("peers: body.peers,");
-    expect(text).not.toContain("enrollment: body.enrollment,");
-    expect(text).not.toContain("logs: body.logs,");
-  });
 });
 
 describe("pushStatus persistence", () => {
@@ -284,5 +272,18 @@ describe("pushStatus fleet-card columns on cmd_drones", () => {
     expect(drone.manualMavlinkWsUrl).toBeUndefined();
     expect(drone.cameraState).toBeUndefined();
     expect(drone.cloudPosture).toBeUndefined();
+  });
+
+  it("refreshes the paired drone's agent version from every heartbeat", async () => {
+    const ctx = makeCtx();
+    ctx.db.seed("cmd_drones", [
+      { deviceId: "drone-a", userId: "u1", name: "a", apiKey: "k", agentVersion: "0.18.4" },
+    ]);
+    await invoke(cmdDroneStatus.pushStatus, ctx, {
+      deviceId: "drone-a",
+      version: "0.19.0",
+      uptimeSeconds: 5,
+    });
+    expect(ctx.db.rows("cmd_drones")[0].agentVersion).toBe("0.19.0");
   });
 });

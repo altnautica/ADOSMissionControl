@@ -1,5 +1,7 @@
 "use client";
 
+// Exempt from the 500-line rule: one tile with a body per node profile, all
+// reading the same freshness-gated slot; the bodies are small and co-located.
 /**
  * @module AgentFeedTile
  * @description One multi-agent Command overview tile. Renders a per-profile
@@ -48,7 +50,8 @@ import {
 import { useAgentVideoSession } from "@/hooks/use-agent-video-session";
 import { useBatteryBand } from "@/lib/battery-bands";
 import { StatTile } from "@/components/command/shared/StatTile";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
+import { StatusDot } from "@/components/ui/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { NodeGlyph } from "@/components/command/nodes/node-glyph";
 import { linkStateReach } from "@/components/hardware/radio/labels";
@@ -135,7 +138,7 @@ function TileActions({
           e.stopPropagation();
           onTogglePin(agent.identity.deviceId);
         }}
-        className="rounded bg-black/55 p-1 text-text-secondary hover:text-text-primary"
+        className="rounded bg-scrim/55 p-1 text-text-secondary hover:text-text-primary"
         title={pinned ? t("unpin") : t("pin")}
       >
         {pinned ? <PinOff size={13} /> : <Pin size={13} />}
@@ -148,7 +151,7 @@ function TileActions({
               e.stopPropagation();
               onTogglePause(agent.identity.deviceId);
             }}
-            className="rounded bg-black/55 p-1 text-text-secondary hover:text-text-primary"
+            className="rounded bg-scrim/55 p-1 text-text-secondary hover:text-text-primary"
             title={paused ? t("resume") : t("pause")}
           >
             {paused ? <Play size={13} /> : <Pause size={13} />}
@@ -159,7 +162,7 @@ function TileActions({
               e.stopPropagation();
               onRetry();
             }}
-            className="rounded bg-black/55 p-1 text-text-secondary hover:text-text-primary"
+            className="rounded bg-scrim/55 p-1 text-text-secondary hover:text-text-primary"
             title={t("retry")}
           >
             <RefreshCw size={13} />
@@ -359,7 +362,7 @@ function ConsoleAgentFeedTile({
             muted
             playsInline
             className={cn(
-              "absolute inset-0 h-full w-full object-cover bg-black",
+              "absolute inset-0 h-full w-full object-cover bg-media",
               !hasVideo && "hidden",
             )}
           />
@@ -423,7 +426,7 @@ function ConsoleAgentFeedTile({
           </div>
 
           {hasVideo && (
-            <div className="absolute bottom-0 left-0 right-0 flex items-center gap-2 bg-black/60 px-2 py-1 text-[10px] font-mono text-text-secondary">
+            <div className="absolute bottom-0 left-0 right-0 flex items-center gap-2 bg-scrim/60 px-2 py-1 text-[10px] font-mono text-text-secondary">
               <span>{session.stats.fps > 0 ? `${session.stats.fps} FPS` : "-- FPS"}</span>
               <span>{session.stats.bitrateKbps > 0 ? `${session.stats.bitrateKbps} kbps` : "-- kbps"}</span>
             </div>

@@ -12,12 +12,16 @@ interface FcPanelActionsState {
   saveToRam: (() => Promise<PanelSaveOutcome>) | null;
   refresh: (() => Promise<void>) | null;
   register: (saveToRam: () => Promise<PanelSaveOutcome>, refresh: () => Promise<void>) => void;
-  unregister: () => void;
+  /** Clear the handlers, but only if `saveToRam` is still the registered one:
+   *  a panel unmounting after another panel registered must not strip the
+   *  newer panel's Ctrl+S / Ctrl+R. */
+  unregister: (saveToRam: () => Promise<PanelSaveOutcome>) => void;
 }
 
 export const useFcPanelActionsStore = create<FcPanelActionsState>((set) => ({
   saveToRam: null,
   refresh: null,
   register: (saveToRam, refresh) => set({ saveToRam, refresh }),
-  unregister: () => set({ saveToRam: null, refresh: null }),
+  unregister: (saveToRam) =>
+    set((s) => (s.saveToRam === saveToRam ? { saveToRam: null, refresh: null } : s)),
 }));

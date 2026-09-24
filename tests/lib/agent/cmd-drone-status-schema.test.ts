@@ -1,78 +1,78 @@
 /**
- * Smoke tests for the cmd_droneStatus table shape and the pushStatus
- * mutation surface. The Convex schema is statically-typed but Convex's
- * runtime validators are only exercised at deploy time — these tests
- * pin the surface so a missing field on either side (table definition
- * or mutation args) gets caught locally.
- *
- * The test reads the source text of convex/schema.ts and
- * convex/cmdDroneStatus.ts and asserts that every field name we expect
- * to flow from agent heartbeat -> mutation args -> table row is present.
+ * The cmd_droneStatus table and the pushStatus args agree on the local-display
+ * and on-board video fields the agent heartbeat carries, asserted against the
+ * runtime validators rather than the source text: a field declared on the
+ * mutation but missing from the table (or typed differently) is a column the
+ * deployment rejects at write time.
  */
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-const SCHEMA_PATH = path.join(process.cwd(), "convex/schema.ts");
-const MUTATION_PATH = path.join(process.cwd(), "convex/cmdDroneStatus.ts");
+import schema from "../../../convex/schema";
+import { pushStatusArgs } from "../../../convex/cmdDroneStatus";
 
-const NEW_OPTIONAL_FIELDS = [
-  "lcdActivePage",
-  "lcdTouchCalibrated",
-  "lcdRotation",
-  "lcdSnapshotUrl",
-  "lcdLastTouchAt",
-  "lcdLastGesture",
-  "videoLocalDecoderActive",
-  "videoLocalDecoderType",
-  "videoLocalDecoderFps",
-  "videoRecording",
-  "uiTheme",
-] as const;
+const FIELD_KIND = {
+  lcdActivePage: "string",
+  lcdTouchCalibrated: "boolean",
+  lcdRotation: "number",
+  lcdSnapshotUrl: "string",
+  lcdLastTouchAt: "number",
+  lcdLastGesture: "string",
+  videoLocalDecoderActive: "boolean",
+  videoLocalDecoderType: "string",
+  videoLocalDecoderFps: "number",
+  videoRecording: "boolean",
+  uiTheme: "string",
+} as const;
 
-const FIELD_VALIDATOR: Record<(typeof NEW_OPTIONAL_FIELDS)[number], string> = {
-  lcdActivePage: "v.optional(v.string())",
-  lcdTouchCalibrated: "v.optional(v.boolean())",
-  lcdRotation: "v.optional(v.number())",
-  lcdSnapshotUrl: "v.optional(v.string())",
-  lcdLastTouchAt: "v.optional(v.number())",
-  lcdLastGesture: "v.optional(v.string())",
-  videoLocalDecoderActive: "v.optional(v.boolean())",
-  videoLocalDecoderType: "v.optional(v.string())",
-  videoLocalDecoderFps: "v.optional(v.number())",
-  videoRecording: "v.optional(v.boolean())",
-  uiTheme: "v.optional(v.string())",
-};
+interface ExportedField {
+  fieldType: { type: string };
+  optional: boolean;
+}
+
+interface ExportedTable {
+  indexes: Array<{ indexDescriptor: string; fields: string[] }>;
+  documentType: { type: string; value: Record<string, ExportedField> };
+}
+
+/** The table as Convex pushes it on deploy (`export()` is not in the public type). */
+function exportTable(definition: unknown): ExportedTable {
+  if (
+    typeof definition !== "object" ||
+    definition === null ||
+    !("export" in definition) ||
+    typeof definition.export !== "function"
+  ) {
+    throw new Error("cmd_droneStatus is not a Convex table definition");
+  }
+  const exported: ExportedTable = definition.export();
+  return exported;
+}
+
+const table = exportTable(schema.tables.cmd_droneStatus);
+const columns = table.documentType.value;
 
 describe("cmd_droneStatus schema", () => {
-  it("declares the cmd_droneStatus table", async () => {
-    const text = await readFile(SCHEMA_PATH, "utf8");
-    expect(text).toContain("cmd_droneStatus: defineTable");
-    expect(text).toContain('.index("by_deviceId", ["deviceId"])');
+  it("is indexed by device id", () => {
+    expect(table.indexes).toContainEqual(
+      expect.objectContaining({ indexDescriptor: "by_deviceId", fields: ["deviceId"] }),
+    );
   });
 
-  it.each(NEW_OPTIONAL_FIELDS)(
-    "schema declares %s as an optional field with the expected validator",
-    async (field) => {
-      const text = await readFile(SCHEMA_PATH, "utf8");
-      const expected = `${field}: ${FIELD_VALIDATOR[field]}`;
-      expect(text).toContain(expected);
+  it.each(Object.entries(FIELD_KIND))(
+    "stores %s as an optional %s on both the table and the mutation",
+    (field, kind) => {
+      expect(columns[field]).toEqual({ fieldType: { type: kind }, optional: true });
+      const arg = pushStatusArgs[field as keyof typeof pushStatusArgs];
+      // A numeric validator reports `float64` on the arg and `number` once exported.
+      expect(arg.kind).toBe(kind === "number" ? "float64" : kind);
+      expect(arg.isOptional).toBe("optional");
     },
   );
 
-  it("preserves the radio block and existing identifier fields", async () => {
-    const text = await readFile(SCHEMA_PATH, "utf8");
-    expect(text).toContain("deviceId: v.string(),");
-    expect(text).toContain("version: v.string(),");
-    expect(text).toContain("uptimeSeconds: v.number(),");
-    expect(text).toContain("radio: v.optional(v.object({");
-    expect(text).toContain("updatedAt: v.number(),");
-  });
-});
-
-describe("cmd_droneStatus mutation surface", () => {
-  it("exports pushStatus as an internalMutation", async () => {
-    const text = await readFile(MUTATION_PATH, "utf8");
-    expect(text).toContain("export const pushStatus = internalMutation");
+  it("requires the identifier fields on every row", () => {
+    for (const field of ["deviceId", "version", "uptimeSeconds", "updatedAt"]) {
+      expect(columns[field]?.optional, field).toBe(false);
+    }
+    expect(columns.radio?.fieldType.type).toBe("object");
   });
 });

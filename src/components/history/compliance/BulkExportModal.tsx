@@ -99,7 +99,7 @@ export function BulkExportModal({ open, records, onClose }: BulkExportModalProps
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 backdrop-blur-sm">
       <div className="w-[480px] max-w-[90vw] max-h-[85vh] overflow-y-auto rounded-md border border-border-default bg-bg-secondary shadow-xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
           <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">

@@ -11,7 +11,8 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
+import { StatusDot } from "@/components/ui/status-dot";
 
 export function StatTile({
   icon,

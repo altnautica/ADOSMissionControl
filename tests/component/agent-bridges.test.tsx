@@ -50,7 +50,7 @@ vi.mock("next/dynamic", () => ({
     );
   },
 }));
-vi.mock("@/app/ConvexClientProvider", () => ({ useConvexAvailable: () => env.convexAvailable }));
+vi.mock("@/hooks/use-convex-available", () => ({ useConvexAvailable: () => env.convexAvailable }));
 vi.mock("@/hooks/use-convex-skip-query", () => ({
   useConvexSkipQuery: (_q: unknown, opts?: { enabled?: boolean }) => (opts?.enabled ? env.myDrones : undefined),
 }));

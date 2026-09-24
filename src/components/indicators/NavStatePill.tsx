@@ -7,7 +7,7 @@
 "use client";
 
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useClockTick } from "@/lib/agent/freshness";
 import { isFresh } from "@/lib/telemetry/freshness";
@@ -20,8 +20,7 @@ import {
 // ── Component ────────────────────────────────────────────────
 
 export function NavStatePill() {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const protocol = getProtocol();
+  const protocol = useDroneManager(selectSelectedProtocol);
   const firmwareType = protocol?.getVehicleInfo()?.firmwareType;
 
   const navMode = useTelemetryStore((s) => s.navMode);

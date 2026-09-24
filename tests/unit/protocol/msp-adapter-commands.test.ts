@@ -86,9 +86,12 @@ function roundTrip(frame: CapturedFrame): { command: number; payload: Uint8Array
   parser.onFrame((f) => {
     decoded = { command: f.command, payload: f.payload };
   });
-  // The codec emits a request ($M< / $X<); the parser accepts the
-  // direction byte regardless, so we route the encoded request back in.
-  parser.feed(encodeMsp(frame.command, frame.payload));
+  // The codec emits a request ($M< / $X<), which the parser drops as an echo.
+  // Neither checksum covers the direction byte, so flipping it to '>' yields
+  // the same frame as a reply the parser decodes.
+  const wire = encodeMsp(frame.command, frame.payload);
+  wire[2] = 0x3e;
+  parser.feed(wire);
   if (!decoded) throw new Error(`frame for command ${frame.command} failed to round-trip`);
   return decoded;
 }

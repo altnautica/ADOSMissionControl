@@ -162,7 +162,7 @@ describe("FirmwareApPeriphSection", () => {
     expect((screen.getByRole("button", { name: /Flash node/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("surfaces the post-flash prompts once the OTA store hits DONE", () => {
+  it("surfaces the post-flash result once the OTA store hits DONE", () => {
     useSettingsStore.setState({ demoMode: true });
 
     renderWithIntl(
@@ -173,7 +173,7 @@ describe("FirmwareApPeriphSection", () => {
       />,
     );
 
-    // No prompts before flash completes.
+    // No result before the flash completes.
     expect(screen.queryByTestId("ap-periph-post-flash")).toBeNull();
 
     // Pick the first demo node so selectedNodeId is set.
@@ -200,8 +200,7 @@ describe("FirmwareApPeriphSection", () => {
     });
 
     expect(screen.getByTestId("ap-periph-post-flash")).toBeDefined();
-    expect(screen.getByText(/FLASH_BOOTLOADER=1/i)).toBeDefined();
-    expect(screen.getByText(/Change node ID/i)).toBeDefined();
+    expect(screen.getByText("Flash complete")).toBeDefined();
   });
 
   it("disables the CAN_FORWARD radio when the agent has not advertised any CAN buses yet", () => {

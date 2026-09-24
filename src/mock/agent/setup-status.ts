@@ -82,8 +82,6 @@ export function buildMockSetupStatus(ctx: MockSetupContext): SetupStatus {
       public_urls: [],
       error: "",
     },
-    services: [],
-    telemetry: {},
     cloud_choice: {
       mode: "cloud",
       paired: true,

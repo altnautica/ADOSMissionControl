@@ -9,6 +9,7 @@ pub const SVC_CONVEX_DASHBOARD: &str = "convex-dashboard";
 pub const SVC_MISSION_CONTROL: &str = "mission-control";
 pub const SVC_MOSQUITTO: &str = "mosquitto";
 pub const SVC_MQTT_BRIDGE: &str = "mqtt-bridge";
+pub const SVC_MQTT_AUTH_SYNC: &str = "mqtt-auth-sync";
 pub const SVC_VIDEO_RELAY: &str = "video-relay";
 
 /// The host-facing ports the stack binds. Defaults match the compose file.

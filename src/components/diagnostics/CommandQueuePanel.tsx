@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import type { MAVLinkAdapter } from "@/lib/protocol/mavlink-adapter";
 import { ListOrdered } from "lucide-react";
 
@@ -37,14 +37,14 @@ function getCommandName(cmd: number): string {
 export function CommandQueuePanel() {
   const snapshot = useDiagnosticsStore((s) => s.commandQueueSnapshot);
   const updateSnapshot = useDiagnosticsStore((s) => s.updateCommandQueueSnapshot);
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const protocol = useDroneManager(selectSelectedProtocol);
 
-  // Poll command queue state every 500ms
+  // Poll the pending-command queue every 500ms. The adapter reports only what
+  // is pending; nothing counts sent/acknowledged/failed commands, so no totals
+  // are shown.
   useEffect(() => {
+    if (!protocol) return;
     const interval = setInterval(() => {
-      const protocol = getSelectedProtocol();
-      if (!protocol) return;
-
       // Access the underlying adapter's command queue snapshot
       const adapter = protocol as MAVLinkAdapter;
       if (typeof adapter.getCommandQueueSnapshot !== "function") return;
@@ -57,13 +57,10 @@ export function CommandQueuePanel() {
           commandName: getCommandName(e.command),
           timestamp: e.timestamp,
         })),
-        totalSent: snapshot.totalSent,
-        totalSuccess: snapshot.totalSuccess,
-        totalFailed: snapshot.totalFailed,
       });
     }, 500);
     return () => clearInterval(interval);
-  }, [getSelectedProtocol, updateSnapshot, snapshot.totalSent, snapshot.totalSuccess, snapshot.totalFailed]);
+  }, [protocol, updateSnapshot]);
 
   return (
     <div className="flex flex-col h-full">
@@ -76,26 +73,6 @@ export function CommandQueuePanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Stats row */}
-        <div className="flex items-center gap-4 mb-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-text-tertiary">Pending:</span>
-            <span className="text-xs font-mono text-text-primary tabular-nums">{snapshot.pendingCount}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-text-tertiary">Sent:</span>
-            <span className="text-xs font-mono text-text-primary tabular-nums">{snapshot.totalSent}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-text-tertiary">OK:</span>
-            <span className="text-xs font-mono text-status-success tabular-nums">{snapshot.totalSuccess}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-text-tertiary">Fail:</span>
-            <span className="text-xs font-mono text-status-error tabular-nums">{snapshot.totalFailed}</span>
-          </div>
-        </div>
-
         {/* Pending queue entries */}
         {snapshot.entries.length === 0 ? (
           <div className="text-center py-6">

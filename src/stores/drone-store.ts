@@ -77,7 +77,11 @@ export const useDroneStore = create<DroneStoreState>((set) => ({
   ...UNMEASURED,
 
   setConnectionState: (connectionState) => set({ connectionState }),
-  setFlightMode: (flightMode) => set((s) => ({ previousMode: s.flightMode, flightMode })),
+  // Every HEARTBEAT re-reports the current mode. Only a real change moves the
+  // previous mode; otherwise the second LOITER heartbeat after a pause would
+  // overwrite AUTO and drop the paused-mission state a second after it began.
+  setFlightMode: (flightMode) =>
+    set((s) => (s.flightMode === flightMode ? s : { previousMode: s.flightMode, flightMode })),
   setArmState: (armState) =>
     set((s) => {
       if (armState === s.armState) return { armState };

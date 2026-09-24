@@ -30,8 +30,37 @@ export interface FallbackScope {
 
 export type FallbackKind = keyof FallbackScope;
 
+function isEntries(v: unknown): v is EnumEntries {
+  return Array.isArray(v) && v.every(
+    (e) => Array.isArray(e) && e.length === 2 && typeof e[0] === "number" && typeof e[1] === "string",
+  );
+}
+
+function isTableSet(v: unknown): v is Record<string, EnumEntries> {
+  return typeof v === "object" && v !== null && Object.values(v).every(isEntries);
+}
+
+/** JSON imports type pairs as loose arrays, so the tables are checked once at
+ * load rather than asserted into the tuple shape. */
+function parseFallbackTables(raw: Record<string, object>): Record<string, FallbackScope> {
+  const out: Record<string, FallbackScope> = {};
+  for (const [scope, body] of Object.entries(raw)) {
+    const parsed: FallbackScope = {};
+    for (const kind of ["values", "bitmask"] as const) {
+      if (!(kind in body)) continue;
+      const table: unknown = Reflect.get(body, kind);
+      if (!isTableSet(table)) {
+        throw new Error(`param-enum-fallbacks.json: ${scope}.${kind} is not a [number, label] table`);
+      }
+      parsed[kind] = table;
+    }
+    out[scope] = parsed;
+  }
+  return out;
+}
+
 /** The raw fallback tables, keyed by scope. Exported for the cross-check test. */
-export const PARAM_ENUM_FALLBACKS = tables as unknown as Record<string, FallbackScope>;
+export const PARAM_ENUM_FALLBACKS = parseFallbackTables(tables);
 
 const EMPTY: ReadonlyMap<number, string> = new Map();
 

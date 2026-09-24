@@ -6,7 +6,7 @@
 
 import { create } from "zustand";
 import type { PeripheralInfo } from "@/lib/agent/types";
-import { useAgentConnectionStore } from "./agent-connection-store";
+import { agentConnectionLink } from "./agent-connection/link";
 
 interface AgentPeripheralsState {
   peripherals: PeripheralInfo[];
@@ -30,9 +30,11 @@ export const useAgentPeripheralsStore = create<AgentPeripheralsStore>((set) => (
   peripherals: [],
 
   async fetchPeripherals() {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) return;
+    const { client, cloudMode } = link;
     if (cloudMode) {
-      useAgentConnectionStore.getState().sendCloudCommand("get_peripherals");
+      link.sendCloudCommand("get_peripherals");
       return;
     }
     if (!client) return;
@@ -43,9 +45,11 @@ export const useAgentPeripheralsStore = create<AgentPeripheralsStore>((set) => (
   },
 
   async scanPeripherals() {
-    const { client, cloudMode } = useAgentConnectionStore.getState();
+    const link = agentConnectionLink();
+    if (!link) return "failed";
+    const { client, cloudMode } = link;
     if (cloudMode) {
-      useAgentConnectionStore.getState().sendCloudCommand("scan_peripherals");
+      link.sendCloudCommand("scan_peripherals");
       return "dispatched";
     }
     if (!client) return "failed";

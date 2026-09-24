@@ -16,21 +16,21 @@ import { BookOpen, Plus, Code2, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { APPLET_CATALOG, type AppletCatalogEntry } from "./applet-catalog";
 import { SCRIPTS_DIR } from "./scripts-constants";
 
 export function AppletCatalog({ onAdded }: { onAdded?: () => void }) {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
-  const supportsFtp = !!getProtocol()?.uploadFileViaFtp;
+  const supportsFtp = !!selectedProtocol?.uploadFileViaFtp;
 
   async function addApplet(entry: AppletCatalogEntry) {
-    const protocol = getProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.uploadFileViaFtp) return;
     setBusyId(entry.id);
     try {

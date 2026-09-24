@@ -34,6 +34,8 @@
 import { useEffect } from "react";
 
 import { subscribeWorldStream, worldStreamUrl } from "@/lib/atlas/world-stream";
+import { ComputeAgentClient } from "@/lib/agent/compute-client";
+import { mintWorldTicket } from "@/lib/agent/node-credential-client";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { isDemoMode } from "@/lib/utils";
 import { useAtlasWorldStore } from "@/stores/atlas-world-store";
@@ -56,11 +58,11 @@ export function useAtlasWorldStream(
   const nodeDeviceId = computeNodeId
     ? (deviceIdFromNodeId(computeNodeId) ?? computeNodeId)
     : null;
-  const nodeHost = useLocalNodesStore((s) =>
-    nodeDeviceId
-      ? s.nodes.find((n) => n.deviceId === nodeDeviceId)?.hostname
-      : undefined,
+  const node = useLocalNodesStore((s) =>
+    nodeDeviceId ? s.nodes.find((n) => n.deviceId === nodeDeviceId) : undefined,
   );
+  const nodeHost = node?.hostname;
+  const nodeKey = node?.apiKey ?? "";
   const drone = droneDeviceId
     ? (deviceIdFromNodeId(droneDeviceId) ?? droneDeviceId)
     : null;
@@ -93,12 +95,16 @@ export function useAtlasWorldStream(
       setStatus(drone, "blocked-origin");
       return;
     }
+    // A paired node serves the stream only with a ticket its owner key mints,
+    // offered as a subprotocol (a browser cannot set a header on the handshake).
+    const client = nodeKey ? new ComputeAgentClient(nodeHost, nodeKey) : null;
     return subscribeWorldStream({
       url,
+      ticket: client ? () => mintWorldTicket(client) : undefined,
       onFrame: (frame) => applyFrame(drone, frame, Date.now()),
       onState: (state) => setStatus(drone, state),
     });
-  }, [drone, nodeHost]);
+  }, [drone, nodeHost, nodeKey]);
 
   // Stand the status down on unmount so a closed surface never reads as a live
   // stream. The generation itself is retained: the world model a node published

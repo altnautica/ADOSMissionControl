@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import type {
   FlashProgress, FirmwareStack, ParsedFirmware,
 } from "@/lib/protocol/firmware/types";
@@ -34,9 +35,11 @@ import { useFlashCore } from "./firmware-state/use-flash-core";
  */
 export function useFirmwareState() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
+  const drone = useDroneManager(selectSelectedDrone);
   const { toast } = useToast();
-  const drone = getSelectedDrone();
+  // Flashing reboots the FC into its bootloader: never on an armed vehicle,
+  // whatever the checklist says.
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
 
   const [firmwareStack, setFirmwareStack] = useState<FirmwareStack>("ardupilot");
 
@@ -68,6 +71,10 @@ export function useFirmwareState() {
 
   // Flash handler
   const handleFlash = useCallback(async () => {
+    if (isHardBlocked) {
+      toast(hardBlockMessage, "error");
+      return;
+    }
     core.setIsFlashing(true); core.setProgress(null); core.setFlashMessage(""); core.setFlashError(null);
     core.lastMsgRef.current = ""; core.lastPhaseRef.current = "idle";
     const flashLog = useFlashLogStore.getState();
@@ -155,7 +162,8 @@ export function useFirmwareState() {
     } finally { core.setIsFlashing(false); core.flashManagerRef.current = null; }
   }, [core, ap.selectedApBoard, ap.selectedVehicleType, ap.selectedApVersion,
       bf.selectedBfTarget, bf.selectedBfRelease, bf.bfCustomBuild, bf.bfBuildStatus,
-      px4.selectedPx4Release, px4.selectedPx4Board, firmwareStack, drone, toast]);
+      px4.selectedPx4Release, px4.selectedPx4Board, firmwareStack, drone, toast,
+      isHardBlocked, hardBlockMessage]);
 
   const currentFlashMethods = firmwareStack === "px4" ? PX4_FLASH_METHODS : firmwareStack === "betaflight" ? BF_FLASH_METHODS : AP_FLASH_METHODS;
   const isLoading = firmwareStack === "ardupilot" ? ap.apLoading : firmwareStack === "betaflight" ? bf.bfLoading : px4.px4Loading;
@@ -200,7 +208,8 @@ export function useFirmwareState() {
     checked: core.checked, setChecked: core.setChecked, checklistItems: core.checklistItems, allChecked: core.allChecked,
     serialSupported: core.serialSupported, usbSupported: core.usbSupported,
     currentFlashMethods, isLoading, currentError, customFileAccept,
-    handleFlash, handleAbort: core.handleAbort, handleCustomFile: core.handleCustomFile,
+    handleFlash, flashBlockedReason: isHardBlocked ? hardBlockMessage : null,
+    handleAbort: core.handleAbort, handleCustomFile: core.handleCustomFile,
     handleDetectDfu: core.handleDetectDfu, handleSelectBootloader: core.handleSelectBootloader,
   };
 }

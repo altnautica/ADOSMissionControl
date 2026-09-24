@@ -7,7 +7,7 @@
 import type { Waypoint } from "@/lib/types";
 import type { TerrainProfile, TerrainPoint } from "./types";
 import { getElevations } from "./terrain-provider";
-import { haversineDistance } from "@/lib/geo/distance";
+import { haversineDistance, interpolateLatLon } from "@/lib/geo/distance";
 
 /**
  * Compute a terrain elevation profile along a waypoint path.
@@ -44,8 +44,7 @@ export async function computeTerrainProfile(
       for (let s = 1; s <= samplesPerSegment; s++) {
         const t = s / (samplesPerSegment + 1);
         samplePoints.push({
-          lat: prev.lat + (wp.lat - prev.lat) * t,
-          lon: prev.lon + (wp.lon - prev.lon) * t,
+          ...interpolateLatLon(prev.lat, prev.lon, wp.lat, wp.lon, t),
           cumDist: cumDist + segDist * t,
         });
       }

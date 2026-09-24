@@ -10,16 +10,11 @@
  */
 
 import { useEffect, useMemo, useRef } from "react";
+import type { MqttClient } from "mqtt";
 import type { PairedDrone } from "@/stores/pairing-store";
 import { useCommandFleetStore, type CommandTelemetrySnapshot } from "@/stores/command-fleet-store";
 import { getMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
-
-type MqttClient = {
-  on: (event: string, cb: (...args: unknown[]) => void) => void;
-  subscribe: (topic: string, cb?: (err: Error | null) => void) => void;
-  end: (force?: boolean) => void;
-};
 
 export function CommandFleetMqttBridge({
   pairedDrones,
@@ -70,9 +65,7 @@ export function CommandFleetMqttBridge({
         const client = (connectFn as typeof mqttModule.connect)(
           brokerUrl,
           connectOptions,
-        ) as unknown as MqttClient & {
-          on: (event: "message", cb: (topic: string, payload: { toString: () => string }) => void) => void;
-        };
+        );
         clientRef.current = client;
 
         client.on("connect", () => {

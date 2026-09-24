@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { NavStatePill } from "@/components/indicators/NavStatePill";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { selectTestProtocol } from "../../helpers/selected-drone";
 import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import {
   inavNavActionLabel,
@@ -56,7 +56,7 @@ describe("iNav MSP_NAV_STATUS tables (navigation.h)", () => {
 describe("NavStatePill", () => {
   beforeEach(() => {
     useTelemetryStore.getState().clear();
-    useDroneManager.setState({ getSelectedProtocol: () => inavProtocol });
+    selectTestProtocol(inavProtocol);
   });
 
   it("shows an RTH leg as RTH_ENROUTE", () => {

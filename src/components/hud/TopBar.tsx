@@ -42,7 +42,7 @@ function TopBarInner() {
   const gpsSats = gps ? fmt(gps.satellites, 0) : "--";
 
   return (
-    <div className="absolute top-0 left-0 right-0 h-10 px-4 flex items-center justify-between bg-black/40 backdrop-blur-sm text-xs font-mono uppercase tracking-wide text-white/90 pointer-events-none">
+    <div className="absolute top-0 left-0 right-0 h-10 px-4 flex items-center justify-between bg-scrim/40 backdrop-blur-sm text-xs font-mono uppercase tracking-wide text-on-media/90 pointer-events-none">
       <div className="flex items-center gap-4">
         <span>MODE {mode ?? NO_DATA_GLYPH}</span>
         <span>RSSI {rssi}</span>

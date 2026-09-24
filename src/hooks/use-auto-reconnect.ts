@@ -16,6 +16,7 @@ import { getRecentConnections } from "@/lib/recent-connections";
 import { WebSerialTransport } from "@/lib/protocol/transport/webserial";
 import { WebSocketTransport } from "@/lib/protocol/transport/websocket";
 import { createFcAdapter } from "@/lib/protocol/select-fc-adapter";
+import type { Transport } from "@/lib/protocol/types";
 import { matchKnownPort, serialPortManager } from "@/lib/serial-port-manager";
 import { pairedAgentDeviceIdForUrl } from "@/lib/agent/paired-agent-match";
 import { resolveNodeId } from "@/lib/agent/node-id";
@@ -23,6 +24,7 @@ import { resolveNodeId } from "@/lib/agent/node-id";
 export function useAutoReconnect() {
   const { toast } = useToast();
   const addDrone = useDroneManager((s) => s.addDrone);
+  const settingsHydrated = useSettingsStore((s) => s._hasHydrated);
   const managerRef = useRef<ReconnectManager | null>(null);
   const loadAttemptedRef = useRef(false);
 
@@ -73,12 +75,13 @@ export function useAutoReconnect() {
     };
   }, [toast]);
 
-  // Auto-connect on page load
+  // Auto-connect on page load, once, after the persisted settings (the
+  // opt-in toggle) are known. Marked attempted only when it actually runs, so
+  // a StrictMode double mount or an early render cannot skip it.
   useEffect(() => {
-    if (loadAttemptedRef.current) return;
+    if (!settingsHydrated || loadAttemptedRef.current) return;
     loadAttemptedRef.current = true;
 
-    // Wait for hydration
     const checkAndConnect = async () => {
       const settings = useSettingsStore.getState();
       if (!settings.autoConnectOnLoad) return;
@@ -90,6 +93,9 @@ export function useAutoReconnect() {
       if (recent.length === 0) return;
 
       const last = recent[0];
+      // An opened transport whose FC handshake then fails must be closed, or
+      // the port stays held and the operator's manual Connect is refused.
+      let opened: Transport | null = null;
 
       try {
         if (last.type === "websocket" && last.url) {
@@ -99,6 +105,7 @@ export function useAutoReconnect() {
           if (pairedAgentDeviceIdForUrl(last.url)) return;
           const transport = new WebSocketTransport();
           await transport.connect(last.url);
+          opened = transport;
           const adapter = await createFcAdapter(last.firmwareType);
           const vehicleInfo = await adapter.connect(transport);
           const id = resolveNodeId();
@@ -108,6 +115,7 @@ export function useAutoReconnect() {
             url: last.url,
             firmwareType: last.firmwareType,
           });
+          opened = null; // owned by the drone manager from here on
           toast(`Auto-connected to ${name}`, "success");
         } else if (last.type === "serial") {
           // Only the port that carried this link, never whichever permitted
@@ -121,6 +129,7 @@ export function useAutoReconnect() {
           if (!port) return;
           const transport = new WebSerialTransport();
           await transport.connectToPort(port.port, last.baudRate || 115200);
+          opened = transport;
           const adapter = await createFcAdapter(last.firmwareType);
           const vehicleInfo = await adapter.connect(transport);
           const id = resolveNodeId();
@@ -132,15 +141,15 @@ export function useAutoReconnect() {
             portProductId: port.productId,
             firmwareType: last.firmwareType,
           });
+          opened = null; // owned by the drone manager from here on
           toast(`Auto-connected to ${name}`, "success");
         }
       } catch {
-        // Silent — auto-connect is best-effort
+        // Best-effort: stay silent, but release whatever was opened.
+        await opened?.disconnect().catch(() => {});
       }
     };
 
-    // Delay slightly to let stores hydrate
-    const timer = setTimeout(checkAndConnect, 1000);
-    return () => clearTimeout(timer);
-  }, [addDrone, toast]);
+    void checkAndConnect();
+  }, [settingsHydrated, addDrone, toast]);
 }

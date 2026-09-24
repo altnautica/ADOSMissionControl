@@ -908,6 +908,8 @@ export default defineSchema({
     enrollment: v.optional(v.any()),
     peers: v.optional(v.any()),
     telemetry: v.optional(v.any()),
+    // No writer: kept only so a row stored before the heartbeat stopped
+    // declaring it still validates. Schema changes here are additive.
     logs: v.optional(v.any()),
     // Backend variant the agent process is running. "lite" hides
     // the plugin host, peripheral manager, and scripting surfaces
@@ -1629,7 +1631,8 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_plugin_version", ["userId", "pluginId", "version"])
-    .index("by_sha256", ["sha256"]),
+    .index("by_sha256", ["sha256"])
+    .index("by_storageId", ["storageId"]),
 
   // Cloud-relay install job. Carries the GCS → cloud → agent install
   // request through the six-stage state machine. Each job is scoped

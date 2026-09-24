@@ -219,7 +219,7 @@ function SwarmThumbnailTile({
               "rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary",
               isHero
                 ? "bg-accent-primary/20 text-accent-primary"
-                : "bg-black/55 text-text-secondary hover:text-text-primary disabled:opacity-40",
+                : "bg-scrim/55 text-text-secondary hover:text-text-primary disabled:opacity-40",
             )}
           >
             <Crosshair size={12} className={pending ? "animate-pulse" : undefined} />

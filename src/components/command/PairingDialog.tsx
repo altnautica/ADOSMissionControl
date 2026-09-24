@@ -14,7 +14,7 @@ import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { useMutation } from "convex/react";
 import { cn } from "@/lib/utils";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 import { useAuthStore } from "@/stores/auth-store";
 import { AgentConnectPanel } from "./AgentConnectPanel";
@@ -69,7 +69,7 @@ function PairingShell({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -193,49 +193,5 @@ function PairingDialogDeepLinkBase({
       </div>
       <SignInModal open={signInOpen} onClose={() => setSignInOpen(false)} />
     </PairingShell>
-  );
-}
-
-/**
- * Inline pairing code input for embedding in other pages. Same 6-char input
- * logic without the modal wrapper.
- */
-export function PairingCodeInput({
-  onSubmit,
-  disabled,
-}: {
-  onSubmit: (code: string) => void;
-  disabled?: boolean;
-}) {
-  const [code, setCode] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  function handleChange(value: string) {
-    const cleaned = value
-      .replace(/[^A-Za-z0-9]/g, "")
-      .toUpperCase()
-      .slice(0, 6);
-    setCode(cleaned);
-    if (cleaned.length === 6) {
-      onSubmit(cleaned);
-    }
-  }
-
-  return (
-    <input
-      ref={inputRef}
-      type="text"
-      value={code}
-      onChange={(e) => handleChange(e.target.value)}
-      maxLength={6}
-      disabled={disabled}
-      placeholder="------"
-      className={cn(
-        "w-52 text-center text-xl font-mono font-bold tracking-[0.4em] bg-bg-primary border border-border-default rounded-lg px-3 py-2 text-text-primary placeholder:text-text-tertiary/40 outline-none focus:border-accent-primary transition-colors uppercase",
-        disabled && "opacity-50 cursor-not-allowed"
-      )}
-      autoComplete="off"
-      spellCheck={false}
-    />
   );
 }

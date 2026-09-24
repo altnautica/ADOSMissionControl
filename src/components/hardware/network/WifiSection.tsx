@@ -22,7 +22,8 @@ interface ApFormState {
   ssid: string;
   passphrase: string;
   channel: number;
-  enabled: boolean;
+  /** Null while the agent cannot say; the toggle then reads as unknown. */
+  enabled: boolean | null;
   revealPass: boolean;
   saving: boolean;
   dirty: boolean;
@@ -123,8 +124,8 @@ export function WifiSection({
             </div>
 
             <Toggle
-              label="Enabled"
-              checked={form.enabled}
+              label={form.enabled === null ? "Enabled (state unknown)" : "Enabled"}
+              checked={form.enabled === true}
               onChange={setEnabled}
             />
 

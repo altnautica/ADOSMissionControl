@@ -32,6 +32,7 @@ import {
   type AltitudeDatums,
 } from "@/lib/mission/altitude-frame";
 import { haversineDistance, pointInPolygon } from "@/lib/geo/distance";
+import { legFenceIssues } from "./leg-fence";
 
 /** How much a mission issue matters. */
 export type ValidationSeverity =
@@ -385,6 +386,10 @@ export function validateMission(
         });
       }
     }
+
+    // 13b. The leg into this waypoint: both ends can sit on the right side of
+    // a fence while the straight line the vehicle flies between them does not.
+    if (i > 0) errors.push(...legFenceIssues(waypoints[i - 1], wp, i, options?.geofence));
 
     // 14. Consecutive-leg distance rules: duplicate point, absurd leg, and a leg
     // longer than the usable link range.

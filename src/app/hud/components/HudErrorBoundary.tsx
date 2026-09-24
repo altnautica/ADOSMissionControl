@@ -47,17 +47,17 @@ export class HudErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="w-full h-full bg-black text-white font-mono flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3 px-6 py-8 rounded border border-red-400/40 bg-red-950/40 max-w-md">
-            <div className="text-sm uppercase tracking-wider text-red-300">
+        <div className="w-full h-full bg-media text-on-media font-mono flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 px-6 py-8 rounded border border-status-error/40 bg-status-error/40 max-w-md">
+            <div className="text-sm uppercase tracking-wider text-status-error">
               HUD error
             </div>
-            <div className="text-xs text-white/70 text-center break-words">
+            <div className="text-xs text-on-media/70 text-center break-words">
               {this.state.message ?? "Unknown error"}
             </div>
             <button
               onClick={this.handleReload}
-              className="mt-2 px-4 py-1.5 text-xs uppercase tracking-wider bg-white/10 border border-white/30 text-white/90 hover:bg-white/20 transition-colors rounded"
+              className="mt-2 px-4 py-1.5 text-xs uppercase tracking-wider bg-on-media/10 border border-on-media/30 text-on-media/90 hover:bg-on-media/20 transition-colors rounded"
             >
               Reload
             </button>

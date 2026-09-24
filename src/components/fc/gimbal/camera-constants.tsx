@@ -1,4 +1,5 @@
 import React from "react";
+import type { EnumOption } from "../frame/enum-options";
 
 export const CAMERA_PARAMS: string[] = [];
 
@@ -6,14 +7,26 @@ export const OPTIONAL_CAMERA_PARAMS = [
   "CAM1_TYPE", "CAM1_DURATION", "CAM1_SERVO_OFF", "CAM1_SERVO_ON", "CAM1_TRIGG_DIST",
 ];
 
-export const CAM_TYPE_OPTIONS = [
+/** ArduPilot CAM1_TYPE (AP_Camera_Params). */
+export const CAM_TYPE_OPTIONS: readonly EnumOption[] = [
   { value: "0", label: "0 — None" },
   { value: "1", label: "1 — Servo" },
   { value: "2", label: "2 — Relay" },
-  { value: "3", label: "3 — GoPro" },
-  { value: "4", label: "4 — Mount (SIYI)" },
+  { value: "3", label: "3 — GoPro in Solo Gimbal" },
+  { value: "4", label: "4 — Mount (Siyi/Topotek/Viewpro/Xacti)" },
   { value: "5", label: "5 — MAVLink" },
-  { value: "6", label: "6 — Scripting" },
+  { value: "6", label: "6 — MAVLinkCamV2 (Gremsy/AVT)" },
+  { value: "7", label: "7 — Scripting" },
+  { value: "8", label: "8 — RunCam" },
+];
+
+/** PX4 TRIG_MODE, which the PX4 handler maps CAM1_TYPE to. */
+export const PX4_TRIG_MODE_OPTIONS: readonly EnumOption[] = [
+  { value: "0", label: "0 — Disabled" },
+  { value: "1", label: "1 — Time based, on command" },
+  { value: "2", label: "2 — Time based, always on" },
+  { value: "3", label: "3 — Distance based, always on" },
+  { value: "4", label: "4 — Distance based, on command (survey)" },
 ];
 
 export function CameraCard({

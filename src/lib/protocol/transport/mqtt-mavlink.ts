@@ -12,6 +12,7 @@
  * @license GPL-3.0-only
  */
 
+import type { MqttClient } from "mqtt";
 import type { Transport, TransportEventMap } from "../types/transport";
 import {
   getMqttBrokerCredential,
@@ -28,8 +29,7 @@ export type MqttRelayLane = "mavlink" | "msp";
 export class MqttMavlinkTransport implements Transport {
   readonly type = "mqtt-mavlink" as const;
 
-   
-  private client: any = null;
+  private client: MqttClient | null = null;
   private _connected = false;
   private _disconnecting = false;
   private _canPublish = false;
@@ -116,8 +116,7 @@ export class MqttMavlinkTransport implements Transport {
 
         // Handle ESM/CJS module resolution (same as MqttBridge.tsx)
         const connectFn = mqttModule.connect
-           
-          ?? (mqttModule.default as any)?.connect
+          ?? (mqttModule.default as { connect?: typeof mqttModule.connect })?.connect
           ?? mqttModule.default;
 
         if (typeof connectFn !== "function") {
@@ -146,10 +145,11 @@ export class MqttMavlinkTransport implements Transport {
         // say, and silence means no.
         this._canPublish =
           auth?.canPublish === true && Boolean(cred?.username && cred?.password);
-        this.client = (connectFn as typeof mqttModule.connect)(
+        const client = (connectFn as typeof mqttModule.connect)(
           brokerUrl || MQTT_WS_URL,
           connectOptions,
         );
+        this.client = client;
 
         // mqtt.js fires 'connect' on every (re)connect. We resubscribe
         // each time because the previous session's subscriptions are
@@ -158,7 +158,7 @@ export class MqttMavlinkTransport implements Transport {
         // silently and stalled the transport waiting for frames.
         this.client.on("connect", () => {
           this._connected = true;
-          this.client.subscribe(
+          client.subscribe(
             topicTx,
             { qos: 0 },
             (err: Error | null) => {
@@ -174,7 +174,7 @@ export class MqttMavlinkTransport implements Transport {
           // the probe never reaches the FC. Frames themselves stay QoS 0.
           const username = cred?.username;
           if (this._canPublish && username) {
-            this.client.publish(
+            client.publish(
               `ados/${deviceId}/${this.lane}/rx`,
               Buffer.alloc(0),
               { qos: 1 },

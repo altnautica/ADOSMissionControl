@@ -19,7 +19,7 @@ import { usePairingStore } from "@/stores/pairing-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useFleetNodes } from "@/hooks/use-fleet-nodes";
 import { useFleetSync } from "@/hooks/use-fleet-sync";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { communityApi } from "@/lib/community-api";
 import { isDemoMode } from "@/lib/utils";
@@ -28,6 +28,7 @@ import { MqttControlGrantBridge } from "./MqttControlGrantBridge";
 import { CommandFleetStatusBridge } from "./CommandFleetStatusBridge";
 import { CommandFleetLocalBridge } from "./CommandFleetLocalBridge";
 import { VisionDetectionsBridge } from "./VisionDetectionsBridge";
+import { WorkstationCredentialBridge } from "@/components/dashboard/node-detail/workstation-access/WorkstationCredentialBridge";
 
 const CloudStatusBridge = dynamic(
   () => import("./CloudStatusBridge").then((m) => ({ default: m.CloudStatusBridge })),
@@ -70,6 +71,9 @@ export function AgentBridges() {
       {/* Opens the selected drone's detection WS local-first (host+key from
           local-nodes-store), so bounding boxes flow on any tab. */}
       <VisionDetectionsBridge />
+      {/* Keeps every paired drone / ground station holding a credential from
+          every paired workstation, so its lanes to that workstation are admitted. */}
+      <WorkstationCredentialBridge />
       <CommandFleetMqttBridge
         pairedDrones={pairedDrones}
         mqttBrokerUrl={clientConfig?.mqttBrokerUrl}

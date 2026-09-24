@@ -10,7 +10,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -32,8 +32,8 @@ const HEADING_MIN = -360;
 const HEADING_MAX = 360;
 
 export function FwApproachPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,17 +52,17 @@ export function FwApproachPanel() {
   useUnsavedGuard(dirtySlots.size > 0);
 
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getMixerConfig) return;
     protocol.getMixerConfig().then((m) => {
       setPlatformType(m.platformType);
     }).catch(() => {
       // Leave platformType null on unsupported firmware.
     });
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getFwApproach) { setError("FW approach config not available on this firmware"); return; }
     setLoading(true); setError(null);
     try {
@@ -75,14 +75,14 @@ export function FwApproachPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   function updateSlot<K extends keyof INavFwApproach>(idx: number, key: K, value: INavFwApproach[K]) {
     setSlots((prev) => prev.map((s, i) => (i === idx ? { ...s, [key]: value } : s)));
   }
 
   const handleSave = useCallback(async (idx: number) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setFwApproach) { setError("FW approach write not available on this firmware"); return; }
     const slot = slots[idx];
     if ([slot.landHeading1, slot.landHeading2].some((h) => h < HEADING_MIN || h > HEADING_MAX)) {
@@ -99,7 +99,7 @@ export function FwApproachPanel() {
     } finally {
       setSavingIdx(null);
     }
-  }, [getSelectedProtocol, slots]);
+  }, [selectedProtocol, slots]);
 
   const isMultirotor = platformType === PLATFORM_MULTIROTOR;
   const hasLoaded = fcSlots !== null;

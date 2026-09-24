@@ -9,6 +9,9 @@ import { isDemoMode } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 1000;
 
+/** What the popover renders as "not measured". */
+const NO_READING = { airLatencyMs: null, airSamples: null, airSource: null } as const;
+
 interface VideoLatencyResponse {
   latency_ms: number | null;
   ewma_ms?: number | null;
@@ -66,15 +69,10 @@ export function useVideoLatencyPoll(): void {
       };
     }
 
-    if (!client) return;
-    if (agentVideoState !== "running") {
-      // Surface "no data" while video is stopped; the popover will
-      // render "not measured" instead of stale values.
-      setAirLatency({
-        airLatencyMs: null,
-        airSamples: null,
-        airSource: null,
-      });
+    if (!client || agentVideoState !== "running") {
+      // Surface "no data" with no agent or while video is stopped; the
+      // popover renders "not measured" instead of the last agent's values.
+      setAirLatency(NO_READING);
       return;
     }
 
@@ -115,6 +113,8 @@ export function useVideoLatencyPoll(): void {
         window.clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      // The reading described this agent's session, which just ended.
+      setAirLatency(NO_READING);
     };
   }, [client, agentVideoState, demoMode, setAirLatency]);
 }

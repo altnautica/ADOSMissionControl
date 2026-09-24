@@ -152,43 +152,6 @@ http.route({
   }),
 });
 
-// ── ADOS Pairing: agent polls for claim status ──────────────
-
-http.route({
-  path: "/pairing/status",
-  method: "GET",
-  handler: httpAction(async (ctx, request) => {
-    const url = new URL(request.url);
-    const deviceId = url.searchParams.get("deviceId");
-    // The agent presents the key it registered with. Without this the route is
-    // a claim oracle: a deviceId alone revealed whether a device was
-    // registered, whether it had been claimed, and by whom.
-    const apiKey = request.headers.get("X-ADOS-Key") ?? "";
-    if (!deviceId || !apiKey) {
-      return new Response(
-        JSON.stringify({ error: "deviceId and X-ADOS-Key required" }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
-
-    const status = await ctx.runQuery(internal.cmdPairing.getPairingStatus, {
-      deviceId,
-      apiKey,
-    });
-    if (!status.authorized) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), {
-        status: 401,
-        headers: jsonHeaders,
-      });
-    }
-    const { authorized: _authorized, ...payload } = status;
-    return new Response(JSON.stringify(payload), {
-      status: 200,
-      headers: jsonHeaders,
-    });
-  }),
-});
-
 // ── Broker auth sync: mosquitto passwd + ACL regeneration ───
 //
 // The self-host counterpart to the production deployment's route of the same
@@ -234,54 +197,6 @@ http.route({
       JSON.stringify(payload),
       { status: 200, headers: jsonHeaders }
     );
-  }),
-});
-
-// ── ADOS Heartbeat: agent sends periodic status ─────────────
-
-http.route({
-  path: "/heartbeat",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const body = await readJsonObject(request);
-    if (body instanceof Response) return body;
-    const deviceId = stringField(body, "deviceId");
-    // The key is accepted from the `X-ADOS-Key` header like every other
-    // device route; the body field stays readable for agents that predate
-    // the header.
-    const apiKey = request.headers.get("X-ADOS-Key") ?? stringField(body, "apiKey");
-    if (!deviceId || !apiKey) {
-      return new Response(
-        JSON.stringify({ error: "deviceId and apiKey required" }),
-        { status: 400, headers: jsonHeaders }
-      );
-    }
-    const result = await ctx.runMutation(internal.cmdDrones.updateHeartbeat, {
-      deviceId,
-      apiKey,
-      lastIp: stringField(body, "lastIp"),
-      mdnsHost: stringField(body, "mdnsHost"),
-      fcConnected: booleanField(body, "fcConnected"),
-      agentVersion: stringField(body, "agentVersion"),
-    });
-    // ONE uniform refusal for both `not_found` and `invalid_key`, at 401.
-    //
-    // This used to serialise the mutation's distinguishable error at HTTP
-    // 200, so an unauthenticated caller learned whether any guessed
-    // `deviceId` was registered — exactly the enumeration oracle
-    // `getPairingStatus` was deliberately hardened against with its uniform
-    // `{authorized:false}`. A real agent whose key had been rotated also saw
-    // 200 and could not tell an accepted heartbeat from a rejected one.
-    if (result && typeof result === "object" && "error" in result) {
-      return new Response(
-        JSON.stringify({ error: "unauthorized" }),
-        { status: 401, headers: jsonHeaders }
-      );
-    }
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: jsonHeaders,
-    });
   }),
 });
 
@@ -510,12 +425,11 @@ http.route({
       // derivation had no input and the pill was dead. Forwarded verbatim when
       // it is an array; the column is `v.any()` so shape is the agent's business.
       peripherals: Array.isArray(body.peripherals) ? body.peripherals : undefined,
-      // `scripts`, `peers`, `enrollment` and `logs` are declared on pushStatus
-      // and reserved -- the current heartbeat does not carry them at the root,
-      // so there is nothing to forward yet. Reserved, not absent from the
-      // agent: when one starts being emitted it gets picked here, the same way
-      // `peripherals` above had to be. The twin gate holds the list of four so
-      // a fifth cannot join them by omission.
+      // `scripts`, `peers` and `enrollment` are declared on pushStatus and
+      // reserved -- the current heartbeat does not carry them at the root, so
+      // there is nothing to forward yet. When one starts being emitted it gets
+      // picked here, the same way `peripherals` above had to be. The twin gate
+      // holds the reserved list so another field cannot join them by omission.
       telemetry: body.telemetry,
       // Inter-rig peer presence (drives the WFB "Peer" badge). Drone
       // heartbeats carry the GS identity; GS heartbeats carry the drone's.

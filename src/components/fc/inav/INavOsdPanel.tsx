@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useToast } from "@/components/ui/toast";
@@ -42,8 +42,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export function INavOsdPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -64,7 +64,7 @@ export function INavOsdPanel() {
   const [fontProgress, setFontProgress] = useState<{ done: number; total: number } | null>(null);
 
   const handleFontFile = useCallback(async (file: File) => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.uploadOsdFont) {
       toast("Font upload is not available on this connection", "error");
       return;
@@ -79,10 +79,10 @@ export function INavOsdPanel() {
     } finally {
       setFontProgress(null);
     }
-  }, [getSelectedProtocol, toast]);
+  }, [selectedProtocol, toast]);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getOsdLayoutsHeader || !protocol.getOsdAlarms || !protocol.getOsdPreferences) {
       setError("OSD config not available on this firmware");
       return;
@@ -106,11 +106,11 @@ export function INavOsdPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const handleSaveAlarms = useCallback(async () => {
     if (!alarms) return;
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setOsdAlarms) return;
     setSaving(true);
     setError(null);
@@ -126,11 +126,11 @@ export function INavOsdPanel() {
     } finally {
       setSaving(false);
     }
-  }, [getSelectedProtocol, alarms]);
+  }, [selectedProtocol, alarms]);
 
   const handleSavePrefs = useCallback(async () => {
     if (!preferences) return;
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setOsdPreferences) return;
     setSaving(true);
     setError(null);
@@ -146,7 +146,7 @@ export function INavOsdPanel() {
     } finally {
       setSaving(false);
     }
-  }, [getSelectedProtocol, preferences]);
+  }, [selectedProtocol, preferences]);
 
   function updateAlarm<K extends keyof INavOsdAlarms>(key: K, value: INavOsdAlarms[K]) {
     if (!alarms) return;

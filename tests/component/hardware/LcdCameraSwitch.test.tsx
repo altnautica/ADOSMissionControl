@@ -158,10 +158,7 @@ describe("LcdCameraSwitch", () => {
     fireEvent.click(option);
 
     await waitFor(() => {
-      expect(mockClient.switchCamera).toHaveBeenCalledWith(
-        "primary",
-        "/dev/video2",
-      );
+      expect(mockClient.switchCamera).toHaveBeenCalledWith("/dev/video2");
     });
     // Restarting indicator is up while the timeout is pending.
     expect(screen.getByTestId("restarting-indicator")).toBeDefined();

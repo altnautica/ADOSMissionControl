@@ -1,28 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-vi.mock('@/stores/drone-manager', () => ({
-  useDroneManager: {
-    getState: vi.fn(() => ({
-      getSelectedProtocol: () => null,
-    })),
-  },
+let selectedProtocol: Record<string, unknown> | null = null;
+vi.mock('@/stores/drone-selection', () => ({
+  droneSelection: () => ({ selectedDroneId: selectedProtocol ? 'd1' : null, drones: new Map() }),
+  selectedDroneProtocol: () => selectedProtocol,
 }));
 
 import { useGeofenceStore, type BreachAction } from '@/stores/geofence-store';
-import { useDroneManager } from '@/stores/drone-manager';
 import { useUploadReceiptsStore, receiptFor, receiptStatus } from '@/stores/upload-receipts-store';
 import { fenceContentHash } from '@/lib/geofence-elements';
 
-/** Point the mocked drone-manager at a protocol (selected drone "d1") until the
+/** Point the mocked selection at a protocol (selected drone "d1") until the
  * next beforeEach. A default `getVehicleInfo` (ArduPilot) is supplied so
  * uploadFence takes the legacy FENCE_POINT path; a test can override it to
  * exercise the PX4 mission-fence branch. */
 function stubProtocol(protocol: Record<string, unknown>) {
   const withDefaults = { getVehicleInfo: () => ({ firmwareType: "ardupilot" }), ...protocol };
-  vi.mocked(useDroneManager.getState).mockReturnValue({
-    getSelectedProtocol: () => withDefaults,
-    selectedDroneId: "d1",
-  } as unknown as ReturnType<typeof useDroneManager.getState>);
+  selectedProtocol = withDefaults;
 }
 
 /** Receipt status of the current fence content for drone "d1". */
@@ -37,10 +31,7 @@ describe('geofence-store', () => {
   beforeEach(() => {
     useGeofenceStore.getState().clearFence();
     vi.clearAllMocks();
-    vi.mocked(useDroneManager.getState).mockReturnValue({
-      getSelectedProtocol: () => null,
-      selectedDroneId: null,
-    } as unknown as ReturnType<typeof useDroneManager.getState>);
+    selectedProtocol = null;
     useUploadReceiptsStore.setState({ receipts: {} });
   });
 
@@ -250,6 +241,7 @@ describe('geofence-store', () => {
     s.setFenceType('polygon');
     s.setPolygonPoints(TRI);
     s.setMaxAltitude(60);
+    s.setMinAltitude(0);
     await s.uploadFence();
 
     expect(setParameter).toHaveBeenCalledWith('FENCE_TYPE', 5);
@@ -273,6 +265,7 @@ describe('geofence-store', () => {
     s.setFenceType('polygon');
     s.setPolygonPoints(TRI);
     s.setMaxAltitude(80);
+    s.setMinAltitude(0);
     s.setBreachAction('LAND');
     await s.uploadFence();
 

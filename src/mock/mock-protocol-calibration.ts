@@ -61,7 +61,7 @@ export function mockStartCalibration(
           ctx.emitStatusText(6, "[cal] calibration done: accel");
         }
       }, 500);
-      ctx.accelCalTimers.push(iv as unknown as ReturnType<typeof setTimeout>);
+      ctx.accelCalTimers.push(iv);
     } else {
       ctx.clearAccelTimers();
       const t = setTimeout(() => ctx.emitAccelCalPos(1 as AccelCalPosition), 500);

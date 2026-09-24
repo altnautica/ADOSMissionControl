@@ -12,7 +12,7 @@
  */
 
 import { detectProtocol } from "./detector";
-import { createFcAdapter } from "./select-fc-adapter";
+import { createProtocolAdapter } from "./select-fc-adapter";
 import type {
   DroneProtocol,
   FirmwareType,
@@ -44,7 +44,9 @@ export async function connectWithDetection(transport: Transport): Promise<{
   };
 
   const detection = await detectProtocol(send, onData);
-  const adapter = await createFcAdapter(detection.firmwareType);
+  // A confirmed MSP link takes the MSP adapter whatever its variant: the
+  // variant only names the family, and an unmodeled MSP board is still MSP.
+  const adapter = await createProtocolAdapter(detection.protocol === "msp" ? "msp" : "mavlink");
   const vehicleInfo = await adapter.connect(transport);
 
   return { adapter, vehicleInfo, firmwareType: detection.firmwareType };

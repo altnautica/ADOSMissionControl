@@ -77,7 +77,7 @@ export function PidAnalysisSection({ target, connected }: PidAnalysisSectionProp
                 className={cn(
                   "px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer",
                   analysisMode === mode
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-accent-foreground"
                     : "text-text-secondary hover:text-text-primary",
                 )}
               >
@@ -118,7 +118,7 @@ export function PidAnalysisSection({ target, connected }: PidAnalysisSectionProp
                           className={cn(
                             "px-3 py-1.5 text-[10px] font-medium transition-colors cursor-pointer",
                             quickTab === tab
-                              ? "bg-accent-primary text-white"
+                              ? "bg-accent-primary text-accent-foreground"
                               : "text-text-secondary hover:text-text-primary",
                           )}
                         >

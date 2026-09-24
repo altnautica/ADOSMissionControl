@@ -24,7 +24,7 @@ import { useTranslations } from "next-intl";
 import { Sliders } from "lucide-react";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useUiStore } from "@/stores/ui-store";
 import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { AgentStatusCard } from "../shared/AgentStatusCard";
@@ -291,7 +291,7 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
   // itself is a read and stays exactly as accurate as before.
   const authority = useMqttControlAuthority();
   const notice = useControlAuthorityNotice(authority);
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const setPendingDetailTab = useUiStore((s) => s.setPendingDetailTab);
   const [count, setCount] = useState<number | null>(null);
 
@@ -305,7 +305,7 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
 
   useEffect(() => {
     const read = () => {
-      const protocol = getProtocol();
+      const protocol = selectedProtocol;
       if (!protocol) {
         setCount(null);
         return;
@@ -315,7 +315,7 @@ function ParamsSnapshotTile({ isConnected }: { isConnected: boolean }) {
     read();
     const id = setInterval(read, 2000);
     return () => clearInterval(id);
-  }, [getProtocol]);
+  }, [selectedProtocol]);
 
   const value =
     !isConnected || count === null ? "—" : count === 0 ? "0" : String(count);

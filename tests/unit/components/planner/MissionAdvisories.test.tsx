@@ -8,9 +8,10 @@ vi.mock("next-intl", () => ({
 // Keep the drone-manager mock light so the test never pulls the protocol stack.
 // No connected protocol → firmware is undefined → the item-count advisory falls
 // back to the default FC ceiling.
-vi.mock("@/stores/drone-manager", () => ({
-  useDroneManager: (sel: (s: { getSelectedProtocol: () => null }) => unknown) =>
-    sel({ getSelectedProtocol: () => null }),
+vi.mock("@/stores/drone-manager", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
+  useDroneManager: (sel: (s: unknown) => unknown) =>
+    sel({ drones: new Map(), selectedDroneId: null }),
 }));
 
 import { MissionAdvisories } from "@/components/planner/MissionAdvisories";

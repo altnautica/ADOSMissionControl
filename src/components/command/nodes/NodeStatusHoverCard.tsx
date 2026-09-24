@@ -24,7 +24,8 @@ import {
   type CommandCloudStatus,
 } from "@/stores/command-fleet-store";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
+import { StatusDot } from "@/components/ui/status-dot";
 import { droneLiveness } from "../fleet/types";
 import {
   deriveMavlinkLink,

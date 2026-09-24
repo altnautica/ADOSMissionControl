@@ -13,7 +13,7 @@
 
 import { useTranslations } from "next-intl";
 import { Cloud, CloudOff, RefreshCcw } from "lucide-react";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useAuthStore } from "@/stores/auth-store";
 import { useHistoryStore } from "@/stores/history-store";
 import { useSettingsStore } from "@/stores/settings-store";

@@ -1883,12 +1883,10 @@
         "linkRepair": "Management-link repair: {phrase}",
         "linkRepairExhausted": "Management-link repair exhausted, hardware-level recovery may be needed",
         "cameraRecoverySucceeded": "Camera USB recovery succeeded",
-        "cameraRecoveryExhausted": "Camera USB recovery exhausted",
-        "cameraRecoveryExhaustedAttempt": "Camera USB recovery exhausted (attempt {attempt} of {maxAttempts})",
         "cameraNeedsReseat": "Camera needs a physical reseat or hub power-cycle",
         "cameraHeldBack": "Camera recovery held back (a reset could disturb a shared hub)",
         "cameraStep": "Camera USB recovery: {verb}",
-        "cameraStepAttempt": "Camera USB recovery: {verb} (attempt {attempt} of {maxAttempts})",
+        "cameraStepAttempt": "Camera USB recovery: {verb} (attempt {attempt})",
         "cameraStepGeneric": "Camera USB recovery step",
         "cameraPowerContention": "Camera USB power contention detected",
         "withIface": "{base} ({iface})"
@@ -1905,7 +1903,8 @@
       "cameraSteps": {
         "rebinding": "re-binding the device",
         "portCycling": "power-cycling the port",
-        "hubResetting": "resetting the hub"
+        "hubResetting": "resetting the hub",
+        "retrying": "waiting to retry"
       },
       "severityLabel": {
         "success": "OK",
@@ -1939,11 +1938,6 @@
       "systemIdHint": "The MAVLink system ID this node's router speaks with (1-255).",
       "componentIdLabel": "Component ID",
       "componentIdHint": "The MAVLink component ID this node's router speaks with (2-255). 1 is the autopilot's own ID and 0 is broadcast, so neither is accepted.",
-      "ratesTitle": "Cloud relay forwarding",
-      "telemetryRateLabel": "Telemetry rate (Hz)",
-      "telemetryRateHint": "How many telemetry updates per second the agent forwards to the cloud relay. Applies only when a cloud or self-hosted relay is configured; it does not change the flight controller's own stream rates.",
-      "heartbeatIntervalLabel": "Heartbeat interval (s)",
-      "heartbeatIntervalHint": "Seconds between the agent's cloud heartbeats.",
       "signingTitle": "Message signing",
       "signingRequiresLan": "Signing status needs a LAN connection to the node.",
       "signingLoading": "Reading the signing state…",
@@ -4452,13 +4446,13 @@
       "calibrating": "Calibrating...",
       "calibrateButton": "Calibrate touch",
       "calibrateHint": "Tap each crosshair shown on the HDMI panel.",
-      "calibrateProgress": "Tap step {current}/{total} on the HDMI panel now.",
       "calibrateStarted": "Calibration started. Tap each crosshair shown on the HDMI panel.",
       "calibrateError": "Could not start calibration.",
       "calibrateComplete": "Calibration complete.",
-      "calibrateCompleteResidual": "Calibration complete. Average residual: {residual} px.",
-      "calibrateRejected": "Calibration was not accepted. Run it again and re-tap each crosshair.",
-      "calibrateLostContact": "Lost contact with the agent during calibration."
+      "calibrateLostContact": "Lost contact with the agent during calibration.",
+      "calibrateRequested": "Wizard requested. Tap the crosshairs on the HDMI panel.",
+      "calibrateHandedOff": "The wizard is open on the HDMI panel. The new fit is saved when you finish tapping.",
+      "calibrateNotPickedUp": "The HDMI panel did not open the wizard. Check that its display service is running."
     },
     "lcdPagePreview": {
       "title": "Live preview",
@@ -4584,9 +4578,6 @@
       "brownoutWarning": "USB host VBUS topology browns out above 18 dBm. Slider capped at 15 dBm.",
       "confirmHighPowerTitle": "Confirm TX power above safe floor",
       "confirmHighPowerBody": "Type the agent hostname to confirm setting TX power to {dbm} dBm.",
-      "benchTestMode": "Bench test mode",
-      "airSide": "Air side",
-      "groundSide": "Ground side",
       "regdomain": "Regulatory domain",
       "mcsIndex": "MCS index",
       "applyClampedToFloor": "Clamped to floor: {dbm} dBm",
@@ -4929,7 +4920,11 @@
       "drone": "Drone",
       "groundStation": "Ground station",
       "workstation": "Workstation"
-    }
+    },
+    "needsNodeAgent": "Connect to this drone's agent to change the plugin on it.",
+    "removeConfirmTitle": "Remove plugin?",
+    "removeConfirmMessage": "{name} is removed from the drone and from your account.",
+    "removeConfirmAction": "Remove"
   },
   "pluginRegistry": {
     "browse": {
@@ -5403,16 +5398,11 @@
           "slcan": "SLCAN",
           "slcanRequiresUsb": "SLCAN ਨੂੰ FC ਨਾਲ ਸਿੱਧੇ USB ਕੁਨੈਕਸ਼ਨ ਦੀ ਲੋੜ",
           "canForward": "CAN_FORWARD (agent ਰਾਹੀਂ)",
-          "canForwardComingSoon": "ਅਗਲੀ ਰਿਲੀਜ਼ ਵਿੱਚ ਉਪਲਬਧ",
           "canForwardWaiting": "agent ਦੀ CAN ਬੱਸ ਯੋਗਤਾ ਦੀ ਉਡੀਕ",
           "canForwardReady": "ਜੁੜੇ agent ਰਾਹੀਂ CAN ਫਰੇਮ ਰੂਟ ਕਰੋ"
         },
         "slcanInactive": "SLCAN ਨਿਸ਼ਕਿਰਿਆ",
-        "slcanActive": "ਸਰਗਰਮ · {port} · {bitrate} · {eta} ਵਿੱਚ ਆਟੋ-ਵਾਪਸੀ",
-        "slcanPendingUseCanForward": "SLCAN ਫਲੈਸ਼ਿੰਗ ਜਲਦੀ; ਫਿਲਹਾਲ CAN_FORWARD ਵਰਤੋ.",
-        "enterSlcan": "SLCAN ਮੋਡ ਵਿੱਚ ਜਾਓ",
-        "resumeMavlink": "MAVLink ਮੁੜ ਚਾਲੂ",
-        "configureHint": "/config/can ਵਿੱਚ SLCAN ਸੰਰਚਿਤ ਕਰੋ"
+        "slcanSessionActive": "SLCAN session active"
       },
       "target": {
         "title": "ਨਿਸ਼ਾਨਾ Node",
@@ -5452,12 +5442,8 @@
       },
       "flashButton": "Node ਫਲੈਸ਼",
       "postFlash": {
-        "title": "ਫਲੈਸ਼ ਤੋਂ ਬਾਅਦ ਦੀਆਂ ਕਾਰਵਾਈਆਂ",
-        "subtitle": "ਨਵੇਂ ਫਲੈਸ਼ ਕੀਤੇ node ਉੱਤੇ ਵਿਕਲਪਿਕ ਅਗਲੀਆਂ ਕਾਰਵਾਈਆਂ.",
-        "flashBootloader": "FLASH_BOOTLOADER=1 ਲਿਖੋ",
-        "changeNodeId": "Node ID ਬਦਲੋ",
-        "newNodeIdPlaceholder": "1-127",
-        "newNodeIdAria": "ਨਵਾਂ Node ID"
+        "doneTitle": "Flash complete",
+        "doneBody": "The node restarts on the new firmware. Its version updates in the node table once it reports in."
       },
       "state": {
         "maintenance": "MAINT",
@@ -6727,7 +6713,30 @@
     "forgeOutputsRetry": "Retry",
     "relayUnreachable": "Cannot reach the ground station to read its Atlas relay.",
     "relayChecking": "Checking the Atlas relay…",
-    "forgeNoViewableArtifact": "This job's outputs include no artifact these viewers can show."
+    "forgeNoViewableArtifact": "This job's outputs include no artifact these viewers can show.",
+    "droneAccess": {
+      "segment": "Drone access",
+      "intro": "Each paired drone and ground station needs a credential from this workstation before it can stream capture, offload perception or fetch artifacts here. It is provisioned automatically.",
+      "unreachable": "This workstation did not answer, so what it has issued is unknown.",
+      "demo": "Drone access is provisioned between real paired nodes; demo mode has none.",
+      "localOnly": "Pair this workstation on the local network to manage which drones may use it.",
+      "noPeers": "No drone or ground station is paired with this GCS yet.",
+      "profileDrone": "Drone",
+      "profileGroundStation": "Ground station",
+      "issuedUnknown": "Workstation: unknown",
+      "notIssued": "Workstation: no credential issued",
+      "issuedAt": "Workstation: credential issued {at}",
+      "issuedStale": "Workstation: credential predates the last pairing and admits nothing",
+      "provisioning": "Provisioning…",
+      "notInstalled": "Node: not provisioned yet",
+      "installedAt": "Node: installed {at}",
+      "revoked": "Node: revoked by the operator",
+      "failed": "Node: last attempt failed ({error}); retrying",
+      "revokeFailed": "Revoke failed: {error}",
+      "provision": "Provision",
+      "reprovision": "Re-provision",
+      "revoke": "Revoke"
+    }
   },
   "workstation": {
     "rail": {
@@ -7256,7 +7265,8 @@
       "fov": "Field of view (deg)",
       "mountPitch": "Mount pitch (deg)",
       "save": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "primaryAlwaysOn": "The primary stream always runs, so it cannot be turned off."
     },
     "addDialog": {
       "title": "Add IP camera",

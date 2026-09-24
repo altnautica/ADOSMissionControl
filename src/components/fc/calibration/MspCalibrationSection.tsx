@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { CalibrationWizard, type CalibrationStatus } from "./CalibrationWizard";
 import { InavCalibration } from "./InavCalibration";
 import { BF_ACC_CALIBRATION_MS, wait } from "./msp-calibration";
@@ -18,12 +18,12 @@ export function MspCalibrationSection({ firmware }: { firmware: "betaflight" | "
 
 function BetaflightAccelCalibration() {
   const t = useTranslations("calibration");
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const [status, setStatus] = useState<CalibrationStatus>("idle");
   const [message, setMessage] = useState("");
 
   async function start() {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     setStatus("in_progress");
     setMessage(t("bfAccelInProgress"));

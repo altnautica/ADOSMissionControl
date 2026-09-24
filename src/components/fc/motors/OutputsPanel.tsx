@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useBoardId } from "@/hooks/use-board-id";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { SERVO_FUNCTION_GROUPS } from "@/lib/servo-functions";
@@ -66,8 +66,7 @@ function validateOutputs(rows: (OutputRow | null)[]): { pwmWarnings: PwmWarning[
 }
 
 export function OutputsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const protocol = getSelectedProtocol();
+  const protocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { isHardBlocked, hardBlockMessage } = useArmedLock();

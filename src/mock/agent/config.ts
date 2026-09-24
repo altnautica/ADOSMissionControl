@@ -78,7 +78,6 @@ function buildConfig(profile: MockConfigProfile): ConfigObject {
       camera: {
         source: "/dev/video0",
         codec: "h264",
-        codec_preference: "h264",
         fps: 30,
         width: 1920,
         height: 1080,
@@ -127,8 +126,6 @@ function buildConfig(profile: MockConfigProfile): ConfigObject {
       mode: "self_hosted",
       cloud: { url: "https://convex.example.com" },
       self_hosted: { url: "https://convex.example.com" },
-      heartbeat_interval: 30,
-      telemetry_rate: 4,
     },
     api: {
       mission_control_url: "https://command.altnautica.com",

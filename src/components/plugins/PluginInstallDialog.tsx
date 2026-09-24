@@ -37,7 +37,7 @@ import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { Modal } from "@/components/ui/modal";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { communityApi } from "@/lib/community-api";
 
 import { inspectArchive, parseManifestYaml } from "./transports/manifest-parse";

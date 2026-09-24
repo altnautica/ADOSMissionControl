@@ -108,19 +108,19 @@ describe("summarizeSelfHealEvent", () => {
       summarizeSelfHealEvent(t, "camera.usb_recovery", {
         state: "rebinding",
         attempt: 2,
-        max_attempts: 3,
       }),
     ).toEqual({
-      summary: "Camera USB recovery: re-binding the device (attempt 2 of 3)",
+      summary: "Camera USB recovery: re-binding the device (attempt 2)",
       severity: "warning",
     });
+    // Recovery never gives up: a camera that has not come back is retrying,
+    // a warning, not a terminal error.
     expect(
       summarizeSelfHealEvent(t, "camera.usb_recovery", {
-        state: "exhausted",
+        state: "retrying",
         attempt: 3,
-        max_attempts: 3,
       }).severity,
-    ).toBe("error");
+    ).toBe("warning");
     expect(
       summarizeSelfHealEvent(t, "camera.usb_recovery", {
         state: "needs_hub_reset",

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import type { StatusLevel } from "@/lib/status-level";
 
 /**
  * The unified node/health status vocabulary, shared with `Badge`. Colour is
@@ -8,13 +9,6 @@ import { cn } from "@/lib/utils";
  * carries an accessible label (the status word by default, override with
  * `label`) so it survives colour-blindness and the ~8px mini rail.
  */
-export type StatusLevel =
-  | "good" // healthy / online / armed-ok
-  | "warning" // degraded, needs attention
-  | "serious" // stale / reconnecting / unverified (between warning and critical)
-  | "critical" // fault / error
-  | "idle" // standby / no active work
-  | "offline"; // unreachable / unpaired
 
 interface StatusDotProps {
   status: StatusLevel;

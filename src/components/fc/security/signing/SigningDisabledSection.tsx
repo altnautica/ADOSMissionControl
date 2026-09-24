@@ -51,7 +51,7 @@ export function SigningDisabledSection({
         <div className="flex gap-2 flex-wrap">
           <button
             type="button"
-            className="px-4 py-2 bg-accent-primary text-white text-sm font-medium disabled:opacity-50"
+            className="px-4 py-2 bg-accent-primary text-accent-foreground text-sm font-medium disabled:opacity-50"
             onClick={onEnable}
             disabled={busy}
           >

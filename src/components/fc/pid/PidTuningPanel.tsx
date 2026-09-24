@@ -4,7 +4,7 @@ import { useState, useMemo, useLayoutEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
@@ -29,8 +29,8 @@ import { usePidAnalysisStore, type SuggestionTarget } from "@/stores/pid-analysi
 import { AutotuneSection, LivePidResponseGraph, PidSnapshotComparison, Px4GainMultipliers } from "./PidComparisonSection";
 
 export function PidTuningPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const selectedDrone = useDroneManager(selectSelectedDrone);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const bindAnalysisDrone = usePidAnalysisStore((s) => s.bindDrone);
   const { toast } = useToast();
@@ -45,7 +45,7 @@ export function PidTuningPanel() {
     bindAnalysisDrone(selectedDroneId ?? null);
   }, [selectedDroneId, bindAnalysisDrone]);
 
-  const drone = getSelectedDrone();
+  const drone = selectedDrone;
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const scrollRef = usePanelScroll("pid-tuning");
@@ -93,7 +93,7 @@ export function PidTuningPanel() {
   } = usePanelParams({ paramNames, panelId: "pid", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   // AI suggestions are validated against FC-confirmed values only: a param
@@ -158,7 +158,7 @@ export function PidTuningPanel() {
 
         <div className="flex items-center gap-1 bg-bg-secondary border border-border-default p-1 w-fit">
           {(["copter", "plane", "rover"] as const).map((vt) => (
-            <button key={vt} onClick={() => setVehicleType(vt)} className={cn("px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer capitalize", vehicleType === vt ? "bg-accent-primary text-white" : "text-text-secondary hover:text-text-primary")}>{vt}</button>
+            <button key={vt} onClick={() => setVehicleType(vt)} className={cn("px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer capitalize", vehicleType === vt ? "bg-accent-primary text-accent-foreground" : "text-text-secondary hover:text-text-primary")}>{vt}</button>
           ))}
           {detectedVehicle && <span className="text-[10px] text-text-tertiary ml-2">Detected: {detectedVehicle}</span>}
         </div>

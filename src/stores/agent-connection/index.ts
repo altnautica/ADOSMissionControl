@@ -13,6 +13,7 @@ import { localStateSlice } from "./local-state";
 import { cloudStateSlice } from "./cloud-state";
 import { clientManagerSlice } from "./client-manager";
 import type { AgentConnectionStore } from "./types";
+import { bindAgentConnectionLink } from "./link";
 
 export type {
   AgentConnectionStore,
@@ -33,3 +34,5 @@ export const useAgentConnectionStore = create<AgentConnectionStore>()((...a) => 
   ...cloudStateSlice(...a),
   ...clientManagerSlice(...a),
 }));
+
+bindAgentConnectionLink(() => useAgentConnectionStore.getState());

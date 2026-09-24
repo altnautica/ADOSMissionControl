@@ -1,4 +1,5 @@
 import React from "react";
+import type { EnumOption } from "../frame/enum-options";
 
 export const GIMBAL_PARAMS: string[] = [];
 
@@ -10,32 +11,50 @@ export const OPTIONAL_GIMBAL_PARAMS = [
   "MNT1_RC_IN_TILT", "MNT1_RC_IN_ROLL", "MNT1_RC_IN_PAN",
 ];
 
-export const RC_INPUT_CHANNEL_OPTIONS = [
+/** ArduPilot MNT1_RC_IN_* take an RC channel number (0 = disabled). */
+export const RC_INPUT_CHANNEL_OPTIONS: readonly EnumOption[] = [
   { value: "0", label: "0 — Disabled" },
-  { value: "5", label: "Channel 5" },
-  { value: "6", label: "Channel 6" },
-  { value: "7", label: "Channel 7" },
-  { value: "8", label: "Channel 8" },
-  { value: "9", label: "Channel 9" },
-  { value: "10", label: "Channel 10" },
-  { value: "11", label: "Channel 11" },
-  { value: "12", label: "Channel 12" },
-  { value: "13", label: "Channel 13" },
-  { value: "14", label: "Channel 14" },
-  { value: "15", label: "Channel 15" },
-  { value: "16", label: "Channel 16" },
+  ...Array.from({ length: 16 }, (_, i) => ({ value: String(i + 1), label: `Channel ${i + 1}` })),
 ];
 
-export const MNT_TYPE_OPTIONS = [
+/** PX4 MNT_MAN_* (which the PX4 handler maps MNT1_RC_IN_* to) take an AUX index. */
+export const PX4_MAN_INPUT_OPTIONS: readonly EnumOption[] = [
+  { value: "0", label: "0 — Disabled" },
+  ...Array.from({ length: 6 }, (_, i) => ({ value: String(i + 1), label: `AUX${i + 1}` })),
+];
+
+/** ArduPilot MNT1_TYPE (AP_Mount_Params). */
+export const MNT_TYPE_OPTIONS: readonly EnumOption[] = [
   { value: "0", label: "0 — None" },
   { value: "1", label: "1 — Servo" },
-  { value: "6", label: "6 — SToRM32 MAVLink" },
-  { value: "7", label: "7 — Alexmos" },
-  { value: "8", label: "8 — SiYi" },
+  { value: "2", label: "2 — 3DR Solo" },
+  { value: "3", label: "3 — Alexmos Serial" },
+  { value: "4", label: "4 — SToRM32 MAVLink" },
+  { value: "5", label: "5 — SToRM32 Serial" },
+  { value: "6", label: "6 — MAVLink (Gremsy/AVT)" },
+  { value: "7", label: "7 — BrushlessPWM" },
+  { value: "8", label: "8 — Siyi" },
   { value: "9", label: "9 — Scripting" },
+  { value: "10", label: "10 — Xacti" },
+  { value: "11", label: "11 — Viewpro" },
+  { value: "12", label: "12 — Topotek" },
+  { value: "13", label: "13 — CADDX" },
+  { value: "14", label: "14 — XFRobot" },
 ];
 
-export const MNT_MODE_OPTIONS = [
+/** PX4 MNT_MODE_IN, which the PX4 handler maps MNT1_TYPE to; -1 disables the mount. */
+export const PX4_MNT_MODE_IN_OPTIONS: readonly EnumOption[] = [
+  { value: "-1", label: "-1 — Disabled" },
+  { value: "0", label: "0 — Auto (RC and MAVLink v2)" },
+  { value: "1", label: "1 — RC" },
+  { value: "2", label: "2 — MAVLink ROI (v1)" },
+  { value: "3", label: "3 — MAVLink DO_MOUNT (v1)" },
+  { value: "4", label: "4 — MAVLink gimbal protocol v2" },
+  { value: "5", label: "5 — Fixed world-frame attitude" },
+];
+
+/** MAV_MOUNT_MODE, used for MNT1_DEFLT_MODE and the live mount-mode command. */
+export const MNT_MODE_OPTIONS: readonly EnumOption[] = [
   { value: "0", label: "0 — Retract" },
   { value: "1", label: "1 — Neutral" },
   { value: "2", label: "2 — MAVLink Targeting" },

@@ -89,7 +89,10 @@ export function useCapabilityToken(
   }>({ token: null, claims: null, error: null, loading: true });
 
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const aborted = useRef(false);
+  // Bumped when the dedupe key changes and on unmount. A mint (or its refresh
+  // timer) started under an older key answered for another plugin or drone,
+  // so its token must never become this hook's token.
+  const sessionRef = useRef(0);
   // Mint inputs change identity across renders (`useAction` returns a
   // fresh callback, store selectors recompute). Stashing them in a ref
   // keeps the effect keyed only on `cacheKey`; otherwise the effect
@@ -143,18 +146,20 @@ export function useCapabilityToken(
   const runRef = useRef<(force: boolean) => Promise<void>>(async () => {});
   const scheduleRefresh = useCallback((claims: TokenClaims) => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    const session = sessionRef.current;
     const delay = Math.max(claims.expiresAt - Date.now() - REFRESH_LEAD_MS, 0);
     refreshTimer.current = setTimeout(() => {
-      if (!aborted.current) void runRef.current(true);
+      if (session === sessionRef.current) void runRef.current(true);
     }, delay);
   }, []);
 
   const run = useCallback(
     async (force: boolean): Promise<void> => {
+      const session = sessionRef.current;
       setState((s) => ({ ...s, loading: true }));
       try {
         const minted = await doMint(force);
-        if (aborted.current) return;
+        if (session !== sessionRef.current) return;
         setState({
           token: minted.token,
           claims: minted.claims,
@@ -163,7 +168,7 @@ export function useCapabilityToken(
         });
         scheduleRefresh(minted.claims);
       } catch (err) {
-        if (aborted.current) return;
+        if (session !== sessionRef.current) return;
         setState((s) => ({
           ...s,
           loading: false,
@@ -176,10 +181,12 @@ export function useCapabilityToken(
   runRef.current = run;
 
   useEffect(() => {
-    aborted.current = false;
+    // The previous key's token authorises another plugin or drone; it must
+    // not stay visible while this key's mint is in flight.
+    setState({ token: null, claims: null, error: null, loading: true });
     void runRef.current(false);
     return () => {
-      aborted.current = true;
+      sessionRef.current += 1;
       if (refreshTimer.current) {
         clearTimeout(refreshTimer.current);
         refreshTimer.current = null;

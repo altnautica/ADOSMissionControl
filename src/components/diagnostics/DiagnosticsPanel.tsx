@@ -5,13 +5,12 @@ import { cn } from "@/lib/utils";
 import { EventTimeline } from "./EventTimeline";
 import { MessageRatePanel } from "./MessageRatePanel";
 import { DiagnosticsExport } from "./DiagnosticsExport";
-import { ShareDiagnostics } from "./ShareDiagnostics";
 import { FrameInspector } from "./FrameInspector";
 import { CommandQueuePanel } from "./CommandQueuePanel";
 import { RingBufferPanel } from "./RingBufferPanel";
 import { PerformancePanel } from "./PerformancePanel";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import type { MAVLinkAdapter } from "@/lib/protocol/mavlink-adapter";
 import {
   Clock,
@@ -29,21 +28,19 @@ type DiagTab = "timeline" | "rates" | "frames" | "queue" | "buffers" | "perf";
 export function DiagnosticsPanel() {
   const [activeTab, setActiveTab] = useState<DiagTab>("timeline");
   const clear = useDiagnosticsStore((s) => s.clear);
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const protocol = useDroneManager(selectSelectedProtocol);
 
-  // Enable hex logging only when frames tab is active (perf optimization)
+  // Enable hex logging only when frames tab is active (perf optimization).
+  // Keyed on the selected protocol, so a drone switch moves the flag to the
+  // new link and clears it on the old one.
   useEffect(() => {
-    const protocol = getSelectedProtocol();
-    if (protocol && 'diagnosticsEnabled' in protocol) {
-      (protocol as MAVLinkAdapter).diagnosticsEnabled = activeTab === "frames";
-    }
+    if (!protocol || !("diagnosticsEnabled" in protocol)) return;
+    const adapter = protocol as MAVLinkAdapter;
+    adapter.diagnosticsEnabled = activeTab === "frames";
     return () => {
-      const p = getSelectedProtocol();
-      if (p && 'diagnosticsEnabled' in p) {
-        (p as MAVLinkAdapter).diagnosticsEnabled = false;
-      }
+      adapter.diagnosticsEnabled = false;
     };
-  }, [activeTab, getSelectedProtocol]);
+  }, [activeTab, protocol]);
 
   const tabs: { key: DiagTab; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [
     { key: "timeline", label: "Timeline", Icon: Clock },
@@ -85,7 +82,6 @@ export function DiagnosticsPanel() {
 
         <div className="flex-1" />
 
-        <ShareDiagnostics />
         <DiagnosticsExport />
 
         <button

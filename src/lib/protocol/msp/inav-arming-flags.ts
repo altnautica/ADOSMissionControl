@@ -33,6 +33,7 @@ export const INAV_ARMING_FLAGS: Record<number, ArmingFlagEntry> = {
   3:  { name: "WAS_EVER_ARMED",                         label: "Was ever armed",                 isBlocker: false },
   4:  { name: "SIMULATOR_MODE_HITL",                    label: "Simulator mode (HITL)",          isBlocker: false },
   5:  { name: "SIMULATOR_MODE_SITL",                    label: "Simulator mode (SITL)",          isBlocker: false },
+  6:  { name: "ARMING_DISABLED_GEOZONE",                label: "Inside a no-arm geozone",        isBlocker: true  },
   7:  { name: "ARMING_DISABLED_FAILSAFE_SYSTEM",        label: "Failsafe system",               isBlocker: true  },
   8:  { name: "ARMING_DISABLED_NOT_LEVEL",              label: "Not level",                      isBlocker: true  },
   9:  { name: "ARMING_DISABLED_SENSORS_CALIBRATING",    label: "Sensors calibrating",            isBlocker: true  },
@@ -54,6 +55,9 @@ export const INAV_ARMING_FLAGS: Record<number, ArmingFlagEntry> = {
   25: { name: "ARMING_DISABLED_OOM",                    label: "Out of memory",                  isBlocker: true  },
   26: { name: "ARMING_DISABLED_INVALID_SETTING",        label: "Invalid setting",                isBlocker: true  },
   27: { name: "ARMING_DISABLED_PWM_OUTPUT_ERROR",       label: "PWM output error",               isBlocker: true  },
+  28: { name: "ARMING_DISABLED_NO_PREARM",              label: "Pre-arm switch not set",         isBlocker: true  },
+  29: { name: "ARMING_DISABLED_DSHOT_BEEPER",           label: "DShot beeper active",            isBlocker: true  },
+  30: { name: "ARMING_DISABLED_LANDING_DETECTED",       label: "Landing detected",               isBlocker: true  },
 };
 
 export interface DecodeArmingFlagsResult {
@@ -70,7 +74,9 @@ export interface DecodeArmingFlagsResult {
  *    "ok to arm" bit — the word carries only the reasons arming is disabled,
  *    so the absence of every blocker IS the ready state. Requiring a bit-0
  *    flag iNav never sets pinned this to false forever.
- *  - blockers: human-readable labels for each set blocker bit.
+ *  - blockers: human-readable labels for each set blocker bit. A set bit this
+ *    table does not know is a blocker too: every flag iNav adds is another
+ *    reason arming is disabled, and skipping it would read as ready.
  *  - notes: human-readable labels for set informational bits (armed,
  *    was-ever-armed, simulator).
  */
@@ -81,8 +87,8 @@ export function decodeArmingFlags(bitmask: number): DecodeArmingFlagsResult {
   for (let bit = 0; bit < 32; bit++) {
     if ((bitmask & (1 << bit)) === 0) continue;
     const entry = INAV_ARMING_FLAGS[bit];
-    if (!entry) continue;
-    if (entry.isBlocker) blockers.push(entry.label);
+    if (!entry) blockers.push(`Unknown flag (bit ${bit})`);
+    else if (entry.isBlocker) blockers.push(entry.label);
     else notes.push(entry.label);
   }
 

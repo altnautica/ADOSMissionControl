@@ -29,7 +29,7 @@ import { usePlatform } from "@/hooks/use-platform";
 import { useDisconnectGuard } from "@/hooks/use-disconnect-guard";
 import { DisconnectGuard } from "@/components/fc/shared/DisconnectGuard";
 import { ArmedWriteConfirmDialog } from "@/components/indicators/ArmedWriteConfirmDialog";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { cn } from "@/lib/utils";
 import { ChangelogNotificationGate } from "@/components/changelog/ChangelogNotificationGate";
 import { ChangelogBadge } from "@/components/changelog/ChangelogBadge";

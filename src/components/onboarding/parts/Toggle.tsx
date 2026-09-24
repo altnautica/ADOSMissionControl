@@ -25,7 +25,7 @@ export function Toggle({ checked, onChange, disabled }: ToggleProps) {
       } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
     >
       <span
-        className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+        className={`inline-block h-3.5 w-3.5 rounded-full bg-text-primary transition-transform ${
           checked ? "translate-x-[18px]" : "translate-x-[3px]"
         }`}
       />

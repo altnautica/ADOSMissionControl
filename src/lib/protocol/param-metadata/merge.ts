@@ -15,18 +15,18 @@ import type { ParamMetadata } from "./types";
 
 /** Merge a single overlay entry over a base entry (overlay wins where defined). */
 export function mergeMeta(base: ParamMetadata, overlay: ParamMetadata): ParamMetadata {
-  const out = { ...base } as unknown as Record<string, unknown>;
+  const out: ParamMetadata = { ...base };
   for (const key of Object.keys(overlay) as (keyof ParamMetadata)[]) {
     const v = overlay[key];
     if (v === undefined || v === null) continue;
     // A Map overlay replaces the base Map only when it is non-empty.
     if (v instanceof Map) {
-      if (v.size > 0) out[key] = v;
+      if (v.size > 0) Object.assign(out, { [key]: v });
       continue;
     }
-    out[key] = v;
+    Object.assign(out, { [key]: v });
   }
-  return out as unknown as ParamMetadata;
+  return out;
 }
 
 /**

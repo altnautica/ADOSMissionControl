@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { Button } from "@/components/ui/button";
 import { Trash2, Terminal, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -60,9 +60,9 @@ const IDLE_HINTS: Record<string, string> = {
 
 export function CliPanel() {
   const t = useTranslations("telemetryStrip");
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
 
   // Rows live in a ring mutated in place; `version` re-renders at most once a frame.
   const [ring] = useState(() => new RingBuffer<LogEntry>(MAX_ENTRIES));
@@ -90,20 +90,20 @@ export function CliPanel() {
 
   // Subscribe to STATUSTEXT messages
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     return protocol.onStatusText(({ severity, text }) => append(severity, text));
-  }, [getSelectedProtocol, append]);
+  }, [selectedProtocol, append]);
 
   // Subscribe to CLI / SERIAL_CONTROL responses
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     return protocol.onSerialData(({ data }) => {
       const text = new TextDecoder().decode(data).replace(/[\0\r]/g, "");
       if (text.length > 0) append(6, text);
     });
-  }, [getSelectedProtocol, append]);
+  }, [selectedProtocol, append]);
 
   const count = ring.length;
   const virt = useVirtualizer({
@@ -147,11 +147,11 @@ export function CliPanel() {
       append(6, `> ${trimmed}`);
 
       // The protocol turns the line into the firmware's CLI or shell form.
-      getSelectedProtocol()?.sendSerialData(trimmed);
+      selectedProtocol?.sendSerialData(trimmed);
 
       setCommand("");
     },
-    [command, getSelectedProtocol, append],
+    [command, selectedProtocol, append],
   );
 
   const handleKeyDown = useCallback(

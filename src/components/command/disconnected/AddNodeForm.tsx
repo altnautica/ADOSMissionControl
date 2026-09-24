@@ -40,7 +40,7 @@ import { usePairingStore } from "@/stores/pairing-store";
 import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { useDiscoveredAgents } from "@/hooks/use-discovered-agents";
 import { useToast } from "@/components/ui/toast";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { cmdPairingApi } from "@/lib/community-api-drones";
 import { DiscoveredAgentsList } from "./DiscoveredAgentsList";
 import { ProbeResultCard } from "./ProbeResultCard";
@@ -316,7 +316,7 @@ export function AddNodeForm({ onPaired }: AddNodeFormProps) {
           <button
             onClick={() => void probeTarget(input)}
             disabled={probing || !input.trim()}
-            className="px-3 py-2 text-xs font-medium bg-accent-primary text-white rounded hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+            className="px-3 py-2 text-xs font-medium bg-accent-primary text-accent-foreground rounded hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
             {probing ? (
               <>

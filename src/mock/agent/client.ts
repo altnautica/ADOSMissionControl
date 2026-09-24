@@ -32,6 +32,7 @@ import type {
   SupervisorRestartResult,
 } from "@/lib/agent/agent-client/system";
 import { delay, jitter, startTime } from "./utils";
+import { MockAgentClientExtras } from "./client-extras";
 import { getMockConfig, setMockConfigValue } from "./config";
 import { MOCK_PERIPHERALS } from "./peripherals";
 import { MOCK_PEERS } from "./fleet";
@@ -91,7 +92,7 @@ export function setMockAgentOverride(o: {
 
 // ── MockAgentClient ─────────────────────────────────────────
 
-export class MockAgentClient {
+export class MockAgentClient extends MockAgentClientExtras {
   /** Durable-store reader stand-in for demo mode. Matches the
    * `AgentClient.logging` surface so the LogViewer + Black Box view
    * render with mock data. */
@@ -158,12 +159,11 @@ export class MockAgentClient {
     };
   }
 
-  /** Switch which camera the encoder serves into a slot. The mock reports the
-   * restart the real agent performs (so the optimistic "switching…" state is
+  /** Make a camera the primary stream. The mock waits out a short delay as
+   * the real roster write does (so the optimistic "switching…" state is
    * exercised); it does not synthesize a second live encoder. */
-  async switchCamera(_role: "primary" | "secondary", _devicePath: string) {
+  async switchCamera(_devicePath: string): Promise<void> {
     await delay(120);
-    return { ok: true, restarting: true };
   }
 
   /** The camera-management roster (one row per state group), so the Cameras

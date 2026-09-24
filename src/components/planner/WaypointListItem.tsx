@@ -18,9 +18,9 @@ import { usePlannerStore } from "@/stores/planner-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { waypointAltitudeAgl } from "@/lib/mission/altitude-frame";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { NAV_COMMAND_OPTIONS, CMD_LETTER, INAV_ACTION_COMMANDS } from "./waypoint-constants";
-import { cmdMap } from "@/lib/mission-io-formats";
+import { cmdMap } from "@/lib/mission/command-map";
 import { useSupportedMissionCommands } from "@/hooks/use-supported-mission-commands";
 import { CommandSpecificEditors, INavCommandEditors } from "./WaypointCommandEditors";
 import { WaypointActionTimeline } from "./WaypointActionTimeline";
@@ -97,8 +97,7 @@ export const WaypointListItem = memo(function WaypointListItem({
   const homeGroundElevation = useMissionStore((s) => s.waypoints[0]?.groundElevation);
   const clearance = waypointAltitudeAgl(waypoint, { homeGroundElevation, defaultFrame });
 
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const protocol = getProtocol();
+  const protocol = useDroneManager(selectSelectedProtocol);
   const isInav = protocol?.getVehicleInfo()?.firmwareType === "inav";
 
   // The compact row names the iNav action when the connected firmware is iNav,

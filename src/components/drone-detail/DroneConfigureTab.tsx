@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
 import { useFcKeyboardShortcuts } from "@/hooks/use-fc-keyboard-shortcuts";
 import { useFcPanelActionsStore } from "@/stores/fc-panel-actions-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -55,9 +55,9 @@ export function DroneConfigureTab({
   const setLastActivePanelSetting = useSettingsStore((s) => s.setLastActivePanel);
   const [activePanel, setActivePanel] = useState(lastActivePanel || "outputs");
   const { supports, firmwareType } = useFirmwareCapabilities();
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
-  const vehicleClass = getSelectedDrone()?.vehicleInfo?.vehicleClass;
-  const vehicleType = getSelectedDrone()?.vehicleInfo?.vehicleType;
+  const vehicleInfo = useDroneManager(selectSelectedDrone)?.vehicleInfo;
+  const vehicleClass = vehicleInfo?.vehicleClass;
+  const vehicleType = vehicleInfo?.vehicleType;
 
   const sectionLabels: Record<string, string> = {
     Flight: t("flightSection"),

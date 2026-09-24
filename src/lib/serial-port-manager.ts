@@ -52,6 +52,12 @@ const BOOTLOADER_POLL_INTERVAL_MS = 500;
 
 type PortEventHandler = (info: PortInfo) => void;
 
+
+/** The connect/disconnect events carry the port as their target. */
+function isSerialPort(target: unknown): target is SerialPort {
+  return typeof target === "object" && target !== null && "getInfo" in target;
+}
+
 class SerialPortManagerImpl {
   private connectHandlers = new Set<PortEventHandler>();
   private disconnectHandlers = new Set<PortEventHandler>();
@@ -68,16 +74,16 @@ class SerialPortManagerImpl {
     this.initialized = true;
 
     navigator.serial.addEventListener("connect", (e: Event) => {
-      const port = (e as unknown as { target: SerialPort }).target;
-      if (port && "getInfo" in port) {
+      const port = e.target;
+      if (isSerialPort(port)) {
         const info = this.buildPortInfo(port);
         this.connectHandlers.forEach((h) => h(info));
       }
     });
 
     navigator.serial.addEventListener("disconnect", (e: Event) => {
-      const port = (e as unknown as { target: SerialPort }).target;
-      if (port && "getInfo" in port) {
+      const port = e.target;
+      if (isSerialPort(port)) {
         const info = this.buildPortInfo(port);
         this.disconnectHandlers.forEach((h) => h(info));
       }

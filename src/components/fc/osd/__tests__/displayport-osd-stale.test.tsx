@@ -11,8 +11,9 @@ import { DisplayPortOsdPanel } from "../DisplayPortOsdPanel";
 import { useDisplayPortStore } from "@/stores/displayport-store";
 import { useClockStore } from "@/stores/clock-store";
 
-const droneState = { getSelectedProtocol: () => null };
-vi.mock("@/stores/drone-manager", () => ({
+const droneState = { drones: new Map(), selectedDroneId: null };
+vi.mock("@/stores/drone-manager", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
   useDroneManager: (selector: (s: unknown) => unknown) => selector(droneState),
 }));
 

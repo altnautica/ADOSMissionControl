@@ -23,8 +23,10 @@ vi.mock("@/hooks/use-panel-params", () => ({
   }),
 }));
 let protocol: Partial<DroneProtocol> = {};
-vi.mock("@/stores/drone-manager", () => ({
-  useDroneManager: (selector: (s: unknown) => unknown) => selector({ getSelectedProtocol: () => protocol }),
+vi.mock("@/stores/drone-manager", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
+  useDroneManager: (selector: (s: unknown) => unknown) =>
+    selector({ drones: new Map([["d1", { protocol }]]), selectedDroneId: "d1" }),
 }));
 vi.mock("@/components/indicators/ArmedWarningBanner", () => ({
   ArmedWarningBanner: ({ children }: { children: ReactNode }) => <>{children}</>,

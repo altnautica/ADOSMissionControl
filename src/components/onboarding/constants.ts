@@ -77,7 +77,7 @@ export const ACCENT_DOCK_MAX_SCALE = 1.30;
 export const ACCENT_DOCK_RADIUS = ACCENT_BALL_SIZE * 1.4;
 
 export const PRIMARY_CTA_CLASS =
-  "h-10 px-8 bg-accent-primary text-black text-sm font-semibold hover:brightness-110 transition-all rounded-sm";
+  "h-10 px-8 bg-accent-primary text-accent-foreground text-sm font-semibold hover:brightness-110 transition-all rounded-sm";
 
 export const GITHUB_RELEASES_URL =
   "https://github.com/altnautica/ADOSMissionControl/releases/latest";

@@ -29,6 +29,22 @@ function decodeSlotMode(handler: FirmwareHandler | null, value: number): string 
   return handler.decodeFlightMode(value);
 }
 
+/**
+ * The mode-switch parameter names for a vehicle. ArduRover names its switch
+ * channel MODE_CH and its slots MODE1..MODE6; every other ArduPilot vehicle
+ * uses FLTMODE_CH / FLTMODE1..6, which the PX4 handler maps to RC_MAP_FLTMODE /
+ * COM_FLTMODE1..6.
+ */
+function modeParamNames(handler: FirmwareHandler | null): {
+  channel: string;
+  slotPrefix: string;
+} {
+  if (handler?.firmwareType !== "px4" && handler?.vehicleClass === "rover") {
+    return { channel: "MODE_CH", slotPrefix: "MODE" };
+  }
+  return { channel: "FLTMODE_CH", slotPrefix: "FLTMODE" };
+}
+
 interface UseFlightModeParamsArgs {
   protocol: DroneProtocol | null;
   firmwareHandler: FirmwareHandler | null;
@@ -47,6 +63,7 @@ export function useFlightModeParams({
   // or writing those ArduPilot-only names on PX4 times out, so they are gated
   // off for PX4 throughout this hook.
   const isPx4 = firmwareHandler?.firmwareType === "px4";
+  const { channel: channelParam, slotPrefix } = modeParamNames(firmwareHandler);
 
   const [slots, setSlots] = useState<ModeSlotConfig[]>(
     () => Array.from({ length: MODE_SLOT_COUNT }, defaultSlot),
@@ -68,7 +85,7 @@ export function useFlightModeParams({
     if (!protocol) return;
     setLoading(true);
     try {
-      const chParam = await protocol.getParameter("FLTMODE_CH");
+      const chParam = await protocol.getParameter(channelParam);
 
       const g: FlightModeGlobalConfig = {
         modeChannel: String(chParam.value),
@@ -86,7 +103,7 @@ export function useFlightModeParams({
 
       const modeParams = await Promise.all(
         Array.from({ length: MODE_SLOT_COUNT }, (_, i) =>
-          protocol.getParameter(`FLTMODE${i + 1}`),
+          protocol.getParameter(`${slotPrefix}${i + 1}`),
         ),
       );
 
@@ -121,7 +138,7 @@ export function useFlightModeParams({
     } finally {
       setLoading(false);
     }
-  }, [protocol, firmwareHandler, isPx4, isCopter, toast]);
+  }, [protocol, firmwareHandler, isPx4, isCopter, channelParam, slotPrefix, toast]);
 
   const totalDirtyCount = dirtySlots.size + (globalDirty ? 1 : 0);
   const isDirty = totalDirtyCount > 0;
@@ -136,7 +153,7 @@ export function useFlightModeParams({
         const g = globalConfig;
         const gb = globalBaselineRef.current;
         if (g.modeChannel !== gb.modeChannel) {
-          writes.push({ name: "FLTMODE_CH", value: Number(g.modeChannel) });
+          writes.push({ name: channelParam, value: Number(g.modeChannel) });
         }
         if (!isPx4 && g.initialMode !== gb.initialMode) {
           writes.push({ name: "INITIAL_MODE", value: Number(g.initialMode) });
@@ -158,13 +175,13 @@ export function useFlightModeParams({
             if (slotValue === null) {
               toast(`${slot.mode} has no PX4 mode slot; skipped`, "warning");
             } else {
-              writes.push({ name: `FLTMODE${idx + 1}`, value: slotValue });
+              writes.push({ name: `${slotPrefix}${idx + 1}`, value: slotValue });
             }
           } else {
             const { customMode } = firmwareHandler.encodeFlightMode(
               slot.mode as UnifiedFlightMode,
             );
-            writes.push({ name: `FLTMODE${idx + 1}`, value: customMode });
+            writes.push({ name: `${slotPrefix}${idx + 1}`, value: customMode });
           }
         }
 
@@ -211,7 +228,7 @@ export function useFlightModeParams({
     } finally {
       setSaving(false);
     }
-  }, [protocol, firmwareHandler, isPx4, isCopter, slots, globalConfig, isDirty, globalDirty, dirtySlots, toast]);
+  }, [protocol, firmwareHandler, isPx4, isCopter, channelParam, slotPrefix, slots, globalConfig, isDirty, globalDirty, dirtySlots, toast]);
 
   const commitToFlash = useCallback(async () => {
     if (!protocol) return;

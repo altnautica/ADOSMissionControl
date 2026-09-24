@@ -17,6 +17,15 @@ import type { FlightRecord } from "@/lib/types";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
 import { pointInPolygon } from "@/lib/geo/distance";
 
+// leaflet.heat adds heatLayer to the L namespace at import time and ships no
+// type declarations of its own.
+declare module "leaflet" {
+  function heatLayer(
+    latlngs: [number, number, number][],
+    options?: { radius?: number; blur?: number; maxZoom?: number; gradient?: Record<number, string> },
+  ): Layer;
+}
+
 // ── Heatmap layer (leaflet.heat) ─────────────────────────────
 
 /** Hook that adds/removes a leaflet.heat layer on the map. */
@@ -37,7 +46,7 @@ function HeatLayer({ points, show }: { points: [number, number, number][]; show:
     // Dynamic import avoids SSR issues.
     void import("leaflet.heat").then(() => {
       if (layerRef.current) map.removeLayer(layerRef.current);
-      const heat = (L as unknown as Record<string, (...args: unknown[]) => L.Layer>).heatLayer(points, {
+      const heat = L.heatLayer(points, {
         radius: 18,
         blur: 20,
         maxZoom: 17,

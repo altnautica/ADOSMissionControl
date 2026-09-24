@@ -26,6 +26,7 @@ import {
 } from "@/lib/patterns/gsd-calculator";
 import type { SurveyConfig } from "@/lib/patterns/types";
 import { usePatternStore } from "@/stores/pattern-store";
+import { selectPatternType } from "@/stores/pattern-selection";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { polygonArea } from "@/lib/drawing/geo-utils";
@@ -156,7 +157,7 @@ export function applyCopilotPlan(plan: CopilotPlan): AppliedSummary {
   const applied: AppliedSummary = {};
 
   if (plan.patternType && plan.patternType !== store.activePatternType) {
-    store.setPatternType(plan.patternType);
+    selectPatternType(plan.patternType);
   }
   if (plan.patternType) applied.pattern = plan.patternType;
 
@@ -278,9 +279,9 @@ export function PlannerCopilot() {
       return;
     }
 
-    // Fresh slate: setPatternType clears drawn shapes, then add our rectangle
+    // Fresh slate: selecting a pattern clears drawn shapes, then add our rectangle
     // (mirrors SurveyConfigSection's Quick Rect via the drawing store).
-    store.setPatternType("survey");
+    selectPatternType("survey");
     useDrawingStore.getState().addPolygon({ id: randomId(), vertices: polygon, area: polygonArea(polygon) });
 
     // Apply the suggested grid config; the drawn polygon (not config.polygon) is

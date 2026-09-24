@@ -5,7 +5,6 @@
  * @license GPL-3.0-only
  */
 
-import JSZip from "jszip";
 import { get as idbGet, keys as idbKeys } from "idb-keyval";
 import { downloadBlob } from "@/lib/download";
 
@@ -41,6 +40,8 @@ const RECORDINGS_INDEX_KEY = "altcmd:recordings-index";
  * Optionally includes telemetry recordings (large — off by default).
  */
 export async function exportBackup(includeRecordings = false): Promise<void> {
+  // jszip is loaded on first use so it stays out of every route's first-load bundle.
+  const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
 
   // Metadata

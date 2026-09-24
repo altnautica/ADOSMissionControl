@@ -11,7 +11,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useGeozoneStore, GEOZONE_MAX } from "@/stores/geozone-store";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -22,7 +22,7 @@ import { GeozoneZoneEditor } from "./GeozoneZoneEditor";
 import { MapPin, Plus, Upload } from "lucide-react";
 
 export function GeozonePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const [mapEditZoneId, setMapEditZoneId] = useState<number | null>(null);
 
@@ -41,10 +41,10 @@ export function GeozonePanel() {
   useUnsavedGuard(dirty);
 
   const hasLoaded = useGeozoneStore((s) => s.loaded);
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -56,10 +56,10 @@ export function GeozonePanel() {
     } else {
       toast("Geozones loaded from FC", "success");
     }
-  }, [getSelectedProtocol, loadFromFc, toast]);
+  }, [selectedProtocol, loadFromFc, toast]);
 
   const handleWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -71,7 +71,7 @@ export function GeozonePanel() {
     } else {
       toast("Geozones written to FC", "success");
     }
-  }, [getSelectedProtocol, uploadToFc, toast]);
+  }, [selectedProtocol, uploadToFc, toast]);
 
   return (
     <div className="flex-1 overflow-y-auto p-6">

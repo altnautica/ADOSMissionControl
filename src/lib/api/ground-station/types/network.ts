@@ -7,7 +7,10 @@
  */
 
 export interface ApStatus {
-  enabled: boolean;
+  /** Null when the agent could not ask systemd; unknown, never "off". */
+  enabled: boolean | null;
+  /** Whether the AP service is up; null when systemd did not answer. */
+  running?: boolean | null;
   ssid: string;
   passphrase: string;
   channel: number;

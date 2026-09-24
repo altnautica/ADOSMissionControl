@@ -96,12 +96,6 @@ describe("verifyArchive source contract", () => {
     }
   });
 
-  it("compares SHA-256 case-insensitively (lowercases both sides)", async () => {
-    const text = await readFile(VERIFIER_PATH, "utf8");
-    expect(text).toContain("args.sha256.toLowerCase()");
-    expect(text).toContain(".toLowerCase()");
-  });
-
   it("falls back to recomputing sha256 when storage metadata omits it", async () => {
     const text = await readFile(VERIFIER_PATH, "utf8");
     // Self-host backends without sha256 in metadata must still be
@@ -424,6 +418,7 @@ describe("verifyArchive manifest inflate bound", () => {
       storage: {
         getMetadata: async () => ({ size: archive.byteLength, sha256: sha256(archive) }),
         get: async () => new Blob([new Uint8Array(archive)]),
+        delete: async () => undefined,
       },
     };
   }
@@ -459,6 +454,64 @@ describe("verifyArchive manifest inflate bound", () => {
     await expect(
       invoke(verify.verifyArchive, actionCtx(archive), args(archive, bomb)),
     ).rejects.toThrow(/manifest missing/);
+  });
+
+  it("deletes the uploaded blob when the archive is rejected", async () => {
+    const manifest = Buffer.from("id: p\nversion: 1.0.0\n");
+    const archive = zipWith("manifest.yaml", manifest, manifest.byteLength);
+    const deleted: string[] = [];
+    const ctx = {
+      ...actionCtx(archive),
+      storage: {
+        ...actionCtx(archive).storage,
+        delete: async (id: string) => {
+          deleted.push(id);
+        },
+      },
+    };
+    await expect(
+      invoke(verify.verifyArchive, ctx, {
+        ...args(archive, manifest),
+        manifestHash: "0".repeat(64),
+      }),
+    ).rejects.toThrow(/manifest hash mismatch/);
+    expect(deleted).toEqual(["storage-1"]);
+  });
+
+  it("keeps a blob one of the caller's archive rows already holds", async () => {
+    const manifest = Buffer.from("id: p\nversion: 1.0.0\n");
+    const archive = zipWith("manifest.yaml", manifest, manifest.byteLength);
+    const deleted: string[] = [];
+    const ctx = {
+      ...actionCtx(archive),
+      runQuery: async () => ({ userId: "user-1" }),
+      storage: {
+        ...actionCtx(archive).storage,
+        delete: async (id: string) => {
+          deleted.push(id);
+        },
+      },
+    };
+    await expect(
+      invoke(verify.verifyArchive, ctx, {
+        ...args(archive, manifest),
+        manifestHash: "0".repeat(64),
+      }),
+    ).rejects.toThrow(/manifest hash mismatch/);
+    expect(deleted).toEqual([]);
+  });
+
+  it("compares the SHA-256 claims case-insensitively", async () => {
+    const manifest = Buffer.from("id: p\nversion: 1.0.0\n");
+    const archive = zipWith("manifest.yaml", manifest, manifest.byteLength);
+    const claims = args(archive, manifest);
+    await expect(
+      invoke(verify.verifyArchive, actionCtx(archive), {
+        ...claims,
+        sha256: claims.sha256.toUpperCase(),
+        manifestHash: claims.manifestHash.toUpperCase(),
+      }),
+    ).resolves.toBe("archive-row-id");
   });
 
   it("accepts an ordinary manifest", async () => {

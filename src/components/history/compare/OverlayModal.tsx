@@ -47,7 +47,7 @@ export function OverlayModal({ open, records, onClose }: OverlayModalProps) {
   if (!open || records.length < 2) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70 backdrop-blur-sm">
       <div className="w-[960px] max-w-[95vw] max-h-[92vh] overflow-y-auto rounded-md border border-border-default bg-bg-secondary shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default sticky top-0 bg-bg-secondary z-10">

@@ -1,5 +1,7 @@
 "use client";
 
+// Exempt from the 500-line rule: one plugin row whose toggle, overflow menu
+// and command-lane state are coupled through the same pending command.
 /**
  * @module DronePluginCard
  * @description Single plugin row inside the per-drone Plugins list.

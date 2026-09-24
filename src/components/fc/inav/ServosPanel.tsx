@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -24,8 +24,8 @@ const PLATFORM_MULTIROTOR = 0;
 // ── Component ─────────────────────────────────────────────────
 
 export function ServosPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -39,14 +39,14 @@ export function ServosPanel() {
   useUnsavedGuard(dirty);
 
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getMixerConfig) return;
     protocol.getMixerConfig().then((m) => {
       setPlatformType(m.platformType);
     }).catch(() => {
       // Leave platformType null so the panel shows normally on unsupported firmware.
     });
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   function updateServo(idx: number, partial: Partial<INavServoConfig>) {
     setServos((prev) => prev.map((s, i) => (i === idx ? { ...s, ...partial } : s)));
@@ -54,7 +54,7 @@ export function ServosPanel() {
   }
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getServoConfigs) { setError("Servo config not supported"); return; }
     setLoading(true); setError(null);
     try {
@@ -65,10 +65,10 @@ export function ServosPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const handleWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setServoConfigs) { setError("Servo write not supported"); return; }
     setLoading(true); setError(null);
     try {
@@ -80,7 +80,7 @@ export function ServosPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, servos]);
+  }, [selectedProtocol, servos]);
 
   const isMultirotor = platformType === PLATFORM_MULTIROTOR;
 

@@ -238,6 +238,7 @@ function capture(firmwareType: FirmwareType = "ardupilot-copter") {
     targetCompId: 1,
     sysId: 255,
     compId: 190,
+    homeAltitudeAmsl: null,
     sendCommandLong: (command, params): Promise<CommandResult> => {
       sent.push({ command, params: [...params] });
       return Promise.resolve({ success: true, resultCode: 0, message: "ok" });

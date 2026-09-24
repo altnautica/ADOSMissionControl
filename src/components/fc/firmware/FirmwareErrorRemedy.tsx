@@ -53,7 +53,7 @@ export function FirmwareErrorRemedy({
         {remedy.primaryAction === "select-bootloader" && onSelectBootloader && (
           <button
             onClick={onSelectBootloader}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold bg-accent-primary text-white hover:bg-accent-primary/80 cursor-pointer transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold bg-accent-primary text-accent-foreground hover:bg-accent-primary/80 cursor-pointer transition-colors"
           >
             <Usb size={12} />
             {t("selectDevice")}

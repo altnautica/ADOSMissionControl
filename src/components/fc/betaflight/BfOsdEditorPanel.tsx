@@ -12,7 +12,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -37,7 +37,7 @@ function layoutSnapshot(els: BfOsdElement[], vs: VideoSystem): string {
 
 export function BfOsdEditorPanel() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
+  const selectedDrone = useDroneManager(selectSelectedDrone);
   const { toast } = useToast();
 
   const [elements, setElements] = useState<BfOsdElement[]>(() => buildDefaultElements());
@@ -87,7 +87,7 @@ export function BfOsdEditorPanel() {
   // ── Read from FC ────────────────────────────────────────────
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedDrone()?.protocol;
+    const protocol = selectedDrone?.protocol;
     if (!protocol?.getOsdConfig) {
       setError("This connection cannot read the Betaflight OSD configuration");
       return;
@@ -112,12 +112,12 @@ export function BfOsdEditorPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedDrone, toast]);
+  }, [selectedDrone, toast]);
 
   // ── Save to FC ──────────────────────────────────────────────
 
   const handleSave = useCallback(async () => {
-    const protocol = getSelectedDrone()?.protocol;
+    const protocol = selectedDrone?.protocol;
     if (!protocol?.writeOsdLayout) {
       toast("This connection cannot write the Betaflight OSD configuration", "error");
       return;
@@ -158,12 +158,12 @@ export function BfOsdEditorPanel() {
     } finally {
       setSaving(false);
     }
-  }, [getSelectedDrone, elements, videoSystem, toast]);
+  }, [selectedDrone, elements, videoSystem, toast]);
 
   // ── Font upload (.mcm) ──────────────────────────────────────
 
   const handleFontFile = useCallback(async (file: File) => {
-    const protocol = getSelectedDrone()?.protocol;
+    const protocol = selectedDrone?.protocol;
     if (!protocol?.uploadOsdFont) {
       toast("Font upload is not available on this connection", "error");
       return;
@@ -178,7 +178,7 @@ export function BfOsdEditorPanel() {
     } finally {
       setFontProgress(null);
     }
-  }, [getSelectedDrone, toast]);
+  }, [selectedDrone, toast]);
 
   // ── Render ────────────────────────────────────────────────
 
@@ -217,7 +217,7 @@ export function BfOsdEditorPanel() {
                   className={cn(
                     "w-7 h-7 text-xs font-mono transition-colors",
                     activeProfile === p
-                      ? "bg-accent-primary text-white"
+                      ? "bg-accent-primary text-accent-foreground"
                       : "bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary/80",
                   )}
                 >

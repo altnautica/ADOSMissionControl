@@ -132,12 +132,17 @@ export function usePluginSkillEgress(droneId: string | null | undefined): void {
     if (!droneId || !localPlugins || localPlugins.length === 0) return;
 
     let cancelled = false;
+    // One sweep at a time: an agent slower than the interval would otherwise
+    // stack a new request per plugin on every tick.
+    let inFlight = false;
 
     const pollOnce = async () => {
       const id = droneRef.current;
       const plugins = pluginsRef.current;
-      if (!id || !plugins) return;
+      if (!id || !plugins || inFlight) return;
+      inFlight = true;
 
+      try {
       await Promise.all(
         plugins.map(async (plugin) => {
           // State egress polls the LAN agent that hosts the plugin; only an
@@ -178,6 +183,9 @@ export function usePluginSkillEgress(droneId: string | null | undefined): void {
           }
         }),
       );
+      } finally {
+        inFlight = false;
+      }
     };
 
     // Fire once immediately so the bar lights up without a poll-interval wait,

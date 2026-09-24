@@ -11,7 +11,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 import {
   RADIO_NETWORK_EVENT_KINDS,
-  summarizeRadioNetworkEvent,
   mapRadioNetworkEvents,
 } from "@/lib/agent/radio-network-events";
 import type { EventsRow } from "@/lib/agent/agent-client/logging";
@@ -35,118 +34,6 @@ function row(
 ): EventsRow {
   return { ts: new Date(tsUs / 1000).toISOString(), ts_us: tsUs, kind, data };
 }
-
-describe("summarizeRadioNetworkEvent", () => {
-  it("formats a reg re-pin with both countries and no leading em dash", () => {
-    const { summary, severity } = summarizeRadioNetworkEvent(
-      "radio.reg_reasserted",
-      { from_country: "BO", to_country: "US", channel_permitted: true },
-    );
-    expect(summary).toBe("Regulatory domain re-pinned BO to US");
-    expect(summary).not.toContain("—");
-    expect(severity).toBe("success");
-  });
-
-  it("warns when a reg re-pin lands on a non-permitted channel", () => {
-    const { severity } = summarizeRadioNetworkEvent("radio.reg_reasserted", {
-      from_country: "BO",
-      to_country: "US",
-      channel_permitted: false,
-    });
-    expect(severity).toBe("warning");
-  });
-
-  it("maps a blocked reg-gate verdict to a warning", () => {
-    const { summary, severity } = summarizeRadioNetworkEvent("radio.reg_gate", {
-      result: "blocked",
-      reason: "channel not permitted",
-    });
-    expect(summary).toBe("Reg-gate blocked: channel not permitted");
-    expect(severity).toBe("warning");
-  });
-
-  it("maps an allowed reg-gate verdict to success", () => {
-    const { severity } = summarizeRadioNetworkEvent("radio.reg_gate", {
-      result: "allowed",
-    });
-    expect(severity).toBe("success");
-  });
-
-  it("maps a successful bind to success", () => {
-    const { summary, severity } = summarizeRadioNetworkEvent("radio.bind", {});
-    expect(summary).toBe("Bind succeeded");
-    expect(severity).toBe("success");
-  });
-
-  it("maps every bind_failed reason enum to a readable error line", () => {
-    const cases: Array<[string, string]> = [
-      ["no_tx_key", "no transmit key"],
-      ["reg_blocked", "regulatory domain blocked"],
-      ["no_peer", "peer not found"],
-      ["no_peer_proof", "no verified peer (phantom pairing)"],
-      ["stale_key", "stale key, none transferred"],
-      ["timeout", "bind timeout"],
-      ["interrupted", "bind interrupted"],
-      ["other", "unknown error"],
-    ];
-    for (const [reason, text] of cases) {
-      const { summary, severity } = summarizeRadioNetworkEvent(
-        "radio.bind_failed",
-        { reason },
-      );
-      expect(summary).toBe(`Bind failed: ${text}`);
-      expect(severity).toBe("error");
-    }
-    // Neither new reason falls through to the generic line.
-    for (const reason of ["no_peer_proof", "stale_key"]) {
-      const { summary } = summarizeRadioNetworkEvent("radio.bind_failed", {
-        reason,
-      });
-      expect(summary).not.toBe("Bind failed: unknown error");
-    }
-  });
-
-  it("falls back to a generic line for an unknown bind_failed reason", () => {
-    const { summary } = summarizeRadioNetworkEvent("radio.bind_failed", {
-      reason: "brand_new_token",
-    });
-    expect(summary).toBe("Bind failed: unknown error");
-  });
-
-  it("flags an rf_unverified entry as an error with the USB speed", () => {
-    const { summary, severity } = summarizeRadioNetworkEvent(
-      "radio.rf_unverified",
-      { state: "entry", usb_speed_mbps: 480 },
-    );
-    expect(summary).toBe("Link unverified: TX active, no reception (USB 480 Mbps)");
-    expect(severity).toBe("error");
-  });
-
-  it("treats an rf_unverified clear as recovery", () => {
-    const { summary, severity } = summarizeRadioNetworkEvent(
-      "radio.rf_unverified",
-      { state: "clear" },
-    );
-    expect(summary).toBe("Link verified: reception confirmed");
-    expect(severity).toBe("success");
-  });
-
-  it("summarizes a WiFi self-heal with the failure count", () => {
-    const { summary, severity } = summarizeRadioNetworkEvent(
-      "network.wifi_reassociated",
-      { consecutive_failures: 2 },
-    );
-    expect(summary).toBe(
-      "Onboard WiFi re-associated (gateway unreachable x2)",
-    );
-    expect(severity).toBe("warning");
-  });
-
-  it("falls back to the raw kind for an unknown event", () => {
-    const { summary } = summarizeRadioNetworkEvent("radio.future_kind", {});
-    expect(summary).toBe("radio.future_kind");
-  });
-});
 
 describe("mapRadioNetworkEvents", () => {
   it("sorts newest-first and caps at the requested max", () => {

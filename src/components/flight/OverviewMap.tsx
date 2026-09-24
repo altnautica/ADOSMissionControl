@@ -22,8 +22,9 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import dynamic from "next/dynamic";
-import { DrawingManager } from "@/lib/drawing/drawing-manager";
 import { buildSkillContext, activate } from "@/lib/skills";
+import { MapFollower } from "@/components/map/MapFollower";
+import { MeasureToolManager } from "@/components/map/MeasureToolManager";
 
 const GcsMarker = dynamic(
   () => import("@/components/map/GcsMarker").then((m) => ({ default: m.GcsMarker })),
@@ -140,62 +141,6 @@ function MapResizer() {
     });
     observer.observe(container);
     return () => observer.disconnect();
-  }, [map]);
-
-  return null;
-}
-
-/** Distance in screen pixels the drone must move before the map re-centres. */
-const FOLLOW_THRESHOLD_PX = 2;
-
-/**
- * Auto-follows the drone position on the map. Re-centres only when the drone
- * has moved visibly and without animation: a pan restarted at telemetry rate
- * never finishes and keeps the map in motion.
- */
-function MapFollower({ position, follow }: { position: [number, number] | null; follow: boolean }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!follow || !position) return;
-    const moved = map
-      .latLngToContainerPoint(position)
-      .distanceTo(map.latLngToContainerPoint(map.getCenter()));
-    if (moved < FOLLOW_THRESHOLD_PX) return;
-    map.setView(position, map.getZoom(), { animate: false });
-  }, [map, position, follow]);
-
-  return null;
-}
-
-/** Manages the DrawingManager instance for measurement tool. */
-function MeasureToolManager({ active, onComplete }: { active: boolean; onComplete: () => void }) {
-  const map = useMap();
-  const managerRef = useRef<DrawingManager | null>(null);
-
-  useEffect(() => {
-    if (!managerRef.current) {
-      managerRef.current = new DrawingManager(map, {
-        onCancel: onComplete,
-      });
-    }
-
-    if (active) {
-      managerRef.current.startMeasure();
-    } else {
-      managerRef.current.clearAll();
-    }
-
-    return () => {
-      // Don't destroy on re-render, only on unmount
-    };
-  }, [map, active, onComplete]);
-
-  useEffect(() => {
-    return () => {
-      managerRef.current?.destroy();
-      managerRef.current = null;
-    };
   }, [map]);
 
   return null;
@@ -326,7 +271,7 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   );
 
   return (
-    <div className="relative w-full h-full border border-border-default overflow-hidden bg-[#0a0a0a] isolate">
+    <div className="relative w-full h-full border border-border-default overflow-hidden bg-bg-secondary isolate">
       {!compact && (
         <>
           <span className={`absolute top-2 left-2 z-[1000] text-[10px] font-mono bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg ${fixColor}`}>
@@ -490,7 +435,7 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
           }}
           className={`text-[10px] font-mono px-2 py-1 transition-colors flex items-center gap-1 rounded ${
             measureActive
-              ? "text-[#3A82FF] bg-[#3A82FF]/10"
+              ? "text-accent-primary bg-accent-primary/10"
               : "text-text-secondary hover:text-text-primary"
           }`}
           title="Measure distance and bearing (click points, double-click to finish)"
@@ -502,7 +447,7 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
           onClick={() => setShowPlannedPath((v) => !v)}
           className={`text-[10px] font-mono px-2 py-1 transition-colors rounded ${
             showPlannedPath
-              ? "text-[#3A82FF] bg-[#3A82FF]/10"
+              ? "text-accent-primary bg-accent-primary/10"
               : "text-text-secondary hover:text-text-primary"
           }`}
         >
@@ -512,7 +457,7 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
           onClick={() => setFollow((f) => !f)}
           className={`text-[10px] font-mono px-2 py-1 transition-colors rounded ${
             follow
-              ? "text-[#3A82FF] bg-[#3A82FF]/10"
+              ? "text-accent-primary bg-accent-primary/10"
               : "text-text-secondary hover:text-text-primary"
           }`}
         >

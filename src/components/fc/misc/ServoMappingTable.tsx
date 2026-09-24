@@ -163,7 +163,7 @@ export function ServoMappingTable({
                       onClick={() => setLocalValue(`SERVO${n}_REVERSED`, row.reversed ? 0 : 1)}
                       className={`w-7 h-7 border text-[10px] font-mono transition-colors ${
                         row.reversed
-                          ? "bg-accent-primary border-accent-primary text-white"
+                          ? "bg-accent-primary border-accent-primary text-accent-foreground"
                           : "bg-bg-tertiary border-border-default text-text-tertiary"
                       }`}
                     >

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { BitmaskEditor } from "@/components/ui/bitmask-editor";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -39,7 +39,7 @@ const PARAM_NAMES = [...SCR_PARAM_NAMES];
 const OPTIONAL_NAMES = [...SCR_OPTIONAL_PARAM_NAMES];
 
 export function ScrConfigCard() {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const [debugOpen, setDebugOpen] = useState(false);
   const [rebooting, setRebooting] = useState(false);
@@ -66,7 +66,7 @@ export function ScrConfigCard() {
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
   const p = (name: string, fallback = 0) => params.get(name) ?? fallback;
 
@@ -74,7 +74,7 @@ export function ScrConfigCard() {
   const scriptingOn = p("SCR_ENABLE") >= 1;
 
   async function handleReboot() {
-    const protocol = getProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     setRebooting(true);
     try {

@@ -6,7 +6,7 @@ import { Wand2, Save, RotateCcw, HardDrive, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -42,8 +42,8 @@ const FW_FIELDS: Field[] = [
 ];
 
 export function Px4AutotunePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const selectedDrone = useDroneManager(selectSelectedDrone);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
@@ -53,7 +53,7 @@ export function Px4AutotunePanel() {
 
   // A plane tunes its fixed-wing rates; a multicopter its MC rates; a VTOL does
   // both (multirotor hover + fixed-wing cruise).
-  const vehicleClass = getSelectedDrone()?.vehicleInfo?.vehicleClass;
+  const vehicleClass = selectedDrone?.vehicleInfo?.vehicleClass;
   const isFixedWing = vehicleClass === "plane";
   const isVtol = vehicleClass === "vtol";
   // Memoize so the field set (and thus paramNames) keeps a stable reference —
@@ -70,7 +70,7 @@ export function Px4AutotunePanel() {
   } = usePanelParams({ paramNames, panelId: "px4-autotune", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   async function handleSave() {

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
 import type {
   ProtocolCapabilities,
   FirmwareType,
@@ -18,8 +18,7 @@ interface FirmwareCapabilitiesResult {
 const NOT_CONNECTED_SUPPORTS = () => false;
 
 export function useFirmwareCapabilities(): FirmwareCapabilitiesResult {
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
-  const drone = getSelectedDrone();
+  const drone = useDroneManager(selectSelectedDrone);
 
   const protocol = drone?.protocol;
   const isConnected = !!protocol?.isConnected;

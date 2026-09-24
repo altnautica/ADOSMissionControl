@@ -35,12 +35,10 @@ pub enum Scope {
 }
 
 /// How the stack is exposed (TLS posture).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tls {
     /// Plain HTTP on the LAN. Cloud mode (HTTPS-only in the browser) stays off.
     HttpLan,
-    /// A Cloudflare Tunnel fronts the stack (token supplied).
-    CloudflareTunnel { token: String },
     /// The operator runs their own reverse proxy / TLS terminator.
     CustomProxy,
 }
@@ -48,7 +46,7 @@ pub enum Tls {
 impl Tls {
     /// True when browser cloud mode (HTTPS) can engage.
     pub fn is_https(&self) -> bool {
-        matches!(self, Tls::CloudflareTunnel { .. } | Tls::CustomProxy)
+        matches!(self, Tls::CustomProxy)
     }
 }
 
@@ -69,7 +67,7 @@ pub struct DeployConfig {
     pub video: Provision,
     /// The host-facing ports.
     pub ports: Ports,
-    /// The TLS / tunnel posture.
+    /// The TLS posture.
     pub tls: Tls,
     /// The MQTT principal username (default `ados`).
     pub mqtt_username: String,
@@ -79,6 +77,12 @@ pub struct DeployConfig {
     pub instance_name: String,
     /// The Convex instance secret (generated). SECRET.
     pub instance_secret: String,
+    /// The video relay's viewer-token secret, shared by the relay container and
+    /// the Convex deployment that mints the tokens (generated). SECRET.
+    pub video_relay_secret: String,
+    /// The broker auth-sync secret: the Bearer token `mqtt-auth-sync` presents
+    /// to Convex `/admin/mqtt-auth-entries`, set on both sides (generated). SECRET.
+    pub mqtt_auth_relay_secret: String,
 }
 
 impl Default for DeployConfig {
@@ -97,24 +101,28 @@ impl Default for DeployConfig {
             // Filled by `with_generated_secrets()`; empty here so `Default` is pure.
             mqtt_password: String::new(),
             instance_secret: String::new(),
+            video_relay_secret: String::new(),
+            mqtt_auth_relay_secret: String::new(),
         }
     }
 }
 
 impl DeployConfig {
-    /// A fresh config with the two secrets minted. Kept separate from `Default`
-    /// so tests can build a deterministic config without randomness.
+    /// A fresh config with its secrets minted. Kept separate from `Default` so
+    /// tests can build a deterministic config without randomness.
     pub fn with_generated_secrets() -> Self {
         DeployConfig {
             instance_secret: mint_hex(32),
             mqtt_password: mint_hex(18),
+            video_relay_secret: mint_hex(32),
+            mqtt_auth_relay_secret: mint_hex(32),
             ..Self::default()
         }
     }
 
     /// The URL scheme browsers use, given the TLS posture. The container-facing
     /// origins stay `http` on the host network regardless; only the browser-facing
-    /// advertised URLs go `https`/`wss` behind a tunnel/proxy.
+    /// advertised URLs go `https`/`wss` behind the operator's TLS proxy.
     fn browser_scheme(&self) -> &'static str {
         if self.tls.is_https() {
             "https"
@@ -237,6 +245,7 @@ impl DeployConfig {
         if !self.mqtt.is_managed() {
             svc.push(SVC_MOSQUITTO);
             svc.push(SVC_MQTT_BRIDGE);
+            svc.push(SVC_MQTT_AUTH_SYNC);
         }
         if !self.video.is_managed() {
             svc.push(SVC_VIDEO_RELAY);

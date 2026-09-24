@@ -24,7 +24,7 @@ const h = vi.hoisted(() => ({
   paramNames: [] as string[],
 }));
 
-vi.mock("@/stores/drone-manager", () => {
+vi.mock("@/stores/drone-manager", async (importOriginal) => {
   const handler = {
     get firmwareType() { return h.firmwareType; },
     get vehicleClass() { return h.vehicleClass; },
@@ -39,10 +39,11 @@ vi.mock("@/stores/drone-manager", () => {
     setParameter: vi.fn(),
   };
   return {
+    ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
     useDroneManager: (sel: (s: unknown) => unknown) =>
       sel({
-        getSelectedProtocol: () => protocol,
-        getSelectedDrone: () => ({ protocol, vehicleInfo: vehicleInfo() }),
+        drones: new Map([["d1", { protocol, vehicleInfo: vehicleInfo() }]]),
+        selectedDroneId: "d1",
       }),
   };
 });

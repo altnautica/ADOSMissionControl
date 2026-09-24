@@ -9,7 +9,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { Waypoint } from "@/lib/types";
 import type { MissionItem } from "@/lib/protocol/types/mission";
 import { expandToItems, collapseFromItems } from "@/lib/mission/mission-expand";
-import { cmdMap } from "@/lib/mission-io-formats";
+import { cmdMap } from "@/lib/mission/command-map";
 import { generateSurvey } from "@/lib/patterns/survey-generator";
 import { patternToMission } from "@/lib/patterns/pattern-to-mission";
 import { missionUploadItems } from "@/lib/mission-upload";

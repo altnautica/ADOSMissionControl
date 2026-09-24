@@ -288,6 +288,11 @@ export async function setParameter(ctx: ParamContext, name: string, value: numbe
     }
   }
   const type = cached?.type ?? MAV_PARAM_TYPE.REAL32
+  // What the vehicle can hold for this value: integer types store the rounded
+  // number (ArduPilot casts, PX4 packs bytewise), REAL32 the nearest float32.
+  // The echo is judged against that, not against the typed-in number.
+  const isFloat = type === MAV_PARAM_TYPE.REAL32 || type === MAV_PARAM_TYPE.REAL64
+  const storable = isFloat ? Math.fround(value) : Math.round(value)
   // Expire the cached value so no read serves the pre-write value, but keep
   // the entry: its type is what a retry or a later write encodes with.
   if (cached) ctx.paramCache.set(canonicalName, { ...cached, timestamp: 0 })
@@ -307,7 +312,7 @@ export async function setParameter(ctx: ParamContext, name: string, value: numbe
       unsub()
       ctx.paramCache.set(canonicalName, { value: param.value, timestamp: Date.now(), type: param.type, index: param.index, count: param.count })
       resolve({
-        success: Math.abs(param.value - value) < 0.001,
+        success: Math.abs(param.value - storable) <= Math.abs(storable) * 1e-6,
         resultCode: 0,
         message: `Parameter ${name} = ${param.value}`,
       })

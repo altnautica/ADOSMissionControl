@@ -114,7 +114,7 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
         onClick={release}
         aria-label="Release target"
         title="Release target"
-        className="text-white/60 hover:text-white"
+        className="text-on-media/60 hover:text-on-media"
         style={{ pointerEvents: "auto" }}
       >
         <X size={12} aria-hidden="true" />

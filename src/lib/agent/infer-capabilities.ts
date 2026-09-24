@@ -181,7 +181,8 @@ const KNOWN_GESTURES: ReadonlySet<LcdGesture> = new Set([
   "drag",
 ]);
 
-/** Known NPU specs by SoC name. */
+/** Known NPU specs by SoC name. A SoC with no NPU (e.g. the Broadcom Pi-class
+ * parts) has no entry: an entry is a claim that an accelerator exists. */
 const NPU_BY_SOC: Record<string, { tops: number; runtime: "rknn" | "tensorrt" }> = {
   // Rockchip RK3588 family (6 TOPS RKNN)
   RK3588: { tops: 6.0, runtime: "rknn" },
@@ -198,9 +199,6 @@ const NPU_BY_SOC: Record<string, { tops: number; runtime: "rknn" | "tensorrt" }>
   RV1126B: { tops: 2.0, runtime: "rknn" },
   RV1109: { tops: 2.0, runtime: "rknn" },
   RV1103: { tops: 0.5, runtime: "rknn" },
-  // Broadcom Pi-class boards (no NPU)
-  BCM2711: { tops: 0, runtime: "rknn" },   // Pi 4B / CM4
-  BCM2712: { tops: 0, runtime: "rknn" },   // Pi 5
   // NVIDIA Jetson
   "Jetson Orin Nano": { tops: 40.0, runtime: "tensorrt" },
   "Jetson Orin NX": { tops: 100.0, runtime: "tensorrt" },
@@ -385,10 +383,7 @@ export function inferCapabilities(
   // advertise the surface (older agent), we fall back to the board
   // signal: a real NPU (TOPS > 0) is the hardware prerequisite for
   // on-device inference, so a drone with a real NPU is treated as
-  // vision-capable. Pi-class boards appear in the NPU table with
-  // npu_tops 0 (so npu_available is true but there is no real
-  // accelerator); gate on TOPS, not the boolean, so they do not get
-  // the tab. A board with no real NPU and no advertised surface
+  // vision-capable. A board with no NPU and no advertised surface
   // leaves the flag undefined so the tab stays hidden.
   const advertisesVision =
     extras.visionBackend !== undefined ||

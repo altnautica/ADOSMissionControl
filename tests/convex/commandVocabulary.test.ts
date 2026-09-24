@@ -4,12 +4,12 @@
  * enqueueCommand validates the command name against this union at the queue
  * boundary so a typo or a forged name cannot land a dead row. These tests pin
  * (a) that the union validator accepts every permitted name and rejects an
- * unknown one at runtime, and (b) that enqueueCommand wires the validator
- * instead of a free-form v.string().
+ * unknown one at runtime, and (b) that the args validator the deployment
+ * enforces on enqueueCommand is that union, not a free-form string.
  */
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
+
+import * as commands from "../../convex/cmdDroneCommands";
 
 import {
   AGENT_CONTROL_VERB_SCOPE,
@@ -123,14 +123,14 @@ describe("relay command scope classes", () => {
 });
 
 describe("enqueueCommand command-name gate", () => {
-  it("validates command against the vocabulary instead of a free-form string", async () => {
-    const text = await readFile(
-      path.join(process.cwd(), "convex/cmdDroneCommands.ts"),
-      "utf8",
-    );
-    expect(text).toContain('import { relayCommandValidator } from "./commandVocabulary"');
-    expect(text).toContain("command: relayCommandValidator,");
-    // The free-form validator must be gone from the public enqueue boundary.
-    expect(text).not.toContain("command: v.string(),");
+  it("accepts exactly the vocabulary at the queue boundary", () => {
+    // `exportArgs` is the validator the deployment enforces, as Convex pushes it.
+    const registered = commands.enqueueCommand as unknown as { exportArgs: () => string };
+    const args = JSON.parse(registered.exportArgs()) as {
+      value: { command: { fieldType: { type: string; value: Array<{ value: string }> } } };
+    };
+    const field = args.value.command.fieldType;
+    expect(field.type).toBe("union");
+    expect(field.value.map((member) => member.value)).toEqual([...RELAY_COMMAND_NAMES]);
   });
 });

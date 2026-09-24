@@ -45,12 +45,6 @@ export const SCR_DEBUG_OPTS_BITS = new Map<number, string>([
   [6, "Disable heap expansion on out-of-memory"],
 ]);
 
-/** SCR_DIR_DISABLE bit index → label (which script directories are skipped). */
-export const SCR_DIR_DISABLE_BITS = new Map<number, string>([
-  [0, "Skip ROMFS scripts"],
-  [1, "Skip APM/scripts (SD card)"],
-]);
-
 /** Allowed upload extension. ArduPilot only executes `.lua`. */
 export const SCRIPT_EXTENSION = ".lua";
 

@@ -9,10 +9,16 @@
  */
 
 import type { UlogFile } from "./parser";
-import { TOPIC_TO_CHANNEL, normalizeTopicData } from "./topics";
+import { TOPIC_TO_CHANNEL, normalizeTopicData, radToHeading } from "./topics";
 import type { TelemetryFrame } from "../telemetry-recorder";
 import type { FlightRecord } from "../types";
 import { haversineDistance } from "@/lib/geo/distance";
+
+/** A local-position row within this much of a global fix is its velocity. */
+const LOCAL_JOIN_WINDOW_US = 500_000;
+
+/** Earliest UTC time (2000-01-01, µs) read as a real GPS clock. */
+const MIN_EPOCH_US = 946_684_800_000_000;
 
 export interface BuiltUlogFlight {
   record: FlightRecord;
@@ -31,10 +37,11 @@ export function ulogToFlightRecords(
   const armRanges = detectArmRanges(statusRows);
 
   // If no vehicle_status, treat entire log as one flight
+  const utcBootUs = utcAtBootUs(log);
   if (armRanges.length === 0) {
     const allFrames = buildAllFrames(log, 0, Infinity);
     if (allFrames.length === 0) return [];
-    const record = buildRecordFromFrames(allFrames, 0, sourceFilename);
+    const record = buildRecordFromFrames(allFrames, 0, utcBootUs, sourceFilename);
     return [{ record, frames: allFrames }];
   }
 
@@ -43,11 +50,53 @@ export function ulogToFlightRecords(
   for (const { startUs, endUs } of armRanges) {
     const frames = buildAllFrames(log, startUs, endUs);
     if (frames.length < 2) continue;
-    const record = buildRecordFromFrames(frames, startUs, sourceFilename);
+    const record = buildRecordFromFrames(frames, startUs, utcBootUs, sourceFilename);
     flights.push({ record, frames });
   }
 
   return flights;
+}
+
+/**
+ * The wall-clock time at boot (µs since the epoch), from the first GPS row
+ * carrying a UTC time: ULog timestamps count from boot, and the GPS row pairs
+ * a boot timestamp with the UTC it received. Undefined when no fix ever
+ * carried a UTC time.
+ */
+function utcAtBootUs(log: UlogFile): number | undefined {
+  for (const row of log.data.get("vehicle_gps_position") ?? []) {
+    const utc = row.time_utc_usec;
+    const ts = row.timestamp;
+    if (typeof utc === "number" && utc >= MIN_EPOCH_US && typeof ts === "number") {
+      return utc - ts;
+    }
+  }
+  return undefined;
+}
+
+function tsOf(row: Record<string, unknown> | undefined): number {
+  return typeof row?.timestamp === "number" ? row.timestamp : 0;
+}
+
+/**
+ * Fill a global fix's ground speed and heading from the local-position row
+ * logged with it. Current PX4 publishes velocity and yaw only on
+ * vehicle_local_position; a fix with no local row close in time keeps them
+ * absent.
+ */
+function joinLocalVelocity(
+  data: Record<string, unknown>,
+  local: Record<string, unknown> | undefined,
+  ts: number,
+): void {
+  if (!local || Math.abs(tsOf(local) - ts) > LOCAL_JOIN_WINDOW_US) return;
+  const { vx, vy, heading } = local;
+  if (data.groundSpeed === undefined && typeof vx === "number" && typeof vy === "number") {
+    data.groundSpeed = Math.hypot(vx, vy);
+  }
+  if (data.heading === undefined && typeof heading === "number" && Number.isFinite(heading)) {
+    data.heading = radToHeading(heading);
+  }
 }
 
 // ── Arm range detection ──────────────────────────────────────
@@ -92,10 +141,13 @@ function buildAllFrames(
   endUs: number,
 ): TelemetryFrame[] {
   const frames: TelemetryFrame[] = [];
+  const localRows = log.data.get("vehicle_local_position") ?? [];
 
   for (const [topic, rows] of log.data.entries()) {
     const channel = TOPIC_TO_CHANNEL[topic];
     if (!channel) continue;
+    // Cursor into the local-position rows; both topics are in log order.
+    let li = 0;
 
     for (const row of rows) {
       const ts = typeof row.timestamp === "number" ? row.timestamp : 0;
@@ -103,6 +155,10 @@ function buildAllFrames(
 
       const offsetMs = (ts - startUs) / 1000; // µs → ms
       const data = normalizeTopicData(topic, row);
+      if (topic === "vehicle_global_position") {
+        while (li + 1 < localRows.length && tsOf(localRows[li + 1]) <= ts) li++;
+        joinLocalVelocity(data, localRows[li], ts);
+      }
       frames.push({ offsetMs, channel, data });
     }
   }
@@ -150,10 +206,15 @@ function addRelativeAltitude(frames: TelemetryFrame[], homeAlt: number | undefin
 function buildRecordFromFrames(
   frames: TelemetryFrame[],
   startUs: number,
+  utcBootUs: number | undefined,
   sourceFilename?: string,
 ): FlightRecord {
   const id = crypto.randomUUID();
-  const startTime = Date.now(); // Approximate — ULog timestamps are relative
+  // ULog timestamps count from boot; the GPS UTC anchors them to the wall
+  // clock. A log that never carried a UTC fix is dated at import.
+  const startTime = utcBootUs !== undefined
+    ? Math.round((utcBootUs + startUs) / 1000 + frames[0].offsetMs)
+    : Date.now();
   const durationMs = frames[frames.length - 1].offsetMs - frames[0].offsetMs;
   const duration = Math.max(0, Math.round(durationMs / 1000));
 

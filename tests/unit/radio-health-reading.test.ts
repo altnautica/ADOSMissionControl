@@ -134,11 +134,8 @@ describe("rehomeReading", () => {
     expect(rehomeReading("idle", 0).value).toBeNull();
   });
 
-  it("counts attempts while rehoming and errors when exhausted", () => {
+  it("counts attempts while rehoming", () => {
     expect(rehomeReading("rehoming", 2)).toMatchObject({ value: "Rehoming (attempt 2)", tone: "warning" });
     expect(rehomeReading("rehoming", 0).value).toBe("Rehoming");
-    const exhausted = rehomeReading("exhausted", 3);
-    expect(exhausted.tone).toBe("error");
-    expect(exhausted.note).toMatch(/480 Mbps/);
   });
 });

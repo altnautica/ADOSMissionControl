@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { useDroneManager } from "./drone-manager";
+import { droneSelection } from "./drone-selection";
 
 interface PanelCacheEntry {
   params: Map<string, number>;
@@ -31,7 +31,7 @@ const NO_DRONE = "__none__";
 const KEY_SEP = "::";
 
 function currentDroneId(): string {
-  return useDroneManager.getState().selectedDroneId ?? NO_DRONE;
+  return droneSelection().selectedDroneId ?? NO_DRONE;
 }
 
 function composeKey(droneId: string, panelId: string): string {

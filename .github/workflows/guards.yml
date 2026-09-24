@@ -340,7 +340,6 @@ jobs:
           pluginRegistry.ts:getVersion
           pluginRegistry.ts:getDownloadUrl
           pluginRegistry.ts:getRevokedList
-          pluginRegistryDownload.ts:downloadArchive
           `.trim().split('\n').map((s) => s.trim()).filter(Boolean));
 
           const AUTH = /getAuthUserId|requireAdmin|requireRole|requireUser|assertAdmin|ctx\.auth\.getUserIdentity/;

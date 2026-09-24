@@ -10,7 +10,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useMixerStore } from "@/stores/mixer-store";
@@ -37,8 +37,8 @@ const PROFILE_OPTIONS = [
 ];
 
 export function MixerProfilePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -61,7 +61,7 @@ export function MixerProfilePanel() {
   useUnsavedGuard(dirty);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getMixerConfig || !protocol.getActiveProfiles) {
       setProfileError("Mixer config not supported");
       return;
@@ -78,11 +78,11 @@ export function MixerProfilePanel() {
     } finally {
       setProfileLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const handleSwitchProfile = useCallback(
     async (idx: number) => {
-      const protocol = getSelectedProtocol();
+      const protocol = selectedProtocol;
       if (!protocol?.selectMixerProfile || !protocol.getMixerConfig || !protocol.getActiveProfiles) {
         setProfileError("Mixer profile switch not supported");
         return;
@@ -116,21 +116,21 @@ export function MixerProfilePanel() {
         setProfileLoading(false);
       }
     },
-    [getSelectedProtocol, loadFromFc],
+    [selectedProtocol, loadFromFc],
   );
 
   const handleMixerRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     await loadFromFc(protocol);
     if (useMixerStore.getState().error === null) setTablesStale(false);
-  }, [getSelectedProtocol, loadFromFc]);
+  }, [selectedProtocol, loadFromFc]);
 
   const handleMixerWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     await uploadToFc(protocol);
-  }, [getSelectedProtocol, uploadToFc]);
+  }, [selectedProtocol, uploadToFc]);
 
   const platformLabel = mixer
     ? PLATFORM_LABELS[mixer.platformType] ?? `Type ${mixer.platformType}`

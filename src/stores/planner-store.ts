@@ -112,7 +112,7 @@ interface PlannerStoreState {
 }
 
 export const usePlannerStore = create<PlannerStoreState>()(
-  persist(
+  persist<PlannerStoreState, [], [], Partial<PlannerStoreState>>(
     (set) => {
   /**
    * Commit a new interaction mode: derive `activeTool`, mirror the transient
@@ -230,7 +230,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
           // older payload). The persisted defaults are preserved untouched.
           state.mode = DEFAULT_PLANNER_MODE;
         }
-        return state as unknown as PlannerStoreState;
+        return state as Partial<PlannerStoreState>;
       },
     }
   )

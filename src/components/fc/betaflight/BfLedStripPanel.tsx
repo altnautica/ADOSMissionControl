@@ -16,7 +16,7 @@ import { Lightbulb, Upload } from "lucide-react";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import type { HsvColor, BfLedModeColor } from "@/lib/protocol/msp/decoders/config/led";
@@ -30,8 +30,8 @@ const FUNCTION_OPTIONS = BF_LED_FUNCTIONS.map((label, i) => ({ value: String(i),
 const COLOR_OPTIONS = Array.from({ length: BF_LED_COLOR_COUNT }, (_, i) => ({ value: String(i), label: `Color ${i}` }));
 
 export function BfLedStripPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
   const { isArmed, lockMessage } = useArmedLock();
 
   const [leds, setLeds] = useState<BfLed[]>([]);
@@ -45,7 +45,7 @@ export function BfLedStripPanel() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const read = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getLedStripConfig) {
       setError("LED-strip config is not available on this connection");
       return;
@@ -72,10 +72,10 @@ export function BfLedStripPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const write = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setLedStripConfig) return;
     setLoading(true);
     setError(null);
@@ -102,7 +102,7 @@ export function BfLedStripPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, leds, baseline, colors, colorsBaseline, modeColors, modeColorsBaseline]);
+  }, [selectedProtocol, leds, baseline, colors, colorsBaseline, modeColors, modeColorsBaseline]);
 
   const update = useCallback((idx: number, patch: Partial<BfLed>) => {
     setLeds((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));

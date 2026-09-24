@@ -35,7 +35,7 @@ vi.mock("convex/react", () => ({
   useMutation: () => vi.fn(),
   useConvexAuth: () => ({ isAuthenticated: false, isLoading: false }),
 }));
-vi.mock("@/app/ConvexClientProvider", () => ({ useConvexAvailable: () => true }));
+vi.mock("@/hooks/use-convex-available", () => ({ useConvexAvailable: () => true }));
 vi.mock("@/hooks/use-convex-skip-query", () => ({
   useConvexSkipQuery: () => h.row,
 }));

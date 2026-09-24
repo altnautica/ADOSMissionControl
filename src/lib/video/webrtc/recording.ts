@@ -6,9 +6,8 @@
  *
  * This is deliberately the *smaller* of the two recording paths. It records
  * the decoded stream as displayed, so it inherits every downlink compromise
- * and stops the moment the tab does. The archival path is the agent's own
- * fMP4 recorder, exported through `../clip-export` — that is what an operator
- * should reach for when the recording has to survive.
+ * and stops the moment the tab does. A recording that has to survive belongs
+ * on the node's own recorder.
  *
  * @license GPL-3.0-only
  */

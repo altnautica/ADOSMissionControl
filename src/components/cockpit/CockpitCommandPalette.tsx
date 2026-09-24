@@ -158,7 +158,7 @@ export function CockpitCommandPalette({
 
   return (
     <div
-      className="absolute inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[12vh] backdrop-blur-sm"
+      className="absolute inset-0 z-50 flex items-start justify-center bg-scrim/50 p-4 pt-[12vh] backdrop-blur-sm"
       onMouseDown={(e) => {
         // Click on the dimmer (not the dialog) closes.
         if (e.target === e.currentTarget) onClose();

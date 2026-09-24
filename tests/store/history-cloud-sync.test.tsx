@@ -36,7 +36,7 @@ vi.mock("idb-keyval", () => ({
   keys: vi.fn(async () => Array.from(idb.store.keys())),
 }));
 
-vi.mock("@/app/ConvexClientProvider", () => ({ useConvexAvailable: () => true }));
+vi.mock("@/hooks/use-convex-available", () => ({ useConvexAvailable: () => true }));
 
 vi.mock("@/lib/cmd-flight-logs-api", () => ({
   cmdFlightLogsApi: { listPaginated: "list", upsert: "upsert", remove: "remove" },

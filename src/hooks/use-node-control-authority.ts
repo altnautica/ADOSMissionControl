@@ -34,7 +34,7 @@ import { useClockStore } from "@/stores/clock-store";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { deviceIdFromNodeId, nodeIdForDevice } from "@/lib/agent/node-id";
-import type { StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
 import {
   laneForTransport,
   needsOperatorAttention,

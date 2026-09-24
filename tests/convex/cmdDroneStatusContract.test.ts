@@ -2,14 +2,12 @@
  * Wire contract for the cloud status heartbeat, asserted against the RUNTIME
  * validators and the real coercion helpers.
  *
- * This file used to `readFile` `cmdDroneStatus.ts`, `schema.ts` and
- * `http.ts` and match substrings of their source — 38 reads across ~900
- * lines. That pins the spelling of identifiers, not behaviour: it passes
- * while the code is wrong and fails when the code is merely reformatted,
- * and every CRITICAL the audit found in this layer sailed through it. A
- * Convex validator is an ordinary object at runtime and the payload
- * coercion now lives in `convex/lib/heartbeatFields.ts` as pure exports,
- * so both are directly inspectable.
+ * Asserting on substrings of `cmdDroneStatus.ts`, `schema.ts` and `http.ts`
+ * would pin the spelling of identifiers, not behaviour: it passes while the
+ * code is wrong and fails when the code is merely reformatted. A Convex
+ * validator is an ordinary object at runtime and the payload coercion lives
+ * in `convex/lib/heartbeatFields.ts` as pure exports, so both are directly
+ * inspectable.
  *
  * What is actually at stake: `pushStatus` takes a strict `v.object()` for
  * the `radio` and `crsf` blocks, so ONE undeclared key does not get

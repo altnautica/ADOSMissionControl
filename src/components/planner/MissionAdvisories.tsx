@@ -16,7 +16,7 @@ import type { Waypoint } from "@/lib/types";
 import type { FirmwareType } from "@/lib/protocol/types/enums";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import { useGeofenceStore } from "@/stores/geofence-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { checkAirportProximity } from "@/lib/airspace/airspace-check";
 import {
   checkSoftBuffer,
@@ -75,8 +75,8 @@ export function MissionAdvisories({
   const circleCenter = useGeofenceStore((s) => s.circleCenter);
   const circleRadius = useGeofenceStore((s) => s.circleRadius);
 
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const firmware: FirmwareType | undefined = getProtocol()?.getVehicleInfo()
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const firmware: FirmwareType | undefined = selectedProtocol?.getVehicleInfo()
     ?.firmwareType;
 
   // The latest telemetry home sample (a RingBuffer whose reference is stable, so
@@ -109,7 +109,7 @@ export function MissionAdvisories({
   const needsAutoland = landStartIndex >= 0 && firmware === "ardupilot-plane";
   useEffect(() => {
     if (!needsAutoland) return;
-    const protocol = getProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     let live = true;
     protocol.getParameter("RTL_AUTOLAND").then(
@@ -117,7 +117,7 @@ export function MissionAdvisories({
       () => {},
     );
     return () => { live = false; };
-  }, [needsAutoland, getProtocol]);
+  }, [needsAutoland, selectedProtocol]);
 
   // Pure module checks only — the translation function is intentionally kept
   // out of the memo so its render-to-render identity never re-runs the checks.
@@ -222,7 +222,7 @@ export function MissionAdvisories({
     message: itemCountMessage,
   });
 
-  if (needsAutoland && rtlAutoland?.protocol === getProtocol() && rtlAutoland.value === 0) {
+  if (needsAutoland && rtlAutoland?.protocol === selectedProtocol && rtlAutoland.value === 0) {
     rows.push({
       key: "rtl-autoland",
       level: "warn",

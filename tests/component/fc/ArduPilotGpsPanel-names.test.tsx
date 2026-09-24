@@ -17,12 +17,13 @@ const h = vi.hoisted(() => ({
   setLocalValue: vi.fn(),
 }));
 
-vi.mock("@/stores/drone-manager", () => {
+vi.mock("@/stores/drone-manager", async (importOriginal) => {
   const handler = { firmwareType: "ardupilot-copter", mapParameterName: (n: string) => n };
   const protocol = { isConnected: true, getFirmwareHandler: () => handler };
   return {
+    ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
     useDroneManager: (sel: (s: unknown) => unknown) =>
-      sel({ getSelectedProtocol: () => protocol, getSelectedDrone: () => ({ protocol }) }),
+      sel({ drones: new Map([["d1", { protocol }]]), selectedDroneId: "d1" }),
   };
 });
 vi.mock("@/hooks/use-param-metadata", () => {

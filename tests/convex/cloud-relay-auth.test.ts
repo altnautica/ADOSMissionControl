@@ -1,6 +1,3 @@
-import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
@@ -16,6 +13,7 @@ import {
   requireOwnedCommand,
   requireOwnedDroneByDeviceId,
 } from "../../convex/cmdDroneAccess";
+import { isPublic } from "./fakeConvexCtx";
 
 type Row = Record<string, unknown>;
 
@@ -203,42 +201,17 @@ describe("cloud relay authorization helpers", () => {
 
   it("keeps agent-only relay functions out of the public Convex API", async () => {
     const [commands, status, drones] = await Promise.all([
-      readFile(path.join(process.cwd(), "convex/cmdDroneCommands.ts"), "utf8"),
-      readFile(path.join(process.cwd(), "convex/cmdDroneStatus.ts"), "utf8"),
-      readFile(path.join(process.cwd(), "convex/cmdDrones.ts"), "utf8"),
+      import("../../convex/cmdDroneCommands"),
+      import("../../convex/cmdDroneStatus"),
+      import("../../convex/cmdDrones"),
     ]);
-
-    expect(commands).toContain("export const claimCommands = internalMutation");
-    expect(commands).toContain("export const ackCommand = internalMutation");
-    expect(status).toContain("export const pushStatus = internalMutation");
-    expect(drones).toContain("export const getDroneByDeviceId = internalQuery");
-  });
-
-  // The hosted deployment is a separate tree: a lone-repo checkout has nothing
-  // to compare against and reports this skipped, never a false green.
-  const prodPath = path.resolve(process.cwd(), "../website/convex/cmdDroneCommands.ts");
-
-  it.skipIf(!existsSync(prodPath))("holds the production command relay to the same authz posture", async () => {
-    const prod = await readFile(prodPath, "utf8");
-
-    // Every one of these shipped absent from production while present here.
-    // The exposure gate could not see it: both sides are a plain query or
-    // mutation, so only the body distinguishes them. Queueing was the worst of
-    // the four, because the agent authenticates itself when it polls and
-    // nothing downstream re-checks who enqueued.
-    expect(prod).toContain("await requireOwnedDroneByDeviceId(ctx, args.deviceId)");
-    expect(prod).toContain("command: relayCommandValidator");
-    expect(prod).toContain("return await requireOwnedCommand(ctx, commandId)");
-    expect(prod).toContain("await requireOwnedDroneByDeviceId(ctx, deviceId)");
-    expect(prod).toContain("await requireCommandForDevice(ctx, commandId, deviceId)");
-
-    // The queued row must record the OWNER. Recording the caller was harmless
-    // only while the two could differ, which is precisely the bug.
-    expect(prod).toContain("userId: drone.userId");
-    expect(prod).not.toContain("userId: identity.subject");
-
-    // An unconstrained command name lets a forged value land a row the agent
-    // silently ignores, and removes the one place the vocabulary is reviewable.
-    expect(prod).not.toMatch(/command:\s*v\.string\(\)/);
+    for (const fn of [
+      commands.claimCommands,
+      commands.ackCommand,
+      status.pushStatus,
+      drones.getDroneByDeviceId,
+    ]) {
+      expect(isPublic(fn)).toBe(false);
+    }
   });
 });

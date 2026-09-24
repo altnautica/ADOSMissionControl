@@ -16,7 +16,7 @@
 import { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useGuidedStore } from "@/stores/guided-store";
@@ -70,7 +70,7 @@ export function MapContextMenu() {
   const menuItems = useMenuItems(ctx);
 
   const confirmPending = useGuidedStore((s) => s.confirmPending);
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const addPoi = usePoiStore((s) => s.addMarker);
   const addRally = useRallyStore((s) => s.addPoint);
   const uploadRally = useRallyStore((s) => s.uploadRallyPoints);
@@ -166,10 +166,10 @@ export function MapContextMenu() {
   const openRallyPanel = useCallback(() => {
     setRallyAlt("");
     setRallyOpen(true);
-    void readReturnAltitude(getProtocol()).then((alt) => {
+    void readReturnAltitude(selectedProtocol).then((alt) => {
       if (alt !== null) setRallyAlt((cur) => (cur === "" ? String(Math.round(alt)) : cur));
     });
-  }, [getProtocol]);
+  }, [selectedProtocol]);
 
   const { toast } = useToast();
   // Every flight-affecting menu action reports what the vehicle actually did.
@@ -204,7 +204,7 @@ export function MapContextMenu() {
   const handleOrbitConfirm = useCallback((radius: number) => {
     if (!menuPos) return;
     void handleOrbitConfirmed({
-      protocol: getProtocol(),
+      protocol: selectedProtocol,
       menuPos,
       radius,
       clockwise: orbitCw,
@@ -212,13 +212,13 @@ export function MapContextMenu() {
       report,
     });
     closeMenu();
-  }, [menuPos, getProtocol, orbitCw, latestPos, closeMenu, report]);
+  }, [menuPos, selectedProtocol, orbitCw, latestPos, closeMenu, report]);
 
   const handleHomeConfirm = useCallback(() => {
     if (!menuPos) return;
-    void handleSetHomeConfirmed({ protocol: getProtocol(), menuPos, report });
+    void handleSetHomeConfirmed({ protocol: selectedProtocol, menuPos, report });
     closeMenu();
-  }, [menuPos, getProtocol, closeMenu, report]);
+  }, [menuPos, selectedProtocol, closeMenu, report]);
 
   const handlePoiConfirm = useCallback(() => {
     if (!menuPos) return;

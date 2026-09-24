@@ -20,7 +20,7 @@ import { NavPidPanel } from "@/components/fc/inav/NavPidPanel";
 import { NavConfigPanel } from "@/components/fc/inav/NavConfigPanel";
 import { INavFailsafePanel } from "@/components/fc/inav/INavFailsafePanel";
 import { RateDynamicsPanel } from "@/components/fc/inav/RateDynamicsPanel";
-import { useDroneManager } from "@/stores/drone-manager";
+import { selectTestProtocol } from "../helpers/selected-drone";
 import { SettingsError } from "@/lib/protocol/msp/settings";
 import FIRMWARE_SETTING_NAMES from "../fixtures/inav-setting-names.json";
 
@@ -68,7 +68,7 @@ const PANELS: [string, ComponentType][] = [
 
 describe("iNav named-setting panels against the firmware setting table", () => {
   beforeEach(() => {
-    useDroneManager.setState({ getSelectedProtocol: () => null } as never);
+    selectTestProtocol(null);
   });
 
   it("the fixture is the firmware table, not a hand-picked subset", () => {
@@ -81,7 +81,7 @@ describe("iNav named-setting panels against the firmware setting table", () => {
   it.each(PANELS)("%s reads only settings the firmware defines", async (_name, Panel) => {
     const requested: string[] = [];
     const protocol = firmwareProtocol(requested);
-    useDroneManager.setState({ getSelectedProtocol: () => protocol } as never);
+    selectTestProtocol(protocol);
 
     renderWithIntl(<Panel />);
     fireEvent.click(screen.getByRole("button", { name: /read/i }));

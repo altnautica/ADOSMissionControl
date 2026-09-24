@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Roll back mosquitto.conf to anonymous mode. Useful when:
-#   - GCS browsers are failing to connect because the viewer credential
-#     hasn't propagated to the deployed bundle yet
+#   - GCS browsers are failing to connect because their operator grant has not
+#     reached the broker yet (regenerate-passwd.sh has not run since the mint)
 #   - A new device is being paired and you haven't run regenerate-passwd.sh
 #   - You want to debug without auth interference
 #

@@ -104,7 +104,7 @@ export default function DashboardPage() {
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors",
                   dashboardView === "grid"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-accent-foreground"
                     : "bg-bg-secondary text-text-secondary hover:text-text-primary",
                 )}
               >
@@ -117,7 +117,7 @@ export default function DashboardPage() {
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors border-l border-border-default",
                   dashboardView === "overview"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-accent-foreground"
                     : "bg-bg-secondary text-text-secondary hover:text-text-primary",
                 )}
               >
@@ -130,7 +130,7 @@ export default function DashboardPage() {
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors border-l border-border-default",
                   dashboardView === "nodes"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-accent-foreground"
                     : "bg-bg-secondary text-text-secondary hover:text-text-primary",
                 )}
               >
@@ -143,7 +143,7 @@ export default function DashboardPage() {
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors border-l border-border-default",
                   dashboardView === "swarm"
-                    ? "bg-accent-primary text-white"
+                    ? "bg-accent-primary text-accent-foreground"
                     : "bg-bg-secondary text-text-secondary hover:text-text-primary",
                 )}
               >

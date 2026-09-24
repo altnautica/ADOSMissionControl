@@ -68,11 +68,11 @@ describe("decodeArmingFlags", () => {
     expect(decodeArmingFlags(1 << 5).notes).toContain("Simulator mode (SITL)");
   });
 
-  it("ignores unknown bit positions gracefully", () => {
-    // bit 31 has no entry in INAV_ARMING_FLAGS
+  it("surfaces an unknown bit as a blocker instead of hiding it", () => {
+    // bit 31 has no entry in INAV_ARMING_FLAGS; a set bit the GCS cannot name
+    // must not read as clear to arm.
     const result = decodeArmingFlags((1 << 31) >>> 0);
-    expect(result.blockers).toHaveLength(0);
-    expect(result.notes).toHaveLength(0);
-    expect(result.okToArm).toBe(true);
+    expect(result.blockers).toEqual(["Unknown flag (bit 31)"]);
+    expect(result.okToArm).toBe(false);
   });
 });

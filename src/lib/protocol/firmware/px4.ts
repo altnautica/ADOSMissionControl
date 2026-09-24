@@ -2,7 +2,7 @@
  * PX4 firmware handler for Altnautica Command GCS.
  *
  * PX4 uses a different custom_mode encoding than ArduPilot:
- * main_mode in bits 16-23, sub_mode in bits 0-15.
+ * main_mode in bits 16-23, sub_mode in bits 24-31.
  *
  * @module firmware/px4
  */
@@ -25,10 +25,9 @@ export { PX4_CAPABILITIES, px4VehicleClassFromMavType, PX4_UNSUPPORTED_MESSAGE }
 // PX4 mode constants
 // ---------------------------------------------------------------------------
 
-// Note: TERMINATION in PX4 is a MAV_CMD (MAV_CMD_DO_FLIGHTTERMINATION),
-// not a flight mode. It cannot be set via SET_MODE.
-// ALTITUDE_CRUISE does not exist in PX4. The closest equivalent
-// is ALTCTL (Altitude Control) + manual throttle.
+// TERMINATION and DESCEND are failsafe states PX4 enters on its own. They are
+// decoded so the operator sees them, and never encoded: a mode request cannot
+// select them (flight termination is MAV_CMD_DO_FLIGHTTERMINATION).
 
 /** PX4 main mode IDs (bits 16-23 of custom_mode). */
 const PX4_MAIN_MODE = {
@@ -40,6 +39,8 @@ const PX4_MAIN_MODE = {
   OFFBOARD: 6,
   STABILIZED: 7,
   RATTITUDE: 8,
+  TERMINATION: 10,
+  ALTITUDE_CRUISE: 11,
 } as const
 
 /**
@@ -56,12 +57,14 @@ const PX4_AUTO_SUB = {
   FOLLOW_TARGET: 8,
   PRECLAND: 9,
   VTOL_TAKEOFF: 10,
+  DESCEND: 20,
 } as const
 
 /** PX4 POSCTL sub-mode IDs (sub_mode byte when main_mode is POSCTL). */
 const PX4_POSCTL_SUB = {
   POSCTL: 0,
   ORBIT: 1,
+  SLOW: 2,
 } as const
 
 // ---------------------------------------------------------------------------
@@ -87,6 +90,14 @@ const PX4_MODE_TABLE: ReadonlyArray<[number, number, UnifiedFlightMode]> = [
   [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.READY, 'READY'],
   [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.PRECLAND, 'PRECLAND'],
   [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.VTOL_TAKEOFF, 'VTOL_TAKEOFF'],
+  [PX4_MAIN_MODE.ALTITUDE_CRUISE, 0, 'ALTITUDE_CRUISE'],
+  [PX4_MAIN_MODE.POSCTL, PX4_POSCTL_SUB.SLOW, 'POSITION_SLOW'],
+]
+
+/** Modes PX4 reports but never accepts as a request: decoded, never encoded. */
+const PX4_REPORTED_ONLY: ReadonlyArray<[number, number, UnifiedFlightMode]> = [
+  [PX4_MAIN_MODE.AUTO, PX4_AUTO_SUB.DESCEND, 'DESCEND'],
+  [PX4_MAIN_MODE.TERMINATION, 0, 'TERMINATION'],
 ]
 
 // ---------------------------------------------------------------------------
@@ -138,6 +149,9 @@ class PX4Handler implements FirmwareHandler {
       if (!this.modeToEncoding.has(mode)) {
         this.modeToEncoding.set(mode, { main, sub })
       }
+    }
+    for (const [main, sub, mode] of PX4_REPORTED_ONLY) {
+      this.encodingToMode.set(encodeCustomMode(main, sub), mode)
     }
   }
 

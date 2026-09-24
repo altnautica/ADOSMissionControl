@@ -16,7 +16,7 @@ import { Compass, Save, HardDrive, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EnumSelect } from "../parameters/EnumSelect";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
@@ -88,7 +88,7 @@ function MetaField({
 }
 
 export function ArduPilotNonGpsPanel() {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("ap-nongps");
   const metadata = useParamMetadataMap();
 
@@ -107,7 +107,7 @@ export function ArduPilotNonGpsPanel() {
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
   const field = (name: string, label: string) => (
     <MetaField

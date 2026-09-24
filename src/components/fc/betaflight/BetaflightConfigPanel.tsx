@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
@@ -23,7 +23,7 @@ import {
 import { bfConfigParamNames, featureDefsForApi, BEEPER_DEFS, BfCard as Card } from "./bf-config-constants";
 
 export function BetaflightConfigPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const scrollRef = usePanelScroll("bf-config");
@@ -48,9 +48,9 @@ export function BetaflightConfigPanel() {
   });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
-  const mspApi = getSelectedProtocol()?.getVehicleInfo()?.mspApiVersion;
+  const mspApi = selectedProtocol?.getVehicleInfo()?.mspApiVersion;
   const featureDefs = useMemo(() => featureDefsForApi(mspApi), [mspApi]);
 
   // ── Feature mask helpers ───────────────────────────────────

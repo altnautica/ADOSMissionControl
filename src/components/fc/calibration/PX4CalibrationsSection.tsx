@@ -4,7 +4,7 @@ import type { CalibrationState } from "./calibration-types";
 import { LEVEL_STEPS } from "./calibration-types";
 import { CalibrationWizard } from "./CalibrationWizard";
 import { CalibrationRebootBanner } from "./CalibrationRebootBanner";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 
@@ -25,7 +25,7 @@ export function PX4CalibrationsSection({
   cancelCalibration,
   setPx4QuickLevel,
 }: PX4CalibrationsSectionProps) {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   // The command calibrates against this yaw, so it is never defaulted: an
   // empty field is NaN and the protocol layer refuses it.
   const [yawText, setYawText] = useState("");
@@ -56,7 +56,7 @@ export function PX4CalibrationsSection({
 
       {/* PX4 Quick Level Reboot Banner */}
       {px4QuickLevel.needsReboot && px4QuickLevel.status === "success" && (
-        <CalibrationRebootBanner label="Quick level calibration saved" onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label="Quick level calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
       {/* Known-heading (fixed yaw) compass calibration */}
@@ -93,7 +93,7 @@ export function PX4CalibrationsSection({
 
       {/* GNSS Mag Cal Reboot Banner */}
       {px4GnssMagCal.needsReboot && px4GnssMagCal.status === "success" && (
-        <CalibrationRebootBanner label="Compass calibration saved" onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label="Compass calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
       {/* PX4 Thermal Calibration lives in its own panel */}

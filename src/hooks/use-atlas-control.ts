@@ -142,14 +142,16 @@ function syncDemoLiveSlice(r: AtlasReadiness): void {
   });
 }
 
+/** Demo-only: the mock readiness always reports these, so the defaults never
+ *  stand in for a real vehicle's unknown values. */
 function captureStatusFrom(r: AtlasReadiness, vioHealth: string): CaptureStatus {
   return {
     sessionId: r.sessionId ?? "",
-    state: r.state,
-    keyframes: r.keyframes,
+    state: r.state ?? "idle",
+    keyframes: r.keyframes ?? 0,
     vioHealth,
-    cameraCount: r.cameraCount,
-    ingestRateHz: r.ingestRateHz,
+    cameraCount: r.cameraCount ?? 0,
+    ingestRateHz: r.ingestRateHz ?? 0,
   };
 }
 

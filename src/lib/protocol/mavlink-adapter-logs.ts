@@ -16,10 +16,22 @@ import type { MAVLinkFrame } from './mavlink-parser'
 
 export interface LogListState {
   entries: Map<number, LogEntry>
+  /** num_logs from the vehicle; null until the first LOG_ENTRY arrives. */
+  numLogs: number | null
   lastLogId: number
   resolve: (entries: LogEntry[]) => void
-  timer: ReturnType<typeof setTimeout>
+  reject: (err: Error) => void
+  timer: ReturnType<typeof setTimeout> | undefined
+  /** Consecutive silent re-requests. */
+  retryCount: number
+  /** Set once resolved or rejected; later frames and timers are ignored. */
+  settled: boolean
 }
+
+/** Silence before the log list (or its missing entries) is requested again. */
+const LOG_LIST_IDLE_MS = 2000
+/** Consecutive silent re-requests before the list is declared incomplete. */
+const LOG_LIST_MAX_RETRIES = 5
 
 /** LOG_DATA payload size; a shorter packet marks the end of the log. */
 const LOG_DATA_CHUNK = 90
@@ -65,28 +77,77 @@ export interface LogContext {
   logDataDownload: LogDataState | null
 }
 
+/**
+ * List the onboard logs over LOG_REQUEST_LIST / LOG_ENTRY.
+ *
+ * LOG_ENTRY carries num_logs and last_log_num, so the complete id range is
+ * known from the first entry. A lost entry is requested again by range, and a
+ * list the vehicle never completes rejects rather than resolving short: a log
+ * missing from the list cannot be downloaded, and "no logs" is a claim.
+ */
 export async function getLogList(ctx: LogContext): Promise<LogEntry[]> {
-  if (!ctx.transport?.isConnected) return []
+  if (!ctx.transport?.isConnected) throw new Error('Not connected')
+  if (ctx.logListDownload) cancelLogList(ctx, 'Log list superseded by another request')
 
-  return new Promise<LogEntry[]>((resolve) => {
-    const timer = setTimeout(() => {
-      if (ctx.logListDownload) {
-        const entries = Array.from(ctx.logListDownload.entries.values())
-          .sort((a, b) => a.id - b.id)
-        ctx.logListDownload = null
-        resolve(entries)
-      } else {
-        resolve([])
-      }
-    }, 15000)
+  const { promise, resolve, reject } = Promise.withResolvers<LogEntry[]>()
+  const state: LogListState = {
+    entries: new Map(), numLogs: null, lastLogId: 0, resolve, reject, timer: undefined, retryCount: 0, settled: false,
+  }
+  ctx.logListDownload = state
+  requestLogList(ctx, 0, 0xffff)
+  armLogListTimer(ctx, state)
+  return promise
+}
 
-    ctx.logListDownload = { entries: new Map(), lastLogId: 0, resolve, timer }
+function requestLogList(ctx: LogContext, start: number, end: number): void {
+  if (!ctx.transport?.isConnected) return
+  ctx.transport.send(encodeLogRequestList(ctx.targetSysId, ctx.targetCompId, start, end, ctx.sysId, ctx.compId))
+}
 
-    ctx.transport!.send(encodeLogRequestList(
-      ctx.targetSysId, ctx.targetCompId,
-      0, 0xffff, ctx.sysId, ctx.compId,
-    ))
-  })
+/** The ids the vehicle listed that have not arrived, lowest first. */
+function missingLogIds(state: LogListState): number[] {
+  if (state.numLogs === null) return []
+  const first = state.lastLogId - state.numLogs + 1
+  const missing: number[] = []
+  for (let id = first; id <= state.lastLogId; id++) {
+    if (!state.entries.has(id)) missing.push(id)
+  }
+  return missing
+}
+
+function armLogListTimer(ctx: LogContext, state: LogListState): void {
+  clearTimeout(state.timer)
+  state.timer = setTimeout(() => {
+    if (state.settled) return
+    state.retryCount++
+    if (state.retryCount > LOG_LIST_MAX_RETRIES) {
+      settleLogList(ctx, state, new Error(state.numLogs === null
+        ? 'No response to the log list request'
+        : `Log list incomplete: received ${state.entries.size} of ${state.numLogs} entries`))
+      return
+    }
+    const missing = missingLogIds(state)
+    if (missing.length > 0) requestLogList(ctx, missing[0], missing[missing.length - 1])
+    else requestLogList(ctx, 0, 0xffff)
+    armLogListTimer(ctx, state)
+  }, LOG_LIST_IDLE_MS)
+}
+
+/** Settle the list once: resolve with every entry, or reject with `error`. */
+function settleLogList(ctx: LogContext, state: LogListState, error: Error | null): void {
+  if (state.settled) return
+  state.settled = true
+  clearTimeout(state.timer)
+  if (ctx.logListDownload === state) ctx.logListDownload = null
+  if (error) state.reject(error)
+  else state.resolve(Array.from(state.entries.values()).sort((a, b) => a.id - b.id))
+}
+
+/** Abort a pending log list; its promise rejects with `reason`. */
+export function cancelLogList(ctx: LogContext, reason: string): void {
+  const state = ctx.logListDownload
+  if (state) settleLogList(ctx, state, new Error(reason))
+  ctx.logListDownload = null
 }
 
 /**
@@ -188,12 +249,13 @@ function settleLogDataDownload(ctx: LogContext, dl: LogDataState, error: Error |
   }
 }
 
+/** LOG_ERASE has no acknowledgement, so the result says only that it was sent. */
 export async function eraseAllLogs(ctx: LogContext): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) {
     return { success: false, resultCode: -1, message: 'Not connected' }
   }
   ctx.transport.send(encodeLogErase(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
-  return { success: true, resultCode: 0, message: 'Erase command sent' }
+  return { success: true, resultCode: 0, acknowledged: false, message: 'Erase command sent, unacknowledged' }
 }
 
 /** Abort the active log download; its promise rejects with `reason`. */
@@ -210,25 +272,28 @@ export function cancelLogDownload(ctx: LogContext, reason = 'Log download cancel
 }
 
 export function handleLogEntry(ctx: LogContext, frame: MAVLinkFrame): void {
-  if (!ctx.logListDownload) return
+  const state = ctx.logListDownload
+  if (!state || state.settled) return
   const data = decodeLogEntry(frame.payload)
-  const entry: LogEntry = {
-    id: data.id,
-    numLogs: data.numLogs,
-    lastLogId: data.lastLogNum,
-    size: data.size,
-    timeUtc: data.timeUtc,
+  state.numLogs = data.numLogs
+  state.lastLogId = data.lastLogNum
+  // num_logs 0 arrives as a single entry that describes no log.
+  if (data.numLogs > 0) {
+    state.entries.set(data.id, {
+      id: data.id,
+      numLogs: data.numLogs,
+      lastLogId: data.lastLogNum,
+      size: data.size,
+      timeUtc: data.timeUtc,
+    })
   }
-  ctx.logListDownload.entries.set(data.id, entry)
-  ctx.logListDownload.lastLogId = data.lastLogNum
+  state.retryCount = 0
 
-  if (data.id >= data.lastLogNum || data.numLogs === 0) {
-    clearTimeout(ctx.logListDownload.timer)
-    const entries = Array.from(ctx.logListDownload.entries.values())
-      .sort((a, b) => a.id - b.id)
-    ctx.logListDownload.resolve(entries)
-    ctx.logListDownload = null
+  if (missingLogIds(state).length === 0) {
+    settleLogList(ctx, state, null)
+    return
   }
+  armLogListTimer(ctx, state)
 }
 
 export function handleLogData(ctx: LogContext, frame: MAVLinkFrame): void {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CheckCircle, Circle } from "lucide-react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { Button } from "@/components/ui/button";
 import { cn, formatErrorMessage } from "@/lib/utils";
 import {
@@ -45,7 +45,7 @@ const fmtOffsets = (v: [number, number, number]) => `(${v.join(", ")})`;
 
 export function InavCalibration() {
   const t = useTranslations("calibration");
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
 
   const [flags, setFlags] = useState<number | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
@@ -55,7 +55,7 @@ export function InavCalibration() {
   const [magNote, setMagNote] = useState<{ tone: Tone; text: string } | null>(null);
 
   const readFlags = useCallback(async (): Promise<number | null> => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getCalibrationData) return null;
     try {
       const data = await protocol.getCalibrationData();
@@ -66,10 +66,10 @@ export function InavCalibration() {
       setReadError(t("inavReadFailed", { message: formatErrorMessage(err) }));
       return null;
     }
-  }, [getSelectedProtocol, t]);
+  }, [selectedProtocol, t]);
 
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getCalibrationData) return;
     let live = true;
     protocol.getCalibrationData().then(
@@ -77,10 +77,10 @@ export function InavCalibration() {
       (err: unknown) => { if (live) setReadError(t("inavReadFailed", { message: formatErrorMessage(err) })); },
     );
     return () => { live = false; };
-  }, [getSelectedProtocol, t]);
+  }, [selectedProtocol, t]);
 
   async function captureOrientation() {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol || flags === null) return;
     setAccBusy(true);
     setAccNote(null);
@@ -105,7 +105,7 @@ export function InavCalibration() {
   }
 
   async function calibrateCompass() {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getCalibrationData) return;
     setMagNote(null);
     let seconds = INAV_MAG_CAL_DEFAULT_S;

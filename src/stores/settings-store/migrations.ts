@@ -29,7 +29,7 @@ import {
 export function migrateSettings(
   persisted: unknown,
   version: number,
-): SettingsStoreState {
+): Partial<SettingsStoreState> {
   const state = persisted as Record<string, unknown>;
   if (version < 2) {
     state.onboarded = false;
@@ -317,5 +317,5 @@ export function migrateSettings(
       }
     }
   }
-  return state as unknown as SettingsStoreState;
+  return state as Partial<SettingsStoreState>;
 }

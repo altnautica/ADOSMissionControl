@@ -104,30 +104,33 @@ export async function flashApPeriph(
   });
   unsubs.push(unsubSnapshots);
 
+  const dispose = async () => {
+    for (const off of unsubs) off();
+    try {
+      await session.close();
+    } catch {
+      // Best effort.
+    }
+    if (slcanExit) {
+      try {
+        await slcanExit();
+      } catch {
+        // Best effort — the FC's CAN_SLCAN_TIMOUT will auto-revert.
+      }
+    }
+  };
+
+  // A completed run keeps the session open: the post-flash state is read from
+  // it and the caller disposes when it leaves the page or starts a new
+  // attempt. A failed run hands nothing back, so it tears down here and the
+  // FC returns to MAVLink instead of waiting out its SLCAN/forward timeout.
   try {
     await orchestrator.start({ targetNodeId, fileBytes });
-  } finally {
-    // Do NOT auto-tear-down — the UI relies on the post-DONE state to
-    // surface the "change node id" prompt. The caller invokes dispose()
-    // when it leaves the page or starts a new attempt.
+  } catch (err) {
+    await dispose();
+    throw err;
   }
 
-  return {
-    dispose: async () => {
-      for (const off of unsubs) off();
-      try {
-        await session.close();
-      } catch {
-        // Best effort.
-      }
-      if (slcanExit) {
-        try {
-          await slcanExit();
-        } catch {
-          // Best effort — the FC's CAN_SLCAN_TIMOUT will auto-revert.
-        }
-      }
-    },
-  };
+  return { dispose };
 }
 

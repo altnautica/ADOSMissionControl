@@ -20,7 +20,9 @@ import type { EthernetConfig, NetworkStatus } from "@/lib/api/ground-station/typ
 /** The aggregate view's AP leg carries the setup-AP guard diagnostics beyond
  * the declared `ApStatus`. Additive-optional. */
 export interface ApLive {
-  enabled?: boolean;
+  /** Null when the agent could not ask systemd; read as not reported. */
+  enabled?: boolean | null;
+  running?: boolean | null;
   ssid?: string | null;
   standing_down?: boolean;
   standdown_reason?: string | null;

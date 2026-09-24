@@ -31,6 +31,9 @@ export interface UlogFile {
   params: Map<string, number | string>;
   info: Map<string, unknown>;
   subscriptions: Map<number, UlogSubscription>;
+  /** Data rows per topic. Instance 0 is keyed by the topic name; a further
+   * instance of the same topic (a second battery, a second GPS) is keyed
+   * `<name>:<multi_id>` so its rows never interleave with instance 0. */
   data: Map<string, Record<string, unknown>[]>;
   logging: { level: number; timestamp: bigint; message: string }[];
   dropouts: { duration: number; count: number }[];
@@ -151,12 +154,14 @@ export function parseUlog(buffer: ArrayBuffer): UlogFile {
         break;
       }
 
+      // 'I' is key_len, key, value; 'M' prefixes an is_continued byte.
       case MSG_INFO:
       case MSG_INFO_MULTI: {
-        const keyLen = bytes[msgStart];
-        const key = textDecoder.decode(bytes.slice(msgStart + 1, msgStart + 1 + keyLen));
+        const keyAt = msgType === MSG_INFO_MULTI ? msgStart + 1 : msgStart;
+        const keyLen = bytes[keyAt];
+        const key = textDecoder.decode(bytes.slice(keyAt + 1, keyAt + 1 + keyLen));
         // Simple: store raw value as string
-        const valBytes = bytes.slice(msgStart + 1 + keyLen, msgEnd);
+        const valBytes = bytes.slice(keyAt + 1 + keyLen, msgEnd);
         result.info.set(key, textDecoder.decode(valBytes));
         break;
       }
@@ -218,17 +223,20 @@ export function parseUlog(buffer: ArrayBuffer): UlogFile {
           }
         }
 
-        const topicName = sub.messageName;
+        const topicName = sub.multiId === 0 ? sub.messageName : `${sub.messageName}:${sub.multiId}`;
         if (!result.data.has(topicName)) result.data.set(topicName, []);
         result.data.get(topicName)!.push(row);
         break;
       }
 
+      // 'L' is level, timestamp, message; 'C' inserts a uint16 tag after the
+      // level.
       case MSG_LOGGING:
       case MSG_LOGGING_TAGGED: {
         const level = bytes[msgStart];
-        const ts = dv.getBigUint64(msgStart + 1, true);
-        const message = textDecoder.decode(bytes.slice(msgStart + 9, msgEnd)).replace(/\0/g, "");
+        const tsAt = msgType === MSG_LOGGING_TAGGED ? msgStart + 3 : msgStart + 1;
+        const ts = dv.getBigUint64(tsAt, true);
+        const message = textDecoder.decode(bytes.slice(tsAt + 8, msgEnd)).replace(/\0/g, "");
         result.logging.push({ level, timestamp: ts, message });
         break;
       }

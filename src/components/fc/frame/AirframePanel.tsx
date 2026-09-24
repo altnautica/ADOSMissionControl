@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
@@ -12,56 +12,13 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Box, Save, HardDrive, AlertTriangle, Search } from "lucide-react";
-
-// ── PX4 airframe database (common airframes) ────────────────
-
-interface AirframeEntry {
-  id: number;
-  name: string;
-  category: string;
-}
-
-const PX4_AIRFRAMES: AirframeEntry[] = [
-  // Multirotor
-  { id: 4001, name: "Generic Quadrotor X", category: "Quadrotor X" },
-  { id: 4010, name: "DJI F330", category: "Quadrotor X" },
-  { id: 4011, name: "DJI F450", category: "Quadrotor X" },
-  { id: 4014, name: "S500 Generic", category: "Quadrotor X" },
-  { id: 4015, name: "Holybro S500", category: "Quadrotor X" },
-  { id: 4016, name: "Holybro QAV250", category: "Quadrotor X" },
-  { id: 4017, name: "NXP HoverGames", category: "Quadrotor X" },
-  { id: 4019, name: "Holybro X500", category: "Quadrotor X" },
-  { id: 4020, name: "Holybro X500 V2", category: "Quadrotor X" },
-  { id: 4030, name: "Generic Quadrotor +", category: "Quadrotor +" },
-  { id: 4040, name: "Reaper 500 Quad", category: "Quadrotor X" },
-  { id: 6001, name: "Generic Hexarotor X", category: "Hexarotor X" },
-  { id: 6002, name: "Generic Hexarotor +", category: "Hexarotor +" },
-  { id: 8001, name: "Generic Octorotor X", category: "Octorotor X" },
-  { id: 8002, name: "Generic Octorotor +", category: "Octorotor +" },
-  { id: 12001, name: "Generic Helicopter", category: "Helicopter" },
-  // Fixed Wing
-  { id: 2100, name: "Standard Plane", category: "Standard Plane" },
-  { id: 2106, name: "Bormatec Nebula", category: "Standard Plane" },
-  { id: 2200, name: "Standard VTOL", category: "Standard VTOL" },
-  { id: 3000, name: "Generic Flying Wing", category: "Flying Wing" },
-  { id: 3033, name: "Wing Wing Z-84", category: "Flying Wing" },
-  { id: 3034, name: "FX-79 Buffalo", category: "Flying Wing" },
-  // VTOL
-  { id: 13000, name: "Generic QuadPlane VTOL", category: "VTOL QuadPlane" },
-  { id: 13001, name: "Fun Cub QuadPlane", category: "VTOL QuadPlane" },
-  { id: 13003, name: "Convergence VTOL", category: "VTOL Tiltrotor" },
-  { id: 13004, name: "Deltaquad", category: "VTOL QuadPlane" },
-  // Ground
-  { id: 50000, name: "Generic Ground Vehicle", category: "Rover" },
-  { id: 50003, name: "Aion R1 Rover", category: "Rover" },
-];
+import { PX4_AIRFRAMES } from "./px4-airframes";
 
 const CATEGORIES = [...new Set(PX4_AIRFRAMES.map(a => a.category))];
 
 const AIRFRAME_PARAMS = ["SYS_AUTOSTART", "SYS_AUTOCONFIG"];
 
 export function AirframePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
@@ -75,7 +32,7 @@ export function AirframePanel() {
   } = usePanelParams({ paramNames: AIRFRAME_PARAMS, panelId: "airframe", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = useDroneManager(selectSelectedProtocol) !== null;
   const hasDirty = dirtyParams.size > 0;
   const currentAirframe = params.get("SYS_AUTOSTART") ?? 0;
 

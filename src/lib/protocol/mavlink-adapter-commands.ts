@@ -18,6 +18,9 @@ import {
  */
 const MAV_MOUNT_MODE_MAVLINK_TARGETING = 2
 
+/** MAV_FRAME_GLOBAL: WGS84 latitude/longitude, altitude AMSL. */
+const MAV_FRAME_GLOBAL = 0
+
 /**
  * Whether ArduPilot's vendor calibration commands (the 424xx range) can be
  * sent to whatever is connected.
@@ -51,6 +54,12 @@ export interface CommandContext {
   targetCompId: number
   sysId: number
   compId: number
+  /**
+   * The vehicle's home altitude AMSL in metres from its last HOME_POSITION,
+   * or null before one has arrived. PX4 reads several altitude params as
+   * AMSL, so a height above home has to be converted with it.
+   */
+  homeAltitudeAmsl: number | null
   sendCommandLong: (command: number, params: [number, number, number, number, number, number, number], timeoutMs?: number) => Promise<CommandResult>
   /** Ack-tracked COMMAND_INT, for commands whose x/y need 1e7 integer precision. */
   sendCommandInt: (
@@ -110,7 +119,26 @@ export function cmdLand(ctx: CommandContext, at?: { lat: number; lon: number }):
   return ctx.sendCommandInt(21, [0, 0, 0, 0], Math.round(at.lat * 1e7), Math.round(at.lon * 1e7), 0, 3)
 }
 
+/**
+ * MAV_CMD_NAV_TAKEOFF (22) to `altitude` metres above home.
+ *
+ * ArduPilot reads param7 as a height above home. PX4 stores param7 verbatim
+ * as an AMSL altitude and refuses to descend to one below the vehicle, so a
+ * height above home sent as-is takes off to the current altitude instead.
+ * For PX4 the height is converted with the home altitude, and param4-6 are
+ * NaN: "no yaw" and "take off from the current position".
+ */
 export function cmdTakeoff(ctx: CommandContext, altitude: number): Promise<CommandResult> {
+  if (ctx.firmwareHandler?.firmwareType === 'px4') {
+    if (ctx.homeAltitudeAmsl === null) {
+      return Promise.resolve({
+        success: false,
+        resultCode: -1,
+        message: 'Takeoff refused: PX4 takes an AMSL takeoff altitude and the vehicle has not reported its home position yet',
+      })
+    }
+    return ctx.sendCommandLong(22, [0, 0, 0, Number.NaN, Number.NaN, Number.NaN, ctx.homeAltitudeAmsl + altitude])
+  }
   return ctx.sendCommandLong(22, [0, 0, 0, 0, 0, 0, altitude])
 }
 
@@ -355,11 +383,17 @@ export function cmdCommitParamsToFlash(ctx: CommandContext): CommandResult {
   }
 }
 
+/**
+ * MAV_CMD_DO_SET_HOME (179) as an ack-tracked COMMAND_INT, so the location
+ * keeps 1e7 integer precision. `alt` is AMSL (MAV_FRAME_GLOBAL). ArduPilot and
+ * PX4 both accept an explicit location (param1 = 0); param4 is the home yaw
+ * on PX4, where NaN leaves it unset rather than pointing home north.
+ */
 export function cmdSetHome(ctx: CommandContext, useCurrent: boolean, lat = 0, lon = 0, alt = 0): Promise<CommandResult> {
-  if (!useCurrent && ctx.firmwareHandler?.firmwareType === 'px4') {
-    return Promise.resolve({ success: false, resultCode: 4, message: 'PX4 uses EKF origin for home position — only "use current" is supported' })
+  if (useCurrent) {
+    return ctx.sendCommandInt(179, [1, 0, 0, Number.NaN], 0, 0, 0, MAV_FRAME_GLOBAL)
   }
-  return ctx.sendCommandLong(179, [useCurrent ? 1 : 0, 0, 0, 0, lat, lon, alt])
+  return ctx.sendCommandInt(179, [0, 0, 0, Number.NaN], Math.round(lat * 1e7), Math.round(lon * 1e7), alt, MAV_FRAME_GLOBAL)
 }
 
 export function cmdChangeSpeed(ctx: CommandContext, speedType: number, speed: number): Promise<CommandResult> {
@@ -436,11 +470,20 @@ export function cmdSetMessageInterval(ctx: CommandContext, msgId: number, interv
   return ctx.sendCommandLong(511, [msgId, intervalUs, 0, 0, 0, 0, 0])
 }
 
+/** SERIAL_CONTROL carries at most this many data bytes per frame. */
+const SERIAL_CONTROL_DATA_MAX = 70
+
+/**
+ * Send one shell line. A line longer than one SERIAL_CONTROL frame goes out as
+ * consecutive frames, so the shell receives every byte and the newline.
+ */
 export function cmdSendSerialData(ctx: CommandContext, text: string): void {
   if (!ctx.transport?.isConnected) return
-  const encoder = new TextEncoder()
-  const bytes = encoder.encode(text + '\n')
-  ctx.transport.send(encodeSerialControl(10, 6, 500, 0, bytes, ctx.sysId, ctx.compId))
+  const bytes = new TextEncoder().encode(text + '\n')
+  for (let offset = 0; offset < bytes.length; offset += SERIAL_CONTROL_DATA_MAX) {
+    const chunk = bytes.subarray(offset, offset + SERIAL_CONTROL_DATA_MAX)
+    ctx.transport.send(encodeSerialControl(10, 6, 500, 0, chunk, ctx.sysId, ctx.compId))
+  }
 }
 
 export function cmdSendPositionTarget(ctx: CommandContext, lat: number, lon: number, alt: number): void {

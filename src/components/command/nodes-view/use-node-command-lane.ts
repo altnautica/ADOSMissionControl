@@ -20,7 +20,7 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { isDemoMode } from "@/lib/utils";
 import type {
   CloudCommandEnqueuer,

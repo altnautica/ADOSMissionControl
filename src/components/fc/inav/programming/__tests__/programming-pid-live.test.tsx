@@ -16,8 +16,9 @@ vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("@/hooks/use-unsaved-guard", () => ({ useUnsavedGuard: () => {} }));
 vi.mock("@/hooks/use-armed-lock", () => ({ useArmedLock: () => ({ isArmed: false }) }));
-const droneState = { getSelectedProtocol: () => null };
-vi.mock("@/stores/drone-manager", () => ({
+const droneState = { drones: new Map(), selectedDroneId: null };
+vi.mock("@/stores/drone-manager", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
   useDroneManager: (selector: (s: unknown) => unknown) => selector(droneState),
 }));
 

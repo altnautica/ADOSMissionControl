@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
  * without an ArduCopter AUTOTUNE mode.
  */
 export function AutotuneSection({ connected }: { connected: boolean }) {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const flightMode = useDroneStore((s) => s.flightMode);
   const autotuneActive = connected && flightMode === "AUTOTUNE";
   const [requesting, setRequesting] = useState(false);
@@ -35,15 +35,15 @@ export function AutotuneSection({ connected }: { connected: boolean }) {
 
   useEffect(() => {
     if (!listening) return;
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     return protocol.onStatusText(({ text }) => {
       setAutotuneLog((prev) => [...prev.slice(-19), text]);
     });
-  }, [listening, getSelectedProtocol]);
+  }, [listening, selectedProtocol]);
 
   const triggerAutotune = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
 
     setRequesting(true);
@@ -61,7 +61,7 @@ export function AutotuneSection({ connected }: { connected: boolean }) {
     } finally {
       setRequesting(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   return (
     <div className="border border-border-default bg-bg-secondary">

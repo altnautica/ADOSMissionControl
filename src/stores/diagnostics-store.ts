@@ -86,9 +86,6 @@ export interface MessageRateEntry {
 export interface CommandQueueSnapshot {
   pendingCount: number;
   entries: { command: number; commandName: string; timestamp: number }[];
-  totalSent: number;
-  totalSuccess: number;
-  totalFailed: number;
 }
 
 /** Ring buffer utilization info */
@@ -199,7 +196,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
   messageRates: new Map(),
   _lastConnectTimestamp: null,
   _version: 0,
-  commandQueueSnapshot: { pendingCount: 0, entries: [], totalSent: 0, totalSuccess: 0, totalFailed: 0 },
+  commandQueueSnapshot: { pendingCount: 0, entries: [] },
   ringBufferInfo: [],
   performanceMetrics: { parseRateHz: 0, avgCallbackLatencyMs: 0, frameProcessingTimeMs: 0, lastUpdated: 0 },
   _parseTimestamps: new RingBuffer<number>(MAX_PERF_SAMPLES),
@@ -401,7 +398,7 @@ export const useDiagnosticsStore = create<DiagnosticsStoreState>((set, get) => (
       messageRates: new Map(),
       _lastConnectTimestamp: null,
       _version: 0,
-      commandQueueSnapshot: { pendingCount: 0, entries: [], totalSent: 0, totalSuccess: 0, totalFailed: 0 },
+      commandQueueSnapshot: { pendingCount: 0, entries: [] },
       ringBufferInfo: [],
       performanceMetrics: { parseRateHz: 0, avgCallbackLatencyMs: 0, frameProcessingTimeMs: 0, lastUpdated: 0 },
       _parseTimestamps: new RingBuffer<number>(MAX_PERF_SAMPLES),

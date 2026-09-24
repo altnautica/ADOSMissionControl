@@ -233,7 +233,7 @@ export function McpSetupWizard() {
                 >
                   <span
                     className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                      pickMode === "all" ? "border-accent-primary bg-accent-primary text-white" : "border-border-default"
+                      pickMode === "all" ? "border-accent-primary bg-accent-primary text-accent-foreground" : "border-border-default"
                     }`}
                   >
                     {pickMode === "all" ? <Check size={11} /> : null}
@@ -255,7 +255,7 @@ export function McpSetupWizard() {
                   >
                     <span
                       className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                        pickMode === "some" ? "border-accent-primary bg-accent-primary text-white" : "border-border-default"
+                        pickMode === "some" ? "border-accent-primary bg-accent-primary text-accent-foreground" : "border-border-default"
                       }`}
                     >
                       {pickMode === "some" ? <Check size={11} /> : null}
@@ -279,7 +279,7 @@ export function McpSetupWizard() {
                         >
                           <span
                             className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                              on ? "border-accent-primary bg-accent-primary text-white" : "border-border-default"
+                              on ? "border-accent-primary bg-accent-primary text-accent-foreground" : "border-border-default"
                             }`}
                           >
                             {on ? <Check size={12} /> : null}

@@ -9,7 +9,7 @@
  * @license GPL-3.0-only
  */
 
-import JSZip from "jszip";
+import type JSZip from "jszip";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { FlightRecord } from "../types";
 import { BACKUP_STORE_KEYS } from "./exporter";
@@ -43,7 +43,9 @@ export async function importBackup(file: File): Promise<ImportResult> {
 
   let zip: JSZip;
   try {
-    zip = await JSZip.loadAsync(file);
+    // jszip is loaded on first use so it stays out of every route's first-load bundle.
+    const { default: JSZipLib } = await import("jszip");
+    zip = await JSZipLib.loadAsync(file);
   } catch {
     result.errors.push("Failed to read ZIP file.");
     return result;

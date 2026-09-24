@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import {
   Clock,
   Filter,
-  Trash2,
   Wifi,
   WifiOff,
   Shield,
@@ -74,18 +73,22 @@ function formatAbsoluteTime(timestamp: number): string {
 // ── Component ────────────────────────────────────────────────
 
 export function EventTimeline() {
-  const eventTimeline = useDiagnosticsStore((s) => s.eventTimeline);
-  const logEvent = useDiagnosticsStore((s) => s.logEvent);
+  // The timeline RingBuffer is mutated in place, so its reference never
+  // changes. Each logged event is a new object: selecting the newest one
+  // re-renders exactly when an event lands (not on every frame bump).
+  const latestEvent = useDiagnosticsStore((s) => s.eventTimeline.latest());
   const [filterTypes, setFilterTypes] = useState<Set<EventType>>(new Set(ALL_EVENT_TYPES));
   const [showFilter, setShowFilter] = useState(false);
 
   // Get events newest first
   const events = useMemo(() => {
-    const all = eventTimeline.toArray();
+    // No newest event means an empty timeline.
+    if (!latestEvent) return [];
+    const all = useDiagnosticsStore.getState().eventTimeline.toArray();
     return all
       .filter((e) => filterTypes.has(e.type))
       .reverse();
-  }, [eventTimeline, filterTypes]);
+  }, [latestEvent, filterTypes]);
 
   const toggleFilter = (type: EventType) => {
     setFilterTypes((prev) => {
@@ -101,9 +104,6 @@ export function EventTimeline() {
 
   const selectAll = () => setFilterTypes(new Set(ALL_EVENT_TYPES));
   const selectNone = () => setFilterTypes(new Set());
-
-  // For testing: generate a test event
-  void logEvent;
 
   return (
     <div className="flex flex-col h-full">

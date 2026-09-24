@@ -17,7 +17,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { readHudFrame, signalBarsFromRssi } from "@/lib/hud-readings";
-import { drawSignalBars, drawGpsAndMode, HUD_INK, NO_DATA_GLYPH } from "@/lib/hud-draw";
+import { HUD_INK, NO_DATA_GLYPH } from "@/lib/hud-draw";
+import { drawSignalBars, drawGpsAndMode } from "@/lib/hud-draw-status";
 import { drawSkyGround, drawRollArc, drawPitchLadder } from "@/lib/hud-draw-attitude";
 
 interface FillCall {

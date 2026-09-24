@@ -10,7 +10,7 @@
 
 import { useCallback } from "react";
 import type { Map as LeafletMap } from "leaflet";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useGuidedStore } from "@/stores/guided-store";
 import { handleFlyHere } from "./actions/navigation";
 import { landAtPoint, loiterAtPoint } from "@/lib/skills/guided-target";
@@ -57,14 +57,14 @@ export function useMenuActions({
   openRallyPanel,
   report,
 }: UseMenuActionsArgs): MenuActionResult {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const showConfirm = useGuidedStore((s) => s.showConfirm);
 
   const dispatch = useCallback(
     (id: string): boolean => {
       if (!menuPos) return true;
-      const protocol = getProtocol();
+      const protocol = selectedProtocol;
       const rect = map.getContainer().getBoundingClientRect();
       const relativeAlt = latestPos?.relativeAlt;
 
@@ -162,7 +162,7 @@ export function useMenuActions({
     },
     [
       menuPos,
-      getProtocol,
+      selectedProtocol,
       selectedDroneId,
       map,
       latestPos,

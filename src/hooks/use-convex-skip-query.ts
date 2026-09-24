@@ -39,7 +39,7 @@
 
 import { useQuery } from "convex/react";
 import type { FunctionReference } from "convex/server";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { isDemoMode } from "@/lib/utils";
 
 type EmptyObject = Record<string, never>;

@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Select } from "@/components/ui/select";
@@ -32,8 +32,8 @@ const PROFILE_OPTIONS = [
 // ── Component ─────────────────────────────────────────────────
 
 export function ControlProfilePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -44,7 +44,7 @@ export function ControlProfilePanel() {
   const { isArmed } = useArmedLock();
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getActiveProfiles) { setError("Control profiles are not available on this firmware"); return; }
     setLoading(true); setError(null);
     try {
@@ -56,7 +56,7 @@ export function ControlProfilePanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const handleSwitchRequested = useCallback((idx: number) => {
     if (idx === info.activeProfile) return;
@@ -67,7 +67,7 @@ export function ControlProfilePanel() {
     const idx = pendingProfile;
     setPendingProfile(null);
     if (idx === null) return;
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.selectControlProfile || !protocol.getActiveProfiles) {
       setError("Control profiles are not available on this firmware");
       return;
@@ -84,7 +84,7 @@ export function ControlProfilePanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, pendingProfile]);
+  }, [selectedProtocol, pendingProfile]);
 
   const handleSwitchCancel = useCallback(() => {
     setPendingProfile(null);

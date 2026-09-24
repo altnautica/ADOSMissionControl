@@ -1377,7 +1377,7 @@ export class INavMockProtocol implements DroneProtocol {
       // shows a blocker; while armed the word carries ARMED | WAS_EVER_ARMED.
       const flagCycle = this.armed ? 0x0000000c
         : Math.floor(ts / 30000) % 2 === 0 ? 0x00000000 : 0x00000100;
-      store.setArmingFlags(flagCycle);
+      store.setArmingFlags(flagCycle, null);
       // One simulated ADS-B aircraft orbiting 2 km east of the copter so the
       // TrafficPill renders a live entry with distance, altitude, and TTL.
       const orbitBearing = (ts / 200) % 360;

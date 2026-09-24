@@ -94,7 +94,7 @@ function CameraCardBase({
           <StateBadge state={camera.state} label={t(`state.${camera.state}`)} />
         </div>
         {camera.live === true ? (
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded bg-black/50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-status-success">
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded bg-scrim/50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-status-success">
             <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
             {t("card.live")}
           </span>
@@ -122,10 +122,13 @@ function CameraCardBase({
             </div>
           </div>
           {!locked && !discovered ? (
+            // The primary stream is always served: its switch reads on and
+            // cannot be turned off.
             <Toggle
               label={t("card.enabled")}
-              checked={camera.enabled}
+              checked={camera.role === "primary" || camera.enabled}
               onChange={(v) => onToggle(camera.id, v)}
+              disabled={camera.role === "primary"}
               className="shrink-0"
             />
           ) : null}

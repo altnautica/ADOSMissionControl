@@ -57,7 +57,7 @@ export function FleetCoverageModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex flex-col bg-scrim/80 backdrop-blur-sm">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border-default bg-bg-secondary shrink-0">
         <div className="flex items-center gap-3">

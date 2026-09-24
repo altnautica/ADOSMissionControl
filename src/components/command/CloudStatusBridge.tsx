@@ -1,5 +1,7 @@
 "use client";
 
+// Exempt from the 500-line rule: the single place the Convex status row fans
+// out to the agent stores; the mapping is pure and lives in bridges/status-mapper.
 /**
  * @module CloudStatusBridge
  * @description Bridges Convex cloud drone status into the agent Zustand stores.
@@ -29,7 +31,7 @@ import { useComputeStore } from "@/stores/compute-store";
 import { useAtlasStore } from "@/stores/atlas-store";
 import { usePluginCloudStateStore } from "@/stores/plugin-cloud-state-store";
 import { cmdDroneStatusApi, cmdDroneCommandsApi } from "@/lib/community-api-drones";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { STALE_THRESHOLD_MS, OFFLINE_THRESHOLD_MS } from "@/lib/agent/freshness";
 import { describeMissingCloudStatus } from "@/lib/agent/cloud-status-diagnosis";
@@ -220,7 +222,7 @@ export function CloudStatusBridge() {
     // Single atomic update to system store — avoids multiple setState calls
     // that can cause React batching issues with stale intermediate states
     const systemUpdate = buildSystemUpdate(mapped, cloudRecord, isDataFresh);
-    useAgentSystemStore.setState(systemUpdate as unknown as Record<string, unknown>);
+    useAgentSystemStore.setState(systemUpdate);
 
     // Map extended status fields to their respective stores
     const peripherals = cloudRecord.peripherals;

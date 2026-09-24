@@ -15,7 +15,7 @@ import { Cable, Upload } from "lucide-react";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import type { MspSerialPort } from "@/lib/protocol/types";
@@ -32,8 +32,8 @@ const BAUD_FIELDS: ReadonlyArray<{ key: keyof MspSerialPort; label: string }> = 
 ];
 
 export function BfPortsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const connected = !!getSelectedProtocol();
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const connected = !!selectedProtocol;
   const { isArmed, lockMessage } = useArmedLock();
 
   const [ports, setPorts] = useState<MspSerialPort[]>([]);
@@ -46,7 +46,7 @@ export function BfPortsPanel() {
   const [needsReboot, setNeedsReboot] = useState(false);
 
   const read = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.getSerialConfig) {
       setError("Serial-port config is not available on this connection");
       return;
@@ -64,10 +64,10 @@ export function BfPortsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   const write = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol?.setSerialConfig) return;
     setLoading(true);
     setError(null);
@@ -80,7 +80,7 @@ export function BfPortsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [getSelectedProtocol, ports]);
+  }, [selectedProtocol, ports]);
 
   const updatePort = useCallback((idx: number, patch: Partial<MspSerialPort>) => {
     setPorts((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));

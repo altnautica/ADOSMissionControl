@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ const GPS_CONFIG_PARAMS: readonly string[] = [
 ];
 
 export function GpsConfigSection() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
@@ -40,7 +40,7 @@ export function GpsConfigSection() {
   } = usePanelParams({ paramNames: GPS_CONFIG_PARAMS, optionalParams: GPS_CONFIG_PARAMS, panelId: "gps-config", autoLoad: false });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const gnssModeName = resolveApGpsName("gnssMode", params);

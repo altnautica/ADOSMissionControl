@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/select";
 import type { SelectOption } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -31,7 +31,7 @@ const CHANNELS: SelectOption[] = [1, 2, 3, 4, 5, 6].map((n) => ({
 }));
 
 export function StreamRatesPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
@@ -50,7 +50,7 @@ export function StreamRatesPanel() {
   } = usePanelParams({ paramNames, optionalParams: paramNames, panelId: "stream-rates", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
   const family = detectStreamFamily(params, channel);
 

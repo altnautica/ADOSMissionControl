@@ -136,7 +136,7 @@ export function ThemeStep({
                   onClick={() => setActiveGroup(tab.key)}
                   className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${
                     activeGroup === tab.key
-                      ? "bg-accent-primary text-black"
+                      ? "bg-accent-primary text-accent-foreground"
                       : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
                   }`}
                 >
@@ -209,7 +209,7 @@ export function ThemeStep({
                     }}
                   >
                     <span
-                      className="block w-full h-full rounded-full border border-white/20"
+                      className="block w-full h-full rounded-full border border-border-strong"
                       style={{
                         backgroundColor: color.hex,
                         boxShadow: accentColor === color.value

@@ -26,10 +26,8 @@ import {
   useDroneCanNodeParams,
   type DroneCanClient as DroneCanClientSubset,
 } from "@/hooks/use-dronecan-node-params";
-import { ValueTag, type Value as ParamValueRaw } from "@/lib/dronecan/dsdl/param-getset";
+import { ValueTag } from "@/lib/dronecan/dsdl/param-getset";
 import { NodeParamRow } from "./NodeParamRow";
-
-export type ParamValue = ParamValueRaw;
 
 interface NodeParamEditorProps {
   nodeId: number;

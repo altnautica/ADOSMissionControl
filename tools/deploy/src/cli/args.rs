@@ -42,8 +42,6 @@ pub struct Args {
     pub mqtt_managed_url: Option<String>,
     /// `--video-managed-url <url>` — use an existing video relay.
     pub video_managed_url: Option<String>,
-    /// `--tunnel-token <token>` — a Cloudflare Tunnel token (TLS path).
-    pub tunnel_token: Option<String>,
     /// `--no-video` — do not deploy the video relay.
     pub no_video: bool,
     /// `--no-mqtt` — do not deploy the MQTT relay.
@@ -73,7 +71,6 @@ impl Args {
                 "--convex-managed-url" => a.convex_managed_url = it.next(),
                 "--mqtt-managed-url" => a.mqtt_managed_url = it.next(),
                 "--video-managed-url" => a.video_managed_url = it.next(),
-                "--tunnel-token" => a.tunnel_token = it.next(),
                 other if other.starts_with('-') => { /* unknown flag: ignore */ }
                 bare => {
                     if a.action.is_none() {

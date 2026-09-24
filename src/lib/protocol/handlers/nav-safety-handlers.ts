@@ -90,16 +90,19 @@ export function handleTerrainReport(payload: DataView, callbacks: TerrainCallbac
   }
 }
 
-export function handleHomePosition(payload: DataView, callbacks: HomePositionCallback[]): void {
+/** Dispatch HOME_POSITION and return the home altitude AMSL in metres. */
+export function handleHomePosition(payload: DataView, callbacks: HomePositionCallback[]): number {
   const data = decodeHomePosition(payload)
+  const alt = data.alt / 1000 // mm → m
   for (const cb of callbacks) {
     cb({
       timestamp: Date.now(),
       lat: data.lat / 1e7,
       lon: data.lon / 1e7,
-      alt: data.alt / 1000, // mm → m
+      alt,
     })
   }
+  return alt
 }
 
 export function handleDistanceSensor(payload: DataView, callbacks: DistanceSensorCallback[]): void {

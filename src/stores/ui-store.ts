@@ -25,6 +25,7 @@ import type { ViewId, PanelState } from "@/lib/types";
  */
 let wakeLock: WakeLockSentinel | null = null;
 let visibilityListener: (() => void) | null = null;
+let fullscreenListener: (() => void) | null = null;
 
 async function acquireWakeLock(): Promise<void> {
   // Feature detection through `in`, not a truthiness check: `lib.dom` types
@@ -33,7 +34,14 @@ async function acquireWakeLock(): Promise<void> {
   if (!("wakeLock" in navigator)) return;
   if (wakeLock !== null && !wakeLock.released) return;
   try {
-    wakeLock = await navigator.wakeLock.request("screen");
+    const lock = await navigator.wakeLock.request("screen");
+    // Immersive mode ended while the request was pending: a lock stored now
+    // would keep the display awake with nothing left to release it.
+    if (!useUiStore.getState().immersiveMode) {
+      void lock.release().catch(() => {});
+      return;
+    }
+    wakeLock = lock;
   } catch {
     // Denied (insecure context, backgrounded document, platform policy).
     // Nothing to report: the cockpit works, the display may sleep.
@@ -61,6 +69,27 @@ function disarmWakeLockReacquire(): void {
   if (typeof document === "undefined" || !visibilityListener) return;
   document.removeEventListener("visibilitychange", visibilityListener);
   visibilityListener = null;
+}
+
+/**
+ * Leaving fullscreen ends immersive mode. The browser consumes the Escape that
+ * exits fullscreen (no keydown reaches the page), so without this the chrome
+ * stayed hidden and the wake lock held after the operator pressed Esc.
+ */
+function armFullscreenExit(): void {
+  if (typeof document === "undefined" || fullscreenListener) return;
+  fullscreenListener = () => {
+    if (!document.fullscreenElement && useUiStore.getState().immersiveMode) {
+      useUiStore.getState().exitImmersiveMode();
+    }
+  };
+  document.addEventListener("fullscreenchange", fullscreenListener);
+}
+
+function disarmFullscreenExit(): void {
+  if (typeof document === "undefined" || !fullscreenListener) return;
+  document.removeEventListener("fullscreenchange", fullscreenListener);
+  fullscreenListener = null;
 }
 
 interface UiStoreState {
@@ -157,11 +186,13 @@ export const useUiStore = create<UiStoreState>((set) => ({
       // fullscreen is degraded, not broken.
       void document.documentElement.requestFullscreen().catch(() => {});
     }
+    armFullscreenExit();
     armWakeLockReacquire();
     void acquireWakeLock();
   },
   exitImmersiveMode: () => {
     set({ immersiveMode: false });
+    disarmFullscreenExit();
     disarmWakeLockReacquire();
     if (wakeLock !== null) {
       const held = wakeLock;

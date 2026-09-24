@@ -87,10 +87,10 @@ describe("migrateSettings", () => {
   it("v27 initialises a populated telemetry deck", () => {
     const result = migrateSettings({}, 26);
     expect(result.telemetryDeckActivePage).toBe("flight");
-    expect(result.telemetryDeckPages.flight).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.flight);
-    expect(result.telemetryDeckPages.link).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.link);
-    expect(result.telemetryDeckPages.power).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.power);
-    expect(result.telemetryDeckPages.tuning).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.tuning);
+    expect(result.telemetryDeckPages?.flight).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.flight);
+    expect(result.telemetryDeckPages?.link).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.link);
+    expect(result.telemetryDeckPages?.power).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.power);
+    expect(result.telemetryDeckPages?.tuning).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.tuning);
   });
 
   it("v28 snaps an invalid telemetryDeckActivePage back to flight", () => {
@@ -109,7 +109,7 @@ describe("migrateSettings", () => {
       { telemetryDeckActivePage: "flight", telemetryDeckPages: undefined },
       27,
     );
-    expect(result.telemetryDeckPages.flight).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.flight);
+    expect(result.telemetryDeckPages?.flight).toEqual(DEFAULT_TELEMETRY_DECK_PAGES.flight);
   });
 
   it("v31 defaults videoTransportMode to auto for users coming from v30", () => {

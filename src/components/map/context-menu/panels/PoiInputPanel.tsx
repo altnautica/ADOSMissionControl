@@ -36,7 +36,7 @@ export const PoiInputPanel = forwardRef<HTMLInputElement, PoiInputPanelProps>(
           />
           <button
             onClick={onConfirm}
-            className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-[#DFF140]/20 border border-[#DFF140]/40 text-[#DFF140] rounded hover:bg-[#DFF140]/30 cursor-pointer"
+            className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-accent-secondary/20 border border-accent-secondary/40 text-accent-secondary rounded hover:bg-accent-secondary/30 cursor-pointer"
           >
             Add
           </button>

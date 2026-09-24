@@ -16,11 +16,12 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 
 // The panel drives a real FC over the protocol + param hooks. Neither is under
 // test here, so both are stubbed down to the minimum the render path needs.
-vi.mock("@/stores/drone-manager", () => {
+vi.mock("@/stores/drone-manager", async (importOriginal) => {
   const protocol = { setParameter: vi.fn() };
   return {
+    ...(await importOriginal<typeof import("@/stores/drone-manager")>()),
     useDroneManager: (sel: (s: unknown) => unknown) =>
-      sel({ getSelectedProtocol: () => protocol, getSelectedDrone: () => ({ protocol }) }),
+      sel({ drones: new Map([["d1", { protocol }]]), selectedDroneId: "d1" }),
   };
 });
 

@@ -49,14 +49,14 @@ export function MinimalHud() {
   };
 
   return (
-    <div className="relative w-full h-full bg-black text-white font-mono">
+    <div className="relative w-full h-full bg-media text-on-media font-mono">
       <VideoBackground />
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-80">
         <HorizonSvg pitchDeg={hud.pitch} rollDeg={hud.roll} size={220} />
       </div>
 
-      <div className="absolute top-0 left-0 right-0 h-8 px-3 flex items-center justify-between bg-black/60 text-[11px] uppercase tracking-wide pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 h-8 px-3 flex items-center justify-between bg-scrim/60 text-[11px] uppercase tracking-wide pointer-events-none">
         <span>MODE {hud.mode ?? NO_DATA_GLYPH}</span>
         <span>SATS {f(hud.satellites)}</span>
         <span>BAT {f(hud.batteryPct)}%</span>
@@ -64,7 +64,7 @@ export function MinimalHud() {
 
       <CornerAlerts />
 
-      <div className="absolute bottom-0 left-0 right-0 h-10 px-3 flex items-center justify-between bg-black/60 text-sm pointer-events-none">
+      <div className="absolute bottom-0 left-0 right-0 h-10 px-3 flex items-center justify-between bg-scrim/60 text-sm pointer-events-none">
         <span>HDG {f(hud.heading)}</span>
         <span>ALT {f(hud.alt)} m</span>
         <span>SPD {f(hud.speedMps, 1)} m/s</span>

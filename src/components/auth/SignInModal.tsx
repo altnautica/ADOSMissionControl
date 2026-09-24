@@ -12,7 +12,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT } from "../../../convex/lib/passwordPolicy";
 
 function sanitizeAuthError(

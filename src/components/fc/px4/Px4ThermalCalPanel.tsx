@@ -17,7 +17,7 @@ import { Thermometer, Save, HardDrive, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
@@ -30,7 +30,7 @@ import {
 
 
 export function Px4ThermalCalPanel() {
-  const getProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const scrollRef = usePanelScroll("px4-thermal");
 
   const panelParams = usePanelParams({
@@ -48,7 +48,7 @@ export function Px4ThermalCalPanel() {
     useParamPanelActions(panelParams);
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
   const has = (name: string) => params.has(name);
   const num = (name: string, fallback = 0) => params.get(name) ?? fallback;

@@ -180,7 +180,7 @@ export const PX4_PARAM_MAP: Record<string, string> = {
   // ── Camera ─────────────────────────────
   CAM1_TYPE: 'TRIG_MODE',
   CAM1_DURATION: 'TRIG_ACT_TIME',
-  CAM1_TRIGG_DIST: 'TRIG_DIST',
+  CAM1_TRIGG_DIST: 'TRIG_DISTANCE',
   CAM1_SERVO_ON: 'TRIG_PWM_SHOOT',
   CAM1_SERVO_OFF: 'TRIG_PWM_NEUTRAL',
 

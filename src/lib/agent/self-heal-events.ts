@@ -119,6 +119,7 @@ const CAMERA_STEP_KEY: Record<string, string> = {
   rebinding: "cameraSteps.rebinding",
   port_cycling: "cameraSteps.portCycling",
   hub_resetting: "cameraSteps.hubResetting",
+  retrying: "cameraSteps.retrying",
 };
 
 /** Build the localized summary + severity for one event kind. */
@@ -198,22 +199,16 @@ export function summarizeSelfHealEvent(
       };
 
     case "camera.usb_recovery": {
+      // Recovery has no attempt budget: `attempt` counts the current episode
+      // and a camera that has not come back sits in `retrying`, never a
+      // terminal state.
       const state = str(data, "state");
       const attempt = num(data, "attempt");
-      const maxAttempts = num(data, "max_attempts");
-      const hasAttempt = attempt != null && attempt > 0 && maxAttempts != null;
+      const hasAttempt = attempt != null && attempt > 0;
       if (state === "success") {
         return {
           summary: t("events.cameraRecoverySucceeded"),
           severity: "success",
-        };
-      }
-      if (state === "exhausted") {
-        return {
-          summary: hasAttempt
-            ? t("events.cameraRecoveryExhaustedAttempt", { attempt, maxAttempts })
-            : t("events.cameraRecoveryExhausted"),
-          severity: "error",
         };
       }
       if (state === "needs_hub_reset") {
@@ -227,7 +222,7 @@ export function summarizeSelfHealEvent(
       if (verb) {
         return {
           summary: hasAttempt
-            ? t("events.cameraStepAttempt", { verb, attempt, maxAttempts })
+            ? t("events.cameraStepAttempt", { verb, attempt })
             : t("events.cameraStep", { verb }),
           severity: "warning",
         };

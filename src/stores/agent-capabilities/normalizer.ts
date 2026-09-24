@@ -297,7 +297,6 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
   const usbRehomeState: AgentCapabilities["usbRehomeState"] =
     usbRehomeStateCandidate === "idle" ||
     usbRehomeStateCandidate === "rehoming" ||
-    usbRehomeStateCandidate === "exhausted" ||
     usbRehomeStateCandidate === "guard_blocked"
       ? usbRehomeStateCandidate
       : undefined;

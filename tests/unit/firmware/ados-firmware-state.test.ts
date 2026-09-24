@@ -88,12 +88,10 @@ vi.mock("@/lib/protocol/firmware/flash-manager", () => ({
 vi.mock("@/stores/drone-manager", () => {
   return {
     useDroneManager: vi.fn((selector?: (s: unknown) => unknown) => {
-      const state = {
-        selectedDroneId: null,
-        getSelectedDrone: () => null,
-      };
+      const state = { selectedDroneId: null, drones: new Map() };
       return selector ? selector(state) : state;
     }),
+    selectSelectedDrone: () => null,
   };
 });
 

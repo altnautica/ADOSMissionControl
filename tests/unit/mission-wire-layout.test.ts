@@ -11,11 +11,8 @@ import {
 } from "@/lib/mission/mission-expand";
 import { mavToFrame } from "@/lib/mission/altitude-frame";
 import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
-import {
-  cmdMap,
-  exportWaypointsFormat,
-  parseWaypointsFile,
-} from "@/lib/mission-io-formats";
+import { exportWaypointsFormat, parseWaypointsFile } from "@/lib/mission-io-formats";
+import { cmdMap } from "@/lib/mission/command-map";
 import { defaultActionParams } from "@/components/planner/waypoint-constants";
 import type { MissionItem } from "@/lib/protocol/types/mission";
 import type { AltitudeFrame, Waypoint } from "@/lib/types/mission";

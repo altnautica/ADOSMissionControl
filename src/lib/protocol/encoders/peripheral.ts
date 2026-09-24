@@ -1,5 +1,5 @@
 /**
- * MAVLink peripheral encoders: SerialControl, Log*, FencePoint.
+ * MAVLink peripheral encoders: SerialControl, Log*.
  * @module protocol/encoders/peripheral
  */
 
@@ -117,46 +117,4 @@ export function encodeLogRequestEnd(
   payload[0] = targetSys;
   payload[1] = targetComp;
   return buildFrame(122, payload, sysId, compId);
-}
-
-// ── FENCE_POINT (ID 160) ────────────────────────────────────
-
-/** Encode a single fence point for upload. */
-export function encodeFencePoint(
-  targetSys: number,
-  targetComp: number,
-  idx: number,
-  count: number,
-  lat: number,
-  lon: number,
-  sysId = 255,
-  compId = 190,
-): Uint8Array {
-  const payload = new Uint8Array(12);
-  const dv = new DataView(payload.buffer);
-  dv.setFloat32(0, lat, true);   // lat
-  dv.setFloat32(4, lon, true);   // lon
-  payload[8] = targetSys;
-  payload[9] = targetComp;
-  payload[10] = idx;
-  payload[11] = count;
-  return buildFrame(160, payload, sysId, compId);
-}
-
-// ── FENCE_FETCH_POINT (ID 161) ──────────────────────────────
-
-/** Request a specific fence point by index. */
-export function encodeFenceFetchPoint(
-  targetSys: number,
-  targetComp: number,
-  idx: number,
-  sysId = 255,
-  compId = 190,
-): Uint8Array {
-  // FENCE_FETCH_POINT is exactly target_system, target_component, idx.
-  const payload = new Uint8Array(3);
-  payload[0] = targetSys;
-  payload[1] = targetComp;
-  payload[2] = idx;
-  return buildFrame(161, payload, sysId, compId);
 }

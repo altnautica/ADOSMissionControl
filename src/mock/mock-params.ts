@@ -156,6 +156,7 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "NAVL1_LIM_BANK", value: 0, type: 9 },
 
   // ── ArduSub depth hold, failsafes, joystick buttons ──
+  { name: "FRAME_CONFIG", value: 1, type: 9 },       // 1 = Vectored
   { name: "PSC_POSZ_P", value: 3, type: 9 },
   { name: "PSC_VELZ_P", value: 5, type: 9 },
   { name: "PSC_VELZ_I", value: 0.5, type: 9 },
@@ -1281,7 +1282,7 @@ export const PX4_MOCK_PARAMS: MockParam[] = [
   // ── Camera (PX4 trigger params) ────────────────────────────
   { name: "TRIG_MODE", value: 0, type: 9 },
   { name: "TRIG_ACT_TIME", value: 40, type: 9 },
-  { name: "TRIG_DIST", value: 25, type: 9 },
+  { name: "TRIG_DISTANCE", value: 25, type: 9 },
   { name: "TRIG_PWM_SHOOT", value: 1900, type: 9 },
 
   // ── EKF failsafe (PX4-only) ────────────────────────────────

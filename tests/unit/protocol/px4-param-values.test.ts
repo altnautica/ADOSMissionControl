@@ -62,6 +62,7 @@ function makeContext(firmwareType: FirmwareType): Ctx {
     linkIsLost: false,
     HEARTBEAT_TIMEOUT_MS: 5000,
     statusText: new StatusTextAssembler(),
+    homeAltitudeAmsl: null,
   };
 }
 

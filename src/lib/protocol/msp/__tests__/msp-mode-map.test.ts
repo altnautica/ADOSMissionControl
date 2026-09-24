@@ -14,11 +14,11 @@ import { describe, it, expect } from "vitest";
 import { resolveActiveMode } from "../msp-mode-map";
 import { STICK_AUTHORITY_MODES } from "@/lib/input/manual-control-gate";
 
-/** Build a mode-flag word with the given box-list indices set. */
-function flagsFor(...indices: number[]): number {
-  let n = 0;
-  for (const i of indices) n |= 1 << i;
-  return n >>> 0;
+/** Build the flag bytes (bit i = box index i) with the given indices set. */
+function flagsFor(...indices: number[]): Uint8Array {
+  const bytes = new Uint8Array(8);
+  for (const i of indices) bytes[i >> 3] |= 1 << (i & 7);
+  return bytes;
 }
 
 /**
@@ -85,7 +85,7 @@ describe("resolveActiveMode - iNav box table", () => {
   });
 
   it("yields UNKNOWN, not ACRO, when no mapped box is active", () => {
-    const { mode } = resolveActiveMode(0, inavBoxIds, "inav");
+    const { mode } = resolveActiveMode(flagsFor(), inavBoxIds, "inav");
     expect(mode).toBe("UNKNOWN");
     expect(givesStickAuthority(mode)).toBe(false);
   });
@@ -127,7 +127,7 @@ describe("resolveActiveMode - Betaflight box table", () => {
   });
 
   it("keeps ACRO as the Betaflight no-box-active default", () => {
-    const { mode } = resolveActiveMode(0, bfBoxIds, "betaflight");
+    const { mode } = resolveActiveMode(flagsFor(), bfBoxIds, "betaflight");
     expect(mode).toBe("ACRO");
   });
 
@@ -151,7 +151,7 @@ describe("resolveActiveMode - Betaflight box table", () => {
 
 describe("resolveActiveMode - unidentified firmware", () => {
   it("falls closed to UNKNOWN when the firmware is not yet known", () => {
-    const { mode } = resolveActiveMode(0, [0, 1, 2], undefined);
+    const { mode } = resolveActiveMode(flagsFor(), [0, 1, 2], undefined);
     expect(mode).toBe("UNKNOWN");
     expect(givesStickAuthority(mode)).toBe(false);
   });

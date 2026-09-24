@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useArmedLock } from "@/hooks/use-armed-lock";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
@@ -209,7 +209,7 @@ function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, co
 }
 
 export function ServoCalibrationSection() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const [saving, setSaving] = useState(false);
@@ -222,7 +222,7 @@ export function ServoCalibrationSection() {
   } = usePanelParams({ paramNames: SERVO_PARAMS, panelId: "servo-cal", autoLoad: false });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const liveServos = useMemo(() => {
@@ -255,7 +255,7 @@ export function ServoCalibrationSection() {
       toast("Enable servo output test first — outputs 33-40 are motors", "warning");
       return;
     }
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     try {
       const result = await protocol.setServo(servo, pwm);
@@ -264,7 +264,7 @@ export function ServoCalibrationSection() {
     } catch (err) {
       toast(`Servo ${servo} not set: ${err instanceof Error ? err.message : String(err)}`, "error");
     }
-  }, [getSelectedProtocol, toast, isHardBlocked, hardBlockMessage, testEnabled]);
+  }, [selectedProtocol, toast, isHardBlocked, hardBlockMessage, testEnabled]);
 
   async function handleSave() {
     setSaving(true);

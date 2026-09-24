@@ -8,7 +8,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { indexedDBStorage } from "@/lib/storage";
-import { useDroneManager } from "./drone-manager";
+import { droneSelection } from "./drone-selection";
 import { useUploadReceiptsStore, contentHash } from "./upload-receipts-store";
 import { withPlannerHistory } from "@/lib/planner-history-adapter";
 
@@ -61,7 +61,7 @@ interface RallyStoreState {
 }
 
 export const useRallyStore = create<RallyStoreState>()(
-  persist(
+  persist<RallyStoreState, [], [], Partial<RallyStoreState>>(
     (set, get) => ({
   points: [],
 
@@ -81,7 +81,7 @@ export const useRallyStore = create<RallyStoreState>()(
   clearPoints: () => withPlannerHistory(() => set({ points: [] })),
 
   uploadRallyPoints: async () => {
-    const { drones, selectedDroneId } = useDroneManager.getState();
+    const { drones, selectedDroneId } = droneSelection();
     const protocol = selectedDroneId ? drones.get(selectedDroneId)?.protocol : undefined;
     if (!protocol || !selectedDroneId) return { success: false, message: "No flight controller connected" };
     if (!protocol.uploadRallyPoints) {
@@ -110,7 +110,7 @@ export const useRallyStore = create<RallyStoreState>()(
   },
 
   downloadRallyPoints: async () => {
-    const { drones, selectedDroneId } = useDroneManager.getState();
+    const { drones, selectedDroneId } = droneSelection();
     const protocol = selectedDroneId ? drones.get(selectedDroneId)?.protocol : undefined;
     if (!protocol || !selectedDroneId) return { success: false, message: "No flight controller connected" };
     if (!protocol.downloadRallyPoints) {
@@ -158,7 +158,7 @@ export const useRallyStore = create<RallyStoreState>()(
           // geometry, so start empty rather than inventing return points.
           state.points = [];
         }
-        return state as unknown as RallyStoreState;
+        return state as Partial<RallyStoreState>;
       },
     },
   ),

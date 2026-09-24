@@ -14,15 +14,7 @@ import {
   requireOwnedDroneByDeviceId,
 } from "./cmdDroneAccess";
 import { settleInstallJobFromAck } from "./cmdPluginInstallJobs";
-import { relayCommandValidator } from "./commandVocabulary";
-
-/**
- * Bounds on a caller-supplied delivery window. The ceiling keeps a queued
- * flight command from executing long after the operator sent it; the floor
- * leaves room for at least one agent poll.
- */
-const MIN_COMMAND_TTL_MS = 1_000;
-const MAX_COMMAND_TTL_MS = 60_000;
+import { deliveryDeadline, relayCommandValidator } from "./commandVocabulary";
 
 /** Result message for a row whose delivery window closed before the agent took it. */
 const EXPIRED_BEFORE_DELIVERY = "command expired: not delivered to the node in time";
@@ -40,8 +32,9 @@ export const enqueueCommand = mutation({
     command: relayCommandValidator,
     args: v.optional(v.any()),
     // Delivery window in ms, measured on the server clock. A row the agent has
-    // not taken within it is never handed out: the poll fails it instead. Flight
-    // commands set it so one queued while the node was unreachable cannot
+    // not taken within it is never handed out: the poll fails it instead. A
+    // flight command gets one even when the caller omits it (see
+    // `deliveryDeadline`), so one queued while the node was unreachable cannot
     // execute when the node comes back.
     ttlMs: v.optional(v.number()),
   },
@@ -49,15 +42,7 @@ export const enqueueCommand = mutation({
     const drone = await requireOwnedDroneByDeviceId(ctx, args.deviceId);
 
     const createdAt = Date.now();
-    let expiresAt: number | undefined;
-    if (args.ttlMs !== undefined) {
-      if (!Number.isFinite(args.ttlMs)) {
-        throw new Error("ttlMs must be a finite number of milliseconds");
-      }
-      expiresAt =
-        createdAt +
-        Math.min(Math.max(args.ttlMs, MIN_COMMAND_TTL_MS), MAX_COMMAND_TTL_MS);
-    }
+    const expiresAt = deliveryDeadline(args.command, args.ttlMs, createdAt);
 
     const id = await ctx.db.insert("cmd_droneCommands", {
       deviceId: args.deviceId,

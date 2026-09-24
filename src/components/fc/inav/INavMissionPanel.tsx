@@ -13,7 +13,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMissionStore } from "@/stores/mission-store";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { PanelHeader } from "../shared/PanelHeader";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Route, ArrowRight } from "lucide-react";
@@ -42,10 +42,10 @@ function actionLabel(command: string): string {
 
 export function INavMissionPanel() {
   const router = useRouter();
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const waypoints = useMissionStore((s) => s.waypoints);
   const downloadMission = useMissionStore((s) => s.downloadMission);
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +71,7 @@ export function INavMissionPanel() {
   const [confirmReplace, setConfirmReplace] = useState(false);
 
   const readFromFc = useCallback(async () => {
-    if (!getSelectedProtocol()) {
+    if (!selectedProtocol) {
       setError("No drone connected");
       return;
     }
@@ -85,7 +85,7 @@ export function INavMissionPanel() {
       setHasRead(true);
     }
     setLoading(false);
-  }, [getSelectedProtocol, downloadMission]);
+  }, [selectedProtocol, downloadMission]);
 
   // A read replaces the plan in the Plan tab, so a non-empty plan is confirmed first.
   const handleRead = useCallback(() => {

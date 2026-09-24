@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -21,7 +21,7 @@ import {
 import { downloadBlob } from "@/lib/download";
 
 export function BlackboxPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const scrollRef = usePanelScroll("blackbox");
@@ -39,7 +39,7 @@ export function BlackboxPanel() {
   } = usePanelParams({ paramNames: blackboxParamNames, panelId: "blackbox", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);
@@ -53,7 +53,7 @@ export function BlackboxPanel() {
   const [flashUnsupported, setFlashUnsupported] = useState(false);
 
   const loadFlashInfo = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol || !protocol.isConnected) return;
     if (!protocol.getDataflashSummary) {
       setFlashUnsupported(true);
@@ -66,7 +66,7 @@ export function BlackboxPanel() {
       setFlashInfo(await protocol.getDataflashSummary());
     } catch { setFlashInfo(null); }
     finally { setFlashLoading(false); }
-  }, [getSelectedProtocol]);
+  }, [selectedProtocol]);
 
   useEffect(() => { if (hasLoaded && (deviceType === 1 || deviceType === 2)) loadFlashInfo(); }, [hasLoaded, deviceType, loadFlashInfo]);
 
@@ -74,7 +74,7 @@ export function BlackboxPanel() {
   async function handleFlash() { const ok = await commitToFlash(); showFlashResult(ok); }
 
   async function handleDownload() {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol || !protocol.isConnected) { toast("Not connected to flight controller", "error"); return; }
     if (!protocol.downloadBlackbox) { toast("This connection cannot download blackbox logs", "error"); return; }
     setDownloading(true);
@@ -96,7 +96,7 @@ export function BlackboxPanel() {
 
   async function handleErase() {
     if (!window.confirm("Erase all blackbox logs? This cannot be undone.")) return;
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol || !protocol.isConnected) { toast("Not connected to flight controller", "error"); return; }
     if (!protocol.eraseDataflash) { toast("This connection cannot erase blackbox logs", "error"); return; }
     setErasing(true);

@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { isFresh } from "@/lib/telemetry/freshness";
@@ -30,7 +30,7 @@ const OPERAND_TYPE_OPTIONS = LOGIC_OPERAND_TYPE_OPTIONS;
 // ── Component ─────────────────────────────────────────────────
 
 export function ProgrammingPidPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { isArmed } = useArmedLock();
 
@@ -47,20 +47,20 @@ export function ProgrammingPidPanel() {
   const startPolling = useProgrammingStore((s) => s.startPolling);
   const stopPolling = useProgrammingStore((s) => s.stopPolling);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasLoaded = useProgrammingStore((s) => s.loaded);
 
   // The live output is MSP2_INAV_PROGRAMMING_PID_STATUS, polled while armed.
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     if (isArmed && connected) startPolling(protocol, 500);
     else stopPolling();
     return () => stopPolling();
-  }, [isArmed, connected, getSelectedProtocol, startPolling, stopPolling]);
+  }, [isArmed, connected, selectedProtocol, startPolling, stopPolling]);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -72,10 +72,10 @@ export function ProgrammingPidPanel() {
     } else {
       toast("Programming PIDs loaded from FC", "success");
     }
-  }, [getSelectedProtocol, loadFromFc, toast]);
+  }, [selectedProtocol, loadFromFc, toast]);
 
   const handleWrite = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -87,7 +87,7 @@ export function ProgrammingPidPanel() {
     } else {
       toast("Programming PIDs written to FC", "success");
     }
-  }, [getSelectedProtocol, uploadPids, toast]);
+  }, [selectedProtocol, uploadPids, toast]);
 
   // An output is live only while the last status read is recent; a failed or
   // stopped poll leaves the old outputs, which must not read as current.
@@ -169,7 +169,7 @@ export function ProgrammingPidPanel() {
                     >
                       <div
                         className={cn(
-                          "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform",
+                          "absolute top-0.5 w-3 h-3 rounded-full bg-text-primary transition-transform",
                           pid.enabled ? "translate-x-4" : "translate-x-0.5",
                         )}
                       />

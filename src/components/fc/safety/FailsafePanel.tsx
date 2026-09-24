@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedDrone, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useParamLabel } from "@/hooks/use-param-label";
@@ -45,8 +45,8 @@ function Card({ icon, title, description, children }: {
 const EMPTY: string[] = [];
 
 export function FailsafePanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const getSelectedDrone = useDroneManager((s) => s.getSelectedDrone);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const selectedDrone = useDroneManager(selectSelectedDrone);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
@@ -56,7 +56,7 @@ export function FailsafePanel() {
   const scrollRef = usePanelScroll("failsafe");
   const [saving, setSaving] = useState(false);
 
-  const drone = getSelectedDrone();
+  const drone = selectedDrone;
   const isPlane = useMemo(() => {
     const vc = drone?.vehicleInfo?.vehicleClass;
     return vc === "plane" || vc === "vtol";
@@ -82,7 +82,7 @@ export function FailsafePanel() {
   } = usePanelParams({ paramNames, optionalParams, panelId: "failsafe", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);

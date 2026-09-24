@@ -85,6 +85,11 @@ export type UnifiedFlightMode =
   | "READY"
   | "PRECLAND"
   | "VTOL_TAKEOFF"
+  | "ALTITUDE_CRUISE"
+  | "POSITION_SLOW"
+  // Failsafe states PX4 reports but never accepts as a mode request
+  | "DESCEND"
+  | "TERMINATION"
   // Generic
   | "UNKNOWN";
 

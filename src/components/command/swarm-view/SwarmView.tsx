@@ -43,16 +43,13 @@ import {
   selectSwarmRows,
   selectSwarmFleetSlots,
 } from "@/stores/swarm-beacon-store";
-import {
-  SwarmSeverityStrip,
-  SwarmActionBar,
-  SwarmBoardTable,
-  SwarmFleetMap,
-  SwarmVideoRail,
-  swarmSourceSilent,
-  useFleetHero,
-  type SwarmSeverityId,
-} from ".";
+import { SwarmSeverityStrip } from "./SwarmSeverityStrip";
+import { SwarmActionBar } from "./SwarmActionBar";
+import { SwarmBoardTable } from "./SwarmBoardTable";
+import { SwarmFleetMap } from "./SwarmFleetMap";
+import { SwarmVideoRail } from "./SwarmVideoRail";
+import { useFleetHero } from "./use-fleet-hero";
+import { swarmSourceSilent, type SwarmSeverityId } from "./swarm-rows";
 
 export interface SwarmViewProps {
   fleetNodes: FleetNodeEntry[];

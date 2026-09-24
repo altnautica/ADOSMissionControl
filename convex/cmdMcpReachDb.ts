@@ -14,7 +14,7 @@
 
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { relayCommandValidator } from "./commandVocabulary";
+import { deliveryDeadline, relayCommandValidator } from "./commandVocabulary";
 import {
   CREDENTIAL_GLOBAL_POLICY,
   CREDENTIAL_POLICY,
@@ -148,13 +148,18 @@ export const enqueueForUser = internalMutation({
       .withIndex("by_deviceId", (q) => q.eq("deviceId", args.deviceId))
       .first();
     if (!drone || drone.userId !== args.userId) throw new Error("Not found");
+    // Same deadline rule as the browser path: a flight command queued through
+    // this surface while the node is unreachable fails instead of running late.
+    const createdAt = Date.now();
+    const expiresAt = deliveryDeadline(args.command, undefined, createdAt);
     const id = await ctx.db.insert("cmd_droneCommands", {
       deviceId: args.deviceId,
       userId: drone.userId,
       command: args.command,
       args: args.args,
       status: "pending",
-      createdAt: Date.now(),
+      createdAt,
+      ...(expiresAt !== undefined ? { expiresAt } : {}),
     });
     return { commandId: id };
   },

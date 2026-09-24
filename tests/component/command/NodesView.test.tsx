@@ -37,7 +37,7 @@ vi.hoisted(() => {
 // The board's command lane holds a Convex mutation handle; the tests drive the
 // LAN lane, so the queue is simply absent.
 vi.mock("convex/react", () => ({ useMutation: () => vi.fn() }));
-vi.mock("@/app/ConvexClientProvider", () => ({
+vi.mock("@/hooks/use-convex-available", () => ({
   useConvexAvailable: () => false,
 }));
 

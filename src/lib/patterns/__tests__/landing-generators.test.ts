@@ -9,7 +9,7 @@ import { generateFixedWingLanding } from "../landing-generator";
 import { generateVtolLanding } from "../vtol-landing-generator";
 import { patternToMission } from "../pattern-to-mission";
 import { expandToItems } from "@/lib/mission/mission-expand";
-import { cmdMap } from "@/lib/mission-io-formats";
+import { cmdMap } from "@/lib/mission/command-map";
 import { bearing } from "@/lib/telemetry-utils";
 import type { FixedWingLandingConfig, VtolLandingConfig } from "../types";
 import { haversineDistance } from "@/lib/geo/distance";

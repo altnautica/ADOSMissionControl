@@ -116,6 +116,16 @@ impl Step for WriteConfig {
                 "the MQTT password is empty (system RNG failed) — cannot deploy".into(),
             );
         }
+        if !ctx.config.mqtt.is_managed() && ctx.config.mqtt_auth_relay_secret.is_empty() {
+            return StepOutcome::Failed(
+                "the broker auth-sync secret is empty (system RNG failed) — cannot deploy".into(),
+            );
+        }
+        if !ctx.config.video.is_managed() && ctx.config.video_relay_secret.is_empty() {
+            return StepOutcome::Failed(
+                "the video relay secret is empty (system RNG failed) — cannot deploy".into(),
+            );
+        }
         sink.activity("write_config", "writing .env".into());
         let env_path = selfhost.join(".env");
         if let Err(e) = env_files::write_secret_file(
@@ -317,10 +327,14 @@ impl Step for AuthKeys {
             return StepOutcome::Failed("could not parse the generated auth keys".into());
         };
 
-        // Set the auth keys + the derived Convex env vars (SITE_URL, relay URLs).
+        // Set the auth keys, the derived Convex env vars (SITE_URL, relay URLs)
+        // and the relay's viewer-token secret.
         let mut pairs: Vec<(String, String)> =
             vec![("JWT_PRIVATE_KEY".into(), jwt), ("JWKS".into(), jwks)];
-        for (k, v) in env_files::convex_env_vars(&ctx.config) {
+        for (k, v) in env_files::convex_env_vars(&ctx.config)
+            .into_iter()
+            .chain(env_files::convex_secret_env_vars(&ctx.config))
+        {
             pairs.push((k.to_string(), v));
         }
         for (k, v) in &pairs {
@@ -394,12 +408,34 @@ impl Step for MqttPasswd {
             &[],
             |l| emit(&sink, "mqtt_passwd", activity::docker_activity, l),
         );
-        if res.success() {
-            StepOutcome::Ok
-        } else {
-            StepOutcome::Failed(fail_tail("creating the MQTT password failed", &res.stderr))
+        if !res.success() {
+            return StepOutcome::Failed(fail_tail(
+                "creating the MQTT password failed",
+                &res.stderr,
+            ));
+        }
+        // The broker bind-mounts acl.conf as a FILE: it must exist before the
+        // first `up`, or Docker creates a directory there. Seed it only when
+        // absent -- on a re-run the sidecar's materialized device ACL is kept.
+        match seed_acl(&ctx.repo_root) {
+            Ok(()) => StepOutcome::Ok,
+            Err(e) => StepOutcome::Failed(format!("seeding the broker ACL failed: {e}")),
         }
     }
+}
+
+/// Copy the committed bridge-only ACL policy to the generated ACL path when
+/// that path holds no file yet.
+fn seed_acl(repo_root: &std::path::Path) -> std::io::Result<()> {
+    let target = repo_root.join(crate::deploy::plan::ACL_FILE);
+    if target.is_file() {
+        return Ok(());
+    }
+    std::fs::copy(
+        repo_root.join(crate::deploy::plan::ACL_POLICY_FILE),
+        &target,
+    )
+    .map(|_| ())
 }
 
 // ── start the rest + verify ───────────────────────────────────────────────────
@@ -558,6 +594,30 @@ mod tests {
         assert!(pos("auth_keys") < pos("up_rest"));
         assert!(pos("mqtt_passwd") < pos("up_rest"));
         assert!(pos("up_rest") < pos("verify"));
+    }
+
+    #[test]
+    fn acl_seed_is_written_once_and_never_clobbers_the_synced_file() {
+        let root = std::env::temp_dir().join(format!("ados-deploy-acl-{}", std::process::id()));
+        let policy = root.join(crate::deploy::plan::ACL_POLICY_FILE);
+        let target = root.join(crate::deploy::plan::ACL_FILE);
+        std::fs::create_dir_all(policy.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::fs::write(&policy, "user ados\ntopic read ados/#\n").unwrap();
+
+        seed_acl(&root).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&target).unwrap(),
+            "user ados\ntopic read ados/#\n"
+        );
+
+        // The sidecar has since materialized device entries; a re-deploy keeps them.
+        std::fs::write(&target, "user ados-dev1\ntopic readwrite ados/dev1/#\n").unwrap();
+        seed_acl(&root).unwrap();
+        assert!(std::fs::read_to_string(&target)
+            .unwrap()
+            .contains("ados-dev1"));
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

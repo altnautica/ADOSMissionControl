@@ -21,7 +21,7 @@
  */
 
 import type { PathElevationSample } from "./types";
-import { haversineDistance } from "@/lib/geo/distance";
+import { haversineDistance, interpolateLatLon } from "@/lib/geo/distance";
 
 const API_URL = "https://api.open-elevation.com/api/v1/lookup";
 const MAX_CACHE_SIZE = 10_000;
@@ -196,10 +196,7 @@ export async function getElevationAlongPath(
   const points: Array<{ lat: number; lon: number }> = [];
   for (let i = 0; i < count; i++) {
     const t = i / (count - 1);
-    points.push({
-      lat: start.lat + (end.lat - start.lat) * t,
-      lon: start.lon + (end.lon - start.lon) * t,
-    });
+    points.push(interpolateLatLon(start.lat, start.lon, end.lat, end.lon, t));
   }
 
   const elevations = await getElevations(points, signal);

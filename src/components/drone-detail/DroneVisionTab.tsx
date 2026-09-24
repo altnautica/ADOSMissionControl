@@ -33,8 +33,11 @@ import { PerceptionSessionCard } from "@/components/vision/PerceptionSessionCard
 import { ModelPicker } from "@/components/vision/ModelPicker";
 import { DetectionOverlay } from "@/components/vision/DetectionOverlay";
 import { VideoCanvas } from "@/components/flight/VideoCanvas";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { connectVisionDetections } from "@/lib/agent/vision-detections-ws";
 import { isDemoMode } from "@/lib/utils";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
@@ -55,14 +58,17 @@ export function DroneVisionTab({
   relayReach = null,
 }: DroneVisionTabProps) {
   const t = useTranslations("vision");
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  // The detection feed and the engine gate come from THIS node's agent, never
+  // from whichever node's connection happens to be attached.
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const agentUrl = direct?.agentUrl ?? null;
+  const apiKey = direct?.apiKey ?? null;
   // Whether a vision engine is active on this companion. The tab is shown for
   // every SBC-backed drone; when no engine is running yet, an onboarding
   // banner explains vision runs on the companion and points at the model
   // registry below — the operator sets vision up from here.
   const visionActive = useAgentCapabilitiesStore(
-    (s) => s.visionAvailable === true,
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.visionAvailable === true,
   );
 
   // Which pipeline stream (`modelId::cameraId`) the preview is pinned to, or

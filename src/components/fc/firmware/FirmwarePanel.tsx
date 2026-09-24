@@ -10,7 +10,7 @@ import { AdosAgentSection } from "./AdosAgentSection";
 import { FirmwareApPeriphSection } from "./FirmwareApPeriphSection";
 import { flashApPeriph } from "./flashApPeriph";
 import { ApPeriphManifest } from "@/lib/protocol/firmware/ap-periph-manifest";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useToast } from "@/components/ui/toast";
 import { FirmwareStackSelector, PreFlashChecklist } from "./FirmwareCommonSections";
@@ -24,7 +24,7 @@ export function FirmwarePanel() {
   const isPeripheral = isPeripheralStack(fw.firmwareStack);
   const t = useTranslations("flashTool.ados");
   const { toast } = useToast();
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const apPeriphManifestRef = useRef(new ApPeriphManifest());
   const flashDisposerRef = useRef<null | (() => Promise<void>)>(null);
@@ -41,7 +41,7 @@ export function FirmwarePanel() {
       channel: string;
       transport: "slcan" | "can-forward";
     }) => {
-      const protocol = getSelectedProtocol();
+      const protocol = selectedProtocol;
       if (!protocol) {
         toast("Connect a drone before flashing", "warning");
         return;
@@ -73,7 +73,7 @@ export function FirmwarePanel() {
         toast(`Flash failed: ${msg}`, "error");
       }
     },
-    [getSelectedProtocol, toast, isHardBlocked, hardBlockMessage],
+    [selectedProtocol, toast, isHardBlocked, hardBlockMessage],
   );
 
   return (

@@ -6,7 +6,7 @@ import { RcCalibrationWizard } from "./RcCalibrationWizard";
 import { RcChannelMapSection } from "../receiver/RcChannelMapSection";
 import { GpsConfigSection } from "../sensors/GpsConfigSection";
 import { ServoCalibrationSection } from "../misc/ServoCalibrationSection";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import {
   LEVEL_STEPS, AIRSPEED_STEPS, BARO_STEPS, ESC_CAL_STEPS, COMPASSMOT_STEPS,
 } from "./calibration-types";
@@ -34,7 +34,7 @@ export function ArduPilotCalibrations({
   startCalibration, cancelCalibration,
   setLevel, setAirspeed, setBaro, setEsc, setCompassmot,
 }: Props) {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
 
   return (
     <>
@@ -51,7 +51,7 @@ export function ArduPilotCalibrations({
       />
 
       {level.needsReboot && level.status === "success" && (
-        <CalibrationRebootBanner label="Level calibration saved" onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label="Level calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
       <CalibrationWizard
@@ -115,7 +115,7 @@ export function ArduPilotCalibrations({
       />
 
       {esc.needsReboot && esc.status === "success" && (
-        <CalibrationRebootBanner label="ESC calibration saved" onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label="ESC calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
       <CalibrationWizard
@@ -137,7 +137,7 @@ export function ArduPilotCalibrations({
       />
 
       {compassmot.needsReboot && compassmot.status === "success" && (
-        <CalibrationRebootBanner label="CompassMot calibration saved" onReboot={() => { const p = getSelectedProtocol(); if (p) p.reboot(); }} />
+        <CalibrationRebootBanner label="CompassMot calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
     </>
   );

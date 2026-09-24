@@ -46,14 +46,10 @@ import type {
   Waypoint,
   WaypointCommand,
 } from "@/lib/types/mission";
-import { cmdMap, reverseCmd } from "@/lib/mission-io-formats";
+import { cmdMap, reverseCmd } from "./command-map";
 import { frameToMav, mavToFrame, MAV_FRAME_GLOBAL } from "@/lib/mission/altitude-frame";
 import { isNavCommand, LOCATION_MAV_CMDS, POSITION_BEARING_ACTIONS } from "./command-classes";
 
-// `cmdMap.DO_JUMP` (177) is read inside functions rather than captured at module
-// load, so this module never touches an imported binding at load time — that
-// keeps the mission-expand ⇄ mission-io-formats import cycle safe from TDZ.
-// The frame mapping comes from `mission/altitude-frame`, which has no cycle.
 
 /** A home position written into ArduPilot's reserved mission slot 0. */
 export interface HomeSlot {

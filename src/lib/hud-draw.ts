@@ -1,7 +1,8 @@
 /**
  * @module hud-draw
- * @description Canvas drawing functions for the sky/ground artificial
- * horizon HUD: attitude, tapes, compass and status readouts.
+ * @description Shared palette, font and style primitives for the canvas HUD.
+ * A leaf module: the attitude, nav and status drawing modules import it, and
+ * it imports none of them.
  * @license GPL-3.0-only
  */
 
@@ -78,25 +79,3 @@ export function clearShadow(ctx: CanvasRenderingContext2D) {
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
 }
-
-// ── Re-exports from sub-modules ─────────────────────────────────
-export {
-  drawSkyGround,
-  drawCrosshair,
-  drawPitchLadder,
-  drawRollArc,
-} from "./hud-draw-attitude";
-
-export {
-  drawSpeedTape,
-  drawAltTape,
-  drawHeadingCompass,
-} from "./hud-draw-nav";
-
-export {
-  drawBatteryHud,
-  drawGpsAndMode,
-  drawArmedStatus,
-  drawSignalBars,
-  drawFlightTimer,
-} from "./hud-draw-status";

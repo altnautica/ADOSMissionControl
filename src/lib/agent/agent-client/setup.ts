@@ -104,32 +104,28 @@ export function startDisplayCalibration(
   );
 }
 
-/** Response of `POST /api/v1/display/calibrate/start`. `target_count` is
- * the number of crosshairs the operator taps on the panel — the GCS shows
- * `step / target_count` progress while the on-panel wizard collects samples. */
+/** Response of `POST /api/v1/display/calibrate/start`. The agent only queues
+ * the request for the display service; `target_count` is the crosshair count
+ * of the on-panel wizard. There is no remote step counter. */
 export interface TouchCalibrationStart {
-  job_id?: string;
-  target_count?: number;
-  current_step?: number;
+  requested: boolean;
+  target_count: number;
 }
 
-/** Live state from `GET /api/v1/display/calibrate/status`. `calibrated` is
- * the on-disk result (the panel has a stored affine), `in_progress` reflects
- * a running wizard, `current_step` advances as the operator taps each
- * crosshair, and `rms_residual_px` is the fit residual once it lands. */
+/** State from `GET /api/v1/display/calibrate/status`. `calibrated` is the
+ * stored fit on disk; `requested` stays true while a start request is queued
+ * and the display service has not picked it up (it stays true when no display
+ * service is running). */
 export interface TouchCalibrationStatus {
-  calibrated?: boolean;
-  in_progress?: boolean;
-  current_step?: number;
-  rms_residual_px?: number;
+  calibrated: boolean;
+  requested: boolean;
 }
 
 /**
- * Arm the on-panel touch-calibration wizard for the HDMI kiosk display.
- * Distinct from `startDisplayCalibration` (the SPI-LCD setup route): this
- * drives the `/api/v1/display/calibrate/*` flow the kiosk card polls, so the
- * GCS can show live `step / target_count` progress while the operator taps
- * the crosshairs shown on the HDMI panel. Returns the target count.
+ * Ask the HDMI kiosk panel to open its touch-calibration wizard. Distinct from
+ * `startDisplayCalibration` (the SPI-LCD setup route). The wizard runs on the
+ * panel, where the operator taps the crosshairs; the result appears in
+ * {@link getTouchCalibrationStatus} as `calibrated` once the fit is saved.
  */
 export function startTouchCalibration(
   ctx: RequestContext,

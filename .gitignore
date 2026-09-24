@@ -57,6 +57,7 @@ next-env.d.ts
 # self-host deployer: generated secrets + local state (NEVER commit)
 # (.env is already covered above; these are the additional generated artifacts)
 /tools/selfhost/passwd
+/tools/selfhost/acl.conf
 /tools/selfhost/.deploy-state
 /tools/selfhost/docker-compose.override.yml
 

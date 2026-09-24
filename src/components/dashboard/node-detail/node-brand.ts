@@ -15,7 +15,7 @@ import type { LucideIcon } from "lucide-react";
 import type { SurfaceContext } from "./surface-types";
 import { type EffProfile, NODE_ACCENT_VAR } from "@/lib/nodes/node-profile";
 import { nodeGlyph } from "@/components/command/nodes/node-glyph";
-import type { StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useComputeStore } from "@/stores/compute-store";

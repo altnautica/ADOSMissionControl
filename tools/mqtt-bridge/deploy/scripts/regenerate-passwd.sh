@@ -8,15 +8,13 @@
 # /admin/mqtt-auth-entries httpAction (Bearer-token gated by
 # MQTT_AUTH_RELAY_SECRET) and rebuilds both files, then SIGHUPs the broker.
 #
-# Writes BOTH username conventions per device:
-#   - <device_id>            (canonical; agents on current firmware)
-#   - ados-<device_id>       (legacy; bench drones still on old firmware)
-# Both entries hash the same apiKey. Once all agents are upgraded to the
-# canonical username, set DROP_LEGACY_USERNAMES=1 to stop emitting the
-# `ados-<id>` rows.
+# Writes one passwd row per device under the username the agent presents,
+# `ados-<device_id>`, with the device's apiKey as the password, and an ACL
+# entry granting that user its own `ados/<device_id>/#` subtree.
 #
 # Also emits per-operator write grants, which is what lets a browser publish
-# at all: the shared viewer principal is read-only by design.
+# at all: each grant may read its devices' subtrees and write only the three
+# topics a GCS sends on.
 #
 # Safe to run from cron. Idempotent. Writes the two files IN PLACE (see the
 # note by the write) because they are file-level bind mounts -- a rename would
@@ -26,6 +24,12 @@
 # current host, override BROKER_CONTAINER / PASSWD_PATH / ACL_PATH (see
 # regenerate-passwd.env next to this script). Defaults left alone so an older
 # deployment is not silently repointed.
+#
+# BROKER_CONTAINER=local runs every broker-side step in THIS container instead
+# of through `docker exec`: mosquitto_passwd must be on PATH, and the broker
+# must share this container's PID namespace so the final SIGHUP reaches it.
+# That is how the self-host stack's `mqtt-auth-sync` sidecar runs the script
+# (tools/selfhost/docker-compose.yml): no docker socket is mounted anywhere.
 
 set -euo pipefail
 
@@ -33,12 +37,28 @@ CONVEX_HTTP_URL="${CONVEX_HTTP_URL:-https://convex.your-domain.com:3211}"
 RELAY_SECRET="${MQTT_AUTH_RELAY_SECRET:-}"
 BRIDGE_USER="${BRIDGE_MQTT_USERNAME:-ados}"
 BRIDGE_PASS="${BRIDGE_MQTT_PASSWORD:-${MQTT_PASSWORD:-}}"
-VIEWER_USER="${MQTT_VIEWER_USERNAME:-gcs-viewer}"
-VIEWER_PASS="${MQTT_VIEWER_PASSWORD:-}"
 PASSWD_PATH="${PASSWD_PATH:-/opt/relay/mosquitto/passwd}"
 ACL_PATH="${ACL_PATH:-/opt/relay/mosquitto/acl.conf}"
 BROKER_CONTAINER="${BROKER_CONTAINER:-relay-mosquitto-1}"
-DROP_LEGACY_USERNAMES="${DROP_LEGACY_USERNAMES:-0}"
+
+# Run a command where the broker's tools live: this container, or the broker's.
+if [[ "${BROKER_CONTAINER}" == "local" ]]; then
+  in_broker() { "$@"; }
+  in_broker_stdin() { "$@"; }
+  reload_broker() {
+    local pid
+    pid="$(pidof mosquitto || true)"
+    if [[ -z "${pid}" ]]; then
+      echo "regenerate-passwd: no mosquitto process in this PID namespace; not reloaded" >&2
+      return 1
+    fi
+    kill -HUP ${pid}
+  }
+else
+  in_broker() { docker exec "${BROKER_CONTAINER}" "$@"; }
+  in_broker_stdin() { docker exec -i "${BROKER_CONTAINER}" "$@"; }
+  reload_broker() { docker exec "${BROKER_CONTAINER}" sh -c 'kill -HUP 1' 2>/dev/null || true; }
+fi
 
 if [[ -z "${RELAY_SECRET}" ]]; then
   echo "regenerate-passwd: MQTT_AUTH_RELAY_SECRET not set; aborting" >&2
@@ -46,10 +66,6 @@ if [[ -z "${RELAY_SECRET}" ]]; then
 fi
 if [[ -z "${BRIDGE_PASS}" ]]; then
   echo "regenerate-passwd: BRIDGE_MQTT_PASSWORD (or MQTT_PASSWORD) not set; aborting" >&2
-  exit 1
-fi
-if [[ -z "${VIEWER_PASS}" ]]; then
-  echo "regenerate-passwd: MQTT_VIEWER_PASSWORD not set; aborting" >&2
   exit 1
 fi
 
@@ -77,7 +93,7 @@ fi
 
 # Build passwd inside the broker container at a staging path.
 STAGING_PASSWD="/tmp/.mqtt-passwd-stage"
-docker exec "${BROKER_CONTAINER}" sh -c \
+in_broker sh -c \
   "rm -f '${STAGING_PASSWD}' && touch '${STAGING_PASSWD}' && chmod 600 '${STAGING_PASSWD}'"
 
 # Build acl.conf on the host (no mosquitto-specific tooling needed for ACL).
@@ -92,12 +108,16 @@ cat > "${host_acl_staging}" <<'ACL_HEADER'
 # ADOSMissionControl repo at tools/mqtt-bridge/deploy/acl.conf is the
 # documented policy; this file is the materialized per-device version.
 #
-# Format per device:
-#   user <username>
+# Format per device (the agent's MQTT username is `ados-<device_id>`):
+#   user ados-<device_id>
 #   topic readwrite ados/<device_id>/#
 #
-# Username is either the bare device_id (current firmware) or
-# `ados-<device_id>` (legacy firmware); both grant the same topic subtree.
+# Format per operator grant:
+#   user gcs-op-<random>
+#   topic read  ados/<device_id>/#
+#   topic write ados/<device_id>/mavlink/rx
+#   topic write ados/<device_id>/msp/rx
+#   topic write ados/<device_id>/webrtc/offer
 
 ACL_HEADER
 
@@ -106,56 +126,33 @@ cat >> "${host_acl_staging}" <<ACL_BRIDGE
 user ${BRIDGE_USER}
 topic read ados/#
 
-# Legacy shared viewer: read-only across every `ados/...` topic. No browser reads
-# it any more -- a Mission Control session authenticates with the operator's own
-# minted write grant (below), scoped to the devices they own. This principal
-# survives only for a deployment still serving a build that predates that path.
-# Protect telemetry beyond this via TLS + Cloudflare Tunnel; do NOT grant write
-# access here.
-user ${VIEWER_USER}
-topic read ados/#
-
 ACL_BRIDGE
 
 # Iterate device list, write to both passwd (via mosquitto_passwd inside
-# container) and acl.conf (plain text on host).
+# container) and acl.conf (plain text on host). The entry's `username` field
+# is the device id; the broker principal is the name the agent logs in with.
 printf '%s' "${response}" \
   | jq -r '.entries[] | "\(.username)\t\(.apiKey)"' \
   | while IFS=$'\t' read -r device_id apikey; do
       [[ -z "${device_id}" || -z "${apikey}" ]] && continue
 
-      # passwd: canonical username == device_id
-      docker exec "${BROKER_CONTAINER}" \
-        mosquitto_passwd -b "${STAGING_PASSWD}" "${device_id}" "${apikey}"
+      in_broker \
+        mosquitto_passwd -b "${STAGING_PASSWD}" "ados-${device_id}" "${apikey}"
 
-      # acl.conf: canonical
       cat >> "${host_acl_staging}" <<ACL_DEVICE
-user ${device_id}
-topic readwrite ados/${device_id}/#
-
-ACL_DEVICE
-
-      if [[ "${DROP_LEGACY_USERNAMES}" != "1" ]]; then
-        # passwd: legacy ados-<device_id>
-        docker exec "${BROKER_CONTAINER}" \
-          mosquitto_passwd -b "${STAGING_PASSWD}" "ados-${device_id}" "${apikey}"
-
-        # acl.conf: legacy, same topic subtree
-        cat >> "${host_acl_staging}" <<ACL_LEGACY
 user ados-${device_id}
 topic readwrite ados/${device_id}/#
 
-ACL_LEGACY
-      fi
+ACL_DEVICE
     done
 
 # Operator write grants.
 #
-# The shared viewer principal is read-only by design, so a browser has never
-# been able to publish a command -- flight frames and video signalling were
-# accepted by the client and then discarded by the broker. A grant is what
-# gives one operator write access, scoped to the devices they owned when it
-# was minted, and it expires on its own.
+# A grant is what gives one operator write access, scoped to the devices they
+# owned when it was minted, and it expires on its own. Write is limited to the
+# three topics a GCS sends on: the whole subtree would also let the holder
+# publish `/tx`, `/status` and `/webrtc/answer` -- the agent's own topics -- and
+# so fabricate telemetry for the aircraft.
 #
 # `passwdEntry` is already a broker password line (a PBKDF2 verifier, never the
 # secret), so it is appended verbatim rather than re-hashed -- the plaintext
@@ -169,7 +166,7 @@ if [[ "${grants_count}" != "0" ]]; then
         [[ -z "${principal}" || -z "${passwd_entry}" ]] && continue
 
         # passwd: append the pre-hashed verifier straight into the staging file.
-        docker exec -i "${BROKER_CONTAINER}" \
+        in_broker_stdin \
           sh -c "cat >> '${STAGING_PASSWD}'" <<< "${passwd_entry}"
 
         {
@@ -178,7 +175,11 @@ if [[ "${grants_count}" != "0" ]]; then
           echo "user ${principal}"
           IFS=',' read -ra _devs <<< "${device_csv}"
           for d in "${_devs[@]}"; do
-            [[ -n "${d}" ]] && echo "topic readwrite ados/${d}/#"
+            [[ -z "${d}" ]] && continue
+            echo "topic read ados/${d}/#"
+            echo "topic write ados/${d}/mavlink/rx"
+            echo "topic write ados/${d}/msp/rx"
+            echo "topic write ados/${d}/webrtc/offer"
           done
           echo ""
         } >> "${host_acl_staging}"
@@ -186,18 +187,14 @@ if [[ "${grants_count}" != "0" ]]; then
 fi
 
 # Bridge service account in passwd.
-docker exec "${BROKER_CONTAINER}" \
+in_broker \
   mosquitto_passwd -b "${STAGING_PASSWD}" "${BRIDGE_USER}" "${BRIDGE_PASS}"
 
-# GCS viewer service account in passwd.
-docker exec "${BROKER_CONTAINER}" \
-  mosquitto_passwd -b "${STAGING_PASSWD}" "${VIEWER_USER}" "${VIEWER_PASS}"
-
-# Copy passwd out of container, atomic-rename into place on host.
+# Copy passwd out of the container into a host staging file.
 host_passwd_staging="$(mktemp --tmpdir mqtt-passwd.XXXXXX)"
 chmod 600 "${host_passwd_staging}"
-docker exec "${BROKER_CONTAINER}" /bin/cat "${STAGING_PASSWD}" > "${host_passwd_staging}"
-docker exec "${BROKER_CONTAINER}" rm -f "${STAGING_PASSWD}"
+in_broker /bin/cat "${STAGING_PASSWD}" > "${host_passwd_staging}"
+in_broker rm -f "${STAGING_PASSWD}"
 
 # Write IN PLACE, never rename.
 #
@@ -223,6 +220,6 @@ chown 1883:1883 "${ACL_PATH}"
 chmod 640 "${ACL_PATH}"
 
 # Reload the broker without dropping connections.
-docker exec "${BROKER_CONTAINER}" sh -c 'kill -HUP 1' 2>/dev/null || true
+reload_broker
 
-echo "regenerate-passwd: wrote ${PASSWD_PATH} + ${ACL_PATH} (${entries_count} devices, ${grants_count:-0} operator grants, + bridge + viewer)"
+echo "regenerate-passwd: wrote ${PASSWD_PATH} + ${ACL_PATH} (${entries_count} devices, ${grants_count:-0} operator grants, + bridge)"

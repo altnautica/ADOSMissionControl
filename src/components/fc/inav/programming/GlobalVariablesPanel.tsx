@@ -10,7 +10,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useProgrammingStore, GVAR_MAX } from "@/stores/programming-store";
 import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 // ── Component ─────────────────────────────────────────────────
 
 export function GlobalVariablesPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
 
   const gvarStatus = useProgrammingStore((s) => s.gvarStatus);
@@ -38,7 +38,7 @@ export function GlobalVariablesPanel() {
   const stopPolling = useProgrammingStore((s) => s.stopPolling);
 
   const { isArmed } = useArmedLock();
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasLoaded = gvarStatusAt !== null;
   // A value is live only while the last read is recent; older ones are the
   // last values read, not the FC's current state.
@@ -53,7 +53,7 @@ export function GlobalVariablesPanel() {
   const fieldValue = (idx: number) => edits[idx] ?? (values[idx] === undefined ? "" : String(values[idx]));
 
   useEffect(() => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return;
     if (isArmed && connected) {
       startPolling(protocol, 500);
@@ -61,10 +61,10 @@ export function GlobalVariablesPanel() {
       stopPolling();
     }
     return () => stopPolling();
-  }, [isArmed, connected, getSelectedProtocol, startPolling, stopPolling]);
+  }, [isArmed, connected, selectedProtocol, startPolling, stopPolling]);
 
   const handleRead = useCallback(async () => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) {
       toast("Not connected to flight controller", "error");
       return;
@@ -80,11 +80,11 @@ export function GlobalVariablesPanel() {
     }
     setEdits({}); // fresh live values supersede any drafts
     toast("Global variable status refreshed", "success");
-  }, [getSelectedProtocol, pollStatus, toast]);
+  }, [selectedProtocol, pollStatus, toast]);
 
   const handleSet = useCallback(
     async (index: number) => {
-      const protocol = getSelectedProtocol();
+      const protocol = selectedProtocol;
       if (!protocol) {
         toast("Not connected to flight controller", "error");
         return;
@@ -108,7 +108,7 @@ export function GlobalVariablesPanel() {
         toast(`GVAR ${index} set to ${value}`, "success");
       }
     },
-    [getSelectedProtocol, edits, gvarStatus, writeGvar, toast],
+    [selectedProtocol, edits, gvarStatus, writeGvar, toast],
   );
 
   return (

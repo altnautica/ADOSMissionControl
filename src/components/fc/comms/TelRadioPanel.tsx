@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
@@ -26,7 +26,7 @@ import {
 const NO_PARAMS: string[] = [];
 
 export function TelRadioPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
@@ -52,7 +52,7 @@ export function TelRadioPanel() {
   });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const set = (name: string, v: string) => setLocalValue(name, Number(v) || 0);

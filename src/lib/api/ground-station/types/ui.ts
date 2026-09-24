@@ -66,7 +66,9 @@ export interface BluetoothDevice {
   name: string;
   rssi_dbm?: number | null;
   paired?: boolean;
-  connected?: boolean;
+  /** Measured per device; null when bluetoothctl did not answer (unknown,
+   * never "disconnected"). */
+  connected?: boolean | null;
 }
 
 export interface BluetoothScanResult {

@@ -196,7 +196,7 @@ export function Modal({
     <ModalDepthContext.Provider value={depth}>
       <div
         ref={overlayRef}
-        className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60"
+        className="fixed inset-0 z-[2000] flex items-center justify-center bg-scrim/60"
         onClick={(e) => {
           if (disableBackdropClose || closeBlocked) return;
           if (e.target === overlayRef.current) onClose();

@@ -13,7 +13,8 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Layers, ChevronRight } from "lucide-react";
-import { StatusDot, type StatusLevel } from "@/components/ui/status-dot";
+import type { StatusLevel } from "@/lib/status-level";
+import { StatusDot } from "@/components/ui/status-dot";
 import { useUiStore } from "@/stores/ui-store";
 import { useComputeJobs } from "@/hooks/use-compute-jobs";
 import type { ComputeJob } from "@/lib/agent/compute-client";

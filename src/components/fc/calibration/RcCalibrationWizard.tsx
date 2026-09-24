@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { confirmArmedParamWrite, describeParamBatch, writeParamBatch, type ParamBatchEntry } from "@/lib/protocol/param-write";
@@ -34,7 +34,7 @@ interface RcCalibrationWizardProps {
 }
 
 export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcCalibrationWizardProps) {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const { firmwareType } = useFirmwareCapabilities();
   const liveRc = useFreshTelemetry("rc");
@@ -104,7 +104,7 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
    * accepted. `failed` carries the failure text, null when everything landed.
    */
   const writeBatch = useCallback(async (entries: ParamBatchEntry[]): Promise<{ failed: string | null; message: string; level: "success" | "info" | "error" }> => {
-    const protocol = getSelectedProtocol();
+    const protocol = selectedProtocol;
     if (!protocol) return { failed: "Not connected", message: "Not connected", level: "error" };
     const confirmed = await confirmArmedParamWrite("rc-calibration", entries.map((e) => e.name));
     if (!confirmed) return { failed: "Cancelled: vehicle is armed", message: "Cancelled: vehicle is armed", level: "error" };
@@ -114,7 +114,7 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
     if (outcome.failures.length > 0) return { failed: `${message}. Failed: ${outcome.failures.join(", ")}`, message, level: "error" };
     if (outcome.flash === "failed") return { failed: message, message, level: "error" };
     return { failed: null, message, level };
-  }, [getSelectedProtocol, onWritten]);
+  }, [selectedProtocol, onWritten]);
 
   const handleSave = useCallback(async () => {
     const entries = rcCalibrationEntries(capturesRef.current, currentParams ?? NO_PARAMS);

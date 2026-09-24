@@ -10,12 +10,18 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/hud-draw", () => {
+vi.mock("@/lib/hud-draw-attitude", () => {
+  const noop = () => {};
+  return { drawSkyGround: noop, drawPitchLadder: noop, drawRollArc: noop, drawCrosshair: noop };
+});
+vi.mock("@/lib/hud-draw-nav", () => {
+  const noop = () => {};
+  return { drawSpeedTape: noop, drawAltTape: noop, drawHeadingCompass: noop };
+});
+vi.mock("@/lib/hud-draw-status", () => {
   const noop = () => {};
   return {
-    drawSkyGround: noop, drawPitchLadder: noop, drawRollArc: noop, drawCrosshair: noop,
-    drawSpeedTape: noop, drawAltTape: noop, drawHeadingCompass: noop, drawBatteryHud: noop,
-    drawGpsAndMode: noop, drawArmedStatus: noop, drawSignalBars: noop, drawFlightTimer: noop,
+    drawBatteryHud: noop, drawGpsAndMode: noop, drawArmedStatus: noop, drawSignalBars: noop, drawFlightTimer: noop,
   };
 });
 

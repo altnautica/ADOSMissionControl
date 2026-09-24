@@ -380,7 +380,7 @@ interface SnakeLiveness {
  * Returns just the five fields so callers spread it over the source object.
  */
 function snakeLivenessPatch(obj: SnakeLiveness): SnakeLiveness {
-  const raw = obj as unknown as Record<string, unknown>;
+  const raw: Record<string, unknown> = { ...obj };
   const bool = (snake: boolean | undefined, camel: unknown) =>
     typeof snake === "boolean"
       ? snake

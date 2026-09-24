@@ -1,77 +1,82 @@
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { describe, expect, it, vi } from "vitest";
+
+import { closePeerConnection, onPeerConnectionClose } from "@/lib/video/webrtc-client";
 
 /**
- * Regression net for the WebRTC PeerConnection cleanup contract.
- *
- * Safari leaves MediaStreamTracks in the "live" state when pc.close() is
- * called without first stopping every receiver and sender track. That
- * holds the camera/mic permission and forces a re-prompt on the next
- * stream start.
- *
- * The closePeerConnection helper does the cleanup. These tests verify
- * the helper is the single owner of pc.close() in the module so a
- * future refactor cannot reintroduce a raw pc.close() that skips the
- * track stop.
+ * The PeerConnection teardown contract. Safari leaves MediaStreamTracks
+ * "live" after pc.close() unless every receiver and sender track is stopped
+ * first, which holds the camera permission and re-prompts on the next start.
+ * Handlers are cleared before close() so the teardown's own "closed" state
+ * change does not re-enter store updates.
  */
-describe("webrtc-client cleanup contract", () => {
-  const src = readFileSync(
-    resolve(__dirname, "../../../src/lib/video/webrtc-client.ts"),
-    "utf-8",
-  );
 
-  it("defines a closePeerConnection helper that stops receivers and senders", () => {
-    expect(src).toContain("function closePeerConnection");
-    expect(src).toMatch(/getReceivers\(\)\.forEach/);
-    expect(src).toMatch(/getSenders\(\)\.forEach/);
-    expect(src).toMatch(/r\.track\?\.stop\(\)/);
-    expect(src).toMatch(/s\.track\?\.stop\(\)/);
-  });
+interface FakePc {
+  ontrack: unknown;
+  onconnectionstatechange: unknown;
+  onicecandidateerror: unknown;
+  oniceconnectionstatechange: unknown;
+  onicegatheringstatechange: unknown;
+  onsignalingstatechange: unknown;
+  getReceivers: () => { track: { stop: () => void } | null }[];
+  getSenders: () => { track: { stop: () => void } | null }[];
+  close: () => void;
+}
 
-  it("nulls every event handler in the helper before close", () => {
-    // Find the helper body.
-    const start = src.indexOf("function closePeerConnection");
-    expect(start).toBeGreaterThan(-1);
-    // Helper ends at the next function keyword or a top-level export
-    const remainder = src.slice(start);
-    const end = remainder.search(/\nfunction \w|\nexport \w/);
-    const body = end > 0 ? remainder.slice(0, end) : remainder;
+function fakePc(events: string[]): FakePc {
+  const track = (name: string) => ({ stop: () => events.push(`stop:${name}`) });
+  const handler = () => events.push("handler-fired");
+  return {
+    ontrack: handler,
+    onconnectionstatechange: handler,
+    onicecandidateerror: handler,
+    oniceconnectionstatechange: handler,
+    onicegatheringstatechange: handler,
+    onsignalingstatechange: handler,
+    getReceivers: () => [{ track: track("video-rx") }, { track: null }],
+    getSenders: () => [{ track: track("audio-tx") }],
+    close() {
+      events.push(this.onconnectionstatechange === null ? "close:handlers-cleared" : "close:handlers-live");
+    },
+  };
+}
 
-    expect(body).toContain("ontrack = null");
-    expect(body).toContain("onconnectionstatechange = null");
-    expect(body).toContain("onicecandidateerror = null");
-    // close() must come AFTER the track stops + handler nulls
-    const closeIdx = body.indexOf("target.close()");
-    const tracksIdx = body.indexOf("getReceivers");
-    expect(closeIdx).toBeGreaterThan(tracksIdx);
-  });
+const asPc = (pc: FakePc) => pc as unknown as RTCPeerConnection;
 
-  it("contains no raw pc.close() outside the helper", () => {
-    // Strip the helper definition so we only scan callers.
-    const helperStart = src.indexOf("function closePeerConnection");
-    const helperEnd = src.indexOf("\n}", helperStart) + 2;
-    const withoutHelper =
-      src.slice(0, helperStart) + src.slice(helperEnd);
+describe("closePeerConnection", () => {
+  it("stops every receiver and sender track before closing, with handlers cleared", () => {
+    const events: string[] = [];
+    const pc = fakePc(events);
 
-    // Ignore comments. A simple line-by-line scan is enough.
-    const offenders: string[] = [];
-    for (const line of withoutHelper.split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith("//") || trimmed.startsWith("*")) continue;
-      // Match `pc.close()` or `localPc.close()` as bare calls
-      if (/\b(pc|localPc|target)\.close\(\)/.test(trimmed)) {
-        offenders.push(trimmed);
-      }
+    closePeerConnection(asPc(pc));
+
+    expect(events).toEqual(["stop:video-rx", "stop:audio-tx", "close:handlers-cleared"]);
+    for (const key of ["ontrack", "onconnectionstatechange", "onicecandidateerror", "oniceconnectionstatechange", "onicegatheringstatechange", "onsignalingstatechange"] as const) {
+      expect(pc[key]).toBeNull();
     }
-    expect(offenders).toEqual([]);
   });
 
-  it("uses closePeerConnection at every cleanup site", () => {
-    // Count call sites — should match the 5 places we hand-converted
-    // (stopStream + 2x cleanup-on-error + 2x cleanup-before-start).
-    const matches = src.match(/closePeerConnection\(/g) ?? [];
-    // 1 helper definition reference + 5 caller sites = 6 occurrences min
-    expect(matches.length).toBeGreaterThanOrEqual(5);
+  it("still closes when a track refuses to stop", () => {
+    const events: string[] = [];
+    const pc = fakePc(events);
+    pc.getReceivers = () => [{ track: { stop: () => { throw new Error("already ended"); } } }];
+
+    closePeerConnection(asPc(pc));
+
+    expect(events).toContain("close:handlers-cleared");
+  });
+
+  it("runs the registered close hook exactly once", () => {
+    const pc = fakePc([]);
+    const hook = vi.fn();
+    onPeerConnectionClose(asPc(pc), hook);
+
+    closePeerConnection(asPc(pc));
+    closePeerConnection(asPc(pc));
+
+    expect(hook).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a null connection", () => {
+    expect(() => closePeerConnection(null)).not.toThrow();
   });
 });

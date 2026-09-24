@@ -21,7 +21,7 @@
 import { useEffect, useMemo } from "react";
 import { useAction, useMutation } from "convex/react";
 import { useAuthStore } from "@/stores/auth-store";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { cmdMqttControlGrantsApi } from "@/lib/community-api-drones";
 import {

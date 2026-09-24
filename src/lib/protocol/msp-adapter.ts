@@ -144,33 +144,45 @@ export class MSPAdapter implements DroneProtocol {
     transport.on('data', this.dataHandler)
     transport.on('close', this.closeHandler as (data: void) => void)
 
-    this.queue = new MspSerialQueue(transport.send.bind(transport), this.parser, 1000, 2)
-    this.settingsClient = new SettingsClient(this.queue)
+    const queue = new MspSerialQueue(transport.send.bind(transport), this.parser, 1000, 2)
+    this.queue = queue
+    this.settingsClient = new SettingsClient(queue)
     this.settingsCapability = makeSettingsCapability(this.settingsClient)
 
-    const apiVersionFrame = await this.queue.send(MSP.MSP_API_VERSION)
+    // A handshake that fails part-way tears down what was attached above, so a
+    // retry on the same transport does not feed its bytes to a second parser.
+    try {
+      return await this.handshake(queue)
+    } catch (err) {
+      this.handleDisconnect()
+      throw err
+    }
+  }
+
+  private async handshake(queue: MspSerialQueue): Promise<VehicleInfo> {
+    const apiVersionFrame = await queue.send(MSP.MSP_API_VERSION)
     const apiVersionMajor = u8(apiVersionFrame.payload, 1)
     const apiVersionMinor = u8(apiVersionFrame.payload, 2)
 
-    const variantFrame = await this.queue.send(MSP.MSP_FC_VARIANT)
+    const variantFrame = await queue.send(MSP.MSP_FC_VARIANT)
     const variantStr = String.fromCharCode(...variantFrame.payload)
 
-    const versionFrame = await this.queue.send(MSP.MSP_FC_VERSION)
+    const versionFrame = await queue.send(MSP.MSP_FC_VERSION)
     const vP = versionFrame.payload
     const firmwareVersionString = `${variantStr} ${u8(vP, 0)}.${u8(vP, 1)}.${u8(vP, 2)} (MSP API ${apiVersionMajor}.${apiVersionMinor})`
 
-    const boardInfoFrame = await this.queue.send(MSP.MSP_BOARD_INFO)
+    const boardInfoFrame = await queue.send(MSP.MSP_BOARD_INFO)
     const boardInfo = decodeMspBoardInfo(new DataView(boardInfoFrame.payload.buffer, boardInfoFrame.payload.byteOffset, boardInfoFrame.payload.byteLength))
 
-    const boxNamesFrame = await this.queue.send(MSP.MSP_BOXNAMES)
+    const boxNamesFrame = await queue.send(MSP.MSP_BOXNAMES)
     const boxNames = String.fromCharCode(...boxNamesFrame.payload).split(';').filter(n => n.length > 0)
 
-    const boxIdsFrame = await this.queue.send(MSP.MSP_BOXIDS)
+    const boxIdsFrame = await queue.send(MSP.MSP_BOXIDS)
     this.boxIds = Array.from(boxIdsFrame.payload)
     buildBoxMap(boxNames, this.boxIds)
 
     try {
-      const modeRangesFrame = await this.queue.send(MSP.MSP_MODE_RANGES)
+      const modeRangesFrame = await queue.send(MSP.MSP_MODE_RANGES)
       this.modeRanges = parseModeRanges(modeRangesFrame.payload)
     } catch { this.modeRanges = [] }
 
@@ -179,7 +191,7 @@ export class MSPAdapter implements DroneProtocol {
     // override that reported success would be describing nothing. A feature
     // word we could not read is not evidence either way, so it reads as off.
     try {
-      const featureFrame = await this.queue.send(MSP.MSP_FEATURE_CONFIG)
+      const featureFrame = await queue.send(MSP.MSP_FEATURE_CONFIG)
       const fp = featureFrame.payload
       const features = fp.length >= 4
         ? ((fp[0] | (fp[1] << 8) | (fp[2] << 16) | (fp[3] << 24)) >>> 0)
@@ -187,9 +199,8 @@ export class MSPAdapter implements DroneProtocol {
       this.rxMspEnabled = ((features >>> FEATURE_FLAG.RX_MSP) & 1) === 1
     } catch { this.rxMspEnabled = false }
 
-    const rcQueue = this.queue
     this.rcOverride = new MspRcOverride({
-      send: (payload) => rcQueue.sendNoReply(MSP.MSP_SET_RAW_RC, payload),
+      send: (payload) => queue.sendNoReply(MSP.MSP_SET_RAW_RC, payload),
       modeRanges: this.modeRanges,
       rxMspEnabled: this.rxMspEnabled,
     })
@@ -200,7 +211,7 @@ export class MSPAdapter implements DroneProtocol {
     if (isBetaflight || isInav) {
       // A motor test cut off by a dropped link keeps spinning until the FC
       // reboots; clear any such leftover before anything else is commanded.
-      cmds.mspIdleMotorOutputs(this.queue)
+      cmds.mspIdleMotorOutputs(queue)
       // The CLI session pauses MSP polling while active and drives the
       // raw-byte tap set up above. Betaflight settings live only behind it.
       this.cli = new MspCliSession({
@@ -224,7 +235,7 @@ export class MSPAdapter implements DroneProtocol {
     this.cbs.heartbeatCallbacks.push((hb) => { this.lastArmed = hb.armed })
     // Fresh per connection: an RSSI heard on a previous link is not this one's.
     const telemetryState = createMspTelemetryState()
-    this.poller = new MspTelemetryPoller(this.queue, (command, payload) =>
+    this.poller = new MspTelemetryPoller(queue, info.firmwareType, (command, payload) =>
       dispatchMspTelemetry(command, payload, this.cbs, this.vehicleInfo, this.boxIds, telemetryState))
     this.poller.start()
     this._connected = true
@@ -237,7 +248,7 @@ export class MSPAdapter implements DroneProtocol {
   }
 
   private handleDisconnect(): void {
-    if (!this._connected && !this.poller) return
+    if (!this._connected && !this.poller && !this.queue) return
     this._connected = false
     if (this.rcOverride) { this.rcOverride.destroy(); this.rcOverride = null }
     this.rxMspEnabled = false

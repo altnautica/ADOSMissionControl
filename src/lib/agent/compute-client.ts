@@ -296,14 +296,15 @@ export class ComputeAgentClient {
    * Issue one job-API request, transparently picking the direct LAN fetch
    * (`:8092`) or the `/api/lan-pair/compute` proxy hop (HTTPS origin). `path`
    * is the segment after `/api/compute/` (e.g. `jobs`, `jobs/<id>/cancel`).
-   * Returns the parsed JSON body, or `null` on non-2xx / transport / parse
-   * failure so every caller degrades to an empty state instead of throwing.
+   * Returns the status and parsed JSON body (`null` when it is not JSON), or
+   * `null` on a transport failure, so a caller that must tell a refusal from an
+   * unreachable node can.
    */
-  private async jobRequest(
+  async jobCall(
     path: string,
     method: "GET" | "POST",
     body?: unknown,
-  ): Promise<unknown | null> {
+  ): Promise<{ status: number; json: unknown } | null> {
     let res: Response;
     try {
       if (this.useProxy) {
@@ -333,12 +334,26 @@ export class ComputeAgentClient {
     } catch {
       return null;
     }
-    if (!res.ok) return null;
+    if (!res) return null;
+    let json: unknown = null;
     try {
-      return (await res.json()) as unknown;
+      json = (await res.json()) as unknown;
     } catch {
-      return null;
+      json = null;
     }
+    return { status: res.status, json };
+  }
+
+  /** {@link jobCall}, reduced to the parsed body of a 2xx reply, or `null` on
+   * non-2xx / transport / parse failure so every caller degrades to an empty
+   * state instead of throwing. */
+  private async jobRequest(
+    path: string,
+    method: "GET" | "POST",
+    body?: unknown,
+  ): Promise<unknown | null> {
+    const r = await this.jobCall(path, method, body);
+    return r && r.status >= 200 && r.status < 300 ? r.json : null;
   }
 
   /** List every job on the node. `null` = unreachable; `[]` = reachable + empty. */

@@ -9,15 +9,8 @@
  * differently. `httpRouter()` exposes its registered routes and each
  * `httpAction` carries its handler, so the routes can simply be called.
  *
- * Two properties are at stake, and the second is the one that was broken:
- *
- *  - The key travels in `X-ADOS-Key`, never in a query string, because a
- *    URL lands in browser history and in every access log on the path.
- *  - A refusal is UNIFORM. `/heartbeat` used to serialise the mutation's
- *    distinguishable `not_found` vs `invalid_key` at HTTP **200**, so an
- *    unauthenticated caller could walk device ids and learn which are
- *    registered — exactly the oracle `getPairingStatus` was deliberately
- *    hardened against.
+ * The key travels in `X-ADOS-Key`, never in a query string, because a URL
+ * lands in browser history and in every access log on the path.
  *
  * @license GPL-3.0-only
  */
@@ -76,73 +69,6 @@ function postJson(url: string, body: unknown, headers: HeadersInit = {}) {
 }
 
 // ── the enumeration oracle ───────────────────────────────────────────
-
-describe("POST /heartbeat", () => {
-  const handler = () => routeHandler("/heartbeat", "POST");
-
-  it("answers 401, not 200, when the key does not match", async () => {
-    const { ctx } = ctxReturning({ error: "invalid_key" });
-    const res = await handler()(
-      ctx,
-      postJson("https://x.invalid/heartbeat", { deviceId: "d1" }, {
-        "X-ADOS-Key": "wrong",
-      }),
-    );
-    expect(res.status).toBe(401);
-  });
-
-  it("answers an unregistered device identically to a wrong key", async () => {
-    // The whole point. Two different mutation outcomes must be
-    // indistinguishable to the caller, in status AND body, or the route is
-    // a device-id oracle for anyone who can reach it.
-    const notFound = await handler()(
-      ctxReturning({ error: "not_found" }).ctx,
-      postJson("https://x.invalid/heartbeat", { deviceId: "never-seen" }, {
-        "X-ADOS-Key": "whatever",
-      }),
-    );
-    const invalidKey = await handler()(
-      ctxReturning({ error: "invalid_key" }).ctx,
-      postJson("https://x.invalid/heartbeat", { deviceId: "real-device" }, {
-        "X-ADOS-Key": "wrong",
-      }),
-    );
-
-    expect(notFound.status).toBe(invalidKey.status);
-    expect(await notFound.text()).toBe(await invalidKey.text());
-  });
-
-  it("accepts the key from X-ADOS-Key and forwards it to the mutation", async () => {
-    const { ctx, calls } = ctxReturning({ ok: true });
-    const res = await handler()(
-      ctx,
-      postJson("https://x.invalid/heartbeat", { deviceId: "d1" }, {
-        "X-ADOS-Key": "secret-key",
-      }),
-    );
-    expect(res.status).toBe(200);
-    expect(calls).toHaveLength(1);
-    expect(calls[0].args).toMatchObject({
-      deviceId: "d1",
-      apiKey: "secret-key",
-    });
-  });
-
-  it("never reads a credential from the query string", async () => {
-    // A key in a URL is a key in browser history and in every access log
-    // along the path. Supplying one must NOT authenticate the request.
-    const { ctx, calls } = ctxReturning({ error: "invalid_key" });
-    const res = await handler()(
-      ctx,
-      postJson("https://x.invalid/heartbeat?apiKey=secret-key", {
-        deviceId: "d1",
-      }),
-    );
-    // No key anywhere the route accepts one → rejected before the mutation.
-    expect(res.status).toBe(400);
-    expect(calls).toHaveLength(0);
-  });
-});
 
 // ── the device-key routes ────────────────────────────────────────────
 

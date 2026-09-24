@@ -731,13 +731,13 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
   private async bulkOut(data: Uint8Array): Promise<void> {
     // WebUSB transferOut wants a BufferSource backed by ArrayBuffer.
     // Newer lib.dom revisions narrow Uint8Array to ArrayBufferLike (so
-    // SharedArrayBuffer-backed views are excluded); cast through the
-    // standard BufferSource alias.
+    // SharedArrayBuffer-backed views are excluded); every caller passes a
+    // view over a plain ArrayBuffer, so narrow the buffer type.
     const result = await this.runWithRetry(
       "Bulk OUT",
       (timeoutMs) =>
         this.withTimeout(
-          this.device.transferOut(this.epOut, data as unknown as BufferSource),
+          this.device.transferOut(this.epOut, data as Uint8Array<ArrayBuffer>),
           timeoutMs,
           "Bulk OUT",
         ),

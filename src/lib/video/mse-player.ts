@@ -240,8 +240,7 @@ export class MsePlayer {
    * `MediaRecorder` over `videoElement.captureStream()`, with its own
    * chunk array and its own download. It had no caller: the only
    * invocation left was `stop()` calling its own `stopRecording()`.
-   * `video/webrtc/recording` is the one local-capture path, and the
-   * archival path is the agent's fMP4 recorder via `./clip-export`.
+   * `video/webrtc/recording` is the one local-capture path.
    */
 
   stop(): void {

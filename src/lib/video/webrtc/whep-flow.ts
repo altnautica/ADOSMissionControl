@@ -25,7 +25,7 @@ import {
   classifyError,
 } from "../webrtc-helpers";
 import { closePeerConnection, reportHealth } from "./peer-utils";
-import { onPeerConnectionClose } from "../webrtc-client";
+import { onPeerConnectionClose } from "./teardown";
 import { attachSeiTransform } from "./sei-transform";
 import {
   acquireSession,

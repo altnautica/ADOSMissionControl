@@ -3,7 +3,7 @@
 import { useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { Info } from "lucide-react";
@@ -17,11 +17,10 @@ import { useFlightModeParams } from "./use-flight-mode-params";
 import { MODE_PWM_RANGES } from "./flight-mode-constants";
 
 export function FlightModesPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const protocol = useDroneManager(selectSelectedProtocol);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { toast } = useToast();
   const { isArmed, lockMessage } = useArmedLock();
-  const protocol = getSelectedProtocol();
   const firmwareHandler = protocol?.getFirmwareHandler() ?? null;
   const isCopter = firmwareHandler?.vehicleClass === "copter";
 
@@ -90,10 +89,11 @@ export function FlightModesPanel() {
 
   useUnsavedGuard(isDirty);
 
+  // Read on connect and again on a drone switch.
   useEffect(() => {
-    fetchParams();
+    void fetchParams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [protocol]);
 
   if (!protocol) {
     return (

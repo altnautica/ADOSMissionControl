@@ -8,7 +8,7 @@ import type { DroneProtocol } from "@/lib/protocol/types";
 import type { SysStatusData } from "@/lib/types";
 import { useTelemetryStore, computeVioQuality } from "./telemetry-store";
 import { useDroneStore } from "./drone-store";
-import { useDroneManager } from "./drone-manager";
+import { droneSelection } from "./drone-selection";
 import { useNodeRegistryStore } from "./node-registry";
 import { useSettingsStore } from "./settings-store";
 import { useTrailStore } from "./trail-store";
@@ -53,12 +53,11 @@ export function bridgeTelemetry(
    * skipped it), so the gate could pass for a drone the operator had already
    * switched away from — the exact interleave it exists to prevent.
    *
-   * `useDroneManager` is read lazily inside the closure, not at module scope:
-   * `drone-manager` imports this module, so the binding is still in its TDZ
-   * while this module body runs and is only guaranteed populated by callback
-   * time.
+   * The selection is read through the `drone-selection` leaf, which the
+   * manager binds at creation, so this module never imports the manager that
+   * imports it.
    */
-  const isSelected = () => useDroneManager.getState().selectedDroneId === droneId;
+  const isSelected = () => droneSelection().selectedDroneId === droneId;
 
   /** Record a frame to the recorder slot for this drone. Noop if no recording is active. */
   const rec = (channel: string, data: unknown) => recordFrameFor(droneId, channel, data);

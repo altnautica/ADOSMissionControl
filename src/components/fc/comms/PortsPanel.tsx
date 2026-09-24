@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamPanelActions } from "@/hooks/use-param-panel-actions";
@@ -29,8 +29,7 @@ import {
 } from "./ports-constants";
 
 export function PortsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
-  const protocol = getSelectedProtocol();
+  const protocol = useDroneManager(selectSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
   const [needsReboot, setNeedsReboot] = useState(false);

@@ -211,4 +211,18 @@ describe("setParameter write path", () => {
     expect(result.message).toContain("= 0");
     expect(h.subs.size).toBe(0);
   });
+
+  it("accepts the float32 echo of a large value the vehicle stored", async () => {
+    const h = writeCtx();
+    const promise = setParameter(h.ctx, "BRD_SERIAL_NUM", 1234567.89);
+    h.echo("BRD_SERIAL_NUM", Math.fround(1234567.89)); // 1234567.875 on the wire
+    expect((await promise).success).toBe(true);
+  });
+
+  it("rejects a small value the vehicle stored differently", async () => {
+    const h = writeCtx();
+    const promise = setParameter(h.ctx, "ATC_RAT_RLL_I", 0.0002);
+    h.echo("ATC_RAT_RLL_I", 0.0009);
+    expect((await promise).success).toBe(false);
+  });
 });

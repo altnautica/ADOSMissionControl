@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { useDroneManager } from "@/stores/drone-manager";
+import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
@@ -40,7 +40,7 @@ function Card({ icon, title, description, children }: {
 // ── Component ────────────────────────────────────────────────
 
 export function BfMotorsPanel() {
-  const getSelectedProtocol = useDroneManager((s) => s.getSelectedProtocol);
+  const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
   const scrollRef = usePanelScroll("bf-motors");
@@ -52,7 +52,7 @@ export function BfMotorsPanel() {
   } = usePanelParams({ paramNames: PARAM_NAMES, panelId: "bf-motors", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
 
-  const connected = !!getSelectedProtocol();
+  const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const p = (name: string, fallback = "0") => String(params.get(name) ?? fallback);
@@ -68,7 +68,7 @@ export function BfMotorsPanel() {
   const pidDenom = params.get("BF_PID_PROCESS_DENOM") ?? 1;
   // The FC reports its gyro sample rate in MSP_BOARD_INFO (API 1.43+); without
   // it the loop rates are unknown rather than assumed.
-  const gyroRateHz = getSelectedProtocol()?.getVehicleInfo()?.gyroSampleRateHz;
+  const gyroRateHz = selectedProtocol?.getVehicleInfo()?.gyroSampleRateHz;
   const effectivePidRate = gyroRateHz ? gyroRateHz / Math.max(1, pidDenom) : undefined;
 
   const formatRate = (hz: number) => hz >= 1000 ? `${(hz / 1000).toFixed(1)}kHz` : `${Math.round(hz)}Hz`;

@@ -17,7 +17,7 @@ import {
   type VideoTransport,
 } from "@/stores/video-store";
 import { resetLatencyBudget } from "../latency-budget";
-import { closePeerConnection as closePeerConnectionImpl } from "../webrtc-client";
+import { closePeerConnection } from "./teardown";
 import { stopRecording } from "./recording";
 import {
   getMediaRecorder,
@@ -27,7 +27,7 @@ import {
 import { stopStatsPolling } from "./stats-tracker";
 import { detachSeiTransform } from "./sei-transform";
 
-export const closePeerConnection = closePeerConnectionImpl;
+export { closePeerConnection };
 
 /**
  * Everything that has to stop when a receive connection does, in order: the

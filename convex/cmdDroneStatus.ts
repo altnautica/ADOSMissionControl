@@ -216,7 +216,6 @@ export const pushStatusArgs = {
     enrollment: v.optional(v.any()),
     peers: v.optional(v.any()),
     telemetry: v.optional(v.any()),
-    logs: v.optional(v.any()),
     runtimeMode: v.optional(v.string()),
     // Wire-contract identity for the Command-tab node hub. "profile"
     // is "drone" or "ground-station"; "role" is "direct" | "relay" |
@@ -612,6 +611,9 @@ export const pushStatus = internalMutation({
       };
       await ctx.db.patch(drone._id, {
         lastSeen: now,
+        // Every heartbeat carries the running agent's version; the pairing-time
+        // value would otherwise stand for the life of the pairing.
+        agentVersion: args.version,
         fcConnected: args.fcConnected,
         lastIp: args.lastIp,
         mdnsHost: args.mdnsHost,

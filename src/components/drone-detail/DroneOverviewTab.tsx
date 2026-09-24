@@ -15,7 +15,7 @@ const OverviewHud = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full bg-[#0a1428] border border-border-default flex items-center justify-center">
+      <div className="w-full h-full bg-bg-secondary border border-border-default flex items-center justify-center">
         <span className="text-[10px] font-mono text-text-tertiary">Loading HUD...</span>
       </div>
     ),
@@ -27,7 +27,7 @@ const OverviewMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full bg-[#0a0a0a] border border-border-default flex items-center justify-center">
+      <div className="w-full h-full bg-bg-secondary border border-border-default flex items-center justify-center">
         <span className="text-[10px] font-mono text-text-tertiary">Loading Map...</span>
       </div>
     ),

@@ -5,7 +5,7 @@ import { usePaginatedQuery, useMutation } from "convex/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Plus } from "lucide-react";
 import { communityApi } from "@/lib/community-api";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { SilentErrorBoundary } from "@/components/ui/SilentErrorBoundary";

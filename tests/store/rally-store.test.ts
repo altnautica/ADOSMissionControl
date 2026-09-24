@@ -2,13 +2,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 let protocol: Record<string, unknown> | null = null;
 
-vi.mock('@/stores/drone-manager', () => ({
-  useDroneManager: {
-    getState: () => ({
-      selectedDroneId: protocol ? 'd1' : null,
-      drones: new Map(protocol ? [['d1', { protocol }]] : []),
-    }),
-  },
+vi.mock('@/stores/drone-selection', () => ({
+  droneSelection: () => ({
+    selectedDroneId: protocol ? 'd1' : null,
+    drones: new Map(protocol ? [['d1', { protocol }]] : []),
+  }),
+  selectedDroneProtocol: () => protocol,
 }));
 vi.mock('@/lib/storage', () => ({
   indexedDBStorage: {

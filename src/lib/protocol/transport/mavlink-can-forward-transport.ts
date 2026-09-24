@@ -26,6 +26,13 @@ export interface MavlinkCanForwardOptions {
 }
 
 /**
+ * How often CAN_FORWARD is re-sent while open. ArduPilot drops the forwarding
+ * callback once 5 s pass without a MAV_CMD_CAN_FORWARD from the client
+ * (AP_MAVLinkCAN::can_frame_callback), so a single request goes quiet.
+ */
+const CAN_FORWARD_REFRESH_MS = 2000;
+
+/**
  * CAN-over-MAVLink transport backed by a connected `DroneProtocol`.
  */
 export class MavlinkCanForwardTransport implements CanTransport {
@@ -42,6 +49,7 @@ export class MavlinkCanForwardTransport implements CanTransport {
   };
   private unsubFrame: (() => void) | null = null;
   private unsubFdFrame: (() => void) | null = null;
+  private refresh: ReturnType<typeof setInterval> | null = null;
 
   constructor(protocol: DroneProtocol, opts: MavlinkCanForwardOptions = {}) {
     this.protocol = protocol;
@@ -93,6 +101,10 @@ export class MavlinkCanForwardTransport implements CanTransport {
       });
     }
 
+    const enable = this.protocol.enableCanForward.bind(this.protocol);
+    this.refresh = setInterval(() => {
+      void enable(this.bus).catch(() => {});
+    }, CAN_FORWARD_REFRESH_MS);
     this.transition("open");
   }
 
@@ -106,6 +118,8 @@ export class MavlinkCanForwardTransport implements CanTransport {
   async close(): Promise<void> {
     if (this.state === "closed") return;
     this.unsubFrame?.();
+    clearInterval(this.refresh ?? undefined);
+    this.refresh = null;
     this.unsubFrame = null;
     this.unsubFdFrame?.();
     this.unsubFdFrame = null;

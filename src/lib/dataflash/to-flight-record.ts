@@ -438,7 +438,7 @@ function buildFlight(
     frames.push({
       offsetMs: usToOffsetMs(us!, slice.startUs),
       channel: "servoOutput",
-      data: { servo: out, timestamp: us },
+      data: { servos: out, timestamp: us },
     });
   }
 

@@ -27,7 +27,7 @@ import { useTranslations } from "next-intl";
 import { Package, Search } from "lucide-react";
 
 import { api } from "../../../../convex/_generated/api";
-import { useConvexAvailable } from "@/app/ConvexClientProvider";
+import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
 import { isDemoMode, cn } from "@/lib/utils";

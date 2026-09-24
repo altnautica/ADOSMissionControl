@@ -28,6 +28,38 @@ export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2
 }
 
 /**
+ * Longitude difference `toLon - fromLon` in degrees, wrapped into [-180, 180)
+ * so a leg across the antimeridian takes the short way round instead of
+ * sweeping 358 degrees the other way.
+ */
+export function lonDelta(fromLon: number, toLon: number): number {
+  return ((((toLon - fromLon) % 360) + 540) % 360) - 180;
+}
+
+/** A longitude folded back into [-180, 180). */
+export function normalizeLon(lon: number): number {
+  return ((((lon + 180) % 360) + 360) % 360) - 180;
+}
+
+/**
+ * The point a fraction `t` of the way from `a` to `b`, interpolated linearly in
+ * latitude/longitude (adequate for mission legs), with the longitude taking the
+ * short way across the antimeridian and normalised back into [-180, 180).
+ */
+export function interpolateLatLon(
+  aLat: number,
+  aLon: number,
+  bLat: number,
+  bLon: number,
+  t: number,
+): { lat: number; lon: number } {
+  return {
+    lat: aLat + (bLat - aLat) * t,
+    lon: normalizeLon(aLon + lonDelta(aLon, bLon) * t),
+  };
+}
+
+/**
  * Distance in metres from `p` to the segment `a`-`b`, measured in a local
  * equirectangular plane centred on `a`. Accurate for the short legs and fence
  * edges of drone missions (well under 10 km).
@@ -38,9 +70,9 @@ export function pointToSegmentM(
   b: readonly [number, number],
 ): number {
   const cosLat = Math.cos(toRad(a[0]));
-  const bx = (b[1] - a[1]) * cosLat * M_PER_DEG;
+  const bx = lonDelta(a[1], b[1]) * cosLat * M_PER_DEG;
   const by = (b[0] - a[0]) * M_PER_DEG;
-  const px = (p[1] - a[1]) * cosLat * M_PER_DEG;
+  const px = lonDelta(a[1], p[1]) * cosLat * M_PER_DEG;
   const py = (p[0] - a[0]) * M_PER_DEG;
   const len2 = bx * bx + by * by;
   if (len2 === 0) return Math.hypot(px, py);
