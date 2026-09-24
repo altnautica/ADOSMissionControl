@@ -23,6 +23,9 @@ export const GCS_CAPABILITIES = [
   "mcp.expose",
   "event.publish",
   "event.subscribe",
+  "ui.slot.node-agent-page",
+  "ui.slot.node-surface",
+  "cloud.records",
 ] as const;
 
 export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
@@ -172,5 +175,26 @@ export const GCS_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     category: "data_network",
     risk: "low",
     risk_reason: "Read-only on an in-tab message bus.",
+  },
+  "ui.slot.node-agent-page": {
+    label: "Add a page to a node's Agent sidebar",
+    description: "Lets the plugin add a page to the sectioned Agent sidebar of a node's detail panel, next to the built-in companion and configuration pages. The page is scoped to the selected node.",
+    category: "ui_slot",
+    risk: "low",
+    risk_reason: "Scoped to one node's detail panel; the page acts only through the plugin's other capabilities.",
+  },
+  "ui.slot.node-surface": {
+    label: "Add a top-level tab to a node's detail panel",
+    description: "Lets the plugin add a top-level surface to the node detail tab strip for the node profiles it declares (for example a workstation overview). The surface is scoped to the selected node.",
+    category: "ui_slot",
+    risk: "low",
+    risk_reason: "Scoped to one node's detail panel; the surface acts only through the plugin's other capabilities.",
+  },
+  "cloud.records": {
+    label: "Store the plugin's own records in the cloud",
+    description: "Lets the plugin list, read, write and delete records in its own cloud collection for the signed-in operator (for example job history). Records are keyed by plugin, so a plugin can never read another plugin's records. Each record is capped at 64 KiB and each plugin at 5000 records.",
+    category: "data_network",
+    risk: "low",
+    risk_reason: "Confined to the plugin's own namespace for the signed-in operator.",
   },
 };

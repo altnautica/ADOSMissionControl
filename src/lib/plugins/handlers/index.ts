@@ -10,7 +10,8 @@
  *     perception read/subscribe/health (read-only derived detection data),
  *     cockpit marks (post vector marks into the composited draw-layer).
  *   - events: events.subscribe / unsubscribe / publish (in-memory bus).
- *   - cloud: cloud.read (allowlisted public queries).
+ *   - cloud: cloud.read (allowlisted public queries); records.* (the
+ *     plugin's own cloud records, namespace bound to this plugin).
  *   - safety-critical: command.send (including vision.designate) +
  *     mission.write, each gated by operator confirmation, a strict per-drone
  *     target, and a re-check of the vehicle state after the operator answers
@@ -43,6 +44,7 @@ import { buildEventHandlers } from "./events";
 import { buildControlHandlers } from "./control";
 import { buildMarksHandlers } from "./marks";
 import { buildCloudHandlers, type CloudQuery } from "./cloud";
+import { buildRecordsHandlers, type PluginRecordsBackend } from "./records";
 import { asRecord, readString, readRecord } from "./args";
 import { resolvePluginTarget, targetDisplayName } from "./target";
 
@@ -54,6 +56,11 @@ export interface PluginHandlerDeps {
    * returns an error result (never throws).
    */
   cloudQuery?: CloudQuery;
+  /**
+   * Cloud store for the plugin's own `records.*`. When absent every records
+   * call answers `unavailable`.
+   */
+  records?: PluginRecordsBackend;
 }
 
 /** Map an SDK NotificationPayload severity onto a toast status. */
@@ -87,6 +94,7 @@ export function buildPluginHandlers(
   const control = buildControlHandlers(pluginId, target);
   const marks = buildMarksHandlers(pluginId);
   const cloud = buildCloudHandlers(pluginId, deps.cloudQuery);
+  const records = buildRecordsHandlers(pluginId, deps.records);
   // A plugin's recordings live in their own slot fed from the drone's frame
   // stream, so a plugin can never stop (or be stopped by) the operator's
   // flight recording.
@@ -182,6 +190,7 @@ export function buildPluginHandlers(
     ...control,
     ...marks.handlers,
     ...cloud,
+    ...records,
   };
 
   return {

@@ -20,7 +20,7 @@
  *
  * Bundle bytes are fetched separately by the body producer
  * (`use-plugin-contributions`) via `getGcsBundle`; this hook hands back the
- * `agentUrl` / `apiKey` / `entrypoint` it needs to do so.
+ * `agentUrl` / `apiKey` / `entrypoint` / `isolation` it needs to do so.
  *
  * Returns `null` while loading (or when not in local mode), and an array
  * (possibly empty) once the agent has answered.
@@ -41,20 +41,17 @@ import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import type { ArchivePin } from "@/lib/plugins/archive-pin";
 import { parseParameterContributions } from "@/lib/plugins/parameters/parse";
 import { parseTabContributions } from "@/lib/plugins/contributions/parse";
+import { parseNodePageContributions } from "@/lib/plugins/contributions/node-pages";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
-import type { PairedNodeProfile } from "@/lib/plugins/types";
+import type {
+  GcsContributeRow,
+  GcsIsolation,
+  PairedNodeProfile,
+} from "@/lib/plugins/types";
 
 /** One normalized slot contribution, matching the cloud `gcsContributes`
  * row shape so the body + header hooks consume it unchanged. */
-export interface LocalAgentGcsContribution {
-  slot: string;
-  panelId: string;
-  title?: string;
-  icon?: string;
-  order?: number;
-  /** Node profiles a `node.detail.tab` is offered on; absent = any. */
-  profile?: PairedNodeProfile[];
-}
+export type LocalAgentGcsContribution = GcsContributeRow;
 
 /** One normalized flight-skill row, matching the camelCase shape the
  * skill hook reads (manifest `arm_requirement`/`activation.config_key`/
@@ -87,13 +84,20 @@ export interface LocalAgentTargetActionRow {
   defaultKey?: string;
 }
 
-/** Where this install's GCS iframe bundle is fetched from when mounting
+/** Where this install's GCS bundle is fetched from when mounting
  * local-first. `agent` = the LAN-paired drone that unpacked the archive
- * serves it; `archive` = a fleet / GCS-only plugin whose bundle comes from
+ * serves it (an iframe bundle, or an inline module loaded under the node's
+ * attestation); `archive` = a fleet / GCS-only plugin whose bundle comes from
  * the published archive (via the same-origin proxy + client-side extract),
  * with no drone involved. */
 export type LocalAgentBundleSource =
-  | { kind: "agent"; agentUrl: string; apiKey: string; entrypoint: string }
+  | {
+      kind: "agent";
+      agentUrl: string;
+      apiKey: string;
+      entrypoint: string;
+      isolation: GcsIsolation;
+    }
   | { kind: "archive"; archiveUrl: string; entrypoint: string; pin: ArchivePin };
 
 /** Authoritative per-plugin detail for one locally-installed plugin. */
@@ -360,6 +364,7 @@ export function useLocalAgentPlugins(
               }
             }
           }
+          slotEntries.push(...parseNodePageContributions(gcs?.contributes));
           const skills: LocalAgentSkillRow[] = [];
           for (const raw of gcs?.contributes.skills ?? []) {
             const m = mapSkill(raw);
@@ -391,6 +396,7 @@ export function useLocalAgentPlugins(
                   agentUrl,
                   apiKey: apiKeyRef.current,
                   entrypoint,
+                  isolation: gcs?.isolation === "inline" ? "inline" : "iframe",
                 }
               : null,
           };

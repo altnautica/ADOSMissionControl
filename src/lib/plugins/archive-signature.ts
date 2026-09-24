@@ -96,35 +96,68 @@ async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await crypto.subtle.digest("SHA-256", buf));
 }
 
+/** One file's path and lowercase hex sha256, the unit the signature covers. */
+export interface FileDigest {
+  path: string;
+  sha256: string;
+}
+
+const HEX_SHA256 = /^[0-9a-f]{64}$/;
+
+/**
+ * The agent's canonical payload hash over a list of file digests: every entry
+ * but `SIGNATURE`, sorted by path, each contributing `"<path>\n<hex>\n"`.
+ *
+ * Throws on an unsafe path, a duplicate path or a malformed digest, so a
+ * traversal attempt or a doctored list is a refusal rather than a silently
+ * different hash.
+ */
+export async function canonicalHashFromDigests(
+  entries: ReadonlyArray<FileDigest>,
+): Promise<Uint8Array> {
+  const seen = new Set<string>();
+  for (const { path, sha256: digest } of entries) {
+    if (isUnsafeEntryPath(path)) {
+      throw new Error(`unsafe archive entry path: ${path}`);
+    }
+    if (seen.has(path)) throw new Error(`duplicate archive entry path: ${path}`);
+    seen.add(path);
+    if (path !== SIGNATURE_ENTRY && !HEX_SHA256.test(digest)) {
+      throw new Error(`malformed sha256 for ${path}`);
+    }
+  }
+  const parts = entries
+    .filter((e) => e.path !== SIGNATURE_ENTRY)
+    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+    .map((e) => `${e.path}\n${e.sha256}\n`);
+  return sha256(new TextEncoder().encode(parts.join("")));
+}
+
 /**
  * Compute the agent's canonical payload hash over every non-`SIGNATURE` file
  * entry of a loaded archive. Directory entries are skipped, exactly as the
  * agent's `parse_archive_bytes` skips names ending in `/`.
- *
- * Throws on an unsafe entry path so a traversal attempt is a refusal rather
- * than a silently different hash.
  */
 export async function canonicalPayloadHash(zip: JSZip): Promise<Uint8Array> {
-  const paths: string[] = [];
-  zip.forEach((relativePath, entry) => {
-    if (entry.dir) return;
-    paths.push(relativePath);
+  return canonicalHashFromDigests(await archiveDigests(zip));
+}
+
+/** Digest every non-`SIGNATURE` file entry of a loaded archive. */
+async function archiveDigests(zip: JSZip): Promise<FileDigest[]> {
+  const files: JSZip.JSZipObject[] = [];
+  zip.forEach((_path, entry) => {
+    if (!entry.dir) files.push(entry);
   });
-  for (const p of paths) {
-    if (isUnsafeEntryPath(p)) {
-      throw new Error(`unsafe archive entry path: ${p}`);
+  const digests: FileDigest[] = [];
+  for (const entry of files) {
+    if (isUnsafeEntryPath(entry.name)) {
+      throw new Error(`unsafe archive entry path: ${entry.name}`);
     }
-  }
-  paths.sort();
-  const parts: string[] = [];
-  for (const path of paths) {
-    if (path === SIGNATURE_ENTRY) continue;
-    const entry = zip.file(path);
-    if (!entry) continue;
+    if (entry.name === SIGNATURE_ENTRY) continue;
     const bytes = await entry.async("uint8array");
-    parts.push(`${path}\n${toHex(await sha256(bytes))}\n`);
+    digests.push({ path: entry.name, sha256: toHex(await sha256(bytes)) });
   }
-  return sha256(new TextEncoder().encode(parts.join("")));
+  return digests;
 }
 
 /** Parse the two-line `SIGNATURE` body. Returns null when it is malformed. */
@@ -149,6 +182,70 @@ function parseSignatureEntry(
 export type SignerKeyResolver = (
   signerId: string,
 ) => Promise<CryptoKey | null>;
+
+/**
+ * Verify a `SIGNATURE` entry's text against a list of file digests (an
+ * archive's, or an installed plugin's attestation). Resolves `verified` with
+ * the signer id, or `invalid` with a reason; never throws.
+ */
+export async function verifySignatureOverDigests(
+  signatureText: string,
+  entries: ReadonlyArray<FileDigest>,
+  resolveKey: SignerKeyResolver = importEnrolledSignerKey,
+): Promise<ArchiveSignatureResult> {
+  try {
+    const parsed = parseSignatureEntry(signatureText);
+    if (!parsed) {
+      return {
+        state: "invalid",
+        reason: `${SIGNATURE_ENTRY} must hold two non-blank lines (signer id, then base64 signature)`,
+      };
+    }
+    const { signerId, signatureB64 } = parsed;
+    const key = await resolveKey(signerId);
+    if (!key) {
+      return {
+        state: "invalid",
+        reason: `signer "${signerId}" is not an enrolled plugin signing key`,
+      };
+    }
+
+    let signature: Uint8Array;
+    try {
+      signature = base64ToBytes(signatureB64);
+    } catch {
+      return {
+        state: "invalid",
+        reason: `${SIGNATURE_ENTRY} signature is not valid base64`,
+      };
+    }
+    if (signature.byteLength !== 64) {
+      return {
+        state: "invalid",
+        reason: `signature is ${signature.byteLength} bytes; an Ed25519 signature is 64`,
+      };
+    }
+
+    const payload = await canonicalHashFromDigests(entries);
+    const sigBuf = new ArrayBuffer(signature.byteLength);
+    new Uint8Array(sigBuf).set(signature);
+    const payloadBuf = new ArrayBuffer(payload.byteLength);
+    new Uint8Array(payloadBuf).set(payload);
+    const ok = await crypto.subtle.verify({ name: "Ed25519" }, key, sigBuf, payloadBuf);
+    if (!ok) {
+      return {
+        state: "invalid",
+        reason: `archive contents do not match the signature from "${signerId}"`,
+      };
+    }
+    return { state: "verified", verifiedSignerId: signerId };
+  } catch (err) {
+    return {
+      state: "invalid",
+      reason: `signature verification failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
 
 /**
  * Verify a loaded `.adosplug` archive.
@@ -179,63 +276,15 @@ export async function verifyArchiveSignature(
   }
 
   try {
-    const parsed = parseSignatureEntry(await sigEntry.async("string"));
-    if (!parsed) {
+    const text = await sigEntry.async("string");
+    const parsed = parseSignatureEntry(text);
+    if (parsed && claimed && claimed !== parsed.signerId) {
       return {
         state: "invalid",
-        reason: `${SIGNATURE_ENTRY} must hold two non-blank lines (signer id, then base64 signature)`,
+        reason: `manifest declares signer "${claimed}" but the archive is signed by "${parsed.signerId}"`,
       };
     }
-    const { signerId, signatureB64 } = parsed;
-    if (claimed && claimed !== signerId) {
-      return {
-        state: "invalid",
-        reason: `manifest declares signer "${claimed}" but the archive is signed by "${signerId}"`,
-      };
-    }
-
-    const key = await resolveKey(signerId);
-    if (!key) {
-      return {
-        state: "invalid",
-        reason: `signer "${signerId}" is not an enrolled plugin signing key`,
-      };
-    }
-
-    let signature: Uint8Array;
-    try {
-      signature = base64ToBytes(signatureB64);
-    } catch {
-      return {
-        state: "invalid",
-        reason: `${SIGNATURE_ENTRY} signature is not valid base64`,
-      };
-    }
-    if (signature.byteLength !== 64) {
-      return {
-        state: "invalid",
-        reason: `signature is ${signature.byteLength} bytes; an Ed25519 signature is 64`,
-      };
-    }
-
-    const payload = await canonicalPayloadHash(zip);
-    const sigBuf = new ArrayBuffer(signature.byteLength);
-    new Uint8Array(sigBuf).set(signature);
-    const payloadBuf = new ArrayBuffer(payload.byteLength);
-    new Uint8Array(payloadBuf).set(payload);
-    const ok = await crypto.subtle.verify(
-      { name: "Ed25519" },
-      key,
-      sigBuf,
-      payloadBuf,
-    );
-    if (!ok) {
-      return {
-        state: "invalid",
-        reason: `archive contents do not match the signature from "${signerId}"`,
-      };
-    }
-    return { state: "verified", verifiedSignerId: signerId };
+    return verifySignatureOverDigests(text, await archiveDigests(zip), resolveKey);
   } catch (err) {
     return {
       state: "invalid",

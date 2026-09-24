@@ -21,6 +21,7 @@ import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 
 import { useHostThemeVars } from "./host-theme-vars";
+import { liveHandlers, liveValidator, refusalLogger } from "./live-bridge-inputs";
 
 interface PluginIframeHostProps {
   pluginId: string;
@@ -148,71 +149,15 @@ export function PluginIframeHost({
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
-    const proxyHandlers: Record<string, BridgeHandler> = new Proxy(
-      {},
-      {
-        // Own properties only, so an inherited name such as `constructor`
-        // never resolves to an Object.prototype member.
-        get(_t, key: string) {
-          return Object.hasOwn(handlersRef.current, key)
-            ? handlersRef.current[key]
-            : undefined;
-        },
-        has(_t, key: string) {
-          return Object.hasOwn(handlersRef.current, key);
-        },
-        ownKeys() {
-          return Reflect.ownKeys(handlersRef.current);
-        },
-        getOwnPropertyDescriptor(_t, key: string) {
-          return Object.getOwnPropertyDescriptor(handlersRef.current, key);
-        },
-      },
-    ) as Record<string, BridgeHandler>;
-    // Stable wrapper whose fields delegate to `validatorRef.current`.
-    // The bridge captures this object once on construction; the inner
-    // closures pull fresh state on every RPC so token refresh and key
-    // rotation flow through without re-mounting the bridge.
-    const validatorForBridge: BridgeTokenValidatorOptions | undefined =
-      validatorEnabled
-        ? {
-            get expectedAgentId() {
-              return validatorRef.current?.expectedAgentId ?? "";
-            },
-            secretResolver: (kind, subject) => {
-              const v = validatorRef.current;
-              if (!v) {
-                return Promise.reject(
-                  new Error("token validator detached during dispatch"),
-                );
-              }
-              return v.secretResolver(kind, subject);
-            },
-            now: () => {
-              const fn = validatorRef.current?.now;
-              return fn ? fn() : Date.now();
-            },
-            onTokenExpired: () => validatorRef.current?.onTokenExpired?.(),
-          }
-        : undefined;
-    const logged = new Set<string>();
     const bridge = createPluginBridge({
       pluginId,
       // The live getter form lets grant/revoke take effect without
       // re-mounting the bridge.
       grantedCapabilities: () => capsRef.current,
       iframe,
-      handlers: proxyHandlers,
-      onSecurityEvent: (event) => {
-        if (event.code === "origin_mismatch") return;
-        const key = `${event.code}:${event.method ?? ""}`;
-        if (logged.has(key)) return;
-        logged.add(key);
-        console.warn(
-          `Plugin ${pluginId} call refused (${event.code}${event.method ? `, ${event.method}` : ""}): ${event.message}`,
-        );
-      },
-      tokenValidator: validatorForBridge,
+      handlers: liveHandlers(handlersRef),
+      onSecurityEvent: refusalLogger(pluginId),
+      tokenValidator: validatorEnabled ? liveValidator(validatorRef) : undefined,
     });
     return () => bridge.dispose();
   }, [pluginId, validatorEnabled]);

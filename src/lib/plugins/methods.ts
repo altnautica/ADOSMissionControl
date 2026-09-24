@@ -85,6 +85,12 @@ export const PLUGIN_METHOD_RULES: Record<string, MethodRule> = {
   "events.unsubscribe": { capability: null, requireTopic: true },
 
   "cloud.read": { capability: "cloud.read" },
+  // The plugin's own cloud records. The handler binds the plugin id from the
+  // mount, so a grant only ever reaches the caller's own namespace.
+  "records.list": { capability: "cloud.records" },
+  "records.get": { capability: "cloud.records" },
+  "records.put": { capability: "cloud.records" },
+  "records.remove": { capability: "cloud.records" },
 
   // Composited cockpit draw-layer. A plugin that can mount a video overlay
   // posts vector MARKS (boxes/reticles/points/polylines/labels) that the host

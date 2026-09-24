@@ -24,10 +24,8 @@ import { api } from "../../../../convex/_generated/api";
 import { isDemoMode } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
 import { useConvexSkipQueryState } from "@/hooks/use-convex-skip-query";
-import {
-  PluginAgentClient,
-  type PluginAgentManifestDetail,
-} from "@/lib/agent/plugin-client";
+import { PluginAgentClient } from "@/lib/agent/plugin-client";
+import type { PluginAgentManifestDetail } from "@/lib/agent/plugin-client-types";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { useLocalPluginInstallsStore } from "@/stores/local-plugin-installs-store";
 import {

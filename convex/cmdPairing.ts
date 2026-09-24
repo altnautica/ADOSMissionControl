@@ -37,6 +37,7 @@ import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { agentKeyMatches } from "./lib/credentials";
+import { RECORD_PURGE_BATCH, deleteDeviceRecords } from "./pluginRecords";
 import {
   CLAIM_GLOBAL_POLICY,
   CLAIM_POLICY,
@@ -847,6 +848,7 @@ export const wipePairStateForOwnedDevice = mutation({
     removedStatus: number;
     removedCommands: number;
     removedAtlasJobs: number;
+    removedPluginRecords: number;
     removedLogWindows: number;
     truncated: boolean;
   }> => {
@@ -939,8 +941,8 @@ const WIPE_BATCH = 256;
 
 /**
  * Wipe every row keyed to a device: pairing requests, the drone row, its
- * status snapshot, its queued/settled commands, its Atlas jobs and its
- * exported log windows (blobs included).
+ * status snapshot, its queued/settled commands, its Atlas jobs, the plugin
+ * records about it and its exported log windows (blobs included).
  *
  * Used by admin recovery AND by `cmdDrones.unpairDrone`. Unpairing used to
  * delete the `cmd_drones` row alone, which left the status row — last LAN IP,
@@ -961,6 +963,7 @@ export const wipeByDeviceIds = internalMutation({
     let removedStatus = 0;
     let removedCommands = 0;
     let removedAtlasJobs = 0;
+    let removedPluginRecords = 0;
     let removedLogWindows = 0;
     let truncated = false;
     for (const deviceId of deviceIds) {
@@ -1012,6 +1015,12 @@ export const wipeByDeviceIds = internalMutation({
         await ctx.db.delete(j._id);
         removedAtlasJobs++;
       }
+      // Records a plugin kept about this node, under any account: a re-paired
+      // node must not surface its previous operator's plugin history.
+      // Batched smaller than WIPE_BATCH because a record body runs to 64 KiB.
+      const records = await deleteDeviceRecords(ctx, deviceId, RECORD_PURGE_BATCH);
+      if (records.truncated) truncated = true;
+      removedPluginRecords += records.removed;
       // Blob before row, matching the retention sweep: a row pointing at a
       // missing blob is visible; a blob nothing references is storage nobody
       // can find.
@@ -1032,6 +1041,7 @@ export const wipeByDeviceIds = internalMutation({
       removedStatus,
       removedCommands,
       removedAtlasJobs,
+      removedPluginRecords,
       removedLogWindows,
       truncated,
     };

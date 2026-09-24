@@ -43,6 +43,7 @@ import {
 import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
+import { useNodePluginPages } from "@/hooks/use-node-plugin-pages";
 import { useAtlasControl } from "@/hooks/use-atlas-control";
 import { isFcReachable } from "@/lib/agent/mavlink-link";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
@@ -148,6 +149,9 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // The list the plugin header strip renders; resolved here too so the strip's
   // keyboard navigation spans plugin tabs and a dead plugin tab falls back.
   const nodeDetailTabContributions = useDronePluginContributions(bareDeviceId, drone?.profile);
+  // Plugin Agent-sidebar pages and top-level surfaces for this node's profile,
+  // from the same install rows as the tab headers above.
+  const pluginPages = useNodePluginPages(bareDeviceId, drone?.profile);
 
   // Select this drone in drone-manager so getSelectedProtocol() returns the
   // right protocol.
@@ -186,8 +190,9 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
     showLockedTabs: !showAgentTabs,
     isFeatureEnabled: (featureId: string) => (nodeFeatureIds ?? []).includes(featureId),
     atlasCapturing,
+    pluginAgentPages: pluginPages.agentPages,
   };
-  const surfaces = resolveSurfaces(ctx);
+  const surfaces = resolveSurfaces(ctx, pluginPages.surfaces);
   const pluginIds = pluginTabIds(nodeDetailTabContributions);
   const { agentSubpage, requestedTab, resolved, visibleTab } = resolveNodeTab(
     activeTab,

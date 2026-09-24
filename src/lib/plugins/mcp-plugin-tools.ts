@@ -18,7 +18,8 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { isDemoMode } from "@/lib/utils";
-import { PluginAgentClient, type PluginAgentManifestDetail } from "@/lib/agent/plugin-client";
+import { PluginAgentClient } from "@/lib/agent/plugin-client";
+import type { PluginAgentManifestDetail } from "@/lib/agent/plugin-client-types";
 import { isEnrolledFirstPartySigner } from "@/lib/plugins/signing-keys";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import {

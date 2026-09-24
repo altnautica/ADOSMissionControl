@@ -30,6 +30,8 @@ const TAB_SLOTS: ReadonlySet<string> = new Set([
   "fc.tab",
   "hardware.tab",
   "settings.section",
+  "node.agent.page",
+  "node.surface",
 ]);
 const OVERLAY_SLOTS: ReadonlySet<string> = new Set([
   "video.overlay",

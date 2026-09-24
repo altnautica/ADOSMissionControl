@@ -26,10 +26,13 @@ import {
   halfValidator,
   eventTypeValidator,
   severityValidator,
+  gcsContributesValidator,
+  gcsIsolationValidator,
   gcsParametersValidator,
   flightSkillsValidator,
   targetActionsValidator,
 } from "./cmdPluginsValidators";
+import { purgeRecordsForRemovedInstall } from "./pluginRecords";
 
 // ──────────────────────────────────────────────────────────────
 // Queries
@@ -195,6 +198,7 @@ export const listForDeviceWithDetail = query({
         name: install.name,
         grantedCaps,
         gcsContributes: install.gcsContributes ?? [],
+        gcsIsolation: install.gcsIsolation ?? "iframe",
         gcsParameters: install.gcsParameters ?? [],
         bundleUrl,
       });
@@ -313,14 +317,17 @@ export const recordBundleOwner = internalMutation({
 
 /**
  * Delete an install and everything that hangs off it: permission rows, the
- * event log, and the stored GCS bundle with its ownership row. `keepBundle`
- * names a bundle the replacing install still references (a retried record of
- * the same upload), which is left in place.
+ * event log, the stored GCS bundle with its ownership row, and (unless the
+ * install is being replaced in place) the plugin records it leaves behind.
+ * `keepBundle` names a bundle the replacing install still references (a
+ * retried record of the same upload), which is left in place. A replacement
+ * passes `keepRecords` so re-installing or upgrading keeps the plugin's
+ * history.
  */
 export async function deleteInstallTree(
-  ctx: Pick<MutationCtx, "db" | "storage">,
+  ctx: Pick<MutationCtx, "db" | "storage" | "scheduler">,
   install: Doc<"cmd_pluginInstalls">,
-  keepBundle?: Id<"_storage">,
+  opts: { keepBundle?: Id<"_storage">; keepRecords?: boolean } = {},
 ): Promise<void> {
   const perms = await ctx.db
     .query("cmd_pluginPermissions")
@@ -333,7 +340,7 @@ export async function deleteInstallTree(
     .collect();
   for (const e of events) await ctx.db.delete(e._id);
   const storageId = install.bundleStorageId;
-  if (storageId && storageId !== keepBundle) {
+  if (storageId && storageId !== opts.keepBundle) {
     const owner = await ctx.db
       .query("cmd_pluginBundles")
       .withIndex("by_storageId", (q) => q.eq("storageId", storageId))
@@ -341,6 +348,7 @@ export async function deleteInstallTree(
     if (owner) await ctx.db.delete(owner._id);
     await ctx.storage.delete(storageId);
   }
+  if (!opts.keepRecords) await purgeRecordsForRemovedInstall(ctx, install);
   await ctx.db.delete(install._id);
 }
 
@@ -368,26 +376,8 @@ export const recordInstall = mutation({
       }),
     ),
     bundleStorageId: v.optional(v.id("_storage")),
-    gcsContributes: v.optional(
-      v.array(
-        v.object({
-          slot: v.string(),
-          panelId: v.string(),
-          title: v.optional(v.string()),
-          icon: v.optional(v.string()),
-          order: v.optional(v.number()),
-          profile: v.optional(
-            v.array(
-              v.union(
-                v.literal("drone"),
-                v.literal("ground-station"),
-                v.literal("workstation"),
-              ),
-            ),
-          ),
-        }),
-      ),
-    ),
+    gcsContributes: v.optional(gcsContributesValidator),
+    gcsIsolation: v.optional(gcsIsolationValidator),
     // The install dialog sends these on EVERY install (see the GCS's
     // finalize-gcs-install). A Convex args validator rejects the whole call on
     // an undeclared arg, so a deployment that omits them does not lose the
@@ -425,7 +415,9 @@ export const recordInstall = mutation({
         q.eq("userId", userId).eq("droneId", args.droneId).eq("pluginId", args.pluginId),
       )
       .first();
-    if (existing) await deleteInstallTree(ctx, existing, bundleStorageId);
+    if (existing) {
+      await deleteInstallTree(ctx, existing, { keepBundle: bundleStorageId, keepRecords: true });
+    }
 
     const installedAt = Date.now();
     const installId: Id<"cmd_pluginInstalls"> = await ctx.db.insert(
@@ -443,6 +435,7 @@ export const recordInstall = mutation({
         status: "installed" as const,
         bundleStorageId: args.bundleStorageId,
         gcsContributes: args.gcsContributes,
+        gcsIsolation: args.gcsIsolation,
         gcsParameters: args.gcsParameters,
         flightSkills: args.flightSkills,
         targetActions: args.targetActions,

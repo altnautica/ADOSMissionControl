@@ -26,6 +26,7 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     showLockedTabs: true,
     isFeatureEnabled: () => false,
     atlasCapturing: false,
+    pluginAgentPages: [],
     ...over,
   };
 }
@@ -49,6 +50,7 @@ describe("Agent page hosts the companion surfaces", () => {
           showLockedTabs: false,
           agentDeviceId: "dev-1",
         }),
+        [],
       ).map((s) => s.id);
       expect(ids).toContain("agent");
     }
@@ -57,6 +59,7 @@ describe("Agent page hosts the companion surfaces", () => {
   it("no longer surfaces the moved companion tabs at the top level", () => {
     const ids = resolveSurfaces(
       ctx({ agentDeviceId: "dev-1", showLockedTabs: false, radioPresent: "present" }),
+      [],
     ).map((s) => s.id);
     for (const moved of [
       "system",
@@ -83,7 +86,7 @@ describe("Configuration pages in the merged Agent sidebar", () => {
       readOnly: false,
       setValue: async () => {},
     };
-    return resolveAgentNav(c, settingsCtx)
+    return resolveAgentNav(c, settingsCtx, [])
       .entries.filter((e) => e.isConfigPage)
       .map((e) => e.id);
   };
@@ -133,6 +136,6 @@ describe("Configuration pages in the merged Agent sidebar", () => {
     // page returned the pair-a-computer showcase instead, so the one page that
     // needs no companion was the one the empty state hid. It is top level now.
     const c = ctx({ agentDeviceId: null, showLockedTabs: true });
-    expect(resolveSurfaces(c).map((s) => s.id)).toContain("logs");
+    expect(resolveSurfaces(c, []).map((s) => s.id)).toContain("logs");
   });
 });

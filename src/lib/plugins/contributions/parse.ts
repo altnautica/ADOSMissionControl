@@ -54,11 +54,12 @@ const NODE_PROFILES: ReadonlySet<string> = new Set([
   "drone",
   "ground-station",
   "workstation",
+  "compute",
 ]);
 
 /** Parse a `profile:` list into the recognized node-profile values, dropping
  * unknown and duplicate entries. Returns undefined when none remain. */
-function readProfileList(v: unknown): PairedNodeProfile[] | undefined {
+export function readProfileList(v: unknown): PairedNodeProfile[] | undefined {
   if (!Array.isArray(v)) return undefined;
   const out: PairedNodeProfile[] = [];
   for (const item of v) {

@@ -54,6 +54,7 @@ vi.mock("@/hooks/use-plugin-contributions", () => ({
 }));
 vi.mock("@/hooks/use-drone-plugin-contributions", () => ({
   useDronePluginContributions: () => [],
+  useLiveInstallRows: () => null,
 }));
 vi.mock("@/hooks/use-fleet-nodes", () => ({ useFleetNodes: () => [] }));
 vi.mock("@/hooks/use-atlas-control", () => ({ useAtlasControl: () => ({}) }));

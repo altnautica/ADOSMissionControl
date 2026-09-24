@@ -34,6 +34,7 @@ import {
   videoStreamsField,
 } from "./lib/heartbeatFields";
 import { resolveAtlasJobPost } from "./lib/atlasJobsIngest";
+import { resolvePluginRecordPost } from "./lib/pluginRecordsIngest";
 
 
 const http = httpRouter();
@@ -523,6 +524,45 @@ http.route({
     );
     if (job instanceof Response) return job;
     await ctx.runMutation(internal.cmdAtlasJobs.upsertJob, job);
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }),
+});
+
+// ── Cloud Relay: a plugin's agent half files a plugin-owned record ─────
+//
+// The node forwards a record its plugin wrote through the `cloud.records`
+// host method. Poster auth, subject ownership and field bounds live in
+// lib/pluginRecordsIngest; the plugin's install grant on the posting node and
+// the per-plugin record cap are checked in the write transaction.
+
+http.route({
+  path: "/agent/plugin-records",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await readJsonObject(request);
+    if (body instanceof Response) return body;
+    const post = await resolvePluginRecordPost(
+      body,
+      request.headers.get("X-ADOS-Key") ?? undefined,
+      (deviceId) => ctx.runQuery(internal.cmdDrones.getDroneByDeviceId, { deviceId }),
+    );
+    if (post instanceof Response) return post;
+    const outcome = await ctx.runMutation(internal.pluginRecords.ingestFromAgent, post);
+    if (outcome === "not_permitted") {
+      return new Response(
+        JSON.stringify({ error: "plugin has no enabled install with cloud.records on this node" }),
+        { status: 403, headers: jsonHeaders },
+      );
+    }
+    if (outcome === "limit_reached") {
+      return new Response(JSON.stringify({ error: "plugin record limit reached" }), {
+        status: 409,
+        headers: jsonHeaders,
+      });
+    }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: jsonHeaders,

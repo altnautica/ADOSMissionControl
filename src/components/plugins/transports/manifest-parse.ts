@@ -172,6 +172,10 @@ export function parseManifestYaml(text: string): ParsedManifest {
     homepageUrl: str(root.homepage) ?? str(root.repository),
     halves,
     permissions,
+    gcsEntrypoint: str(gcs?.entrypoint),
+    // A GCS half defaults to the sandboxed iframe; only an exact `inline`
+    // declaration asks for the trusted in-page module.
+    gcsIsolation: gcs ? (gcs.isolation === "inline" ? "inline" : "iframe") : undefined,
     descriptionLong: str(root.description_long),
     features: stringArray(root.features),
     hardwareRequirements: parseHardwareRequirements(root.hardware_requirements),

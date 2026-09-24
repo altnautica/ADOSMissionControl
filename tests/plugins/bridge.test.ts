@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-import {
-  createPluginBridge,
-  validateEnvelope,
-  type BridgeError,
-} from "@/lib/plugins/bridge";
+import { createPluginBridge, type BridgeError } from "@/lib/plugins/bridge";
+import { validateEnvelope } from "@/lib/plugins/envelope-dispatcher";
 import {
   isKnownMethod,
   resolveRequiredCapability,

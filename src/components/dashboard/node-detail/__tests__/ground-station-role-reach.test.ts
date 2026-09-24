@@ -39,18 +39,19 @@ function gs(role: AgentRole): SurfaceContext {
     showLockedTabs: false,
     isFeatureEnabled: () => false,
     atlasCapturing: false,
+    pluginAgentPages: [],
   };
 }
 
 describe("a ground station can always reach its role picker", () => {
   it("offers the Mesh & RX surface at every role, including direct and unset", () => {
     for (const role of ["direct", "unset", "relay", "receiver", null] as const) {
-      expect(resolveSurfaces(gs(role)).map((s) => s.id)).toContain("mesh");
+      expect(resolveSurfaces(gs(role), []).map((s) => s.id)).toContain("mesh");
     }
   });
 
   it("has exactly one mesh surface — Distributed RX is folded into it", () => {
-    const ids = resolveSurfaces(gs("relay")).map((s) => s.id);
+    const ids = resolveSurfaces(gs("relay"), []).map((s) => s.id);
     expect(ids.filter((id) => id === "mesh")).toHaveLength(1);
     expect(ids).not.toContain("distributedRx");
   });

@@ -114,7 +114,7 @@ export function NodeTabStrip({
                     : "text-text-secondary hover:text-text-primary border-transparent",
                 )}
               >
-                {tRoot(surface.labelKey)}
+                {surface.label ?? tRoot(surface.labelKey)}
               </button>
             );
           })}

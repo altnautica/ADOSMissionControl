@@ -11,7 +11,12 @@
  * @license GPL-3.0-only
  */
 
-import type { PluginHalf, PairedNodeProfile } from "@/lib/plugins/types";
+import type {
+  GcsContributeRow,
+  GcsIsolation,
+  PluginHalf,
+  PairedNodeProfile,
+} from "@/lib/plugins/types";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 import type { ParsedToolContribution } from "@/lib/plugins/contributions/parse";
 import type { PluginSignatureState } from "@/lib/plugins/archive-signature";
@@ -27,6 +32,11 @@ export interface InstallManifestSummary {
   author?: string;
   license?: string;
   halves: ReadonlyArray<PluginHalf>;
+  /** `gcs.entrypoint`: the archive path of the GCS half's module. */
+  gcsEntrypoint?: string;
+  /** How the GCS half mounts (iframe by default, or a trusted inline
+   * module). Undefined when the plugin has no GCS half. */
+  gcsIsolation?: GcsIsolation;
   /**
    * The signer id the archive's Ed25519 signature verified under. Present ONLY
    * when `signatureState === "verified"` — a `signer_id` declared inside the
@@ -171,19 +181,13 @@ export interface InstallManifestSummary {
     configValue?: boolean;
     defaultKey?: string;
   }>;
-  /** Slot contributions (panels / overlays / notifications) the GCS half
-   * mounts as sandboxed iframes. Threaded straight into `recordInstall`'s
-   * `gcsContributes` arg so the live contribution producer
-   * (`use-plugin-contributions`) can mount the plugin's iframes once the
+  /** Slot contributions (panels / overlays / notifications / agent pages /
+   * node surfaces) the GCS half mounts. Threaded straight into
+   * `recordInstall`'s `gcsContributes` arg so the live contribution producer
+   * (`use-plugin-contributions`) can mount the plugin's surfaces once the
    * install row lands. Each slot is validated against the canonical
    * `PLUGIN_SLOTS` at parse time, so bogus slots never reach here. */
-  contributesSlots?: ReadonlyArray<{
-    slot: string;
-    panelId: string;
-    title?: string;
-    icon?: string;
-    order?: number;
-  }>;
+  contributesSlots?: ReadonlyArray<GcsContributeRow>;
   /** Node-detail tab contributions (`gcs.contributes.tabs[]`), each
    * optionally narrowed to a node-profile set. Threaded into the install
    * record so a `node.detail.tab` contribution can be profile-filtered to

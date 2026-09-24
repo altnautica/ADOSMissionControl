@@ -25,13 +25,21 @@ export type WsAuthScope =
   | "gs.uplink_events"
   | "gs.mesh_events"
   | "vision.detections"
-  | `plugins.install_job:${string}`;
+  | `plugins.install_job:${string}`
+  | `plugins.http:${string}`;
 
 /** The ticket scope for one plugin install job's progress stream. The
  *  agent binds the ticket to the job, so it opens that job's stream and
  *  no other. */
 export function installJobTicketScope(jobId: string): WsAuthScope {
   return `plugins.install_job:${jobId}`;
+}
+
+/** The ticket scope for a WebSocket to one plugin's own HTTP server through
+ *  the agent passthrough (`/api/plugins/{id}/x/*`). Bound to the plugin id,
+ *  so a ticket opens that plugin's sockets and no other's. */
+export function pluginHttpTicketScope(pluginId: string): WsAuthScope {
+  return `plugins.http:${pluginId}`;
 }
 
 interface TicketMintResponse {

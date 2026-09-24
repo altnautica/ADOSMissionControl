@@ -1291,6 +1291,10 @@
       "software": "Software",
       "node": "Node"
     },
+    "pluginPage": "Extension page",
+    "pluginSurface": {
+      "unavailable": "This extension page is not loaded on this node yet."
+    },
     "agentShowcase": {
       "title": "Add an onboard computer",
       "subtitle": "The ADOS Drone Agent runs on a companion computer beside your flight controller. Pair one to unlock live video, AI perception, autonomy, and fleet connectivity.",
@@ -4922,6 +4926,12 @@
     "crashBannerTitle": "Extension crashed",
     "crashBannerMessage": "{name} crashed. View logs.",
     "slotDroppedToast": "{name} cannot render in {slot} (missing permission)",
+    "inlineLoading": "Loading {name}…",
+    "inlineLoadFailed": "{name} could not load: {reason}",
+    "inlineMountFailed": "{name} failed to start: {reason}",
+    "inlineNeedsNode": "Install this extension on a node to load it here",
+    "inlineRetry": "Retry",
+    "inlineCrashed": "This extension stopped responding.",
     "settingsSectionHeading": "Extensions",
     "hardwarePanelsHeading": "Extensions",
     "missionTemplatesHeading": "Extension templates",
@@ -5179,7 +5189,9 @@
           "settings": "Settings",
           "mapOverlay": "Map overlay",
           "missionTemplate": "Mission template",
-          "skill": "Skill"
+          "skill": "Skill",
+          "agentPage": "Agent page",
+          "nodeSurface": "Node tab"
         }
       },
       "permissionsAnchor": "{count} permissions",

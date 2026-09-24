@@ -54,6 +54,13 @@ export function resolveLanAgentUrl(deviceId: string): string | null {
   ) {
     return null;
   }
+  return resolvePairedAgentUrl(deviceId);
+}
+
+/** The paired node's own agent URL from its pairing record, whatever the page
+ * origin. A caller on an HTTPS page must reach it through a same-origin proxy
+ * (`/api/lan-pair/*`), never directly. */
+export function resolvePairedAgentUrl(deviceId: string): string | null {
   // local-nodes-store wins because it's the truth source for LAN-only
   // pairings (no Convex round-trip required) and stores ipv4 alongside
   // mdnsHost so non-mDNS browsers still resolve.

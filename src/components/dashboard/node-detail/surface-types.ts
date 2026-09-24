@@ -17,7 +17,7 @@ import type {
 import type { FirmwareType } from "@/lib/protocol/types/enums";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 
-export type NodeProfile = "drone" | "ground-station" | "workstation";
+export type NodeProfile = "drone" | "ground-station" | "workstation" | "compute";
 
 /** Everything a surface's `when` / `render` may need, derived once per
  * render from the selected node + the focused agent's capabilities. */
@@ -79,6 +79,9 @@ export interface SurfaceContext {
    * Live World surface so it shows only while capturing — one drone tab when
    * idle, two while capturing. */
   atlasCapturing: boolean;
+  /** Agent-sidebar pages installed plugins contribute to THIS node, already
+   * narrowed to its profile. The Agent page places them into its sections. */
+  pluginAgentPages: ReadonlyArray<AgentNavContribution>;
 }
 
 /**
@@ -105,6 +108,9 @@ export interface SurfaceSpec {
   /** Full i18n path resolved by the panel via a namespace-less
    * useTranslations(), so a surface can reuse any existing key. */
   labelKey: string;
+  /** A literal label that wins over `labelKey`: a plugin surface carries the
+   * title its manifest declares, which is not an i18n key. */
+  label?: string;
   /** Full i18n path for the section this surface belongs to. The panel groups
    * consecutive surfaces that share a `group` under one section header for the
    * two-tier tab layout. Absent = ungrouped (rendered with no section label).
@@ -115,4 +121,43 @@ export interface SurfaceSpec {
   when?: (ctx: SurfaceContext) => boolean;
   /** Body renderer. Returns an existing surface component. */
   render: (ctx: SurfaceContext) => ReactNode;
+}
+
+/** One Agent-sidebar page a plugin contributes to a node. */
+export interface AgentNavContribution {
+  /** Sidebar id, unique across built-ins and plugins (see `pluginPageId`). */
+  id: string;
+  pluginId: string;
+  installId: string;
+  /** The page id within the plugin (`agent_pages[].id`). */
+  panelId: string;
+  /** The manifest title, rendered verbatim. */
+  label: string;
+  icon: ReactNode;
+  /** `NAV_SECTIONS` key; an unknown key lands in the Software section. */
+  section: string;
+  /** A built-in sub-page id, or another page of the same plugin, this page
+   * sits directly below. Ignored when that page is not in the same section. */
+  after?: string;
+  order: number;
+  /** Another page of the same plugin this page is the Setup segment of. */
+  setupFor?: string;
+  render: (ctx: SurfaceContext) => ReactNode;
+}
+
+/** One top-level node-detail surface a plugin contributes. */
+export interface ProfileSurfaceContribution {
+  spec: SurfaceSpec & { label: string };
+  /** Node profiles the surface is offered on. */
+  profile: ReadonlyArray<NodeProfile>;
+  /** The tab-strip band (an i18n group key) the surface joins; absent = it
+   * sits just before the Agent surface. */
+  group?: string;
+  order: number;
+}
+
+/** Stable sidebar / tab id for a plugin page: keyed by plugin id rather than
+ * install id so the remembered page survives a reinstall. */
+export function pluginPageId(pluginId: string, panelId: string): string {
+  return `x:${pluginId}/${panelId}`;
 }

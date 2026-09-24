@@ -7,6 +7,10 @@ import type { GcsCapability } from "./capabilities";
 
 export type PluginHalf = "agent" | "gcs";
 
+/** How a plugin's GCS half runs: a sandboxed iframe (every plugin by default)
+ * or a trusted inline module (first-party signers only). */
+export type GcsIsolation = "iframe" | "inline";
+
 export type PluginInstallStatus =
   | "installed"
   | "enabled"
@@ -29,10 +33,12 @@ export type PluginSource =
 /**
  * The well-known UI slots a plugin can mount into.
  * `node.detail.tab` is the per-node tab a plugin mounts on any node
- * profile (drone / ground-station / compute); `cockpit.panel` is the
- * in-`/fly` quick-settings surface; `flight.skill` is the cockpit Skill
- * Bar contribution. The first set is fleet-scoped; `node.detail.tab`,
- * `cockpit.panel`, and `flight.skill` are per-drone scoped.
+ * profile (drone / ground-station / workstation / compute); `cockpit.panel` is
+ * the in-`/fly` quick-settings surface; `flight.skill` is the cockpit Skill
+ * Bar contribution; `node.agent.page` is a page in a node's Agent sidebar and
+ * `node.surface` a top-level node-detail surface for the profiles it declares.
+ * The first set is fleet-scoped; the `node.*`, `cockpit.panel` and
+ * `flight.skill` slots are per-drone scoped.
  *
  * Each slot id maps 1-to-1 to a `ui.slot.<kebab-id>` capability string
  * via `slotToCapability()` below.
@@ -48,6 +54,8 @@ export const PLUGIN_SLOTS = [
   "node.detail.tab",
   "cockpit.panel",
   "flight.skill",
+  "node.agent.page",
+  "node.surface",
 ] as const;
 
 export type PluginSlotName = (typeof PLUGIN_SLOTS)[number];
@@ -69,7 +77,33 @@ export const PER_DRONE_SLOTS: ReadonlyArray<PluginSlotName> = [
   "node.detail.tab",
   "cockpit.panel",
   "flight.skill",
+  "node.agent.page",
+  "node.surface",
 ] as const;
+
+const PROFILE_NARROWED_SLOTS: Partial<Record<string, true>> = {
+  "node.detail.tab": true,
+  "node.agent.page": true,
+  "node.surface": true,
+};
+
+/**
+ * Whether a contribution at `slot` mounts on a node of `nodeProfile`, given
+ * the manifest's `profile` list. Only the per-node page slots are narrowed;
+ * an absent/empty list means any profile, and an unknown node profile (the
+ * fleet row has not resolved yet) keeps the contribution rather than hiding
+ * it on a transient gap.
+ */
+export function slotOffersOnProfile(
+  slot: string,
+  profile: ReadonlyArray<PairedNodeProfile> | undefined,
+  nodeProfile: PairedNodeProfile | undefined,
+): boolean {
+  if (!PROFILE_NARROWED_SLOTS[slot]) return true;
+  if (!profile || profile.length === 0) return true;
+  if (!nodeProfile) return true;
+  return profile.includes(nodeProfile);
+}
 
 /** Convert a slot id ("fc.tab") to its capability string ("ui.slot.fc-tab"). */
 export function slotToCapability(slot: PluginSlotName): string {
@@ -136,17 +170,54 @@ export interface PluginInstallSummary {
   halves: PluginHalf[];
 }
 
-/** Node profiles a plugin agent half can target. Mirrors the Pydantic
- * `Literal["drone", "ground-station", "workstation"]` on the agent side.
- * Older manifests that omit `agent.target_profiles` default to `["drone"]`
- * during agent-side parsing, so a missing field on the GCS-side wire
- * shape is also treated as drone-only. */
-export type PluginTargetProfile = "drone" | "ground-station" | "workstation";
+/** Node profiles a plugin agent half can target. Mirrors the agent-side
+ * `target_profiles` vocabulary. Older manifests that omit
+ * `agent.target_profiles` default to `["drone"]` during agent-side parsing,
+ * so a missing field on the GCS-side wire shape is also treated as
+ * drone-only. */
+export type PluginTargetProfile =
+  | "drone"
+  | "ground-station"
+  | "workstation"
+  | "compute";
 
 /** The resolved profile of a paired node. One vocabulary with
  * {@link PluginTargetProfile} across the stack — a node runs one of these
  * profiles and a plugin declares which of them it targets. */
 export type PairedNodeProfile = PluginTargetProfile;
+
+/** The tab-strip band a plugin `node.surface` joins. */
+export const NODE_SURFACE_GROUPS = [
+  "status",
+  "vehicle",
+  "link",
+  "device",
+  "compute",
+] as const;
+
+export type NodeSurfaceGroup = (typeof NODE_SURFACE_GROUPS)[number];
+
+/**
+ * One normalized `gcsContributes` row: the shape both install sources (the
+ * Convex install row and the local agent detail) project a manifest's slot
+ * contributions into, and every per-node reader consumes.
+ *
+ * `section` / `after` / `setupFor` place a `node.agent.page` in the Agent
+ * sidebar; `group` places a `node.surface` in the tab strip; `profile` narrows
+ * any per-node page slot to the node profiles it names.
+ */
+export interface GcsContributeRow {
+  slot: string;
+  panelId: string;
+  title?: string;
+  icon?: string;
+  order?: number;
+  profile?: PairedNodeProfile[];
+  section?: string;
+  after?: string;
+  group?: NodeSurfaceGroup;
+  setupFor?: string;
+}
 
 /**
  * Return true when a plugin advertising `targetProfiles` is compatible

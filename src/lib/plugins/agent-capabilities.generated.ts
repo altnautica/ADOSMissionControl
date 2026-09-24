@@ -359,4 +359,32 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "medium",
     risk_reason: "Publishes a callable interface to an AI client; the effect of any call is still bounded by the plugin's other capabilities and the MCP token's scope.",
   },
+  "hardware.gpu": {
+    label: "Use the GPU or neural accelerator",
+    description: "Lets the plugin open the host's GPU and neural-accelerator device nodes (DRM render nodes, Mali, RKNPU, NVIDIA) for inference or rendering. Without it the plugin runs in a private /dev with no accelerator.",
+    category: "hardware",
+    risk: "medium",
+    risk_reason: "Direct device access to a shared accelerator; a runaway workload can starve the vision engine. Enforced by the generated unit's cgroup device policy (DeviceAllow for the accelerator nodes plus the video and render groups).",
+  },
+  "network.listen": {
+    label: "Accept inbound network connections",
+    description: "Lets a declared plugin service bind the TCP ports it lists in its manifest (listen_ports) so other nodes on the network can reach it. Every other port stays closed to the plugin, and the plugin's main process never listens.",
+    category: "data_network",
+    risk: "high",
+    risk_reason: "Opens a network entry point into a plugin process on the agent host. Enforced by the generated unit: every plugin unit carries SocketBindDeny=any, and only a granted service unit gets SocketBindAllow for its declared ports.",
+  },
+  "cloud.publish": {
+    label: "Publish data to the cloud relay",
+    description: "Lets the plugin publish small messages (at most 64 KiB each) on its own cloud stream through the agent's cloud relay, so a signed-in operator can receive them off the local network. Publishing detections onto the shared detection topic additionally needs vision.detection.publish.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "Sends plugin data off the aircraft to the cloud under the device's identity.",
+  },
+  "cloud.records": {
+    label: "Store records in the operator's cloud account",
+    description: "Lets the plugin write small JSON records (at most 64 KiB each) into its own collection in the operator's cloud account, where the plugin's GCS half can read them back.",
+    category: "data_network",
+    risk: "medium",
+    risk_reason: "Persists plugin data off the aircraft under the device's identity; confined to the plugin's own namespace.",
+  },
 };

@@ -15,7 +15,12 @@ import type {
   ParsedTabContribution,
   ParsedToolContribution,
 } from "@/lib/plugins/contributions/parse";
-import type { PluginHalf, PluginSlotName } from "@/lib/plugins/types";
+import type {
+  GcsContributeRow,
+  GcsIsolation,
+  PluginHalf,
+  PluginSlotName,
+} from "@/lib/plugins/types";
 
 export interface ParsedHardwareRequirements {
   cameras?: string;
@@ -108,23 +113,16 @@ export interface ParsedTargetActionContribution {
 }
 
 /**
- * One slot-bearing `gcs.contributes` entry (a panel, overlay, or
- * notification channel). The host mounts a sandboxed iframe for the
- * plugin's `panelId` into `slot`. Shape matches the `recordInstall`
- * `gcsContributes` arg and the contribution producer's row field.
+ * One slot-bearing `gcs.contributes` entry (a panel, overlay, notification
+ * channel, Agent-sidebar page or node surface). The host mounts the plugin's
+ * `panelId` into `slot`. Shape matches the `recordInstall` `gcsContributes`
+ * arg and the contribution producer's row field; the placement fields are
+ * set only for the node page slots.
  */
-export interface ParsedSlotContribution {
-  /** A validated, host-known UI slot the iframe mounts into. */
+export type ParsedSlotContribution = GcsContributeRow & {
+  /** A validated, host-known UI slot the contribution mounts into. */
   slot: PluginSlotName;
-  /** Stable id within the plugin (`gcs.contributes.*[].id`). */
-  panelId: string;
-  /** Display title for the tab/overlay header. */
-  title?: string;
-  /** lucide-react icon hint. */
-  icon?: string;
-  /** Sort hint; the host defaults to 60 when absent. */
-  order?: number;
-}
+};
 
 export interface ParsedManifest {
   pluginId: string;
@@ -148,6 +146,11 @@ export interface ParsedManifest {
      * leave this undefined. */
     half?: PluginHalf;
   }>;
+  /** `gcs.entrypoint`: the archive path of the GCS half's module. */
+  gcsEntrypoint?: string;
+  /** How the GCS half mounts: a sandboxed iframe (the default) or a trusted
+   * in-page module. Undefined when the plugin has no GCS half. */
+  gcsIsolation?: GcsIsolation;
   /** Long-form description from a YAML block literal. Renders as a
    * paragraph in the install-modal summary. */
   descriptionLong?: string;

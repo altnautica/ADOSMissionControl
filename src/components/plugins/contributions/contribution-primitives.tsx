@@ -33,6 +33,8 @@ export const SLOT_KIND_KEY: Record<string, string> = {
   "map.overlay": "mapOverlay",
   "mission.template": "missionTemplate",
   "flight.skill": "skill",
+  "node.agent.page": "agentPage",
+  "node.surface": "nodeSurface",
 };
 
 /** The slotKind i18n sub-key for a raw slot string, falling back to

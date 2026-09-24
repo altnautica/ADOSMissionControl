@@ -23,6 +23,7 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     showLockedTabs: true,
     isFeatureEnabled: () => false,
     atlasCapturing: false,
+    pluginAgentPages: [],
     ...over,
   };
 }

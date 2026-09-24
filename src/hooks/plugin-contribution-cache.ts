@@ -22,13 +22,21 @@ import {
   openPinnedArchive,
   type ArchivePin,
 } from "@/lib/plugins/archive-pin";
+import {
+  loadInlineFromArchive,
+  loadInlineFromNode,
+  type InlineBundle,
+} from "@/lib/plugins/inline-loader";
 import { buildIframeHtml } from "@/components/plugins/transports/finalize-gcs-install";
+import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
 import type { BridgeHandler } from "@/lib/plugins/bridge";
 
-/** Where an install's GCS iframe bundle comes from. Cloud installs hand back a
- * short-lived signed Convex URL; local-first drone installs are served by the
- * LAN agent that unpacked the archive; local-first fleet / GCS-only installs
- * come from the published archive via the same-origin proxy. */
+/** Where an install's GCS bundle comes from. Cloud installs hand back a
+ * short-lived signed Convex URL (iframe only); local-first drone installs are
+ * served by the LAN agent that unpacked the archive; local-first fleet /
+ * GCS-only installs come from the published archive via the same-origin
+ * proxy (its manifest says iframe or inline); an inline module on a node is
+ * always loaded from that node's agent under its attestation. */
 export type BundleSource =
   | { kind: "url"; url: string }
   | {
@@ -38,37 +46,59 @@ export type BundleSource =
       pluginId: string;
       entrypoint: string;
     }
-  | { kind: "archive"; archiveUrl: string; entrypoint: string; pin: ArchivePin };
+  | {
+      kind: "archive";
+      archiveUrl: string;
+      entrypoint: string;
+      pin: ArchivePin;
+      pluginId: string;
+    }
+  | { kind: "node"; deviceId: string; pluginId: string };
 
-interface LoadedBundle {
-  blobUrl: string;
-  revoke: () => void;
+/** A loaded bundle: an iframe document's blob URL, or a verified inline
+ * module. */
+export type LoadedBundle = { kind: "frame"; blobUrl: string } | InlineBundle;
+
+interface HeldBundle {
+  view: LoadedBundle;
+  release: () => void;
 }
 
-function wrapAsBlob(bundleJs: string): LoadedBundle {
+function wrapAsBlob(bundleJs: string): HeldBundle {
   const blob = new Blob([buildIframeHtml(bundleJs)], { type: "text/html" });
   const blobUrl = URL.createObjectURL(blob);
-  return { blobUrl, revoke: () => URL.revokeObjectURL(blobUrl) };
+  return { view: { kind: "frame", blobUrl }, release: () => URL.revokeObjectURL(blobUrl) };
 }
 
 /**
- * Load an install's GCS bundle into a null-origin blob URL. The agent serves
- * the raw ESM module and the archive carries it; the sandboxed iframe needs an
- * HTML document, so both are wrapped in the same shell the cloud upload path
- * uses. An archive must match the hash and signer pinned at install before
- * anything in it runs: a release asset replaced after install would otherwise
- * run under the grants the operator gave the original.
+ * Load an install's GCS bundle. An iframe bundle becomes a null-origin blob
+ * URL: the agent serves the raw ESM module and the archive carries it; the
+ * sandboxed iframe needs an HTML document, so both are wrapped in the same
+ * shell the cloud upload path uses. An archive must match the hash and signer
+ * pinned at install before anything in it runs: a release asset replaced
+ * after install would otherwise run under the grants the operator gave the
+ * original. An inline module is imported only after the inline trust gate.
  */
-async function loadBundle(src: BundleSource, signal: AbortSignal): Promise<LoadedBundle> {
-  if (src.kind === "url") return loadPluginBundle(src.url, signal);
+async function loadBundle(src: BundleSource, signal: AbortSignal): Promise<HeldBundle> {
+  if (src.kind === "url") {
+    const loaded = await loadPluginBundle(src.url, signal);
+    return { view: { kind: "frame", blobUrl: loaded.blobUrl }, release: loaded.revoke };
+  }
   if (src.kind === "agent") {
     const client = new PluginAgentClient(src.agentUrl, src.apiKey);
     return wrapAsBlob(await client.getGcsBundle(src.pluginId, src.entrypoint));
+  }
+  if (src.kind === "node") {
+    return { view: await loadInlineFromNode(src, signal), release: () => {} };
   }
   const bytes = await fetchRegistryArchive(src.archiveUrl, (input, init) =>
     fetch(input, { ...init, signal }),
   );
   const zip = await openPinnedArchive(bytes, src.pin);
+  const manifest = zip.file("manifest.yaml");
+  if (manifest && parseManifestYaml(await manifest.async("string")).gcsIsolation === "inline") {
+    return { view: await loadInlineFromArchive(src, signal), release: () => {} };
+  }
   const rel = src.entrypoint.replace(/^\.\//, "");
   const entry = zip.file(rel) ?? zip.file(`./${rel}`);
   if (!entry) throw new Error(`archive is missing ${rel}`);
@@ -77,8 +107,8 @@ async function loadBundle(src: BundleSource, signal: AbortSignal): Promise<Loade
 
 interface BundleEntry {
   refs: number;
-  loaded: LoadedBundle | null;
-  promise: Promise<string>;
+  loaded: HeldBundle | null;
+  promise: Promise<LoadedBundle>;
   abort: AbortController;
 }
 
@@ -91,26 +121,31 @@ export function bundleKey(installId: string, version: string): string {
 
 /**
  * Hold a reference to a bundle, loading it on first acquire. Resolves with the
- * blob URL; rejects when the load fails, in which case the entry is dropped so
- * the next acquire retries.
+ * loaded bundle; rejects when the load fails, in which case the entry is
+ * dropped so the next acquire retries.
  */
-export function acquireBundle(key: string, source: BundleSource): Promise<string> {
+export function acquireBundle(key: string, source: BundleSource): Promise<LoadedBundle> {
   const existing = bundles.get(key);
   if (existing) {
     existing.refs += 1;
     return existing.promise;
   }
   const abort = new AbortController();
-  const entry: BundleEntry = { refs: 1, loaded: null, promise: Promise.resolve(""), abort };
+  const entry: BundleEntry = {
+    refs: 1,
+    loaded: null,
+    promise: Promise.resolve({ kind: "frame", blobUrl: "" }),
+    abort,
+  };
   entry.promise = loadBundle(source, abort.signal).then(
     (loaded) => {
-      // Every holder let go while it loaded: nothing will ever revoke it.
+      // Every holder let go while it loaded: nothing will ever release it.
       if (bundles.get(key) !== entry) {
-        loaded.revoke();
+        loaded.release();
         throw new Error("bundle released before it loaded");
       }
       entry.loaded = loaded;
-      return loaded.blobUrl;
+      return loaded.view;
     },
     (err: unknown) => {
       if (bundles.get(key) === entry) bundles.delete(key);
@@ -121,19 +156,19 @@ export function acquireBundle(key: string, source: BundleSource): Promise<string
   return entry.promise;
 }
 
-/** The loaded blob URL for a held bundle, or null while it loads. */
-export function peekBundle(key: string): string | null {
-  return bundles.get(key)?.loaded?.blobUrl ?? null;
+/** The loaded bundle for a held key, or null while it loads. */
+export function peekBundle(key: string): LoadedBundle | null {
+  return bundles.get(key)?.loaded?.view ?? null;
 }
 
-/** Drop one reference; the last one revokes the blob or aborts the load. */
+/** Drop one reference; the last one releases the bundle or aborts the load. */
 export function releaseBundle(key: string): void {
   const entry = bundles.get(key);
   if (!entry) return;
   entry.refs -= 1;
   if (entry.refs > 0) return;
   bundles.delete(key);
-  if (entry.loaded) entry.loaded.revoke();
+  if (entry.loaded) entry.loaded.release();
   else entry.abort.abort();
 }
 

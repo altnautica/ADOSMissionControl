@@ -29,6 +29,7 @@ function ctx(over: Partial<SurfaceContext>): SurfaceContext {
     showLockedTabs: false,
     isFeatureEnabled: () => false,
     atlasCapturing: false,
+    pluginAgentPages: [],
     ...over,
   };
 }
@@ -39,7 +40,7 @@ function forProfile(profile: NodeProfile): SurfaceContext {
 
 describe("node-detail surface registry (createContributionRegistry instance)", () => {
   it("resolves the built-in drone surfaces in authored order", () => {
-    const ids = resolveSurfaces(forProfile("drone")).map((s) => s.id);
+    const ids = resolveSurfaces(forProfile("drone"), []).map((s) => s.id);
     expect(ids).toEqual([
       "overview",
       "flight",
@@ -57,7 +58,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
       "ground-station",
       "workstation",
     ] as const) {
-      const ids = resolveSurfaces(forProfile(profile)).map((s) => s.id);
+      const ids = resolveSurfaces(forProfile(profile), []).map((s) => s.id);
       expect(ids[ids.length - 1]).toBe("agent");
     }
   });
@@ -66,9 +67,16 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
     // A profile outside the built-in set (a future wire-contract profile) has
     // nothing registered, so it resolves to just the Agent page.
     const ids = resolveSurfaces(
-      ctx({ drone: { profile: "compute" } as unknown as SurfaceContext["drone"] }),
+      ctx({ drone: { profile: "satellite" } as unknown as SurfaceContext["drone"] }),
+      [],
     ).map((s) => s.id);
     expect(ids).toEqual(["agent"]);
+  });
+
+  it("a compute node shows the workstation surfaces, not just the Agent page", () => {
+    const compute = resolveSurfaces(forProfile("compute"), []).map((s) => s.id);
+    expect(compute).toEqual(resolveSurfaces(forProfile("workstation"), []).map((s) => s.id));
+    expect(compute).toContain("overview");
   });
 
   it("hides the RC / ELRS Link tab for a node with no crsf lane, shows it when advertised", () => {
@@ -80,6 +88,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
           role: null,
           crsfPresent: "absent",
         }),
+        [],
       ).map((s) => s.id);
       expect(absent).not.toContain("rcElrs");
 
@@ -89,6 +98,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
           role: null,
           crsfPresent: "present",
         }),
+        [],
       ).map((s) => s.id);
       expect(present).toContain("rcElrs");
     }
@@ -100,6 +110,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
         drone: { profile: "ground-station" } as SurfaceContext["drone"],
         role: "receiver",
       }),
+      [],
     ).map((s) => s.id);
     expect(receiverIds).not.toContain("radio");
 
@@ -108,6 +119,7 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
         drone: { profile: "ground-station" } as SurfaceContext["drone"],
         role: "direct",
       }),
+      [],
     ).map((s) => s.id);
     expect(directIds).toContain("radio");
   });

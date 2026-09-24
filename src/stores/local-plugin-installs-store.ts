@@ -34,18 +34,10 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { ArchivePin } from "@/lib/plugins/archive-pin";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
-import type { PairedNodeProfile } from "@/lib/plugins/types";
+import type { GcsContributeRow } from "@/lib/plugins/types";
 
-/** One slot contribution the GCS half mounts (panel / overlay / channel). */
-export interface LocalGcsContribution {
-  slot: string;
-  panelId: string;
-  title?: string;
-  icon?: string;
-  order?: number;
-  /** Node profiles a `node.detail.tab` is offered on; absent = any. */
-  profile?: PairedNodeProfile[];
-}
+/** One slot contribution the GCS half mounts (panel / overlay / page). */
+export type LocalGcsContribution = GcsContributeRow;
 
 /** Where the GCS iframe bundle is fetched from for this install. */
 export type LocalPluginBundleSource =

@@ -13,17 +13,24 @@
 
 import type { InstallManifestSummary } from "../install-dialog/types";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
-import type { PairedNodeProfile } from "@/lib/plugins/types";
+import type {
+  GcsContributeRow,
+  GcsIsolation,
+  PairedNodeProfile,
+} from "@/lib/plugins/types";
 
 /** One denormalized slot contribution recorded on the install row. */
-export interface InstallGcsContribution {
-  slot: string;
-  panelId: string;
-  title?: string;
-  icon?: string;
-  order?: number;
-  /** Node profiles a `node.detail.tab` is offered on; absent = any. */
-  profile?: PairedNodeProfile[];
+export type InstallGcsContribution = GcsContributeRow;
+
+/**
+ * How the install row's GCS half mounts: the manifest's declaration, iframe
+ * when it declares none, undefined for a plugin with no GCS half.
+ */
+export function buildGcsIsolation(
+  manifest: Pick<InstallManifestSummary, "halves" | "gcsIsolation">,
+): GcsIsolation | undefined {
+  if (!manifest.halves.includes("gcs")) return undefined;
+  return manifest.gcsIsolation ?? "iframe";
 }
 
 /** The `node.detail.tab` slot — the only slot a per-tab `profile` narrows. */
@@ -53,6 +60,11 @@ export function buildGcsContributes(
     if (c.title !== undefined) row.title = c.title;
     if (c.icon !== undefined) row.icon = c.icon;
     if (c.order !== undefined) row.order = c.order;
+    if (c.profile && c.profile.length > 0) row.profile = [...c.profile];
+    if (c.section !== undefined) row.section = c.section;
+    if (c.after !== undefined) row.after = c.after;
+    if (c.group !== undefined) row.group = c.group;
+    if (c.setupFor !== undefined) row.setupFor = c.setupFor;
     if (c.slot === NODE_DETAIL_TAB_SLOT) {
       const profile = tabProfileById.get(c.panelId);
       if (profile) row.profile = profile;

@@ -123,6 +123,7 @@ function ctxFor(
     showLockedTabs: false,
     isFeatureEnabled: () => true,
     atlasCapturing: true,
+    pluginAgentPages: [],
     ...over,
   };
 }

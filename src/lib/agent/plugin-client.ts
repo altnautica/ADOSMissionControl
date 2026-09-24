@@ -2,7 +2,9 @@
  * @module PluginClient
  * @description Client for the agent's plugin lifecycle endpoints
  * (`/api/plugins/*`). Wraps multipart upload for `/install` and the
- * grant / enable / disable / remove lifecycle calls.
+ * grant / enable / disable / remove lifecycle calls, plus the reads an
+ * inline GCS module is loaded and served through (attestation, manifest,
+ * `gcs/` assets, the plugin's own HTTP passthrough).
  *
  * The agent returns a structured error envelope on failure:
  *   `{ ok: false, code: number, kind: string, detail: string }`
@@ -14,121 +16,37 @@
  */
 
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import {
+  WS_TICKET_PROTOCOL,
+  mintWsTicket,
+  pluginHttpTicketScope,
+} from "@/lib/api/ground-station/ws-ticket";
+import { parseInlineAttestation, type InlineAttestation } from "@/lib/plugins/inline-trust";
+import type {
+  PluginAgentInstallSummary,
+  PluginAgentManifestDetail,
+  PluginAgentParseSummary,
+  PluginStateResponse,
+} from "./plugin-client-types";
 
 /**
- * Deadline for the three plugin calls that move an archive: two multipart
- * uploads of a `.adosplug` over what may be a radio link, and one where the
- * AGENT does the download. The default 6 s read deadline would abort a
- * legitimate install of a few MB; these still need a bound, because
- * unbounded they hold a socket from Chromium's 6-per-origin pool forever.
+ * Deadline for the plugin calls that move bulk bytes: two multipart
+ * uploads of a `.adosplug` over what may be a radio link, one where the
+ * AGENT does the download, and the plugin's own HTTP passthrough. The default
+ * 6 s read deadline would abort a legitimate transfer of a few MB; these
+ * still need a bound, because unbounded they hold a socket from Chromium's
+ * 6-per-origin pool forever.
  */
 const PLUGIN_TRANSFER_TIMEOUT_MS = 120_000;
 
-export interface PluginAgentInstallSummary {
-  ok: true;
-  plugin_id: string;
-  version: string;
-  signer_id: string | null;
-  risk: "low" | "medium" | "high" | "critical";
-  permissions_requested: string[];
-}
-
-/**
- * Manifest preview returned by the non-committing /parse endpoint.
- * The install dialog renders this before the operator approves
- * permissions; the actual /install call comes only on consent.
- */
-export interface PluginAgentParseSummary {
-  ok: true;
-  plugin_id: string;
-  version: string;
-  name: string;
-  description: string;
-  author: string;
-  license: string;
-  risk: "low" | "medium" | "high" | "critical";
-  signer_id: string | null;
-  signed: boolean;
-  halves: Array<"agent" | "gcs">;
-  permissions: Array<{ id: string; required: boolean }>;
-  /** The downloaded archive's SHA-256, present on the `parse_from_url`
-   * response so the GCS can pin the subsequent install to the exact bytes the
-   * operator reviewed. Absent on the multipart `/parse` response. */
-  archive_sha256?: string;
-  /** Shared-vocabulary named icon the manifest declares at the top level,
-   * when the agent parse carries one. Drives the pop-up header glyph on the
-   * install-from-URL / already-installed path. */
-  icon?: string | null;
-}
-
-export interface PluginAgentManifestDetail {
-  install: {
-    plugin_id: string;
-    version: string;
-    source: string;
-    source_uri: string | null;
-    signer_id: string | null;
-    manifest_hash: string;
-    status: string;
-    installed_at: number;
-    enabled_at: number | null;
-    permissions: Record<
-      string,
-      { granted: boolean; granted_at: number | null }
-    >;
-  };
-  manifest: {
-    id: string;
-    version: string;
-    name: string;
-    risk: "low" | "medium" | "high" | "critical";
-    license: string;
-    halves: Array<"agent" | "gcs">;
-    permissions: Array<{ id: string; required: boolean }>;
-    /** MCP tools / resources / prompts declared across both halves, each
-     * with a `half` marker. Exposed to MCP clients only while the plugin
-     * holds `mcp.expose` (see `granted_capabilities`). */
-    mcp?: { tools?: unknown[]; resources?: unknown[]; prompts?: unknown[] };
-    /** The GCS half's iframe entrypoint + slot contributions, or null for
-     * an agent-only plugin. Lets a LAN GCS build the contribution set and
-     * locate the bundle to fetch from this agent. Older agents omit it. */
-    gcs?: {
-      entrypoint: string;
-      contributes: {
-        panels: Array<Record<string, unknown>>;
-        overlays: Array<Record<string, unknown>>;
-        notifications: Array<Record<string, unknown>>;
-        skills: Array<Record<string, unknown>>;
-        /** Node-detail tab contributions, optionally profile-narrowed. The
-         * iframe slot is also surfaced under `panels`; this array carries the
-         * per-tab `profile`. Older agents omit it. */
-        tabs?: Array<Record<string, unknown>>;
-        /** Declarative parameter contributions the GCS renders natively in
-         * the plugin's settings panel. Older agents omit it. */
-        parameters?: Array<Record<string, unknown>>;
-        /** Target-action contributions surfaced in the cockpit target-overlay
-         * popup (designate a clicked detection + flip a per-drone config key).
-         * Older agents omit it. */
-        target_actions?: Array<Record<string, unknown>>;
-      };
-      locales: string[];
-    } | null;
-  };
-  /** Capability ids currently granted to the plugin (for ui.slot.* gating
-   * without a cloud round-trip). Older agents omit it. */
-  granted_capabilities?: string[];
-}
-
-/** One topic's latest published entry in a plugin's state sidecar. */
-export interface PluginStateEntry {
-  /** The plugin's event payload for the topic (arbitrary JSON). */
-  payload: unknown;
-  /** Wall-clock ms the agent recorded the event. */
-  ts_ms: number;
-}
-
-/** A plugin's published-state sidecar, keyed by topic. */
-export type PluginStateResponse = Record<string, PluginStateEntry>;
+/** How the client reaches the agent: `timedFetch` straight at the base URL,
+ * or a same-origin proxy hop when an HTTPS page cannot reach a plain-HTTP
+ * LAN node. Called with the full agent URL the client composed. */
+export type AgentFetch = (
+  url: string,
+  init: RequestInit | undefined,
+  timeoutMs?: number,
+) => Promise<Response>;
 
 /** Narrow an unknown response body to the sidecar shape: a plain object whose
  * values each carry a `payload` and a numeric `ts_ms`. */
@@ -145,6 +63,14 @@ function isPluginStateResponse(body: unknown): body is PluginStateResponse {
   return true;
 }
 
+/** Split a passthrough path into its path (no leading slash) and its query
+ * suffix (`?a=b`, or empty). */
+function splitPluginPath(path: string): [string, string] {
+  const i = path.indexOf("?");
+  const pathPart = (i < 0 ? path : path.slice(0, i)).replace(/^\/+/, "");
+  return [pathPart, i < 0 ? "" : path.slice(i)];
+}
+
 export class PluginAgentError extends Error {
   readonly code: number;
   readonly kind: string;
@@ -158,30 +84,39 @@ export class PluginAgentError extends Error {
 export class PluginAgentClient {
   private readonly baseUrl: string;
   private readonly apiKey: string;
+  private readonly fetchImpl: AgentFetch;
 
-  constructor(baseUrl: string, apiKey = "") {
+  constructor(baseUrl: string, apiKey = "", fetchImpl: AgentFetch = timedFetch) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.apiKey = apiKey;
+    this.fetchImpl = fetchImpl;
   }
 
   private authHeader(): Record<string, string> {
     return this.apiKey ? { "X-ADOS-Key": this.apiKey } : {};
   }
 
+  /** `/api/plugins/{id}` plus an optional sub-path whose segments are
+   * percent-encoded one by one. */
+  private pluginUrl(pluginId: string, sub = ""): string {
+    const encoded = sub
+      .split("/")
+      .map((seg) => encodeURIComponent(seg))
+      .join("/");
+    return `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}${sub ? `/${encoded}` : ""}`;
+  }
+
   async list(): Promise<{ installs: PluginAgentManifestDetail["install"][] }> {
-    const res = await timedFetch(`${this.baseUrl}/api/plugins`, {
+    const res = await this.fetchImpl(`${this.baseUrl}/api/plugins`, {
       headers: this.authHeader(),
     });
-    return this.parse<{ installs: PluginAgentManifestDetail["install"][] }>(
-      res,
-    );
+    return this.parse<{ installs: PluginAgentManifestDetail["install"][] }>(res);
   }
 
   async get(pluginId: string): Promise<PluginAgentManifestDetail> {
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}`,
-      { headers: this.authHeader() },
-    );
+    const res = await this.fetchImpl(this.pluginUrl(pluginId), {
+      headers: this.authHeader(),
+    });
     return this.parse<PluginAgentManifestDetail>(res);
   }
 
@@ -193,23 +128,84 @@ export class PluginAgentClient {
    * `gcs/` dir. Returns the raw bundle text (an ESM module).
    */
   async getGcsBundle(pluginId: string, entrypoint: string): Promise<string> {
-    const rel = entrypoint.replace(/^gcs\//, "");
-    const encoded = rel
-      .split("/")
-      .map((seg) => encodeURIComponent(seg))
-      .join("/");
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/gcs/${encoded}`,
-      { headers: this.authHeader() },
+    return new TextDecoder().decode(
+      await this.getGcsAsset(pluginId, entrypoint.replace(/^gcs\//, "")),
     );
+  }
+
+  /** Raw bytes of one file under the plugin's `gcs/` dir (`path` relative
+   * to it). */
+  async getGcsAsset(
+    pluginId: string,
+    path: string,
+    init?: { signal?: AbortSignal },
+  ): Promise<ArrayBuffer> {
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, `gcs/${path}`), {
+      headers: this.authHeader(),
+      signal: init?.signal,
+    });
     if (!res.ok) {
-      throw new PluginAgentError(
-        res.status,
-        "gcs_asset",
-        `gcs bundle fetch failed: HTTP ${res.status}`,
-      );
+      throw new PluginAgentError(res.status, "gcs_asset", `gcs asset fetch failed: HTTP ${res.status}`);
     }
-    return res.text();
+    return res.arrayBuffer();
+  }
+
+  /** The installed plugin's signature and file digests. */
+  async getAttestation(
+    pluginId: string,
+    init?: { signal?: AbortSignal },
+  ): Promise<InlineAttestation> {
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, "attestation"), {
+      headers: this.authHeader(),
+      signal: init?.signal,
+    });
+    return parseInlineAttestation(await this.parse<unknown>(res));
+  }
+
+  /** The installed `manifest.yaml`, byte for byte. */
+  async getManifestBytes(
+    pluginId: string,
+    init?: { signal?: AbortSignal },
+  ): Promise<Uint8Array> {
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, "manifest"), {
+      headers: this.authHeader(),
+      signal: init?.signal,
+    });
+    if (!res.ok) {
+      throw new PluginAgentError(res.status, "manifest", `manifest fetch failed: HTTP ${res.status}`);
+    }
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  /**
+   * One request to the plugin's own HTTP server through the agent passthrough
+   * (`/api/plugins/{id}/x/<path>`). `path` may carry a query string. The raw
+   * response is returned for the caller to read.
+   */
+  async pluginHttp(pluginId: string, path: string, init: RequestInit = {}): Promise<Response> {
+    const [pathPart, query] = splitPluginPath(path);
+    const headers = new Headers(init.headers);
+    for (const [k, v] of Object.entries(this.authHeader())) headers.set(k, v);
+    return this.fetchImpl(
+      `${this.pluginUrl(pluginId, `x/${pathPart}`)}${query}`,
+      { ...init, headers },
+      PLUGIN_TRANSFER_TIMEOUT_MS,
+    );
+  }
+
+  /**
+   * Open a WebSocket to the plugin's own HTTP server through the agent
+   * passthrough. A browser cannot send the pairing key on a handshake, so a
+   * one-shot ticket scoped to this plugin rides the subprotocol list.
+   */
+  async openPluginSocket(pluginId: string, path: string): Promise<WebSocket> {
+    const ticket = await mintWsTicket(
+      { baseUrl: this.baseUrl, apiKey: this.apiKey || null },
+      pluginHttpTicketScope(pluginId),
+    );
+    const [pathPart, query] = splitPluginPath(path);
+    const url = `${this.pluginUrl(pluginId, `x/${pathPart}`)}${query}`.replace(/^http/, "ws");
+    return ticket ? new WebSocket(url, [WS_TICKET_PROTOCOL, ticket]) : new WebSocket(url);
   }
 
   /**
@@ -224,45 +220,28 @@ export class PluginAgentClient {
    * on a single bad read.
    */
   async getState(pluginId: string): Promise<PluginStateResponse | null> {
-    let res: Response;
-    try {
-      res = await timedFetch(
-        `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/state`,
-        { headers: this.authHeader() },
-      );
-    } catch {
-      return null;
-    }
-    if (res.status === 404) return null;
-    if (!res.ok) return null;
-    try {
-      const body = (await res.json()) as unknown;
-      return isPluginStateResponse(body) ? body : null;
-    } catch {
-      return null;
-    }
+    const body = await this.getRawState(pluginId);
+    return body !== null && isPluginStateResponse(body) ? body : null;
   }
 
   /**
    * Read a plugin / first-party service's state sidecar as a RAW object,
    * without the topic-map (`{ topic: { payload, ts_ms } }`) shape `getState`
-   * enforces. A first-party service (e.g. the world-model capture service)
-   * writes a FLAT slice (`{ state, sessionId, ... }`) to the same
-   * `GET /api/plugins/{id}/state` route, which `getState` would reject. This
-   * returns any JSON object verbatim, or `null` on `404` / non-object /
-   * transport failure, so a local-first poll never throws.
+   * enforces. A first-party service writes a FLAT slice (`{ state,
+   * sessionId, ... }`) to the same `GET /api/plugins/{id}/state` route, which
+   * `getState` would reject. This returns any JSON object verbatim, or `null`
+   * on `404` / non-object / transport failure, so a local-first poll never
+   * throws.
    */
   async getRawState(pluginId: string): Promise<Record<string, unknown> | null> {
     let res: Response;
     try {
-      res = await timedFetch(
-        `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/state`,
-        { headers: this.authHeader() },
-      );
+      res = await this.fetchImpl(this.pluginUrl(pluginId, "state"), {
+        headers: this.authHeader(),
+      });
     } catch {
       return null;
     }
-    if (res.status === 404) return null;
     if (!res.ok) return null;
     try {
       const body = (await res.json()) as unknown;
@@ -282,13 +261,9 @@ export class PluginAgentClient {
   async parseArchive(file: File): Promise<PluginAgentParseSummary> {
     const form = new FormData();
     form.append("file", file);
-    const res = await timedFetch(
+    const res = await this.fetchImpl(
       `${this.baseUrl}/api/plugins/parse`,
-      {
-        method: "POST",
-        headers: this.authHeader(),
-        body: form,
-      },
+      { method: "POST", headers: this.authHeader(), body: form },
       PLUGIN_TRANSFER_TIMEOUT_MS,
     );
     return this.parse<PluginAgentParseSummary>(res);
@@ -297,13 +272,9 @@ export class PluginAgentClient {
   async install(file: File): Promise<PluginAgentInstallSummary> {
     const form = new FormData();
     form.append("file", file);
-    const res = await timedFetch(
+    const res = await this.fetchImpl(
       `${this.baseUrl}/api/plugins/install`,
-      {
-        method: "POST",
-        headers: this.authHeader(),
-        body: form,
-      },
+      { method: "POST", headers: this.authHeader(), body: form },
       PLUGIN_TRANSFER_TIMEOUT_MS,
     );
     return this.parse<PluginAgentInstallSummary>(res);
@@ -319,7 +290,7 @@ export class PluginAgentClient {
     url: string,
     expectedSha256 = "",
   ): Promise<PluginAgentParseSummary> {
-    const res = await timedFetch(
+    const res = await this.fetchImpl(
       `${this.baseUrl}/api/plugins/parse_from_url`,
       {
         method: "POST",
@@ -340,10 +311,10 @@ export class PluginAgentClient {
    * drone's own keys over them).
    */
   async getConfig(pluginId: string): Promise<Record<string, unknown>> {
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/config`,
-      { method: "GET", headers: this.authHeader() },
-    );
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, "config"), {
+      method: "GET",
+      headers: this.authHeader(),
+    });
     const body = await this.parse<{ values?: unknown }>(res);
     const values = body.values;
     return values && typeof values === "object" && !Array.isArray(values)
@@ -368,26 +339,20 @@ export class PluginAgentClient {
     value: unknown,
     scope?: "drone" | "global",
   ): Promise<{ set: boolean; scope: string | null }> {
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/config`,
-      {
-        method: "PUT",
-        headers: { ...this.authHeader(), "Content-Type": "application/json" },
-        body: JSON.stringify(scope ? { key, value, scope } : { key, value }),
-      },
-    );
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, "config"), {
+      method: "PUT",
+      headers: { ...this.authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify(scope ? { key, value, scope } : { key, value }),
+    });
     return this.parse<{ set: boolean; scope: string | null }>(res);
   }
 
   async grant(pluginId: string, permissionId: string): Promise<void> {
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/grant`,
-      {
-        method: "POST",
-        headers: { ...this.authHeader(), "Content-Type": "application/json" },
-        body: JSON.stringify({ permission_id: permissionId }),
-      },
-    );
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, "grant"), {
+      method: "POST",
+      headers: { ...this.authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ permission_id: permissionId }),
+    });
     await this.parse(res);
   }
 
@@ -402,12 +367,10 @@ export class PluginAgentClient {
     pluginId: string,
     permissionId: string,
   ): Promise<{ granted: string[] }> {
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/perms/${encodeURIComponent(
-        permissionId,
-      )}`,
-      { method: "DELETE", headers: this.authHeader() },
-    );
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, `perms/${permissionId}`), {
+      method: "DELETE",
+      headers: this.authHeader(),
+    });
     const body = await this.parse<{
       ok: true;
       plugin_id: string;
@@ -418,27 +381,27 @@ export class PluginAgentClient {
   }
 
   async enable(pluginId: string): Promise<void> {
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/enable`,
-      { method: "POST", headers: this.authHeader() },
-    );
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, "enable"), {
+      method: "POST",
+      headers: this.authHeader(),
+    });
     await this.parse(res);
   }
 
   async disable(pluginId: string): Promise<void> {
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}/disable`,
-      { method: "POST", headers: this.authHeader() },
-    );
+    const res = await this.fetchImpl(this.pluginUrl(pluginId, "disable"), {
+      method: "POST",
+      headers: this.authHeader(),
+    });
     await this.parse(res);
   }
 
   async remove(pluginId: string, opts?: { keepData?: boolean }): Promise<void> {
     const qs = opts?.keepData ? "?keep_data=1" : "";
-    const res = await timedFetch(
-      `${this.baseUrl}/api/plugins/${encodeURIComponent(pluginId)}${qs}`,
-      { method: "DELETE", headers: this.authHeader() },
-    );
+    const res = await this.fetchImpl(`${this.pluginUrl(pluginId)}${qs}`, {
+      method: "DELETE",
+      headers: this.authHeader(),
+    });
     await this.parse(res);
   }
 

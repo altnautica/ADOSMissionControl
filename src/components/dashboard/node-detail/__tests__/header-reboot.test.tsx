@@ -42,6 +42,7 @@ vi.mock("@/components/plugins/DroneDetailTabHost", () => ({
 vi.mock("@/hooks/use-plugin-contributions", () => ({ usePluginContributions: () => [] }));
 vi.mock("@/hooks/use-drone-plugin-contributions", () => ({
   useDronePluginContributions: () => [],
+  useLiveInstallRows: () => null,
 }));
 vi.mock("@/hooks/use-fleet-nodes", () => ({ useFleetNodes: () => [] }));
 vi.mock("@/hooks/use-atlas-control", () => ({ useAtlasControl: () => ({}) }));

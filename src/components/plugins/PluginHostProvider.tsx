@@ -3,21 +3,35 @@
 import { createContext, Fragment, useContext, useMemo } from "react";
 
 import type { BridgeHandler } from "@/lib/plugins/bridge";
-import type { PluginSlotName } from "@/lib/plugins/types";
+import type { GcsIsolation, PluginSlotName } from "@/lib/plugins/types";
+import type { InlineBundle } from "@/lib/plugins/inline-loader";
+
+/** Where an inline contribution's module load stands. A failed load is shown
+ * as an error card; an inline contribution never falls back to an iframe. */
+export type InlineMountState =
+  | { status: "loading" }
+  | { status: "ready"; bundle: InlineBundle }
+  | { status: "error"; message: string; retry: () => void };
 
 /**
  * One renderable plugin contribution at a specific slot. The host
  * orchestrator hands these to `<PluginSlot>`, which mounts a
- * `<PluginIframeHost>` per entry. The contribution is the unit of
- * trust: each iframe gets its own granted-cap set, its own handler
- * surface, and its own bundle URL.
+ * `<PluginIframeHost>` (or, for a trusted inline module, an
+ * `<InlinePluginHost>`) per entry. The contribution is the unit of
+ * trust: each mount gets its own granted-cap set, its own handler
+ * surface, and its own bundle.
  */
 export interface PluginSlotContribution {
   pluginId: string;
   /** Stable id within the plugin (`gcs.contributes.panels[].id`). */
   panelId: string;
-  /** Blob URL or hosted URL pointing at the plugin's GCS bundle. */
+  /** Blob URL or hosted URL pointing at the plugin's GCS iframe bundle.
+   * Empty for an inline contribution. */
   bundleUrl: string;
+  /** How the contribution mounts. Absent means the sandboxed iframe. */
+  isolation?: GcsIsolation;
+  /** The module load behind an `inline` contribution. */
+  inline?: InlineMountState;
   /** Capability ids the operator has granted for this plugin. */
   grantedCapabilities: ReadonlySet<string>;
   /** Per-method dispatchers wired to host services. */
@@ -91,6 +105,8 @@ export function PluginHostProvider({
         pluginId: c.pluginId,
         panelId: c.panelId,
         bundleUrl: c.bundleUrl,
+        isolation: c.isolation,
+        inline: c.inline,
         grantedCapabilities: c.grantedCapabilities,
         handlers: c.handlers,
         iframeClassName: c.iframeClassName,

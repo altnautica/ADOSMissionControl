@@ -50,6 +50,53 @@ export const severityValidator = v.union(
   v.literal("error"),
 );
 
+/** Node profiles a contribution can be offered on. */
+export const nodeProfileValidator = v.union(
+  v.literal("drone"),
+  v.literal("ground-station"),
+  v.literal("workstation"),
+  v.literal("compute"),
+);
+
+/**
+ * Denormalized `gcs.contributes` slot entries recorded on the install row, so
+ * the contribution producer mounts a plugin without fetching the manifest
+ * each render. `section`/`after`/`setupFor` place a `node.agent.page` entry in
+ * the Agent sidebar; `group` places a `node.surface` entry in the node tab
+ * strip. Every placement field is optional.
+ */
+export const gcsContributesValidator = v.array(
+  v.object({
+    slot: v.string(), // PluginSlotName, e.g. "video.overlay"
+    panelId: v.string(), // the contribution's manifest id
+    title: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    order: v.optional(v.number()),
+    // Node profiles the entry is offered on. Absent = any profile the host
+    // allows.
+    profile: v.optional(v.array(nodeProfileValidator)),
+    // Agent sidebar section id a `node.agent.page` joins.
+    section: v.optional(v.string()),
+    // Sibling page id a `node.agent.page` is placed after.
+    after: v.optional(v.string()),
+    // Tab-strip group a `node.surface` joins.
+    group: v.optional(
+      v.union(
+        v.literal("status"),
+        v.literal("vehicle"),
+        v.literal("link"),
+        v.literal("device"),
+        v.literal("compute"),
+      ),
+    ),
+    // Page id (same plugin) this `node.agent.page` renders as the Setup pane of.
+    setupFor: v.optional(v.string()),
+  }),
+);
+
+/** How the GCS half mounts: a sandboxed iframe, or a signer-gated inline module. */
+export const gcsIsolationValidator = v.union(v.literal("iframe"), v.literal("inline"));
+
 /**
  * Denormalized declarative plugin-parameter contributions
  * (`gcs.contributes.parameters[]`), recorded on the install row so the

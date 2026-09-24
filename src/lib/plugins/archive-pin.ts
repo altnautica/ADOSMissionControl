@@ -39,7 +39,8 @@ export async function fetchRegistryArchive(
   return new Uint8Array(await res.arrayBuffer());
 }
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
+/** Lowercase hex sha256 of `bytes`. */
+export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const buf = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buf).set(bytes);
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", buf));

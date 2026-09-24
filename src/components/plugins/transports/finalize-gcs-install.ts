@@ -41,17 +41,20 @@ import { PLUGIN_FRAME_HEAD } from "@/lib/plugins/iframe-csp";
 import type { InstallManifestSummary } from "../install-dialog/types";
 import { computeSha256 } from "./manifest-parse";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
-import type { PairedNodeProfile } from "@/lib/plugins/types";
+import type { GcsIsolation } from "@/lib/plugins/types";
 import {
   verifyArchiveSignature,
   type ArchiveSignatureResult,
 } from "@/lib/plugins/archive-signature";
+import { isEnrolledFirstPartySigner } from "@/lib/plugins/signing-keys";
 import {
   buildGcsContributes,
+  buildGcsIsolation,
   buildGcsParameters,
   buildGcsFlightSkills,
   buildGcsTargetActions,
   type InstallFlightSkill,
+  type InstallGcsContribution,
   type InstallTargetAction,
 } from "./build-install-contributions";
 
@@ -94,14 +97,10 @@ export interface RecordInstallArgs {
   halves: string[];
   declaredPermissions: Array<{ id: string; required: boolean }>;
   bundleStorageId?: string;
-  gcsContributes?: Array<{
-    slot: string;
-    panelId: string;
-    title?: string;
-    icon?: string;
-    order?: number;
-    profile?: PairedNodeProfile[];
-  }>;
+  gcsContributes?: InstallGcsContribution[];
+  /** How the GCS half mounts. An inline row stores no bundle: its module is
+   * only ever loaded from the node agent, under that node's attestation. */
+  gcsIsolation?: GcsIsolation;
   /** Denormalized declarative parameter contributions from the manifest, so
    * the native parameter panel renders without a manifest re-fetch. */
   gcsParameters?: PluginParameter[];
@@ -221,6 +220,7 @@ export async function finalizeGcsInstall(
   const gcsParameters = buildGcsParameters(manifest);
   const flightSkills = buildGcsFlightSkills(manifest);
   const targetActions = buildGcsTargetActions(manifest);
+  const gcsIsolation = buildGcsIsolation(manifest);
 
   if (hasGcsHalf) {
     // 1. Obtain the archive bytes.
@@ -289,30 +289,42 @@ export async function finalizeGcsInstall(
     }
     verifiedSignerId = signature.verifiedSignerId;
 
-    // 3. Extract the built GCS bundle.
-    let bundleJs: string;
-    try {
-      const entry =
-        zip.file(GCS_BUNDLE_PATH) ?? zip.file(`./${GCS_BUNDLE_PATH}`);
-      if (!entry) {
-        throw new Error(`archive is missing ${GCS_BUNDLE_PATH}`);
+    if (gcsIsolation === "inline") {
+      // An inline module runs unsandboxed in this page; only a first-party
+      // signed archive may declare one. Nothing is stored: the module loads
+      // from the node agent under its own attestation at every mount.
+      if (!isEnrolledFirstPartySigner(verifiedSignerId)) {
+        throw new FinalizeGcsInstallError(
+          "verify-signature",
+          "an inline GCS module requires an archive signed by a first-party key",
+        );
       }
-      bundleJs = await entry.async("string");
-    } catch (err) {
-      throw new FinalizeGcsInstallError(
-        "extract-bundle",
-        err instanceof Error ? err.message : String(err),
-      );
-    }
+    } else {
+      // 3. Extract the built GCS bundle.
+      let bundleJs: string;
+      try {
+        const entry =
+          zip.file(GCS_BUNDLE_PATH) ?? zip.file(`./${GCS_BUNDLE_PATH}`);
+        if (!entry) {
+          throw new Error(`archive is missing ${GCS_BUNDLE_PATH}`);
+        }
+        bundleJs = await entry.async("string");
+      } catch (err) {
+        throw new FinalizeGcsInstallError(
+          "extract-bundle",
+          err instanceof Error ? err.message : String(err),
+        );
+      }
 
-    // 4. Wrap the bundle in its iframe document and have the server store it.
-    try {
-      bundleStorageId = await callables.storeBundle({ html: buildIframeHtml(bundleJs) });
-    } catch (err) {
-      throw new FinalizeGcsInstallError(
-        "upload-bundle",
-        err instanceof Error ? err.message : String(err),
-      );
+      // 4. Wrap the bundle in its iframe document and have the server store it.
+      try {
+        bundleStorageId = await callables.storeBundle({ html: buildIframeHtml(bundleJs) });
+      } catch (err) {
+        throw new FinalizeGcsInstallError(
+          "upload-bundle",
+          err instanceof Error ? err.message : String(err),
+        );
+      }
     }
 
     gcsContributes = buildGcsContributes(manifest);
@@ -337,6 +349,7 @@ export async function finalizeGcsInstall(
       })),
       bundleStorageId,
       gcsContributes,
+      gcsIsolation,
       gcsParameters,
       flightSkills,
       targetActions,

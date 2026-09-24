@@ -1353,7 +1353,11 @@
     "forgetCloudUnavailable": "The cloud is unreachable, so the node was not removed: its cloud pairing would bring it back. Try again when the cloud is reachable.",
     "forgetCloudFailed": "The node was not removed: its cloud pairing could not be deleted ({error}).",
     "nodeRemoved": "Node \"{name}\" removed",
-    "battery": "Battery"
+    "battery": "Battery",
+    "pluginPage": "Extension page",
+    "pluginSurface": {
+      "unavailable": "This extension page is not loaded on this node yet."
+    }
   },
   "vision": {
     "title": "Vision Engine",
@@ -4946,7 +4950,13 @@
     "needsNodeAgent": "Connect to this drone's agent to change the plugin on it.",
     "removeConfirmTitle": "Remove plugin?",
     "removeConfirmMessage": "{name} is removed from the drone and from your account.",
-    "removeConfirmAction": "Remove"
+    "removeConfirmAction": "Remove",
+    "inlineLoading": "Loading {name}…",
+    "inlineLoadFailed": "{name} could not load: {reason}",
+    "inlineMountFailed": "{name} failed to start: {reason}",
+    "inlineNeedsNode": "Install this extension on a node to load it here",
+    "inlineRetry": "Retry",
+    "inlineCrashed": "This extension stopped responding."
   },
   "pluginRegistry": {
     "browse": {
@@ -5179,7 +5189,9 @@
           "settings": "Settings",
           "mapOverlay": "Map overlay",
           "missionTemplate": "Mission template",
-          "skill": "Skill"
+          "skill": "Skill",
+          "agentPage": "Agent page",
+          "nodeSurface": "Node tab"
         }
       },
       "permissionsAnchor": "{count} permissions",

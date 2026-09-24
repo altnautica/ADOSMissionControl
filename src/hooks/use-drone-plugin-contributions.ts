@@ -33,28 +33,18 @@ import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLocalAgentPlugins } from "@/hooks/use-local-agent-plugins";
 import { getDemoDronePluginContributions } from "@/mock/mock-plugins";
-import type { PluginSlotName, PairedNodeProfile } from "@/lib/plugins/types";
+import {
+  slotOffersOnProfile,
+  type GcsContributeRow,
+  type PluginSlotName,
+  type PairedNodeProfile,
+} from "@/lib/plugins/types";
 import type { PluginParameter } from "@/lib/plugins/parameters/schema";
 
 /** Live install statuses that surface a contribution (matches the
  * `listForDeviceWithDetail` server filter for the cloud path). */
 function isLiveStatus(status: string): boolean {
   return status === "enabled" || status === "running";
-}
-
-/** A `node.detail.tab` contribution mounts on a node when its `profile`
- * narrowing is absent (any profile) or includes the node's resolved profile.
- * Mirrors the agent's `["drone"]` default for legacy manifests by treating an
- * absent profile as universal here. */
-function tabOffersOnProfile(
-  profile: PairedNodeProfile[] | undefined,
-  nodeProfile: PairedNodeProfile | undefined,
-): boolean {
-  if (!profile || profile.length === 0) return true;
-  // No node profile known yet (e.g. before the fleet row resolves) — keep the
-  // tab rather than hiding a contribution on a transient unknown.
-  if (!nodeProfile) return true;
-  return profile.includes(nodeProfile);
 }
 
 /**
@@ -94,23 +84,73 @@ export interface DronePluginContribution {
 /**
  * One live install row, the shape both sources (the cloud
  * `cmdPlugins:listForDeviceWithDetail` query and the local agent detail)
- * are projected into. Every row is a live tab candidate; its
+ * are projected into. Every row is a live contribution candidate; its
  * `gcsContributes` carries the denormalised slot contributions.
  */
-interface InstallDetailRow {
+export interface InstallDetailRow {
   installId: string;
   pluginId: string;
   version: string;
   name: string;
-  gcsContributes: Array<{
-    slot: string;
-    panelId: string;
-    title?: string;
-    icon?: string;
-    order?: number;
-    profile?: PairedNodeProfile[];
-  }>;
+  gcsContributes: ReadonlyArray<GcsContributeRow>;
   gcsParameters?: PluginParameter[];
+}
+
+/**
+ * The live (enabled / running) plugin install rows for one node, from
+ * whichever source is active: the Convex query when signed in, the node's
+ * own agent detail when signed out. Null until that source resolves, and
+ * when `agentId` is falsy. Demo mode is the caller's concern: each reader
+ * substitutes its own mock set.
+ */
+export function useLiveInstallRows(
+  agentId: string | undefined,
+): InstallDetailRow[] | null {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  const installs = useConvexSkipQuery(api.cmdPlugins.listForDeviceWithDetail, {
+    args: agentId ? { deviceId: agentId } : undefined,
+    enabled: isAuthenticated && Boolean(agentId),
+  });
+
+  // Local-first source: when signed out, the agent's own
+  // /plugins detail is the source of truth, exactly as Convex is in cloud
+  // mode. Returns null in cloud/demo mode, so the cloud branch wins there.
+  const localDetail = useLocalAgentPlugins(agentId ?? null);
+
+  return useMemo(() => {
+    if (!agentId) return null;
+    // Both sources land in the same row shape. Cloud:
+    // `listForDeviceWithDetail` already filters to enabled/running. Local: the
+    // agent reports live status, so filter to the same set here so a header
+    // never renders without an enabled body behind it. The cloud row stores
+    // parameters as loosely-typed JSON, so it is narrowed through the
+    // manifest parser the local path already went through.
+    if (isAuthenticated) {
+      return installs
+        ? installs.map((r) => ({
+            installId: String(r.installId),
+            pluginId: r.pluginId,
+            version: r.version,
+            name: r.name,
+            gcsContributes: r.gcsContributes,
+            gcsParameters: parseParameterContributions(r.gcsParameters) ?? [],
+          }))
+        : null;
+    }
+    return localDetail
+      ? localDetail
+          .filter((r) => isLiveStatus(r.status))
+          .map((r) => ({
+            installId: r.installId,
+            pluginId: r.pluginId,
+            version: r.version,
+            name: r.name,
+            gcsContributes: r.gcsContributes,
+            gcsParameters: r.gcsParameters,
+          }))
+      : null;
+  }, [agentId, isAuthenticated, installs, localDetail]);
 }
 
 /** The per-drone tab slot, sourced from the canonical slot list. */
@@ -136,17 +176,7 @@ export function useDronePluginContributions(
   agentId: string | undefined,
   nodeProfile?: PairedNodeProfile,
 ): DronePluginContribution[] {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-
-  const installs = useConvexSkipQuery(api.cmdPlugins.listForDeviceWithDetail, {
-    args: agentId ? { deviceId: agentId } : undefined,
-    enabled: isAuthenticated && Boolean(agentId),
-  });
-
-  // Local-first source: when signed out, the agent's own
-  // /plugins detail is the source of truth, exactly as Convex is in cloud
-  // mode. Returns null in cloud/demo mode, so the cloud branch wins there.
-  const localDetail = useLocalAgentPlugins(agentId ?? null);
+  const rows = useLiveInstallRows(agentId);
 
   return useMemo(() => {
     if (!agentId) return [];
@@ -157,41 +187,14 @@ export function useDronePluginContributions(
     if (isDemoMode()) {
       return sortContributions(
         getDemoDronePluginContributions(agentId).filter((c) =>
-          tabOffersOnProfile(c.profile, nodeProfile),
+          slotOffersOnProfile(NODE_DETAIL_TAB_SLOT, c.profile, nodeProfile),
         ),
       );
     }
 
-    // Both sources land in the same row shape, so the projection below is
-    // shared. Cloud: `listForDeviceWithDetail` already filters to
-    // enabled/running. Local: the agent reports live status, so filter to
-    // the same set here so a tab header never renders without an enabled
-    // body behind it.
-    // The cloud row stores parameters as loosely-typed JSON, so it is narrowed
-    // through the manifest parser the local path already went through.
-    const rows: InstallDetailRow[] = isAuthenticated
-      ? (installs ?? []).map((r) => ({
-          installId: r.installId,
-          pluginId: r.pluginId,
-          version: r.version,
-          name: r.name,
-          gcsContributes: r.gcsContributes,
-          gcsParameters: parseParameterContributions(r.gcsParameters) ?? [],
-        }))
-      : (localDetail ?? [])
-          .filter((r) => isLiveStatus(r.status))
-          .map((r) => ({
-            installId: r.installId,
-            pluginId: r.pluginId,
-            version: r.version,
-            name: r.name,
-            gcsContributes: r.gcsContributes,
-            gcsParameters: r.gcsParameters,
-          }));
-
     // Before either source resolves (Convex query pending, or the agent
     // fetch in flight) we have no rows yet.
-    if (isAuthenticated ? !installs : !localDetail) return [];
+    if (!rows) return [];
 
     // Project each row's `gcsContributes` entries that target the per-drone
     // tab slot. One install can contribute several tabs; each is its own
@@ -201,9 +204,9 @@ export function useDronePluginContributions(
       for (const entry of row.gcsContributes) {
         if (entry.slot !== NODE_DETAIL_TAB_SLOT) continue;
         // Profile-narrow a node.detail.tab to the node it mounts on.
-        if (!tabOffersOnProfile(entry.profile, nodeProfile)) continue;
+        if (!slotOffersOnProfile(entry.slot, entry.profile, nodeProfile)) continue;
         list.push({
-          installId: String(row.installId),
+          installId: row.installId,
           pluginId: row.pluginId,
           panelId: entry.panelId,
           title: entry.title ?? row.name,
@@ -219,7 +222,7 @@ export function useDronePluginContributions(
     }
 
     return sortContributions(list);
-  }, [agentId, isAuthenticated, installs, localDetail, nodeProfile]);
+  }, [agentId, rows, nodeProfile]);
 }
 
 /**

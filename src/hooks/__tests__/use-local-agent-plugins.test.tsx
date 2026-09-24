@@ -167,6 +167,8 @@ describe("useLocalAgentPlugins", () => {
       agentUrl: "http://drone-1.local:8080",
       apiKey: "key-abc",
       entrypoint: "gcs/plugin.bundle.js",
+      // An agent that reports no `gcs.isolation` serves an iframe bundle.
+      isolation: "iframe",
     });
     expect(row.grantedCaps).toContain("ui.slot.flight-skill");
 

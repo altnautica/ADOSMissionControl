@@ -80,6 +80,8 @@ export function toInstallSummary(
     author: parsed.author,
     license: parsed.license,
     halves: [...parsed.halves],
+    gcsEntrypoint: parsed.gcsEntrypoint,
+    gcsIsolation: parsed.gcsIsolation,
     signerId,
     signatureState,
     trustSignals,

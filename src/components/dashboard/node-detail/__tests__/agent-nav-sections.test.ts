@@ -50,6 +50,7 @@ function ctxFor(
     showLockedTabs: false,
     isFeatureEnabled: () => true,
     atlasCapturing: true,
+    pluginAgentPages: [],
     ...over,
   };
 }
@@ -68,7 +69,7 @@ function settingsCtxFor(profile: NodeProfile): SettingsPageContext {
 }
 
 const nav = (profile: NodeProfile, over: Partial<SurfaceContext> = {}) =>
-  resolveAgentNav(ctxFor(profile, over), settingsCtxFor(profile));
+  resolveAgentNav(ctxFor(profile, over), settingsCtxFor(profile), []);
 
 describe("the merged Agent sidebar table", () => {
   it("places every registry page in exactly one section, and names no page that does not exist", () => {
@@ -211,6 +212,7 @@ describe("resolveAgentNav", () => {
       radioPresent: "absent",
       isFeatureEnabled: () => false,
       atlasCapturing: false,
+      pluginAgentPages: [],
     }).entries.map((e) => e.id);
     // Nothing at all: Logs is a top-level surface now, not a sub-page, so the
     // Agent sidebar for a companion-less node is genuinely empty.

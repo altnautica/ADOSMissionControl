@@ -25,8 +25,9 @@ import {
   SETTINGS_NAV_ITEMS,
   type SettingsPageContext,
 } from "@/components/command/settings/settings-nav";
-import type { SurfaceContext } from "../surface-types";
+import type { AgentNavContribution, SurfaceContext } from "../surface-types";
 import { AGENT_NAV_ITEMS, companionPresent } from "./agent-nav-items";
+import { placePluginPages } from "./plugin-nav";
 
 export interface NavSectionSpec {
   key: string;
@@ -142,6 +143,8 @@ export function resolveSubpage(requested: string): ResolvedSubpage {
 export interface AgentNavSetupPane {
   /** Full i18n path for the segment's own label, used in the page header. */
   labelKey: string;
+  /** A literal label that wins over `labelKey` (a plugin's manifest title). */
+  label?: string;
   readsConfig: boolean;
   render: () => ReactNode;
 }
@@ -151,6 +154,9 @@ export interface AgentNavEntry {
   id: string;
   /** Full i18n path for the sidebar label. */
   labelKey: string;
+  /** A literal label that wins over `labelKey`: a plugin page carries the
+   * title its manifest declares, which is not an i18n key. */
+  label?: string;
   icon: ReactNode;
   /** A configuration page renders inside the config chrome (the scrolling
    * pane, the subtitle, the per-node draft reset); a live surface owns its own
@@ -186,10 +192,14 @@ export interface ResolvedAgentNav {
  * A configuration page carrying `mergeInto` is attached to the named live page
  * as its Setup segment rather than becoming a row of its own — unless this
  * profile has no such live page, in which case it keeps its own row.
+ *
+ * Plugin pages (`plugins`, already narrowed to this node's profile) are placed
+ * last, by `placePluginPages`, so they can anchor below any built-in row.
  */
 export function resolveAgentNav(
   ctx: SurfaceContext,
   settingsCtx: SettingsPageContext,
+  plugins: ReadonlyArray<AgentNavContribution>,
 ): ResolvedAgentNav {
   const byId = new Map<string, AgentNavEntry>();
 
@@ -241,7 +251,9 @@ export function resolveAgentNav(
     items: section.items
       .map((id) => byId.get(id))
       .filter((entry): entry is AgentNavEntry => entry !== undefined),
-  })).filter((section) => section.items.length > 0);
+  }));
+  placePluginPages(sections, plugins, ctx);
+  const visible = sections.filter((section) => section.items.length > 0);
 
-  return { sections, entries: sections.flatMap((section) => section.items) };
+  return { sections: visible, entries: visible.flatMap((section) => section.items) };
 }

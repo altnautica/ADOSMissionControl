@@ -16,7 +16,14 @@
  * @license GPL-3.0-only
  */
 
-import type { DronePluginContribution } from "@/hooks/use-drone-plugin-contributions";
+import type {
+  DronePluginContribution,
+  InstallDetailRow,
+} from "@/hooks/use-drone-plugin-contributions";
+import {
+  DEMO_INLINE_FIXTURE_PANEL_ID,
+  DEMO_INLINE_FIXTURE_PLUGIN_ID,
+} from "./inline-fixture-plugin";
 import type { DroneSkillContribution } from "@/lib/skills/plugin-skills";
 import type { DroneTargetActionContribution } from "@/lib/skills/target-actions";
 import type {
@@ -412,4 +419,30 @@ export function getDemoFleetPluginContributions(): DemoFleetSlotContribution[] {
     ...c,
     grantedCapabilities: [...c.grantedCapabilities],
   }));
+}
+
+/**
+ * Demo install rows carrying node pages: the inline fixture module's one
+ * Agent-sidebar page in the Software section, offered on every demo drone.
+ * Read by `useNodePluginPages` in demo mode; the demo contribution producer
+ * mounts the fixture module behind it.
+ */
+export function getDemoNodePageInstallRows(): InstallDetailRow[] {
+  return [
+    {
+      installId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
+      pluginId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
+      version: "1.0.0",
+      name: "Inline Fixture",
+      gcsContributes: [
+        {
+          slot: "node.agent.page",
+          panelId: DEMO_INLINE_FIXTURE_PANEL_ID,
+          title: "Inline Fixture",
+          section: "software",
+          profile: ["drone"],
+        },
+      ],
+    },
+  ];
 }

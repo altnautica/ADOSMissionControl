@@ -46,6 +46,7 @@ import type * as http from "../http.js";
 import type * as mosquittoPasswd from "../mosquittoPasswd.js";
 import type * as operatorHmacSecrets from "../operatorHmacSecrets.js";
 import type * as paramRegistry from "../paramRegistry.js";
+import type * as pluginRecords from "../pluginRecords.js";
 import type * as pluginRegistry from "../pluginRegistry.js";
 import type * as profiles from "../profiles.js";
 import type * as storage from "../storage.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   mosquittoPasswd: typeof mosquittoPasswd;
   operatorHmacSecrets: typeof operatorHmacSecrets;
   paramRegistry: typeof paramRegistry;
+  pluginRecords: typeof pluginRecords;
   pluginRegistry: typeof pluginRegistry;
   profiles: typeof profiles;
   storage: typeof storage;

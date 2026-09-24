@@ -7,11 +7,12 @@
  * registered nothing, so it falls back to the Agent page and the panel never
  * renders empty.
  *
- * Scope: **plugin-contributed node-detail tabs do NOT register here.** They
- * reach the UI through `useDronePluginContributions`, rendered by
- * `DroneDetailTabHeaders` / `DroneDetailTabBody` as a sibling strip after the
- * resolved built-in tabs (`NodeDetailPanel` short-circuits the registry for a
- * `plugin:` tab id).
+ * Scope: **plugin-contributed surfaces do NOT register here.** A
+ * `node.detail.tab` reaches the UI through `useDronePluginContributions`,
+ * rendered by `DroneDetailTabHeaders` / `DroneDetailTabBody` as a sibling strip
+ * after the resolved built-in tabs (`NodeDetailPanel` short-circuits the
+ * registry for a `plugin:` tab id). A `node.surface` is passed to
+ * `resolveSurfaces` per call and merged into the built-in list there.
  *
  * That split is deliberate, not a missing migration. This registry is
  * populated once at module load from three static arrays, and `resolveSurfaces`
@@ -27,7 +28,12 @@
  */
 
 import { createContributionRegistry } from "@/lib/plugins/registries/contribution-registry";
-import type { NodeProfile, SurfaceContext, SurfaceSpec } from "./surface-types";
+import type {
+  NodeProfile,
+  ProfileSurfaceContribution,
+  SurfaceContext,
+  SurfaceSpec,
+} from "./surface-types";
 import { DRONE_SURFACES } from "./surfaces/drone";
 import { GROUND_STATION_SURFACES } from "./surfaces/ground-station";
 import { WORKSTATION_SURFACES } from "./surfaces/workstation";
@@ -105,14 +111,42 @@ export function registerBuiltinSurfaces(): void {
 // is used.
 registerBuiltinSurfaces();
 
+/** The profile whose built-in surface list a node shows. The compute profile
+ * has no list of its own and shows the workstation's. */
+const BUILTIN_PROFILE: Partial<Record<NodeProfile, NodeProfile>> = {
+  compute: "workstation",
+};
+
 /** The ordered, capability/role-filtered surface list for the selected node.
  * An unknown / future profile registered nothing so it gets just the Agent
- * page. */
-export function resolveSurfaces(ctx: SurfaceContext): SurfaceSpec[] {
+ * page.
+ *
+ * Plugin surfaces (`plugins`) for this node's profile are merged in by
+ * `order`: each lands at the end of the run of surfaces sharing its `group`,
+ * or, with no such run, just before the Agent surface. */
+export function resolveSurfaces(
+  ctx: SurfaceContext,
+  plugins: ReadonlyArray<ProfileSurfaceContribution>,
+): SurfaceSpec[] {
   const profile = (ctx.drone.profile ?? "drone") as NodeProfile;
+  const builtinProfile = BUILTIN_PROFILE[profile] ?? profile;
   const matched = useSurfaceRegistry
     .getState()
-    .resolve((c) => c.profile === profile && (c.when ? c.when(ctx) : true))
+    .resolve((c) => c.profile === builtinProfile && (c.when ? c.when(ctx) : true))
     .map((c) => c.payload);
-  return matched.length > 0 ? matched : [AGENT_SURFACE];
+  const surfaces = matched.length > 0 ? matched : [AGENT_SURFACE];
+
+  const mine = plugins
+    .filter((p) => p.profile.includes(profile))
+    .sort((a, b) => a.order - b.order || a.spec.id.localeCompare(b.spec.id));
+  for (const plugin of mine) {
+    const spec: SurfaceSpec = plugin.group ? { ...plugin.spec, group: plugin.group } : plugin.spec;
+    const runEnd = plugin.group
+      ? surfaces.findLastIndex((s) => s.group === plugin.group)
+      : -1;
+    const agentAt = surfaces.findIndex((s) => s.id === AGENT_SURFACE.id);
+    const at = runEnd >= 0 ? runEnd + 1 : agentAt >= 0 ? agentAt : surfaces.length;
+    surfaces.splice(at, 0, spec);
+  }
+  return surfaces;
 }

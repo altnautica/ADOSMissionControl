@@ -8,6 +8,10 @@
  */
 
 import { PLUGIN_SLOTS, type PluginSlotName } from "@/lib/plugins/types";
+import {
+  parseAgentPageContributions,
+  parseNodeSurfaceContributions,
+} from "@/lib/plugins/contributions/node-pages";
 
 import type {
   ParsedSkillContribution,
@@ -208,12 +212,14 @@ function collectSlotContributions(
 
 /**
  * Parse the slot contributions out of `gcs.contributes` — the
- * `panels`, `overlays`, and `notifications` arrays. Each becomes a
- * `{ slot, panelId, title?, icon?, order? }` row matching the
- * `recordInstall` `gcsContributes` arg + the producer's row shape, so
- * an installed plugin's iframe-bearing slots mount once the row lands.
- * Skills are parsed separately (`parseSkillContributions`) because they
- * are not iframe slots. Returns undefined when no valid entry is found.
+ * `panels`, `overlays`, `notifications`, `agent_pages` and `node_surfaces`
+ * arrays. Each becomes a `{ slot, panelId, title?, icon?, order?, … }` row
+ * matching the `recordInstall` `gcsContributes` arg + the producer's row
+ * shape, so an installed plugin's slots mount once the row lands. Agent
+ * pages and node surfaces also carry their placement (`section` / `after` /
+ * `setupFor` / `group`) and `profile` narrowing. Skills are parsed separately
+ * (`parseSkillContributions`) because they are not iframe slots. Returns
+ * undefined when no valid entry is found.
  */
 export function parseSlotContributions(
   contributes: unknown,
@@ -230,5 +236,7 @@ export function parseSlotContributions(
     "notification.channel",
     out,
   );
+  out.push(...parseAgentPageContributions(contributes.agent_pages));
+  out.push(...parseNodeSurfaceContributions(contributes.node_surfaces));
   return out.length > 0 ? out : undefined;
 }

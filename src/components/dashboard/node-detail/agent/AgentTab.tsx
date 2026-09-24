@@ -129,7 +129,7 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
   );
 
   const { sections, entries } = useMemo(
-    () => resolveAgentNav(ctx, settingsCtx),
+    () => resolveAgentNav(ctx, settingsCtx, ctx.pluginAgentPages),
     [ctx, settingsCtx],
   );
   // A persisted or deep-linked id that this node does not offer (a page whose
@@ -173,7 +173,7 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
         label: tRoot(section.labelKey),
         items: section.items.map((entry) => ({
           id: entry.id,
-          label: tRoot(entry.labelKey),
+          label: entry.label ?? tRoot(entry.labelKey),
           icon: entry.icon,
         })),
       })),
@@ -272,7 +272,7 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
             // opens on Setup rather than the live view beside it.
             <SegmentedPane
               key={`${activeId}:${requested.segment}`}
-              ariaLabel={tRoot(activeItem.labelKey)}
+              ariaLabel={activeItem.label ?? tRoot(activeItem.labelKey)}
               initialId={requested.segment}
               segments={[
                 {

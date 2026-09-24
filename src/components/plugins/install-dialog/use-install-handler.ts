@@ -340,23 +340,15 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
         const gcsContributes = buildGcsContributes(manifest);
         const gcsParameters = buildGcsParameters(manifest);
         let bundle: LocalPluginBundleSource | null = null;
+        const entrypoint = manifest.gcsEntrypoint ?? "gcs/plugin.bundle.js";
         if (hasAgentHalf && targetDevice && lanTarget) {
-          bundle = {
-            kind: "agent",
-            deviceId: targetDevice.deviceId,
-            entrypoint: "gcs/plugin.bundle.js",
-          };
+          bundle = { kind: "agent", deviceId: targetDevice.deviceId, entrypoint };
         } else if (source.kind === "registry") {
           const pin = await pinArchive(await fetchRegistryArchive(source.url), {
             expectedSha256: source.expectedSha256,
             manifestSignerId: manifest.signerId,
           });
-          bundle = {
-            kind: "archive",
-            archiveUrl: source.url,
-            entrypoint: "gcs/plugin.bundle.js",
-            pin,
-          };
+          bundle = { kind: "archive", archiveUrl: source.url, entrypoint, pin };
         }
         if (bundle) {
           useLocalPluginInstallsStore.getState().record({

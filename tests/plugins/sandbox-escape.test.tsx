@@ -1,11 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, cleanup } from "@testing-library/react";
 
-import {
-  createPluginBridge,
-  validateEnvelope,
-  type BridgeError,
-} from "@/lib/plugins/bridge";
+import { createPluginBridge, type BridgeError } from "@/lib/plugins/bridge";
+import { validateEnvelope } from "@/lib/plugins/envelope-dispatcher";
 import { PluginIframeHost } from "@/components/plugins/PluginIframeHost";
 import type { PluginRpcEnvelope } from "@/lib/plugins/types";
 

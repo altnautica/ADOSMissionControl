@@ -2,6 +2,8 @@ import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import {
+  gcsContributesValidator,
+  gcsIsolationValidator,
   gcsParametersValidator,
   flightSkillsValidator,
   targetActionsValidator,
@@ -1489,31 +1491,11 @@ export default defineSchema({
     ),
     bundleStorageId: v.optional(v.id("_storage")),  // GCS half blob, if any
     // Denormalized gcs.contributes slot entries from the manifest, so the
-    // contribution producer mounts iframes without fetching the manifest
+    // contribution producer mounts plugins without fetching the manifest
     // blob each render. Populated at install time from the parsed manifest.
-    gcsContributes: v.optional(
-      v.array(
-        v.object({
-          slot: v.string(),                 // PluginSlotName, e.g. "video.overlay"
-          panelId: v.string(),              // gcs.contributes[].id
-          title: v.optional(v.string()),
-          icon: v.optional(v.string()),
-          order: v.optional(v.number()),
-          // Node profiles a node.detail.tab is offered on. Absent = any
-          // profile the host allows. Populated from the manifest's tab
-          // contribution so the producer can profile-filter a tab.
-          profile: v.optional(
-            v.array(
-              v.union(
-                v.literal("drone"),
-                v.literal("ground-station"),
-                v.literal("workstation"),
-              )
-            )
-          ),
-        })
-      )
-    ),
+    gcsContributes: v.optional(gcsContributesValidator),
+    // How the GCS half mounts. Absent = "iframe".
+    gcsIsolation: v.optional(gcsIsolationValidator),
     // Denormalized declarative parameter contributions from the manifest, so
     // the native parameter panel renders a plugin's settings form without
     // re-fetching the manifest. Additive-optional; older rows omit it.
@@ -1602,6 +1584,36 @@ export default defineSchema({
     // read. `by_user_created` cannot serve it — the sweep is fleet-wide and
     // would have to walk one range per user to use that index.
     .index("by_createdAt", ["createdAt"]),
+
+  // Plugin-owned cloud records: small JSON documents a plugin stores under
+  // the operator's account, keyed (collection, key) inside the plugin's own
+  // namespace. The GCS half writes through `pluginRecords` (writtenBy "gcs"),
+  // the agent half through `POST /agent/plugin-records` (writtenBy "agent").
+  // Access needs an enabled install with the `cloud.records` grant; the
+  // plugin id is always bound by the host, never taken from plugin input.
+  plugin_records: defineTable({
+    userId: v.string(),
+    pluginId: v.string(),
+    deviceId: v.optional(v.string()), // node the record is about, if any
+    collection: v.string(),
+    key: v.string(),
+    data: v.any(),
+    sizeBytes: v.number(), // UTF-8 length of the JSON-encoded data
+    writtenBy: v.union(v.literal("gcs"), v.literal("agent")),
+    updatedAt: v.number(),
+  })
+    .index("by_user_plugin_collection_key", ["userId", "pluginId", "collection", "key"])
+    .index("by_user_plugin_device", ["userId", "pluginId", "deviceId"])
+    .index("by_device", ["deviceId"]),
+
+  // Live row count per (user, plugin) in `plugin_records`, so the per-plugin
+  // record cap is one indexed read instead of a scan of up to the cap's worth
+  // of documents. Maintained by every insert and delete of a record row.
+  plugin_record_counts: defineTable({
+    userId: v.string(),
+    pluginId: v.string(),
+    count: v.number(),
+  }).index("by_user_plugin", ["userId", "pluginId"]),
 
   // Uploaded .adosplug archive blobs keyed by (userId, sha256). One
   // row per uploaded archive; reused across drones so a fleet-wide
