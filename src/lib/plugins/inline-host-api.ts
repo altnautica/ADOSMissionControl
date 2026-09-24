@@ -22,6 +22,7 @@ import { resolveFleetRowId } from "@/lib/nodes/fleet-row";
 import { pluginPageId } from "@/components/dashboard/node-detail/surface-types";
 import {
   InlineHostError,
+  type InlineAgentApi,
   type InlineHostApi,
   type InlineNodeSummary,
   type InlinePluginContext,
@@ -63,6 +64,49 @@ function clientFor(deviceId: string | null) {
   return pluginClientForReach(reach);
 }
 
+/**
+ * The plugin's own HTTP server on one node (`/api/plugins/{id}/x/<path>`),
+ * reached the way every inline call reaches a node. Reach is resolved per
+ * call, so a node paired after the module mounted becomes usable; a node with
+ * no reach rejects with `unreachable`. Sockets are handed to `track` so the
+ * session closes them on unmount.
+ */
+function pluginAgent(
+  pluginId: string,
+  deviceId: string | null,
+  unreachable: "no_node_agent" | "node_unreachable",
+  track: (socket: WebSocket) => boolean,
+): InlineAgentApi {
+  const client = () => {
+    const reach = deviceId ? resolveNodeAgentReach(deviceId) : null;
+    if (!reach) {
+      throw new InlineHostError(
+        unreachable,
+        deviceId ? `node ${deviceId} is not reachable from this browser` : "no node to reach",
+      );
+    }
+    return pluginClientForReach(reach);
+  };
+  return {
+    fetch: async (path, init) => client().pluginHttp(pluginId, path, init),
+    websocket: async (path) => {
+      const c = client();
+      if (isHttpsOrigin()) {
+        throw new InlineHostError(
+          "websocket_unavailable_over_https_proxy",
+          "A plugin WebSocket needs Mission Control served over HTTP on the node's network",
+        );
+      }
+      const socket = await c.openPluginSocket(pluginId, path);
+      if (!track(socket)) {
+        socket.close();
+        throw new InlineHostError(unreachable, "unmounted");
+      }
+      return socket;
+    },
+  };
+}
+
 export function createInlineHostSession(input: {
   pluginId: string;
   panelId: string;
@@ -77,15 +121,31 @@ export function createInlineHostSession(input: {
   let released = false;
   let stylesheet: HTMLStyleElement | null = null;
 
+  const trackSocket = (socket: WebSocket): boolean => {
+    if (released) return false;
+    sockets.add(socket);
+    socket.addEventListener("close", () => sockets.delete(socket));
+    return true;
+  };
+
+  /** A file under the plugin's `gcs/` dir, typed by extension; rejects once
+   * the module has unmounted. */
+  const readAsset = async (path: string): Promise<Blob> => {
+    const unmounted = () => new InlineHostError("asset_unavailable", "unmounted");
+    if (released) throw unmounted();
+    const rel = path.replace(/^\/+/, "");
+    const ext = rel.split(".").pop()?.toLowerCase() ?? "";
+    const blob = await bundle.readAsset(rel);
+    if (released) throw unmounted();
+    return new Blob([blob], { type: ASSET_TYPES[ext] ?? "application/octet-stream" });
+  };
+
   const assetUrl = (path: string): Promise<string> => {
     if (released) return Promise.reject(new InlineHostError("asset_unavailable", "unmounted"));
     const rel = path.replace(/^\/+/, "");
     const cached = objectUrls.get(rel);
     if (cached) return cached;
-    const ext = rel.split(".").pop()?.toLowerCase() ?? "";
-    const url = bundle.readAsset(rel).then((blob) =>
-      URL.createObjectURL(new Blob([blob], { type: ASSET_TYPES[ext] ?? "application/octet-stream" })),
-    );
+    const url = readAsset(rel).then((blob) => URL.createObjectURL(blob));
     objectUrls.set(rel, url);
     url.catch(() => objectUrls.delete(rel));
     return url;
@@ -120,26 +180,9 @@ export function createInlineHostSession(input: {
       signerId: bundle.trust.signerId,
     },
     node: { deviceId, profile: input.nodeProfile },
-    agent: {
-      fetch: async (path, init) => clientFor(deviceId).pluginHttp(pluginId, path, init),
-      websocket: async (path) => {
-        if (isHttpsOrigin()) {
-          throw new InlineHostError(
-            "websocket_unavailable_over_https_proxy",
-            "A plugin WebSocket needs Mission Control served over HTTP on the node's network",
-          );
-        }
-        const socket = await clientFor(deviceId).openPluginSocket(pluginId, path);
-        if (released) {
-          socket.close();
-          throw new InlineHostError("no_node_agent", "unmounted");
-        }
-        sockets.add(socket);
-        socket.addEventListener("close", () => sockets.delete(socket));
-        return socket;
-      },
-    },
+    agent: pluginAgent(pluginId, deviceId, "no_node_agent", trackSocket),
     assetUrl,
+    readAsset,
     records: ctx.records,
     nodes: {
       list: (): InlineNodeSummary[] =>
@@ -151,6 +194,7 @@ export function createInlineHostSession(input: {
             profile: e.presence.profile,
             reachable: resolveNodeAgentReach(e.presence.deviceId) !== null,
           })),
+      agent: (target) => pluginAgent(pluginId, target, "node_unreachable", trackSocket),
       pluginConfig: (target) => ({
         get: () => clientFor(target).getConfig(pluginId),
         set: async (key, value) => {

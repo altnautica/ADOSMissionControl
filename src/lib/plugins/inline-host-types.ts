@@ -82,23 +82,32 @@ export interface InlineNodeSummary {
   reachable: boolean;
 }
 
+/** The plugin's own HTTP server on one node, behind the agent passthrough
+ * (`/api/plugins/{id}/x/<path>`). */
+export interface InlineAgentApi {
+  fetch(path: string, init?: RequestInit): Promise<Response>;
+  /** Unavailable on an HTTPS origin. */
+  websocket(path: string): Promise<WebSocket>;
+}
+
 export interface InlineHostApi {
   ctx: InlinePluginContext;
   plugin: { id: string; version: string; panelId: string; signerId: string };
   node: { deviceId: string | null; profile: PairedNodeProfile | null };
-  agent: {
-    /** A request to the plugin's own HTTP server on the mounted node
-     * (`/api/plugins/{id}/x/<path>`). */
-    fetch(path: string, init?: RequestInit): Promise<Response>;
-    /** A WebSocket to the same server. Unavailable on an HTTPS origin. */
-    websocket(path: string): Promise<WebSocket>;
-  };
+  /** The plugin's server on the mounted node. */
+  agent: InlineAgentApi;
   /** An object URL for a file under the plugin's `gcs/` dir, revoked when the
    * module unmounts. */
   assetUrl(path: string): Promise<string>;
+  /** The same file's bytes (an object URL cannot be fetched under the app
+   * CSP); rejects `asset_unavailable` once the module has unmounted. */
+  readAsset(path: string): Promise<Blob>;
   records: PluginRecordsApi;
   nodes: {
     list(): InlineNodeSummary[];
+    /** The plugin's server on another node; rejects `node_unreachable` when
+     * this browser has no reach to it. */
+    agent(deviceId: string): InlineAgentApi;
     pluginConfig(deviceId: string): {
       get(): Promise<Record<string, unknown>>;
       set(key: string, value: unknown): Promise<void>;
@@ -115,6 +124,7 @@ export interface InlinePluginModule {
 export type InlineHostErrorCode =
   | "websocket_unavailable_over_https_proxy"
   | "no_node_agent"
+  | "node_unreachable"
   | "unknown_node"
   | "asset_unavailable";
 
