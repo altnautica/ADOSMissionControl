@@ -12,15 +12,16 @@ import {
 } from "../plugin-cloud-state-store";
 
 beforeEach(() => {
-  usePluginCloudStateStore.setState({ byDevice: {} });
+  usePluginCloudStateStore.setState({ byDevice: {}, updatedAt: {} });
 });
 
 describe("usePluginCloudStateStore", () => {
   it("stores a device's plugin slices and selects one opaquely", () => {
-    usePluginCloudStateStore.getState().setForDevice("dev-1", {
-      atlas: { state: "capturing", gaussianCount: 99 },
-      "follow-me": { lock: "locked" },
-    });
+    usePluginCloudStateStore.getState().setForDevice(
+      "dev-1",
+      { atlas: { state: "capturing", gaussianCount: 99 }, "follow-me": { lock: "locked" } },
+      1,
+    );
     const atlas = selectPluginCloudSlice("dev-1", "atlas")(
       usePluginCloudStateStore.getState(),
     );
@@ -31,7 +32,7 @@ describe("usePluginCloudStateStore", () => {
   });
 
   it("returns undefined for an unknown device or plugin", () => {
-    usePluginCloudStateStore.getState().setForDevice("dev-1", { atlas: { x: 1 } });
+    usePluginCloudStateStore.getState().setForDevice("dev-1", { atlas: { x: 1 } }, 1);
     expect(
       selectPluginCloudSlice("dev-2", "atlas")(usePluginCloudStateStore.getState()),
     ).toBeUndefined();
@@ -45,8 +46,8 @@ describe("usePluginCloudStateStore", () => {
 
   it("replaces a device's whole map on each heartbeat (no stale merge)", () => {
     const s = usePluginCloudStateStore.getState();
-    s.setForDevice("dev-1", { atlas: { a: 1 }, thermal: { t: 1 } });
-    s.setForDevice("dev-1", { atlas: { a: 2 } }); // thermal dropped this tick
+    s.setForDevice("dev-1", { atlas: { a: 1 }, thermal: { t: 1 } }, 1);
+    s.setForDevice("dev-1", { atlas: { a: 2 } }, 2); // thermal dropped this tick
     expect(
       selectPluginCloudSlice("dev-1", "thermal")(usePluginCloudStateStore.getState()),
     ).toBeUndefined();
@@ -57,8 +58,8 @@ describe("usePluginCloudStateStore", () => {
 
   it("clears one device without touching others", () => {
     const s = usePluginCloudStateStore.getState();
-    s.setForDevice("dev-1", { atlas: { a: 1 } });
-    s.setForDevice("dev-2", { atlas: { a: 2 } });
+    s.setForDevice("dev-1", { atlas: { a: 1 } }, 1);
+    s.setForDevice("dev-2", { atlas: { a: 2 } }, 1);
     s.clearDevice("dev-1");
     expect(usePluginCloudStateStore.getState().byDevice["dev-1"]).toBeUndefined();
     expect(usePluginCloudStateStore.getState().byDevice["dev-2"]).toEqual({

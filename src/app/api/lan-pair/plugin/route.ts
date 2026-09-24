@@ -10,7 +10,7 @@
  *
  * `<METHOD> ?host=<node>&path=/api/plugins/<id>/<sub>[&query=<qs>][&peer=<id>]`
  * with the pairing key in `X-ADOS-Key` (never in the URL). `sub` is one of
- * `attestation`, `manifest`, `config`, `gcs/<path>` or `x/<path>`; the method
+ * `attestation`, `manifest`, `state`, `config`, `gcs/<path>` or `x/<path>`; the method
  * must fit it. `peer` selects the relay lane: `host` is then the ground station
  * and the upstream is its relay-proxy route for that drone.
  *
@@ -147,6 +147,7 @@ async function handle(req: NextRequest, method: Method): Promise<NextResponse> {
   const subOk =
     sub === "attestation" ||
     sub === "manifest" ||
+    sub === "state" ||
     sub === "config" ||
     /^(gcs|x)\/.+/.test(sub);
   if (!match || !subOk || !isSafeSubPath(path.slice(1))) {

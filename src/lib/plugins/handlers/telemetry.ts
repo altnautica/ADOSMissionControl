@@ -3,11 +3,13 @@
  *
  * `telemetry.subscribe` wires the protocol callback for a known topic on
  * the target drone and forwards every frame to the iframe as a host event
- * on `telemetry.<topic>`. Any other topic on a drone-bound plugin is one of
- * the plugin's own agent-extended channels (`telemetry.extend` on the agent
- * half): the agent writes it to the plugin's state as `telemetry.<channel>`,
- * the state egress republishes it under the plugin's agent-state origin, and
- * the subscription forwards exactly that plugin's channel on that drone. `telemetry.unsubscribe` tears down one topic; the
+ * on `telemetry.<topic>`. Any other topic on a node-bound plugin (any node
+ * profile) is one of the plugin's own agent-extended channels
+ * (`telemetry.extend` on the agent half): the agent writes it to the plugin's
+ * state as `telemetry.<channel>`, the agent-state feed for that node
+ * (`agent-state-feed`, held while a mount subscribes) publishes it under the
+ * plugin's agent-state origin, and the subscription forwards exactly that
+ * plugin's channel on that node. `telemetry.unsubscribe` tears down one topic; the
  * builder's `dispose()` tears down all of them. The bridge has already
  * gated the per-topic `telemetry.subscribe.<topic>` capability before the
  * handler runs, so these never re-check capabilities.
@@ -22,6 +24,7 @@ import { knownRemainingPct } from "@/lib/battery";
 import { useDroneManager } from "@/stores/drone-manager";
 import type { BridgeHandler, BridgeHandlerContext } from "@/lib/plugins/bridge";
 import { agentStateOrigin, subscribePluginEvent } from "@/lib/plugins/event-bus";
+import { acquireAgentStateFeed } from "@/lib/plugins/agent-state-feed";
 import { perMount } from "./per-mount";
 import type { PluginTarget } from "./target";
 
@@ -204,8 +207,8 @@ export function buildTelemetryHandlers(
     const method = `telemetry.${topic}`;
 
     if (!sub && !target) {
-      // An agent-extended channel needs a drone-bound plugin: only it has an
-      // agent half on a drone to extend telemetry from.
+      // An agent-extended channel needs a node-bound plugin: only a node has
+      // an agent half to extend telemetry from.
       throw new Error(`unknown telemetry topic: ${topic}`);
     }
 
@@ -215,14 +218,19 @@ export function buildTelemetryHandlers(
     state.topics.get(topic)?.detach?.();
 
     if (!sub && target) {
-      // The plugin's own agent-extended channel, republished on the bus by the
-      // state egress under the plugin's agent-state origin for this drone.
+      // The plugin's own agent-extended channel on this node, published on the
+      // bus by the node's agent-state feed under the plugin's origin.
       const origin = agentStateOrigin(pluginId, target.deviceId);
+      const off = subscribePluginEvent(method, pluginId, (payload, _t, from) => {
+        if (from === origin) ctx.postEvent(method, capability, payload);
+      });
+      const release = acquireAgentStateFeed(pluginId, target.deviceId);
       state.topics.set(topic, {
         attach: null,
-        detach: subscribePluginEvent(method, pluginId, (payload, _t, from) => {
-          if (from === origin) ctx.postEvent(method, capability, payload);
-        }),
+        detach: () => {
+          off();
+          release();
+        },
       });
       return { ok: true };
     }

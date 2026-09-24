@@ -50,7 +50,7 @@ export type AgentFetch = (
 
 /** Narrow an unknown response body to the sidecar shape: a plain object whose
  * values each carry a `payload` and a numeric `ts_ms`. */
-function isPluginStateResponse(body: unknown): body is PluginStateResponse {
+export function isPluginStateResponse(body: unknown): body is PluginStateResponse {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return false;
   }

@@ -291,6 +291,7 @@ export function CloudStatusBridge() {
         .setForDevice(
           cloudDeviceId,
           pluginState as Record<string, Record<string, unknown>>,
+          typeof cloudRecord.updatedAt === "number" ? cloudRecord.updatedAt : Date.now(),
         );
     }
 

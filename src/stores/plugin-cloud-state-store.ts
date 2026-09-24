@@ -20,10 +20,14 @@ export type PluginCloudSlice = Record<string, unknown>;
 interface PluginCloudStateStore {
   /** deviceId -> pluginId -> that plugin's latest opaque slice. */
   byDevice: Record<string, Record<string, PluginCloudSlice>>;
-  /** Replace a device's whole plugin-state map from one heartbeat. */
+  /** deviceId -> epoch ms of the heartbeat the slices came from. */
+  updatedAt: Record<string, number>;
+  /** Replace a device's whole plugin-state map from one heartbeat taken at
+   * `at` (epoch ms). */
   setForDevice: (
     deviceId: string,
     pluginState: Record<string, PluginCloudSlice>,
+    at: number,
   ) => void;
   /** Drop a device's slices (e.g. on a focus switch). */
   clearDevice: (deviceId: string) => void;
@@ -31,17 +35,21 @@ interface PluginCloudStateStore {
 
 export const usePluginCloudStateStore = create<PluginCloudStateStore>((set) => ({
   byDevice: {},
-  setForDevice(deviceId, pluginState) {
+  updatedAt: {},
+  setForDevice(deviceId, pluginState, at) {
     set((state) => ({
       byDevice: { ...state.byDevice, [deviceId]: pluginState },
+      updatedAt: { ...state.updatedAt, [deviceId]: at },
     }));
   },
   clearDevice(deviceId) {
     set((state) => {
       if (!(deviceId in state.byDevice)) return state;
-      const next = { ...state.byDevice };
-      delete next[deviceId];
-      return { byDevice: next };
+      const byDevice = { ...state.byDevice };
+      const updatedAt = { ...state.updatedAt };
+      delete byDevice[deviceId];
+      delete updatedAt[deviceId];
+      return { byDevice, updatedAt };
     });
   },
 }));
