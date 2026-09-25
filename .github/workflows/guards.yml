@@ -342,7 +342,8 @@ jobs:
           pluginRegistry.ts:getRevokedList
           `.trim().split('\n').map((s) => s.trim()).filter(Boolean));
 
-          const AUTH = /getAuthUserId|requireAdmin|requireRole|requireUser|assertAdmin|ctx\.auth\.getUserIdentity/;
+          // requireGcsAccess (pluginRecords) and assertOwnsDevice (cmdVideoRelayTokens) are local helpers that call getAuthUserId and check the grant or ownership.
+          const AUTH = /getAuthUserId|requireAdmin|requireRole|requireUser|assertAdmin|ctx\.auth\.getUserIdentity|requireGcsAccess|assertOwnsDevice/;
           const DECL = /export const (\w+)\s*=\s*(internalMutation|internalQuery|internalAction|mutation|query|action|httpAction)\s*\(/g;
 
           let total = 0;

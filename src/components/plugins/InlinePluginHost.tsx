@@ -13,7 +13,7 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { BridgeHandler, BridgeTokenValidatorOptions } from "@/lib/plugins/bridge";
@@ -91,17 +91,21 @@ function InlineMount({
   const [attempt, setAttempt] = useState(0);
 
   // Latest props behind refs so the mount survives parent re-renders; the
-  // dispatcher reads them on every call (see `live-bridge-inputs`).
+  // dispatcher reads them on every call (see `live-bridge-inputs`). The refs
+  // are refreshed in a layout effect after each commit, which runs before the
+  // mount effect below, so the mount always sees the current props.
   const handlersRef = useRef(handlers);
   const capsRef = useRef(grantedCapabilities);
   const validatorRef = useRef(tokenValidator);
   const tokenRef = useRef(token);
   const profileRef = useRef(nodeProfile);
-  handlersRef.current = handlers;
-  capsRef.current = grantedCapabilities;
-  validatorRef.current = tokenValidator;
-  tokenRef.current = token;
-  profileRef.current = nodeProfile;
+  useLayoutEffect(() => {
+    handlersRef.current = handlers;
+    capsRef.current = grantedCapabilities;
+    validatorRef.current = tokenValidator;
+    tokenRef.current = token;
+    profileRef.current = nodeProfile;
+  });
   const validatorEnabled = tokenValidator !== undefined;
 
   useEffect(() => {
@@ -140,7 +144,6 @@ function InlineMount({
     // The token first, so the module's first request already carries it.
     if (tokenRef.current) dispatcher.pushEvent("capability.token", "", { token: tokenRef.current });
 
-    setMountError(null);
     Promise.resolve()
       .then(() => bundle.module.mount(root, session.api))
       .then(
@@ -159,6 +162,9 @@ function InlineMount({
     return () => {
       unmounted = true;
       setPush(null);
+      // Cleared here rather than at the top of the effect: every re-run
+      // (Retry, a new bundle or node) runs this cleanup first.
+      setMountError(null);
       if (disposer) runDisposer(disposer);
       channel?.client.dispose();
       dispatcher.dispose();

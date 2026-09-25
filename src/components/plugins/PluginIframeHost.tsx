@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import {
   createPluginBridge,
@@ -128,6 +128,7 @@ export function PluginIframeHost({
   // effect can stay attached across parent re-renders even when the
   // parent passes fresh object identities. Without this, every render
   // would dispose-and-recreate the bridge, dropping in-flight RPC.
+  // The refs are refreshed in a layout effect after each commit.
   const handlersRef = useRef(handlers);
   const capsRef = useRef(grantedCapabilities);
   // The validator also lives behind a ref so token-refresh callbacks
@@ -137,9 +138,11 @@ export function PluginIframeHost({
   const validatorRef = useRef<BridgeTokenValidatorOptions | undefined>(
     tokenValidator,
   );
-  handlersRef.current = handlers;
-  capsRef.current = grantedCapabilities;
-  validatorRef.current = tokenValidator;
+  useLayoutEffect(() => {
+    handlersRef.current = handlers;
+    capsRef.current = grantedCapabilities;
+    validatorRef.current = tokenValidator;
+  });
   // Bridge effect keys only on whether a validator is configured. The
   // validator's internals (resolver function identity, onTokenExpired
   // closure) can change every render without forcing a rebuild because
