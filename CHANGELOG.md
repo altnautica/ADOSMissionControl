@@ -4,35 +4,422 @@ All notable changes to ADOS Mission Control are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project follows [Semantic Versioning](https://semver.org/).
 
-## [0.59.0] - 2026-09-24
+## [0.59.0] - 2026-09-25
 
-The World Model, Live World, Atlas relay and the workstation compute pages now
-ship in the World Engine extension (`com.altnautica.world-engine`). Mission
-Control keeps the generic mechanisms that host it: inline first-party modules,
-Agent sidebar pages, node surfaces and plugin cloud records.
+This release covers everything since 0.58.0: forty-two commits over two and a
+half weeks. Three threads run through it.
+
+The first is what reaches the vehicle. A full pass over the protocol code
+corrected wire tables, codecs and message offsets that could configure a
+vehicle other than the way the operator asked: the RC protocol bitmask was one
+bit off, several iNav and Betaflight mode ids pointed at the wrong mode, PX4
+integer parameters and DroneCAN parameters were packed incorrectly, and the
+ArduPilot home slot was not reserved on mission upload. MAVLink signing now
+follows the MAVLink v2 specification and signs every outgoing frame. Planned
+speeds, landing approaches and geofence altitude floors now reach the flight
+controller, and a truncated mission, rally or fence download is rejected rather
+than accepted as a short plan.
+
+The second is readouts that stay true to their source. Controls that reported
+success now wait for the vehicle's own acknowledgement, a value the vehicle
+never reported shows as no-data instead of zero, and a reading that has gone
+stale is dimmed, aged or cleared. Every node page now reads and writes the node
+it is showing, never whichever node was focused last.
+
+The third is the extension platform. First-party extensions can run inline in
+Mission Control after a signature check, add their own Agent sidebar pages and
+node tabs, and keep small records in the operator's cloud account. The World
+Model, Live World, Atlas relay and workstation compute pages now ship in the
+World Engine extension (`com.altnautica.world-engine`) rather than in core, and
+battery health is now a built-in Battery page on drone nodes.
+
+### Added
+
+- **Custom self-hosted basemap.** Point the map at your own tile server (for
+  example `http://localhost:8080/tiles/{z}/{x}/{y}.png`) and fly with no
+  internet. Set it from the on-map layer picker (CUSTOM) or Settings > Data
+  with a URL template, a max zoom (1-24) and optional attribution; it applies on
+  Apply, not per keystroke. The template is checked inline (http or https,
+  `{z}`, `{x}` and `{y}` exactly once each, no TMS `{-y}`), an empty or invalid
+  one falls back to the dark basemap with a warning, and a readout ("N tiles
+  loaded, M failed" plus the last failing URL) makes a wrong URL easy to spot.
+  The offline Download Area panel downloads the custom source up to its max
+  zoom and caches it under the same URLs the map reads. Closes #55 (#68).
+- **Battery page on drone nodes.** A new Agent sidebar page, reachable directly
+  or through a ground station's relay, polls the node's battery engine every
+  2 s. Each pack shows a cell bar with the weakest cell marked, voltage,
+  current, remaining, temperature and consumed mAh and Wh, a time-to-reserve
+  prediction, the anomalies currently raised (`cell_critical`, `cell_low`,
+  `cell_divergence`, `voltage_drop`, `temp_spike`, `predictive_low`) and the
+  last 20 raise and clear events. The rules run on the node, so they keep
+  working with the page closed; a newly raised anomaly is announced once as a
+  toast and as a `battery:<rule>` marker on a running telemetry recording. A
+  value the flight controller does not report reads as not reported. The page's
+  Setup segment edits the node's `battery.*` thresholds. Demo mode serves two
+  4S packs, one with a cell-divergence warning.
+- **Inline first-party extensions.** A plugin whose manifest declares
+  `gcs.isolation: inline` runs its GCS half as a module inside Mission Control
+  instead of a sandboxed iframe; the iframe stays the default. The module loads
+  from the node running the plugin (attestation, `manifest.yaml`, `gcs/` files)
+  or, for a GCS-only install, from a pinned published archive. Loading shows a
+  status line, a load or mount failure shows an error card with Retry, a crash
+  is contained by an error boundary, and the host never falls back to an
+  iframe. Every call still passes the same method, token and capability checks
+  as an iframe plugin.
+- **Inline host API.** `host.agent.fetch` and `host.agent.websocket` reach the
+  plugin's own server on the mounted node (`/api/plugins/{id}/x/<path>`);
+  `host.nodes.agent(deviceId)` reaches it on any other node over LAN or a
+  ground station's relay and rejects with `node_unreachable` when this browser
+  cannot reach the node; `host.readAsset(path)` and `host.assetUrl(path)` serve
+  files from the plugin's `gcs/` directory; `host.nodes.list()` carries each
+  node's `lanHost`; `host.nodes.pluginConfig(deviceId)` and `host.navigate()`
+  round it out. Object URLs are revoked and sockets closed on unmount.
+- **Extension pages in node detail.** `gcs.contributes.agent_pages[]` adds Agent
+  sidebar pages (`section`, `after`, `order`, `profile`, and `setup_for` to
+  become another page's Setup segment); `gcs.contributes.node_surfaces[]` adds
+  top-level node tabs into a declared group (`status`, `vehicle`, `link`,
+  `device`, `compute`) for the listed profiles. Capabilities
+  `ui.slot.node-agent-page` and `ui.slot.node-surface`.
+- **Plugin cloud records (`cloud.records`).** A plugin can list, read, write and
+  delete small JSON records in its own namespace in the operator's account,
+  optionally tagged with a node: 64 KiB per record, 5000 records per plugin per
+  user, pages of up to 100. The agent half can write through
+  `POST /agent/plugin-records`. Records are purged on uninstall and when a
+  device is wiped, and refusals come back typed (`unavailable`, `invalid_args`,
+  `too_large`, `limit_reached`, `not_permitted`, `failed`).
+- **`/api/lan-pair/plugin` proxy**, so Mission Control served over HTTPS can
+  reach a plain-HTTP LAN node's plugin routes (attestation, manifest, state,
+  config, `gcs/<path>` and the plugin's own `x/<path>`), directly or through a
+  ground station's relay.
+- **MAVLink command resend.** Commands that are safe to repeat (arm and disarm,
+  mode, RTL, land, reposition, pause and continue, change speed, set home,
+  fence enable, relay, servo, mount, ROI, orbit, message interval and request,
+  CAN forward, EKF source set) are resent up to twice when no COMMAND_ACK
+  arrives, with the confirmation byte incremented. Commands that would act
+  twice (camera trigger, calibration, motor test, takeoff) are still sent once.
+- **Geofence altitude floor and fence parameters.** A fence upload also writes
+  enable, `FENCE_TYPE` (including the ArduPilot 4.1+ floor bit), floor,
+  ceiling and breach action, so the flight controller enforces what the planner
+  shows. PX4 has no floor, so a non-zero minimum is refused with a message.
+- **Leg-versus-fence check.** The validator blocks a leg whose straight line
+  leaves a concave fence or crosses a no-fly zone, even when both waypoints are
+  on the allowed side.
+- **Upload receipts.** "On aircraft" indicators for mission, fence and rally
+  compare the hash the flight controller acknowledged with what the planner
+  would upload now; an edit, plan switch, drone switch or disconnect clears
+  them.
+- **Live pre-flight checklist.** The automatic checklist items re-evaluate for
+  the selected drone on every telemetry update, even with the modal closed.
+  Stale telemetry returns an item to pending, a drone switch resets the
+  session, and the Arm and Take-off confirms read this readiness.
+- **Fleet alerts from live telemetry.** Dashboard alert counts come from each
+  connected flight controller: STATUSTEXT at CRITICAL or worse, failsafe
+  announcements, the battery entering the warning or critical band, and link
+  loss, each raised once per occurrence.
+- **Failsafe audio alert** for ArduPilot and PX4 failsafe announcements, not
+  replayed for "cleared" or "resolved" messages. Warning and error toasts follow
+  the alert popup duration setting.
+- **DroneCAN session card** on the CAN page with an explicit open and close
+  control and bus selector, shared by node parameters, diagnostics, test tools
+  and the AP_Periph flasher. A duplicate node-id scan uses repeated GetNodeInfo
+  samples and the NodeStatus uptime stream.
+- **New flight controller surfaces:** a PX4 power and battery-failsafe section
+  (`BAT1_SOURCE`, `BAT_LOW_THR`, `BAT_EMERGEN_THR`, `COM_LOW_BAT_ACT`); an
+  ArduPilot OSD editor built from the `OSDn_<ITEM>` parameters; the PX4 airframe
+  picker on `SYS_AUTOSTART`; ArduRover and ArduSub frame and flight-mode
+  support; the full ArduPilot `MNT1_TYPE` and `CAM1_TYPE` lists and PX4 mount
+  and trigger inputs; iNav six-orientation accelerometer calibration; a
+  Betaflight PWM range slider with both ends draggable; a GNSS constellation
+  editor; iNav geozone circles; and safety enums (RC options, serial protocols,
+  battery, fence and failsafe actions, GNSS, sensors) rendered from parameter
+  metadata.
+- **Video source badge and frame age.** The video canvas names where the
+  picture comes from (DIRECT, VIA GROUND, VIA CLOUD, MANUAL) and how old the
+  displayed frame is, labelled by source (SEI timestamp or browser frame
+  metadata). HUD instruments and plugin overlays read attitude at the frame's
+  capture time (`frameAgeMs`, `attitudeAtFrameTime`).
+- **Minimal HUD** (`/hud?layer=minimal`) for small SBC displays: a small horizon
+  and two text lines over video.
+- **Remote-access tunnel control** on a node's Cloud page, with a confirmation
+  before turning it off and a status row that re-reads the node every 5 s.
+- **Ground station:** a Display settings page (boot renderer, kiosk), an
+  access-point editor (name, channel, write-only passphrase) that shows the
+  AP's own read-back, and a Carried drones tab listing each relayed drone, when
+  it was last decoded and what command authority this browser holds.
+- **Node reach block.** Names the address a LAN node was last reached at and the
+  last failure (nothing answered, answered and refused, internal fault), with a
+  "Use <address>" action to switch address without re-pairing.
+- **First-run screen.** With nothing paired, the dashboard shows the agent
+  install one-liner, live LAN discovery, a demo-mode link and direct flight
+  controller connect.
+- **No-fly overlay region picker** (ISO country code) with a status line saying
+  whether zones are drawn, no region is set, or no data exists for the region.
+- **Plugin install outcomes.** The install dialog ends on a stated result
+  (installed and enabled, installed but not enabled, queued through the cloud,
+  or added to Mission Control only) and compares the agent's reported grants
+  with what the operator approved. Removing a plugin asks for confirmation.
+- **MCP tab discovery** reads plugin tools, resources and prompts from every
+  LAN-paired node, the same read the MCP server uses.
+- **Desktop update banner** that reports an available update, download progress
+  and failures, and a manual Windows update path until the installer is signed.
+- **Rally point altitude prompt** in the map context menu, defaulting to the
+  vehicle's return altitude.
+- **Minimum password length** of 8 characters on sign-up and reset.
+- **Self-host admin bootstrap from the environment.** The first admin is chosen
+  by `ADOS_BOOTSTRAP_ADMIN_EMAILS`, or by the explicit opt-in
+  `ADOS_ALLOW_FIRST_USER_ADMIN=1`; with neither set, every signup starts
+  pending. `SELFHOSTING.md` covers both.
+- **Convex retention jobs.** Relay commands stuck in `pending` or `delivering`
+  for an hour are marked failed; plugin events and MCP audit events are kept
+  30 days; AI usage rows 8 days. Sweeps reschedule themselves while a batch
+  comes back full.
+
+### Changed
+
+- **MAVLink signing follows the specification.** The signature is the first 6
+  bytes of SHA-256(key, frame, link id, timestamp), and signing wraps the
+  adapter's single transport, so every outgoing frame is signed (commands,
+  parameters, missions, FTP, logs, heartbeat). The key is stored as raw bytes in
+  the browser's IndexedDB, because the specified construction cannot use a
+  non-extractable WebCrypto HMAC key, and it no longer leaves the browser: the
+  Convex key upload, list, link-id and export functions are removed.
+- **Signing enrollment keeps unconfirmed keys.** ArduPilot never acknowledges
+  SETUP_SIGNING, so an enrollment interrupted after a frame may have gone out
+  keeps the new key as unconfirmed beside the previous one until the operator
+  settles which one the flight controller holds. Disable works the same way.
+- **One parameter write contract.** The raw Parameters grid and the curated
+  panels share armed-write confirmation naming the parameters, pending-until-
+  flash tracking, reboot-required flagging and the vehicle's own answer. A
+  partial batch reports "Wrote N/M" and the flash-commit result. Betaflight and
+  iNav config writes are saved to EEPROM and a failed save is reported.
+- **Flight actions go through the skill dispatcher.** The flight-mode dropdown,
+  mission pause and resume, Arm, RTH-all, reboot, guided cancel and Land Here
+  pass the same no-link, firmware and arm gates, with confirmations, and the
+  mode label changes only when a heartbeat reports the new mode. Follow-Me binds
+  to one drone and stops on mode change, disarm or stale data.
+- **Only the autopilot's heartbeat drives armed, mode and link state.**
+  Heartbeats from a companion computer, gimbal, camera or other component on the
+  same system id no longer change them, and arm state has a single writer.
+- **Planned speeds and landings reach the vehicle.** The mission expander writes
+  DO_CHANGE_SPEED for the default and each speed change and folds them back on
+  download. Fixed-wing landings emit DO_LAND_START, an approach waypoint placed
+  from altitude and glide slope, then LAND; VTOL landings emit an approach
+  waypoint then VTOL_LAND. The approach distance is derived and shown read-only,
+  and an unset approach heading produces a warning instead of a landing.
+- **MSP telemetry reports what the wire carries.** Sensor bits map per firmware
+  (Betaflight and iNav differ), an MSP_ANALOG RSSI of 0 reads as unknown, and
+  height above home comes only from a fresh MSP_ALTITUDE estimate.
+- **Per-node transports.** System, Display, Security, FC Source, Region,
+  Cameras, Perception, Cloud, RC and ELRS, and plugin grants and removal all
+  send to the node on screen; without that node's own connection they are
+  read-only. A plugin change applies on the drone first and is then recorded in
+  the cloud.
+- **Node connections are supervised.** Focusing a node connects it, switching
+  tears the previous one down, and a failed connect retries every 3 s. Direct
+  flight controller links re-dial at a fixed interval with no attempt cap.
+  Agent MAVLink dials a ticket-authenticated WebSocket first when a pairing key
+  is held; an unpaired agent prompts to pair.
+- **Node detail is regrouped.** Drone: Status (Overview, Flight, Cockpit),
+  Vehicle (Setup, Parameters, RC and ELRS), Logs, Agent. Ground station: Status,
+  Link, Device, with Mesh and Distributed RX merged into one "Mesh & RX" tab. A
+  workstation or compute node opens on a host Overview (system metrics,
+  services, access), then Logs and Agent. Each node remembers its last tab, old
+  deep links redirect, and live and setup halves of a subsystem share one
+  sidebar row with Live and Setup tabs.
+- **Plugin lists come from the node.** A LAN node's installed plugins are read
+  from its own `GET /api/plugins` every 5 s, so an install made by the agent
+  installer, `ados plugin install` or another browser shows and mounts here too.
+  A plugin's agent state (including `telemetry.<channel>` topics) reaches every
+  mount bound to a node of any profile.
+- **Video.** Video dials only the WHEP path the node advertises on its
+  authenticated `:8080` front, and a node advertising none is treated as not
+  streaming. The receive buffer now starts at 100 ms (ladder 0/100/160/220 ms),
+  auto-retry runs every 3 s without a limit, a LAN ICE disconnect is shown as
+  "LINK LOST, PICTURE FROZEN, RECONNECTING" and re-dialled after 3 s, and
+  immersive mode holds fullscreen and a screen wake lock.
+- **Pairing errors name the failure and the next step** (unreachable host, key
+  rejected, PIN not set, agent still starting, and others), and a successful
+  pair opens the new node.
+- **Relay command deadlines.** A flight-class relay command gets a 10 s
+  server-side delivery deadline whoever queued it, and a command queued while a
+  node was unreachable fails instead of running when it reconnects. A late
+  acknowledgement no longer overwrites a terminal state.
+- **Plugin trust badges** (Signed, Verified publisher, First-party) appear only
+  when the archive signature verifies, and plugin notifications show title and
+  body together.
+- **Readout units.** The Flight view labels speed "SPD km/h" and climb
+  "VS m/s".
+- **Map fallback centre** is a world view when no location is known.
+- **Theme tokens.** HUD, video and overlay surfaces use theme tokens instead of
+  fixed black and white, so they hold in every theme.
+- **Unpairing a drone** removes its status row, queued commands and exported log
+  windows; flight logs and mission records are kept.
+- **Agent state contract `state.v2` moves to v4:** readings the agent does not
+  have are published as null instead of the MAVLink sentinel.
+- **Self-host deploy.** `tools/deploy` generates `VIDEO_RELAY_SECRET` and
+  `MQTT_AUTH_RELAY_SECRET`, sets them on Convex, seeds the broker ACL into the
+  gitignored `tools/selfhost/acl.conf`, and starts a new `mqtt-auth-sync`
+  sidecar that syncs paired devices and operator grants from Convex every 30 s,
+  so a newly paired agent can log in with no manual step.
+- **CI and release gates.** The desktop release now runs typecheck, lint and
+  tests before building installers, the dependency audit fails on high or
+  critical advisories, test files are linted, the lint warning ceiling is
+  lowered to 115, and the container installs from the lockfile with `npm ci`.
+
+### Fixed
+
+- **RC protocol selection** wrote the neighbouring bit, so selecting CRSF wrote
+  SRXL2; the options now derive from the canonical bitmask.
+- **iNav and Betaflight mode ids** now use the firmware's permanent box ids.
+  Return-to-home had been mapped to course-hold and altitude hold to RTH.
+  Betaflight boxes past bit 31 now decode, so GPS Rescue no longer reads as
+  ACRO. Mode and adjustment range writes clear unused slots.
+- **Mission encoding.** The ArduPilot home slot is reserved on upload and
+  dropped on download, unknown commands pass through unchanged, DO_WINCH,
+  loiter-turns, payload-place, digicam and frame mappings are corrected, and
+  iNav translation refuses commands it cannot express.
+- **Mission, rally and fence transfer.** A truncated download is rejected with
+  per-item timers and gap re-requests; an empty rally or fence upload clears the
+  vehicle; fence download replaces the planner with what the vehicle returned;
+  every export carries its altitude frame and home.
+- **Parameter and message codecs.** PX4 integer parameters are read and written
+  bytewise; DroneCAN scalar packing, NodeStatus and `param.GetSet` match the
+  DSDL definitions; `MSP2_INAV_STATUS`, `CAMERA_IMAGE_CAPTURED` and the tlog
+  battery field use their correct offsets; `ODOMETRY` quality is read signed;
+  iNav geozone, mixer and servo layouts match the firmware; PX4 NAV_TAKEOFF
+  converts height above home to AMSL; long MAVLink shell lines arrive whole.
+- **Commands that reported success without a result.** Command palette Arm and
+  Return-to-Home, legacy fence upload, orbit, set ROI, flash commit and Ctrl+S,
+  manual camera trigger, and motor, actuator and servo tests now report the
+  vehicle's acknowledgement or refusal.
+- **Link loss** clears ARMED and CONNECTED and reports arm state as unknown.
+- **No-data states.** Before a reading arrives, or after it goes stale, the HUD
+  shows "NO ATTITUDE" instead of a level horizon, signal bars stay unlit, flight
+  mode and armed state show a dash, a peer's battery and signal show the
+  no-data glyph instead of 0% and 0 dBm, PID rows read "Not read", output
+  tables show no default limits, and battery current and consumed mAh read "--".
+  Ground-station link cards, the RC and ELRS tab, fleet cards and the iNav nav
+  pill mark stale data as stale.
+- **Failsafe severity labels** CRITICAL and EMERGENCY were swapped against their
+  table.
+- **Per-drone isolation.** Switching drones no longer carries parameters, dirty
+  edits, iNav tables, heartbeat handling or fence-breach state from one aircraft
+  to another, and a Save can no longer write the previous drone's values to the
+  new one.
+- **Planner.** KML import no longer duplicates waypoints or changes the frame,
+  Set Home and EKF origin use a real elevation, Land Here sends the landing
+  point, drawing tools are attached, templates sample terrain under every
+  waypoint, and antimeridian legs take the short way.
+- **Actuation guards.** Servo endpoint calibration and firmware flashing refuse
+  an armed vehicle, motor test sends idle on every exit path, RC calibration
+  writes only channels that moved, compass force-save writes only successful
+  fits, and the ArduPilot fence-type select is hidden on PX4.
+- **Gamepad** no longer sends a stale sample and stops when the tab is hidden.
+- **Follow-Me** floors its altitude against the vehicle's current altitude,
+  waits for an accurate operator fix, and works in the desktop app.
+- **Cloud drone status** clears fields an agent leaves out of a heartbeat, and
+  the agent version refreshes on every heartbeat.
+- **Pairing** records are no longer deleted about 15 minutes after a successful
+  claim.
+- **Log import.** tlog timestamps and MAVLink 2 trimmed payloads, ULog
+  per-instance topics and units, and dataflash servo outputs are read correctly.
+  A dataflash log that ends while armed is recorded as aborted.
+- **Onboard log list** re-requests lost entries and fails instead of returning
+  a short list.
+- **Web Serial** no longer disconnects on a read error such as a buffer overrun.
+- **MSP link** recovers from a stray byte and a failed write fails only that
+  request.
+- **Replay** no longer writes into live telemetry and pauses if a vehicle
+  becomes active during playback.
+- **Video.** Detection boxes map through the rendered video area, the MSE buffer
+  is trimmed only on `updateend`, camera thumbnails release their WHEP session
+  on unmount, and the SEI figure is labelled publish-side.
+- **Plugin catalog paging** returns the next page for `nextCursor`, and rejected
+  archive uploads are deleted from storage.
+- **Leaks and performance.** Serial, WebSocket, adapter and picture-in-picture
+  teardown leaks are closed, and the altitude trail no longer allocates a map
+  layer per sample.
+- **Typed-phrase confirmations** open with focus in the phrase input.
+
+### Security
+
+- **Signed plugin archives are verified in the GCS.** The Ed25519 `SIGNATURE`
+  is checked against enrolled signer keys before anything is extracted,
+  uploaded or recorded. Inline modules are imported only after the signature,
+  the enrolled first-party signer, the manifest digest and the module digest
+  all verify.
+- **Plugin frames** get their capability token as a bridge event, an in-document
+  policy with `connect-src 'none'`, no browser permissions and no referrer.
+  Capability tokens are signed with a key derived per install and device, and
+  the account's root HMAC secret no longer reaches the browser.
+- **Credential reads** return only owner-visible fields, and the signed plugin
+  archive download is internal-only.
+- **LAN-pair proxy routes** share one core: same-origin `Origin`, JSON content
+  type, private or mDNS targets on port 8080 resolved server-side, per-segment
+  path checks, no redirects, capped bodies, `nosniff` and a sandbox CSP. The
+  pairing key travels in a header, never a URL.
+- **MQTT broker.** Operator grants can write only
+  `ados/<device>/{mavlink/rx,msp/rx,webrtc/offer}` on the operator's own
+  devices, the shared `gcs-viewer` login is removed, and agents authenticate
+  only as `ados-<device_id>`.
+- **Video relay** requires a short-lived, device-scoped token, and its health
+  check discloses nothing.
+- **Desktop app.** Raw sockets are limited to local addresses, capped at 32 and
+  owned by the main window; a UDP peer is learned once from the first local
+  MAVLink frame; the local MAVLink bridge binds loopback and needs a per-run
+  token; every window refuses cross-origin navigation; `npm run desktop:dev`
+  binds loopback.
+- **Heartbeat intake** filters blocks against the validator's runtime shape and
+  answers every refusal the same way, so it no longer reveals which device ids
+  exist.
+- **Signed flight logs** can be unsealed but never re-signed with a different
+  hash.
+- **Rate limiting** for MCP credentials and pairing-code claims uses a
+  per-credential bucket plus a shared failures-only bucket.
+- **Docker build context** excludes nested `.env` files and self-host deployer
+  state.
 
 ### Removed
 
 - The World Model and Live World Agent pages, the World model setup page, the
   ground-station Atlas relay surface, and the workstation Compute tab with its
-  jobs, viewer and drone-access panes.
+  jobs, viewer and drone-access panes. They ship in the World Engine extension.
 - The per-node first-party feature toggle and the fleet board's Features
   column. Installing the extension replaces the opt-in.
-- The offload and serving controls on the Perception setup page and the
-  offload workstation picker on the Perception tier card. The detector model
-  picker stays, and the tier card still reports the active offload target.
-- The workstation GPU card, GPU sparkline, cluster card and cluster status
-  line. None of these has a core data source any more.
-- The `/api/lan-pair/{atlas,compute,artifact,workstation-credential}` proxy
-  routes. The LAN proxy now reaches only the agent port 8080; extensions use
-  `/api/lan-pair/plugin`.
+- The offload and serving controls on the Perception setup page and the offload
+  workstation picker on the Perception tier card. The detector model picker
+  stays, and the tier card still reports the active offload target.
+- The workstation GPU card, GPU sparkline, cluster card and cluster status line.
+- The `/api/lan-pair/{atlas,compute,artifact}` proxy routes. The LAN proxy now
+  reaches only the agent port 8080; extensions use `/api/lan-pair/plugin`.
 - The `@mkkellogg/gaussian-splats-3d` and `@rerun-io/web-viewer` dependencies.
+- The separate battery panel extension from the first-party catalog, replaced
+  by the built-in Battery page.
+- The "Require signed frames" toggle, which no firmware exposes.
+- The agent Software Update card; use `ados update` on the node.
+- The Convex `/pairing/status` and `/heartbeat` agent routes; agents use
+  `/pairing/register` and `/agent/status`.
+- The Convex mission cloud storage and WFB cloud-pairing functions.
+- The self-host deployer's managed-tunnel TLS option and `--tunnel-token`; use
+  HTTP on the LAN or your own TLS reverse proxy.
+- Unplayable HLS URLs and the unused `cloud-whep` and `cloud-mse` video
+  transports.
+- The node MAVLink "Cloud relay forwarding" rate fields, which the agent never
+  read, and the kiosk switch that wrote a key the node ignores.
 
-### Changed
+### Notes
 
-- A workstation or compute node opens on a host Overview (system metrics,
-  services, access), then Logs and the Agent page. An extension's node
-  surfaces join the band they declare.
+- **Self-hosters upgrading:** create `tools/selfhost/acl.conf` (copy
+  `tools/mqtt-bridge/deploy/acl.conf`) before `docker compose up`, set
+  `MQTT_AUTH_RELAY_SECRET` and `VIDEO_RELAY_SECRET` in `.env` and on Convex, and
+  set `ADOS_BOOTSTRAP_ADMIN_EMAILS` before the first sign-up. Re-running the
+  deploy tool does all of this. Agents still logging in with a bare device id
+  are refused by the broker, and `MQTT_VIEWER_PASSWORD` is no longer used.
+- **Settings migrations:** the no-fly overlay stays off until a region is
+  picked, and the cockpit skill layer is turned on for everyone.
+- **SITL:** the real-terrain Gazebo scenario is renamed `terrain-gazebo`.
+- **Translations:** several new strings (winch modes, retry-pairing, display
+  and reach) are English in every locale for now.
 
 ## [0.58.0] - 2026-09-08
 
