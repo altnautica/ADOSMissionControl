@@ -11,8 +11,7 @@ import { useState, useCallback, useRef } from "react";
 import { BarChart3, Upload } from "lucide-react";
 import { QuickGraphs } from "./QuickGraphs";
 import { ExternalLogLinks } from "./ExternalLogLinks";
-import { parseDataFlashLogStreaming } from "@/lib/dataflash-streaming";
-import type { DataFlashLog } from "@/lib/dataflash-parser";
+import { summarizeDataflashOffThread, type DataflashSummary } from "@/lib/dataflash/summary";
 import dynamic from "next/dynamic";
 
 const GpsTrackMap = dynamic(
@@ -26,7 +25,7 @@ export function LogAnalysisPanel() {
   const [tab, setTab] = useState<LogTab>("live");
   const [parsing, setParsing] = useState(false);
   const [parseProgress, setParseProgress] = useState(0);
-  const [parsedLog, setParsedLog] = useState<DataFlashLog | null>(null);
+  const [parsedLog, setParsedLog] = useState<DataflashSummary | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,14 +40,14 @@ export function LogAnalysisPanel() {
 
     try {
       const buffer = await file.arrayBuffer();
-      const log = await parseDataFlashLogStreaming(buffer, {
-        onProgress: setParseProgress,
-        chunkSize: 2 * 1024 * 1024, // 2MB chunks
-      });
-      setParsedLog(log);
+      // Only the message counts are shown, so nothing is decoded or kept.
+      const summary = await summarizeDataflashOffThread(buffer, setParseProgress);
+      setParsedLog(summary);
       setTab("file");
     } catch (err) {
       setParseError(err instanceof Error ? err.message : "Failed to parse log file");
+      // The error renders on the file tab; show it there.
+      setTab("file");
     } finally {
       setParsing(false);
       // Reset input so same file can be re-selected
@@ -131,26 +130,21 @@ export function LogAnalysisPanel() {
                   <div className="mt-2 text-[10px] font-mono text-text-secondary space-y-1">
                     <div>
                       Message types:{" "}
-                      {Array.from(parsedLog.messages.keys()).length}
+                      {parsedLog.counts.length}
                     </div>
                     <div>
                       Total messages:{" "}
-                      {Array.from(parsedLog.messages.values()).reduce(
-                        (sum, arr) => sum + arr.length,
-                        0
-                      )}
+                      {parsedLog.counts.reduce((sum, [, count]) => sum + count, 0)}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {Array.from(parsedLog.messages.keys())
-                        .sort()
-                        .map((name) => (
-                          <span
-                            key={name}
-                            className="px-1.5 py-0.5 bg-bg-tertiary border border-border-default text-[9px] rounded"
-                          >
-                            {name} ({parsedLog.messages.get(name)?.length})
-                          </span>
-                        ))}
+                      {parsedLog.counts.map(([name, count]) => (
+                        <span
+                          key={name}
+                          className="px-1.5 py-0.5 bg-bg-tertiary border border-border-default text-[9px] rounded"
+                        >
+                          {name} ({count})
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>

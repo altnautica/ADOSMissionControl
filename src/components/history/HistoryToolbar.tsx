@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Star, X, HardDrive, Upload, Image, Trash2, RotateCcw, Archive, FolderInput, BarChart3 } from "lucide-react";
+import { Download, Star, X, HardDrive, Upload, Image, Trash2, RotateCcw, Archive, FolderInput, BarChart3, Activity } from "lucide-react";
 import type { FlightRecord } from "@/lib/types";
 import { exportFlightRecordsAsCsv } from "@/lib/csv-export";
 import { CloudSyncBadge } from "./CloudSyncBadge";
@@ -74,6 +74,7 @@ export function HistoryToolbar({
   const [logBrowserOpen, setLogBrowserOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
+  const [backupTelemetry, setBackupTelemetry] = useState(false);
 
   const STATUS_OPTIONS = useMemo(() => [
     { value: "all", label: t("allStatuses") },
@@ -226,10 +227,20 @@ export function HistoryToolbar({
         variant="ghost"
         size="md"
         icon={<Archive size={14} />}
-        onClick={() => void exportBackup()}
+        onClick={() => void exportBackup(backupTelemetry)}
         title="Export full backup (ZIP)"
       >
         Backup
+      </Button>
+      <Button
+        variant={backupTelemetry ? "primary" : "ghost"}
+        size="md"
+        icon={<Activity size={14} />}
+        onClick={() => setBackupTelemetry(!backupTelemetry)}
+        aria-pressed={backupTelemetry}
+        title="Include flight telemetry in the backup, so restored flights keep replay, charts and export (larger file)"
+      >
+        With telemetry
       </Button>
       <Button
         variant="ghost"

@@ -1,7 +1,7 @@
 /**
  * Flight-stat derivation. Pure — walks recorded telemetry frames once and
  * produces an aggregate `FlightStats` (distance, max altitude / speed,
- * battery delta, downsampled path). No I/O.
+ * battery delta, the full position track and a decimated path). No I/O.
  *
  * @module flight-lifecycle/stats
  */
@@ -9,6 +9,7 @@
 import type { TelemetryFrame } from "../telemetry-recorder";
 import { haversineDistance } from "@/lib/geo/distance";
 import { knownRemainingPct } from "@/lib/battery";
+import { decimatePath } from "./decimate";
 
 export interface FlightStats {
   distance: number;
@@ -19,7 +20,10 @@ export interface FlightStats {
   batteryEndV?: number;
   /** Percent of the pack used; undefined when no remaining-% was reported. */
   batteryUsed?: number;
+  /** The whole flight decimated to at most 1000 points, first and last kept. Stored on the record. */
   path: [number, number][];
+  /** Every position fix of the flight, for analysis that must see all of it. Not stored. */
+  track: [number, number][];
   landingLat?: number;
   landingLon?: number;
 }
@@ -52,11 +56,7 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
   let prevLat: number | undefined;
   let prevLon: number | undefined;
 
-  // Path downsample: 1 sample per ~1 s, max 1000 points.
-  const path: [number, number][] = [];
-  let lastPathTimeMs = -Infinity;
-  const PATH_INTERVAL_MS = 1000;
-  const PATH_MAX = 1000;
+  const track: [number, number][] = [];
 
   for (const frame of frames) {
     if (frame.channel === "position" || frame.channel === "globalPosition") {
@@ -79,10 +79,7 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
           speedCount += 1;
         }
 
-        if (frame.offsetMs - lastPathTimeMs >= PATH_INTERVAL_MS && path.length < PATH_MAX) {
-          path.push([d.lat, d.lon]);
-          lastPathTimeMs = frame.offsetMs;
-        }
+        track.push([d.lat, d.lon]);
       }
     } else if (frame.channel === "vfr") {
       const d = frame.data as VfrFrameData;
@@ -118,7 +115,8 @@ export function computeFlightStats(frames: TelemetryFrame[]): FlightStats {
     batteryStartV,
     batteryEndV,
     batteryUsed,
-    path,
+    path: decimatePath(track),
+    track,
     landingLat,
     landingLon,
   };

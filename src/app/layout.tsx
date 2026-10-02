@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { LocaleProvider } from "@/components/layout/LocaleProvider";
 import { Analytics } from "@/components/analytics/Analytics";
 import { LocalStoreHydrator } from "@/components/history/LocalStoreHydrator";
+import { StorageFailureAlerts } from "@/components/history/StorageFailureAlerts";
 
 import ConvexClientProvider from "./ConvexClientProvider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
@@ -33,6 +34,7 @@ export default function RootLayout({
   const content = (
     <LocaleProvider>
       <ToastProvider>
+        <StorageFailureAlerts />
         <CommandShell>{children}</CommandShell>
       </ToastProvider>
     </LocaleProvider>

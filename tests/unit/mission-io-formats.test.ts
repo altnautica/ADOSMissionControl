@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { parseWaypointsFile, parseQGCPlan, exportWaypointsFormat, exportQGCPlan } from "@/lib/mission-io-formats";
 import { cmdMap, reverseCmd } from "@/lib/mission/command-map";
-import type { Waypoint } from "@/lib/types";
+import type { CommandMissionAction, Waypoint } from "@/lib/types";
 import type { GeofenceSnapshot } from "@/stores/geofence-store";
 import { withImportedFenceZones } from "@/lib/mission/qgc-plan-extras";
 import type { RallyPoint } from "@/stores/rally-store";
@@ -357,6 +357,44 @@ describe(".plan complex-item (survey grid) expansion", () => {
     expect(() => parseQGCPlan(JSON.stringify(visualOnlySurvey()))).toThrow(/survey altitude/);
     // Heights computed per point from terrain the file does not carry.
     expect(() => parseQGCPlan(JSON.stringify(visualOnlySurvey({ DistanceToSurface: 50, DistanceMode: 3 })))).toThrow(/altitude mode/);
+  });
+
+  it("aims a DO_JUMP at the item its doJumpId names after a survey is rebuilt", () => {
+    // QGC numbered the survey's camera and turnaround items too, so the
+    // waypoint after it is doJumpId 10 while the rebuilt grid has two legs.
+    const plan = {
+      fileType: "Plan",
+      mission: {
+        plannedHomePosition: [12.9, 77.5, 0],
+        items: [
+          { type: "SimpleItem", doJumpId: 1, command: 22, params: [0, 0, 0, 0, 0, 0, 30] },
+          {
+            type: "ComplexItem",
+            complexItemType: "survey",
+            TransectStyleComplexItem: {
+              VisualTransectPoints: [[12.91, 77.51], [12.92, 77.52]],
+              CameraCalc: { DistanceToSurface: 50, DistanceMode: 1 },
+            },
+          },
+          { type: "SimpleItem", doJumpId: 10, command: 16, params: [0, 0, 0, 0, 12.93, 77.53, 50] },
+          { type: "SimpleItem", doJumpId: 11, command: 177, params: [10, 2, 0, 0, 0, 0, 0] },
+          { type: "SimpleItem", doJumpId: 12, command: 177, params: [99, 1, 0, 0, 0, 0, 0] },
+          { type: "SomethingNew" },
+        ],
+      },
+    };
+    const parsed = parseQGCPlan(JSON.stringify(plan));
+    const wps = parsed.waypoints;
+    expect(wps.map((w) => w.command)).toEqual(["TAKEOFF", "WAYPOINT", "WAYPOINT", "WAYPOINT"]);
+    const jumps = wps[3].actions?.filter((a): a is CommandMissionAction => a.command === "DO_JUMP") ?? [];
+    expect(jumps).toHaveLength(1);
+    expect(jumps[0].jumpTargetId).toBe(wps[3].id);
+    // The jump to a missing item and the unknown item type are both reported.
+    expect(parsed.warnings.some((w) => w.includes("DO_JUMP"))).toBe(true);
+    expect(parsed.warnings.some((w) => w.includes("SomethingNew"))).toBe(true);
+    // The positionless TAKEOFF stands at the planned home.
+    expect(wps[0].lat).toBeCloseTo(12.9, 6);
+    expect(wps[0].lon).toBeCloseTo(77.5, 6);
   });
 });
 

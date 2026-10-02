@@ -73,26 +73,51 @@ export const TILE_PROVIDERS: Record<BuiltInTileSource, TileProvider> = {
   },
 };
 
-/** Convert longitude to tile X index at zoom z. */
+/** Latitude limit of the Web-Mercator tile grid. */
+const MAX_MERCATOR_LAT = 85.0511287798066;
+
+/** Convert longitude to tile X index at zoom z, clamped to the grid. */
 export function lonToTileX(lon: number, z: number): number {
-  return Math.floor(((lon + 180) / 360) * Math.pow(2, z));
+  const n = Math.pow(2, z);
+  return Math.min(n - 1, Math.max(0, Math.floor(((lon + 180) / 360) * n)));
 }
 
-/** Convert latitude to tile Y index at zoom z. */
+/** Convert latitude to tile Y index at zoom z, clamped to the Web-Mercator grid. */
 export function latToTileY(lat: number, z: number): number {
-  const latRad = (lat * Math.PI) / 180;
-  return Math.floor(
-    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * Math.pow(2, z),
-  );
+  const n = Math.pow(2, z);
+  const clamped = Math.max(-MAX_MERCATOR_LAT, Math.min(MAX_MERCATOR_LAT, lat));
+  const latRad = (clamped * Math.PI) / 180;
+  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
+  return Math.min(n - 1, Math.max(0, y));
+}
+
+/**
+ * Tile column ranges `[xMin, xMax]` covering a box at zoom z. A map panned
+ * across the antimeridian reports longitudes past ±180; the box is wrapped
+ * back onto the world and split in two where it crosses 180°, so every
+ * column is a real tile index (the indices Leaflet requests for a wrapped
+ * world).
+ */
+function tileXRanges(bounds: LatLngBounds, z: number): [number, number][] {
+  const n = Math.pow(2, z);
+  const span = bounds.east - bounds.west;
+  if (span >= 360) return [[0, n - 1]];
+  if (span < 0) return [];
+  const west = ((((bounds.west + 180) % 360) + 360) % 360) - 180;
+  const east = west + span;
+  if (east <= 180) return [[lonToTileX(west, z), lonToTileX(east, z)]];
+  const wrapped: [number, number][] = [[lonToTileX(west, z), n - 1], [0, lonToTileX(east - 360, z)]];
+  // Near-world spans can make the two pieces meet; merge rather than overlap.
+  return wrapped[1][1] >= wrapped[0][0] ? [[0, n - 1]] : wrapped;
 }
 
 /** Count tiles in a bounding box at a specific zoom level. */
 export function tileCountAtZoom(bounds: LatLngBounds, z: number): number {
-  const xMin = lonToTileX(bounds.west, z);
-  const xMax = lonToTileX(bounds.east, z);
-  const yMin = latToTileY(bounds.north, z);
-  const yMax = latToTileY(bounds.south, z);
-  return (xMax - xMin + 1) * (yMax - yMin + 1);
+  const rows = latToTileY(bounds.south, z) - latToTileY(bounds.north, z) + 1;
+  if (rows <= 0) return 0;
+  let columns = 0;
+  for (const [xMin, xMax] of tileXRanges(bounds, z)) columns += xMax - xMin + 1;
+  return columns * rows;
 }
 
 /** Count total tiles across a zoom range. */
@@ -269,14 +294,14 @@ export function* generateTileUrls(
   retina: boolean = isRetinaDisplay(),
 ): Generator<string> {
   for (let z = zMin; z <= zMax; z++) {
-    const xMin = lonToTileX(bounds.west, z);
-    const xMax = lonToTileX(bounds.east, z);
     const yMin = latToTileY(bounds.north, z);
     const yMax = latToTileY(bounds.south, z);
 
-    for (let x = xMin; x <= xMax; x++) {
-      for (let y = yMin; y <= yMax; y++) {
-        yield resolveTileUrl(provider.url, provider.subdomains, x, y, z, retina);
+    for (const [xMin, xMax] of tileXRanges(bounds, z)) {
+      for (let x = xMin; x <= xMax; x++) {
+        for (let y = yMin; y <= yMax; y++) {
+          yield resolveTileUrl(provider.url, provider.subdomains, x, y, z, retina);
+        }
       }
     }
   }

@@ -27,7 +27,9 @@ import {
   stopRecordingFor,
   activeRecordingFor,
   loadRecordingFrames,
+  listRecordings,
   recordingFramesBetween,
+  reportRecordingStorageFailure,
   saveFlightRecording,
   type TelemetryFrame,
 } from "./telemetry-recorder";
@@ -44,6 +46,9 @@ import { computeAdherence } from "./flight-analysis/mission-adherence";
 import { detectGeofenceBreaches } from "./flight-analysis/geofence-forensics";
 import { estimateWind } from "./flight-analysis/wind-estimator";
 import { useMissionStore } from "@/stores/mission-store";
+import { usePlanLibraryStore } from "@/stores/plan-library-store";
+import { receiptFor } from "@/stores/upload-receipts-store";
+import { missionContentHash } from "./mission-upload";
 import { computeSunMoon } from "./environment/sun-moon";
 import { getWeatherSnapshot } from "./environment/weather-provider";
 import { reverseGeocode } from "./geocoding/reverse";
@@ -180,17 +185,25 @@ function handleArm(droneId: string, droneName: string, snapshot: ArmSnapshot): v
   // Disarm will retry with landing coords when arm had no lock.
   const sunMoon = armPosition ? computeSunMoon(armPosition.lat, armPosition.lon, startTime) : undefined;
 
-  // Freeze the active mission's id + name + waypoint snapshot so the
-  // disarm-time adherence calc has something to compare against, even
-  // if the user clears the mission mid-flight or the app crashes.
-  const activeMission = useMissionStore.getState().activeMission;
-  const missionId = activeMission?.id;
-  const missionName = activeMission?.name;
-  const missionWaypoints = activeMission?.waypoints?.map((w) => ({
-    lat: w.lat,
-    lon: w.lon,
-    alt: w.alt,
-  }));
+  // Freeze the mission the vehicle holds so the disarm-time adherence calc
+  // has something to compare against, even if the operator edits the plan
+  // mid-flight or the app crashes. Only a plan this drone acknowledged
+  // uploading (its receipt matches the plan's content hash) is the flown
+  // mission; anything else would compare the flight against the wrong route.
+  const plannedWaypoints = useMissionStore.getState().waypoints;
+  const receipt = receiptFor("mission", droneId);
+  const onVehicle =
+    receipt !== undefined &&
+    plannedWaypoints.length > 0 &&
+    receipt.contentHash === missionContentHash(plannedWaypoints);
+  const library = usePlanLibraryStore.getState();
+  const missionId = onVehicle ? receipt.contentHash : undefined;
+  const missionName = onVehicle
+    ? library.plans.find((p) => p.id === library.activePlanId)?.name
+    : undefined;
+  const missionWaypoints = onVehicle
+    ? plannedWaypoints.map((w) => ({ lat: w.lat, lon: w.lon, alt: w.alt }))
+    : undefined;
 
   // Freeze the geofence snapshot at arm time so disarm forensics can
   // detect breaches even if the user edits the fence after the flight
@@ -293,21 +306,41 @@ async function handleDisarm(droneId: string): Promise<void> {
   // span of a recording that was already running at arm.
   let frames: TelemetryFrame[] = [];
   let recordingId = lc.ownRecordingId;
+  // Offset from arm at which storage filled and capture stopped.
+  let truncatedAtMs: number | undefined;
   try {
     if (lc.ownRecordingId) {
       if (activeRecordingFor(droneId)?.recordingId === lc.ownRecordingId) {
-        await stopRecordingFor(droneId);
+        truncatedAtMs = (await stopRecordingFor(droneId))?.truncatedAtMs;
+      } else {
+        truncatedAtMs = (await listRecordings()).find((r) => r.id === lc.ownRecordingId)?.truncatedAtMs;
       }
       frames = await loadRecordingFrames(lc.ownRecordingId);
     } else if (lc.sharedRecordingId && lc.armTime !== undefined) {
+      const shared =
+        activeRecordingFor(droneId)?.recordingId === lc.sharedRecordingId
+          ? activeRecordingFor(droneId)
+          : (await listRecordings()).find((r) => r.id === lc.sharedRecordingId);
+      if (shared?.truncatedAtMs !== undefined) {
+        const cut = shared.startTime + shared.truncatedAtMs;
+        if (cut < endTime) truncatedAtMs = Math.max(0, cut - lc.armTime);
+      }
       frames = await recordingFramesBetween(droneId, lc.sharedRecordingId, lc.armTime, endTime);
+      recordingId = undefined;
       if (frames.length > 0) {
-        const saved = await saveFlightRecording(frames, {
-          droneId,
-          droneName: lc.droneName,
-          startTimeMs: lc.armTime,
-        });
-        recordingId = saved.id;
+        try {
+          const saved = await saveFlightRecording(frames, {
+            droneId,
+            droneName: lc.droneName,
+            startTimeMs: lc.armTime,
+            truncatedAtMs,
+          });
+          recordingId = saved.id;
+        } catch (err) {
+          // The stats below still come from the frames in memory; the
+          // record just cannot offer replay or charts.
+          reportRecordingStorageFailure(err);
+        }
       }
     }
   } catch (err) {
@@ -317,17 +350,18 @@ async function handleDisarm(droneId: string): Promise<void> {
   const stats = computeFlightStats(frames);
   const analysis = frames.length > 0 ? analyzeFlight(frames) : { events: [], flags: [], health: {} };
   const phases = frames.length > 0 ? detectPhases(frames) : [];
-  // Compute mission adherence using the path we just derived and the
-  // waypoint snapshot we froze on arm.
+  // Mission adherence and geofence forensics walk every position fix of the
+  // flight, not the decimated display path, so nothing late in a long
+  // flight or shorter than a sample interval is missed.
   const draftRowEarly = useHistoryStore.getState().records.find((r) => r.id === lc.draftRecordId);
   const adherence =
-    draftRowEarly?.missionWaypoints && stats.path.length >= 2
-      ? computeAdherence(stats.path, draftRowEarly.missionWaypoints) ?? undefined
+    draftRowEarly?.missionWaypoints && stats.track.length >= 2
+      ? computeAdherence(stats.track, draftRowEarly.missionWaypoints) ?? undefined
       : undefined;
   // Geofence breach detection against the snapshot frozen on arm.
   const geofenceBreaches =
-    draftRowEarly?.geofenceSnapshot && stats.path.length >= 2
-      ? detectGeofenceBreaches(stats.path, draftRowEarly.geofenceSnapshot, stats.maxAlt)
+    draftRowEarly?.geofenceSnapshot && stats.track.length >= 2
+      ? detectGeofenceBreaches(stats.track, draftRowEarly.geofenceSnapshot, stats.maxAlt)
       : undefined;
   // Wind: the autopilot's own estimate, or ground track minus airspeed.
   const windEstimate = frames.length > 0 ? estimateWind(frames) : undefined;
@@ -460,7 +494,9 @@ async function handleDisarm(droneId: string): Promise<void> {
     landingLon: stats.landingLon,
     status: "completed",
     recordingId,
-    hasTelemetry: frames.length > 0,
+    // Telemetry is offered only when its recording was stored.
+    hasTelemetry: recordingId !== undefined && frames.length > 0,
+    truncatedAtMs,
     events: analysis.events,
     flags: analysis.flags,
     health: analysis.health,

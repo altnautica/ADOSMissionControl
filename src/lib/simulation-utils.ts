@@ -118,10 +118,12 @@ function legPoints(wp: Waypoint, prev: SimPoint, home: SimPoint, rtlAlt: number)
 }
 
 export interface FlightPlanOptions {
-  /** Where RTL returns to. Defaults to the first flown item's position at 0 m,
-   * the same launch point the mission upload falls back to. */
+  /** Where the vehicle launches and RTL returns to: the vehicle's home when
+   * known. Defaults to the first item with a position, at 0 m, the same
+   * launch point the mission upload falls back to. */
   home?: { lat: number; lon: number };
-  /** Altitude RTL climbs to before returning. */
+  /** Altitude RTL climbs to before returning: the vehicle's configured
+   * return altitude when known, else {@link SIM_RTL_ALT_M}. */
   rtlAltM?: number;
 }
 
@@ -143,15 +145,25 @@ export function computeFlightPlan(
     return { segments: [], totalDuration: 0, totalDistance: 0 };
   }
 
+  // A positionless first item (a TAKEOFF saved at 0/0) acts where the vehicle
+  // already is: at home, else at the first item that has a position. It never
+  // starts the flight from 0/0.
   const first = waypoints[flown[0]];
-  const homeLatLon = options.home ?? { lat: first.lat, lon: first.lon };
+  const positioned = flown
+    .map((i) => waypoints[i])
+    .find((wp) => wp.command !== "RTL" && !(wp.lat === 0 && wp.lon === 0));
+  const homeLatLon = options.home ?? (positioned ? { lat: positioned.lat, lon: positioned.lon } : undefined);
+  if (!homeLatLon) {
+    return { segments: [], totalDuration: 0, totalDistance: 0 };
+  }
   const home: SimPoint = { ...homeLatLon, alt: 0 };
   const rtlAlt = options.rtlAltM ?? SIM_RTL_ALT_M;
 
   const segments: FlightSegment[] = [];
   let cumDuration = 0;
   let totalDistance = 0;
-  let prev: SimPoint = { lat: first.lat, lon: first.lon, alt: first.alt };
+  const start = first === positioned ? first : home;
+  let prev: SimPoint = { lat: start.lat, lon: start.lon, alt: first.alt };
 
   for (let k = 1; k < flown.length; k++) {
     const fromIndex = flown[k - 1];

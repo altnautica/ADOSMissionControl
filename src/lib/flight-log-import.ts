@@ -3,8 +3,10 @@
  *
  * One entry point for every source of log bytes (file drop, onboard log
  * download): the format is detected from the magic bytes, falling back to the
- * file extension, and the bytes are routed to the matching importer. Records
- * already in the history store (same id) are not imported twice.
+ * file extension, and the bytes are routed to the matching importer. Binary
+ * logs parse in a Web Worker with progress and cancel. Records already in the
+ * history store (same id) are not imported twice; binary log ids derive from
+ * the log's content, so the same file always yields the same ids.
  *
  * @module flight-log-import
  * @license GPL-3.0-only
@@ -13,9 +15,7 @@
 import { useHistoryStore } from "@/stores/history-store";
 import { setRecordingFromFrames, type TelemetryFrame } from "@/lib/telemetry-recorder";
 import { importDataflashLog } from "@/lib/dataflash/import";
-import { parseUlog } from "@/lib/ulog/parser";
-import { ulogToFlightRecords } from "@/lib/ulog/to-flight-record";
-import { parseTlog, tlogToFlightRecord } from "@/lib/tlog/parser";
+import { buildFlightLogOffThread } from "@/lib/flight-log-build";
 import type { FlightRecord } from "@/lib/types";
 
 export type FlightLogFormat = "bin" | "ulg" | "tlog" | "json" | "unknown";
@@ -43,6 +43,10 @@ export interface FlightLogImportOptions {
   /** Attribute the imported flights to this drone instead of the log's own hint. */
   droneId?: string;
   droneName?: string;
+  /** Fraction of a binary log parsed, 0..1. */
+  onProgress?: (fraction: number) => void;
+  /** Aborting cancels the parse; the import rejects with an `AbortError` and adds nothing. */
+  signal?: AbortSignal;
 }
 
 export interface FlightLogImportResult {
@@ -55,17 +59,12 @@ export interface FlightLogImportResult {
   rcInMissing: boolean;
 }
 
-/** An ArrayBuffer holding exactly `bytes`, without copying when it already does. */
-function exactBuffer(bytes: Uint8Array): ArrayBuffer {
-  if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength && bytes.buffer instanceof ArrayBuffer) {
-    return bytes.buffer;
-  }
-  return bytes.slice().buffer;
-}
-
-/** Store the recording (when there is one) and add the record; false for a duplicate. */
+/**
+ * Store the recording (when there is one), then add the record; false for a
+ * duplicate. The record is added only once its telemetry is stored.
+ */
 async function ingest(record: FlightRecord, frames: TelemetryFrame[]): Promise<boolean> {
-  if (!useHistoryStore.getState().addRecord(record)) return false;
+  if (useHistoryStore.getState().records.some((r) => r.id === record.id)) return false;
   if (record.recordingId && frames.length > 0) {
     await setRecordingFromFrames(record.recordingId, record.droneName, frames, {
       droneId: record.droneId,
@@ -73,13 +72,13 @@ async function ingest(record: FlightRecord, frames: TelemetryFrame[]): Promise<b
       startTimeMs: record.startTime,
     });
   }
-  return true;
+  return useHistoryStore.getState().addRecord(record);
 }
 
 /**
  * Detect the format of `bytes` and import every flight it holds. Throws on a
- * corrupt log or an unrecognised format; a readable log with no flight in it
- * resolves with `flightsImported: 0`.
+ * corrupt log, an unrecognised format or a cancelled import; a readable log
+ * with no flight in it resolves with `flightsImported: 0`.
  */
 export async function importFlightLog(
   bytes: Uint8Array,
@@ -87,12 +86,13 @@ export async function importFlightLog(
 ): Promise<FlightLogImportResult> {
   const format = detectFlightLogFormat(bytes.subarray(0, 16), options.filename);
   if (format === "unknown") throw new Error("Unknown log format");
+  const run = { onProgress: options.onProgress, signal: options.signal };
   if (format === "bin") {
-    const summary = await importDataflashLog(bytes, {
-      sourceFilename: options.filename,
-      droneId: options.droneId,
-      droneName: options.droneName,
-    });
+    const summary = await importDataflashLog(
+      bytes,
+      { sourceFilename: options.filename, droneId: options.droneId, droneName: options.droneName },
+      run,
+    );
     return {
       format,
       flightsImported: summary.flightsImported,
@@ -107,14 +107,9 @@ export async function importFlightLog(
     droneName: options.droneName ?? record.droneName,
   });
   let found: { record: FlightRecord; frames: TelemetryFrame[] }[] = [];
-  if (format === "ulg") {
-    found = ulogToFlightRecords(parseUlog(exactBuffer(bytes)), options.filename).map((f) => ({
-      record: attribute(f.record),
-      frames: f.frames,
-    }));
-  } else if (format === "tlog") {
-    const result = tlogToFlightRecord(parseTlog(exactBuffer(bytes)), options.filename);
-    if (result) found = [{ record: attribute(result.record), frames: result.frames }];
+  if (format === "ulg" || format === "tlog") {
+    const flights = await buildFlightLogOffThread(format, bytes, options.filename, run);
+    found = flights.map((f) => ({ record: attribute(f.record), frames: f.frames }));
   } else {
     const data: unknown = JSON.parse(new TextDecoder().decode(bytes));
     const rows = (Array.isArray(data) ? data : [data]) as Partial<FlightRecord>[];
@@ -122,11 +117,15 @@ export async function importFlightLog(
       .filter((rec): rec is FlightRecord => !!rec && typeof rec.id === "string" && typeof rec.droneName === "string")
       .map((rec) => ({ record: { ...rec, source: "imported", updatedAt: Date.now() }, frames: [] }));
   }
+  options.signal?.throwIfAborted();
 
   let flightsImported = 0;
-  for (const { record, frames } of found) {
-    if (await ingest(record, frames)) flightsImported++;
+  try {
+    for (const { record, frames } of found) {
+      if (await ingest(record, frames)) flightsImported++;
+    }
+  } finally {
+    if (flightsImported > 0) await useHistoryStore.getState().persistToIDB();
   }
-  await useHistoryStore.getState().persistToIDB();
   return { format, flightsImported, duplicates: found.length - flightsImported, rcInMissing: false };
 }

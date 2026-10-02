@@ -1,8 +1,8 @@
 /**
  * Binary log decoding:
  * - ULog parameters decode by the type in their key and are stored by name;
- * - a DataFlash FMT record whose length is zero, or disagrees with its
- *   format string, is rejected so the parse always advances and finishes;
+ * - a DataFlash FMT record whose length is shorter than a frame header is
+ *   never registered, so the parse always advances and finishes;
  * - the int16[32] (`a`) and float16 (`g`) field types decode with their
  *   real sizes, so the fields after them stay aligned.
  *
@@ -11,8 +11,7 @@
 
 import { describe, it, expect } from "vitest";
 import { parseUlog } from "@/lib/ulog/parser";
-import { parseDataFlashLog } from "@/lib/dataflash-parser";
-import { parseDataFlashLogStreaming } from "@/lib/dataflash-streaming";
+import { parseDataflashLog } from "@/lib/dataflash/parser";
 
 // ── ULog ─────────────────────────────────────────────────────
 
@@ -82,14 +81,12 @@ function concat(parts: Uint8Array[]): ArrayBuffer {
 }
 
 describe("DataFlash FMT validation", () => {
-  it("rejects a zero-length FMT, so a message of that type cannot stall the parse", async () => {
+  it("rejects a zero-length FMT, so a message of that type cannot stall the parse", () => {
     const buffer = concat([
       fmtRecord(200, 0, "BAD", "I", "TimeUS"),
       new Uint8Array([0xa3, 0x95, 200, 0, 0, 0, 0, 0, 0, 0, 0]),
     ]);
-    expect(parseDataFlashLog(buffer).messages.get("BAD")).toBeUndefined();
-    const streamed = await parseDataFlashLogStreaming(buffer, { chunkSize: 16 });
-    expect(streamed.messages.get("BAD")).toBeUndefined();
+    expect(parseDataflashLog(new Uint8Array(buffer)).messages.get("BAD")).toBeUndefined();
   });
 
   it("decodes int16[32] and float16 fields with their real sizes", () => {
@@ -102,10 +99,10 @@ describe("DataFlash FMT validation", () => {
     for (let i = 0; i < 32; i++) dv.setInt16(3 + i * 2, i - 16, true);
     dv.setUint16(67, 0x3e00, true); // 1.5 as float16
     dv.setUint16(69, 777, true);
-    const log = parseDataFlashLog(concat([fmtRecord(201, 71, "ISBD", "agH", "X,G,Z"), msg]));
+    const log = parseDataflashLog(new Uint8Array(concat([fmtRecord(201, 71, "ISBD", "agH", "X,G,Z"), msg])));
     const [row] = log.messages.get("ISBD") ?? [];
-    expect(row.fields.X).toEqual(Array.from({ length: 32 }, (_, i) => i - 16));
-    expect(row.fields.G).toBe(1.5);
-    expect(row.fields.Z).toBe(777);
+    expect(row.X).toEqual(Array.from({ length: 32 }, (_, i) => i - 16));
+    expect(row.G).toBe(1.5);
+    expect(row.Z).toBe(777);
   });
 });

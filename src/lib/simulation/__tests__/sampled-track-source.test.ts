@@ -4,10 +4,11 @@ import { computeFlightPlan, interpolatePosition } from "@/lib/simulation-utils";
 import { makeKinematicTrackSource } from "@/lib/simulation/sampled-track-source";
 
 // Single eastbound leg at the equator, climbing 100m -> 200m. Linear-in-time
-// interpolation makes the midpoint predictable (lon ~0.5, alt ~150).
+// interpolation makes the midpoint predictable (lon ~1.5, alt ~150). The leg
+// stays off 0/0, which marks an item saved without a position.
 const leg: Waypoint[] = [
-  { id: "wp-1", lat: 0, lon: 0, alt: 100 },
-  { id: "wp-2", lat: 0, lon: 1, alt: 200 },
+  { id: "wp-1", lat: 0, lon: 1, alt: 100 },
+  { id: "wp-2", lat: 0, lon: 2, alt: 200 },
 ];
 
 describe("makeKinematicTrackSource", () => {
@@ -34,7 +35,7 @@ describe("makeKinematicTrackSource", () => {
     const s = src.sampleAt(0);
     expect(s).not.toBeNull();
     expect(s!.lat).toBeCloseTo(0, 9);
-    expect(s!.lon).toBeCloseTo(0, 9);
+    expect(s!.lon).toBeCloseTo(1, 9);
     expect(s!.alt).toBeCloseTo(100, 9);
     // Heading of the first segment (due east) and stationary at the start.
     expect(s!.headingDeg).toBeCloseTo(90, 3);
@@ -46,7 +47,7 @@ describe("makeKinematicTrackSource", () => {
     const s = src.sampleAt(src.duration);
     expect(s).not.toBeNull();
     expect(s!.lat).toBeCloseTo(0, 9);
-    expect(s!.lon).toBeCloseTo(1, 9);
+    expect(s!.lon).toBeCloseTo(2, 9);
     expect(s!.alt).toBeCloseTo(200, 9);
   });
 
@@ -55,7 +56,7 @@ describe("makeKinematicTrackSource", () => {
     const src = makeKinematicTrackSource(leg, speed);
     const s = src.sampleAt(src.duration / 2);
     expect(s).not.toBeNull();
-    expect(s!.lon).toBeCloseTo(0.5, 6);
+    expect(s!.lon).toBeCloseTo(1.5, 6);
     expect(s!.alt).toBeCloseTo(150, 6);
     expect(s!.lat).toBeCloseTo(0, 9);
     expect(s!.speedMps).toBe(speed);
@@ -65,8 +66,8 @@ describe("makeKinematicTrackSource", () => {
     const src = makeKinematicTrackSource(leg, 15);
     const before = src.sampleAt(-10);
     const after = src.sampleAt(src.duration + 999);
-    expect(before!.lon).toBeCloseTo(0, 9);
-    expect(after!.lon).toBeCloseTo(1, 9);
+    expect(before!.lon).toBeCloseTo(1, 9);
+    expect(after!.lon).toBeCloseTo(2, 9);
   });
 
   it("stays byte-identical to the underlying flight-plan interpolation", () => {
@@ -92,13 +93,13 @@ describe("makeKinematicTrackSource", () => {
 
   it("honors per-waypoint speed and hold-time overrides", () => {
     const held: Waypoint[] = [
-      { id: "a", lat: 0, lon: 0, alt: 50, holdTime: 4 },
-      { id: "b", lat: 0, lon: 0.001, alt: 50, speed: 5 },
+      { id: "a", lat: 0, lon: 1, alt: 50, holdTime: 4 },
+      { id: "b", lat: 0, lon: 1.001, alt: 50, speed: 5 },
     ];
     const src = makeKinematicTrackSource(held, 20);
     // While holding at the first waypoint, position is pinned and speed is 0.
     const duringHold = src.sampleAt(2)!;
-    expect(duringHold.lon).toBeCloseTo(0, 9);
+    expect(duringHold.lon).toBeCloseTo(1, 9);
     expect(duringHold.speedMps).toBe(0);
     // The override speed is what drives the leg once travel begins.
     const ref = computeFlightPlan(held, 20);

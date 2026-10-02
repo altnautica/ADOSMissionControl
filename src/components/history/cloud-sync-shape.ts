@@ -20,7 +20,9 @@ type LocalOnlyKey =
   /** Legacy alias of `startTime`; rebuilt from it on the way back. */
   | "date"
   /** Sync bookkeeping. */
-  | "cloudSynced";
+  | "cloudSynced"
+  /** Describes the recording, which stays on this device. */
+  | "truncatedAtMs";
 
 export type SyncedFlightKey = Exclude<keyof FlightRecord, LocalOnlyKey>;
 

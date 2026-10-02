@@ -131,40 +131,45 @@ async function adjustTotalBytes(db: IDBDatabase, delta: number): Promise<number>
   return totalBytesPromise;
 }
 
+/**
+ * Store `blob` as the tile for `url`. Rejects when the write fails (a full
+ * browser quota rejects with a `QuotaExceededError`); callers that cache
+ * opportunistically catch it, a download counts it as a failure.
+ */
 export async function cacheTile(url: string, blob: Blob): Promise<void> {
-  try {
-    const db = await openDB();
-    // Start the one-time baseline sum before this write's transaction is
-    // created: IndexedDB orders overlapping transactions by creation, so the
-    // sum never already includes the tile it is about to be adjusted for.
-    void adjustTotalBytes(db, 0);
-    const entry: TileEntry = {
-      url,
-      blob,
-      size: blob.size,
-      lastAccess: Date.now(),
+  const db = await openDB();
+  // Start the one-time baseline sum before this write's transaction is
+  // created: IndexedDB orders overlapping transactions by creation, so the
+  // sum never already includes the tile it is about to be adjusted for.
+  void adjustTotalBytes(db, 0);
+  const entry: TileEntry = {
+    url,
+    blob,
+    size: blob.size,
+    lastAccess: Date.now(),
+  };
+
+  // Read the replaced entry's size in the same transaction as the put, so
+  // the running total counts a re-cached tile once.
+  const replacedBytes = await new Promise<number>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    let replaced = 0;
+    const getReq = store.get(url);
+    getReq.onsuccess = () => {
+      replaced = (getReq.result as TileEntry | undefined)?.size ?? 0;
+      store.put(entry);
     };
+    tx.oncomplete = () => resolve(replaced);
+    // A failed request bubbles here: its own error carries the cause.
+    tx.onerror = (e) =>
+      reject((e.target as IDBRequest | null)?.error ?? tx.error ?? new DOMException("Tile write failed", "UnknownError"));
+    // A quota failure at commit aborts the transaction without a request error.
+    tx.onabort = () => reject(tx.error ?? new DOMException("Tile write aborted", "AbortError"));
+  });
 
-    // Read the replaced entry's size in the same transaction as the put, so
-    // the running total counts a re-cached tile once.
-    const replacedBytes = await new Promise<number>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      let replaced = 0;
-      const getReq = store.get(url);
-      getReq.onsuccess = () => {
-        replaced = (getReq.result as TileEntry | undefined)?.size ?? 0;
-        store.put(entry);
-      };
-      tx.oncomplete = () => resolve(replaced);
-      tx.onerror = () => reject(tx.error);
-    });
-
-    const total = await adjustTotalBytes(db, entry.size - replacedBytes);
-    if (total > MAX_CACHE_BYTES) scheduleEviction();
-  } catch {
-    // Silently fail — caching is best-effort
-  }
+  const total = await adjustTotalBytes(db, entry.size - replacedBytes);
+  if (total > MAX_CACHE_BYTES) scheduleEviction();
 }
 
 /** Get cache statistics: tile count and total size in bytes. */
@@ -183,6 +188,27 @@ export async function getCacheStats(): Promise<{ tileCount: number; totalBytes: 
   } catch {
     return { tileCount: 0, totalBytes: 0 };
   }
+}
+
+/** Delete one cached tile, e.g. a stored blob that no longer decodes. */
+export async function deleteCachedTile(url: string): Promise<void> {
+  const db = await openDB();
+  void adjustTotalBytes(db, 0);
+  const removed = await new Promise<number>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    let size = 0;
+    const getReq = store.get(url);
+    getReq.onsuccess = () => {
+      const entry = getReq.result as TileEntry | undefined;
+      if (!entry) return;
+      size = entry.size;
+      store.delete(url);
+    };
+    tx.oncomplete = () => resolve(size);
+    tx.onerror = () => reject(tx.error);
+  });
+  if (removed > 0) await adjustTotalBytes(db, -removed);
 }
 
 /** Delete all cached tiles. */

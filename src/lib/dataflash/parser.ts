@@ -53,6 +53,8 @@ export interface DataflashLog {
   params: Map<string, number>;
   /** Decoded messages grouped by message name. */
   messages: Map<string, DataflashRecord[]>;
+  /** Frames seen per message name, decoded or stepped over. */
+  counts: Map<string, number>;
   /** Total bytes read. */
   bytesRead: number;
   /** Number of bytes skipped due to header sync errors. */
@@ -67,6 +69,8 @@ export interface ParseDataflashOptions {
    * `params`; either is kept in `messages` only when named here.
    */
   only?: ReadonlySet<string>;
+  /** Called with the fraction of the file read, at most every 1% of the file. */
+  onProgress?: (fraction: number) => void;
 }
 
 /**
@@ -77,11 +81,14 @@ export interface ParseDataflashOptions {
  * is skipped frame by frame; the rest of the log still parses.
  */
 export function parseDataflashLog(buffer: Uint8Array, options: ParseDataflashOptions = {}): DataflashLog {
-  const { only } = options;
+  const { only, onProgress } = options;
   const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   const formats = new Map<number, FormatDef>();
   const params = new Map<string, number>();
   const messages = new Map<string, DataflashRecord[]>();
+  const counts = new Map<string, number>();
+  const progressStep = Math.max(1, Math.floor(buffer.length / 100));
+  let nextProgressAt = progressStep;
 
   let ofs = 0;
   let resyncSkipped = 0;
@@ -123,6 +130,11 @@ export function parseDataflashLog(buffer: Uint8Array, options: ParseDataflashOpt
       break;
     }
 
+    if (onProgress && ofs >= nextProgressAt) {
+      onProgress(ofs / buffer.length);
+      nextProgressAt = ofs + progressStep;
+    }
+    counts.set(def.name, (counts.get(def.name) ?? 0) + 1);
     const payloadOfs = ofs + HEADER_LEN;
     const keep = def.decodable && (!only || only.has(def.name));
     const alwaysDecoded = def.decodable && (msgType === FMT_MSG_TYPE || def.name === "PARM");
@@ -170,6 +182,7 @@ export function parseDataflashLog(buffer: Uint8Array, options: ParseDataflashOpt
     formats,
     params,
     messages,
+    counts,
     bytesRead: ofs,
     resyncSkipped,
   };

@@ -61,8 +61,9 @@ describe("computeBriefStats", () => {
   });
 
   it("computes a positive distance and duration for a real leg", () => {
-    // Two points ~1 km apart on the equator (0.009 deg lon ~= 1002 m).
-    const wps = [wp({ lat: 0, lon: 0, alt: 50 }), wp({ lat: 0, lon: 0.009, alt: 50 })];
+    // Two points ~1 km apart near the equator (0.009 deg lon ~= 1002 m). Not
+    // at 0/0, which marks an item saved without a position.
+    const wps = [wp({ lat: 1, lon: 0.001, alt: 50 }), wp({ lat: 1, lon: 0.01, alt: 50 })];
     const stats = computeBriefStats(wps, "relative", 10);
     expect(stats.distanceM).toBeGreaterThan(900);
     expect(stats.distanceM).toBeLessThan(1100);
@@ -86,7 +87,7 @@ describe("computeBriefStats", () => {
   });
 
   it("defaults the cruise speed when none is passed", () => {
-    const wps = [wp({ lat: 0, lon: 0, alt: 0 }), wp({ lat: 0, lon: 0.009, alt: 0 })];
+    const wps = [wp({ lat: 1, lon: 0.001, alt: 0 }), wp({ lat: 1, lon: 0.01, alt: 0 })];
     const withDefault = computeBriefStats(wps, "relative");
     const explicit = computeBriefStats(wps, "relative", DEFAULT_CRUISE_SPEED_MPS);
     expect(withDefault.durationS).toBe(explicit.durationS);

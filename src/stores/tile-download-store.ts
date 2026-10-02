@@ -64,7 +64,7 @@ export const useTileDownloadStore = create<TileDownloadState>((set, get) => ({
         { signal: abortController.signal },
       );
 
-      set({ isDownloading: false, result });
+      set({ isDownloading: false, result, error: result.storageError });
     } catch (err) {
       if (abortController.signal.aborted) {
         set({ isDownloading: false, error: "Download cancelled" });

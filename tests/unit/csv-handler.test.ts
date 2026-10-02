@@ -43,14 +43,31 @@ WAYPOINT,77.60,12.98,50`;
   });
 
   it('handles missing optional columns', () => {
-    const csv = `lat,lon
-12.97,77.59
-12.98,77.60`;
+    const csv = `lat,lon,alt
+12.97,77.59,40
+12.98,77.60,50`;
     const waypoints = parseCSV(csv);
     expect(waypoints).toHaveLength(2);
-    expect(waypoints[0].alt).toBe(0);
+    expect(waypoints[0].alt).toBe(40);
     expect(waypoints[0].command).toBe('WAYPOINT');
     expect(waypoints[0].speed).toBeUndefined();
+  });
+
+  it('skips a row with no altitude instead of flying it at 0 m, and says so', () => {
+    const warnings: string[] = [];
+    const waypoints = parseCSV(`lat,lon,alt
+12.97,77.59,40
+12.98,77.60,`, warnings);
+    expect(waypoints).toHaveLength(1);
+    expect(warnings).toEqual(['Line 3: no altitude, row skipped']);
+  });
+
+  it('warns when an unknown command is imported as a waypoint', () => {
+    const warnings: string[] = [];
+    const waypoints = parseCSV(`lat,lon,alt,command
+12.97,77.59,40,LAMD`, warnings);
+    expect(waypoints[0].command).toBe('WAYPOINT');
+    expect(warnings).toEqual(['Line 2: unknown command "LAMD" imported as WAYPOINT']);
   });
 
   it('handles empty input', () => {

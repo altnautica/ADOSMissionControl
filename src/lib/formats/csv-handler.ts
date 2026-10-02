@@ -83,8 +83,12 @@ export function downloadCSV(waypoints: Waypoint[], name: string): void {
 /**
  * Parse a CSV string into waypoints.
  * Flexible: handles missing columns, extra whitespace, quoted fields.
+ *
+ * Nothing is coerced silently: a row with no altitude is skipped, and an
+ * unknown command becomes a plain WAYPOINT. Each such row adds a warning
+ * naming its line to `warnings`, for the importer to show.
  */
-export function parseCSV(text: string): Waypoint[] {
+export function parseCSV(text: string, warnings: string[] = []): Waypoint[] {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
@@ -129,7 +133,7 @@ export function parseCSV(text: string): Waypoint[] {
     const lon = parseFloat(cols[lonIdx] ?? "");
     if (isNaN(lat) || isNaN(lon)) continue;
 
-    const alt = altIdx >= 0 ? parseFloat(cols[altIdx] ?? "0") : 0;
+    const alt = altIdx >= 0 ? parseFloat(cols[altIdx] ?? "") : NaN;
     const cmdStr = cmdIdx >= 0 ? (cols[cmdIdx] ?? "").trim().toUpperCase() : "WAYPOINT";
 
     if (cmdStr === "RAW") {
@@ -155,9 +159,14 @@ export function parseCSV(text: string): Waypoint[] {
       continue;
     }
 
-    const command: WaypointCommand = VALID_COMMANDS.has(cmdStr)
-      ? (cmdStr as WaypointCommand)
-      : "WAYPOINT";
+    if (isNaN(alt)) {
+      warnings.push(`Line ${i + 1}: no altitude, row skipped`);
+      continue;
+    }
+
+    const known = VALID_COMMANDS.has(cmdStr);
+    if (!known) warnings.push(`Line ${i + 1}: unknown command "${cmdStr}" imported as WAYPOINT`);
+    const command: WaypointCommand = known ? (cmdStr as WaypointCommand) : "WAYPOINT";
 
     const frameStr = frameIdx >= 0 ? (cols[frameIdx] ?? "").trim().toLowerCase() : "";
     const frame: AltitudeFrame | undefined =
@@ -179,7 +188,7 @@ export function parseCSV(text: string): Waypoint[] {
       id: Math.random().toString(36).substring(2, 10),
       lat,
       lon,
-      alt: isNaN(alt) ? 0 : alt,
+      alt,
       command,
       frame,
       speed: isNaN(speed) ? undefined : speed,

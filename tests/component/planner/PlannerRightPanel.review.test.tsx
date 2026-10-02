@@ -42,6 +42,7 @@ vi.mock("@/stores/mission-store", () => ({
 }));
 
 vi.mock("@/hooks/use-validation-options", () => ({ useValidationOptions: () => ({}) }));
+vi.mock("@/hooks/use-rtl-return-context", () => ({ useFlightPlanOptions: () => ({}) }));
 vi.mock("@/lib/validation/mission-validator", () => ({ validateMission: () => ({ errors: [] }) }));
 
 // Heavy planner children are irrelevant to the Review-band composition.

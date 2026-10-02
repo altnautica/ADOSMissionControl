@@ -195,6 +195,12 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
         </div>
       </div>
 
+      {record.truncatedAtMs !== undefined && (
+        <div className="px-3 py-1.5 text-[10px] text-status-warning border-b border-border-default shrink-0" role="note">
+          Recording stopped at {formatMinutesSeconds(record.truncatedAtMs)} (storage full)
+        </div>
+      )}
+
       {/* Tab strip */}
       <div className="flex border-b border-border-default shrink-0 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Flight detail tabs">
         {TABS.map((tab) => (
@@ -229,6 +235,12 @@ export function HistoryDetailPanel({ record, onClose, onReplay, listCollapsed, o
       </div>
     </div>
   );
+}
+
+/** `mm:ss` of an offset in ms, minutes unbounded. */
+function formatMinutesSeconds(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 /** Window within which a recording's start is taken to be this flight's arm. */

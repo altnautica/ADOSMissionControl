@@ -11,7 +11,7 @@
 import { useEffect, useRef } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
-import { getCachedTile, cacheTile } from "@/lib/tile-cache";
+import { getCachedTile, cacheTile, deleteCachedTile } from "@/lib/tile-cache";
 import { resolveTileUrl, subdomainsForUrl, isRetinaDisplay } from "@/lib/tile-math";
 import { useTileHealthStore } from "@/stores/tile-health-store";
 
@@ -50,11 +50,19 @@ function fetchAndCache(tile: HTMLImageElement, tileUrl: string, done: (err?: Err
       return res.blob();
     })
     .then((blob) => {
-      cacheTile(tileUrl, blob).catch(() => {});
+      // A 200 that is not an image (a captive portal or an HTML error page)
+      // is never cached, so it cannot poison later loads.
+      if (blob.type.startsWith("image/")) cacheTile(tileUrl, blob).catch(() => {});
       const objectUrl = URL.createObjectURL(blob);
       tile.onload = () => {
         setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
         done(null, tile);
+      };
+      // Replaces any earlier handler: an undecodable body ends the tile as an
+      // error instead of fetching again.
+      tile.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        done(new Error("Tile image could not be decoded"), tile);
       };
       tile.src = objectUrl;
     })
@@ -114,6 +122,8 @@ class CachingTileLayer extends L.TileLayer {
           };
           tile.onerror = () => {
             URL.revokeObjectURL(objectUrl);
+            // The stored blob no longer decodes: drop it, then load it fresh.
+            deleteCachedTile(tileUrl).catch(() => {});
             fetchAndCache(tile, tileUrl, doneTyped);
           };
           tile.src = objectUrl;

@@ -27,6 +27,16 @@ export interface DownloadResult {
   failed: number;
   skipped: number;
   totalBytes: number;
+  /** Set when a tile could not be saved: the download stopped there. */
+  storageError: string | null;
+}
+
+function storageErrorMessage(err: unknown): string {
+  if (err instanceof DOMException && err.name === "QuotaExceededError") {
+    return "Storage is full: the browser refused to save more tiles, so the download stopped. Free space or clear the tile cache, then download again.";
+  }
+  const detail = err instanceof Error ? err.message : String(err);
+  return `Tiles could not be saved to browser storage (${detail}), so the download stopped.`;
 }
 
 /**
@@ -51,6 +61,7 @@ export async function downloadTiles(
   let failed = 0;
   let skipped = 0;
   let bytes = 0;
+  let storageError: string | null = null;
 
   // Shared queue of remaining URLs; next() is synchronous, so workers never
   // take the same URL.
@@ -62,12 +73,13 @@ export async function downloadTiles(
 
   async function fetchOne(): Promise<void> {
     for (;;) {
-      if (signal?.aborted) return;
+      if (signal?.aborted || storageError) return;
 
       const next = queue.next();
       if (next.done) return;
       const url = next.value;
 
+      let blob: Blob;
       try {
         // Check if already cached
         const existing = await getCachedTile(url);
@@ -90,19 +102,31 @@ export async function downloadTiles(
           report();
           continue;
         }
-
-        const blob = await response.blob();
-        await cacheTile(url, blob);
-
-        bytes += blob.size;
-        completed++;
-        report();
-      } catch (err) {
+        blob = await response.blob();
+      } catch {
         if (signal?.aborted) return;
         failed++;
         completed++;
         report();
+        continue;
       }
+
+      try {
+        await cacheTile(url, blob);
+      } catch (err) {
+        // A tile that is not stored is not available offline. Storage that
+        // refused one write refuses the rest, so stop instead of reporting
+        // tiles as downloaded that were never saved.
+        storageError ??= storageErrorMessage(err);
+        failed++;
+        completed++;
+        report();
+        return;
+      }
+
+      bytes += blob.size;
+      completed++;
+      report();
     }
   }
 
@@ -110,5 +134,5 @@ export async function downloadTiles(
   const workers = Array.from({ length: Math.max(1, Math.min(concurrency, total)) }, () => fetchOne());
   await Promise.all(workers);
 
-  return { completed: completed - failed - skipped, failed, skipped, totalBytes: bytes };
+  return { completed: completed - failed - skipped, failed, skipped, totalBytes: bytes, storageError };
 }

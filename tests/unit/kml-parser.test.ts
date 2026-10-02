@@ -90,12 +90,8 @@ describe('parseKML', () => {
     expect(result.paths).toHaveLength(0);
   });
 
-  it('handles malformed XML gracefully', () => {
-    // DOMParser returns a document with parsererror, but won't throw
-    const result = parseKML('<not-valid-kml><<>');
-    expect(result.waypoints).toHaveLength(0);
-    expect(result.polygons).toHaveLength(0);
-    expect(result.paths).toHaveLength(0);
+  it('rejects malformed XML instead of importing nothing silently', () => {
+    expect(() => parseKML('<not-valid-kml><<>')).toThrow(/not a valid KML/i);
   });
 
   it('parses nested folders with multiple placemarks', () => {
@@ -135,7 +131,7 @@ describe('parseKML', () => {
     expect(result.waypoints[0].alt).toBeCloseTo(123.4);
   });
 
-  it('handles coordinates with no altitude (defaults to 0)', () => {
+  it('gives a point with no altitude the default altitude and says so', () => {
     const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
@@ -144,9 +140,25 @@ describe('parseKML', () => {
     </Placemark>
   </Document>
 </kml>`;
-    const result = parseKML(kml);
+    const result = parseKML(kml, { defaultAlt: 40 });
     expect(result.waypoints).toHaveLength(1);
-    expect(result.waypoints[0].alt).toBe(0);
+    expect(result.waypoints[0].alt).toBe(40);
+    expect(result.warnings).toHaveLength(1);
+  });
+
+  it('never turns a clamped-to-ground placemark into a terrain waypoint at 0 m', () => {
+    const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <Point><altitudeMode>clampToGround</altitudeMode><coordinates>77.59,12.97,0</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>`;
+    const result = parseKML(kml, { defaultAlt: 40 });
+    expect(result.waypoints[0].frame).toBeUndefined();
+    expect(result.waypoints[0].alt).toBe(40);
+    expect(result.warnings[0]).toMatch(/no usable altitude/);
   });
 
   it('parses multiple placemarks with mixed geometries', () => {

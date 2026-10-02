@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { Waypoint } from "@/lib/types";
 import { computeFlightPlan } from "@/lib/simulation-utils";
+import { useFlightPlanOptions } from "@/hooks/use-rtl-return-context";
 import { useSettingsStore } from "@/stores/settings-store";
 import { formatDistance, formatAltitude, formatSpeed } from "@/lib/units/format";
 
@@ -25,8 +26,9 @@ interface MissionStatsBarProps {
 export function MissionStatsBar({ waypoints, defaultSpeed, bottomOffset }: MissionStatsBarProps) {
   const t = useTranslations("planner");
   const units = useSettingsStore((s) => s.units);
+  const planOptions = useFlightPlanOptions();
   const stats = useMemo(() => {
-    const plan = computeFlightPlan(waypoints, defaultSpeed);
+    const plan = computeFlightPlan(waypoints, defaultSpeed, planOptions);
     let maxAlt = 0;
     for (const wp of waypoints) {
       if (wp.alt > maxAlt) maxAlt = wp.alt;
@@ -45,7 +47,7 @@ export function MissionStatsBar({ waypoints, defaultSpeed, bottomOffset }: Missi
       maxAlt,
       avgSpeed,
     };
-  }, [waypoints, defaultSpeed]);
+  }, [waypoints, defaultSpeed, planOptions]);
 
   if (waypoints.length === 0) return null;
 

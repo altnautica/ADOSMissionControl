@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import type { DataFlashLog } from "../dataflash-parser";
+import type { DataflashLog } from "../dataflash/parser";
 import { extractLogData } from "./log-extractor";
 import { computeFFT } from "./fft";
 import { extractStepResponses } from "./step-response";
@@ -43,7 +43,7 @@ function meanOfMeasured(values: (number | null)[]): number | null {
 
 /** Run the full analysis. `onProgress` receives stage labels and percentages. */
 export function analyzePidLog(
-  log: DataFlashLog,
+  log: DataflashLog,
   fileSizeBytes: number,
   onProgress: (stage: string, percent: number) => void = () => {},
 ): PidAnalysisResult {

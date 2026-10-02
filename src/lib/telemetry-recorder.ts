@@ -4,11 +4,18 @@
  * Captures telemetry frames per drone with timestamps to IndexedDB for
  * later replay, export, and analysis. Recordings persist across sessions.
  *
+ * Frames are stored in chunks of {@link RECORDING_CHUNK_FRAMES}: a live
+ * recording writes each chunk as it fills, so a long flight never holds all
+ * of its frames in memory and a storage failure loses at most the chunk being
+ * written. When a write fails the recording stops capturing, keeps what was
+ * stored, and is marked with `truncatedAtMs`.
+ *
  * @module telemetry-recorder
  * @license GPL-3.0-only
  */
 
 import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
+import { useHistoryStore } from "@/stores/history-store";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -57,10 +64,19 @@ export interface TelemetryRecording {
   markers?: RecordingMarker[];
   /**
    * True for a recording brought in from a log file. Imports are kept until
-   * the operator deletes them; only live recordings are trimmed to the
-   * newest {@link MAX_LIVE_RECORDINGS}.
+   * the operator deletes them.
    */
   imported?: boolean;
+  /**
+   * Number of IndexedDB values the frames are split across. Absent means
+   * one (a recording stored before chunking).
+   */
+  chunkCount?: number;
+  /**
+   * Set when storage failed during the recording: capture stopped at this
+   * offset (ms from the recording start) and nothing after it was kept.
+   */
+  truncatedAtMs?: number;
 }
 
 // ── IDB Keys ─────────────────────────────────────────────────
@@ -73,6 +89,7 @@ const IDB_RECORDINGS_INDEX = "altcmd:recordings-index";
 /** A slot is recording while it is in {@link _slots}; finalizing removes it first. */
 interface RecorderSlot {
   startTime: number;
+  /** Frames not yet handed to IndexedDB. */
   frames: TelemetryFrame[];
   channels: Set<string>;
   recordingId: string;
@@ -82,12 +99,19 @@ interface RecorderSlot {
   markers: RecordingMarker[];
   /** Last write timestamp per channel for rate limiting (ms since epoch). */
   lastWriteAt: Map<string, number>;
+  /** Chunks handed to IndexedDB (written or queued). */
+  chunkCount: number;
+  /** Frames whose chunk write completed. */
+  storedFrames: number;
+  /** The chain of chunk writes, in order; finalize and reads wait on it. */
+  flushing: Promise<void>;
+  /** Offset capture stopped at after a chunk write failed. */
+  truncatedAtMs?: number;
 }
 
 /**
  * Per-channel max sample rate in Hz. Frames received above this rate are
- * silently dropped to keep recordings within the 500k frame cap and IndexedDB
- * payloads under control.
+ * silently dropped to keep IndexedDB payloads under control.
  *
  * Channels not listed here use {@link DEFAULT_RATE_HZ}. Channels listed in
  * {@link CAP_BYPASS_CHANNELS} are exempt entirely.
@@ -126,11 +150,15 @@ const DEFAULT_RATE_HZ = 20;
 /** Channels that bypass rate limiting (e.g. high-rate IMU). */
 const CAP_BYPASS_CHANNELS = new Set<string>(["imu_highrate"]);
 
-/** Max frames per recording. ~8 min at full rate before rate limiting. */
-const MAX_FRAMES = 500_000;
+/** Frames per stored chunk. */
+export const RECORDING_CHUNK_FRAMES = 50_000;
 
-/** Live recordings kept in the index; the oldest beyond this are deleted. */
-const MAX_LIVE_RECORDINGS = 20;
+/**
+ * Live recordings no flight record uses (manual, record-on-connect and plugin
+ * recordings) kept in the index; the oldest beyond this are deleted. A
+ * recording a flight in history uses is never deleted to make room.
+ */
+export const MAX_UNREFERENCED_LIVE_RECORDINGS = 20;
 
 const _slots = new Map<string, RecorderSlot>();
 /** Mirror slot keys fed by a drone's frame stream, keyed by drone id. */
@@ -146,7 +174,36 @@ function newSlot(droneId?: string, droneName?: string): RecorderSlot {
     droneName,
     markers: [],
     lastWriteAt: new Map(),
+    chunkCount: 0,
+    storedFrames: 0,
+    flushing: Promise.resolve(),
   };
+}
+
+// ── Storage failure notification ─────────────────────────────
+
+type StorageFailureListener = (err: unknown) => void;
+const _storageFailureListeners = new Set<StorageFailureListener>();
+
+/**
+ * Be told when telemetry could not be written to storage (a recording chunk,
+ * or a flight's recording). Returns the unsubscribe function.
+ */
+export function onRecordingStorageFailure(listener: StorageFailureListener): () => void {
+  _storageFailureListeners.add(listener);
+  return () => {
+    _storageFailureListeners.delete(listener);
+  };
+}
+
+/** Tell every listener that telemetry could not be stored. */
+export function reportRecordingStorageFailure(err: unknown): void {
+  console.warn("[telemetry-recorder] telemetry could not be stored", err);
+  for (const listener of _storageFailureListeners) listener(err);
+}
+
+function chunkKey(recordingId: string, index: number): string {
+  return index === 0 ? `${IDB_RECORDINGS_PREFIX}${recordingId}` : `${IDB_RECORDINGS_PREFIX}${recordingId}:${index}`;
 }
 
 // ── Per-drone API ────────────────────────────────────────────
@@ -183,7 +240,7 @@ export function recordFrameFor(droneId: string, channel: string, data: unknown):
 }
 
 function appendFrame(slot: RecorderSlot, channel: string, data: unknown): void {
-  if (slot.frames.length >= MAX_FRAMES) return;
+  if (slot.truncatedAtMs !== undefined) return;
 
   if (!CAP_BYPASS_CHANNELS.has(channel)) {
     const rateHz = CHANNEL_RATE_LIMIT_HZ[channel] ?? DEFAULT_RATE_HZ;
@@ -199,6 +256,31 @@ function appendFrame(slot: RecorderSlot, channel: string, data: unknown): void {
     offsetMs: Date.now() - slot.startTime,
     channel,
     data,
+  });
+  if (slot.frames.length >= RECORDING_CHUNK_FRAMES) flushChunk(slot);
+}
+
+/**
+ * Hand the slot's buffered frames to IndexedDB as its next chunk. Writes run
+ * in order. A failed write stops the recording at the start of that chunk:
+ * later frames are discarded and the operator is told.
+ */
+function flushChunk(slot: RecorderSlot): void {
+  const chunk = slot.frames;
+  const index = slot.chunkCount;
+  slot.frames = [];
+  slot.chunkCount = index + 1;
+  slot.flushing = slot.flushing.then(async () => {
+    if (slot.truncatedAtMs !== undefined) return;
+    try {
+      await idbSet(chunkKey(slot.recordingId, index), chunk);
+      slot.storedFrames += chunk.length;
+    } catch (err) {
+      slot.truncatedAtMs = chunk[0]?.offsetMs ?? Date.now() - slot.startTime;
+      slot.chunkCount = index;
+      slot.frames = [];
+      reportRecordingStorageFailure(err);
+    }
   });
 }
 
@@ -260,10 +342,17 @@ export function isRecordingFor(droneId: string): boolean {
   return _slots.has(droneId);
 }
 
-/** The recording currently capturing {@link droneId}'s frames, if any. */
-export function activeRecordingFor(droneId: string): { recordingId: string; startTime: number } | undefined {
+/**
+ * The recording currently capturing {@link droneId}'s frames, if any.
+ * `truncatedAtMs` is set once storage failed and capture stopped.
+ */
+export function activeRecordingFor(
+  droneId: string,
+): { recordingId: string; startTime: number; truncatedAtMs?: number } | undefined {
   const slot = _slots.get(droneId);
-  return slot ? { recordingId: slot.recordingId, startTime: slot.startTime } : undefined;
+  return slot
+    ? { recordingId: slot.recordingId, startTime: slot.startTime, truncatedAtMs: slot.truncatedAtMs }
+    : undefined;
 }
 
 /**
@@ -282,12 +371,12 @@ export async function recordingFramesBetween(
   let frames: TelemetryFrame[];
   if (slot?.recordingId === recordingId) {
     startTime = slot.startTime;
-    frames = slot.frames;
+    frames = await liveSlotFrames(slot);
   } else {
     const stored = (await listRecordings()).find((r) => r.id === recordingId);
     if (!stored) return [];
     startTime = stored.startTime;
-    frames = await loadRecordingFrames(recordingId);
+    frames = await readChunks(recordingId, stored.chunkCount ?? 1);
   }
   const fromOffset = fromMs - startTime;
   const toOffset = toMs - startTime;
@@ -297,6 +386,32 @@ export async function recordingFramesBetween(
     out.push({ offsetMs: f.offsetMs - fromOffset, channel: f.channel, data: f.data });
   }
   return out;
+}
+
+/** Every frame a live slot holds: its written chunks, then the buffered tail. */
+async function liveSlotFrames(slot: RecorderSlot): Promise<TelemetryFrame[]> {
+  // Snapshot synchronously: every chunk below `queued` is on the chain
+  // captured here, and `tail` holds the frames after them.
+  const tail = slot.frames;
+  const queued = slot.chunkCount;
+  await slot.flushing;
+  const written = await readChunks(slot.recordingId, Math.min(queued, slot.chunkCount));
+  if (slot.truncatedAtMs === undefined) return written.concat(tail);
+  const cut = slot.truncatedAtMs;
+  return written.concat(tail.filter((f) => f.offsetMs < cut));
+}
+
+async function readChunks(recordingId: string, chunkCount: number): Promise<TelemetryFrame[]> {
+  const out: TelemetryFrame[] = [];
+  for (let i = 0; i < chunkCount; i++) {
+    const chunk = (await idbGet(chunkKey(recordingId, i))) as TelemetryFrame[] | undefined;
+    if (chunk) for (const f of chunk) out.push(f);
+  }
+  return out;
+}
+
+async function deleteChunks(recordingId: string, chunkCount: number): Promise<void> {
+  for (let i = 0; i < chunkCount; i++) await idbDel(chunkKey(recordingId, i));
 }
 
 // ── Internal: the recordings index ───────────────────────────
@@ -317,29 +432,73 @@ function mutateIndex(mutate: (index: TelemetryRecording[]) => Promise<TelemetryR
   return run;
 }
 
+/** Recording ids used by flight records that are not in the trash. */
+async function referencedRecordingIds(): Promise<Set<string>> {
+  await useHistoryStore.getState().ensureLoaded();
+  const ids = new Set<string>();
+  for (const r of useHistoryStore.getState().records) {
+    if (!r.deleted && r.recordingId) ids.add(r.recordingId);
+  }
+  return ids;
+}
+
 /**
- * Store {@link recording}'s frames and add it to the index, replacing an
- * entry with the same id. Live recordings beyond the newest
- * {@link MAX_LIVE_RECORDINGS} are deleted; imports are never trimmed.
+ * Add {@link recording} to the index, replacing an entry with the same id.
+ * Live recordings no active flight record uses are kept to the newest
+ * {@link MAX_UNREFERENCED_LIVE_RECORDINGS}; a recording a flight in history
+ * uses, an import, and the recording being added are never deleted. A
+ * trashed record whose recording is deleted stops claiming telemetry.
  */
-async function storeRecording(recording: TelemetryRecording, frames: TelemetryFrame[]): Promise<void> {
-  await idbSet(`${IDB_RECORDINGS_PREFIX}${recording.id}`, frames);
+async function indexRecording(recording: TelemetryRecording): Promise<void> {
+  const referenced = await referencedRecordingIds();
+  const evicted: string[] = [];
   await mutateIndex(async (index) => {
     const next = index.filter((r) => r.id !== recording.id);
     next.push(recording);
-    let excess = next.filter((r) => !r.imported).length - MAX_LIVE_RECORDINGS;
+    const unreferenced = (r: TelemetryRecording) => !r.imported && !referenced.has(r.id);
+    let excess = next.filter(unreferenced).length - MAX_UNREFERENCED_LIVE_RECORDINGS;
     if (excess <= 0) return next;
     const kept: TelemetryRecording[] = [];
     for (const r of next) {
-      if (excess > 0 && !r.imported) {
+      if (excess > 0 && r.id !== recording.id && unreferenced(r)) {
         excess--;
-        await idbDel(`${IDB_RECORDINGS_PREFIX}${r.id}`);
+        await deleteChunks(r.id, r.chunkCount ?? 1);
+        evicted.push(r.id);
       } else {
         kept.push(r);
       }
     }
     return kept;
   });
+  if (evicted.length === 0) return;
+  const gone = new Set(evicted);
+  const history = useHistoryStore.getState();
+  const orphaned = history.records.filter((r) => r.recordingId !== undefined && gone.has(r.recordingId));
+  if (orphaned.length === 0) return;
+  for (const r of orphaned) history.updateRecord(r.id, { recordingId: undefined, hasTelemetry: false });
+  await history.persistToIDB();
+}
+
+/**
+ * Store {@link frames} as {@link recording}'s chunks and index it. A failed
+ * write removes the chunks already written and rejects, so nothing half
+ * stored is left behind.
+ */
+async function storeRecording(recording: TelemetryRecording, frames: TelemetryFrame[]): Promise<TelemetryRecording> {
+  const chunkCount = Math.max(1, Math.ceil(frames.length / RECORDING_CHUNK_FRAMES));
+  let written = 0;
+  try {
+    for (; written < chunkCount; written++) {
+      const from = written * RECORDING_CHUNK_FRAMES;
+      await idbSet(chunkKey(recording.id, written), frames.slice(from, from + RECORDING_CHUNK_FRAMES));
+    }
+  } catch (err) {
+    await deleteChunks(recording.id, written).catch(() => undefined);
+    throw err;
+  }
+  const stored: TelemetryRecording = { ...recording, chunkCount };
+  await indexRecording(stored);
+  return stored;
 }
 
 // ── Internal: persist a slot ─────────────────────────────────
@@ -356,21 +515,27 @@ async function finalizeSlot(slotKey: string, slot: RecorderSlot): Promise<Teleme
   }
 
   const endTime = Date.now();
+  if (slot.truncatedAtMs === undefined && (slot.frames.length > 0 || slot.chunkCount === 0)) {
+    flushChunk(slot);
+  }
+  await slot.flushing;
   const recording: TelemetryRecording = {
     id: slot.recordingId,
     name: `Recording ${new Date(slot.startTime).toLocaleString()}`,
     startTime: slot.startTime,
     endTime,
     durationMs: endTime - slot.startTime,
-    frameCount: slot.frames.length,
+    frameCount: slot.storedFrames,
     channels: Array.from(slot.channels),
     droneId: slot.droneId,
     droneName: slot.droneName,
     // Finalize markers alongside frames/duration. Omit the field entirely
     // when none were placed so the persisted shape stays minimal.
     markers: slot.markers.length > 0 ? slot.markers.map((m) => ({ ...m })) : undefined,
+    chunkCount: slot.chunkCount,
+    ...(slot.truncatedAtMs !== undefined ? { truncatedAtMs: slot.truncatedAtMs } : {}),
   };
-  await storeRecording(recording, slot.frames);
+  await indexRecording(recording);
   return recording;
 }
 
@@ -399,17 +564,17 @@ function recordingOf(
 
 /**
  * Store the frames of one flight cut from a longer live recording (see
- * {@link recordingFramesBetween}) as a live recording of its own. It counts
- * toward the live-recording cap like any other.
+ * {@link recordingFramesBetween}) as a live recording of its own. Rejects
+ * when storage fails; nothing is left stored then.
  */
 export async function saveFlightRecording(
   frames: TelemetryFrame[],
-  options: { droneId: string; droneName?: string; startTimeMs: number },
+  options: { droneId: string; droneName?: string; startTimeMs: number; truncatedAtMs?: number },
 ): Promise<TelemetryRecording> {
   const id = `rec-${options.startTimeMs}-${Math.random().toString(36).slice(2, 8)}`;
   const recording = recordingOf(id, `Recording ${new Date(options.startTimeMs).toLocaleString()}`, frames, options);
-  await storeRecording(recording, frames);
-  return recording;
+  if (options.truncatedAtMs !== undefined) recording.truncatedAtMs = options.truncatedAtMs;
+  return await storeRecording(recording, frames);
 }
 
 /**
@@ -433,8 +598,7 @@ export async function setRecordingFromFrames(
   } = {},
 ): Promise<TelemetryRecording> {
   const recording: TelemetryRecording = { ...recordingOf(id, name, frames, options), imported: true };
-  await storeRecording(recording, frames);
-  return recording;
+  return await storeRecording(recording, frames);
 }
 
 /**
@@ -448,13 +612,15 @@ export async function listRecordings(): Promise<TelemetryRecording[]> {
  * Load frames for a recording.
  */
 export async function loadRecordingFrames(recordingId: string): Promise<TelemetryFrame[]> {
-  return (await idbGet(`${IDB_RECORDINGS_PREFIX}${recordingId}`)) ?? [];
+  const entry = (await listRecordings()).find((r) => r.id === recordingId);
+  return readChunks(recordingId, entry?.chunkCount ?? 1);
 }
 
 /**
  * Delete a recording.
  */
 export async function deleteRecording(recordingId: string): Promise<void> {
-  await idbDel(`${IDB_RECORDINGS_PREFIX}${recordingId}`);
+  const entry = (await listRecordings()).find((r) => r.id === recordingId);
+  await deleteChunks(recordingId, entry?.chunkCount ?? 1);
   await mutateIndex(async (index) => index.filter((r) => r.id !== recordingId));
 }

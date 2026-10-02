@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { analyzeMotors } from '@/lib/analysis/motor-analysis';
 import { extractLogData } from '@/lib/analysis/log-extractor';
 import type { TimeSample } from '@/lib/analysis/types';
-import type { DataFlashLog, DataFlashMessage } from '@/lib/dataflash-parser';
+import type { DataflashLog, DataflashRecord } from '@/lib/dataflash/parser';
 
 const RATE_HZ = 50;
 
@@ -23,12 +23,19 @@ function normalFlight(t: number): number {
   return 1700;
 }
 
-function row(name: string, timeUs: number, fields: Record<string, number | string>): DataFlashMessage {
-  return { type: 0, name, timestamp: timeUs, fields: { TimeUS: timeUs, ...fields } };
+function row(timeUs: number, fields: Record<string, number>): DataflashRecord {
+  return { TimeUS: timeUs, ...fields };
 }
 
-function makeLog(messages: Record<string, DataFlashMessage[]>): DataFlashLog {
-  return { formats: new Map(), messages: new Map(Object.entries(messages)) };
+function makeLog(messages: Record<string, DataflashRecord[]>, params: Record<string, number> = {}): DataflashLog {
+  return {
+    formats: new Map(),
+    params: new Map(Object.entries(params)),
+    messages: new Map(Object.entries(messages)),
+    counts: new Map(Object.entries(messages).map(([name, rows]) => [name, rows.length])),
+    bytesRead: 0,
+    resyncSkipped: 0,
+  };
 }
 
 describe('analyzeMotors oscillation', () => {
@@ -48,24 +55,22 @@ describe('analyzeMotors oscillation', () => {
 
 describe('motor channel selection', () => {
   it('analyses the outputs SERVOn_FUNCTION assigns to motors, in motor order', () => {
-    const parm = [
-      row('PARM', 0, { Name: 'SERVO1_FUNCTION', Value: 34 }),
-      row('PARM', 0, { Name: 'SERVO2_FUNCTION', Value: 33 }),
-      row('PARM', 0, { Name: 'SERVO3_FUNCTION', Value: 7 }), // mount tilt
-      row('PARM', 0, { Name: 'SERVO4_FUNCTION', Value: 0 }),
-    ];
+    const params = {
+      SERVO1_FUNCTION: 34,
+      SERVO2_FUNCTION: 33,
+      SERVO3_FUNCTION: 7, // mount tilt
+      SERVO4_FUNCTION: 0,
+    };
     const rcou = Array.from({ length: 100 }, (_, k) =>
-      row('RCOU', k * 20_000, { C1: 1400, C2: 1600, C3: 1900, C4: 1000 }),
+      row(k * 20_000, { C1: 1400, C2: 1600, C3: 1900, C4: 1000 }),
     );
-    const data = extractLogData(makeLog({ PARM: parm, RCOU: rcou }));
+    const data = extractLogData(makeLog({ RCOU: rcou }, params));
     expect(data.motors.motorCount).toBe(2);
     expect(data.motors.motors.map((m) => m[0].value)).toEqual([1600, 1400]);
   });
 
   it('leaves unlogged channels out instead of padding empty motors', () => {
-    const rcou = Array.from({ length: 100 }, (_, k) =>
-      row('RCOU', k * 20_000, { C1: 1500, C2: 1500 }),
-    );
+    const rcou = Array.from({ length: 100 }, (_, k) => row(k * 20_000, { C1: 1500, C2: 1500 }));
     const data = extractLogData(makeLog({ RCOU: rcou }));
     expect(data.motors.motorCount).toBe(2);
     expect(analyzeMotors(data.motors).motors).toHaveLength(2);

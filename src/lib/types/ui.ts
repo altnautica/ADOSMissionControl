@@ -109,6 +109,11 @@ export interface FlightRecord {
   recordingId?: string;
   /** True if a non-empty telemetry recording is attached. */
   hasTelemetry?: boolean;
+  /**
+   * Set when storage filled during the flight: the recording stopped at this
+   * offset (ms from arm) and holds nothing after it.
+   */
+  truncatedAtMs?: number;
   /** Last mutation time in ms epoch. */
   updatedAt: number;
   /** User-set favorite flag. */

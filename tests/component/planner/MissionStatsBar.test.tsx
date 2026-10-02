@@ -18,6 +18,7 @@ vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
 vi.mock("@/lib/simulation-utils", () => ({
   computeFlightPlan: () => ({ totalDistance: 1500, totalDuration: 150 }),
 }));
+vi.mock("@/hooks/use-rtl-return-context", () => ({ useFlightPlanOptions: () => ({}) }));
 
 // A mutable holder for the units setting the mocked settings store returns.
 const settings = vi.hoisted(() => ({ units: "metric" as "metric" | "imperial" }));

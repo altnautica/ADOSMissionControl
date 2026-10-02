@@ -1,6 +1,7 @@
 /**
  * Offline tile download: an area past the tile limit is refused before any URL
- * is generated, and the downloader pulls URLs lazily from an iterable.
+ * is generated, the downloader pulls URLs lazily from an iterable, and a tile
+ * the browser refused to store is never reported as downloaded.
  * @license GPL-3.0-only
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -12,6 +13,7 @@ vi.mock("@/lib/tile-cache", () => ({
 }));
 
 import { downloadTiles } from "@/lib/tile-downloader";
+import { cacheTile } from "@/lib/tile-cache";
 import { useTileDownloadStore, MAX_DOWNLOAD_TILES } from "@/stores/tile-download-store";
 import { totalTileCount, type TileProvider } from "@/lib/tile-math";
 
@@ -70,4 +72,20 @@ describe("tile download", () => {
     expect(result).toMatchObject({ completed: 0, failed: 1, skipped: 0 });
     vi.restoreAllMocks();
   }, 1000);
+
+  it("stops and says storage is full when the cache refuses a write", async () => {
+    vi.mocked(cacheTile).mockRejectedValueOnce(new DOMException("quota", "QuotaExceededError"));
+    const area = { north: 0.01, south: 0, east: 0.01, west: 0 };
+    const total = totalTileCount(area, 1, 14);
+    expect(total).toBeGreaterThan(1);
+
+    await useTileDownloadStore.getState().startDownload(area, 1, 14, PROVIDER);
+
+    const s = useTileDownloadStore.getState();
+    expect(s.result?.failed).toBeGreaterThanOrEqual(1);
+    expect(s.result?.storageError).toMatch(/Storage is full/);
+    expect(s.error).toMatch(/Storage is full/);
+    // Workers stop at the refusal: the tiles after it are never fetched.
+    expect(s.result!.completed + s.result!.failed + s.result!.skipped).toBeLessThan(total);
+  });
 });

@@ -13,6 +13,7 @@ import {
   generateTileUrls,
   lonToTileX,
   latToTileY,
+  tileCountAtZoom,
   clampTileZoom,
   customTileProvider,
   resolveBasemap,
@@ -85,6 +86,34 @@ describe("tile URL round-trip (write key == read key)", () => {
     for (const u of urls) {
       expect(expected.has(u)).toBe(true);
       expect(u).toContain("@2x");
+    }
+  });
+});
+
+describe("tile bounds at the edges of the world", () => {
+  const osm = TILE_PROVIDERS.osm;
+
+  it("splits a view panned across the antimeridian into real tile columns", () => {
+    // Leaflet reports east = 190 once the map is panned past 180°.
+    const bounds: LatLngBounds = { north: 10, south: 0, east: 190, west: 170 };
+    const z = 3;
+    const xs = new Set(
+      [...generateTileUrls(bounds, z, z, osm, false)].map((u) => Number(u.split("/").at(-2))),
+    );
+    expect([...xs].sort((a, b) => a - b)).toEqual([0, 7]);
+    expect(tileCountAtZoom(bounds, z)).toBe(2 * (latToTileY(0, z) - latToTileY(10, z) + 1));
+  });
+
+  it("never yields a tile outside the grid for a view wider than the world or past the poles", () => {
+    const bounds: LatLngBounds = { north: 90, south: -90, east: 250, west: -250 };
+    const z = 2;
+    expect(tileCountAtZoom(bounds, z)).toBe(16);
+    for (const u of generateTileUrls(bounds, z, z, osm, false)) {
+      const [x, y] = u.replace(/\.png$/, "").split("/").slice(-2).map(Number);
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThan(4);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThan(4);
     }
   });
 });

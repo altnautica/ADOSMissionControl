@@ -7,12 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import {
-  type DataFlashLog,
-  type DataFlashMessage,
-  getTimeSeries,
-  getMessages,
-} from "@/lib/dataflash-parser";
+import type { DataflashLog, DataflashRecord } from "../dataflash/parser";
 import type {
   AxisTimeSeries,
   MotorTimeSeries,
@@ -52,6 +47,13 @@ export interface ExtractedLogData {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Messages PID analysis reads. Parse with this as the `only` filter so the
+ * rest of the log is stepped over instead of decoded and held; parameters
+ * come from `log.params`, which every parse fills.
+ */
+export const PID_LOG_MESSAGES: ReadonlySet<string> = new Set(["RATE", "IMU", "RCOU", "RCO2", "VIBE"]);
 
 /** PID-related parameter prefixes to extract from PARM messages. */
 const PID_PARAM_PREFIXES = [
@@ -107,34 +109,39 @@ function estimateSampleRate(samples: TimeSample[], maxSamples = 200): number {
  * instance field and hold a single instance, so every row is kept.
  */
 function primaryInstanceRows(
-  log: DataFlashLog,
+  log: DataflashLog,
   type: string,
   instanceField: string,
-): DataFlashMessage[] {
-  const msgs = getMessages(log, type);
+): DataflashRecord[] {
+  const rows = log.messages.get(type) ?? [];
   let primary = Infinity;
-  for (const msg of msgs) {
-    const inst = msg.fields[instanceField];
+  for (const row of rows) {
+    const inst = row[instanceField];
     if (typeof inst === "number" && inst < primary) primary = inst;
   }
-  if (primary === Infinity) return msgs;
-  return msgs.filter((msg) => msg.fields[instanceField] === primary);
+  if (primary === Infinity) return rows;
+  return rows.filter((row) => row[instanceField] === primary);
 }
 
-/** Time series of one numeric field over a set of rows. */
-function seriesOf(rows: DataFlashMessage[], field: string): TimeSample[] {
+/** Time series of one numeric field over a set of rows; rows without a TimeUS are skipped. */
+function seriesOf(rows: readonly DataflashRecord[], field: string): TimeSample[] {
   const series: TimeSample[] = [];
-  for (const msg of rows) {
-    if (msg.timestamp == null) continue;
-    const value = msg.fields[field];
-    if (typeof value !== "number") continue;
-    series.push({ timeUs: msg.timestamp, value });
+  for (const row of rows) {
+    const timeUs = row.TimeUS;
+    const value = row[field];
+    if (typeof timeUs !== "number" || typeof value !== "number") continue;
+    series.push({ timeUs, value });
   }
   return series;
 }
 
+/** Time series of one field of one message type. */
+function timeSeries(log: DataflashLog, type: string, field: string): TimeSample[] {
+  return seriesOf(log.messages.get(type) ?? [], field);
+}
+
 /** Gyro series of the primary IMU instance. */
-function extractGyro(log: DataFlashLog): AxisTimeSeries {
+function extractGyro(log: DataflashLog): AxisTimeSeries {
   const rows = primaryInstanceRows(log, "IMU", "I");
   return {
     roll: seriesOf(rows, "GyrX"),
@@ -166,16 +173,16 @@ function mean(arr: number[]): number {
  *   - PARM messages → PID-related parameters
  */
 export function extractLogData(
-  log: DataFlashLog,
+  log: DataflashLog,
   fileSizeBytes = 0,
 ): ExtractedLogData {
   // --- Rate data (RATE messages) ---
-  const rollDes = getTimeSeries(log, "RATE", "RDes");
-  const rollAct = getTimeSeries(log, "RATE", "R");
-  const pitchDes = getTimeSeries(log, "RATE", "PDes");
-  const pitchAct = getTimeSeries(log, "RATE", "P");
-  const yawDes = getTimeSeries(log, "RATE", "YDes");
-  const yawAct = getTimeSeries(log, "RATE", "Y");
+  const rollDes = timeSeries(log, "RATE", "RDes");
+  const rollAct = timeSeries(log, "RATE", "R");
+  const pitchDes = timeSeries(log, "RATE", "PDes");
+  const pitchAct = timeSeries(log, "RATE", "P");
+  const yawDes = timeSeries(log, "RATE", "YDes");
+  const yawAct = timeSeries(log, "RATE", "Y");
 
   const desiredRate: AxisTimeSeries = {
     roll: rollDes,
@@ -248,12 +255,9 @@ const LOGGED_OUTPUTS = 18;
  * parameters falls back to C1..C8. Outputs with no logged samples are left
  * out rather than padded in as empty motors.
  */
-function extractMotors(log: DataFlashLog): MotorTimeSeries {
+function extractMotors(log: DataflashLog): MotorTimeSeries {
   const functionByOutput = new Map<number, number>();
-  for (const msg of getMessages(log, "PARM")) {
-    const name = msg.fields["Name"];
-    const value = msg.fields["Value"];
-    if (typeof name !== "string" || typeof value !== "number") continue;
+  for (const [name, value] of log.params) {
     const match = /^SERVO(\d+)_FUNCTION$/.exec(name);
     if (match) functionByOutput.set(Number(match[1]), value);
   }
@@ -272,32 +276,19 @@ function extractMotors(log: DataFlashLog): MotorTimeSeries {
   }
 
   const motors = outputs
-    .map((o) => getTimeSeries(log, o <= 14 ? "RCOU" : "RCO2", `C${o}`))
+    .map((o) => timeSeries(log, o <= 14 ? "RCOU" : "RCO2", `C${o}`))
     .filter((s) => s.length > 0);
   return { motors, motorCount: motors.length };
 }
 
 /**
- * Extract PID-related parameters from PARM messages.
+ * Extract PID-related parameters from the log's parameters.
  */
-function extractParams(log: DataFlashLog): Record<string, number> {
+function extractParams(log: DataflashLog): Record<string, number> {
   const params: Record<string, number> = {};
-  const parmMsgs = getMessages(log, "PARM");
-
-  for (const msg of parmMsgs) {
-    const name = msg.fields["Name"];
-    const value = msg.fields["Value"];
-    if (typeof name !== "string" || typeof value !== "number") continue;
-
-    // Check if this is a PID-related parameter
-    const isPidParam = PID_PARAM_PREFIXES.some((prefix) =>
-      name.startsWith(prefix),
-    );
-    if (isPidParam) {
-      params[name] = value;
-    }
+  for (const [name, value] of log.params) {
+    if (PID_PARAM_PREFIXES.some((prefix) => name.startsWith(prefix))) params[name] = value;
   }
-
   return params;
 }
 
@@ -307,12 +298,12 @@ function extractParams(log: DataFlashLog): Record<string, number> {
  * older logs carry `Clip0`..`Clip2` on a single row. Null when the log has
  * no clip counter at all, which is not the same as zero clipping.
  */
-function extractClipCount(log: DataFlashLog): number | null {
+function extractClipCount(log: DataflashLog): number | null {
   const last = new Map<string, number>();
-  for (const msg of getMessages(log, "VIBE")) {
-    const inst = msg.fields["IMU"];
+  for (const row of log.messages.get("VIBE") ?? []) {
+    const inst = row["IMU"];
     for (const key of ["Clip", "Clip0", "Clip1", "Clip2"]) {
-      const value = msg.fields[key];
+      const value = row[key];
       if (typeof value === "number") last.set(`${key}:${inst ?? 0}`, value);
     }
   }
@@ -326,7 +317,7 @@ function extractClipCount(log: DataFlashLog): number | null {
  * Extract vibration summary from VIBE messages of the primary IMU instance.
  * Returns null when the log holds no VIBE data.
  */
-export function extractVibration(log: DataFlashLog): VibrationSummary | null {
+export function extractVibration(log: DataflashLog): VibrationSummary | null {
   const rows = primaryInstanceRows(log, "VIBE", "IMU");
   const xVals = seriesOf(rows, "VibeX").map((s) => s.value);
   const yVals = seriesOf(rows, "VibeY").map((s) => s.value);
@@ -337,9 +328,12 @@ export function extractVibration(log: DataFlashLog): VibrationSummary | null {
   const avgY = mean(yVals);
   const avgZ = mean(zVals);
 
-  const maxX = xVals.length > 0 ? Math.max(...xVals) : 0;
-  const maxY = yVals.length > 0 ? Math.max(...yVals) : 0;
-  const maxZ = zVals.length > 0 ? Math.max(...zVals) : 0;
+  let maxX = 0;
+  let maxY = 0;
+  let maxZ = 0;
+  for (const v of xVals) if (v > maxX) maxX = v;
+  for (const v of yVals) if (v > maxY) maxY = v;
+  for (const v of zVals) if (v > maxZ) maxZ = v;
 
   const clipCount = extractClipCount(log);
 
@@ -365,19 +359,19 @@ export function extractVibration(log: DataFlashLog): VibrationSummary | null {
  * Extract log metadata: duration, sample rates, file size, and PID params.
  */
 export function extractLogMetadata(
-  log: DataFlashLog,
+  log: DataflashLog,
   fileSizeBytes: number,
 ): LogMetadata {
-  // Duration: from earliest to latest timestamp across all message types
+  // Duration: from earliest to latest timestamp across the decoded messages
   let minTime = Infinity;
   let maxTime = -Infinity;
 
-  for (const [, msgs] of log.messages) {
-    for (const msg of msgs) {
-      if (msg.timestamp != null) {
-        if (msg.timestamp < minTime) minTime = msg.timestamp;
-        if (msg.timestamp > maxTime) maxTime = msg.timestamp;
-      }
+  for (const [, rows] of log.messages) {
+    for (const row of rows) {
+      const t = row.TimeUS;
+      if (typeof t !== "number") continue;
+      if (t < minTime) minTime = t;
+      if (t > maxTime) maxTime = t;
     }
   }
 
@@ -386,8 +380,8 @@ export function extractLogMetadata(
 
   // Sample rates
   const gyroX = extractGyro(log).roll;
-  const rateDes = getTimeSeries(log, "RATE", "RDes");
-  const rcouMsgs = getMessages(log, "RCOU");
+  const rateDes = timeSeries(log, "RATE", "RDes");
+  const rcouCount = log.messages.get("RCOU")?.length ?? 0;
 
   const gyroSampleRate = Math.round(estimateSampleRate(gyroX));
   const rateSampleRate = Math.round(estimateSampleRate(rateDes));
@@ -399,7 +393,7 @@ export function extractLogMetadata(
     durationSec: Math.round(durationSec * 10) / 10,
     gyroSampleRate,
     rateSampleRate,
-    motorSampleCount: rcouMsgs.length,
+    motorSampleCount: rcouCount,
     fileSizeBytes,
     logParams,
   };

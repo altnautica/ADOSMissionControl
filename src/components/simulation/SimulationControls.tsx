@@ -25,6 +25,7 @@ import type { SimHistoryEntry } from "@/lib/types";
 import { formatDuration } from "@/lib/utils";
 import { timeAgo } from "@/lib/plan-library";
 import { computeFlightPlan } from "@/lib/simulation-utils";
+import { useFlightPlanOptions } from "@/hooks/use-rtl-return-context";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { applyPlanToWorkspace, saveActivePlanFromWorkspace, workspaceHasUnsavedChanges } from "@/lib/plan-workspace";
@@ -64,6 +65,8 @@ export function SimulationControls({
 }: SimulationControlsProps) {
   const t = useTranslations("simulate");
   const { toast } = useToast();
+  // The viewer times playback with the same launch point and return altitude.
+  const planOptions = useFlightPlanOptions();
 
   // A history row whose replay waits on the unsaved-changes decision.
   const [pendingReplay, setPendingReplay] = useState<SimHistoryEntry | null>(null);
@@ -81,7 +84,7 @@ export function SimulationControls({
       applyPlanToWorkspace(plan);
 
       const defaultSpeed = usePlannerStore.getState().defaultSpeed;
-      const expected = computeFlightPlan(plan.waypoints, defaultSpeed).totalDuration;
+      const expected = computeFlightPlan(plan.waypoints, defaultSpeed, planOptions).totalDuration;
 
       // Start playback once the 3D viewer has re-timed the store to the loaded
       // plan (it resets + sets totalDuration in its own effect on mission change).
@@ -102,7 +105,7 @@ export function SimulationControls({
       };
       requestAnimationFrame(startWhenReady);
     },
-    [toast, t],
+    [toast, t, planOptions],
   );
 
   // Replaying replaces the mission and restores or clears the fence, rally

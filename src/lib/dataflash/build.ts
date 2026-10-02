@@ -26,8 +26,12 @@ export interface DataflashBuild {
   paramCount: number;
 }
 
-export function buildDataflashFlights(bytes: Uint8Array, options: DataflashConvertOptions): DataflashBuild {
-  const log = parseDataflashLog(bytes, { only: DATAFLASH_FLIGHT_MESSAGES });
+export function buildDataflashFlights(
+  bytes: Uint8Array,
+  options: DataflashConvertOptions,
+  onProgress?: (fraction: number) => void,
+): DataflashBuild {
+  const log = parseDataflashLog(bytes, { only: DATAFLASH_FLIGHT_MESSAGES, onProgress });
   return {
     flights: dataflashToFlightRecords(log, options),
     bytesRead: log.bytesRead,
@@ -44,29 +48,58 @@ export interface DataflashBuildRequest {
 }
 
 /** Reply from the build worker. */
-export type DataflashBuildResponse = { ok: true; build: DataflashBuild } | { ok: false; error: string };
+export type DataflashBuildResponse =
+  | { type: "progress"; fraction: number }
+  | { type: "done"; build: DataflashBuild }
+  | { type: "error"; error: string };
+
+export interface DataflashBuildRunOptions {
+  /** Fraction of the file parsed, 0..1. */
+  onProgress?: (fraction: number) => void;
+  /** Aborting stops the parse; the promise rejects with an `AbortError`. */
+  signal?: AbortSignal;
+}
 
 /**
  * Run {@link buildDataflashFlights} in a Web Worker so a large log never
- * freezes the UI. Where workers do not exist (tests, server rendering) it
- * runs inline. Rejects with the parser's error on a corrupt log.
+ * freezes the UI, with progress and cancel. Where workers do not exist
+ * (tests, server rendering) it runs inline. Rejects with the parser's error
+ * on a corrupt log.
  */
 export function buildDataflashFlightsOffThread(
   bytes: Uint8Array,
   options: DataflashConvertOptions,
+  run: DataflashBuildRunOptions = {},
 ): Promise<DataflashBuild> {
+  const { onProgress, signal } = run;
+  const cancelled = () => new DOMException("Import cancelled", "AbortError");
+  if (signal?.aborted) return Promise.reject(cancelled());
   if (typeof Worker === "undefined") {
-    return Promise.resolve().then(() => buildDataflashFlights(bytes, options));
+    return Promise.resolve().then(() => buildDataflashFlights(bytes, options, onProgress));
   }
   const { promise, resolve, reject } = Promise.withResolvers<DataflashBuild>();
   const worker = new Worker(new URL("./build-worker.ts", import.meta.url), { type: "module" });
-  worker.onmessage = (e: MessageEvent<DataflashBuildResponse>) => {
+  const onAbort = () => {
     worker.terminate();
-    if (e.data.ok) resolve(e.data.build);
-    else reject(new Error(e.data.error));
+    reject(cancelled());
+  };
+  const finish = () => {
+    worker.terminate();
+    signal?.removeEventListener("abort", onAbort);
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+  worker.onmessage = (e: MessageEvent<DataflashBuildResponse>) => {
+    const msg = e.data;
+    if (msg.type === "progress") {
+      onProgress?.(msg.fraction);
+      return;
+    }
+    finish();
+    if (msg.type === "done") resolve(msg.build);
+    else reject(new Error(msg.error));
   };
   worker.onerror = (e) => {
-    worker.terminate();
+    finish();
     reject(new Error(e.message || "Log parse worker crashed"));
   };
   // Transfer a copy: the caller keeps its bytes, and the copy moves to the

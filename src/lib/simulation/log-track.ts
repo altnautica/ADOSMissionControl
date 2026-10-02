@@ -16,9 +16,9 @@
 
 import type { TelemetryFrame } from "@/lib/telemetry-recorder";
 import { parseDataflashLog } from "@/lib/dataflash/parser";
-import { dataflashToFlightRecords } from "@/lib/dataflash/to-flight-record";
+import { dataflashToFlightRecords, DATAFLASH_FLIGHT_MESSAGES } from "@/lib/dataflash/to-flight-record";
 import { parseUlog } from "@/lib/ulog/parser";
-import { ulogToFlightRecords } from "@/lib/ulog/to-flight-record";
+import { ulogToFlightRecords, ULOG_FLIGHT_TOPICS } from "@/lib/ulog/to-flight-record";
 import { parseTlog, tlogToFlightRecord } from "@/lib/tlog/parser";
 
 /** A single ordered point of the flown track. `alt` is the logged altitude in metres. */
@@ -136,18 +136,28 @@ export function parseLogTrack(ext: string, buffer: ArrayBuffer, name: string): L
   let positions: TrackPoint[];
   try {
     if (ext === "bin" || ext === "log") {
+      // A `.log` may be the DataFlash binary or ArduPilot's text export; only
+      // the binary (it starts with the 0xA3 0x95 frame header) is readable.
+      const head = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
+      if (head[0] !== 0xa3 || head[1] !== 0x95) {
+        return {
+          ok: false,
+          error: { code: "unsupported", detail: "not a DataFlash binary log (text .log exports are not supported)" },
+        };
+      }
       // ArduPilot DataFlash binary. Parsed in-memory and frames pulled directly
       // — deliberately NOT via import.ts, which also persists to IndexedDB.
-      const log = parseDataflashLog(new Uint8Array(buffer));
+      const log = parseDataflashLog(new Uint8Array(buffer), { only: DATAFLASH_FLIGHT_MESSAGES });
       const flights = dataflashToFlightRecords(log, { sourceFilename: name });
       positions = extractPositions(flights.flatMap((f) => f.frames));
     } else if (ext === "ulg") {
-      const log = parseUlog(buffer);
-      const flights = ulogToFlightRecords(log, name);
+      // The ids are never stored here, so the file name stands in for a content id.
+      const log = parseUlog(buffer, { only: ULOG_FLIGHT_TOPICS });
+      const flights = ulogToFlightRecords(log, name, name);
       positions = extractPositions(flights.flatMap((f) => f.frames));
     } else if (ext === "tlog") {
       const packets = parseTlog(buffer);
-      const result = tlogToFlightRecord(packets, name);
+      const result = tlogToFlightRecord(packets, name, name);
       positions = result ? extractPositions(result.frames) : [];
     } else {
       return { ok: false, error: { code: "unsupported", detail: ext || "(no extension)" } };

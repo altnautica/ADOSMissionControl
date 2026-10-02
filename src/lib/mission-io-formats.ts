@@ -103,11 +103,18 @@ function wireXY(command: number, p5: number, p6: number): [number, number] {
 }
 
 /** Collapse file items, naming every leading item that had no waypoint to ride. */
-function collapseWithWarnings(items: readonly MissionItem[]): ParsedWaypoints {
+function collapseWithWarnings(
+  items: readonly MissionItem[],
+  home?: { lat: number; lon: number },
+): ParsedWaypoints {
   const warnings: string[] = [];
-  const waypoints = collapseFromItems(items, (dropped) => {
-    warnings.push(droppedItemWarning(dropped));
-  });
+  const waypoints = collapseFromItems(
+    items,
+    (dropped) => {
+      warnings.push(droppedItemWarning(dropped));
+    },
+    home,
+  );
   return { waypoints, warnings };
 }
 
@@ -285,6 +292,8 @@ export function exportQGCPlan(
 interface QGCMissionItem {
   type?: string;
   command?: number;
+  /** QGC's own item number; a DO_JUMP's `params[0]` names its target by it. */
+  doJumpId?: number;
   frame?: number;
   params?: number[];
   autoContinue?: boolean;
@@ -336,9 +345,16 @@ interface QGCCameraCalc {
 
 interface QGCPlanFile {
   fileType?: string;
-  mission?: { items?: QGCMissionItem[] };
+  mission?: { items?: QGCMissionItem[]; plannedHomePosition?: number[] };
   geoFence?: QGCGeoFence;
   rallyPoints?: QGCRallyPoints;
+}
+
+/** State shared across the expansion of one plan's items. */
+interface PlanExpansion {
+  /** File `doJumpId` → the seq of the first item it expanded to. */
+  jumpSeq: Map<number, number>;
+  warnings: string[];
 }
 
 /**
@@ -376,10 +392,16 @@ function simpleItemToWireItem(item: QGCMissionItem, seq: number): MissionItem {
  * ComplexItem / TransectStyleComplexItem (survey / corridor / structure grid)
  * is expanded from its embedded transect items or coordinates. A complex item
  * that carries no expandable geometry throws rather than being silently dropped.
- * Sequence numbers come from output position (from 1, the `doJumpId` numbering),
- * not the file, so an expanded grid does not collide with the surrounding items.
+ * Sequence numbers come from output position (from 1), not the file, so an
+ * expanded grid does not collide with the surrounding items; each item's file
+ * `doJumpId` is recorded against the seq it starts at, so DO_JUMP targets can
+ * be rewritten into the output numbering afterwards.
  */
-function expandPlanItem(item: QGCMissionItem, out: MissionItem[]): void {
+function expandPlanItem(item: QGCMissionItem, out: MissionItem[], ctx: PlanExpansion): void {
+  if (typeof item.doJumpId === "number" && Number.isFinite(item.doJumpId)) {
+    ctx.jumpSeq.set(item.doJumpId, out.length + 1);
+  }
+
   if (item.type === "SimpleItem") {
     out.push(simpleItemToWireItem(item, out.length + 1));
     return;
@@ -392,7 +414,7 @@ function expandPlanItem(item: QGCMissionItem, out: MissionItem[]): void {
 
     const embedded = transect?.Items;
     if (Array.isArray(embedded) && embedded.length > 0) {
-      for (const sub of embedded) expandPlanItem(sub, out);
+      for (const sub of embedded) expandPlanItem(sub, out, ctx);
       return;
     }
 
@@ -423,13 +445,47 @@ function expandPlanItem(item: QGCMissionItem, out: MissionItem[]): void {
     );
   }
 
-  // Unrecognized non-simple, non-complex item types are skipped.
+  ctx.warnings.push(`Skipped a mission item of unsupported type "${item.type ?? "none"}"`);
+}
+
+/**
+ * Rewrite each DO_JUMP's target from the file's `doJumpId` numbering into the
+ * output seq. A file that numbers no items keeps its targets as written; a
+ * jump whose target is not in the plan is dropped with a warning rather than
+ * landing on whatever item now holds that number.
+ */
+function resolvePlanJumps(items: MissionItem[], ctx: PlanExpansion): MissionItem[] {
+  if (ctx.jumpSeq.size === 0) return items;
+  const out: MissionItem[] = [];
+  for (const item of items) {
+    if (item.command !== cmdMap.DO_JUMP) {
+      out.push(item);
+      continue;
+    }
+    const seq = ctx.jumpSeq.get(item.param1);
+    if (seq === undefined) {
+      ctx.warnings.push(`Dropped DO_JUMP at item ${item.seq}: its target (item ${item.param1}) is not in the plan`);
+      continue;
+    }
+    out.push({ ...item, param1: seq });
+  }
+  return out;
+}
+
+/** The file's planned home, when it names a real position. */
+function plannedHome(position: number[] | undefined): { lat: number; lon: number } | undefined {
+  if (!Array.isArray(position) || position.length < 2) return undefined;
+  const [lat, lon] = position;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return undefined;
+  return { lat, lon };
 }
 
 /**
  * Parse a `.plan` (QGC JSON) file into waypoints plus any fence / rally it
  * carries. Survey / corridor / structure grids (ComplexItem) are expanded into
  * waypoints; an unexpandable complex item throws rather than dropping silently.
+ * DO_JUMP targets follow the file's `doJumpId` numbering, and the planned home
+ * position places items that fly from home (a TAKEOFF saved without a position).
  */
 export function parseQGCPlan(text: string): ParsedPlan {
   const data = JSON.parse(text) as QGCPlanFile;
@@ -437,17 +493,19 @@ export function parseQGCPlan(text: string): ParsedPlan {
     throw new Error("Invalid .plan file — missing Plan fileType or mission items");
   }
 
-  const items: MissionItem[] = [];
+  const ctx: PlanExpansion = { jumpSeq: new Map(), warnings: [] };
+  const expanded: MissionItem[] = [];
   for (const item of data.mission.items) {
-    expandPlanItem(item, items);
+    expandPlanItem(item, expanded, ctx);
   }
+  const items = resolvePlanJumps(expanded, ctx);
 
   // Collapse DO / CONDITION sibling items into their navigation waypoint's
   // actions, restoring each item's frame and every parameter slot.
-  const { waypoints, warnings } = collapseWithWarnings(items);
+  const { waypoints, warnings } = collapseWithWarnings(items, plannedHome(data.mission.plannedHomePosition));
   return {
     waypoints,
-    warnings,
+    warnings: [...ctx.warnings, ...warnings],
     fenceZones: parseQGCGeoFence(data.geoFence),
     rally: parseQGCRally(data.rallyPoints),
   };

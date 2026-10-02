@@ -16,6 +16,7 @@ function dataflashLog(messages: Record<string, DataflashRecord[]>): DataflashLog
     formats: new Map(),
     params: new Map(),
     messages: new Map(Object.entries(messages)),
+    counts: new Map(Object.entries(messages).map(([name, rows]) => [name, rows.length])),
     bytesRead: 0,
     resyncSkipped: 0,
   };

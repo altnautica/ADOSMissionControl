@@ -5,13 +5,18 @@
  *   flight's frames, cut to the arm/disarm span;
  * - a quick re-arm while the last flight is finalizing keeps its own state;
  * - the preflight bitmasks are the arming drone's own SYS_STATUS;
- * - concurrent recording writes never drop an index entry, and imports are
- *   never trimmed by the live-recording cap.
+ * - concurrent recording writes never drop an index entry, imports are
+ *   never trimmed by the live-recording cap, and neither is a recording a
+ *   flight in history uses;
+ * - a storage failure stops a recording at the chunk that failed and keeps
+ *   what was written.
  *
  * @license GPL-3.0-only
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const idbFail = vi.hoisted(() => ({ key: null as RegExp | null }));
 
 vi.mock("idb-keyval", () => {
   const store = new Map<string, unknown>();
@@ -20,7 +25,10 @@ vi.mock("idb-keyval", () => {
   const later = <T,>(value: T) => Promise.resolve().then(() => value);
   return {
     get: (k: string) => later(store.get(k)),
-    set: (k: string, v: unknown) => later(void store.set(k, v)),
+    set: (k: string, v: unknown) =>
+      idbFail.key?.test(k)
+        ? Promise.reject(new DOMException("Quota exceeded", "QuotaExceededError"))
+        : later(void store.set(k, v)),
     del: (k: string) => later(void store.delete(k)),
     keys: () => later([...store.keys()]),
     createStore: () => ({}),
@@ -34,14 +42,16 @@ import {
   isRecordingFor,
   listRecordings,
   loadRecordingFrames,
+  onRecordingStorageFailure,
   recordFrameFor,
+  RECORDING_CHUNK_FRAMES,
   setRecordingFromFrames,
   startRecordingFor,
   stopRecordingFor,
 } from "@/lib/telemetry-recorder";
 import { useHistoryStore } from "@/stores/history-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import type { SysStatusData } from "@/lib/types";
+import type { FlightRecord, SysStatusData } from "@/lib/types";
 
 const DRONE = "node:d1";
 let now = 1_700_000_000_000;
@@ -73,6 +83,7 @@ afterEach(async () => {
   clearLifecycleState("node:d2");
   await stopRecordingFor(DRONE);
   await stopRecordingFor("node:d2");
+  idbFail.key = null;
   vi.restoreAllMocks();
 });
 
@@ -191,5 +202,65 @@ describe("recordings index", () => {
     expect(index.some((r) => r.id === "import-keep")).toBe(true);
     expect(await loadRecordingFrames("import-keep")).toHaveLength(1);
     expect(index.filter((r) => !r.imported)).toHaveLength(20);
+  });
+
+  it("never deletes a recording a flight in history still uses", async () => {
+    startRecordingFor("node:ref", "Ref");
+    recordFrameFor("node:ref", "attitude", { roll: 1 });
+    const used = await stopRecordingFor("node:ref");
+    const flight: FlightRecord = {
+      id: "flight-uses-recording",
+      droneId: "node:ref",
+      droneName: "Ref",
+      date: now,
+      startTime: now,
+      endTime: now,
+      duration: 0,
+      waypointCount: 0,
+      status: "completed",
+      recordingId: used!.id,
+      hasTelemetry: true,
+      updatedAt: now,
+    };
+    useHistoryStore.getState().addRecord(flight);
+
+    for (let i = 0; i < 25; i++) {
+      tick(10);
+      startRecordingFor("node:live", "Live");
+      await stopRecordingFor("node:live");
+    }
+
+    const index = await listRecordings();
+    expect(index.some((r) => r.id === used!.id)).toBe(true);
+    expect(await loadRecordingFrames(used!.id)).toHaveLength(1);
+    const usedIds = new Set(
+      useHistoryStore.getState().records.flatMap((r) => (r.recordingId && !r.deleted ? [r.recordingId] : [])),
+    );
+    expect(index.filter((r) => !r.imported && !usedIds.has(r.id))).toHaveLength(20);
+    const kept = useHistoryStore.getState().records.find((r) => r.id === flight.id);
+    expect(kept?.hasTelemetry).toBe(true);
+  });
+});
+
+describe("storage failure", () => {
+  it("stops at the chunk that failed, keeps the chunks written and tells the operator", async () => {
+    const failures: unknown[] = [];
+    const unsubscribe = onRecordingStorageFailure((err) => failures.push(err));
+    const id = startRecordingFor("node:full", "Full");
+    // The high-rate IMU channel bypasses rate limiting, so every frame lands.
+    for (let i = 0; i < RECORDING_CHUNK_FRAMES; i++) recordFrameFor("node:full", "imu_highrate", { i });
+    idbFail.key = new RegExp(`${id}:1$`);
+    tick(5000);
+    for (let i = 0; i < 10; i++) recordFrameFor("node:full", "imu_highrate", { i });
+    tick(5000);
+    for (let i = 0; i < RECORDING_CHUNK_FRAMES; i++) recordFrameFor("node:full", "imu_highrate", { i });
+    const recording = await stopRecordingFor("node:full");
+    unsubscribe();
+
+    expect(failures).toHaveLength(1);
+    expect(recording?.truncatedAtMs).toBe(5000);
+    expect(recording?.frameCount).toBe(RECORDING_CHUNK_FRAMES);
+    idbFail.key = null;
+    expect(await loadRecordingFrames(id)).toHaveLength(RECORDING_CHUNK_FRAMES);
   });
 });

@@ -13,12 +13,19 @@ import { TOPIC_TO_CHANNEL, normalizeTopicData, radToHeading } from "./topics";
 import type { TelemetryFrame } from "../telemetry-recorder";
 import type { FlightRecord } from "../types";
 import { haversineDistance } from "@/lib/geo/distance";
+import { decimatePath } from "@/lib/flight-lifecycle/decimate";
 
 /** A local-position row within this much of a global fix is its velocity. */
 const LOCAL_JOIN_WINDOW_US = 500_000;
 
 /** Earliest UTC time (2000-01-01, µs) read as a real GPS clock. */
 const MIN_EPOCH_US = 946_684_800_000_000;
+
+/** Topics a flight record reads; rows of every other topic need not be decoded. */
+export const ULOG_FLIGHT_TOPICS: ReadonlySet<string> = new Set([
+  ...Object.keys(TOPIC_TO_CHANNEL),
+  "vehicle_status",
+]);
 
 export interface BuiltUlogFlight {
   record: FlightRecord;
@@ -27,9 +34,14 @@ export interface BuiltUlogFlight {
 
 /**
  * Convert a parsed ULog into one or more FlightRecords, split on arm/disarm.
+ *
+ * `fileId` identifies the log's content (a hash of its bytes); each flight's
+ * id is derived from it and the flight's start, so importing the same file
+ * again yields the same ids.
  */
 export function ulogToFlightRecords(
   log: UlogFile,
+  fileId: string,
   sourceFilename?: string,
 ): BuiltUlogFlight[] {
   // 1. Detect arm/disarm transitions from vehicle_status
@@ -41,7 +53,7 @@ export function ulogToFlightRecords(
   if (armRanges.length === 0) {
     const allFrames = buildAllFrames(log, 0, Infinity);
     if (allFrames.length === 0) return [];
-    const record = buildRecordFromFrames(allFrames, 0, utcBootUs, sourceFilename);
+    const record = buildRecordFromFrames(allFrames, 0, utcBootUs, fileId, sourceFilename);
     return [{ record, frames: allFrames }];
   }
 
@@ -50,7 +62,7 @@ export function ulogToFlightRecords(
   for (const { startUs, endUs } of armRanges) {
     const frames = buildAllFrames(log, startUs, endUs);
     if (frames.length < 2) continue;
-    const record = buildRecordFromFrames(frames, startUs, utcBootUs, sourceFilename);
+    const record = buildRecordFromFrames(frames, startUs, utcBootUs, fileId, sourceFilename);
     flights.push({ record, frames });
   }
 
@@ -207,9 +219,10 @@ function buildRecordFromFrames(
   frames: TelemetryFrame[],
   startUs: number,
   utcBootUs: number | undefined,
+  fileId: string,
   sourceFilename?: string,
 ): FlightRecord {
-  const id = crypto.randomUUID();
+  const id = `ulog-${fileId}-${startUs}`;
   // ULog timestamps count from boot; the GPS UTC anchors them to the wall
   // clock. A log that never carried a UTC fix is dated at import.
   const startTime = utcBootUs !== undefined
@@ -231,7 +244,6 @@ function buildRecordFromFrames(
   let lastLat: number | undefined;
   let lastLon: number | undefined;
   const path: [number, number][] = [];
-  let pathSampleMs = -Infinity;
 
   // Battery
   let battStart: number | undefined;
@@ -261,12 +273,7 @@ function buildRecordFromFrames(
         prevLon = lon;
         lastLat = lat;
         lastLon = lon;
-
-        // 1 Hz path downsample
-        if (f.offsetMs - pathSampleMs >= 1000) {
-          path.push([lat, lon]);
-          pathSampleMs = f.offsetMs;
-        }
+        path.push([lat, lon]);
       }
     }
 
@@ -284,10 +291,7 @@ function buildRecordFromFrames(
     ? Math.max(0, Math.round(((battStart - battEnd) / battStart) * 100))
     : undefined;
 
-  // Cap path
-  const cappedPath = path.length > 1000
-    ? path.filter((_, i) => i % Math.ceil(path.length / 1000) === 0)
-    : path;
+  const cappedPath = decimatePath(path);
 
   return {
     id,

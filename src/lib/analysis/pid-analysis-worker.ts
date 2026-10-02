@@ -9,8 +9,9 @@
  * @license GPL-3.0-only
  */
 
-import { parseDataFlashLog } from "../dataflash-parser";
+import { parseDataflashLog } from "../dataflash/parser";
 import { analyzePidLog } from "./pid-analysis-pipeline";
+import { PID_LOG_MESSAGES } from "./log-extractor";
 import type { WorkerInMessage, WorkerOutMessage, PidAnalysisResult } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -47,7 +48,9 @@ self.onmessage = (event: MessageEvent<WorkerInMessage>) => {
     try {
       // 1. Parse log
       postProgress("Parsing log file...", 10);
-      const log = parseDataFlashLog(msg.buffer);
+      // Only the messages the analysis reads are decoded; the rest of the
+      // log is stepped over, so a large log is never held row by row.
+      const log = parseDataflashLog(new Uint8Array(msg.buffer), { only: PID_LOG_MESSAGES });
 
       // 2. Extract, analyze and score
       const result = analyzePidLog(log, msg.buffer.byteLength, postProgress);

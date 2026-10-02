@@ -11,6 +11,7 @@ import { useMissionStore } from "@/stores/mission-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { useThrottledElapsed } from "./use-throttled-elapsed";
+import { useFlightPlanOptions } from "./use-rtl-return-context";
 import {
   computeFlightPlan,
   interpolatePosition,
@@ -47,10 +48,11 @@ export function useInterpolatedPosition(): {
   const defaultSpeed = usePlannerStore((s) => s.defaultSpeed);
   const elapsed = useThrottledElapsed();
   const syncedPosition = useSimulationStore((s) => s.syncedPosition);
+  const planOptions = useFlightPlanOptions();
 
   const flightPlan = useMemo(
-    () => computeFlightPlan(waypoints, defaultSpeed),
-    [waypoints, defaultSpeed]
+    () => computeFlightPlan(waypoints, defaultSpeed, planOptions),
+    [waypoints, defaultSpeed, planOptions]
   );
 
   const pos = useMemo(() => {

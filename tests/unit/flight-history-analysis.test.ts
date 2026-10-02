@@ -33,6 +33,7 @@ function dataflashLog(messages: Record<string, DataflashRecord[]>): DataflashLog
     formats: new Map(),
     params: new Map(),
     messages: new Map(Object.entries(messages)),
+    counts: new Map(Object.entries(messages).map(([name, rows]) => [name, rows.length])),
     bytesRead: 0,
     resyncSkipped: 0,
   };
@@ -111,6 +112,21 @@ describe("recorded attitude is degrees", () => {
     expect(att?.data).toMatchObject({ roll: 15, pitch: -5, yaw: 270 });
   });
 
+  it("takes dataflash ground speed and course from the nearest GPS row, never a fabricated zero", () => {
+    const log = dataflashLog({
+      EV: [{ TimeUS: 0, Id: 10 }, { TimeUS: 10 * S, Id: 11 }],
+      POS: [
+        { TimeUS: 1 * S, Lat: 12, Lng: 77, Alt: 900 },
+        { TimeUS: 6 * S, Lat: 12.001, Lng: 77, Alt: 900 },
+      ],
+      GPS: [{ TimeUS: 1.1 * S, I: 0, Spd: 6, GCrs: 45, NSats: 12, Status: 3, Lat: 12, Lng: 77, Alt: 900 }],
+    });
+    const positions = dataflashToFlightRecords(log)[0].frames.filter((f) => f.channel === "position");
+    expect(positions[0].data).toMatchObject({ groundSpeed: 6, heading: 45 });
+    expect(positions[1].data).not.toHaveProperty("groundSpeed");
+    expect(positions[1].data).not.toHaveProperty("heading");
+  });
+
   it("imports tlog ATTITUDE (radians on the wire) as degrees", () => {
     const packet = (t: number) => {
       const raw = new Uint8Array(10 + 28 + 2);
@@ -121,7 +137,7 @@ describe("recorded attitude is degrees", () => {
       dv.setFloat32(4, (15 * Math.PI) / 180, true);
       return { timestampUs: t, raw };
     };
-    const result = tlogToFlightRecord([packet(0), packet(S)]);
+    const result = tlogToFlightRecord([packet(0), packet(S)], "file");
     const att = result?.frames.find((f) => f.channel === "attitude")?.data as { roll: number };
     expect(att.roll).toBeCloseTo(15, 3);
   });
@@ -129,7 +145,7 @@ describe("recorded attitude is degrees", () => {
   it("imports ULog vehicle_attitude quaternions as degrees", () => {
     const half = (15 * Math.PI) / 180 / 2;
     const log = ulog({ vehicle_attitude: [{ timestamp: 0, q: [Math.cos(half), Math.sin(half), 0, 0] }, { timestamp: S, q: [1, 0, 0, 0] }] });
-    const att = ulogToFlightRecords(log)[0].frames.find((f) => f.channel === "attitude")?.data as { roll: number };
+    const att = ulogToFlightRecords(log, "file")[0].frames.find((f) => f.channel === "attitude")?.data as { roll: number };
     expect(att.roll).toBeCloseTo(15, 3);
   });
 });
@@ -170,6 +186,20 @@ describe("altitude is height above home", () => {
     const phases = detectPhases(frames);
     expect(phases.some((p) => p.type === "climb")).toBe(true);
     for (const p of phases) expect(p.maxAlt ?? 0).toBeLessThanOrEqual(120);
+  });
+
+  it("finds the takeoff from liftoff when the recording starts long before it", () => {
+    const frames: TelemetryFrame[] = [];
+    for (let s = 0; s <= 70; s++) {
+      // 30 s on the ground, a 20 s climb at 1.5 m/s, then a hover.
+      const alt = s <= 30 ? 0 : Math.min(30, 1.5 * (s - 30));
+      frames.push({ offsetMs: s * 1000, channel: "position", data: { lat: 12.9, lon: 77.6, relativeAlt: alt, groundSpeed: 0 } });
+    }
+    const phases = detectPhases(frames);
+    expect(phases[0].type).toBe("pre_arm");
+    const takeoff = phases.find((p) => p.type === "takeoff");
+    expect(takeoff?.startMs).toBe(32_000);
+    expect(phases.some((p) => p.type === "post_disarm")).toBe(false);
   });
 
   it("takes dataflash maxAlt from RelHomeAlt, or from Alt over the arm point", () => {
@@ -218,7 +248,7 @@ function px4Log(): UlogFile {
 
 describe("PX4 ULog import", () => {
   it("draws the track from the GPS fixes only, never the EKF origin", () => {
-    const flights = ulogToFlightRecords(px4Log());
+    const flights = ulogToFlightRecords(px4Log(), "file");
     const points = extractPositions(flights.flatMap((f) => f.frames));
     expect(points).toHaveLength(17);
     expect(points.every((p, i) => Math.abs(p.lat - (47.0 + i * 0.0001)) < 1e-9)).toBe(true);
@@ -228,7 +258,7 @@ describe("PX4 ULog import", () => {
   });
 
   it("records maxAlt above the logged home, and heading in degrees", () => {
-    const [flight] = ulogToFlightRecords(px4Log());
+    const [flight] = ulogToFlightRecords(px4Log(), "file");
     expect(flight.record.maxAlt).toBe(25);
     const fix = flight.frames.find((f) => f.channel === "globalPosition")?.data as { heading: number };
     expect(fix.heading).toBeCloseTo(90, 6);

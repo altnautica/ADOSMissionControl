@@ -15,7 +15,7 @@ import {
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import { loadGeoidGrid, mslToEllipsoidal } from "@/lib/terrain/geoid";
 import { altitudeDatumFor } from "@/lib/mission/altitude-frame";
-import { haversineDistance } from "@/lib/geo/distance";
+import { haversineDistance, interpolateLatLon } from "@/lib/geo/distance";
 
 /** Spacing between intermediate sub-sample points (meters). */
 const SUBSAMPLE_INTERVAL = 100;
@@ -115,8 +115,7 @@ export async function resolveAGLToAbsolute(
 
       for (let s = 1; s <= numSub; s++) {
         const t = s / (numSub + 1);
-        const lat = wp.lat + (next.lat - wp.lat) * t;
-        const lon = wp.lon + (next.lon - wp.lon) * t;
+        const { lat, lon } = interpolateLatLon(wp.lat, wp.lon, next.lat, next.lon, t);
         const alt = wp.alt + (next.alt - wp.alt) * t;
 
         cartographics.push(Cartographic.fromDegrees(lon, lat));

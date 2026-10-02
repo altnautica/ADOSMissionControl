@@ -210,12 +210,26 @@ export const usePidAnalysisStore = create<PidAnalysisState & PidAnalysisActions>
           analyzeProgress: null,
         });
         activeWorker = null;
+        worker.terminate();
       };
 
       // Read file and send buffer to worker
-      file.arrayBuffer().then((buffer) => {
-        worker.postMessage({ type: "analyze", buffer }, [buffer]);
-      });
+      file.arrayBuffer().then(
+        (buffer) => {
+          if (activeWorker !== worker) return;
+          worker.postMessage({ type: "analyze", buffer }, [buffer]);
+        },
+        (err: unknown) => {
+          if (activeWorker !== worker) return;
+          activeWorker = null;
+          worker.terminate();
+          set({
+            error: `Could not read ${file.name}: ${formatErrorMessage(err)}`,
+            analyzing: false,
+            analyzeProgress: null,
+          });
+        },
+      );
     },
 
     loadMockAnalysis: () => {

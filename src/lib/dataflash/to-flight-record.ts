@@ -20,7 +20,11 @@ import type { DataflashLog, DataflashRecord } from "./parser";
 import type { FlightRecord } from "@/lib/types";
 import type { TelemetryFrame } from "@/lib/telemetry-recorder";
 import { haversineDistance } from "@/lib/geo/distance";
+import { decimatePath } from "@/lib/flight-lifecycle/decimate";
 import { logClockOffsetMs } from "./gps-clock";
+
+/** A GPS row within this much of a POS row supplies its ground speed and course. */
+const GPS_JOIN_WINDOW_US = 500_000;
 
 /** ArduPilot EV (event) numbers we care about for arm/disarm splitting. */
 const EV_ARMED = 10;
@@ -221,9 +225,8 @@ function buildFlight(
 
   // Walk every message bucket once and build telemetry frames + stats.
   const frames: TelemetryFrame[] = [];
+  // Every position fix of the slice; decimated to the stored path at the end.
   const path: [number, number][] = [];
-  const PATH_INTERVAL_MS = 1000;
-  const PATH_MAX = 1000;
 
   let prevLat: number | undefined;
   let prevLon: number | undefined;
@@ -234,7 +237,7 @@ function buildFlight(
   let speedCount = 0;
   let battStartV: number | undefined;
   let battEndV: number | undefined;
-  let lastPosOffset = -Infinity;
+  let firstFix: [number, number] | undefined;
   let lastBattRem: number | undefined;
 
   // Channel mapping: dataflash message name → recorder channel name.
@@ -259,13 +262,24 @@ function buildFlight(
       offsetMs: usToOffsetMs(us!, slice.startUs),
       channel: "attitude",
       data: {
-        roll: num(r, "Roll") ?? 0,
-        pitch: num(r, "Pitch") ?? 0,
-        yaw: num(r, "Yaw") ?? 0,
+        roll: num(r, "Roll"),
+        pitch: num(r, "Pitch"),
+        yaw: num(r, "Yaw"),
         timestamp: us,
       },
     });
   }
+
+  // Ground speed and course over ground come from the first GPS receiver;
+  // POS carries neither. A position takes the nearest GPS row within
+  // GPS_JOIN_WINDOW_US, and has neither field when no row is that close.
+  const gpsMotion: { us: number; spd?: number; crs?: number }[] = [];
+  for (const r of GPS_ROWS) {
+    const us = num(r, "TimeUS");
+    if (!inSlice(us) || !isFirstInstance(r, "I")) continue;
+    gpsMotion.push({ us: us!, spd: num(r, "Spd"), crs: num(r, "GCrs") });
+  }
+  let gi = 0;
 
   // POS — primary position source. `Alt` is AMSL; the height above home is
   // `RelHomeAlt` on current firmware. Older logs lack it, so fall back to the
@@ -286,7 +300,11 @@ function buildFlight(
     }
     prevLat = lat;
     prevLon = lon;
+    firstFix ??= [lat, lon];
     if (relativeAlt > maxAltM) maxAltM = relativeAlt;
+
+    while (gi + 1 < gpsMotion.length && Math.abs(gpsMotion[gi + 1].us - us!) <= Math.abs(gpsMotion[gi].us - us!)) gi++;
+    const motion = gpsMotion[gi] && Math.abs(gpsMotion[gi].us - us!) <= GPS_JOIN_WINDOW_US ? gpsMotion[gi] : undefined;
 
     const offsetMs = usToOffsetMs(us!, slice.startUs);
     frames.push({
@@ -297,28 +315,21 @@ function buildFlight(
         lon,
         alt,
         relativeAlt,
-        groundSpeed: 0,
-        heading: 0,
+        ...(motion?.spd !== undefined ? { groundSpeed: motion.spd } : {}),
+        ...(motion?.crs !== undefined ? { heading: motion.crs } : {}),
         timestamp: us,
       },
     });
-
-    if (offsetMs - lastPosOffset >= PATH_INTERVAL_MS && path.length < PATH_MAX) {
-      path.push([lat, lon]);
-      lastPosOffset = offsetMs;
-    }
+    path.push([lat, lon]);
   }
 
   // GPS — speed + sat count + HDOP, from the first receiver only.
   for (const r of GPS_ROWS) {
     const us = num(r, "TimeUS");
     if (!inSlice(us) || !isFirstInstance(r, "I")) continue;
-    const sats = num(r, "NSats") ?? 0;
-    const hdop = num(r, "HDop") ?? 0;
-    const spd = num(r, "Spd") ?? 0;
-    const fix = num(r, "Status") ?? 0;
-    if (spd > maxSpeedMs) maxSpeedMs = spd;
-    if (spd > 0) {
+    const spd = num(r, "Spd");
+    if (spd !== undefined && spd > maxSpeedMs) maxSpeedMs = spd;
+    if (spd !== undefined && spd > 0) {
       speedSum += spd;
       speedCount += 1;
     }
@@ -326,12 +337,12 @@ function buildFlight(
       offsetMs: usToOffsetMs(us!, slice.startUs),
       channel: "gps",
       data: {
-        satellites: sats,
-        hdop,
-        fixType: fix,
-        lat: num(r, "Lat") ?? 0,
-        lon: num(r, "Lng") ?? 0,
-        alt: num(r, "Alt") ?? 0,
+        satellites: num(r, "NSats"),
+        hdop: num(r, "HDop"),
+        fixType: num(r, "Status"),
+        lat: num(r, "Lat"),
+        lon: num(r, "Lng"),
+        alt: num(r, "Alt"),
         timestamp: us,
       },
     });
@@ -341,20 +352,19 @@ function buildFlight(
   for (const r of BAT_ROWS) {
     const us = num(r, "TimeUS");
     if (!inSlice(us) || !isFirstInstance(r, "Inst")) continue;
-    const volt = num(r, "Volt") ?? num(r, "VoltR") ?? 0;
-    const curr = num(r, "Curr") ?? 0;
+    const volt = num(r, "Volt") ?? num(r, "VoltR");
     const rem = num(r, "RemPct") ?? num(r, "BatRem") ?? num(r, "Pct");
-    if (battStartV === undefined && volt > 0) battStartV = volt;
-    if (volt > 0) battEndV = volt;
+    if (battStartV === undefined && volt !== undefined && volt > 0) battStartV = volt;
+    if (volt !== undefined && volt > 0) battEndV = volt;
     if (rem !== undefined) lastBattRem = rem;
     frames.push({
       offsetMs: usToOffsetMs(us!, slice.startUs),
       channel: "battery",
       data: {
         voltage: volt,
-        current: curr,
+        current: num(r, "Curr"),
         remaining: rem ?? -1,
-        consumed: 0,
+        consumed: num(r, "CurrTot"),
         timestamp: us,
       },
     });
@@ -488,11 +498,11 @@ function buildFlight(
     // A log that stops while armed (brown-out, battery ejection, crash) did
     // not end in a normal disarm.
     status: slice.endedArmed ? "aborted" : "completed",
-    path: path.length >= 2 ? path : undefined,
-    takeoffLat: path[0]?.[0],
-    takeoffLon: path[0]?.[1],
-    landingLat: path[path.length - 1]?.[0],
-    landingLon: path[path.length - 1]?.[1],
+    path: path.length >= 2 ? decimatePath(path) : undefined,
+    takeoffLat: firstFix?.[0],
+    takeoffLon: firstFix?.[1],
+    landingLat: prevLat,
+    landingLon: prevLon,
     recordingId,
     hasTelemetry: frames.length > 0,
     updatedAt: Date.now(),

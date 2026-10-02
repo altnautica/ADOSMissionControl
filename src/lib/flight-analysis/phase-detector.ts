@@ -81,24 +81,53 @@ function verticalSpeedAt(samples: Sample[], idx: number): number {
 
 // ── Raw classification ───────────────────────────────────────
 
-function classifySample(
-  s: Sample,
-  verticalSpeed: number,
-  phaseStartMs: number,
-  durationMs: number,
-): PhaseType {
+/** When the vehicle left the ground and when it last came down, ms from the recording start. */
+interface AirborneSpan {
+  /** First sample above {@link AIRBORNE_ALT_M}; undefined when it never flew. */
+  liftoffMs?: number;
+  /** Last sample above {@link AIRBORNE_ALT_M}. */
+  touchdownMs?: number;
+}
+
+function airborneSpan(samples: Sample[]): AirborneSpan {
+  let liftoffMs: number | undefined;
+  let touchdownMs: number | undefined;
+  for (const s of samples) {
+    if (s.alt <= AIRBORNE_ALT_M) continue;
+    liftoffMs ??= s.tMs;
+    touchdownMs = s.tMs;
+  }
+  return { liftoffMs, touchdownMs };
+}
+
+function classifySample(s: Sample, verticalSpeed: number, span: AirborneSpan): PhaseType {
+  const { liftoffMs, touchdownMs } = span;
   // Takeoff window: first TAKEOFF_WINDOW_MS after leaving the ground.
-  if (s.tMs <= TAKEOFF_WINDOW_MS && s.alt > AIRBORNE_ALT_M && verticalSpeed > 0.5) {
+  if (
+    liftoffMs !== undefined &&
+    s.tMs >= liftoffMs &&
+    s.tMs - liftoffMs <= TAKEOFF_WINDOW_MS &&
+    s.alt > AIRBORNE_ALT_M &&
+    verticalSpeed > 0.5
+  ) {
     return "takeoff";
   }
-  // Landing window: last LAND_WINDOW_MS before disarm.
-  if (durationMs - s.tMs <= LAND_WINDOW_MS && s.alt < AIRBORNE_ALT_M * 2 && verticalSpeed < 0.5) {
+  // Landing window: LAND_WINDOW_MS either side of the last time it was airborne.
+  if (
+    touchdownMs !== undefined &&
+    Math.abs(s.tMs - touchdownMs) <= LAND_WINDOW_MS &&
+    s.alt < AIRBORNE_ALT_M * 2 &&
+    verticalSpeed < 0.5
+  ) {
     return "land";
   }
 
-  // Ground state.
+  // Ground state: before liftoff, or after the last landing.
   if (s.alt < AIRBORNE_ALT_M && s.groundSpeed < HOVER_GS_MS) {
-    return s.tMs < TAKEOFF_WINDOW_MS ? "pre_arm" : "post_disarm";
+    if (liftoffMs === undefined || s.tMs < liftoffMs) return "pre_arm";
+    if (touchdownMs !== undefined && s.tMs > touchdownMs) return "post_disarm";
+    // A dip below the airborne height mid-flight is a low hover.
+    return "hover";
   }
 
   // Airborne classification.
@@ -109,9 +138,6 @@ function classifySample(
 
   // Fallback: keep whatever we were doing (approximated to cruise).
   return "cruise";
-
-  // (The phaseStartMs + durationMs parameters are reserved for future rules.)
-  void phaseStartMs;
 }
 
 // ── Hysteresis + merge ───────────────────────────────────────
@@ -194,10 +220,10 @@ export function detectPhases(frames: TelemetryFrame[]): FlightPhase[] {
   const samples = extractSamples(frames);
   if (samples.length < 2) return [];
 
-  const durationMs = samples[samples.length - 1].tMs;
+  const span = airborneSpan(samples);
   const classified: { tMs: number; type: PhaseType; s: Sample }[] = samples.map((s, idx) => {
     const vs = verticalSpeedAt(samples, idx);
-    const type = classifySample(s, vs, samples[0].tMs, durationMs);
+    const type = classifySample(s, vs, span);
     return { tMs: s.tMs, type, s };
   });
 

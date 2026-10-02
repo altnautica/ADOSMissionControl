@@ -6,13 +6,13 @@
  */
 
 import pako from "pako";
-import { parseKML, type KmlParseResult } from "./kml-parser";
+import { parseKML, type KmlParseOptions, type KmlParseResult } from "./kml-parser";
 
 /**
  * Parse a KMZ file (ZIP containing doc.kml) into waypoints, polygons, and paths.
  * Falls back to treating the content as plain KML if ZIP parsing fails.
  */
-export async function parseKMZ(file: File): Promise<KmlParseResult> {
+export async function parseKMZ(file: File, options: KmlParseOptions = {}): Promise<KmlParseResult> {
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
 
@@ -20,13 +20,13 @@ export async function parseKMZ(file: File): Promise<KmlParseResult> {
   if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04) {
     const kmlContent = extractKmlFromZip(bytes);
     if (kmlContent) {
-      return parseKML(kmlContent);
+      return parseKML(kmlContent, options);
     }
   }
 
   // Fallback: try to parse as plain KML text
   const text = new TextDecoder().decode(bytes);
-  return parseKML(text);
+  return parseKML(text, options);
 }
 
 const EOCD_SIG = 0x06054b50;

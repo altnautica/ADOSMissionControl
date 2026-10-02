@@ -12,7 +12,7 @@
  * @license GPL-3.0-only
  */
 
-import { computeFlightPlan } from "@/lib/simulation-utils";
+import { computeFlightPlan, type FlightPlanOptions } from "@/lib/simulation-utils";
 import type { AltitudeFrame, Waypoint } from "@/lib/types";
 import type { BriefWaypointRow, BriefStats } from "./flight-brief-document";
 import { downloadBlob } from "@/lib/download";
@@ -31,6 +31,8 @@ export interface FlightBriefInput {
   defaultSpeed?: number;
   /** The planner's default altitude frame, for waypoints without their own. */
   defaultFrame: AltitudeFrame;
+  /** Vehicle home and return altitude, when known, for distance and duration. */
+  planOptions?: FlightPlanOptions;
 }
 
 /** Real plan statistics shown in the brief (no fabricated fields). */
@@ -49,8 +51,9 @@ export function computeBriefStats(
   waypoints: Waypoint[],
   defaultFrame: AltitudeFrame,
   defaultSpeed: number = DEFAULT_CRUISE_SPEED_MPS,
+  planOptions: FlightPlanOptions = {},
 ): FlightBriefStats {
-  const plan = computeFlightPlan(waypoints, defaultSpeed);
+  const plan = computeFlightPlan(waypoints, defaultSpeed, planOptions);
   const alts = waypoints.map((w) => w.alt);
   const frames = new Set(waypoints.map((w) => w.frame ?? defaultFrame));
   return {
@@ -107,9 +110,10 @@ export async function exportFlightBrief(input: FlightBriefInput): Promise<void> 
     droneName,
     defaultSpeed = DEFAULT_CRUISE_SPEED_MPS,
     defaultFrame,
+    planOptions,
   } = input;
 
-  const stats = computeBriefStats(waypoints, defaultFrame, defaultSpeed);
+  const stats = computeBriefStats(waypoints, defaultFrame, defaultSpeed, planOptions);
   const rows = buildBriefRows(waypoints, defaultFrame);
 
   const [{ pdf }, { FlightBriefDocument }] = await Promise.all([

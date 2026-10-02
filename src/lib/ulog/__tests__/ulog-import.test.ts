@@ -38,6 +38,14 @@ class UlogBuilder {
     return this.msg("F", this.enc.encode(spec));
   }
 
+  formatSpec(spec: string): this {
+    return this.msg("F", this.enc.encode(spec));
+  }
+
+  raw(type: string, body: Uint8Array): this {
+    return this.msg(type, body);
+  }
+
   subscribe(msgId: number, multiId: number, name: string): this {
     const nameBytes = this.enc.encode(name);
     const body = new Uint8Array(3 + nameBytes.length);
@@ -122,7 +130,7 @@ describe("ULog import", () => {
   });
 
   it("fills ground speed and heading from the local position", () => {
-    const [flight] = ulogToFlightRecords(parseUlog(flightLog()));
+    const [flight] = ulogToFlightRecords(parseUlog(flightLog()), "file");
     const fix = flight.frames.find((f) => f.channel === "globalPosition")?.data as
       | { groundSpeed?: number; heading?: number }
       | undefined;
@@ -132,14 +140,79 @@ describe("ULog import", () => {
   });
 
   it("dates the flight from the GPS clock", () => {
-    const [flight] = ulogToFlightRecords(parseUlog(flightLog()));
+    const [flight] = ulogToFlightRecords(parseUlog(flightLog()), "file");
     expect(flight.record.startTime).toBe(Math.round((UTC_AT_BOOT + 100 * S) / 1000));
   });
 
   it("reads the PX4 1.14 float GPS fields", () => {
-    const [flight] = ulogToFlightRecords(parseUlog(flightLog()));
+    const [flight] = ulogToFlightRecords(parseUlog(flightLog()), "file");
     const gps = flight.frames.find((f) => f.channel === "gps")?.data;
     expect(gps).toMatchObject({ lat: 12, lon: 77, alt: 900.5 });
+  });
+
+  it("names flights from the file id, so a re-import yields the same ids", () => {
+    const first = ulogToFlightRecords(parseUlog(flightLog()), "0123456789abcdef");
+    const again = ulogToFlightRecords(parseUlog(flightLog()), "0123456789abcdef");
+    expect(first.map((f) => f.record.id)).toEqual(again.map((f) => f.record.id));
+    expect(first[0].record.id).toContain("0123456789abcdef");
+  });
+});
+
+describe("ULog field layout", () => {
+  it("decodes a field whose array length is on its type, and the fields after it", () => {
+    const body = new Uint8Array(2 + 8 + 16 + 4);
+    const dv = new DataView(body.buffer);
+    dv.setUint16(0, 1, true);
+    dv.setBigUint64(2, 5_000_000n, true);
+    [1, 0, 0, 0.5].forEach((v, i) => dv.setFloat32(10 + i * 4, v, true));
+    dv.setFloat32(26, 0.25, true);
+    const log = parseUlog(
+      new UlogBuilder()
+        .formatSpec("vehicle_attitude:uint64_t timestamp;float[4] q;float rollspeed;")
+        .subscribe(1, 0, "vehicle_attitude")
+        .raw("D", body)
+        .build(),
+    );
+    const [row] = log.data.get("vehicle_attitude") ?? [];
+    expect(row.timestamp).toBe(5_000_000);
+    expect(row.q).toEqual([1, 0, 0, 0.5]);
+    expect(row.rollspeed).toBeCloseTo(0.25, 6);
+  });
+
+  it("decodes nested types and steps over padding", () => {
+    const body = new Uint8Array(2 + 8 + 2 * 8 + 1);
+    const dv = new DataView(body.buffer);
+    dv.setUint16(0, 1, true);
+    dv.setBigUint64(2, 7n, true);
+    dv.setUint32(10, 1200, true);
+    dv.setUint32(18, 1300, true);
+    dv.setUint8(26, 2);
+    const log = parseUlog(
+      new UlogBuilder()
+        .formatSpec("esc_report:uint32_t rpm;uint8_t[4] _padding0;")
+        .formatSpec("esc_status:uint64_t timestamp;esc_report[2] esc;uint8_t count;")
+        .subscribe(1, 0, "esc_status")
+        .raw("D", body)
+        .build(),
+    );
+    const [row] = log.data.get("esc_status") ?? [];
+    expect(row.esc).toEqual([{ rpm: 1200 }, { rpm: 1300 }]);
+    expect(row.count).toBe(2);
+  });
+
+  it("keeps the fields of a short message that fit and reads the rest of the file", () => {
+    const short = new Uint8Array(2 + 8 + 2);
+    new DataView(short.buffer).setBigUint64(2, 9n, true);
+    const log = parseUlog(
+      new UlogBuilder()
+        .formatSpec("vehicle_attitude:uint64_t timestamp;float[4] q;")
+        .subscribe(0, 0, "vehicle_attitude")
+        .raw("D", short)
+        .raw("L", new Uint8Array([6, 1, 2]))
+        .build(),
+    );
+    expect(log.data.get("vehicle_attitude")).toEqual([{ timestamp: 9 }]);
+    expect(log.logging).toHaveLength(0);
   });
 });
 

@@ -21,9 +21,9 @@ import { buildSampledProperties } from "@/lib/build-sampled-properties";
 import { makeKinematicViewerTrack, type ViewerTrack } from "@/lib/simulation/viewer-track";
 import { resolveAGLToAbsolute, type ResolvedPath } from "@/lib/terrain-utils";
 import { useSimulationStore } from "@/stores/simulation-store";
-import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSimClock } from "@/hooks/use-sim-clock";
+import { useFlightPlanOptions } from "@/hooks/use-rtl-return-context";
 import { useSimCamera } from "@/hooks/use-sim-camera";
 import { useSimAutoFollow } from "@/hooks/use-sim-auto-follow";
 import { useSimCompletion } from "@/hooks/use-sim-completion";
@@ -99,11 +99,12 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
   const showCameraTriggers = useSettingsStore((s) => s.showCameraTriggers);
 
   // Relative-frame altitudes are measured from home: the vehicle's reported
-  // HOME_POSITION when there is one, else the launch point the upload uses.
-  const vehicleHomeLat = useTelemetryStore((s) => s.homePosition.latest()?.lat);
-  const vehicleHomeLon = useTelemetryStore((s) => s.homePosition.latest()?.lon);
-  const homeLat = vehicleHomeLat ?? waypoints[0]?.lat;
-  const homeLon = vehicleHomeLon ?? waypoints[0]?.lon;
+  // HOME_POSITION when there is one, else the launch point the upload uses
+  // (the first item with a position; a TAKEOFF saved at 0/0 has none).
+  const planOptions = useFlightPlanOptions();
+  const launch = waypoints.find((wp) => wp.command !== "RTL" && !(wp.lat === 0 && wp.lon === 0));
+  const homeLat = planOptions.home?.lat ?? launch?.lat;
+  const homeLon = planOptions.home?.lon ?? launch?.lon;
 
   const missionSignature = useMemo(
     () => createSimulationMissionSignature(waypoints, defaultSpeed, defaultFrame),
@@ -111,8 +112,8 @@ export function SimulationViewer({ waypoints, defaultSpeed, defaultFrame }: Simu
   );
 
   const flightPlan = useMemo(
-    () => computeFlightPlan(waypoints, defaultSpeed),
-    [waypoints, defaultSpeed]
+    () => computeFlightPlan(waypoints, defaultSpeed, planOptions),
+    [waypoints, defaultSpeed, planOptions]
   );
 
   // ── Terrain readiness — wait for real provider before sampling ──

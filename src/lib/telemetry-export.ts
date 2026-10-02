@@ -33,7 +33,7 @@ interface FlattenedRow {
   roll_deg: number | "";
   pitch_deg: number | "";
   yaw_deg: number | "";
-  groundspeed_ms: number;
+  groundspeed_ms: number | "";
   /** VFR_HUD owns airspeed; the position sample is the fallback. */
   airspeed_ms: number | "";
   climb_ms: number | "";
@@ -108,7 +108,10 @@ export async function exportTelemetryAsCSV(
       case "vfr":
         vfrS = { data: frame.data as VfrData, at };
         continue;
+      // Both position channels are the row clock: live recordings carry
+      // `position`, ULog and tlog imports carry `globalPosition`.
       case "position":
+      case "globalPosition":
         break;
       default:
         continue;
@@ -130,7 +133,7 @@ export async function exportTelemetryAsCSV(
       roll_deg: a?.roll ?? "",
       pitch_deg: a?.pitch ?? "",
       yaw_deg: a?.yaw ?? "",
-      groundspeed_ms: pos.groundSpeed,
+      groundspeed_ms: pos.groundSpeed ?? "",
       airspeed_ms: v?.airspeed ?? pos.airSpeed ?? "",
       climb_ms: pos.climbRate ?? v?.climb ?? "",
       battery_v: b?.voltage ?? "",
@@ -164,18 +167,25 @@ export async function exportTelemetryAsKML(
 ): Promise<string> {
   const frames = await loadRecordingFrames(recording.id);
 
-  // Extract position frames
+  // Extract position frames (live `position`, imported `globalPosition`)
   const positions = frames
-    .filter((f) => f.channel === "position")
-    .map((f) => f.data as PositionData);
+    .filter((f) => f.channel === "position" || f.channel === "globalPosition")
+    .map((f) => f.data as PositionData)
+    .filter((p) => typeof p.lat === "number" && typeof p.lon === "number");
 
   if (positions.length === 0) {
     return generateEmptyKML(recording.name);
   }
 
-  // Compute metadata
-  const maxAlt = Math.max(...positions.map((p) => p.alt));
-  const maxSpeed = Math.max(...positions.map((p) => p.groundSpeed));
+  // Compute metadata. A loop, not Math.max(...spread): a long recording has
+  // more positions than a call can take as arguments.
+  let maxAlt = -Infinity;
+  let maxSpeed = 0;
+  for (const p of positions) {
+    if (typeof p.alt === "number" && p.alt > maxAlt) maxAlt = p.alt;
+    if (typeof p.groundSpeed === "number" && p.groundSpeed > maxSpeed) maxSpeed = p.groundSpeed;
+  }
+  if (maxAlt === -Infinity) maxAlt = 0;
   let totalDistance = 0;
   for (let i = 1; i < positions.length; i++) {
     totalDistance += haversineDistance(
