@@ -1,9 +1,9 @@
 /**
  * @license GPL-3.0-only
  * MissionAdvisories RTL rows: the return-leg terrain advisory only surfaces when
- * home coordinates and terrain elevation are genuinely available, renders the
- * pure module's own messages, and precedes them with a neutral assumed-altitude
- * note (no configured RTL altitude is available in the planner).
+ * home coordinates, terrain elevation and the vehicle's configured return
+ * altitude are genuinely available, renders the pure module's own messages,
+ * and says the check did not run when the return altitude is unknown.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -41,6 +41,16 @@ function wp(
 
 const noop = () => {};
 
+/** A copter whose RTL_ALT is 30 m (the parameter is in centimetres). */
+function copterWithRtlAlt(cm = 3000) {
+  const protocol = {
+    getVehicleInfo: () => ({ firmwareType: "ardupilot-copter" }),
+    getParameter: vi.fn(async (name: string) => ({ name, value: cm, type: 9, index: 0, count: 1 })),
+  };
+  selectTestProtocol(protocol);
+  return protocol;
+}
+
 beforeEach(() => {
   getElevation.mockReset();
   getElevation.mockResolvedValue(null);
@@ -52,10 +62,11 @@ beforeEach(() => {
 });
 
 describe("MissionAdvisories — RTL return terrain", () => {
-  it("flags a return leg that clips terrain when home + terrain are known", () => {
+  it("flags a return leg that clips terrain at the vehicle's RTL altitude", async () => {
     // Home falls back to WP1 (900 m MSL terrain); WP2 sits over 1000 m terrain.
-    // The assumed 30 m return altitude (cruise 930 m MSL) is below the 1000 m
+    // The vehicle's 30 m return altitude (cruise 930 m MSL) is below the 1000 m
     // ridge on the direct leg home, so the module emits an error for WP2.
+    const protocol = copterWithRtlAlt();
     const waypoints = [
       wp("a", 12.9716, 77.5946, 900),
       wp("b", 13.0716, 77.5946, 1000),
@@ -63,10 +74,23 @@ describe("MissionAdvisories — RTL return terrain", () => {
     render(<MissionAdvisories waypoints={waypoints} onSelectWaypoint={noop} />);
 
     expect(
-      screen.getByText(/RTL from WP2 would clip terrain/i),
+      await screen.findByText(/RTL from WP2 would clip terrain/i),
     ).toBeInTheDocument();
-    // Neutral assumed-altitude context note precedes the RTL rows.
-    expect(screen.getByText("rtl.assumedReturnAltitude")).toBeInTheDocument();
+    expect(protocol.getParameter).toHaveBeenCalledWith("RTL_ALT");
+    expect(screen.getByText("rtl.returnAltitudeFromVehicle")).toBeInTheDocument();
+  });
+
+  it("reports the return-leg check as not run when no RTL altitude was read", () => {
+    // The same clipping mission with no vehicle: no altitude is assumed, so no
+    // RTL row claims a clearance either way.
+    const waypoints = [
+      wp("a", 12.9716, 77.5946, 900),
+      wp("b", 13.0716, 77.5946, 1000),
+    ];
+    render(<MissionAdvisories waypoints={waypoints} onSelectWaypoint={noop} />);
+
+    expect(screen.queryByText(/RTL from/i)).toBeNull();
+    expect(screen.getByText("rtl.returnAltitudeUnknown")).toBeInTheDocument();
   });
 
   it("renders no RTL rows when terrain elevation is unknown", () => {
@@ -76,7 +100,7 @@ describe("MissionAdvisories — RTL return terrain", () => {
     render(<MissionAdvisories waypoints={waypoints} onSelectWaypoint={noop} />);
 
     expect(screen.queryByText(/RTL from/i)).toBeNull();
-    expect(screen.queryByText("rtl.assumedReturnAltitude")).toBeNull();
+    expect(screen.queryByText("rtl.returnAltitudeUnknown")).toBeNull();
   });
 
   it("takes the RTL datum from the terrain under the telemetry home, not WP1", async () => {
@@ -87,6 +111,7 @@ describe("MissionAdvisories — RTL return terrain", () => {
     home.push({ timestamp: Date.now(), lat: 12.9, lon: 77.5946, alt: 100 });
     useTelemetryStore.setState({ homePosition: home });
     getElevation.mockResolvedValue(100);
+    copterWithRtlAlt();
 
     const waypoints = [
       wp("a", 12.9716, 77.5946, 300),
@@ -106,6 +131,7 @@ describe("MissionAdvisories — RTL return terrain", () => {
     const home = new RingBuffer<HomePositionData>(12);
     home.push({ timestamp: Date.now(), lat: 12.9, lon: 77.5946, alt: 100 });
     useTelemetryStore.setState({ homePosition: home });
+    copterWithRtlAlt();
 
     const waypoints = [
       wp("a", 12.9716, 77.5946, 300),

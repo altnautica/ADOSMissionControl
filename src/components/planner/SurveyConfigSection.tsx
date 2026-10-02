@@ -306,7 +306,7 @@ export function SurveyConfig() {
 
       {/* Altitude + Speed (always visible) */}
       <div className="grid grid-cols-2 gap-2">
-        <Input label="Altitude" type="number" unit="m" value={String(surveyConfig.altitude ?? 50)}
+        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(surveyConfig.altitude ?? 50)}
           onChange={(e) => {
             const alt = parseFloat(e.target.value) || 50;
             updateSurveyConfig({ altitude: alt });

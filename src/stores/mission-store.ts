@@ -16,7 +16,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Mission, Waypoint, MissionState } from "@/lib/types";
+import type { Mission, Waypoint, MissionState, AltitudeFrame } from "@/lib/types";
 import type { DroneProtocol, MissionItem } from "@/lib/protocol/types";
 import { droneSelection, selectedDroneProtocol } from "./drone-selection";
 import { useTelemetryStore } from "./telemetry-store";
@@ -46,6 +46,8 @@ import {
 import { useUploadReceiptsStore, receiptFor } from "./upload-receipts-store";
 import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
 import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
+import { readPersistedDefaultFrame, stampWaypointFrames } from "@/lib/mission/mission-frame";
+import { DEFAULT_ALTITUDE_FRAME } from "@/lib/mission/altitude-frame";
 import { droppedItemWarning } from "@/lib/mission-io-formats";
 
 /**
@@ -97,11 +99,14 @@ export function missionPartialize(
 
 /**
  * Migrate a persisted mission payload forward. Exported so each branch is
- * unit-testable in isolation.
+ * unit-testable in isolation. `defaultFrame` is the planner default frame that
+ * was in effect when the payload was written; v6 stamps it onto frameless
+ * waypoints.
  */
 export function migrateMissionStore(
   persisted: unknown,
   version: number,
+  defaultFrame: AltitudeFrame = DEFAULT_ALTITUDE_FRAME,
 ): Partial<MissionStoreState> {
   const state = persisted as Record<string, unknown>;
   if (version < 2) {
@@ -140,6 +145,14 @@ export function migrateMissionStore(
       state.waypoints = migrateWaypointSlots(state.waypoints as Waypoint[]);
     }
   }
+  if (version < 6) {
+    // v6 stores an explicit frame on every waypoint. A frameless waypoint was
+    // flown in the default frame of the day, so pin that frame now; a later
+    // change of the default no longer changes what the waypoint means.
+    if (Array.isArray(state.waypoints)) {
+      state.waypoints = stampWaypointFrames(state.waypoints as Waypoint[], defaultFrame);
+    }
+  }
   return state as Partial<MissionStoreState>;
 }
 
@@ -154,6 +167,27 @@ export function uploadHome(protocol: DroneProtocol, waypoints: readonly Waypoint
   const home = isSelected ? useTelemetryStore.getState().homePosition.latest() : undefined;
   if (home) return { lat: home.lat, lon: home.lon, alt: home.alt };
   return { lat: waypoints[0]?.lat ?? 0, lon: waypoints[0]?.lon ?? 0, alt: 0 };
+}
+
+/** A terrain sample taken at a waypoint's position (metres MSL). */
+export interface GroundElevationSample {
+  id: string;
+  lat: number;
+  lon: number;
+  groundElevation: number;
+}
+
+/**
+ * `groundElevation` is derived from lat/lon. When an edit moves a waypoint, the
+ * old sample describes ground the waypoint no longer sits over, so it is
+ * dropped and the terrain sync resamples the new position. A waypoint with no
+ * earlier version (a loaded or newly placed one) keeps what it carries.
+ */
+function dropMovedGround(prev: Waypoint | undefined, next: Waypoint): Waypoint {
+  if (next.groundElevation === undefined || !prev) return next;
+  if (prev.lat === next.lat && prev.lon === next.lon) return next;
+  const { groundElevation: _stale, ...rest } = next;
+  return rest;
 }
 
 interface MissionStoreState {
@@ -171,7 +205,12 @@ interface MissionStoreState {
   /** Transfer status of the last upload attempt. Whether the aircraft holds
    *  THIS plan is a separate question, answered by the upload receipt. */
   uploadState: "idle" | "uploading" | "uploaded" | "error";
+  /** The flight controller's or transport's reason for the last failed
+   *  upload; null when the last upload succeeded or none has failed. */
+  uploadError: string | null;
   downloadState: "idle" | "downloading" | "downloaded" | "error";
+  /** Why the last download failed; null when it did not. */
+  downloadError: string | null;
   /** Items the last download could not keep, named for the operator. */
   downloadWarnings: string[];
 
@@ -187,6 +226,13 @@ interface MissionStoreState {
    * ``updateWaypoint`` (which would record N entries).
    */
   batchUpdateWaypoints: (ids: string[], update: Partial<Waypoint>) => void;
+  /**
+   * Write terrain samples outside the undo timeline. A sample is derived from
+   * its waypoint's position, so it lands only when the waypoint still sits at
+   * the sampled lat/lon; a sample for a position the waypoint has left is
+   * dropped.
+   */
+  applyGroundElevations: (samples: readonly GroundElevationSample[]) => void;
   reorderWaypoints: (fromIndex: number, toIndex: number) => void;
   /**
    * Feed the FC's MISSION_CURRENT seq for `droneId`. The seq maps onto a
@@ -206,7 +252,8 @@ interface MissionStoreState {
   uploadMission: (target?: DroneProtocol) => Promise<boolean>;
   /** Download the selected drone's mission and replace the plan with it. A
    *  failed or unsupported download sets `downloadState: "error"` and leaves
-   *  the plan untouched. */
+   *  the plan untouched; so does an empty download, because the vehicle having
+   *  no mission is no reason to wipe the open plan. */
   downloadMission: () => Promise<Waypoint[]>;
   undo: () => void;
   redo: () => void;
@@ -228,7 +275,9 @@ export const useMissionStore = create<MissionStoreState>()(
   progress: 0,
   currentWaypoint: null,
   uploadState: "idle",
+  uploadError: null,
   downloadState: "idle",
+  downloadError: null,
   downloadWarnings: [],
 
   setMission: (activeMission) => set({
@@ -238,7 +287,13 @@ export const useMissionStore = create<MissionStoreState>()(
     currentWaypoint: null,
   }),
 
-  setWaypoints: (waypoints) => withPlannerHistory(() => set({ waypoints })),
+  setWaypoints: (waypoints) =>
+    withPlannerHistory(() =>
+      set((s) => {
+        const prevById = new Map(s.waypoints.map((w) => [w.id, w]));
+        return { waypoints: waypoints.map((w) => dropMovedGround(prevById.get(w.id), w)) };
+      }),
+    ),
 
   addWaypoint: (waypoint) =>
     withPlannerHistory(() => set((s) => ({ waypoints: [...s.waypoints, waypoint] }))),
@@ -261,7 +316,9 @@ export const useMissionStore = create<MissionStoreState>()(
     withPlannerHistory(() =>
       set((s) => ({
         waypoints: s.waypoints.map((w) =>
-          w.id === id ? { ...w, ...update, ...(moved ? { inheritsPosition: undefined } : {}) } : w
+          w.id === id
+            ? dropMovedGround(w, { ...w, ...update, ...(moved ? { inheritsPosition: undefined } : {}) })
+            : w
         ),
       })),
     );
@@ -273,10 +330,25 @@ export const useMissionStore = create<MissionStoreState>()(
     withPlannerHistory(() =>
       set((s) => ({
         waypoints: s.waypoints.map((w) =>
-          idSet.has(w.id) ? { ...w, ...update } : w
+          idSet.has(w.id) ? dropMovedGround(w, { ...w, ...update }) : w
         ),
       })),
     );
+  },
+
+  applyGroundElevations: (samples) => {
+    if (samples.length === 0) return;
+    const byId = new Map(samples.map((s) => [s.id, s]));
+    let changed = false;
+    const waypoints = get().waypoints.map((w) => {
+      const sample = byId.get(w.id);
+      if (!sample || sample.lat !== w.lat || sample.lon !== w.lon) return w;
+      if (w.groundElevation === sample.groundElevation) return w;
+      changed = true;
+      return { ...w, groundElevation: sample.groundElevation };
+    });
+    // A plain set: a derived sample is never an undo step and never clears redo.
+    if (changed) set({ waypoints });
   },
 
   reorderWaypoints: (fromIndex, toIndex) =>
@@ -359,7 +431,7 @@ export const useMissionStore = create<MissionStoreState>()(
     const { waypoints } = get();
     if (waypoints.length === 0) return false;
 
-    set({ uploadState: "uploading" });
+    set({ uploadState: "uploading", uploadError: null });
 
     // Flatten the waypoint model (NAV waypoints + their attached actions) into
     // the FC's contiguous `seq` item list, with each frame-less waypoint taking
@@ -377,12 +449,15 @@ export const useMissionStore = create<MissionStoreState>()(
     const receipts = useUploadReceiptsStore.getState();
 
     let success = false;
+    let failure: string | null = null;
     try {
-      success = (await protocol.uploadMission(items)).success;
-    } catch {
-      success = false;
+      const result = await protocol.uploadMission(items);
+      success = result.success;
+      if (!success) failure = result.message || "The flight controller did not accept the mission";
+    } catch (err) {
+      failure = err instanceof Error && err.message ? err.message : "The mission transfer failed";
     }
-    set({ uploadState: success ? "uploaded" : "error" });
+    set({ uploadState: success ? "uploaded" : "error", uploadError: failure });
     if (droneId) {
       // A failed transfer may have left the FC with a partial or cleared
       // mission, so what it holds is no longer known.
@@ -404,7 +479,7 @@ export const useMissionStore = create<MissionStoreState>()(
     const protocol = selectedDroneProtocol();
     if (!protocol) return [];
 
-    set({ downloadState: "downloading", downloadWarnings: [] });
+    set({ downloadState: "downloading", downloadWarnings: [], downloadError: null });
 
     try {
       const downloaded = await protocol.downloadMission();
@@ -424,6 +499,11 @@ export const useMissionStore = create<MissionStoreState>()(
       const waypoints: Waypoint[] = collapseFromItems(items, (dropped) => {
         downloadWarnings.push(droppedItemWarning(dropped));
       }, home);
+      // The vehicle holds no mission: report it and keep the open plan as it is.
+      if (waypoints.length === 0) {
+        set({ downloadState: "downloaded", downloadWarnings });
+        return waypoints;
+      }
       // Replacing the operator's plan with the FC's is a planner edit: one
       // undo step brings the local plan back.
       withPlannerHistory(() => set({ waypoints }));
@@ -440,8 +520,11 @@ export const useMissionStore = create<MissionStoreState>()(
         });
       }
       return waypoints;
-    } catch {
-      set({ downloadState: "error" });
+    } catch (err) {
+      set({
+        downloadState: "error",
+        downloadError: err instanceof Error && err.message ? err.message : "The mission transfer failed",
+      });
       return [];
     }
   },
@@ -449,9 +532,10 @@ export const useMissionStore = create<MissionStoreState>()(
     {
       name: "altcmd:mission-store",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 5,
+      version: 6,
       partialize: missionPartialize,
-      migrate: migrateMissionStore,
+      migrate: async (persisted, version) =>
+        migrateMissionStore(persisted, version, await readPersistedDefaultFrame()),
     }
   )
 );

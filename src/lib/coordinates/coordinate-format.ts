@@ -65,7 +65,11 @@ function wrapRad(v: number): number {
   return r;
 }
 
-/** UTM zone number for a lat/lon, with the Norway + Svalbard exceptions. */
+/**
+ * UTM zone number for a lat/lon, with the Norway + Svalbard exceptions.
+ * Longitude +180 is the same meridian as -180's zone 60 edge, so it maps to
+ * zone 60, never a non-existent zone 61.
+ */
 export function utmZone(lat: number, lon: number): number {
   if (lat >= 56 && lat < 64 && lon >= 3 && lon < 12) return 32;
   if (lat >= 72 && lat < 84) {
@@ -74,7 +78,15 @@ export function utmZone(lat: number, lon: number): number {
     if (lon >= 21 && lon < 33) return 35;
     if (lon >= 33 && lon < 42) return 37;
   }
-  return Math.floor((lon + 180) / 6) + 1;
+  return Math.min(60, Math.floor((lon + 180) / 6) + 1);
+}
+
+/**
+ * Whether a latitude lies in the UTM/MGRS band [-80, 84). The polar caps use
+ * the UPS grid instead, which this module does not produce.
+ */
+export function isWithinUtmBand(lat: number): boolean {
+  return lat >= -80 && lat < 84;
 }
 
 /** Central-meridian longitude (degrees) of a UTM zone. */
@@ -84,7 +96,8 @@ function centralLon(zone: number): number {
 
 /**
  * Convert WGS84 lat/lon (degrees) to a UTM grid position. Valid for
- * -80 <= lat < 84 (the UTM band); callers should clamp/guard outside it.
+ * -80 <= lat < 84 (the UTM band); check {@link isWithinUtmBand} first, since
+ * outside it the projection is not a UTM coordinate.
  */
 export function latLonToUTM(lat: number, lon: number): UTMCoordinate {
   const zone = utmZone(lat, lon);
@@ -195,11 +208,10 @@ const LAT_BANDS = "CDEFGHJKLMNPQRSTUVWX";
 const COL_LETTERS = ["ABCDEFGH", "JKLMNPQR", "STUVWXYZ"];
 const ROW_LETTERS = ["ABCDEFGHJKLMNPQRSTUV", "FGHJKLMNPQRSTUVABCDE"];
 
-/** MGRS latitude band letter for a latitude in [-80, 84). */
-export function mgrsLatBand(lat: number): string {
-  let idx = Math.floor((lat + 80) / 8);
-  if (idx < 0) idx = 0;
-  if (idx > 19) idx = 19; // X spans 72..84 (12 degrees wide)
+/** MGRS latitude band letter for a latitude in [-80, 84); null outside the band. */
+export function mgrsLatBand(lat: number): string | null {
+  if (!isWithinUtmBand(lat)) return null;
+  const idx = Math.min(19, Math.floor((lat + 80) / 8)); // X spans 72..84 (12 degrees wide)
   return LAT_BANDS.charAt(idx);
 }
 
@@ -207,11 +219,14 @@ export function mgrsLatBand(lat: number): string {
  * Convert WGS84 lat/lon (degrees) to an MGRS grid reference string, e.g.
  * "32ULB9520173135". `precision` is the number of digits per axis (1..5), so 5
  * is 1 m, 4 is 10 m, ... 1 is 10 km. No separating spaces (compact form).
+ * Null for a latitude outside the MGRS band (the polar caps), rather than a
+ * plausible-looking but wrong reference.
  */
-export function latLonToMGRS(lat: number, lon: number, precision = 5): string {
+export function latLonToMGRS(lat: number, lon: number, precision = 5): string | null {
+  const band = mgrsLatBand(lat);
+  if (band === null) return null;
   const p = Math.max(1, Math.min(5, Math.floor(precision)));
   const utm = latLonToUTM(lat, lon);
-  const band = mgrsLatBand(lat);
 
   const colSet = (utm.zone - 1) % 3;
   const col = Math.floor(utm.easting / 100000); // 1..8

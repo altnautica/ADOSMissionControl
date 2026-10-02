@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useMissionStore } from '@/stores/mission-store';
-import { clearHistory } from '@/lib/planner-history';
+import { canUndo, clearHistory } from '@/lib/planner-history';
 import type { Waypoint } from '@/lib/types';
 import type { MissionItem } from '@/lib/protocol/types';
 import { useUploadReceiptsStore, receiptFor, receiptStatus } from '@/stores/upload-receipts-store';
@@ -14,7 +14,7 @@ import type { MspSerialQueue } from '@/lib/protocol/msp/msp-serial-queue';
 // no-connection early-return; a stub lets a test observe the flattened upload and
 // serve items back for the re-nesting download.
 let mockProtocol: {
-  uploadMission: (items: MissionItem[]) => Promise<{ success: boolean }>;
+  uploadMission: (items: MissionItem[]) => Promise<{ success: boolean; message?: string }>;
   downloadMission: () => Promise<MissionItem[]>;
   getVehicleInfo: () => { firmwareType: string } | null;
 } | null = null;
@@ -328,7 +328,9 @@ describe('mission-store', () => {
 
   // ── Upload receipts ──────────────────────────────────────
 
-  function stubArduPilot(upload: () => Promise<{ success: boolean }> = async () => ({ success: true })) {
+  function stubArduPilot(
+    upload: () => Promise<{ success: boolean; message?: string }> = async () => ({ success: true }),
+  ) {
     mockProtocol = {
       uploadMission: upload,
       downloadMission: async () => [],
@@ -435,7 +437,38 @@ describe('mission-store', () => {
     };
     await useMissionStore.getState().downloadMission();
     expect(useMissionStore.getState().downloadState).toBe('error');
+    expect(useMissionStore.getState().downloadError).toBe('MISSION_ITEM_INT timeout');
     expect(useMissionStore.getState().waypoints).toEqual(plan);
+  });
+
+  it('an empty download leaves the open plan untouched and adds no undo step', async () => {
+    const plan = arduPilotPlan();
+    useMissionStore.setState({ waypoints: plan });
+    mockProtocol = {
+      uploadMission: async () => ({ success: true }),
+      // Only the home slot: the vehicle holds no mission.
+      downloadMission: async () => [
+        { seq: 0, frame: 0, command: 16, current: 0, autocontinue: 1, param1: 0, param2: 0, param3: 0, param4: 0, x: 129700000, y: 775900000, z: 0 },
+      ],
+      getVehicleInfo: () => ({ firmwareType: 'ardupilot-copter' }),
+    };
+    const downloaded = await useMissionStore.getState().downloadMission();
+    expect(downloaded).toEqual([]);
+    expect(useMissionStore.getState().downloadState).toBe('downloaded');
+    expect(useMissionStore.getState().waypoints).toEqual(plan);
+    expect(canUndo()).toBe(false);
+  });
+
+  it('a rejected upload keeps the flight controller reason', async () => {
+    stubArduPilot(async () => ({ success: false, message: 'Mission rejected: type 4' }));
+    useMissionStore.setState({ waypoints: arduPilotPlan() });
+    expect(await useMissionStore.getState().uploadMission()).toBe(false);
+    expect(useMissionStore.getState().uploadState).toBe('error');
+    expect(useMissionStore.getState().uploadError).toBe('Mission rejected: type 4');
+
+    stubArduPilot();
+    expect(await useMissionStore.getState().uploadMission()).toBe(true);
+    expect(useMissionStore.getState().uploadError).toBeNull();
   });
 
   it('an MSP firmware with no mission store rejects the download instead of returning an empty mission', async () => {

@@ -21,13 +21,16 @@ import type { PlanExtras } from "@/stores/plan-library-store";
 /**
  * Serialize a plan for dirty comparison. Absent domains are written as `null`
  * (not omitted) so "had a fence, deleted it" differs from "never had one".
+ * A waypoint's `groundElevation` is a terrain sample derived from its position,
+ * not something the operator edited, so a sample arriving never marks a plan
+ * unsaved.
  */
 export function planSnapshotString(
   waypoints: readonly Waypoint[],
   extras?: PlanExtras,
 ): string {
   return JSON.stringify({
-    waypoints,
+    waypoints: waypoints.map(({ groundElevation: _derived, ...wp }) => wp),
     geofence: extras?.geofence ?? null,
     rally: extras?.rally ?? null,
     pois: extras?.pois ?? null,

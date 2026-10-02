@@ -83,7 +83,6 @@ describe("speed encoding", () => {
         gridAngle: 0, lineSpacing: 80, turnAroundDistance: 10, entryLocation: "topLeft",
         flyAlternateTransects: false, cameraTriggerDistance: 0, altitude: 50, speed: 3,
       }).waypoints,
-      "relative",
     );
     const described = describeItems(missionUploadItems(survey));
     // Default for the takeoff, the pattern's 3 m/s for the survey legs, the

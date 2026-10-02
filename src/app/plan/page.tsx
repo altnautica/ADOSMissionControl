@@ -31,6 +31,7 @@ import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { registerCommandProvider } from "@/lib/command-palette-registry";
 import { setClipboard, getClipboard } from "@/lib/waypoint-clipboard";
 import { randomId } from "@/lib/utils";
+import { startGroundElevationSync } from "@/lib/mission/sample-ground-elevations";
 import { usePlanner } from "./use-planner";
 import { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import { buildPlannerCommands, type PlannerCommandHandlers } from "./planner-commands";
@@ -76,6 +77,11 @@ export default function MissionPlannerPage() {
     setDownloadPanelOpen((v) => !v);
     setOverlayPanelOpen(false);
   }, []);
+  // Keep every waypoint's terrain sample matched to its position while the
+  // planner is open: any edit that moves a waypoint drops its old sample, and
+  // the sync looks up the ground under the new spot.
+  useEffect(() => startGroundElevationSync(), []);
+
   // Load a shared plan from the URL fragment (#plan=...) on first mount. Non-destructive:
   // it only applies when the current mission is empty, so a share link can never clobber
   // in-progress work. The fragment is then cleared so a refresh does not reload it.
@@ -119,8 +125,12 @@ export default function MissionPlannerPage() {
     onPaste: () => {
       const clip = getClipboard();
       if (clip.length === 0) return;
-      // Paste copies slightly offset so they are visible and selectable.
-      const pasted = clip.map((wp) => ({ ...wp, id: randomId(), lat: wp.lat + 0.0002, lon: wp.lon + 0.0002 }));
+      // Paste copies slightly offset so they are visible and selectable. The
+      // copy sits over different ground, so the original's terrain sample is
+      // dropped and resampled.
+      const pasted = clip.map(({ groundElevation: _moved, ...wp }) => ({
+        ...wp, id: randomId(), lat: wp.lat + 0.0002, lon: wp.lon + 0.0002,
+      }));
       const ms = useMissionStore.getState();
       ms.setWaypoints([...ms.waypoints, ...pasted]);
     },

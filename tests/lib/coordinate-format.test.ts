@@ -66,6 +66,8 @@ describe("utmZone()", () => {
     expect(utmZone(51.2, 7.5)).toBe(32);
     expect(utmZone(0, -180)).toBe(1);
     expect(utmZone(0, 179.9)).toBe(60);
+    // +180 is the zone 60 edge, never a non-existent zone 61.
+    expect(utmZone(0, 180)).toBe(60);
   });
 
   it("applies the Norway and Svalbard exceptions", () => {
@@ -86,6 +88,11 @@ describe("mgrsLatBand()", () => {
     expect(mgrsLatBand(-80)).toBe("C"); // southern edge
     expect(mgrsLatBand(83.9)).toBe("X"); // northern edge (X is 12 deg wide)
   });
+
+  it("has no band in the polar caps outside [-80, 84)", () => {
+    expect(mgrsLatBand(84)).toBeNull();
+    expect(mgrsLatBand(-80.1)).toBeNull();
+  });
 });
 
 describe("latLonToMGRS()", () => {
@@ -96,12 +103,11 @@ describe("latLonToMGRS()", () => {
 
   it("produces the expected grid-zone designator + 100km square for 34, -118", () => {
     const s = latLonToMGRS(34.0, -118.0, 5);
-    expect(s.startsWith("11SMT")).toBe(true);
     expect(s).toMatch(/^11SMT\d{10}$/);
   });
 
   it("truncates digits with lower precision (fewer digits per axis)", () => {
-    const full = latLonToMGRS(51.2, 7.5, 5); // "32ULB9520173135"
+    const full = latLonToMGRS(51.2, 7.5, 5) ?? ""; // "32ULB9520173135"
     expect(latLonToMGRS(51.2, 7.5, 3)).toBe("32ULB952731");
     expect(latLonToMGRS(51.2, 7.5, 1)).toBe("32ULB97");
     expect(latLonToMGRS(51.2, 7.5, 4)).toBe("32ULB95207313");
@@ -113,6 +119,11 @@ describe("latLonToMGRS()", () => {
     expect(latLonToMGRS(51.2, 7.5)).toBe("32ULB9520173135");
     expect(latLonToMGRS(51.2, 7.5, 9)).toBe("32ULB9520173135");
     expect(latLonToMGRS(51.2, 7.5, 0)).toBe("32ULB97");
+  });
+
+  it("returns null in the polar caps instead of a wrong reference", () => {
+    expect(latLonToMGRS(85, 10)).toBeNull();
+    expect(latLonToMGRS(-85, 10)).toBeNull();
   });
 });
 

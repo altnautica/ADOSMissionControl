@@ -12,6 +12,7 @@
 
 import shp from "shpjs";
 import type { FeatureCollection, Geometry, Position } from "geojson";
+import type { BoundaryPolygon } from "./kml-boundary";
 
 /**
  * The shapefile's coordinates are not latitude/longitude (a projected CRS such
@@ -26,23 +27,25 @@ export class ShapefileNotGeographicError extends Error {
 }
 
 /**
- * Parse a shapefile buffer into polygon boundary rings.
+ * Parse a shapefile buffer into boundary polygons.
  *
  * Accepts either a zipped shapefile bundle (`.zip`, the common distribution
  * form carrying .shp + .dbf + .prj together) or a bare `.shp` buffer, detected
- * by the leading magic bytes. Returns one outer ring per polygon feature as
- * `[lat, lon]` pairs (GeoJSON lon,lat swapped), with the duplicate closing
- * vertex removed. Returns an empty array when the file carries no polygon
- * geometry or cannot be read. Throws {@link ShapefileNotGeographicError} when a
- * ring's coordinates fall outside latitude/longitude ranges: those are projected
- * coordinates, and guessing their CRS would place the boundary off the planet.
+ * by the leading magic bytes. Returns one boundary per polygon (each part of a
+ * MultiPolygon is its own boundary): the outer ring plus its interior rings
+ * (holes), as `[lat, lon]` pairs (GeoJSON lon,lat swapped) with the duplicate
+ * closing vertex removed. Returns an empty array when the file carries no
+ * polygon geometry or cannot be read. Throws
+ * {@link ShapefileNotGeographicError} when a ring's coordinates fall outside
+ * latitude/longitude ranges: those are projected coordinates, and guessing
+ * their CRS would place the boundary off the planet.
  *
  * @param buffer Raw file bytes (zipped shapefile or bare .shp).
- * @returns Outer boundary rings, `[lat, lon][]` each; empty when none found.
+ * @returns Boundaries with their holes; empty when none found.
  */
-export async function parseShapefile(buffer: ArrayBuffer): Promise<[number, number][][]> {
+export async function parseShapefile(buffer: ArrayBuffer): Promise<BoundaryPolygon[]> {
   const bytes = new Uint8Array(buffer);
-  const rings: [number, number][][] = [];
+  const boundaries: BoundaryPolygon[] = [];
 
   try {
     if (isZip(bytes)) {
@@ -51,13 +54,13 @@ export async function parseShapefile(buffer: ArrayBuffer): Promise<[number, numb
       const parsed = await shp(buffer);
       const collections = Array.isArray(parsed) ? parsed : [parsed];
       for (const fc of collections) {
-        collectRingsFromFeatureCollection(fc, rings);
+        collectFromFeatureCollection(fc, boundaries);
       }
     } else {
       // Bare .shp → geometry list only (no attribute table).
       const geometries = shp.parseShp(buffer);
       for (const geom of geometries) {
-        collectRingsFromGeometry(geom, rings);
+        collectFromGeometry(geom, boundaries);
       }
     }
   } catch {
@@ -65,11 +68,13 @@ export async function parseShapefile(buffer: ArrayBuffer): Promise<[number, numb
     return [];
   }
 
-  const geographic = rings.every((ring) =>
-    ring.every(([lat, lon]) => Math.abs(lat) <= 90 && Math.abs(lon) <= 180),
+  const geographic = boundaries.every((b) =>
+    [b.outer, ...b.holes].every((ring) =>
+      ring.every(([lat, lon]) => Math.abs(lat) <= 90 && Math.abs(lon) <= 180),
+    ),
   );
   if (!geographic) throw new ShapefileNotGeographicError();
-  return rings;
+  return boundaries;
 }
 
 /** ZIP local-file-header magic (PK\x03\x04). */
@@ -83,39 +88,46 @@ function isZip(bytes: Uint8Array): boolean {
   );
 }
 
-function collectRingsFromFeatureCollection(
-  fc: FeatureCollection,
-  out: [number, number][][],
-): void {
+function collectFromFeatureCollection(fc: FeatureCollection, out: BoundaryPolygon[]): void {
   if (!fc || !Array.isArray(fc.features)) return;
   for (const feature of fc.features) {
-    if (feature?.geometry) collectRingsFromGeometry(feature.geometry, out);
+    if (feature?.geometry) collectFromGeometry(feature.geometry, out);
   }
 }
 
-function collectRingsFromGeometry(geom: Geometry, out: [number, number][][]): void {
+function collectFromGeometry(geom: Geometry, out: BoundaryPolygon[]): void {
   if (!geom) return;
   if (geom.type === "Polygon") {
-    pushRing(geom.coordinates[0], out);
+    pushPolygon(geom.coordinates, out);
   } else if (geom.type === "MultiPolygon") {
-    for (const polygon of geom.coordinates) {
-      pushRing(polygon[0], out);
-    }
+    for (const polygon of geom.coordinates) pushPolygon(polygon, out);
   } else if (geom.type === "GeometryCollection") {
-    for (const g of geom.geometries) collectRingsFromGeometry(g, out);
+    for (const g of geom.geometries) collectFromGeometry(g, out);
   }
   // Points / lines carry no boundary — ignored.
 }
 
+/** A GeoJSON polygon: ring 0 is the outer boundary, rings 1.. are its holes. */
+function pushPolygon(rings: Position[][], out: BoundaryPolygon[]): void {
+  const outer = toLatLonRing(rings[0]);
+  if (!outer) return;
+  const holes: [number, number][][] = [];
+  for (const hole of rings.slice(1)) {
+    const ring = toLatLonRing(hole);
+    if (ring) holes.push(ring);
+  }
+  out.push({ outer, holes });
+}
+
 /**
- * Convert a GeoJSON outer ring (lon,lat positions, closed) into our lat,lon
- * ring with the duplicate closing vertex removed. Rings with fewer than three
- * distinct vertices are skipped so no fabricated shape is emitted.
+ * Convert a GeoJSON ring (lon,lat positions, closed) into our lat,lon ring
+ * with the duplicate closing vertex removed. A ring with fewer than three
+ * distinct vertices is `null`, so no fabricated shape is emitted.
  */
-function pushRing(outer: Position[] | undefined, out: [number, number][][]): void {
-  if (!outer || outer.length < 3) return;
+function toLatLonRing(positions: Position[] | undefined): [number, number][] | null {
+  if (!positions || positions.length < 3) return null;
   const ring: [number, number][] = [];
-  for (const pos of outer) {
+  for (const pos of positions) {
     const lon = pos[0];
     const lat = pos[1];
     if (
@@ -135,5 +147,5 @@ function pushRing(outer: Position[] | undefined, out: [number, number][][]): voi
   ) {
     ring.pop();
   }
-  if (ring.length >= 3) out.push(ring);
+  return ring.length >= 3 ? ring : null;
 }

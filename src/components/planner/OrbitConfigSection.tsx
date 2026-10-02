@@ -38,7 +38,7 @@ export function OrbitConfig() {
       <Input label={t("startAngle")} type="number" unit="deg" placeholder="0 = North" value={String(orbitConfig.startAngle ?? 0)}
         onChange={(e) => updateOrbitConfig({ startAngle: parseFloat(e.target.value) || 0 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitude")} type="number" unit="m" value={String(orbitConfig.altitude ?? 50)}
+        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(orbitConfig.altitude ?? 50)}
           onChange={(e) => updateOrbitConfig({ altitude: parseFloat(e.target.value) || 50 })} />
         <Input label={t("speedMs")} type="number" unit="m/s" value={String(orbitConfig.speed ?? 5)}
           onChange={(e) => updateOrbitConfig({ speed: parseFloat(e.target.value) || 5 })} />

@@ -2209,7 +2209,11 @@
       "unpairFailedError": "Couldn't release {host} from this browser. Run `ados unpair` on the node to release it, then remove it here.",
       "codeRateLimitedError": "Too many pair-code attempts from this browser. Try again in {seconds} s.",
       "connectFailedUnknown": "the node did not answer",
-      "pairedWaitingRelay": "Paired. Waiting for the node to report over the cloud relay."
+      "pairedWaitingRelay": "Paired. Waiting for the node to report over the cloud relay.",
+      "pairNameUnresolvedError": "Mission Control's server could not resolve {host} to an address on your network, so nothing was contacted. Check the name, or try the node's IP address instead.",
+      "pairBadAddressError": "{host} is not an address Mission Control can pair with. Use the node's name or IP address on its own, without a path or a different port.",
+      "pairNotAnAgentError": "Something at {host} answered, but not the way an ADOS agent does. Check that the address points at the node and that its agent is running.",
+      "pairProxyRefusedError": "Mission Control's server would not contact {host} for this page, so the node was never asked. Open Mission Control from this computer or from an address on the node's network, or use the desktop app."
     },
     "nodes": {
       "label": "Nodes",
@@ -2280,7 +2284,11 @@
         "unknown": "the attempt failed",
         "not-ready": "answered but was not ready",
         "proxy-refused": "not tried: Mission Control only reaches addresses on your own network"
-      }
+      },
+      "securePageBlocked": "This secure page can't reach LAN nodes directly. Open Mission Control over http on the local network, or use the desktop app.",
+      "keyRejected": "{host} answered but refused this browser's key: it was paired again elsewhere or its key was reset. Re-pair it here to use it.",
+      "hostTaken": "Another node now answers at {host}, so this node has moved or was re-flashed. Use its new address, or re-pair it.",
+      "rePair": "Re-pair"
     },
     "alreadyInstalledRepair": "Already installed? The same command re-pairs it with this code without reinstalling."
   },
@@ -2503,7 +2511,8 @@
     "loiter": "旋回待機",
     "land": "着陸",
     "rtl": {
-      "assumedReturnAltitude": "RTL地形チェックでは、帰還高度を{alt} mと想定します（設定値が利用できません）。",
+      "returnAltitudeFromVehicle": "RTL terrain checks use the vehicle's configured return altitude of {alt} m above home.",
+      "returnAltitudeUnknown": "The vehicle's RTL return altitude has not been read, so return-leg terrain clearance is not checked. Connect the vehicle to check it.",
       "landStartNeedsAutoland": "The FC has RTL_AUTOLAND = 0, so it will refuse to arm with a DO_LAND_START in the mission. Set RTL_AUTOLAND to 1 or 2 to land through it on RTL, or 3 to use it for go-around only."
     },
     "none": "なし",
@@ -2656,6 +2665,8 @@
     "verticesCount": "頂点数",
     "usingLastDrawnPolygon": "最後に描画したポリゴンを使用",
     "drawStructureBoundary": "地図上に構造物の境界を描画",
+    "altitudeAboveHome": "Altitude above home",
+    "aboveHome": "above home",
     "bottomAlt": "下限高度",
     "topAlt": "上限高度",
     "layerSpacing": "レイヤー間隔",
@@ -2845,7 +2856,8 @@
         "success": "{count, plural, one {# 件の境界を読み込みました} other {# 件の境界を読み込みました}}",
         "error": "その境界ファイルを読み込めませんでした。",
         "noPolygon": "ファイルにポリゴンが見つかりません。",
-        "needsPrj": "This shapefile is not in latitude/longitude. Import the zipped bundle that includes its .prj file."
+        "needsPrj": "This shapefile is not in latitude/longitude. Import the zipped bundle that includes its .prj file.",
+        "holesAsKeepOut": "{count, plural, one {# hole inside the boundary was added as a survey keep-out area} other {# holes inside the boundaries were added as survey keep-out areas}}"
       }
     },
     "export": {
@@ -3022,7 +3034,9 @@
     "addWaypointsForTerrain": "ウェイポイントを追加して地形プロファイルを表示",
     "frameAbsolute": "Absolute (MSL)",
     "cycleFrame": "Change frame",
-    "unavailableOffline": "Terrain data unavailable (offline)"
+    "unavailableOffline": "Terrain data unavailable (offline)",
+    "gapsUnchecked": "{count, plural, one {# stretch has no terrain data and is not checked} other {# stretches have no terrain data and are not checked}}",
+    "groundDatumUnknown": "Terrain under the launch point or a waypoint is unknown, so the flight path cannot be drawn against the ground"
   },
   "transform": {
     "title": "ミッション変換",
@@ -5447,6 +5461,8 @@
     },
     "preflight": {
       "title": "Before you flash",
+      "usbLink": "Flight controller on this computer's USB",
+      "usbRequired": "Flashing needs a USB cable to the flight controller. It is connected over a network link, and rebooting it into its bootloader there would leave it unreachable.",
       "ready": "Browser ready for flashing",
       "chromium": "Chromium-based browser (Chrome, Edge, Brave)",
       "secureContext": "Secure context (HTTPS or localhost)",
@@ -5886,6 +5902,16 @@
     },
     "nodeParamEditor": {
       "title": "ノード {nodeId} · {name}",
+      "confirm": {
+        "restartTitle": "Restart node {nodeId}?",
+        "restartMessage": "Restart CAN node {nodeId} ({name}). It drops off the bus while it reboots.",
+        "flashBootloaderTitle": "Rewrite the bootloader of node {nodeId}?",
+        "flashBootloaderMessage": "Set FLASH_BOOTLOADER=1 on CAN node {nodeId} ({name}). The node rewrites its own bootloader; losing power during the rewrite can leave it unable to boot.",
+        "eraseTitle": "Erase node {nodeId} parameters?",
+        "eraseMessage": "Reset every parameter on CAN node {nodeId} ({name}) to its default value.",
+        "changeIdTitle": "Change node {nodeId} to ID {newId}?",
+        "changeIdMessage": "Set UAVCAN_NODE_ID={newId} on CAN node {nodeId} ({name}). Anything configured for ID {nodeId} stops reaching it."
+      },
       "quickActions": {
         "restart": "ノード再起動",
         "flashBootloader": "FLASH_BOOTLOADER=1 を書き込み",

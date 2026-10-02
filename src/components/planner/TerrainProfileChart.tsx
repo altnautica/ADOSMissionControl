@@ -7,7 +7,9 @@
  * (falling back to the mission default frame when the waypoint carries none),
  * so the Defaults frame selector actually changes the chart. When elevation
  * data is unavailable (offline / every lookup failed) the chart says so instead
- * of drawing a flat sea-level profile.
+ * of drawing a flat sea-level profile; a stretch whose lookup failed is drawn
+ * as a break in the terrain and reported as unchecked, never interpolated over
+ * and never counted as clear.
  * @license GPL-3.0-only
  */
 "use client";
@@ -28,9 +30,11 @@ import { haversineDistance } from "@/lib/geo/distance";
 interface ChartDataPoint {
   distance: number;
   distanceLabel: string;
-  terrainElevation: number;
+  /** `null` inside a terrain gap: the ground there is unknown. */
+  terrainElevation: number | null;
   flightAltitude: number;
-  agl: number;
+  agl: number | null;
+  dangerTerrain: number | null;
 }
 
 
@@ -56,12 +60,15 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
   // Build chart data in MSL. Each waypoint is converted to an MSL altitude from
   // its own frame (or the display frame when the waypoint carries none), then
   // the flight line is interpolated between waypoints along the terrain samples.
-  const data: ChartDataPoint[] = useMemo(() => {
+  // `homeUnknown` is set when relative altitudes cannot be placed because the
+  // ground at the launch point is unknown.
+  const { data, homeUnknown } = useMemo((): { data: ChartDataPoint[]; homeUnknown: boolean } => {
     if (!terrainProfile || terrainProfile.points.length === 0 || waypoints.length < 2) {
-      return [];
+      return { data: [], homeUnknown: false };
     }
 
     const profilePoints = terrainProfile.points;
+    const gaps = terrainProfile.gaps;
 
     // Cumulative distance at each waypoint.
     let totalDist = 0;
@@ -74,12 +81,16 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
       wpDistances.push(totalDist);
     }
 
-    // Terrain elevation (MSL) at an arbitrary distance along the path.
-    const terrainElevAt = (dist: number): number => {
+    const inGap = (dist: number) => gaps.some((g) => dist > g.startDistance && dist < g.endDistance);
+
+    // Terrain elevation (MSL) at an arbitrary distance along the path; null
+    // inside a gap, where interpolating would invent ground.
+    const terrainElevAt = (dist: number): number | undefined => {
+      if (inGap(dist)) return undefined;
       const first = profilePoints[0];
       const last = profilePoints[profilePoints.length - 1];
-      if (dist <= first.distance) return first.elevation;
-      if (dist >= last.distance) return last.elevation;
+      if (dist <= first.distance) return dist === first.distance ? first.elevation : undefined;
+      if (dist >= last.distance) return dist === last.distance ? last.elevation : undefined;
       for (let i = 1; i < profilePoints.length; i++) {
         const b = profilePoints[i];
         if (dist <= b.distance) {
@@ -89,46 +100,49 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
           return a.elevation + (b.elevation - a.elevation) * f;
         }
       }
-      return last.elevation;
+      return undefined;
     };
 
-    // Ground at the takeoff point is the datum for relative-frame altitudes.
-    const homeGround = profilePoints[0].elevation;
+    // Ground at the launch point is the datum for relative-frame altitudes:
+    // the first waypoint's own sample, else the profile sample at distance 0.
+    // Never the first sample that happened to resolve further along the path.
+    const homeGround = waypoints[0].groundElevation ?? terrainElevAt(0);
 
     // MSL flight altitude at each waypoint, resolved through the shared
     // frame model so the chart, the validator and the 3D view cannot disagree
     // about what a `relative` altitude means. A waypoint with no elevation
-    // sample of its own borrows the interpolated terrain at its distance.
-    const wpMsl = waypoints.map(
-      (wp, i) =>
-        waypointAbsoluteAltitude(
-          wp,
-          { homeGroundElevation: homeGround, defaultFrame: displayFrame },
-          wp.groundElevation ?? terrainElevAt(wpDistances[i]),
-        ) ?? homeGround + wp.alt,
-    );
-
-    return profilePoints.map((tp) => {
-      // Interpolate the flight MSL for this terrain sample's distance.
-      let flightMsl = wpMsl[0];
+    // sample of its own borrows the interpolated terrain at its distance; when
+    // the datum it needs is unknown, nothing is drawn.
+    const msl: number[] = [];
+    for (let i = 0; i < waypoints.length; i++) {
+      const wp = waypoints[i];
+      const value = waypointAbsoluteAltitude(
+        wp,
+        { homeGroundElevation: homeGround, defaultFrame: displayFrame },
+        wp.groundElevation ?? terrainElevAt(wpDistances[i]),
+      );
+      if (value === null) return { data: [], homeUnknown: true };
+      msl.push(value);
+    }
+    const flightAt = (dist: number): number => {
       for (let i = 1; i < wpDistances.length; i++) {
-        if (tp.distance <= wpDistances[i]) {
+        if (dist <= wpDistances[i]) {
           const segStart = wpDistances[i - 1];
-          const segEnd = wpDistances[i];
-          const segLen = segEnd - segStart;
-          const f = segLen > 0 ? (tp.distance - segStart) / segLen : 0;
-          flightMsl = wpMsl[i - 1] + (wpMsl[i] - wpMsl[i - 1]) * f;
-          break;
+          const segLen = wpDistances[i] - segStart;
+          const f = segLen > 0 ? (dist - segStart) / segLen : 0;
+          return msl[i - 1] + (msl[i] - msl[i - 1]) * f;
         }
-        flightMsl = wpMsl[wpMsl.length - 1];
       }
+      return msl[msl.length - 1];
+    };
+    const label = (dist: number) => (dist >= 1000 ? `${(dist / 1000).toFixed(1)}` : `${Math.round(dist)}`);
 
+    const known: ChartDataPoint[] = profilePoints.map((tp) => {
+      const flightMsl = flightAt(tp.distance);
       const agl = flightMsl - tp.elevation;
       return {
         distance: Math.round(tp.distance),
-        distanceLabel: tp.distance >= 1000
-          ? `${(tp.distance / 1000).toFixed(1)}`
-          : `${Math.round(tp.distance)}`,
+        distanceLabel: label(tp.distance),
         terrainElevation: Math.round(tp.elevation),
         flightAltitude: Math.round(flightMsl),
         agl: Math.round(agl),
@@ -138,13 +152,34 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
         dangerTerrain: agl < DEFAULT_MIN_TERRAIN_CLEARANCE ? Math.round(tp.elevation) : null,
       };
     });
+    // One unknown-ground point inside each gap breaks the terrain area there.
+    const unknown: ChartDataPoint[] = gaps.map((g) => {
+      const mid = (g.startDistance + g.endDistance) / 2;
+      return {
+        distance: Math.round(mid),
+        distanceLabel: label(mid),
+        terrainElevation: null,
+        flightAltitude: Math.round(flightAt(mid)),
+        agl: null,
+        dangerTerrain: null,
+      };
+    });
+    return {
+      data: [...known, ...unknown].sort((a, b) => a.distance - b.distance),
+      homeUnknown: false,
+    };
   }, [terrainProfile, waypoints, displayFrame]);
 
-  // Contiguous stretches where the flight path breaches the clearance minimum.
+  // Contiguous stretches where the flight path breaches the clearance minimum,
+  // over the stretches whose ground is known.
   const collisionSegments = useMemo(
-    () => findCollisionSegments(data.map((d) => ({ distance: d.distance, agl: d.agl }))),
+    () =>
+      findCollisionSegments(
+        data.flatMap((d) => (d.agl === null ? [] : [{ distance: d.distance, agl: d.agl }])),
+      ),
     [data],
   );
+  const gapCount = terrainProfile?.gaps.length ?? 0;
 
   const frameLabel = useCallback((f: AltitudeFrame): string => {
     if (f === "terrain") return t("terrainFollowingAgl");
@@ -196,6 +231,16 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
         </div>
       )}
 
+      {/* Ground under the launch point or a waypoint is unknown: the flight
+          path cannot be placed against the terrain, so no chart is drawn. */}
+      {status === "ready" && homeUnknown && (
+        <div className="flex items-center justify-center h-[80px]">
+          <span className="text-[10px] text-status-warning font-mono text-center px-2">
+            {t("groundDatumUnknown")}
+          </span>
+        </div>
+      )}
+
       {/* Legend */}
       {status === "ready" && data.length > 0 && (
         <div className="flex items-center gap-3 mb-0.5">
@@ -212,6 +257,14 @@ export function TerrainProfileChart({ waypoints }: TerrainProfileChartProps) {
               <div className="w-3 h-1.5 rounded-sm bg-status-error/60" />
               <span className="text-[9px] font-mono text-status-error">
                 {t("terrainConflict", { count: collisionSegments.length })}
+              </span>
+            </div>
+          )}
+          {gapCount > 0 && (
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-1.5 rounded-sm border border-dashed border-status-warning" />
+              <span className="text-[9px] font-mono text-status-warning">
+                {t("gapsUnchecked", { count: gapCount })}
               </span>
             </div>
           )}

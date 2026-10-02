@@ -29,8 +29,7 @@ import {
 } from "@/lib/validation/fc-item-count";
 import { checkRtlTerrainClearance } from "@/lib/terrain/rtl-advisory";
 import { DEFAULT_MIN_TERRAIN_CLEARANCE } from "@/lib/terrain/terrain-clearance";
-import { getElevation } from "@/lib/terrain/terrain-provider";
-import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useRtlReturnContext } from "@/hooks/use-rtl-return-context";
 
 interface MissionAdvisoriesProps {
   waypoints: Waypoint[];
@@ -46,14 +45,6 @@ interface AdvisoryRowData {
   /** Index into `waypoints` when the advisory points at a specific waypoint. */
   waypointIndex?: number;
 }
-
-/**
- * Return altitude (metres above home) assumed for the RTL return-leg terrain
- * check when no configured RTL altitude is available synchronously in the
- * planner. A neutral fallback only — the advisory copy never presents it as the
- * operator's own configured value.
- */
-const DEFAULT_RTL_RETURN_ALT_M = 30;
 
 /** Human-readable firmware family label for the item-count advisory copy. */
 const FIRMWARE_LABEL: Record<string, string> = {
@@ -79,27 +70,10 @@ export function MissionAdvisories({
   const firmware: FirmwareType | undefined = selectedProtocol?.getVehicleInfo()
     ?.firmwareType;
 
-  // The latest telemetry home sample (a RingBuffer whose reference is stable, so
-  // it is re-read when the panel renders rather than on every home push).
-  const homePosition = useTelemetryStore((s) => s.homePosition);
-  const homeSample = homePosition.toArray().at(-1);
-  const homeLat = homeSample?.lat;
-  const homeLon = homeSample?.lon;
-
-  // Terrain under the telemetry home, sampled for that exact point. The RTL
-  // datum is home's own ground, so the telemetry home is used only once it has
-  // a sample of its own; WP1's terrain belongs to WP1.
-  const [homeTerrain, setHomeTerrain] = useState<{ lat: number; lon: number; elevation: number } | null>(null);
-  useEffect(() => {
-    if (homeLat === undefined || homeLon === undefined) return;
-    const controller = new AbortController();
-    void getElevation(homeLat, homeLon, controller.signal).then((elevation) => {
-      if (!controller.signal.aborted && elevation !== null) {
-        setHomeTerrain({ lat: homeLat, lon: homeLon, elevation });
-      }
-    });
-    return () => controller.abort();
-  }, [homeLat, homeLon]);
+  // The RTL return-leg datums from the connected vehicle: the telemetry home
+  // with the terrain under it, and the configured return altitude. Neither is
+  // ever assumed.
+  const { home: telemetryHome, rtlAltitude } = useRtlReturnContext();
 
   // ArduPlane refuses to arm when the mission holds a DO_LAND_START while
   // RTL_AUTOLAND is 0, so the connected plane's value is read whenever the
@@ -121,7 +95,7 @@ export function MissionAdvisories({
 
   // Pure module checks only — the translation function is intentionally kept
   // out of the memo so its render-to-render identity never re-runs the checks.
-  const { airport, soft, itemCount, rtl } = useMemo(() => {
+  const { airport, soft, itemCount, rtl, rtlUnchecked } = useMemo(() => {
     const fence: SoftGeofence = {};
     if (enabled) {
       if (fenceType === "polygon" && polygonPoints.length >= 3) {
@@ -136,19 +110,17 @@ export function MissionAdvisories({
     // with the terrain sampled beneath it; without that sample both the
     // coordinates and the elevation come from the first waypoint, never a mix.
     // With no terrain at all the pure module returns [] and no RTL rows render.
+    // Without the vehicle's own return altitude the check does not run.
     const first = waypoints[0];
-    const telemetryHome = homeTerrain && homeTerrain.lat === homeLat && homeTerrain.lon === homeLon
-      ? { lat: homeTerrain.lat, lon: homeTerrain.lon, groundElevation: homeTerrain.elevation }
-      : null;
     const home = telemetryHome
       ?? (first && first.groundElevation !== undefined
         ? { lat: first.lat, lon: first.lon, groundElevation: first.groundElevation }
         : null);
-    const rtl = home
+    const rtl = home && rtlAltitude !== undefined
       ? checkRtlTerrainClearance(
           waypoints,
           home,
-          DEFAULT_RTL_RETURN_ALT_M,
+          rtlAltitude,
           DEFAULT_MIN_TERRAIN_CLEARANCE,
         )
       : [];
@@ -158,6 +130,7 @@ export function MissionAdvisories({
       soft: checkSoftBuffer(waypoints, fence, DEFAULT_SOFT_BUFFER_M),
       itemCount: checkItemCount(waypoints, firmware ? { firmware } : {}),
       rtl,
+      rtlUnchecked: home !== null && rtlAltitude === undefined,
     };
   }, [
     waypoints,
@@ -167,9 +140,8 @@ export function MissionAdvisories({
     circleCenter,
     circleRadius,
     firmware,
-    homeLat,
-    homeLon,
-    homeTerrain,
+    telemetryHome,
+    rtlAltitude,
   ]);
 
   const rows: AdvisoryRowData[] = [];
@@ -231,15 +203,16 @@ export function MissionAdvisories({
     });
   }
 
-  // RTL / failsafe return-leg terrain advisories. These use an assumed return
-  // altitude (no configured RTL altitude is available synchronously here), so a
-  // neutral context note precedes them — the derived numbers in the pure-module
-  // messages are never claimed as the operator's configured value.
-  if (rtl.length > 0) {
+  // RTL / failsafe return-leg terrain advisories, against the vehicle's own
+  // configured return altitude. Without that value the check is reported as
+  // not run, never filled in with a guess.
+  if (rtlUnchecked) {
+    rows.push({ key: "rtl-note", level: "info", message: t("rtl.returnAltitudeUnknown") });
+  } else if (rtl.length > 0 && rtlAltitude !== undefined) {
     rows.push({
       key: "rtl-note",
       level: "info",
-      message: t("rtl.assumedReturnAltitude", { alt: DEFAULT_RTL_RETURN_ALT_M }),
+      message: t("rtl.returnAltitudeFromVehicle", { alt: Math.round(rtlAltitude) }),
     });
     for (const issue of rtl) {
       rows.push({

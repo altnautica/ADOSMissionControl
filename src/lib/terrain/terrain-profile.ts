@@ -5,7 +5,7 @@
  */
 
 import type { Waypoint } from "@/lib/types";
-import type { TerrainProfile, TerrainPoint } from "./types";
+import type { TerrainProfile, TerrainPoint, TerrainGap } from "./types";
 import { getElevations } from "./terrain-provider";
 import { haversineDistance, interpolateLatLon } from "@/lib/geo/distance";
 
@@ -16,9 +16,10 @@ import { haversineDistance, interpolateLatLon } from "@/lib/geo/distance";
  * @param waypoints Waypoint array to profile
  * @param samplesPerSegment Number of intermediate samples between each waypoint pair
  * @param signal Optional AbortSignal for cancellation
- * @returns TerrainProfile with elevation data along the path, or `null` when the
- *   elevation data is unavailable (offline / every lookup failed) so callers can
- *   show an explicit "unavailable" state instead of a fabricated flat-0 profile.
+ * @returns TerrainProfile with elevation data along the path and the gaps where
+ *   the lookup failed, or `null` when the elevation data is unavailable
+ *   (offline / every lookup failed) so callers can show an explicit
+ *   "unavailable" state instead of a fabricated flat-0 profile.
  */
 export async function computeTerrainProfile(
   waypoints: Waypoint[],
@@ -26,7 +27,7 @@ export async function computeTerrainProfile(
   signal?: AbortSignal,
 ): Promise<TerrainProfile | null> {
   if (waypoints.length === 0) {
-    return { points: [], minElevation: 0, maxElevation: 0 };
+    return { points: [], gaps: [], minElevation: 0, maxElevation: 0 };
   }
 
   // Build sample points: each waypoint + intermediate samples
@@ -64,27 +65,42 @@ export async function computeTerrainProfile(
     signal,
   );
 
-  // Build profile from the samples that actually resolved. If none did, the
-  // terrain data is unavailable — return null so the chart shows an explicit
-  // offline state rather than a false sea-level baseline.
+  // Build profile from the samples that actually resolved, and record every
+  // run of failed samples as a gap so it is shown as unknown rather than
+  // smoothed over. If none resolved, the terrain data is unavailable — return
+  // null so the chart shows an explicit offline state rather than a false
+  // sea-level baseline.
   let minElevation = Infinity;
   let maxElevation = -Infinity;
   const points: TerrainPoint[] = [];
+  const gaps: TerrainGap[] = [];
+  let gapStart: number | null = null;
 
   for (let i = 0; i < samplePoints.length; i++) {
     const elev = elevations[i];
-    if (elev === null) continue;
+    const distance = samplePoints[i].cumDist;
+    if (elev === null) {
+      if (gapStart === null) gapStart = points.length > 0 ? points[points.length - 1].distance : distance;
+      continue;
+    }
+    if (gapStart !== null) {
+      gaps.push({ startDistance: gapStart, endDistance: distance });
+      gapStart = null;
+    }
     if (elev < minElevation) minElevation = elev;
     if (elev > maxElevation) maxElevation = elev;
     points.push({
       lat: samplePoints[i].lat,
       lon: samplePoints[i].lon,
-      distance: samplePoints[i].cumDist,
+      distance,
       elevation: elev,
     });
+  }
+  if (gapStart !== null) {
+    gaps.push({ startDistance: gapStart, endDistance: samplePoints[samplePoints.length - 1].cumDist });
   }
 
   if (points.length === 0) return null;
 
-  return { points, minElevation, maxElevation };
+  return { points, gaps, minElevation, maxElevation };
 }

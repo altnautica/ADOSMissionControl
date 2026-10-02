@@ -88,7 +88,7 @@ export function usePlannerIO(deps: IODeps) {
     autoSaveChecked.current = true;
     (async () => {
       const saved = await getAutoSave();
-      if (!saved || saved.waypoints.length === 0) return;
+      if (!saved) return;
       const mission = useMissionStore.getState();
       const lib = usePlanLibraryStore.getState();
       if (mission.waypoints.length > 0 || lib.activePlanId) {
@@ -269,12 +269,19 @@ export function usePlannerIO(deps: IODeps) {
     // is NOT "no mission on the drone" — saying so would tell the operator the
     // aircraft is empty when the download simply failed, and previously the
     // short list was loaded as if it were the mission.
-    if (useMissionStore.getState().downloadState === "error") {
-      toast("Mission download failed — nothing was loaded", "error");
+    const { downloadState, downloadError, downloadWarnings } = useMissionStore.getState();
+    if (downloadState === "error") {
+      toast(
+        downloadError
+          ? `Mission download failed: ${downloadError}. Nothing was loaded`
+          : "Mission download failed — nothing was loaded",
+        "error",
+      );
       return;
     }
-    for (const warning of useMissionStore.getState().downloadWarnings) toast(warning, "warning");
-    if (downloaded.length === 0) { toast("No mission found on drone", "info"); return; }
+    for (const warning of downloadWarnings) toast(warning, "warning");
+    // The store leaves the open plan untouched when the vehicle holds nothing.
+    if (downloaded.length === 0) { toast("The vehicle has no mission", "info"); return; }
     const time = new Date().toLocaleTimeString("en-US", { hour12: false });
     const name = `Drone Mission (${time})`;
     const libStore = usePlanLibraryStore.getState();

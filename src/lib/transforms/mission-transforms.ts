@@ -37,12 +37,19 @@ type PointMap = (lat: number, lon: number) => [number, number];
 
 /**
  * Apply a point transform to every waypoint and to each attached action that
- * carries its own location.
+ * carries its own location. A moved waypoint's terrain sample described the
+ * ground at its old position, so it is dropped (the planner resamples it); a
+ * waypoint the transform leaves in place keeps its sample.
  */
 function mapPositions(waypoints: Waypoint[], f: PointMap): Waypoint[] {
   return waypoints.map((wp) => {
     const [lat, rawLon] = f(wp.lat, wp.lon);
-    const next: Waypoint = { ...wp, lat, lon: normalizeLon(rawLon) };
+    const lon = normalizeLon(rawLon);
+    const { groundElevation, ...rest } = wp;
+    const stayed = lat === wp.lat && lon === wp.lon;
+    const next: Waypoint = stayed && groundElevation !== undefined
+      ? { ...rest, lat, lon, groundElevation }
+      : { ...rest, lat, lon };
     if (wp.actions?.some((a) => a.command !== "RAW" && a.lat !== undefined && a.lon !== undefined)) {
       next.actions = wp.actions.map((a) => {
         if (a.command === "RAW" || a.lat === undefined || a.lon === undefined) return a;

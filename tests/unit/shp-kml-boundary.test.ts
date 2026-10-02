@@ -1,7 +1,8 @@
 /**
  * @module tests/unit/shp-kml-boundary
- * @description Ring extraction + lon,lat -> lat,lon swap for the KML/SHP
- * boundary importers. Fixtures are synthetic (generic coordinates only).
+ * @description Ring extraction (outer ring plus interior holes) + lon,lat ->
+ * lat,lon swap for the KML/SHP boundary importers. Fixtures are synthetic
+ * (generic coordinates only).
  * @license GPL-3.0-only
  */
 
@@ -20,7 +21,7 @@ const { zipCollection, bareGeometries } = vi.hoisted(() => {
         properties: null,
         geometry: {
           type: "Polygon",
-          // GeoJSON lon,lat, closed ring (first == last).
+          // GeoJSON lon,lat, closed rings (first == last); ring 1 is a hole.
           coordinates: [
             [
               [10, 20],
@@ -28,6 +29,12 @@ const { zipCollection, bareGeometries } = vi.hoisted(() => {
               [11, 21],
               [10, 21],
               [10, 20],
+            ],
+            [
+              [10.2, 20.2],
+              [10.4, 20.2],
+              [10.4, 20.4],
+              [10.2, 20.2],
             ],
           ],
         },
@@ -100,6 +107,13 @@ const KML_POLYGON = `<?xml version="1.0" encoding="UTF-8"?>
             </coordinates>
           </LinearRing>
         </outerBoundaryIs>
+        <innerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              10.2,20.2,0 10.4,20.2,0 10.4,20.4,0 10.2,20.2,0
+            </coordinates>
+          </LinearRing>
+        </innerBoundaryIs>
       </Polygon>
     </Placemark>
   </Document>
@@ -115,16 +129,22 @@ const KML_POINT_ONLY = `<?xml version="1.0" encoding="UTF-8"?>
 </kml>`;
 
 describe("parseKmlBoundary", () => {
-  it("extracts a polygon ring and swaps lon,lat to lat,lon", () => {
-    const rings = parseKmlBoundary(KML_POLYGON);
-    expect(rings).toHaveLength(1);
+  it("extracts a polygon ring with its hole and swaps lon,lat to lat,lon", () => {
+    const boundaries = parseKmlBoundary(KML_POLYGON);
+    expect(boundaries).toHaveLength(1);
     // KML lon,lat (10,20) -> our lat,lon (20,10); closing vertex dropped.
-    expect(rings[0]).toEqual([
+    expect(boundaries[0].outer).toEqual([
       [20, 10],
       [20, 11],
       [21, 11],
       [21, 10],
     ]);
+    // The interior ring is kept, not silently merged into a solid boundary.
+    expect(boundaries[0].holes).toEqual([[
+      [20.2, 10.2],
+      [20.2, 10.4],
+      [20.4, 10.4],
+    ]]);
   });
 
   it("returns an empty array when there is no polygon", () => {
@@ -133,31 +153,42 @@ describe("parseKmlBoundary", () => {
 });
 
 describe("parseShapefile", () => {
-  it("extracts a zipped-bundle polygon ring and swaps lon,lat to lat,lon", async () => {
-    const rings = await parseShapefile(zipBuffer());
-    expect(rings).toHaveLength(1);
+  it("extracts a zipped-bundle polygon with its hole, swapping lon,lat to lat,lon", async () => {
+    const boundaries = await parseShapefile(zipBuffer());
+    expect(boundaries).toHaveLength(1);
     // GeoJSON lon,lat (10,20) -> our lat,lon (20,10); closing vertex dropped.
-    expect(rings[0]).toEqual([
+    expect(boundaries[0].outer).toEqual([
       [20, 10],
       [20, 11],
       [21, 11],
       [21, 10],
     ]);
+    expect(boundaries[0].holes).toEqual([[
+      [20.2, 10.2],
+      [20.2, 10.4],
+      [20.4, 10.4],
+    ]]);
   });
 
-  it("extracts every sub-polygon ring from a bare .shp MultiPolygon, swapped", async () => {
-    const rings = await parseShapefile(bareShpBuffer());
-    expect(rings).toHaveLength(2);
-    expect(rings[0]).toEqual([
-      [40, 30],
-      [40, 31],
-      [41, 31],
-    ]);
-    expect(rings[1]).toEqual([
-      [60, 50],
-      [60, 51],
-      [61, 51],
-    ]);
+  it("extracts every sub-polygon from a bare .shp MultiPolygon, swapped", async () => {
+    const boundaries = await parseShapefile(bareShpBuffer());
+    expect(boundaries).toHaveLength(2);
+    expect(boundaries[0]).toEqual({
+      outer: [
+        [40, 30],
+        [40, 31],
+        [41, 31],
+      ],
+      holes: [],
+    });
+    expect(boundaries[1]).toEqual({
+      outer: [
+        [60, 50],
+        [60, 51],
+        [61, 51],
+      ],
+      holes: [],
+    });
   });
 
   it("refuses a bare .shp in projected coordinates instead of returning off-planet rings", async () => {

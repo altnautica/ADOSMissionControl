@@ -109,6 +109,7 @@ describe("plan-attached POIs", () => {
       folderId: null,
       waypoints: [],
       metadata: {},
+      frame: "relative",
       createdAt: 0,
       updatedAt: 0,
     };

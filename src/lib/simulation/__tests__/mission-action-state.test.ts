@@ -26,7 +26,7 @@ function appliedSurvey(triggerDistance: number): Waypoint[] {
     altitude: 50,
     speed: 5,
   });
-  return patternToMission(result.waypoints, "relative");
+  return patternToMission(result.waypoints);
 }
 
 describe("mission action state", () => {

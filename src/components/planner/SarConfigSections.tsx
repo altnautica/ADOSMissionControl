@@ -56,7 +56,7 @@ export function SarExpandingSquareConfig() {
       <Input label={t("startBearing")} type="number" unit="deg" value={String(config.startBearing ?? 0)}
         onChange={(e) => update({ startBearing: parseFloat(e.target.value) || 0 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitude")} type="number" unit="m" value={String(config.altitude ?? 50)}
+        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(config.altitude ?? 50)}
           onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
         <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
           onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />
@@ -83,7 +83,7 @@ export function SarSectorSearchConfig() {
       <Input label={t("startBearing")} type="number" unit="deg" value={String(config.startBearing ?? 0)}
         onChange={(e) => update({ startBearing: parseFloat(e.target.value) || 0 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitude")} type="number" unit="m" value={String(config.altitude ?? 50)}
+        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(config.altitude ?? 50)}
           onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
         <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
           onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />
@@ -112,7 +112,7 @@ export function SarParallelTrackConfig() {
       <Input label={t("bearing")} type="number" unit="deg" value={String(config.bearing ?? 0)}
         onChange={(e) => update({ bearing: parseFloat(e.target.value) || 0 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitude")} type="number" unit="m" value={String(config.altitude ?? 50)}
+        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(config.altitude ?? 50)}
           onChange={(e) => update({ altitude: parseFloat(e.target.value) || 50 })} />
         <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 5)}
           onChange={(e) => update({ speed: parseFloat(e.target.value) || 5 })} />

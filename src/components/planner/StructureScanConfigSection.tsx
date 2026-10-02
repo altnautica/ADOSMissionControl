@@ -33,9 +33,9 @@ export function StructureScanConfig() {
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Input label={t("bottomAlt")} type="number" unit="m" value={String(config.bottomAlt ?? 10)}
+        <Input label={`${t("bottomAlt")} (${t("aboveHome")})`} type="number" unit="m" value={String(config.bottomAlt ?? 10)}
           onChange={(e) => update({ bottomAlt: parseFloat(e.target.value) || 10 })} />
-        <Input label={t("topAlt")} type="number" unit="m" value={String(config.topAlt ?? 50)}
+        <Input label={`${t("topAlt")} (${t("aboveHome")})`} type="number" unit="m" value={String(config.topAlt ?? 50)}
           onChange={(e) => update({ topAlt: parseFloat(e.target.value) || 50 })} />
       </div>
       <Input label={t("layerSpacing")} type="number" unit="m" value={String(config.layerSpacing ?? 10)}

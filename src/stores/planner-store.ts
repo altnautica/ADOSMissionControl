@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { PlannerTool, AltitudeFrame } from "@/lib/types/mission";
 import { indexedDBStorage } from "@/lib/storage";
+import { PLANNER_STORE_KEY } from "@/lib/mission/mission-frame";
 import {
   type PlannerMode,
   type DatumPattern,
@@ -210,7 +211,7 @@ export const usePlannerStore = create<PlannerStoreState>()(
   return state;
     },
     {
-      name: "altcmd:planner-store",
+      name: PLANNER_STORE_KEY,
       storage: createJSONStorage(indexedDBStorage.storage),
       version: 2,
       partialize: (state) => ({

@@ -65,9 +65,12 @@ describe("plan-share round-trip", () => {
 
   it("carries geofence + rally extras when present", () => {
     const file = buildMissionFile(WPS, META, {
-      geofence: { enabled: true, fenceType: "circle", circleCenter: [12.5, 77.5], circleRadius: 100 },
+      geofence: {
+        enabled: true, fenceType: "circle", maxAltitude: 120, minAltitude: 0, breachAction: "RTL",
+        circleCenter: [12.5, 77.5], circleRadius: 100, polygonPoints: [], zones: [],
+      },
       rally: [{ id: "r1", lat: 12.5, lon: 77.5, alt: 40 }],
-    } as never);
+    });
     const decoded = decodePlan(encodePlan(file));
     expect(decoded!.geofence).toBeDefined();
     expect(decoded!.rally).toHaveLength(1);

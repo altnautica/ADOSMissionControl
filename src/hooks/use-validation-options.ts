@@ -15,6 +15,11 @@
  * terrain — and `resolveWaypointAltitude` would treat it as 120 m above home, so
  * the TERRAIN_CLEARANCE rule would pass clean. Options are always returned,
  * even with no fence and no rally, so the frame is never discarded.
+ *
+ * The hook also passes the vehicle's telemetry home (with its own terrain
+ * sample) and its configured RTL altitude when they are known, so relative
+ * altitudes resolve against the launch site's ground and the RTL return
+ * altitude rule runs against the real value.
  * @license GPL-3.0-only
  */
 "use client";
@@ -25,6 +30,7 @@ import { useRallyStore, type RallyPoint } from "@/stores/rally-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import type { AltitudeFrame } from "@/lib/types";
 import type { ValidationOptions } from "@/lib/validation/mission-validator";
+import { useRtlReturnContext } from "@/hooks/use-rtl-return-context";
 
 /** The store fields the validation options are derived from. */
 export interface ValidationOptionsSnapshot {
@@ -98,10 +104,11 @@ export function useValidationOptions(): ValidationOptions {
   const zones = useGeofenceStore((s) => s.zones);
   const rallyPoints = useRallyStore((s) => s.points);
   const defaultFrame = usePlannerStore((s) => s.defaultFrame);
+  const { home, rtlAltitude } = useRtlReturnContext();
 
   return useMemo(
-    () =>
-      buildValidationOptions({
+    () => ({
+      ...buildValidationOptions({
         enabled,
         fenceType,
         maxAltitude,
@@ -113,6 +120,9 @@ export function useValidationOptions(): ValidationOptions {
         rallyPoints,
         defaultFrame,
       }),
-    [enabled, fenceType, maxAltitude, minAltitude, polygonPoints, circleCenter, circleRadius, zones, rallyPoints, defaultFrame],
+      home,
+      rtlAltitude,
+    }),
+    [enabled, fenceType, maxAltitude, minAltitude, polygonPoints, circleCenter, circleRadius, zones, rallyPoints, defaultFrame, home, rtlAltitude],
   );
 }

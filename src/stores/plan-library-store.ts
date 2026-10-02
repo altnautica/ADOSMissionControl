@@ -7,14 +7,17 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { SavedPlan, PlanMetadata, PlanFolder, Waypoint } from "@/lib/types";
+import type { SavedPlan, PlanMetadata, PlanFolder, Waypoint, AltitudeFrame } from "@/lib/types";
 import type { GeofenceSnapshot } from "@/stores/geofence-store";
 import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
 import { indexedDBStorage } from "@/lib/storage";
 import { foldLegacyWaypoints } from "@/lib/mission/flat-rows";
 import { migrateWaypointSlots } from "@/lib/mission/waypoint-slot-migration";
+import { readPersistedDefaultFrame, stampWaypointFrames, isAltitudeFrame } from "@/lib/mission/mission-frame";
+import { DEFAULT_ALTITUDE_FRAME } from "@/lib/mission/altitude-frame";
 import { planSnapshotString } from "@/lib/plan-snapshot";
+import { usePlannerStore } from "@/stores/planner-store";
 
 /** Fence + rally + POI geometry captured alongside a plan's waypoints on save. */
 export interface PlanExtras {
@@ -34,6 +37,9 @@ export interface PlanExtras {
  * - v5 maps the iNav action onto `command` and moves the LOITER_TURNS /
  *   PAYLOAD_PLACE editor values into the slots that reach the right MAVLink
  *   parameter.
+ * - v6 records the altitude frame on each plan and on each frameless
+ *   waypoint: `defaultFrame` is the planner default in effect when the plans
+ *   were saved.
  *
  * The v2/v3 fields are optional, so a pre-migration plan simply reads them as
  * `undefined` with no transform. v4 is the first branch that rewrites data.
@@ -41,6 +47,7 @@ export interface PlanExtras {
 export function migratePlanLibrary(
   persisted: unknown,
   version: number,
+  defaultFrame: AltitudeFrame = DEFAULT_ALTITUDE_FRAME,
 ): PlanLibraryState {
   const state = persisted as PlanLibraryState;
   if (version < 3) {
@@ -65,6 +72,16 @@ export function migratePlanLibrary(
         ? { ...plan, waypoints: migrateWaypointSlots(plan.waypoints) }
         : plan,
     );
+  }
+  if (version < 6 && Array.isArray(state.plans)) {
+    state.plans = state.plans.map((plan) => {
+      const frame = isAltitudeFrame(plan.frame) ? plan.frame : defaultFrame;
+      return {
+        ...plan,
+        frame,
+        waypoints: Array.isArray(plan.waypoints) ? stampWaypointFrames(plan.waypoints, frame) : plan.waypoints,
+      };
+    });
   }
   return state;
 }
@@ -137,6 +154,7 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
           folderId: null,
           waypoints: waypoints || [],
           metadata: metadata || {},
+          frame: usePlannerStore.getState().defaultFrame,
           geofence: extras?.geofence,
           rally: extras?.rally,
           pois: extras?.pois,
@@ -160,6 +178,7 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
                   ...p,
                   waypoints,
                   metadata: metadata ? { ...p.metadata, ...metadata } : p.metadata,
+                  frame: usePlannerStore.getState().defaultFrame,
                   // Only overwrite fence/rally/poi when a capture was passed, so
                   // a waypoints-only save never wipes them.
                   geofence: extras ? extras.geofence : p.geofence,
@@ -263,7 +282,7 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
     {
       name: "altcmd:plan-library",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 5,
+      version: 6,
       partialize: (state) => ({
         plans: state.plans,
         folders: state.folders,
@@ -273,7 +292,8 @@ export const usePlanLibraryStore = create<PlanLibraryState>()(
         sortDirection: state.sortDirection,
         expandedFolders: state.expandedFolders,
       }),
-      migrate: (persisted, version) => migratePlanLibrary(persisted, version),
+      migrate: async (persisted, version) =>
+        migratePlanLibrary(persisted, version, await readPersistedDefaultFrame()),
     }
   )
 );

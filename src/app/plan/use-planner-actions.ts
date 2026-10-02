@@ -22,11 +22,9 @@ import { clampLat, clampLon, clampAlt } from "./use-planner-state";
 import type { ContextMenuState } from "./use-planner-state";
 import type { Waypoint } from "@/lib/types";
 import { patternToMission } from "@/lib/patterns/pattern-to-mission";
-import { sampleGroundElevations } from "@/lib/mission/sample-ground-elevations";
 import type { DrawnPolygon, DrawnCircle } from "@/lib/drawing/types";
 import type { DrawingFor } from "@/lib/planner-mode";
 import { datumPatternFor } from "@/lib/planner-mode";
-import { getElevation } from "@/lib/terrain/terrain-provider";
 
 interface ActionsDeps {
   waypoints: Waypoint[];
@@ -80,16 +78,12 @@ const TOOL_COMMAND_MAP: Record<string, Waypoint["command"]> = {
   loiter: "LOITER_TIME",
 };
 
-/** Fire-and-forget terrain elevation lookup for a waypoint. */
-function fetchGroundElevation(wpId: string, lat: number, lon: number): void {
-  getElevation(lat, lon).then((elev) => {
-    // `null` means the lookup failed; a real 0 m (sea level) is a valid sample,
-    // so the guard is on null — not on `!== 0`, which dropped coastal points.
-    if (elev !== null) {
-      useMissionStore.getState().updateWaypoint(wpId, { groundElevation: elev });
-    }
-  }).catch(() => { /* offline / API error — leave groundElevation unset */ });
-}
+/**
+ * The frame a newly placed waypoint is stamped with: the planner default at the
+ * moment of placement. Stored on the waypoint so a later change of the default
+ * never changes what this altitude means.
+ */
+const placementFrame = () => usePlannerStore.getState().defaultFrame;
 
 /**
  * Attach an ROI action to a navigation waypoint. ROI is a non-navigation
@@ -176,10 +170,10 @@ export function usePlannerActions(deps: ActionsDeps) {
       const wp: Waypoint = {
         id: randomId(), lat: clampLat(lat), lon: clampLon(lon),
         alt: command === "LAND" ? 0 : clampAlt(defaultAlt), speed: defaultSpeed, command,
+        frame: placementFrame(),
         ...acceptRadiusDefault(command, defaultAcceptRadius),
       };
       addWaypoint(wp);
-      fetchGroundElevation(wp.id, wp.lat, wp.lon);
     },
     [activePlanId, activeTool, addWaypoint, addRallyPoint, defaultAlt, defaultSpeed, defaultAcceptRadius, toast, waypoints]
   );
@@ -231,13 +225,13 @@ export function usePlannerActions(deps: ActionsDeps) {
       }
       const makeWp = (cmd: Waypoint["command"]): Waypoint => ({
         id: randomId(), lat: clampLat(lat ?? 0), lon: clampLon(lon ?? 0),
-        alt: cmd === "LAND" ? 0 : clampAlt(defaultAlt), command: cmd,
+        alt: cmd === "LAND" ? 0 : clampAlt(defaultAlt), command: cmd, frame: placementFrame(),
         ...acceptRadiusDefault(cmd ?? "WAYPOINT", defaultAcceptRadius),
       });
       switch (actionId) {
-        case "add-wp": { const w = makeWp("WAYPOINT"); addWaypoint(w); fetchGroundElevation(w.id, w.lat, w.lon); break; }
-        case "add-takeoff": { const w = makeWp("TAKEOFF"); addWaypoint(w); fetchGroundElevation(w.id, w.lat, w.lon); break; }
-        case "add-land": { const w = makeWp("LAND"); addWaypoint(w); fetchGroundElevation(w.id, w.lat, w.lon); break; }
+        case "add-wp": addWaypoint(makeWp("WAYPOINT")); break;
+        case "add-takeoff": addWaypoint(makeWp("TAKEOFF")); break;
+        case "add-land": addWaypoint(makeWp("LAND")); break;
         // ROI is an action, not a navigation command: it attaches to the last
         // waypoint instead of becoming a top-level row the FC mis-sequences.
         case "add-roi": {
@@ -266,11 +260,10 @@ export function usePlannerActions(deps: ActionsDeps) {
           const ref = waypoints[idx];
           const newWp: Waypoint = {
             id: randomId(), lat: clampLat(ref.lat + 0.0005), lon: clampLon(ref.lon + 0.0005),
-            alt: clampAlt(defaultAlt), command: "WAYPOINT",
+            alt: clampAlt(defaultAlt), command: "WAYPOINT", frame: placementFrame(),
             ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
           };
           insertWaypoint(newWp, actionId === "insert-before" ? idx : idx + 1);
-          fetchGroundElevation(newWp.id, newWp.lat, newWp.lon);
           break;
         }
         case "delete-wp": if (waypointId) removeWaypoint(waypointId); break;
@@ -293,8 +286,9 @@ export function usePlannerActions(deps: ActionsDeps) {
 
   const handleWaypointDragEnd = useCallback(
     (id: string, lat: number, lon: number) => {
+      // The store drops the moved waypoint's old terrain sample; the terrain
+      // sync resamples the new position.
       setWaypoints(waypoints.map((wp) => wp.id === id ? { ...wp, lat: clampLat(lat), lon: clampLon(lon) } : wp));
-      fetchGroundElevation(id, clampLat(lat), clampLon(lon));
     },
     [waypoints, setWaypoints]
   );
@@ -337,8 +331,9 @@ export function usePlannerActions(deps: ActionsDeps) {
 
   const handleUpload = useCallback(async () => {
     const ok = await uploadMission();
-    if (ok) toast("Mission uploaded to FC", "success");
-    else toast("Mission upload failed — check the connection and try again", "error");
+    if (ok) { toast("Mission uploaded to FC", "success"); return; }
+    const reason = useMissionStore.getState().uploadError;
+    toast(reason ? `Mission upload failed: ${reason}` : "Mission upload failed", "error");
   }, [uploadMission, toast]);
 
   const handleDrawingComplete = useCallback(
@@ -424,13 +419,12 @@ export function usePlannerActions(deps: ActionsDeps) {
     if (!activePlanId) { toast("Create or select a flight plan first", "info"); return; }
 
     // One converter shared with the mission templates: actions fold onto the
-    // navigation waypoint they follow, every waypoint carries the mission's
-    // default frame explicitly (so a `terrain` default is never re-read as
-    // above-home by an export), and TAKEOFF / RTL bookend the mission.
-    const newWaypoints = patternToMission(result.waypoints, usePlannerStore.getState().defaultFrame);
+    // navigation waypoint they follow, every waypoint carries the frame the
+    // generator's altitudes are measured in (above home), and TAKEOFF / RTL
+    // bookend the mission. The terrain sync samples the new waypoints.
+    const newWaypoints = patternToMission(result.waypoints);
     if (newWaypoints.length === 0) { toast("Pattern produced no navigation waypoints", "warning"); return; }
     setWaypoints(newWaypoints);
-    sampleGroundElevations(newWaypoints);
     patternStore.clear();
     const stats = result.stats;
     const distStr = stats.totalDistance >= 1000 ? `${(stats.totalDistance / 1000).toFixed(1)} km` : `${Math.round(stats.totalDistance)} m`;
@@ -461,10 +455,10 @@ export function usePlannerActions(deps: ActionsDeps) {
     const wp: Waypoint = {
       id: randomId(), lat: clampLat(lastWp ? lastWp.lat + 0.001 : DEFAULT_CENTER[0]),
       lon: clampLon(lastWp ? lastWp.lon + 0.001 : DEFAULT_CENTER[1]), alt: clampAlt(defaultAlt), command: "WAYPOINT",
+      frame: placementFrame(),
       ...acceptRadiusDefault("WAYPOINT", defaultAcceptRadius),
     };
     addWaypoint(wp);
-    fetchGroundElevation(wp.id, wp.lat, wp.lon);
   }, [activePlanId, waypoints, addWaypoint, defaultAlt, defaultAcceptRadius, toast]);
 
   return {

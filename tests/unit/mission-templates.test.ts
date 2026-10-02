@@ -9,7 +9,7 @@ const BANGALORE: [number, number] = [12.9716, 77.5946];
 const LONDON: [number, number] = [51.5074, -0.1278];
 
 function ctxAt(center: [number, number], boundary?: [number, number][]): MissionTemplateContext {
-  return { center, boundary, altitude: 60, speed: 6, frame: "relative" };
+  return { center, boundary, altitude: 60, speed: 6 };
 }
 
 /** Every generated waypoint sits within `tol` degrees of the context center. */
@@ -75,12 +75,11 @@ describe("MISSION_TEMPLATES", () => {
         expect(cruise.some((w) => w.alt === 60)).toBe(true);
       });
 
-      it("builds a mission the validator accepts, in the mission frame", () => {
-        const ctx: MissionTemplateContext = { ...ctxAt(BANGALORE), frame: "terrain" };
-        const waypoints = tpl.build(ctx);
-        const result = validateMission(waypoints, { defaultFrame: ctx.frame });
+      it("builds a mission the validator accepts, above home", () => {
+        const waypoints = tpl.build(ctxAt(BANGALORE));
+        const result = validateMission(waypoints, { defaultFrame: "absolute" });
         expect(result.errors.map((e) => `${e.code}: ${e.message}`)).toEqual([]);
-        expect(waypoints.every((w) => w.frame === "terrain")).toBe(true);
+        expect(waypoints.every((w) => w.frame === "relative")).toBe(true);
       });
     });
   }

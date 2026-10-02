@@ -22,7 +22,7 @@ import type { RallyPoint } from "@/stores/rally-store";
 import type { PointOfInterest } from "@/stores/plan-poi-store";
 import { parseKML } from "@/lib/formats/kml-parser";
 import { parseKMZ } from "@/lib/formats/kmz-handler";
-import { parseKmlBoundary } from "@/lib/formats/kml-boundary";
+import { parseKmlBoundary, type BoundaryPolygon } from "@/lib/formats/kml-boundary";
 import { parseShapefile } from "@/lib/formats/shp-import";
 import { exportKML, exportKMZ } from "@/lib/formats/kml-exporter";
 import { downloadCSV, parseCSV } from "@/lib/formats/csv-handler";
@@ -177,11 +177,34 @@ let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 /** The payload the pending timer would write, so it can be flushed early. */
 let pendingAutoSave: MissionFile | null = null;
 
-/** Write the debounced snapshot. Storage failures are non-fatal by design. */
-function writeAutoSave(data: MissionFile): Promise<void> {
-  return set(AUTOSAVE_KEY, data).catch(() => {});
+type AutoSaveFailureListener = (err: unknown) => void;
+const autoSaveFailureListeners = new Set<AutoSaveFailureListener>();
+/** True after a failed write until the next one succeeds; only the first failure is reported. */
+let autoSaveFailing = false;
+
+/**
+ * Be told when the planner autosave could not be written (storage full or
+ * blocked). Reported once per run of failures, again only after a write has
+ * succeeded in between. Returns the unsubscribe function.
+ */
+export function onAutoSaveFailure(listener: AutoSaveFailureListener): () => void {
+  autoSaveFailureListeners.add(listener);
+  return () => {
+    autoSaveFailureListeners.delete(listener);
+  };
 }
 
+/** Write the debounced snapshot. A failure is reported, never thrown. */
+async function writeAutoSave(data: MissionFile): Promise<void> {
+  try {
+    await set(AUTOSAVE_KEY, data);
+    autoSaveFailing = false;
+  } catch (err) {
+    if (autoSaveFailing) return;
+    autoSaveFailing = true;
+    for (const listener of autoSaveFailureListeners) listener(err);
+  }
+}
 
 export function autoSave(
   waypoints: Waypoint[],
@@ -234,12 +257,24 @@ export function cancelAutoSave(): void {
   pendingAutoSave = null;
 }
 
-/** Get auto-saved mission data. */
+/**
+ * Get auto-saved mission data: null when there is none or it holds nothing.
+ * A fence, rally points or POIs drawn before any waypoint are work too, so an
+ * autosave with any of them is returned.
+ */
 export async function getAutoSave(): Promise<MissionFile | null> {
   try {
     const data = await get<MissionFile>(AUTOSAVE_KEY);
-    if (!data || !data.waypoints?.length) return null;
-    return migrateMissionFile(data);
+    if (!data) return null;
+    const fence = data.geofence;
+    const hasContent =
+      (data.waypoints?.length ?? 0) > 0 ||
+      (fence !== undefined &&
+        ((fence.zones?.length ?? 0) > 0 || (fence.polygonPoints?.length ?? 0) > 0 || fence.circleCenter !== null)) ||
+      (data.rally?.length ?? 0) > 0 ||
+      (data.pois?.length ?? 0) > 0;
+    if (!hasContent) return null;
+    return migrateMissionFile({ ...data, waypoints: data.waypoints ?? [] });
   } catch {
     return null;
   }
@@ -272,18 +307,20 @@ export async function importMissionFile(file: File): Promise<ImportedMission> {
 
   if (ext === "kml") {
     const text = await file.text();
-    const result = parseKML(text);
-    return { waypoints: result.waypoints };
+    const result = parseKML(text, { defaultAlt: usePlannerStore.getState().defaultAlt });
+    return { waypoints: result.waypoints, warnings: result.warnings };
   }
 
   if (ext === "kmz") {
-    const result = await parseKMZ(file);
-    return { waypoints: result.waypoints };
+    const result = await parseKMZ(file, { defaultAlt: usePlannerStore.getState().defaultAlt });
+    return { waypoints: result.waypoints, warnings: result.warnings };
   }
 
   if (ext === "csv") {
     const text = await file.text();
-    return { waypoints: parseCSV(text) };
+    const warnings: string[] = [];
+    const waypoints = parseCSV(text, warnings);
+    return { waypoints, warnings };
   }
 
   // Default: try .altmission / .json
@@ -305,18 +342,19 @@ export async function importMissionFile(file: File): Promise<ImportedMission> {
 // ── Boundary import (KML / KMZ / shapefile) ─────────────────
 
 /**
- * Import a boundary polygon from a KML/KMZ file or an ESRI shapefile (a zipped
- * `.zip` bundle or a bare `.shp`). Returns the polygon rings as `[lat, lon]`
- * pairs — distinct from mission waypoints — so the caller can drop them into the
- * drawing store as survey boundaries. Returns an empty array when the file
- * carries no polygon (never a fabricated shape). Throws on an unsupported
- * extension, and `ShapefileNotGeographicError` when a shapefile's coordinates
- * are projected rather than latitude/longitude.
+ * Import boundary polygons from a KML/KMZ file or an ESRI shapefile (a zipped
+ * `.zip` bundle or a bare `.shp`). Returns each polygon's outer ring and its
+ * interior rings (holes) as `[lat, lon]` pairs — distinct from mission
+ * waypoints — so the caller can drop them into the drawing store as survey
+ * boundaries and keep-out areas. Returns an empty array when the file carries
+ * no polygon (never a fabricated shape). Throws on an unsupported extension,
+ * and `ShapefileNotGeographicError` when a shapefile's coordinates are
+ * projected rather than latitude/longitude.
  *
  * @param file Uploaded KML/KMZ/ZIP/SHP file.
- * @returns Boundary rings, `[lat, lon][]` each; empty when none found.
+ * @returns Boundaries with their holes; empty when none found.
  */
-export async function importBoundaryFile(file: File): Promise<[number, number][][]> {
+export async function importBoundaryFile(file: File): Promise<BoundaryPolygon[]> {
   const ext = file.name.split(".").pop()?.toLowerCase();
 
   if (ext === "kml") {
@@ -326,7 +364,7 @@ export async function importBoundaryFile(file: File): Promise<[number, number][]
 
   if (ext === "kmz") {
     const result = await parseKMZ(file);
-    return result.polygons;
+    return result.polygons.map((outer, i) => ({ outer, holes: result.polygonHoles[i] ?? [] }));
   }
 
   if (ext === "zip" || ext === "shp") {

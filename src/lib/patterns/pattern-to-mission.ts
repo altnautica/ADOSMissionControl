@@ -6,10 +6,16 @@
  * (ROI, camera trigger). The mission model carries an action on the
  * navigation waypoint it follows, which is where the wire sequences it, so
  * each action folds onto the preceding navigation row. An action that comes
- * before every navigation row rides the first one. Every waypoint carries the
- * mission frame explicitly, a TAKEOFF is added in front when the pattern does
- * not start with one, and an RTL is added at the end unless the pattern
- * already ends on the ground (LAND, VTOL_LAND) or with an RTL.
+ * before every navigation row rides the first one. A TAKEOFF is added in front
+ * when the pattern does not start with one, and an RTL is added at the end
+ * unless the pattern already ends on the ground (LAND, VTOL_LAND) or with an
+ * RTL.
+ *
+ * Every waypoint is stamped `relative` (above home), whatever the planner's
+ * default frame: generator altitudes are heights above the launch ground (the
+ * GSD and glide-slope math assume it), so writing them as `absolute` would put
+ * a 60 m survey at 60 m above sea level and a LAND at 0 m MSL. A LAND row at
+ * 0 m relative touches down at home ground level.
  *
  * Used by both the pattern apply and the mission templates, so the two always
  * produce the same mission for the same generator output.
@@ -31,11 +37,15 @@ import { randomId } from "@/lib/utils";
 /** Navigation commands after which the mission needs no RTL. */
 const MISSION_END_COMMANDS: ReadonlySet<WaypointCommand> = new Set<WaypointCommand>(["LAND", "VTOL_LAND", "RTL"]);
 
+/** The frame generator altitudes are measured in: above home. */
+export const PATTERN_ALTITUDE_FRAME: AltitudeFrame = "relative";
+
 /**
  * Convert generator rows into a flyable mission. Returns an empty array when
  * the rows contain no navigation point.
  */
-export function patternToMission(rows: readonly PatternWaypoint[], frame: AltitudeFrame): Waypoint[] {
+export function patternToMission(rows: readonly PatternWaypoint[]): Waypoint[] {
+  const frame = PATTERN_ALTITUDE_FRAME;
   const waypoints: Waypoint[] = [];
   /** Actions seen before the first navigation row. */
   const leading: CommandMissionAction[] = [];

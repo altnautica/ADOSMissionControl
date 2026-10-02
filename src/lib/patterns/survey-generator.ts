@@ -6,22 +6,22 @@
  * 1. Rotate polygon so the grid aligns with the desired angle
  * 2. Compute bounding box of rotated polygon
  * 3. Generate parallel horizontal transects at lineSpacing intervals
- * 4. Clip each transect to the rotated polygon boundary
- * 5. Order transects in boustrophedon (serpentine) pattern
- * 6. Rotate waypoints back to original orientation
- * 7. Add turn-around overshoot, entry location, camera triggers
+ * 4. Clip each transect to the rotated polygon boundary and split it around
+ *    exclusion (keep-out) holes
+ * 5. Order scan lines in boustrophedon (serpentine) pattern; the pieces of a
+ *    split scan line are flown in one direction
+ * 6. Route every transit leg that would cross a keep-out hole around the
+ *    hole's boundary
+ * 7. Rotate waypoints back to original orientation
+ * 8. Add turn-around overshoot, entry location, and camera triggers that run
+ *    only inside the boundary
  *
  * @license GPL-3.0-only
  */
 
 import type { SurveyConfig, PatternResult, PatternWaypoint } from "./types";
-import {
-  bearing,
-  offsetPoint,
-  polygonArea,
-  polygonCentroid,
-} from "@/lib/drawing/geo-utils";
-import { EARTH_RADIUS_M, haversineDistance, pointInPolygon } from "@/lib/geo/distance";
+import { polygonArea, polygonCentroid } from "@/lib/drawing/geo-utils";
+import { EARTH_RADIUS_M, haversineDistance, lonDelta, normalizeLon, pointInPolygon } from "@/lib/geo/distance";
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
@@ -38,7 +38,7 @@ function toLocal(
   cosRef: number
 ): [number, number] {
   return [
-    (lon - refLon) * DEG_TO_RAD * EARTH_RADIUS_M * cosRef,
+    lonDelta(refLon, lon) * DEG_TO_RAD * EARTH_RADIUS_M * cosRef,
     (lat - refLat) * DEG_TO_RAD * EARTH_RADIUS_M,
   ];
 }
@@ -52,7 +52,7 @@ function toGeo(
 ): [number, number] {
   return [
     refLat + (y / EARTH_RADIUS_M) * RAD_TO_DEG,
-    refLon + (x / (EARTH_RADIUS_M * cosRef)) * RAD_TO_DEG,
+    normalizeLon(refLon + (x / (EARTH_RADIUS_M * cosRef)) * RAD_TO_DEG),
   ];
 }
 
@@ -139,6 +139,111 @@ function subtractHoleIntervals(
   return out;
 }
 
+// ── Keep-out routing ─────────────────────────────────────────
+// A transit leg between two transect pieces (or between scan lines) must not
+// cut through a keep-out hole. A leg that would is replaced by a walk along the
+// hole's boundary, the shorter way round.
+
+type XY = [number, number];
+
+const cross2 = (ax: number, ay: number, bx: number, by: number): number => ax * by - ay * bx;
+
+/** Even-odd point-in-ring test in local metres. */
+function insideRing(p: XY, ring: readonly XY[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Where segment p→q meets the ring's edges, as `t` along the segment, sorted. */
+function ringCrossings(p: XY, q: XY, ring: readonly XY[]): { t: number; edge: number }[] {
+  const EPS = 1e-9;
+  const dx = q[0] - p[0];
+  const dy = q[1] - p[1];
+  const hits: { t: number; edge: number }[] = [];
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    const ex = b[0] - a[0];
+    const ey = b[1] - a[1];
+    const denom = cross2(dx, dy, ex, ey);
+    if (Math.abs(denom) < 1e-12) continue; // parallel: never a crossing
+    const apx = a[0] - p[0];
+    const apy = a[1] - p[1];
+    const t = cross2(apx, apy, ex, ey) / denom;
+    const u = cross2(apx, apy, dx, dy) / denom;
+    if (t < -EPS || t > 1 + EPS || u < -EPS || u > 1 + EPS) continue;
+    hits.push({ t: Math.min(1, Math.max(0, t)), edge: i });
+  }
+  hits.sort((m, n) => m.t - n.t);
+  return hits.filter((h, i) => i === 0 || h.t - hits[i - 1].t > EPS);
+}
+
+const lerpXY = (p: XY, q: XY, t: number): XY => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+const distXY = (p: XY, q: XY): number => Math.hypot(q[0] - p[0], q[1] - p[1]);
+
+/** Ring vertices walked from a point on edge `from` to a point on edge `to`, the shorter way. */
+function boundaryWalk(ring: readonly XY[], e1: XY, from: number, e2: XY, to: number): XY[] {
+  const n = ring.length;
+  if (from === to) return [];
+  const forward: XY[] = [];
+  for (let k = (from + 1) % n; ; k = (k + 1) % n) {
+    forward.push(ring[k]);
+    if (k === to) break;
+  }
+  const backward: XY[] = [];
+  for (let k = from; ; k = (k - 1 + n) % n) {
+    backward.push(ring[k]);
+    if (k === (to + 1) % n) break;
+  }
+  const pathLength = (pts: XY[]) => {
+    let len = distXY(e1, pts[0]) + distXY(pts[pts.length - 1], e2);
+    for (let i = 1; i < pts.length; i++) len += distXY(pts[i - 1], pts[i]);
+    return len;
+  };
+  return pathLength(forward) <= pathLength(backward) ? forward : backward;
+}
+
+/**
+ * Intermediate points that take the leg p→q around every keep-out ring it
+ * would cross (p and q themselves are not included). Empty when the straight
+ * leg is clear.
+ */
+function routeAroundHoles(p: XY, q: XY, rings: readonly XY[][]): XY[] {
+  const out: XY[] = [];
+  let from = p;
+  for (let guard = 0; guard <= rings.length * 2; guard++) {
+    let best: { ring: readonly XY[]; enter: { t: number; edge: number }; exit: { t: number; edge: number } } | null = null;
+    for (const ring of rings) {
+      const hits = ringCrossings(from, q, ring);
+      let first = -1;
+      let last = -1;
+      for (let i = 0; i + 1 < hits.length; i++) {
+        if (insideRing(lerpXY(from, q, (hits[i].t + hits[i + 1].t) / 2), ring)) {
+          if (first === -1) first = i;
+          last = i + 1;
+        }
+      }
+      if (first === -1) continue;
+      if (!best || hits[first].t < best.enter.t) best = { ring, enter: hits[first], exit: hits[last] };
+    }
+    if (!best) break;
+    const e1 = lerpXY(from, q, best.enter.t);
+    const e2 = lerpXY(from, q, best.exit.t);
+    if (distXY(e1, from) > 1e-6) out.push(e1);
+    out.push(...boundaryWalk(best.ring, e1, best.enter.edge, e2, best.exit.edge));
+    if (distXY(e2, q) > 1e-6) out.push(e2);
+    from = e2;
+  }
+  return out;
+}
+
 // ── Main generator ───────────────────────────────────────────
 
 /**
@@ -163,8 +268,13 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
     return { waypoints: [], stats: { totalDistance: 0, estimatedTime: 0, photoCount: 0, coveredArea: 0, transectCount: 0 } };
   }
 
-  // Reference point = polygon centroid
-  const [refLat, refLon] = polygonCentroid(polygon);
+  // Reference point = polygon centroid, taken with longitudes unwrapped
+  // around the first vertex so a polygon across 180° centres on itself.
+  const firstLon = polygon[0][1];
+  const [refLat, unwrappedRefLon] = polygonCentroid(
+    polygon.map(([lat, lon]): [number, number] => [lat, firstLon + lonDelta(firstLon, lon)]),
+  );
+  const refLon = normalizeLon(unwrappedRefLon);
   const cosRef = Math.cos(refLat * DEG_TO_RAD);
 
   // Project polygon to local XY meters
@@ -243,35 +353,52 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
     activeTransects = transects.filter((t) => keptYs.has(t.y));
   }
 
-  // Boustrophedon ordering: alternate left-to-right and right-to-left. Swapping
-  // the ends must also swap their clip flags so overshoot suppression follows.
-  const orderedTransects: Transect[] = activeTransects.map((t, i) => {
-    if (i % 2 === 1) {
-      return { startX: t.endX, endX: t.startX, y: t.y, startClipped: t.endClipped, endClipped: t.startClipped };
-    }
-    return t;
-  });
-
-  // Entry location flipping
+  // Boustrophedon ordering by SCAN LINE: alternate the flight direction from
+  // one scan line to the next, and fly every piece of a line split by a hole in
+  // that line's direction. (Alternating per piece flew the second piece of a
+  // split line backwards, so the leg between them crossed the hole twice.)
+  // The entry location picks the first line (top / bottom) and the first
+  // line's direction (left / right).
   const flipHorizontal = entryLocation === "topRight" || entryLocation === "bottomRight";
   const flipVertical = entryLocation === "bottomLeft" || entryLocation === "bottomRight";
-
-  if (flipVertical) orderedTransects.reverse();
-  if (flipHorizontal) {
-    for (const t of orderedTransects) {
-      const tmpX = t.startX;
-      t.startX = t.endX;
-      t.endX = tmpX;
-      const tmpC = t.startClipped;
-      t.startClipped = t.endClipped;
-      t.endClipped = tmpC;
+  const lineYs = [...new Set(activeTransects.map((t) => t.y))].sort((a, b) => a - b);
+  if (flipVertical) lineYs.reverse();
+  const orderedTransects: Transect[] = [];
+  lineYs.forEach((y, lineIndex) => {
+    const pieces = activeTransects
+      .filter((t) => t.y === y)
+      .sort((a, b) => Math.min(a.startX, a.endX) - Math.min(b.startX, b.endX));
+    const ascending = (lineIndex % 2 === 0) !== flipHorizontal;
+    if (!ascending) pieces.reverse();
+    for (const t of pieces) {
+      const forward = t.startX <= t.endX;
+      orderedTransects.push(
+        forward === ascending
+          ? { ...t }
+          : { startX: t.endX, endX: t.startX, y: t.y, startClipped: t.endClipped, endClipped: t.startClipped },
+      );
     }
-  }
+  });
 
   // Rotate back and convert to geo coordinates, building waypoints
   const reverseAngle = gridAngle * DEG_TO_RAD;
   const waypoints: PatternWaypoint[] = [];
   const previewLines: [[number, number], [number, number]][] = [];
+  const toGeoXY = ([x, y]: XY): [number, number] => {
+    const [lx, ly] = rotateXY(x, y, reverseAngle);
+    return toGeo(lx, ly, refLat, refLon, cosRef);
+  };
+  const pushNav = (pt: XY) => {
+    const [lat, lon] = toGeoXY(pt);
+    waypoints.push({ lat, lon, alt: altitude, speed, command: "WAYPOINT" });
+  };
+  const pushTrigger = (pt: XY, distance: number) => {
+    const [lat, lon] = toGeoXY(pt);
+    waypoints.push({ lat, lon, alt: altitude, speed, command: "DO_SET_CAM_TRIGG", param1: distance });
+  };
+  const camera = cameraTriggerDistance > 0;
+  let lastNav: XY | null = null;
+  let photoCount = 0;
 
   for (const t of orderedTransects) {
     // Compute overshoot direction
@@ -282,66 +409,36 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
     // pushed into a keep-out zone. Non-clipped (boundary) ends keep the overshoot.
     const startTurn = t.startClipped ? 0 : turnAroundDistance;
     const endTurn = t.endClipped ? 0 : turnAroundDistance;
-    const sxOv = t.startX - overshootDir * startTurn;
-    const exOv = t.endX + overshootDir * endTurn;
-
-    // Rotate back to local space
-    const [sx, sy] = rotateXY(sxOv, t.y, reverseAngle);
-    const [ex, ey] = rotateXY(exOv, t.y, reverseAngle);
-
-    const startGeo = toGeo(sx, sy, refLat, refLon, cosRef);
-    const endGeo = toGeo(ex, ey, refLat, refLon, cosRef);
+    const edgeStart: XY = [t.startX, t.y];
+    const edgeEnd: XY = [t.endX, t.y];
+    const runIn: XY = [t.startX - overshootDir * startTurn, t.y];
+    const runOut: XY = [t.endX + overshootDir * endTurn, t.y];
 
     // Preview line (without overshoot, for the map overlay)
-    const [psx, psy] = rotateXY(t.startX, t.y, reverseAngle);
-    const [pex, pey] = rotateXY(t.endX, t.y, reverseAngle);
-    const previewStart = toGeo(psx, psy, refLat, refLon, cosRef);
-    const previewEnd = toGeo(pex, pey, refLat, refLon, cosRef);
-    previewLines.push([previewStart, previewEnd]);
+    previewLines.push([toGeoXY(edgeStart), toGeoXY(edgeEnd)]);
 
-    // Start waypoint
-    waypoints.push({
-      lat: startGeo[0],
-      lon: startGeo[1],
-      alt: altitude,
-      speed,
-      command: "WAYPOINT",
-    });
-
-    // Camera trigger on for this transect. An action fires after the
-    // navigation point it follows, so it rides the start waypoint and the
-    // camera runs only along the transect, not across the turnaround.
-    if (cameraTriggerDistance > 0) {
-      waypoints.push({
-        lat: startGeo[0],
-        lon: startGeo[1],
-        alt: altitude,
-        speed,
-        command: "DO_SET_CAM_TRIGG",
-        param1: cameraTriggerDistance,
-      });
+    // Transit from the previous piece, around any keep-out hole in the way.
+    if (lastNav) {
+      for (const pt of routeAroundHoles(lastNav, runIn, rotatedExclusions)) pushNav(pt);
     }
 
-    // End waypoint
-    waypoints.push({
-      lat: endGeo[0],
-      lon: endGeo[1],
-      alt: altitude,
-      speed,
-      command: "WAYPOINT",
-    });
-
-    // Camera trigger off at the transect end
-    if (cameraTriggerDistance > 0) {
-      waypoints.push({
-        lat: endGeo[0],
-        lon: endGeo[1],
-        alt: altitude,
-        speed,
-        command: "DO_SET_CAM_TRIGG",
-        param1: 0,
-      });
+    // The camera runs only between the boundary crossings: it switches on at
+    // the edge where the transect enters the area and off where it leaves, so
+    // no photos are taken on the run-in / run-out overshoot or the turns. An
+    // action fires after the navigation point it follows.
+    pushNav(runIn);
+    if (camera) {
+      if (startTurn > 0) pushNav(edgeStart);
+      pushTrigger(edgeStart, cameraTriggerDistance);
+      pushNav(edgeEnd);
+      pushTrigger(edgeEnd, 0);
+      if (endTurn > 0) pushNav(runOut);
+      // One shot as the trigger arms, then one every trigger distance.
+      photoCount += Math.floor(Math.abs(dx) / cameraTriggerDistance) + 1;
+    } else {
+      pushNav(runOut);
     }
+    lastNav = runOut;
   }
 
   // Stats — sum distances between navigation waypoints only (exclude camera triggers)
@@ -365,9 +462,6 @@ function generateSinglePass(config: SurveyGenConfig): PatternResult {
   }, 0);
   const area = Math.max(0, polygonArea(polygon) - exclusionArea);
   const estimatedTime = speed > 0 ? totalDistance / speed : 0;
-  const photoCount = cameraTriggerDistance > 0
-    ? Math.floor(totalDistance / cameraTriggerDistance)
-    : 0;
 
   return {
     waypoints,

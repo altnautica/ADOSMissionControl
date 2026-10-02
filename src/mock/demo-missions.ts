@@ -74,6 +74,7 @@ function buildPlan(spec: DemoSpec): SavedPlan {
     name: spec.name,
     folderId: DEMO_MISSION_FOLDER_ID,
     waypoints,
+    frame: spec.frame,
     metadata: {
       geofence: spec.geofence
         ? { enabled: spec.geofence.enabled, type: spec.geofence.fenceType, maxAlt: spec.geofence.maxAltitude, action: spec.geofence.breachAction }

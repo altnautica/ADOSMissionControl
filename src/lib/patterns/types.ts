@@ -30,7 +30,7 @@ export interface SurveyConfig {
   tieLineAngle?: number;
   /** Tie line spacing in meters (independent of main lineSpacing). */
   tieLineSpacing?: number;
-  /** Altitude AGL for generated waypoints, in meters. */
+  /** Altitude above home for generated waypoints, in meters (written in the `relative` frame). */
   altitude: number;
   /** Cruise speed for generated waypoints, in m/s. */
   speed: number;
@@ -49,7 +49,7 @@ export interface OrbitConfig {
   turns: number;
   /** Start angle in degrees from north (0 = north, 90 = east). */
   startAngle: number;
-  /** Altitude AGL in meters. */
+  /** Altitude above home in meters (written in the `relative` frame). */
   altitude: number;
   /** Cruise speed in m/s. */
   speed: number;
@@ -69,7 +69,7 @@ export interface CorridorConfig {
   corridorWidth: number;
   /** Distance between perpendicular transects in meters. */
   lineSpacing: number;
-  /** Altitude AGL in meters. */
+  /** Altitude above home in meters (written in the `relative` frame). */
   altitude: number;
   /** Cruise speed in m/s. */
   speed: number;

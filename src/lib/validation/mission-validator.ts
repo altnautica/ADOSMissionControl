@@ -566,14 +566,14 @@ export function validateMission(
           });
         }
       } else {
+        // Advisory, but never "clear": a warning keeps the mission out of the
+        // green state until the terrain under the waypoint is known.
         warnings.push({
           severity: "advisory",
           code: "TERRAIN_UNCHECKED",
-          message: `WP${i + 1}: terrain clearance NOT checked — ${
-            alt.waypointGroundKnown
-              ? "no home elevation for this relative-frame altitude"
-              : "no ground elevation sample at this waypoint"
-          }`,
+          message: alt.waypointGroundKnown
+            ? `WP${i + 1}: terrain clearance not checked — no home elevation for this relative-frame altitude`
+            : `WP${i + 1}: terrain unknown — no ground elevation sample at this waypoint, clearance not checked`,
           waypointIndex: i,
           waypointId: wp.id,
         });

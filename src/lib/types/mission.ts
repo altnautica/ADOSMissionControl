@@ -189,6 +189,13 @@ export interface SavedPlan {
   waypoints: Waypoint[];
   metadata: PlanMetadata;
   /**
+   * The planner's default altitude frame when the plan was last saved. Every
+   * waypoint carries its own frame; this one is stamped onto any waypoint that
+   * arrives without one when the plan loads, so the plan keeps its meaning
+   * after the global default changes.
+   */
+  frame: AltitudeFrame;
+  /**
    * Full geofence geometry saved with the plan. Absent when the plan has no
    * fence. Restored into the geofence store when the plan loads so a saved plan
    * round-trips its inclusion/exclusion zones, alt bands, and breach action.

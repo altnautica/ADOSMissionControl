@@ -34,7 +34,7 @@ export function VtolLandingConfig() {
       )}
       <Input label={t("transitionDistance")} type="number" unit="m" value={String(config.transitionDistance ?? 150)}
         onChange={(e) => update({ transitionDistance: parseFloat(e.target.value) || 150 })} />
-      <Input label={t("approachAltitude")} type="number" unit="m" value={String(config.approachAltitude ?? 50)}
+      <Input label={`${t("approachAltitude")} (${t("aboveHome")})`} type="number" unit="m" value={String(config.approachAltitude ?? 50)}
         onChange={(e) => update({ approachAltitude: parseFloat(e.target.value) || 50 })} />
       <div className="grid grid-cols-2 gap-2">
         <Input label={t("descentSpeed")} type="number" unit="m/s" value={String(config.descentSpeed ?? 2)}

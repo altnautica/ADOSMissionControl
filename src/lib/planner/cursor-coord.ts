@@ -36,12 +36,17 @@ export interface CursorMoveDetail {
 
 const DEBOUNCE_MS = 400;
 
+/** Grid readout for a latitude the UTM/MGRS grids do not cover (the polar caps). */
+const OUTSIDE_GRID = "Outside UTM/MGRS";
+
 /**
  * Render a cursor coordinate in the operator's chosen display format. "dd"/"dms"
  * defer to {@link formatLatLon}; "utm" gives a compact grid string
  * ("43R 712345E 1435678N", zone + latitude-band letter + rounded easting/northing);
- * "mgrs" gives the compact grid reference. Pure + exported so the format switch
- * is unit-testable without rendering the overlay.
+ * "mgrs" gives the compact grid reference. Outside the UTM/MGRS latitude band
+ * (the polar caps) both grid formats read "Outside UTM/MGRS" instead of a wrong
+ * reference. Pure + exported so the format switch is unit-testable without
+ * rendering the overlay.
  */
 export function formatCursorCoord(
   lat: number,
@@ -50,13 +55,15 @@ export function formatCursorCoord(
 ): string {
   switch (format) {
     case "utm": {
+      const band = mgrsLatBand(lat);
+      if (band === null) return OUTSIDE_GRID;
       const utm = latLonToUTM(lat, lon);
       const easting = Math.round(utm.easting);
       const northing = Math.round(utm.northing);
-      return `${utm.zone}${mgrsLatBand(lat)} ${easting}E ${northing}N`;
+      return `${utm.zone}${band} ${easting}E ${northing}N`;
     }
     case "mgrs":
-      return latLonToMGRS(lat, lon);
+      return latLonToMGRS(lat, lon) ?? OUTSIDE_GRID;
     case "dms":
       return formatLatLon(lat, lon, "dms");
     case "dd":

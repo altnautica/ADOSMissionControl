@@ -16,20 +16,23 @@ import { useRallyStore } from "@/stores/rally-store";
 import { usePlanPoiStore } from "@/stores/plan-poi-store";
 import { usePlannerStore } from "@/stores/planner-store";
 import { planSnapshotString } from "@/lib/plan-snapshot";
+import { stampWaypointFrames } from "@/lib/mission/mission-frame";
 import { clearHistory } from "@/lib/planner-history";
 import type { SavedPlan } from "@/lib/types";
 
 /**
  * Load a saved plan into the live workspace: set it active, load its waypoints,
  * restore (or clear) its geofence + rally geometry, and request a map fit so the
- * plan is framed on screen.
+ * plan is framed on screen. A waypoint stored without a frame takes the plan's
+ * frame, never whatever the global default happens to be today.
  */
 export function applyPlanToWorkspace(plan: SavedPlan): void {
   const lib = usePlanLibraryStore.getState();
   lib.setActivePlan(plan.id);
-  useMissionStore.getState().setWaypoints(plan.waypoints);
+  const waypoints = stampWaypointFrames(plan.waypoints, plan.frame);
+  useMissionStore.getState().setWaypoints(waypoints);
   lib.setSavedSnapshot(
-    planSnapshotString(plan.waypoints, {
+    planSnapshotString(waypoints, {
       geofence: plan.geofence,
       rally: plan.rally,
       pois: plan.pois,

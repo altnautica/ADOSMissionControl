@@ -9,6 +9,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronRight, Plus } from "lucide-react";
 import { useValidationOptions } from "@/hooks/use-validation-options";
+import { useFlightPlanOptions } from "@/hooks/use-rtl-return-context";
 import { validateMission } from "@/lib/validation/mission-validator";
 import { MissionEditor } from "@/components/planner/MissionEditor";
 import { WaypointList } from "@/components/planner/WaypointList";
@@ -33,6 +34,7 @@ import { WeatherCard } from "@/components/planner/WeatherCard";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { useToast } from "@/components/ui/toast";
 import { useDrawingStore } from "@/stores/drawing-store";
+import { usePatternStore } from "@/stores/pattern-store";
 import { importBoundaryFile } from "@/lib/mission-io";
 import { ShapefileNotGeographicError } from "@/lib/formats/shp-import";
 import { exportFlightBrief } from "@/lib/pdf/export-flight-brief";
@@ -100,7 +102,7 @@ export function PlannerRightPanel({
       lon: after ? (before.lon + after.lon) / 2 : before.lon + 0.0005,
       alt: after ? (before.alt + after.alt) / 2 : before.alt,
       speed: before.speed,
-      frame: before.frame,
+      frame: before.frame ?? usePlannerStore.getState().defaultFrame,
       command: "WAYPOINT",
       ...acceptRadiusDefault("WAYPOINT", usePlannerStore.getState().defaultAcceptRadius),
     };
@@ -112,6 +114,7 @@ export function PlannerRightPanel({
   // Flight-brief PDF export: real computed stats from the current plan.
   const { toast } = useToast();
   const droneName = p.drones.find((d) => d.id === p.selectedDroneId)?.name;
+  const planOptions = useFlightPlanOptions();
   const handleExportBrief = useCallback(() => {
     void exportFlightBrief({
       waypoints: p.waypoints,
@@ -119,11 +122,13 @@ export function PlannerRightPanel({
       droneName,
       defaultSpeed: p.defaultSpeed,
       defaultFrame: p.defaultFrame,
+      planOptions,
     });
-  }, [p.waypoints, p.missionName, droneName, p.defaultSpeed, p.defaultFrame, t]);
+  }, [p.waypoints, p.missionName, droneName, p.defaultSpeed, p.defaultFrame, planOptions, t]);
 
   // Boundary import (KML/KMZ/shapefile): push each real parsed ring into the
-  // drawing store as a survey boundary. A file with no polygon warns, never fakes.
+  // drawing store as a survey boundary, and each interior ring (hole) as a
+  // polygon marked as a survey keep-out. A file with no polygon warns, never fakes.
   const boundaryInputRef = useRef<HTMLInputElement | null>(null);
   const handleImportBoundary = useCallback(() => boundaryInputRef.current?.click(), []);
 
@@ -154,16 +159,31 @@ export function PlannerRightPanel({
     e.target.value = "";
     if (!file) return;
     try {
-      const rings = await importBoundaryFile(file);
-      if (rings.length === 0) {
+      const boundaries = await importBoundaryFile(file);
+      if (boundaries.length === 0) {
         toast(t("import.boundary.noPolygon"), "warning");
         return;
       }
       const add = useDrawingStore.getState().addPolygon;
-      for (const vertices of rings) {
-        add({ id: randomId(), vertices, area: polygonArea(vertices) });
+      // Holes first, boundaries last: a survey with no selection takes the most
+      // recently drawn polygon, which must be a boundary, not a keep-out.
+      const holeIds: string[] = [];
+      for (const { holes } of boundaries) {
+        for (const vertices of holes) {
+          const id = randomId();
+          add({ id, vertices, area: polygonArea(vertices) });
+          holeIds.push(id);
+        }
       }
-      toast(t("import.boundary.success", { count: rings.length }), "success");
+      for (const { outer } of boundaries) {
+        add({ id: randomId(), vertices: outer, area: polygonArea(outer) });
+      }
+      if (holeIds.length > 0) {
+        const patterns = usePatternStore.getState();
+        patterns.setExclusionPolygonIds([...patterns.exclusionPolygonIds, ...holeIds]);
+      }
+      toast(t("import.boundary.success", { count: boundaries.length }), "success");
+      if (holeIds.length > 0) toast(t("import.boundary.holesAsKeepOut", { count: holeIds.length }), "info");
     } catch (err) {
       if (err instanceof ShapefileNotGeographicError) {
         toast(t("import.boundary.needsPrj"), "warning");

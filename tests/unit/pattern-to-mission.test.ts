@@ -26,7 +26,7 @@ const isNavItem = (it: MissionItem) => {
 
 /** The uploaded items, without the speed items the expander interleaves. */
 function uploaded(rows: readonly PatternWaypoint[]): MissionItem[] {
-  const waypoints = patternToMission(rows, "relative");
+  const waypoints = patternToMission(rows);
   return expandToItems(waypoints, { defaultFrame: "relative", defaultSpeed: 5 })
     .filter((it) => it.command !== cmdMap.DO_SET_SPEED);
 }
@@ -48,7 +48,7 @@ function cameraOnPerLeg(items: readonly MissionItem[]): boolean[] {
 }
 
 function blockingCodes(rows: readonly PatternWaypoint[]): string[] {
-  const waypoints = patternToMission(rows, "relative");
+  const waypoints = patternToMission(rows);
   return validateMission(waypoints, { defaultFrame: "relative" }).errors.map((e) => e.code);
 }
 
@@ -59,18 +59,20 @@ describe("patternToMission", () => {
       { lat: CENTER[0] + 0.001, lon: CENTER[1], alt: 40, speed: 5, command: "WAYPOINT" },
       { lat: CENTER[0] + 0.002, lon: CENTER[1], alt: 40, speed: 5, command: "WAYPOINT" },
     ];
-    const waypoints = patternToMission(rows, "relative");
+    const waypoints = patternToMission(rows);
     expect(waypoints.map((w) => w.command)).toEqual(["TAKEOFF", "WAYPOINT", "WAYPOINT", "RTL"]);
     expect(waypoints[1].actions?.map((a) => a.command)).toEqual(["ROI"]);
     expect(blockingCodes(rows)).toEqual([]);
   });
 
-  it("stamps the mission frame on every waypoint it creates", () => {
+  it("stamps every waypoint above home, with the closing RTL at 0 m above home", () => {
     const rows = generateOrbit({
       center: CENTER, radius: 60, direction: "cw", turns: 1, startAngle: 0, altitude: 40, speed: 5,
     }).waypoints;
-    const waypoints = patternToMission(rows, "terrain");
-    expect(waypoints.every((w) => w.frame === "terrain")).toBe(true);
+    const waypoints = patternToMission(rows);
+    expect(waypoints.every((w) => w.frame === "relative")).toBe(true);
+    const rtl = waypoints[waypoints.length - 1];
+    expect(rtl).toMatchObject({ command: "RTL", alt: 0, frame: "relative" });
   });
 });
 
@@ -139,9 +141,26 @@ describe("applied patterns validate and sequence their actions after their waypo
     }).waypoints;
     expect(blockingCodes(rows)).toEqual([]);
 
-    const legs = cameraOnPerLeg(uploaded(rows));
-    // Legs: takeoff → start1, start1 → end1, end1 → start2, …, endN → RTL.
-    expect(legs.length).toBeGreaterThanOrEqual(5);
-    expect(legs).toEqual(legs.map((_, j) => j % 2 === 1));
+    // Each leg between consecutive navigation items, with its camera state.
+    const legs: { on: boolean; from: MissionItem; to: MissionItem }[] = [];
+    let on = false;
+    let prev: MissionItem | null = null;
+    for (const it of uploaded(rows)) {
+      if (isNavItem(it)) {
+        if (prev) legs.push({ on, from: prev, to: it });
+        prev = it;
+      } else if (it.command === cmdMap.DO_SET_CAM_TRIGG) {
+        on = it.param1 > 0;
+      }
+    }
+    // Transects run east-west here: a turnaround changes latitude.
+    const turnarounds = legs.filter((l) => l.from.x !== l.to.x);
+    expect(turnarounds.length).toBeGreaterThanOrEqual(4);
+    expect(turnarounds.every((l) => !l.on)).toBe(true);
+    // The camera is on for one leg per transect, and only inside the boundary.
+    const shooting = legs.filter((l) => l.on);
+    expect(shooting).toHaveLength(turnarounds.length + 1);
+    const inside = (it: MissionItem) => it.y >= 775_900_000 && it.y <= 775_940_000;
+    expect(shooting.every((l) => l.from.x === l.to.x && inside(l.from) && inside(l.to))).toBe(true);
   });
 });

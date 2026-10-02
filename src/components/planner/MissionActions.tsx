@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useMissionUploadStatus } from "@/hooks/use-upload-status";
+import { useMissionStore } from "@/stores/mission-store";
 
 interface MissionActionsProps {
   hasWaypoints: boolean;
@@ -106,9 +107,13 @@ export function MissionActions({
   // the selected drone acknowledged exactly the mission the planner would
   // upload now; an edit, a plan switch or another drone reads differently.
   const status = useMissionUploadStatus();
+  const uploadError = useMissionStore((s) => s.uploadError);
   const uploadPill =
     uploadState === "error"
-      ? { label: t("uploadFailed"), className: "text-status-error border-status-error/40 bg-status-error/10" }
+      ? {
+          label: uploadError ? `${t("uploadFailed")}: ${uploadError}` : t("uploadFailed"),
+          className: "text-status-error border-status-error/40 bg-status-error/10",
+        }
       : status === "on-aircraft"
         ? { label: t("onAircraft"), className: "text-status-success border-status-success/40 bg-status-success/10" }
         : status === "older-on-aircraft"

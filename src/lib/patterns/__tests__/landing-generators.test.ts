@@ -29,7 +29,7 @@ describe("generateFixedWingLanding", () => {
   };
 
   it("leads with DO_LAND_START so an RTL autoland jump still flies the approach waypoint", () => {
-    const waypoints = patternToMission(generateFixedWingLanding(config).waypoints, "relative");
+    const waypoints = patternToMission(generateFixedWingLanding(config).waypoints);
     const commands = expandToItems(waypoints, { defaultFrame: "relative", defaultSpeed: 15 })
       .map((it) => it.command)
       .filter((c) => c !== cmdMap.DO_SET_SPEED);
@@ -94,7 +94,7 @@ describe("generateVtolLanding", () => {
 
   /** The uploaded wire items of an applied VTOL landing. */
   function uploadedItems(cfg: VtolLandingConfig) {
-    const waypoints = patternToMission(generateVtolLanding(cfg).waypoints, "relative");
+    const waypoints = patternToMission(generateVtolLanding(cfg).waypoints);
     return expandToItems(waypoints, { defaultFrame: "relative", defaultSpeed: 5 });
   }
 

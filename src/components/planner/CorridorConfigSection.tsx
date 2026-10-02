@@ -42,7 +42,7 @@ export function CorridorConfig() {
       <Input label={t("lineSpacing")} type="number" unit="m" value={String(corridorConfig.lineSpacing ?? 20)}
         onChange={(e) => updateCorridorConfig({ lineSpacing: parseFloat(e.target.value) || 20 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label={t("altitude")} type="number" unit="m" value={String(corridorConfig.altitude ?? 50)}
+        <Input label={t("altitudeAboveHome")} type="number" unit="m" value={String(corridorConfig.altitude ?? 50)}
           onChange={(e) => updateCorridorConfig({ altitude: parseFloat(e.target.value) || 50 })} />
         <Input label={t("speedMs")} type="number" unit="m/s" value={String(corridorConfig.speed ?? 5)}
           onChange={(e) => updateCorridorConfig({ speed: parseFloat(e.target.value) || 5 })} />

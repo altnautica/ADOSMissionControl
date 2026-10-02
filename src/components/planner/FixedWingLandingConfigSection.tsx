@@ -38,7 +38,7 @@ export function FixedWingLandingConfig() {
       <Input label={t("glideSlopeAngle")} type="number" unit="deg" value={String(config.glideSlopeAngle ?? 5)}
         onChange={(e) => update({ glideSlopeAngle: parseFloat(e.target.value) || 5 })} />
       <div className="grid grid-cols-2 gap-2">
-        <Input label={t("loiterAltitude")} type="number" unit="m" value={String(config.loiterAltitude ?? 60)}
+        <Input label={`${t("loiterAltitude")} (${t("aboveHome")})`} type="number" unit="m" value={String(config.loiterAltitude ?? 60)}
           onChange={(e) => update({ loiterAltitude: parseFloat(e.target.value) || 60 })} />
         <Input label={t("speedMs")} type="number" unit="m/s" value={String(config.speed ?? 15)}
           onChange={(e) => update({ speed: parseFloat(e.target.value) || 15 })} />

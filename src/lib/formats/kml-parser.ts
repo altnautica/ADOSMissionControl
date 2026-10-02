@@ -27,6 +27,11 @@ export interface KmlParseResult {
   waypoints: Waypoint[];
   /** Polygon boundaries (for use with survey pattern generator). */
   polygons: [number, number][][];
+  /**
+   * Interior rings (holes) of each polygon, index-aligned with `polygons`;
+   * an empty list for a polygon without holes.
+   */
+  polygonHoles: [number, number][][][];
   /** Path lines (for use with corridor pattern generator). */
   paths: [number, number][][];
   /** Point-only markers (lat, lon). */
@@ -35,17 +40,53 @@ export interface KmlParseResult {
   name: string;
   /** Extracted style (from first Style element, or default). */
   style: KmlStyle;
+  /** Waypoints whose altitude could not be used as written, named for the importer to show. */
+  warnings: string[];
+}
+
+export interface KmlParseOptions {
+  /**
+   * Altitude given to a waypoint whose own altitude is unusable: a
+   * `clampToGround` placemark (its altitude is ignored by definition), or a
+   * missing or zero altitude. Callers that import waypoints pass the
+   * planner's default altitude.
+   */
+  defaultAlt?: number;
 }
 
 /**
  * Parse a KML XML string into waypoints, polygons, and paths.
  */
-export function parseKML(text: string): KmlParseResult {
+export function parseKML(text: string, options: KmlParseOptions = {}): KmlParseResult {
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, "text/xml");
+  // DOMParser does not throw on malformed XML; it returns a <parsererror> document.
+  if (doc.getElementsByTagName("parsererror").length > 0) {
+    throw new Error("Not a valid KML file: the XML could not be parsed");
+  }
+  const defaultAlt = options.defaultAlt ?? 0;
+  // Counted per source: line vertices become waypoints only in a document with
+  // no Point placemarks, so only the source that is kept is reported.
+  const unusable = { point: 0, line: 0 };
+  /**
+   * The altitude to fly: the written one when it means something, else the
+   * default. A height our own export marked with its frame is always trusted
+   * (a LAND at 0 m relative is real); otherwise a clamped placemark has no
+   * altitude, and a missing or zero altitude would put the waypoint on the
+   * ground.
+   */
+  const usableAlt = (alt: number | undefined, mode: PlacemarkAltitude, source: "point" | "line"): number => {
+    if (mode.exportedFrame) return alt ?? 0;
+    if (mode.clamped || alt === undefined || alt === 0) {
+      unusable[source]++;
+      return defaultAlt;
+    }
+    return alt;
+  };
 
   const waypoints: Waypoint[] = [];
   const polygons: [number, number][][] = [];
+  const polygonHoles: [number, number][][][] = [];
   const paths: [number, number][][] = [];
   const points: [number, number][] = [];
   /** Vertices harvested from LineStrings, used ONLY when the document carries
@@ -66,7 +107,8 @@ export function parseKML(text: string): KmlParseResult {
 
   for (const pm of placemarks) {
     // Vertical datum for every geometry in this Placemark.
-    const frame = placemarkFrame(pm);
+    const mode = placemarkAltitude(pm);
+    const frame = mode.frame;
 
     // Point → single waypoint + overlay point
     const pointElements = findElements(pm, "Point");
@@ -75,13 +117,13 @@ export function parseKML(text: string): KmlParseResult {
       if (coords) {
         const parsed = parseCoordinateString(coords);
         if (parsed.length > 0) {
-          const [lat, lon, alt] = [parsed[0][0], parsed[0][1], parsed[0][2]];
+          const [lat, lon, alt] = parsed[0];
           points.push([lat, lon]);
           waypoints.push({
             id: generateId(),
             lat,
             lon,
-            alt: alt ?? 0,
+            alt: usableAlt(alt, mode, "point"),
             command: "WAYPOINT",
             frame,
           });
@@ -107,7 +149,7 @@ export function parseKML(text: string): KmlParseResult {
               id: generateId(),
               lat: p[0],
               lon: p[1],
-              alt: p[2] ?? 0,
+              alt: usableAlt(p[2], mode, "line"),
               command: "WAYPOINT" as const,
               frame,
             })),
@@ -116,29 +158,23 @@ export function parseKML(text: string): KmlParseResult {
       }
     }
 
-    // Polygon → boundary
+    // Polygon → boundary, with its interior rings (holes) kept alongside so an
+    // excluded area inside the boundary is not silently surveyed.
     const polyElements = findElements(pm, "Polygon");
     for (const poly of polyElements) {
-      // Outer boundary
-      const outerBound = findElements(poly, "outerBoundaryIs");
-      for (const ob of outerBound) {
-        const linearRing = findElements(ob, "LinearRing");
-        for (const lr of linearRing) {
-          const coords = getCoordinatesText(lr);
-          if (coords) {
-            const parsed = parseCoordinateString(coords);
-            if (parsed.length >= 3) {
-              const boundary: [number, number][] = parsed.map((p) => [p[0], p[1]]);
-              // KML polygons are closed (first == last), remove duplicate closing vertex
-              if (
-                boundary.length > 1 &&
-                boundary[0][0] === boundary[boundary.length - 1][0] &&
-                boundary[0][1] === boundary[boundary.length - 1][1]
-              ) {
-                boundary.pop();
-              }
-              polygons.push(boundary);
-            }
+      const holes: [number, number][][] = [];
+      for (const ib of findElements(poly, "innerBoundaryIs")) {
+        for (const lr of findElements(ib, "LinearRing")) {
+          const ring = linearRingVertices(lr);
+          if (ring) holes.push(ring);
+        }
+      }
+      for (const ob of findElements(poly, "outerBoundaryIs")) {
+        for (const lr of findElements(ob, "LinearRing")) {
+          const boundary = linearRingVertices(lr);
+          if (boundary) {
+            polygons.push(boundary);
+            polygonHoles.push(holes.map((h) => [...h]));
           }
         }
       }
@@ -148,42 +184,79 @@ export function parseKML(text: string): KmlParseResult {
   // A document with Point placemarks IS the waypoint list; its LineStrings are
   // the drawn path through those same points. Only a document with no points
   // at all (a foreign GPS track) contributes waypoints from its line vertices.
-  if (waypoints.length === 0) waypoints.push(...lineStringWaypoints);
+  const fromLines = waypoints.length === 0;
+  if (fromLines) waypoints.push(...lineStringWaypoints);
+  const unusableAltitudes = fromLines ? unusable.line : unusable.point;
 
-  return { waypoints, polygons, paths, points, name: docName, style };
+  const warnings: string[] = [];
+  if (unusableAltitudes > 0 && waypoints.length > 0) {
+    warnings.push(
+      `${unusableAltitudes} point${unusableAltitudes === 1 ? "" : "s"} had no usable altitude (clamped to ground, missing or 0 m) and were set to ${defaultAlt} m. Check every altitude before flying.`,
+    );
+  }
+
+  return { waypoints, polygons, polygonHoles, paths, points, name: docName, style, warnings };
+}
+
+/**
+ * A LinearRing's vertices as `[lat, lon]`, with KML's duplicate closing vertex
+ * removed. `null` when the ring has fewer than three coordinates.
+ */
+function linearRingVertices(lr: Element): [number, number][] | null {
+  const coords = getCoordinatesText(lr);
+  if (!coords) return null;
+  const parsed = parseCoordinateString(coords);
+  if (parsed.length < 3) return null;
+  const ring: [number, number][] = parsed.map((p) => [p[0], p[1]]);
+  // KML rings are closed (first == last); drop the duplicate closing vertex.
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  if (ring.length > 1 && first[0] === last[0] && first[1] === last[1]) ring.pop();
+  return ring;
 }
 
 // ── Helpers ──────────────────────────────────────────────────
 
-/**
- * The altitude frame a Placemark's coordinates are expressed in.
- *
- * Our own export records the exact frame in `ExtendedData`, so that wins.
- * Otherwise the standard `altitudeMode` is honoured: `absolute` is AMSL and
- * `relativeToGround` / `clampToGround` are heights above the terrain below the
- * point — which is our `terrain` frame, NOT `relative` (above home). Returns
- * `undefined` when the document says nothing, so the mission default applies
- * rather than a guess.
- */
-function placemarkFrame(pm: Element): AltitudeFrame | undefined {
-  for (const data of findElements(pm, "Data")) {
-    if (data.getAttribute("name") !== KML_FRAME_KEY) continue;
-    const raw = findElements(data, "value")[0]?.textContent?.trim();
-    if (raw === "relative" || raw === "absolute" || raw === "terrain") return raw;
-  }
-
-  const mode = findElements(pm, "altitudeMode")[0]?.textContent?.trim();
-  if (mode === "absolute") return "absolute";
-  if (mode === "relativeToGround" || mode === "clampToGround") return "terrain";
-  return undefined;
+interface PlacemarkAltitude {
+  /** The altitude frame the coordinates are expressed in; undefined means the mission default. */
+  frame: AltitudeFrame | undefined;
+  /** The frame came from our own export's `ExtendedData`, so the altitudes are exact. */
+  exportedFrame: boolean;
+  /** `clampToGround`: the written altitude is ignored by definition. */
+  clamped: boolean;
 }
 
 /**
- * Parse a KML coordinates string into [lat, lon, alt] arrays.
+ * How a Placemark's altitudes are to be read.
+ *
+ * Our own export records the exact frame in `ExtendedData`, so that wins.
+ * Otherwise `absolute` is AMSL and `relativeToGround` is height above the
+ * terrain below the point — our `terrain` frame, NOT `relative` (above home).
+ * `clampToGround` carries no altitude at all, so it maps to no frame and the
+ * mission default applies, as it does when the document says nothing.
+ */
+function placemarkAltitude(pm: Element): PlacemarkAltitude {
+  for (const data of findElements(pm, "Data")) {
+    if (data.getAttribute("name") !== KML_FRAME_KEY) continue;
+    const raw = findElements(data, "value")[0]?.textContent?.trim();
+    if (raw === "relative" || raw === "absolute" || raw === "terrain") {
+      return { frame: raw, exportedFrame: true, clamped: false };
+    }
+  }
+
+  const mode = findElements(pm, "altitudeMode")[0]?.textContent?.trim();
+  if (mode === "absolute") return { frame: "absolute", exportedFrame: false, clamped: false };
+  if (mode === "relativeToGround") return { frame: "terrain", exportedFrame: false, clamped: false };
+  return { frame: undefined, exportedFrame: false, clamped: mode === "clampToGround" };
+}
+
+/**
+ * Parse a KML coordinates string into [lat, lon, alt] arrays; `alt` is
+ * undefined when the tuple has none.
  * KML format: "lon,lat,alt lon,lat,alt ..." (space-separated tuples, lon comes first).
  */
-function parseCoordinateString(text: string): [number, number, number][] {
-  const result: [number, number, number][] = [];
+function parseCoordinateString(text: string): [number, number, number | undefined][] {
+  const result: [number, number, number | undefined][] = [];
   const trimmed = text.trim();
   if (!trimmed) return result;
 
@@ -194,10 +267,10 @@ function parseCoordinateString(text: string): [number, number, number][] {
     if (parts.length >= 2) {
       const lon = parseFloat(parts[0]);
       const lat = parseFloat(parts[1]);
-      const alt = parts.length >= 3 ? parseFloat(parts[2]) : 0;
+      const alt = parts.length >= 3 ? parseFloat(parts[2]) : NaN;
       if (!isNaN(lat) && !isNaN(lon)) {
         // Swap from KML lon,lat to our lat,lon
-        result.push([lat, lon, isNaN(alt) ? 0 : alt]);
+        result.push([lat, lon, isNaN(alt) ? undefined : alt]);
       }
     }
   }

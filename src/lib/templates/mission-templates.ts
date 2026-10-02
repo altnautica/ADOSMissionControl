@@ -6,14 +6,15 @@
  * flight-pattern generators in `@/lib/patterns` — no fabricated coordinates.
  *
  * A template is a pure function: given a `MissionTemplateContext` (map center,
- * optional boundary, default altitude, speed and frame) it returns a mission
+ * optional boundary, default altitude and speed) it returns a mission
  * `Waypoint[]` built by the same pattern converter the pattern apply uses, all
- * derived from real generator output. Nothing here reads or mutates a store.
+ * derived from real generator output, every waypoint in the `relative` frame
+ * (above home). Nothing here reads or mutates a store.
  *
  * @license GPL-3.0-only
  */
 
-import type { AltitudeFrame, Waypoint } from "@/lib/types";
+import type { Waypoint } from "@/lib/types";
 import type { PatternResult } from "@/lib/patterns/types";
 import { patternToMission } from "@/lib/patterns/pattern-to-mission";
 import {
@@ -34,12 +35,10 @@ export interface MissionTemplateContext {
    * fall back to a box around `center` when it is absent (see `needsBoundary`).
    */
   boundary?: [number, number][];
-  /** Default altitude for generated waypoints, in meters, in `frame`. */
+  /** Altitude for generated waypoints, in meters above home. */
   altitude: number;
   /** Default cruise speed for generated waypoints, in m/s. */
   speed: number;
-  /** Mission default altitude frame, stamped on every generated waypoint. */
-  frame: AltitudeFrame;
 }
 
 /** A single built-in mission template. */
@@ -88,9 +87,9 @@ function boxAround(center: [number, number], halfM: number): [number, number][] 
 
 // ── Pattern → mission-waypoint conversion ────────────────────
 
-/** Convert a generator result into mission waypoints for this context. */
-function finalize(result: PatternResult, ctx: MissionTemplateContext): Waypoint[] {
-  return patternToMission(result.waypoints, ctx.frame);
+/** Convert a generator result into mission waypoints (relative frame). */
+function finalize(result: PatternResult): Waypoint[] {
+  return patternToMission(result.waypoints);
 }
 
 // ── The catalog ──────────────────────────────────────────────
@@ -114,7 +113,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           altitude: ctx.altitude,
           speed: ctx.speed,
         }),
-        ctx,
       ),
   },
   {
@@ -138,7 +136,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           altitude: ctx.altitude,
           speed: ctx.speed,
         }),
-        ctx,
       ),
   },
   {
@@ -158,7 +155,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           altitude: ctx.altitude,
           speed: ctx.speed,
         }),
-        ctx,
       ),
   },
   {
@@ -180,7 +176,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           altitude: ctx.altitude,
           speed: ctx.speed,
         }),
-        ctx,
       );
     },
   },
@@ -200,7 +195,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           speed: ctx.speed,
           startBearing: 0,
         }),
-        ctx,
       ),
   },
   {
@@ -219,7 +213,6 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
           speed: ctx.speed,
           startBearing: 0,
         }),
-        ctx,
       ),
   },
 ];
