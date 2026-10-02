@@ -8,6 +8,7 @@
  */
 
 import type { Transport } from "../types";
+import { enqueueFrame } from "./send-backlog";
 
 // Web Bluetooth API type declarations (not in standard TypeScript DOM lib)
 interface BluetoothDevice extends EventTarget {
@@ -79,8 +80,10 @@ export class BluetoothTransport implements Transport {
   private listeners: Map<keyof TransportEventMap, Set<(data: never) => void>> = new Map();
   private notificationHandler: ((event: Event) => void) | null = null;
   private disconnectHandler: ((event: Event) => void) | null = null;
-  // Write queue for serializing characteristic writes (BLE doesn't allow concurrent writes)
-  private writeQueue: Promise<void> = Promise.resolve();
+  // Frames waiting for the characteristic (BLE doesn't allow concurrent
+  // writes). Bounded, with stick frames coalesced; see send-backlog.ts.
+  private backlog: Uint8Array[] = [];
+  private writing = false;
 
   get isConnected(): boolean {
     return this._connected;
@@ -188,31 +191,34 @@ export class BluetoothTransport implements Transport {
     if (!this._connected || !this.rxChar) {
       throw new Error("Not connected");
     }
-    const rxChar = this.rxChar;
+    enqueueFrame(this.backlog, data, "BLE");
+    if (!this.writing) void this.pumpWrites(this.rxChar);
+  }
 
-    // Queue the write to serialize concurrent send() calls.
-    // Copy into a fresh ArrayBuffer to satisfy BufferSource type (avoid SharedArrayBuffer concerns).
-    this.writeQueue = this.writeQueue.then(async () => {
-      try {
-        if (data.byteLength <= MAX_CHUNK_BYTES) {
-          const copy = new Uint8Array(data.byteLength);
-          copy.set(data);
-          await rxChar.writeValueWithoutResponse(copy.buffer);
-        } else {
-          // Fragment into MTU-sized chunks
+  /** Write queued frames one at a time until the backlog is empty. */
+  private async pumpWrites(rxChar: BluetoothRemoteGATTCharacteristic): Promise<void> {
+    this.writing = true;
+    try {
+      for (let data = this.backlog.shift(); data && this._connected; data = this.backlog.shift()) {
+        try {
+          // Copy into a fresh ArrayBuffer to satisfy BufferSource (avoid
+          // SharedArrayBuffer concerns), fragmenting into MTU-sized chunks.
           for (let offset = 0; offset < data.byteLength; offset += MAX_CHUNK_BYTES) {
             const end = Math.min(offset + MAX_CHUNK_BYTES, data.byteLength);
             const chunk = new Uint8Array(end - offset);
             chunk.set(data.subarray(offset, end));
             await rxChar.writeValueWithoutResponse(chunk.buffer);
           }
-        }
-      } catch (err) {
-        if (this._connected) {
-          this.emit("error", err instanceof Error ? err : new Error(String(err)));
+        } catch (err) {
+          if (this._connected) {
+            this.emit("error", err instanceof Error ? err : new Error(String(err)));
+          }
         }
       }
-    });
+    } finally {
+      this.writing = false;
+      if (!this._connected) this.backlog = [];
+    }
   }
 
   /** Disconnect from the BLE device. Idempotent. */

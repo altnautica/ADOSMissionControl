@@ -76,6 +76,9 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
   const cancelRequestedRef = useRef(false);
 
   const isMockOrDemo = isDemoMode() || !selectedDrone;
+  // Betaflight and iNav keep blackbox logs in flash behind a different
+  // protocol; their adapters do not offer an onboard log list.
+  const canListLogs = selectedDrone?.protocol.getCapabilities().supportsLogDownload ?? false;
 
   // Esc to close.
   useEffect(() => {
@@ -100,7 +103,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
   }, [open]);
 
   const handleRefresh = useCallback(async () => {
-    if (!selectedDrone || isDemoMode() || isArmed) return;
+    if (!selectedDrone || isDemoMode() || isArmed || !canListLogs) return;
     setLoading(true);
     setError(null);
     try {
@@ -111,7 +114,7 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
     } finally {
       setLoading(false);
     }
-  }, [selectedDrone, isArmed]);
+  }, [selectedDrone, isArmed, canListLogs]);
 
   const handleDownload = useCallback(async () => {
     if (!selectedDrone || selectedIds.size === 0 || isArmed) return;
@@ -209,7 +212,14 @@ export function LogBrowser({ open, onClose }: LogBrowserProps) {
             </div>
           )}
 
-          {!isMockOrDemo && !isArmed && (
+          {!isMockOrDemo && !canListLogs && (
+            <div className="rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-[11px] text-text-secondary flex items-start gap-2">
+              <AlertTriangle size={12} className="text-status-warning mt-0.5 shrink-0" />
+              This flight controller&apos;s firmware does not offer onboard log download over this link.
+            </div>
+          )}
+
+          {!isMockOrDemo && canListLogs && !isArmed && (
             <Card title={selectedDrone?.name ?? "Drone"} padding={true}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] text-text-secondary">

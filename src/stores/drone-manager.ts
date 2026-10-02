@@ -291,7 +291,9 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
       useDroneStore.getState().setConnectionState("disconnected");
       // The heartbeat age is a claim about the selected link; with no session
       // on the selected node there is no link to call stale.
-      useDroneStore.setState({ lastHeartbeat: 0 });
+      // Arm state and mode are claims about a vehicle the GCS no longer
+      // hears; decay them the way a link loss does.
+      useDroneStore.setState({ lastHeartbeat: 0, armState: "unknown", flightMode: "UNKNOWN" });
     }
     // Its downloaded parameter list described the link that just went away.
     invalidateParamList(id);

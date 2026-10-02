@@ -11,9 +11,8 @@ import { useUploadReceiptsStore, receiptFor, receiptStatus } from '@/stores/uplo
 import { fenceContentHash } from '@/lib/geofence-elements';
 
 /** Point the mocked selection at a protocol (selected drone "d1") until the
- * next beforeEach. A default `getVehicleInfo` (ArduPilot) is supplied so
- * uploadFence takes the legacy FENCE_POINT path; a test can override it to
- * exercise the PX4 mission-fence branch. */
+ * next beforeEach. A default `getVehicleInfo` (ArduPilot) is supplied; a test
+ * can override it to exercise the PX4 parameter branch. */
 function stubProtocol(protocol: Record<string, unknown>) {
   const withDefaults = { getVehicleInfo: () => ({ firmwareType: "ardupilot" }), ...protocol };
   selectedProtocol = withDefaults;
@@ -216,9 +215,9 @@ describe('geofence-store', () => {
     ['RTL', 1],
     ['LAND', 2],
   ])('uploadFence maps breachAction %s to FENCE_ACTION %i', async (action, value) => {
-    const uploadFence = vi.fn().mockResolvedValue({ success: true });
+    const uploadFenceMission = vi.fn().mockResolvedValue({ success: true });
     const setParameter = vi.fn().mockResolvedValue({ success: true });
-    stubProtocol({ uploadFence, setParameter });
+    stubProtocol({ uploadFenceMission, setParameter });
 
     const s = useGeofenceStore.getState();
     s.setFenceType('polygon');
@@ -226,15 +225,15 @@ describe('geofence-store', () => {
     s.setBreachAction(action);
     await s.uploadFence();
 
-    expect(uploadFence).toHaveBeenCalledTimes(1);
+    expect(uploadFenceMission).toHaveBeenCalledTimes(1);
     expect(setParameter).toHaveBeenCalledWith('FENCE_ACTION', value);
     expect(useGeofenceStore.getState().uploadState).toBe('uploaded');
   });
 
   it('ArduPilot upload enables the fence with the polygon and altitude-ceiling bits', async () => {
-    const uploadFence = vi.fn().mockResolvedValue({ success: true });
+    const uploadFenceMission = vi.fn().mockResolvedValue({ success: true });
     const setParameter = vi.fn().mockResolvedValue({ success: true });
-    stubProtocol({ uploadFence, setParameter });
+    stubProtocol({ uploadFenceMission, setParameter });
 
     const s = useGeofenceStore.getState();
     s.setEnabled(true);
@@ -254,7 +253,6 @@ describe('geofence-store', () => {
     const uploadFenceMission = vi.fn().mockResolvedValue({ success: true });
     const setParameter = vi.fn().mockResolvedValue({ success: true });
     stubProtocol({
-      uploadFence: vi.fn(),
       uploadFenceMission,
       setParameter,
       getVehicleInfo: () => ({ firmwareType: 'px4' }),
@@ -273,9 +271,9 @@ describe('geofence-store', () => {
   });
 
   it('a failed fence parameter write fails the upload and vouches for nothing', async () => {
-    const uploadFence = vi.fn().mockResolvedValue({ success: true });
+    const uploadFenceMission = vi.fn().mockResolvedValue({ success: true });
     const setParameter = vi.fn().mockRejectedValue(new Error('no such param'));
-    stubProtocol({ uploadFence, setParameter });
+    stubProtocol({ uploadFenceMission, setParameter });
 
     const s = useGeofenceStore.getState();
     s.setFenceType('polygon');
@@ -289,9 +287,9 @@ describe('geofence-store', () => {
   });
 
   it('does not write fence parameters when the geometry upload fails', async () => {
-    const uploadFence = vi.fn().mockResolvedValue({ success: false });
+    const uploadFenceMission = vi.fn().mockResolvedValue({ success: false });
     const setParameter = vi.fn().mockResolvedValue({ success: true });
-    stubProtocol({ uploadFence, setParameter });
+    stubProtocol({ uploadFenceMission, setParameter });
 
     const s = useGeofenceStore.getState();
     s.setFenceType('polygon');
@@ -304,7 +302,7 @@ describe('geofence-store', () => {
 
   it('an edit after a confirmed upload stops reading as on aircraft', async () => {
     stubProtocol({
-      uploadFence: vi.fn().mockResolvedValue({ success: true }),
+      uploadFenceMission: vi.fn().mockResolvedValue({ success: true }),
       setParameter: vi.fn().mockResolvedValue({ success: true }),
     });
     const s = useGeofenceStore.getState();
@@ -324,9 +322,8 @@ describe('geofence-store', () => {
   it('downloadFence takes enable, ceiling and action from the FC parameters', async () => {
     const params: Record<string, number> = { FENCE_ENABLE: 0, FENCE_ALT_MAX: 45, FENCE_ACTION: 2 };
     stubProtocol({
-      uploadFence: vi.fn(),
-      downloadFence: vi.fn().mockResolvedValue([
-        { idx: 0, lat: 1, lon: 2 }, { idx: 1, lat: 1, lon: 3 }, { idx: 2, lat: 2, lon: 3 },
+      downloadFenceMission: vi.fn().mockResolvedValue([
+        { kind: 'polygon', role: 'inclusion', vertices: [{ lat: 1, lon: 2 }, { lat: 1, lon: 3 }, { lat: 2, lon: 3 }] },
       ]),
       getParameter: vi.fn(async (name: string) => ({ name, value: params[name], type: 9, index: 0, count: 1 })),
     });
@@ -344,9 +341,8 @@ describe('geofence-store', () => {
     s.setFenceType('polygon');
     s.setPolygonPoints(TRI);
     stubProtocol({
-      uploadFence: vi.fn(),
-      downloadFence: vi.fn().mockResolvedValue([
-        { idx: 0, lat: 1, lon: 2 }, { idx: 1, lat: 1, lon: 3 }, { idx: 2, lat: 2, lon: 3 },
+      downloadFenceMission: vi.fn().mockResolvedValue([
+        { kind: 'polygon', role: 'inclusion', vertices: [{ lat: 1, lon: 2 }, { lat: 1, lon: 3 }, { lat: 2, lon: 3 }] },
       ]),
       getParameter: vi.fn().mockRejectedValue(new Error('timeout')),
     });

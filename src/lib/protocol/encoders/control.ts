@@ -1,5 +1,5 @@
 /**
- * MAVLink control encoders: ManualControl, PositionTarget, AttitudeTarget.
+ * MAVLink control encoders: ManualControl.
  * @module protocol/encoders/control
  */
 
@@ -56,89 +56,6 @@ function requireAxis(value: number, field: string): void {
       `${field}: expected ${AXIS_MIN}..${AXIS_MAX}, received ${String(value)}`,
     );
   }
-}
-
-// ── SET_POSITION_TARGET_GLOBAL_INT (ID 86) ───────────────────
-
-/**
- * Encode SET_POSITION_TARGET_GLOBAL_INT.
- *
- * Used for guided position commands (GUIDED mode goto).
- * lat/lon as int32 * 1e7, alt in meters.
- */
-export function encodeSetPositionTargetGlobalInt(
-  targetSys: number,
-  targetComp: number,
-  latInt: number,
-  lonInt: number,
-  alt: number,
-  vx: number,
-  vy: number,
-  vz: number,
-  typeMask: number,
-  coordFrame: number,
-  sysId = 255,
-  compId = 190,
-): Uint8Array {
-  const payload = new Uint8Array(53);
-  const dv = new DataView(payload.buffer);
-  dv.setUint32(0, 0, true);           // timeBootMs (0 = let FC use its own)
-  dv.setInt32(4, latInt, true);        // lat * 1e7
-  dv.setInt32(8, lonInt, true);        // lon * 1e7
-  dv.setFloat32(12, alt, true);        // alt
-  dv.setFloat32(16, vx, true);         // vx
-  dv.setFloat32(20, vy, true);         // vy
-  dv.setFloat32(24, vz, true);         // vz
-  dv.setFloat32(28, 0, true);          // afx
-  dv.setFloat32(32, 0, true);          // afy
-  dv.setFloat32(36, 0, true);          // afz
-  dv.setFloat32(40, 0, true);          // yaw
-  dv.setFloat32(44, 0, true);          // yawRate
-  dv.setUint16(48, typeMask, true);    // typeMask
-  payload[50] = targetSys;
-  payload[51] = targetComp;
-  payload[52] = coordFrame;
-  return buildFrame(86, payload, sysId, compId);
-}
-
-// ── SET_ATTITUDE_TARGET (ID 82) ──────────────────────────────
-
-/**
- * Encode SET_ATTITUDE_TARGET.
- *
- * Used for attitude-level guided flight commands.
- * Quaternion is constructed from Euler angles (simplified roll/pitch/yaw).
- */
-export function encodeSetAttitudeTarget(
-  targetSys: number,
-  targetComp: number,
-  roll: number,
-  pitch: number,
-  yaw: number,
-  thrust: number,
-  typeMask: number,
-  sysId = 255,
-  compId = 190,
-): Uint8Array {
-  const payload = new Uint8Array(39);
-  const dv = new DataView(payload.buffer);
-  dv.setUint32(0, 0, true);             // timeBootMs
-  // Simplified quaternion from Euler: identity with small-angle approx
-  const cr = Math.cos(roll / 2), sr = Math.sin(roll / 2);
-  const cp = Math.cos(pitch / 2), sp = Math.sin(pitch / 2);
-  const cy = Math.cos(yaw / 2), sy = Math.sin(yaw / 2);
-  dv.setFloat32(4, cr * cp * cy + sr * sp * sy, true);   // q[0] w
-  dv.setFloat32(8, sr * cp * cy - cr * sp * sy, true);   // q[1] x
-  dv.setFloat32(12, cr * sp * cy + sr * cp * sy, true);  // q[2] y
-  dv.setFloat32(16, cr * cp * sy - sr * sp * cy, true);  // q[3] z
-  dv.setFloat32(20, 0, true);           // bodyRollRate
-  dv.setFloat32(24, 0, true);           // bodyPitchRate
-  dv.setFloat32(28, 0, true);           // bodyYawRate
-  dv.setFloat32(32, thrust, true);       // thrust (0-1)
-  payload[36] = targetSys;
-  payload[37] = targetComp;
-  payload[38] = typeMask;
-  return buildFrame(82, payload, sysId, compId);
 }
 
 // RC_CHANNELS_OVERRIDE (ID 70) is deliberately not encoded here. The stick

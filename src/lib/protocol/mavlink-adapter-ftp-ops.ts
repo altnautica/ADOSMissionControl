@@ -192,14 +192,17 @@ function buildTerminate(ctx: FtpContext): Uint8Array {
 
 /** Parse ListDirectory response bytes: null-terminated entries, each starting
  *  with a type char (F=file, D=dir, S=skip), files carry `\t<size>` after the
- *  name. Returns the parsed entries. */
-function parseDirEntries(data: Uint8Array, count: number): FtpDirEntry[] {
+ *  name. Returns the kept entries and the server-side entry count of the reply
+ *  (skip entries, `.` and `..` included), which is what the next offset adds. */
+function parseDirEntries(data: Uint8Array, count: number): { entries: FtpDirEntry[]; served: number } {
   const out: FtpDirEntry[] = [];
+  let served = 0;
   let start = 0;
   const decoder = new TextDecoder();
   for (let i = 0; i < count; i++) {
     if (data[i] === 0) {
       if (i > start) {
+        served++;
         const raw = decoder.decode(data.subarray(start, i));
         const type = raw[0];
         if (type === "F" || type === "D") {
@@ -217,12 +220,12 @@ function parseDirEntries(data: Uint8Array, count: number): FtpDirEntry[] {
             }
           }
         }
-        // type 'S' (skip) and anything else are ignored.
+        // type 'S' (skip) and anything else are not listed.
       }
       start = i + 1;
     }
   }
-  return out;
+  return { entries: out, served };
 }
 
 // ── public ops ────────────────────────────────────────────────
@@ -345,6 +348,11 @@ export function handleFtpOpAck(ctx: FtpContext, frame: MAVLinkFrame): void {
   // A session is assigned during 'creating'; before that (and for the
   // session-less list/remove) accept any session, after that require a match.
   if (st.session !== 0 && m.session !== st.session) return;
+  // A write ACK answers the outstanding request only when it carries that
+  // request's seq + 1. A delayed ACK to an earlier copy of the chunk, followed
+  // by the ACK to its resend, would otherwise advance the offset twice and
+  // silently drop a chunk.
+  if (m.opcode === FtpOpcode.Ack && m.reqOpcode === FtpOpcode.WriteFile && m.seq !== st.seq) return;
 
   st.retryCount = 0;
   armInactivity(ctx);
@@ -388,14 +396,16 @@ export function handleFtpOpAck(ctx: FtpContext, frame: MAVLinkFrame): void {
     }
     case FtpOpcode.ListDirectory: {
       const count = Math.min(m.size, FTP_MAX_DATA);
-      const parsed = parseDirEntries(m.data, count);
-      st.entries.push(...parsed);
-      st.listOffset += parsed.length;
-      // An empty ACK (no entries) also signals the end on some stacks.
-      if (parsed.length === 0) {
+      // A zero-size ACK (or one carrying no complete entry) ends the listing on
+      // some stacks; otherwise the walk ends only on the EOF NAK. A reply of
+      // nothing but skip entries still advances the server offset and continues.
+      const { entries, served } = parseDirEntries(m.data, count);
+      if (served === 0) {
         finishOp(ctx, st.entries);
         return;
       }
+      st.entries.push(...entries);
+      st.listOffset += served;
       sendRequest(
         ctx,
         pathFrame(ctx, FtpOpcode.ListDirectory, 0, st.listOffset, st.path),

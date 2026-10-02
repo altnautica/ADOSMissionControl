@@ -33,7 +33,8 @@ const BETAFLIGHT_CAPABILITIES: ProtocolCapabilities = {
   supportsAutonomousNav: false,
   supportsGeoFence: false,
   supportsRally: false,
-  supportsLogDownload: true,
+  // Blackbox flash is read through the dataflash surface, not an onboard log list.
+  supportsLogDownload: false,
   supportsOsd: true,
   supportsDisplayPort: true,
   supportsPidTuning: true,

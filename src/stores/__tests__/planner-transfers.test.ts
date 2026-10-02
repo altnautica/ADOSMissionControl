@@ -60,14 +60,13 @@ beforeEach(() => {
 });
 
 describe("fence upload", () => {
-  it("sends every zone through the mission-type fence protocol when the adapter has it", async () => {
+  it("sends every zone through the mission-type fence protocol", async () => {
     const uploadFenceMission = vi.fn(async (_elements: FenceElement[]) => ({
       success: true,
       resultCode: 0,
       message: "Uploaded",
     }));
-    const uploadFence = vi.fn(async () => ({ success: true, resultCode: 0, message: "Uploaded" }));
-    selectProtocol(baseProtocol({ uploadFenceMission, uploadFence }));
+    selectProtocol(baseProtocol({ uploadFenceMission }));
     const fence = useGeofenceStore.getState();
     fence.setFenceType("polygon");
     fence.setPolygonPoints(square);
@@ -76,38 +75,32 @@ describe("fence upload", () => {
     const result = await useGeofenceStore.getState().uploadFence();
 
     expect(result.success).toBe(true);
-    expect(uploadFence).not.toHaveBeenCalled();
     expect(uploadFenceMission).toHaveBeenCalledTimes(1);
     expect(uploadFenceMission.mock.calls[0][0]).toHaveLength(2);
   });
 
-  it("refuses zones on a boundary-only protocol instead of vouching for them", async () => {
-    const uploadFence = vi.fn(async () => ({ success: true, resultCode: 0, message: "Uploaded" }));
-    selectProtocol(baseProtocol({ uploadFence }));
-    const fence = useGeofenceStore.getState();
-    fence.setFenceType("polygon");
-    fence.setPolygonPoints(square);
-    fence.addZone(zone);
+  it("never clears the vehicle's fence from an empty upload", async () => {
+    const uploadFenceMission = vi.fn(async (_elements: FenceElement[]) => ({ success: true, resultCode: 0, message: "ok" }));
+    selectProtocol(baseProtocol({ uploadFenceMission }));
 
     const result = await useGeofenceStore.getState().uploadFence();
 
     expect(result.success).toBe(false);
-    expect(uploadFence).not.toHaveBeenCalled();
-    expect(useUploadReceiptsStore.getState().receipts[DRONE]?.fence).toBeUndefined();
+    expect(uploadFenceMission).not.toHaveBeenCalled();
   });
 });
 
-describe("fence download", () => {
-  it("drops local zones when the FC's boundary-only fence replaces the planner's", async () => {
-    const downloadFence = vi.fn(async () => square.map(([lat, lon], idx) => ({ idx, lat, lon })));
-    selectProtocol(baseProtocol({ downloadFence }));
-    useGeofenceStore.getState().addZone(zone);
+describe("vehicle fence clear", () => {
+  it("uploads an empty fence mission and drops the fence receipt", async () => {
+    const uploadFenceMission = vi.fn(async (_elements: FenceElement[]) => ({ success: true, resultCode: 0, message: "ok" }));
+    selectProtocol(baseProtocol({ uploadFenceMission }));
+    useUploadReceiptsStore.getState().record("fence", { droneId: DRONE, contentHash: "abc", at: 1 });
 
-    const result = await useGeofenceStore.getState().downloadFence();
+    const result = await useGeofenceStore.getState().clearVehicleFence();
 
     expect(result.success).toBe(true);
-    expect(useGeofenceStore.getState().zones).toEqual([]);
-    expect(useGeofenceStore.getState().polygonPoints).toHaveLength(4);
+    expect(uploadFenceMission).toHaveBeenCalledWith([]);
+    expect(useUploadReceiptsStore.getState().receipts[DRONE]?.fence).toBeUndefined();
   });
 });
 

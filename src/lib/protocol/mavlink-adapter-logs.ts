@@ -18,7 +18,13 @@ export interface LogListState {
   entries: Map<number, LogEntry>
   /** num_logs from the vehicle; null until the first LOG_ENTRY arrives. */
   numLogs: number | null
-  lastLogId: number
+  /**
+   * Lowest log id of the list, fixed by the first LOG_ENTRY (a reply to the
+   * full-range request): ArduPilot lists 1..num_logs, PX4 0..num_logs-1. A
+   * later entry answering a single-id re-request carries that request's
+   * clipped end as last_log_num, so the range is never re-derived from it.
+   */
+  firstLogId: number | null
   resolve: (entries: LogEntry[]) => void
   reject: (err: Error) => void
   timer: ReturnType<typeof setTimeout> | undefined
@@ -80,10 +86,10 @@ export interface LogContext {
 /**
  * List the onboard logs over LOG_REQUEST_LIST / LOG_ENTRY.
  *
- * LOG_ENTRY carries num_logs and last_log_num, so the complete id range is
- * known from the first entry. A lost entry is requested again by range, and a
- * list the vehicle never completes rejects rather than resolving short: a log
- * missing from the list cannot be downloaded, and "no logs" is a claim.
+ * The first LOG_ENTRY fixes num_logs and the id range. A lost entry is
+ * requested again by range, and a list the vehicle never completes rejects
+ * rather than resolving short: a log missing from the list cannot be
+ * downloaded, and "no logs" is a claim.
  */
 export async function getLogList(ctx: LogContext): Promise<LogEntry[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
@@ -91,7 +97,7 @@ export async function getLogList(ctx: LogContext): Promise<LogEntry[]> {
 
   const { promise, resolve, reject } = Promise.withResolvers<LogEntry[]>()
   const state: LogListState = {
-    entries: new Map(), numLogs: null, lastLogId: 0, resolve, reject, timer: undefined, retryCount: 0, settled: false,
+    entries: new Map(), numLogs: null, firstLogId: null, resolve, reject, timer: undefined, retryCount: 0, settled: false,
   }
   ctx.logListDownload = state
   requestLogList(ctx, 0, 0xffff)
@@ -106,10 +112,9 @@ function requestLogList(ctx: LogContext, start: number, end: number): void {
 
 /** The ids the vehicle listed that have not arrived, lowest first. */
 function missingLogIds(state: LogListState): number[] {
-  if (state.numLogs === null) return []
-  const first = state.lastLogId - state.numLogs + 1
+  if (state.numLogs === null || state.firstLogId === null) return []
   const missing: number[] = []
-  for (let id = first; id <= state.lastLogId; id++) {
+  for (let id = state.firstLogId; id < state.firstLogId + state.numLogs; id++) {
     if (!state.entries.has(id)) missing.push(id)
   }
   return missing
@@ -275,10 +280,14 @@ export function handleLogEntry(ctx: LogContext, frame: MAVLinkFrame): void {
   const state = ctx.logListDownload
   if (!state || state.settled) return
   const data = decodeLogEntry(frame.payload)
-  state.numLogs = data.numLogs
-  state.lastLogId = data.lastLogNum
-  // num_logs 0 arrives as a single entry that describes no log.
-  if (data.numLogs > 0) {
+  if (state.numLogs === null) {
+    state.numLogs = data.numLogs
+    state.firstLogId = data.lastLogNum - data.numLogs + 1
+  }
+  // num_logs 0 arrives as a single entry that describes no log. An id outside
+  // the range fixed by the first entry belongs to no list this request made.
+  const inRange = state.firstLogId !== null && data.id >= state.firstLogId && data.id < state.firstLogId + state.numLogs
+  if (data.numLogs > 0 && inRange) {
     state.entries.set(data.id, {
       id: data.id,
       numLogs: data.numLogs,
@@ -289,7 +298,7 @@ export function handleLogEntry(ctx: LogContext, frame: MAVLinkFrame): void {
   }
   state.retryCount = 0
 
-  if (missingLogIds(state).length === 0) {
+  if (state.entries.size >= state.numLogs) {
     settleLogList(ctx, state, null)
     return
   }

@@ -28,6 +28,7 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
+import { isFresh } from "@/lib/telemetry/freshness";
 
 const IDLE_STATE: SkillState = { kind: "idle" };
 
@@ -83,9 +84,14 @@ export function buildSkillContextFor(droneId: string): SkillContext {
     ? autonomousNavFromCapabilities(live.getCapabilities())
     : "unknown";
 
+  // An open transport is not an FC link: a skill dispatched while the FC
+  // heartbeat is stale goes into a void, so the command surface is offered
+  // only while the heartbeat is fresh and every skill reads "no FC link".
+  const fcReachable = isFresh(droneState.lastHeartbeat, Date.now());
+
   return {
     droneId,
-    protocol: live,
+    protocol: fcReachable ? live : null,
     armState: droneState.armState,
     flightMode: droneState.flightMode,
     availableModes,

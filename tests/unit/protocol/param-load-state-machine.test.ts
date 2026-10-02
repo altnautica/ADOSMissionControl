@@ -76,6 +76,8 @@ function makeContext(t: FakeTransport): ParamContext & FrameHandlerState {
     HEARTBEAT_TIMEOUT_MS: 5000,
     statusText: new StatusTextAssembler(),
     homeAltitudeAmsl: null,
+    transferChains: new Map(),
+    sendCommandLong: vi.fn(),
   };
 }
 

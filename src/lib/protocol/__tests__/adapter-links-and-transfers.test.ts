@@ -13,7 +13,7 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { MAVLinkAdapter } from "../mavlink-adapter";
 import { buildFrame } from "../encoders/frame";
 import type { ParameterValue, Transport, TransportEventMap } from "../types";
@@ -161,5 +161,82 @@ describe("log erase", () => {
     const { adapter } = await connected(MAV_AUTOPILOT_ARDUPILOTMEGA);
     const result = await adapter.eraseAllLogs();
     expect(result.acknowledged).toBe(false);
+  });
+});
+
+/** An indexed PARAM_VALUE from the autopilot, as a bulk list sends it. */
+function indexedParam(name: string, index: number, count: number): Uint8Array {
+  const p = new Uint8Array(25);
+  const dv = new DataView(p.buffer);
+  dv.setFloat32(0, index + 1, true);
+  dv.setUint16(4, count, true);
+  dv.setUint16(6, index, true);
+  p.set(new TextEncoder().encode(name), 8);
+  p[24] = 9;
+  return buildFrame(22, p, 1, 1, 0);
+}
+
+const PARAM_REQUEST_LIST = 21;
+const MISSION_REQUEST_LIST = 43;
+const MISSION_COUNT_OUT = 44;
+
+describe("parameter download", () => {
+  it("starts a fresh download after a completed one", async () => {
+    const { adapter, link } = await connected(MAV_AUTOPILOT_ARDUPILOTMEGA);
+    const first = adapter.getAllParameters();
+    expect(link.frames(PARAM_REQUEST_LIST)).toHaveLength(1);
+    link.emit(indexedParam("ALPHA", 0, 2));
+    link.emit(indexedParam("BETA", 1, 2));
+    expect((await first).map((p) => p.name)).toEqual(["ALPHA", "BETA"]);
+
+    const second = adapter.getAllParameters();
+    expect(link.frames(PARAM_REQUEST_LIST)).toHaveLength(2);
+    link.emit(indexedParam("ALPHA", 0, 2));
+    link.emit(indexedParam("BETA", 1, 2));
+    expect(await second).toHaveLength(2);
+  });
+});
+
+describe("mission transfers", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("stops asking once an empty mission download completes", async () => {
+    vi.useFakeTimers();
+    const { adapter, link } = await connected(MAV_AUTOPILOT_ARDUPILOTMEGA);
+    const download = adapter.downloadMission();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(link.frames(MISSION_REQUEST_LIST)).toHaveLength(1);
+
+    // MISSION_COUNT(0) addressed to this GCS: count, target sys/comp, type.
+    const count = new Uint8Array(9);
+    count[2] = 255;
+    count[3] = 190;
+    link.emit(buildFrame(MISSION_COUNT_OUT, count, 1, 1, 1));
+    expect(await download).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(link.frames(MISSION_REQUEST_LIST)).toHaveLength(1);
+  });
+
+  it("runs a second upload only after the first has settled", async () => {
+    vi.useFakeTimers();
+    const { adapter, link } = await connected(MAV_AUTOPILOT_ARDUPILOTMEGA);
+    const first = adapter.uploadMission([]);
+    const second = adapter.uploadMission([]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(link.frames(MISSION_COUNT_OUT)).toHaveLength(1);
+
+    // MISSION_ACK accepted: target sys/comp, type 0, mission_type 0.
+    const ack = new Uint8Array(4);
+    ack[0] = 255;
+    ack[1] = 190;
+    link.emit(buildFrame(47, ack, 1, 1, 2));
+    expect(await first).toMatchObject({ success: true });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(link.frames(MISSION_COUNT_OUT)).toHaveLength(2);
+    link.emit(buildFrame(47, ack, 1, 1, 3));
+    expect(await second).toMatchObject({ success: true });
   });
 });

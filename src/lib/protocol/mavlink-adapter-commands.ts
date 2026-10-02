@@ -6,7 +6,7 @@
 import type { Transport, CommandResult, UnifiedFlightMode, FirmwareHandler, GuidedGotoOptions } from './types'
 import type { CommandQueue } from './command-queue'
 import {
-  encodeManualControl, encodeSetPositionTargetGlobalInt, encodeSetAttitudeTarget,
+  encodeManualControl,
   encodeSerialControl, encodeSetGpsGlobalOrigin,
 } from './mavlink-encoder'
 
@@ -484,23 +484,6 @@ export function cmdSendSerialData(ctx: CommandContext, text: string): void {
     const chunk = bytes.subarray(offset, offset + SERIAL_CONTROL_DATA_MAX)
     ctx.transport.send(encodeSerialControl(10, 6, 500, 0, chunk, ctx.sysId, ctx.compId))
   }
-}
-
-export function cmdSendPositionTarget(ctx: CommandContext, lat: number, lon: number, alt: number): void {
-  if (!ctx.transport?.isConnected) return
-  ctx.transport.send(encodeSetPositionTargetGlobalInt(
-    ctx.targetSysId, ctx.targetCompId,
-    Math.round(lat * 1e7), Math.round(lon * 1e7), alt,
-    0, 0, 0, 0x0FF8, 6, ctx.sysId, ctx.compId,
-  ))
-}
-
-export function cmdSendAttitudeTarget(ctx: CommandContext, roll: number, pitch: number, yaw: number, thrust: number): void {
-  if (!ctx.transport?.isConnected) return
-  ctx.transport.send(encodeSetAttitudeTarget(
-    ctx.targetSysId, ctx.targetCompId,
-    roll, pitch, yaw, thrust, 0x07, ctx.sysId, ctx.compId,
-  ))
 }
 
 /**

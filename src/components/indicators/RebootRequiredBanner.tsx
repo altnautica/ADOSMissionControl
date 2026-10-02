@@ -2,15 +2,19 @@
 
 import { useTranslations } from "next-intl";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useDroneStore } from "@/stores/drone-store";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { cn } from "@/lib/utils";
 import { RotateCcw, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-/** A heartbeat gap longer than this, followed by a resumed heartbeat, is a reboot. */
-const REBOOT_GAP_MS = 2000;
+/**
+ * The FC's boot clock (SYSTEM_TIME.time_boot_ms) going back by more than this
+ * is a reboot. A link dropout pauses the samples but never rewinds the clock.
+ */
+const BOOT_CLOCK_REWIND_MS = 1000;
 /** How long the banner stays up after the reboot is seen, before fading. */
 const CLEAR_DELAY_MS = 3000;
 const FADE_MS = 400;
@@ -19,9 +23,10 @@ const FADE_MS = 400;
  * Amber banner shown when parameter changes require a FC reboot.
  * Tracks params with rebootRequired metadata flag.
  *
- * When the heartbeat resumes after a gap (the FC rebooted), the banner fades
- * out and the pending reboot params are cleared. Dismissing hides only the
- * current set: a later change that also needs a reboot shows the banner again.
+ * When the FC's boot clock restarts (it rebooted), the banner fades out and
+ * the pending reboot params are cleared. Dismissing hides only the current
+ * set: a later change that also needs a reboot shows the banner again. The
+ * Reboot action is refused while armed, confirmed first, and its result shown.
  */
 export function RebootRequiredBanner({
   rebootParams,
@@ -35,31 +40,34 @@ export function RebootRequiredBanner({
   const paramsKey = rebootParams.join(",");
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [fadingOut, setFadingOut] = useState(false);
-  const protocol = useDroneManager.getState().getSelectedProtocol();
-  const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
-  const prevHeartbeatRef = useRef(lastHeartbeat);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rebootResult, setRebootResult] = useState<string | null>(null);
+  const protocol = useDroneManager((s) => s.getSelectedProtocol());
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const clearTimerRef = useRef<number | null>(null);
+  const pending = rebootParams.length > 0;
 
-  // Detect reboot: heartbeat gap then resume. The previous heartbeat is
-  // tracked on every beat, so a gap is only ever measured between two
-  // consecutive heartbeats.
+  // Detect a reboot from the FC's boot clock restarting.
   useEffect(() => {
-    const prev = prevHeartbeatRef.current;
-    prevHeartbeatRef.current = lastHeartbeat;
-    if (rebootParams.length === 0 || clearTimerRef.current !== null) return;
-    if (prev === 0 || lastHeartbeat === 0) return;
-    if (lastHeartbeat - prev <= REBOOT_GAP_MS) return;
-
-    // The timer lives in a ref so the next heartbeat does not cancel it.
-    clearTimerRef.current = window.setTimeout(() => {
-      setFadingOut(true);
+    if (!pending || !protocol?.onSystemTime) return;
+    let prevBootMs: number | null = null;
+    return protocol.onSystemTime(({ timeBootMs }) => {
+      const prev = prevBootMs;
+      prevBootMs = timeBootMs;
+      if (prev === null || timeBootMs >= prev - BOOT_CLOCK_REWIND_MS) return;
+      if (clearTimerRef.current !== null) return;
+      // The timer lives in a ref so the next sample does not cancel it.
       clearTimerRef.current = window.setTimeout(() => {
-        clearTimerRef.current = null;
-        setFadingOut(false);
-        useParamSafetyStore.getState().clearRebootParams();
-      }, FADE_MS);
-    }, CLEAR_DELAY_MS);
-  }, [lastHeartbeat, rebootParams.length]);
+        setFadingOut(true);
+        clearTimerRef.current = window.setTimeout(() => {
+          clearTimerRef.current = null;
+          setFadingOut(false);
+          setRebootResult(null);
+          useParamSafetyStore.getState().clearRebootParams();
+        }, FADE_MS);
+      }, CLEAR_DELAY_MS);
+    });
+  }, [protocol, pending]);
 
   useEffect(
     () => () => {
@@ -68,11 +76,19 @@ export function RebootRequiredBanner({
     [],
   );
 
-  if (rebootParams.length === 0 || dismissedKey === paramsKey) return null;
+  if (!pending || dismissedKey === paramsKey) return null;
 
   async function handleReboot() {
+    setConfirmOpen(false);
     if (!protocol) return;
-    await protocol.reboot();
+    const result = await protocol.reboot();
+    setRebootResult(
+      !result.success
+        ? `Reboot refused: ${result.message}`
+        : result.acknowledged === false
+          ? "Reboot sent; waiting for the flight controller to restart"
+          : "Reboot accepted; waiting for the flight controller to restart",
+    );
   }
 
   return (
@@ -88,7 +104,13 @@ export function RebootRequiredBanner({
         <span className="flex-1 text-text-primary">
           {t("rebootRequired")}
         </span>
-        <Button size="sm" variant="ghost" onClick={handleReboot}>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setConfirmOpen(true)}
+          disabled={!protocol || isHardBlocked}
+          title={hardBlockMessage || undefined}
+        >
           {t("rebootNow")}
         </Button>
         <button
@@ -102,6 +124,18 @@ export function RebootRequiredBanner({
       <div className="mt-1 text-[10px] font-mono text-text-tertiary">
         {rebootParams.join(", ")}
       </div>
+      {rebootResult && (
+        <div className="mt-1 text-[10px] text-text-secondary">{rebootResult}</div>
+      )}
+      <ConfirmDialog
+        open={confirmOpen}
+        onConfirm={() => { void handleReboot(); }}
+        onCancel={() => setConfirmOpen(false)}
+        title="Reboot flight controller"
+        message="The flight controller restarts and the link drops until it is back. Continue?"
+        confirmLabel="Reboot"
+        variant="danger"
+      />
     </div>
   );
 }

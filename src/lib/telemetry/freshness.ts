@@ -30,6 +30,12 @@
  */
 export const TELEMETRY_STALE_MS = 5_000;
 
+/**
+ * How far ahead of this browser's clock a sample may be stamped and still be
+ * read as fresh: ordinary clock skew between the stamping relay and here.
+ */
+export const TELEMETRY_FUTURE_SKEW_MS = 2_000;
+
 /** A telemetry sample. Every type in `@/lib/types/telemetry` carries this. */
 export interface Timestamped {
   timestamp: number;
@@ -45,11 +51,11 @@ export interface Timestamped {
 export function isFresh(timestamp: number | undefined, now: number): boolean {
   if (timestamp === undefined || !Number.isFinite(timestamp)) return false;
   const age = now - timestamp;
-  // A sample from the future is a clock disagreement between this browser and
-  // whatever stamped it, not evidence of freshness. Treat it as usable rather
-  // than blanking the surface, since the alternative is a permanently dead
-  // display whenever a relay's clock runs a little ahead.
-  if (age < 0) return true;
+  // A sample a little from the future is clock skew between this browser and
+  // whatever stamped it. Anything further ahead says nothing about how old
+  // the sample really is, so it cannot vouch for a live value: a relay clock
+  // running minutes ahead would otherwise keep a dead link's values "live".
+  if (age < 0) return -age <= TELEMETRY_FUTURE_SKEW_MS;
   return age < TELEMETRY_STALE_MS;
 }
 

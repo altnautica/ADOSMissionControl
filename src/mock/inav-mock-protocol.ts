@@ -37,7 +37,7 @@ import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
 import { SettingsError } from "@/lib/protocol/msp/settings";
 import { INAV_WP_FLAG_LAST, INAV_WP_ACTION, INAV_LIMITS } from "@/lib/protocol/msp/msp-decoders-inav";
 import type {
-  INavWaypoint, INavSafehome, MotorMixerRule, INavServoMixerRule,
+  INavWaypoint, INavSafehome, INavGeozone, INavGeozoneVertex, MotorMixerRule, INavServoMixerRule,
   INavEzTune, INavOsdAlarms, INavOsdPreferences, INavOsdLayoutsHeader,
   INavActiveProfiles, INavBatteryConfig, INavMixer, INavServoConfig, INavMcBraking, INavGvarStatus,
   INavTimerOutputModeEntry, INavOutputMappingExt2Entry, INavTempSensorConfigEntry, INavCalibrationData,
@@ -47,7 +47,7 @@ import type { SettingValue, SettingInfo } from "@/lib/protocol/msp/settings";
 import { SettingType } from "@/lib/protocol/msp/settings";
 import { createCallbackArrays } from "./mock-protocol-callbacks";
 import type { MockCallbackArrays } from "./mock-protocol-callbacks";
-import type { ManualControlSample, PositionTargetSample, AttitudeTargetSample } from "./mock-control-samples";
+import type { ManualControlSample } from "./mock-control-samples";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -81,31 +81,6 @@ function settingEntryToValue(entry: SettingEntry): SettingValue {
     case SettingType.STRING: return { type: "string", value: String(v) };
     default:                 return { type: "raw",    value: new Uint8Array([Number(v) & 0xff]) };
   }
-}
-
-// ── iNav-only types ───────────────────────────────────────────
-
-/** Geozone types supported in demo state. */
-export const GEOZONE_TYPE_EXCLUSIVE = 0;
-export const GEOZONE_TYPE_INCLUSIVE = 1;
-export const GEOZONE_SHAPE_POLYGON = 0;
-export const GEOZONE_SHAPE_CIRCULAR = 1;
-
-export interface INavGeozone {
-  index: number;
-  enabled: boolean;
-  shape: number;
-  type: number;
-  minAltitude: number;
-  maxAltitude: number;
-  /** Circular only: center lat (WGS84 degrees). */
-  lat?: number;
-  /** Circular only: center lon (WGS84 degrees). */
-  lon?: number;
-  /** Circular only: radius in cm. */
-  radius?: number;
-  /** Polygon only: vertex array [{lat, lon}] in degrees. */
-  vertices?: Array<{ lat: number; lon: number }>;
 }
 
 /** Named setting entry stored in the in-memory map. */
@@ -145,6 +120,7 @@ export interface INavMockConfig {
   missionWaypoints?: INavWaypoint[];
   safehomes?: INavSafehome[];
   geozones?: INavGeozone[];
+  geozoneVertices?: INavGeozoneVertex[];
 }
 
 // ── Seed settings per vehicle class ──────────────────────────
@@ -521,10 +497,10 @@ export class INavMockProtocol implements DroneProtocol {
   }));
   private waypoints: INavWaypoint[] = [];
   private _lastManualControl: ManualControlSample | null = null;
-  private _lastPositionTarget: PositionTargetSample | null = null;
-  private _lastAttitudeTarget: AttitudeTargetSample | null = null;
-  private safehomeSlots: Array<INavSafehome | null> = Array(INAV_LIMITS.SAFEHOMES).fill(null);
-  private geozoneSlots: Array<INavGeozone | null> = Array(INAV_LIMITS.GEOZONES).fill(null);
+  /** Every safehome slot the firmware has; an unused slot is disabled, as the FC reports it. */
+  private safehomeSlots: INavSafehome[] = Array.from({ length: INAV_LIMITS.SAFEHOMES }, (_, index) => ({ index, enabled: false, lat: 0, lon: 0 }));
+  private geozones: INavGeozone[] = [];
+  private geozoneVertices: INavGeozoneVertex[] = [];
 
   // Telemetry drift state ────────────────────────────────────
   private lat: number;
@@ -552,11 +528,8 @@ export class INavMockProtocol implements DroneProtocol {
         if (sh.index >= 0 && sh.index < INAV_LIMITS.SAFEHOMES) this.safehomeSlots[sh.index] = { ...sh };
       }
     }
-    if (config.geozones) {
-      for (const gz of config.geozones) {
-        if (gz.index >= 0 && gz.index < INAV_LIMITS.GEOZONES) this.geozoneSlots[gz.index] = { ...gz };
-      }
-    }
+    if (config.geozones) this.geozones = config.geozones.map((z) => ({ ...z }));
+    if (config.geozoneVertices) this.geozoneVertices = config.geozoneVertices.map((v) => ({ ...v }));
 
     // Base position: just south-west of Bangalore (offset from main demo cluster)
     this.baseLat = config.vehicleClass === "plane" ? 12.920 : 12.925;
@@ -742,60 +715,35 @@ export class INavMockProtocol implements DroneProtocol {
   /** Read the raw INavWaypoint slots : used by tests and iNav-specific panels. */
   getINavWaypoints(): INavWaypoint[] { return [...this.waypoints]; }
 
-  // ── Safehome CRUD (iNav-only surface) ───────────────────────
-  // iNav-only surface; formal DroneProtocol extension follows in the mission and geozone module.
+  // ── Safehomes and geozones (the real adapter's table semantics) ──
 
-  getSafehome(index: number): INavSafehome | null {
-    if (index < 0 || index >= INAV_LIMITS.SAFEHOMES) return null;
-    return this.safehomeSlots[index] ? { ...this.safehomeSlots[index]! } : null;
+  async downloadSafehomes(): Promise<INavSafehome[]> {
+    return this.safehomeSlots.map((s) => ({ ...s }));
   }
 
-  getAllSafehomes(): Array<INavSafehome | null> {
-    return this.safehomeSlots.map((s) => s ? { ...s } : null);
-  }
-
-  setSafehome(safehome: INavSafehome): CommandResult {
-    if (safehome.index < 0 || safehome.index >= INAV_LIMITS.SAFEHOMES) {
-      return { success: false, resultCode: 1, message: `Index out of range (0-${INAV_LIMITS.SAFEHOMES - 1})` };
+  async uploadSafehomes(safehomes: INavSafehome[]): Promise<CommandResult> {
+    if (safehomes.length > INAV_LIMITS.SAFEHOMES) {
+      return { success: false, resultCode: -1, message: `This flight controller has ${INAV_LIMITS.SAFEHOMES} safehome slots; ${safehomes.length} do not fit` };
     }
-    this.safehomeSlots[safehome.index] = { ...safehome };
-    return ok(`Safehome ${safehome.index} saved`);
+    this.safehomeSlots = this.safehomeSlots.map((_, index) => ({ ...(safehomes[index] ?? { enabled: false, lat: 0, lon: 0 }), index }));
+    return ok(`Wrote ${INAV_LIMITS.SAFEHOMES} safehome slots`);
   }
 
-  clearSafehome(index: number): CommandResult {
-    if (index < 0 || index >= INAV_LIMITS.SAFEHOMES) {
-      return { success: false, resultCode: 1, message: `Index out of range (0-${INAV_LIMITS.SAFEHOMES - 1})` };
+  async downloadGeozones(): Promise<{ zones: INavGeozone[]; vertices: INavGeozoneVertex[] }> {
+    const zones = this.geozones.filter((z) => z.vertexCount > 0).map((z) => ({ ...z }));
+    const kept = new Set(zones.map((z) => z.number));
+    return { zones, vertices: this.geozoneVertices.filter((v) => kept.has(v.geozoneId)).map((v) => ({ ...v })) };
+  }
+
+  async uploadGeozones(zones: INavGeozone[], vertices: INavGeozoneVertex[]): Promise<CommandResult> {
+    const outOfRange = zones.find((z) => z.number < 0 || z.number >= INAV_LIMITS.GEOZONES);
+    if (outOfRange) {
+      return { success: false, resultCode: -1, message: `Geozone ${outOfRange.number} is outside the ${INAV_LIMITS.GEOZONES} slots this flight controller has` };
     }
-    this.safehomeSlots[index] = null;
-    return ok(`Safehome ${index} cleared`);
-  }
-
-  // ── Geozone CRUD (iNav-only surface) ───────────────────────
-  // iNav-only surface; formal DroneProtocol extension follows in the mission and geozone module.
-
-  getGeozone(index: number): INavGeozone | null {
-    if (index < 0 || index >= INAV_LIMITS.GEOZONES) return null;
-    return this.geozoneSlots[index] ? { ...this.geozoneSlots[index]! } : null;
-  }
-
-  getAllGeozones(): Array<INavGeozone | null> {
-    return this.geozoneSlots.map((g) => g ? { ...g } : null);
-  }
-
-  setGeozone(zone: INavGeozone): CommandResult {
-    if (zone.index < 0 || zone.index >= INAV_LIMITS.GEOZONES) {
-      return { success: false, resultCode: 1, message: `Index out of range (0-${INAV_LIMITS.GEOZONES - 1})` };
-    }
-    this.geozoneSlots[zone.index] = { ...zone, vertices: zone.vertices ? [...zone.vertices] : undefined };
-    return ok(`Geozone ${zone.index} saved`);
-  }
-
-  clearGeozone(index: number): CommandResult {
-    if (index < 0 || index >= INAV_LIMITS.GEOZONES) {
-      return { success: false, resultCode: 1, message: `Index out of range (0-${INAV_LIMITS.GEOZONES - 1})` };
-    }
-    this.geozoneSlots[index] = null;
-    return ok(`Geozone ${index} cleared`);
+    this.geozones = zones.map((z) => ({ ...z }));
+    const numbers = new Set(zones.map((z) => z.number));
+    this.geozoneVertices = vertices.filter((v) => numbers.has(v.geozoneId)).map((v) => ({ ...v }));
+    return ok(`Uploaded ${zones.length} geozones`);
   }
 
   // ── FC configuration blocks ─────────────────────────────────
@@ -1139,7 +1087,6 @@ export class INavMockProtocol implements DroneProtocol {
   async setServo(): Promise<CommandResult>         { return ok("Servo set"); }
   async cameraTrigger(): Promise<CommandResult>    { return ok("Camera triggered"); }
   async setGimbalAngle(): Promise<CommandResult>   { return ok("Gimbal set"); }
-  async setCameraTriggerDistance(): Promise<CommandResult> { return ok("Trigger distance set"); }
   async setGimbalMode(): Promise<CommandResult>    { return ok("Gimbal mode set"); }
   async setGimbalROI(): Promise<CommandResult>     { return ok("Gimbal ROI set"); }
   async setRoiLocation(): Promise<CommandResult>   { return ok("ROI set"); }
@@ -1153,7 +1100,6 @@ export class INavMockProtocol implements DroneProtocol {
     // iNav speaks MSP not MAVLink; the EKF source-set command has no counterpart here.
     return { ok: false, reason: "rejected" };
   }
-  async startEscCalibration(): Promise<CommandResult> { return ok("ESC calibration started"); }
   async enableFence(): Promise<CommandResult>      { return ok("Fence updated"); }
   async doLandStart(): Promise<CommandResult>      { return ok("Land start"); }
   async controlVideo(): Promise<CommandResult>     { return ok("Video control"); }
@@ -1164,28 +1110,16 @@ export class INavMockProtocol implements DroneProtocol {
   sendManualControl(roll: number, pitch: number, throttle: number, yaw: number, buttons: number): void {
     this._lastManualControl = { roll, pitch, throttle, yaw, buttons };
   }
-  sendPositionTarget(lat: number, lon: number, alt: number): void {
-    this._lastPositionTarget = { lat, lon, alt };
-  }
-  sendAttitudeTarget(roll: number, pitch: number, yaw: number, thrust: number): void {
-    this._lastAttitudeTarget = { roll, pitch, yaw, thrust };
-  }
   setRcChannelValues(): void {}
 
   /** Last stick frame handed to this mock, or null if none. */
   getLastManualControl(): ManualControlSample | null { return this._lastManualControl; }
-  /** Last guided position setpoint handed to this mock, or null if none. */
-  getLastPositionTarget(): PositionTargetSample | null { return this._lastPositionTarget; }
-  /** Last attitude setpoint handed to this mock, or null if none. */
-  getLastAttitudeTarget(): AttitudeTargetSample | null { return this._lastAttitudeTarget; }
 
   /** MSP semantics: the arming-disable word is the verdict, and the mock has no blockers. */
   async doPreArmCheck(): Promise<CommandResult> { return ok("Pre-arm checks passed"); }
 
   // ── Fence / Rally ───────────────────────────────────────────
 
-  async uploadFence(): Promise<CommandResult> { return ok("Fence uploaded"); }
-  async downloadFence() { return []; }
   async uploadRallyPoints(): Promise<CommandResult> { return ok("Rally points uploaded"); }
   async downloadRallyPoints() { return []; }
 

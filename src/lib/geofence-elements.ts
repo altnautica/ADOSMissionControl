@@ -39,40 +39,6 @@ export function nextZoneId(): string {
   return `zone-${++zoneIdCounter}`;
 }
 
-/** Approximate a circle as a 16-vertex polygon (legacy FENCE_POINT path). */
-function circleToPolygon(
-  center: [number, number],
-  radiusMeters: number,
-): Array<{ lat: number; lon: number }> {
-  const pts: Array<{ lat: number; lon: number }> = [];
-  const cosLat = Math.cos((center[0] * Math.PI) / 180);
-  const lonScale = 111320 * (Math.abs(cosLat) < 1e-6 ? 1e-6 : cosLat);
-  for (let i = 0; i < 16; i++) {
-    const angle = (i * 2 * Math.PI) / 16;
-    const dLat = (radiusMeters / 111320) * Math.cos(angle);
-    const dLon = (radiusMeters / lonScale) * Math.sin(angle);
-    pts.push({ lat: center[0] + dLat, lon: center[1] + dLon });
-  }
-  return pts;
-}
-
-/**
- * Flatten the active fence to a single inclusion polygon for the legacy
- * FENCE_POINT path (ArduPilot). A circle becomes a 16-vertex polygon.
- */
-export function flattenToPolygon(
-  fenceType: FenceType,
-  polygonPoints: [number, number][],
-  circleCenter: [number, number] | null,
-  circleRadius: number,
-): Array<{ lat: number; lon: number }> {
-  if (fenceType === "polygon") {
-    return polygonPoints.map(([lat, lon]) => ({ lat, lon }));
-  }
-  if (!circleCenter) return [];
-  return circleToPolygon(circleCenter, circleRadius);
-}
-
 /**
  * Build the fence model for the mission-type-fence path (PX4). The primary
  * fence is an inclusion zone (stay inside); each additional zone keeps its own

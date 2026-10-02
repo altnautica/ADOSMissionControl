@@ -15,6 +15,7 @@ import {
   decodeMspINavGeozone,
   decodeMspINavGeozoneVertex,
   INAV_WP_FLAG_LAST,
+  INAV_WP_ACTION,
   type INavWaypoint,
   type INavSafehome,
   type INavGeozone,
@@ -55,10 +56,11 @@ export async function inavDownloadMission(
 
   const waypoints: INavWaypoint[] = []
   for (let i = 0; i < waypointCount; i++) {
-    const reqPayload = new Uint8Array([i + 1]) // WP numbers are 1-based
-    const frame = await queue.send(INAV_MSP.MSP_WP, reqPayload)
-    const dv = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength)
-    waypoints.push(decodeMspWp(dv))
+    const wpNumber = i + 1 // WP numbers are 1-based
+    // The reply carries its WP number: a late reply to the previous WP's
+    // retry must not land in this slot.
+    const frame = await queue.send(INAV_MSP.MSP_WP, new Uint8Array([wpNumber]), (f) => decodeMspWp(dv(f.payload)).number === wpNumber)
+    waypoints.push(decodeMspWp(dv(frame.payload)))
   }
 
   return translateFromInavWaypoints(waypoints)
@@ -67,9 +69,12 @@ export async function inavDownloadMission(
 // ── Mission upload ───────────────────────────────────────────
 
 /**
- * Upload a mission to the FC via MSP_SET_WP.
+ * Upload a mission to the FC via MSP_SET_WP, then save it via
+ * MSP_WP_MISSION_SAVE.
  *
- * Optionally saves to multi-mission slot via MSP_WP_MISSION_SAVE.
+ * iNav cannot store an empty mission, so an empty upload replaces the stored
+ * mission with a single return-to-home item flagged last: the previous
+ * mission is gone from the FC, and the result says what the FC now holds.
  */
 export async function inavUploadMission(
   queue: MspSerialQueue | null,
@@ -77,14 +82,14 @@ export async function inavUploadMission(
   missionIndex = 0,
 ): Promise<CommandResult> {
   if (!queue) return NOT_CONNECTED
-  if (items.length === 0) return { success: true, resultCode: 0, message: 'No waypoints to upload' }
   try {
-    const waypoints = translateToInavWaypoints(items)
+    const waypoints: INavWaypoint[] = items.length === 0
+      ? [{ number: 1, action: INAV_WP_ACTION.RTH, lat: 0, lon: 0, altitude: 0, p1: 0, p2: 0, p3: 0, flag: INAV_WP_FLAG_LAST }]
+      : translateToInavWaypoints(items)
 
     // Ensure last WP is marked
-    if (waypoints.length > 0) {
-      waypoints[waypoints.length - 1].flag = INAV_WP_FLAG_LAST
-    }
+    const last = waypoints.at(-1)
+    if (last) last.flag = INAV_WP_FLAG_LAST
 
     for (const wp of waypoints) {
       const payload = encodeMspSetWp(wp)
@@ -95,6 +100,9 @@ export async function inavUploadMission(
     const savePayload = new Uint8Array([missionIndex])
     await queue.send(INAV_MSP.MSP_WP_MISSION_SAVE, savePayload)
 
+    if (items.length === 0) {
+      return { success: true, resultCode: 0, message: 'Mission cleared: iNav holds no empty mission, so the FC now holds a single return-to-home item' }
+    }
     return { success: true, resultCode: 0, message: `Uploaded ${items.length} waypoints` }
   } catch (err) {
     return { success: false, resultCode: -1, message: `Mission upload failed: ${formatErrorMessage(err)}` }
@@ -114,7 +122,7 @@ export async function inavDownloadSafehomes(
   if (!queue) throw new Error('Not connected')
   const results: INavSafehome[] = []
   for (let i = 0; i < INAV_LIMITS.SAFEHOMES; i++) {
-    const frame = await queue.send(INAV_MSP.MSP2_INAV_SAFEHOME, new Uint8Array([i]))
+    const frame = await queue.send(INAV_MSP.MSP2_INAV_SAFEHOME, new Uint8Array([i]), (f) => decodeMspINavSafehome(dv(f.payload)).index === i)
     results.push(decodeMspINavSafehome(dv(frame.payload)))
   }
   return results
@@ -160,19 +168,22 @@ const GEOZONE_SHAPE_CIRCULAR = 0
 export async function inavDownloadGeozones(
   queue: MspSerialQueue | null,
 ): Promise<{ zones: INavGeozone[]; vertices: INavGeozoneVertex[] }> {
-  if (!queue) return { zones: [], vertices: [] }
+  if (!queue) throw new Error(NOT_CONNECTED.message)
   const zones: INavGeozone[] = []
   const vertices: INavGeozoneVertex[] = []
   for (let i = 0; i < INAV_LIMITS.GEOZONES; i++) {
-    const zoneFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE, new Uint8Array([i]))
-    const zone = decodeMspINavGeozone(new DataView(zoneFrame.payload.buffer, zoneFrame.payload.byteOffset, zoneFrame.payload.byteLength))
+    const zoneFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE, new Uint8Array([i]), (f) => decodeMspINavGeozone(dv(f.payload)).number === i)
+    const zone = decodeMspINavGeozone(dv(zoneFrame.payload))
     if (zone.vertexCount === 0) continue
     zones.push(zone)
 
     const fetchCount = zone.shape === GEOZONE_SHAPE_CIRCULAR ? 1 : zone.vertexCount
     for (let v = 0; v < fetchCount; v++) {
-      const vFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE_VERTEX, new Uint8Array([i, v]))
-      vertices.push(decodeMspINavGeozoneVertex(new DataView(vFrame.payload.buffer, vFrame.payload.byteOffset, vFrame.payload.byteLength)))
+      const vFrame = await queue.send(INAV_MSP.MSP2_INAV_GEOZONE_VERTEX, new Uint8Array([i, v]), (f) => {
+        const vertex = decodeMspINavGeozoneVertex(dv(f.payload))
+        return vertex.geozoneId === i && vertex.vertexIdx === v
+      })
+      vertices.push(decodeMspINavGeozoneVertex(dv(vFrame.payload)))
     }
   }
   return { zones, vertices }

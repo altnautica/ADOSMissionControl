@@ -65,7 +65,7 @@ beforeEach(() => {
     selectedDroneId: drone,
     drones: new Map([[drone, { id: drone, name: "Alpha", protocol } as unknown as ManagedDrone]]),
   });
-  useDroneStore.setState({ armState: "armed" });
+  useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
 });
 
 afterEach(() => {

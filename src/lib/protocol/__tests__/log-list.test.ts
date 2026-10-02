@@ -61,6 +61,18 @@ describe("log list", () => {
     expect((await list).map((e) => e.id)).toEqual([1, 2, 3]);
   });
 
+  it("settles when a re-requested entry carries the re-request's own end as last_log_num", async () => {
+    vi.useFakeTimers();
+    const { ctx: c } = ctx();
+    const list = getLogList(c);
+    handleLogEntry(c, entry(1, 3, 3));
+    handleLogEntry(c, entry(3, 3, 3));
+    await vi.advanceTimersByTimeAsync(2500);
+    // ArduPilot answers LOG_REQUEST_LIST(2, 2) with last_log_num clipped to 2.
+    handleLogEntry(c, entry(2, 3, 2));
+    expect((await list).map((e) => e.id)).toEqual([1, 2, 3]);
+  });
+
   it("rejects a list the vehicle never completes", async () => {
     vi.useFakeTimers();
     const { ctx: c } = ctx();

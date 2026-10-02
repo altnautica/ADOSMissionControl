@@ -42,9 +42,3 @@ export interface Transport {
    */
   readonly canCommand: boolean;
 }
-
-/** Optional middleware for intercepting transport data (e.g., encryption). */
-export interface TransportMiddleware {
-  wrapOutbound(data: Uint8Array): Uint8Array;
-  unwrapInbound(data: Uint8Array): Uint8Array;
-}

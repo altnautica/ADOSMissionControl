@@ -58,6 +58,8 @@ export interface MissionUploadState extends TransferDeadline {
 interface TransferDeadline {
   /** Re-arm the inactivity deadline and the retransmit countdown. Called on each unit of progress. */
   restartTimer: () => void;
+  /** Stop the inactivity deadline and the retransmit loop. Called on every settle path. */
+  stop: () => void;
   timer: ReturnType<typeof setTimeout>
 }
 
@@ -84,7 +86,8 @@ const TRANSFER_IDLE_TIMEOUT_MS = 15000
  * Build the deadline for one transfer. `resend` re-issues whatever request the
  * transfer is waiting on; it runs after every TRANSFER_RETRY_MS without
  * progress for as long as `isActive()` holds (the transfer's slot on the
- * context still points at this state), and stops once it does not.
+ * context still points at this state). `stop()` ends both timers and is called
+ * by every path that settles the transfer.
  */
 function createDeadline(onIdle: () => void, resend: () => void, isActive: () => boolean): TransferDeadline {
   let retry: ReturnType<typeof setInterval> | undefined
@@ -102,6 +105,10 @@ function createDeadline(onIdle: () => void, resend: () => void, isActive: () => 
       clearTimeout(deadline.timer)
       deadline.timer = setTimeout(expire, TRANSFER_IDLE_TIMEOUT_MS)
       armRetry()
+    },
+    stop: () => {
+      clearTimeout(deadline.timer)
+      clearInterval(retry)
     },
   }
   armRetry()
@@ -196,7 +203,47 @@ export interface MissionContext {
   rallyDownload: RallyDownloadState | null
   fenceUpload: FenceUploadState | null
   fenceDownload: FenceDownloadState | null
+  /**
+   * Tail of each mission type's transfer chain, keyed by MAV_MISSION_TYPE.
+   * The vehicle runs one transaction per mission type, so every transfer of a
+   * type waits for the previous one of that type to settle before it starts.
+   */
+  transferChains: Map<number, Promise<void>>
   sendCommandLong: (command: number, params: [number, number, number, number, number, number, number], timeoutMs?: number) => Promise<CommandResult>
+}
+
+/**
+ * Run `transfer` after every earlier transfer of the same mission type has
+ * settled. Two uploads (or a clear and an upload) of one type would otherwise
+ * interleave MISSION_COUNTs and restart each other's transaction on the FC.
+ * With nothing of that type in flight the transfer starts at once, so its
+ * first frame goes out in the caller's turn.
+ */
+function serialized<T>(ctx: MissionContext, missionType: number, transfer: () => Promise<T>): Promise<T> {
+  const prev = ctx.transferChains.get(missionType)
+  const run = prev ? prev.then(transfer) : transfer()
+  const tail = run.then(() => undefined, () => undefined)
+  ctx.transferChains.set(missionType, tail)
+  void tail.then(() => {
+    if (ctx.transferChains.get(missionType) === tail) ctx.transferChains.delete(missionType)
+  })
+  return run
+}
+
+/** Settle every in-flight mission, fence and rally transfer with `reason` and stop its timers. */
+export function cancelMissionTransfers(ctx: MissionContext, reason: string): void {
+  const failed = { success: false, resultCode: -1, message: reason }
+  const err = new Error(reason)
+  const { missionUpload, missionDownload, rallyUpload, rallyDownload, fenceUpload, fenceDownload } = ctx
+  ctx.missionUpload = null; ctx.missionDownload = null
+  ctx.rallyUpload = null; ctx.rallyDownload = null
+  ctx.fenceUpload = null; ctx.fenceDownload = null
+  if (missionUpload) { missionUpload.stop(); missionUpload.resolve(failed) }
+  if (rallyUpload) { rallyUpload.stop(); rallyUpload.resolve(failed) }
+  if (fenceUpload) { fenceUpload.stop(); fenceUpload.resolve(failed) }
+  if (missionDownload) { missionDownload.stop(); missionDownload.reject(err) }
+  if (rallyDownload) { rallyDownload.stop(); rallyDownload.reject(err) }
+  if (fenceDownload) { fenceDownload.stop(); fenceDownload.reject(err) }
 }
 
 /**
@@ -289,7 +336,11 @@ export function decodeFenceMissionItems(items: FenceMissionItem[]): FenceElement
   return elements
 }
 
-export async function uploadMission(ctx: MissionContext, items: MissionItem[]): Promise<CommandResult> {
+export function uploadMission(ctx: MissionContext, items: MissionItem[]): Promise<CommandResult> {
+  return serialized(ctx, 0, () => startMissionUpload(ctx, items))
+}
+
+async function startMissionUpload(ctx: MissionContext, items: MissionItem[]): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
   const { promise, resolve, reject } = Promise.withResolvers<CommandResult>()
@@ -313,7 +364,11 @@ export async function uploadMission(ctx: MissionContext, items: MissionItem[]): 
   return promise
 }
 
-export async function downloadMission(ctx: MissionContext): Promise<MissionItem[]> {
+export function downloadMission(ctx: MissionContext): Promise<MissionItem[]> {
+  return serialized(ctx, 0, () => startMissionDownload(ctx))
+}
+
+async function startMissionDownload(ctx: MissionContext): Promise<MissionItem[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
   const { promise, resolve, reject } = Promise.withResolvers<MissionItem[]>()
@@ -343,7 +398,11 @@ export async function setCurrentMissionItem(ctx: MissionContext, seq: number): P
   return ctx.sendCommandLong(224, [seq, 0, 0, 0, 0, 0, 0])
 }
 
-export async function clearMission(ctx: MissionContext): Promise<CommandResult> {
+export function clearMission(ctx: MissionContext): Promise<CommandResult> {
+  return serialized(ctx, 0, () => startMissionClear(ctx))
+}
+
+async function startMissionClear(ctx: MissionContext): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
   const { promise, resolve } = Promise.withResolvers<CommandResult>()
@@ -355,10 +414,12 @@ export async function clearMission(ctx: MissionContext): Promise<CommandResult> 
     resolve,
     reject: () => resolve({ success: false, resultCode: -1, message: 'Mission clear failed' }),
     timer: setTimeout(() => {
+      if (ctx.missionUpload !== state) return
       ctx.missionUpload = null
       resolve({ success: false, resultCode: -1, message: 'Mission clear timed out' })
     }, 5000),
     restartTimer: () => {},
+    stop: () => clearTimeout(state.timer),
   }
   ctx.missionUpload = state
   ctx.transport.send(encodeMissionClearAll(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
@@ -372,7 +433,11 @@ export async function clearMission(ctx: MissionContext): Promise<CommandResult> 
  * never touches the waypoint mission. An empty element list uploads a count
  * of 0, which clears the fence on the vehicle.
  */
-export async function uploadFenceMission(ctx: MissionContext, elements: FenceElement[]): Promise<CommandResult> {
+export function uploadFenceMission(ctx: MissionContext, elements: FenceElement[]): Promise<CommandResult> {
+  return serialized(ctx, MAV_MISSION_TYPE_FENCE, () => startFenceUpload(ctx, elements))
+}
+
+async function startFenceUpload(ctx: MissionContext, elements: FenceElement[]): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
   const items = encodeFenceMissionItems(elements)
 
@@ -399,7 +464,11 @@ export async function uploadFenceMission(ctx: MissionContext, elements: FenceEle
  * Download the geofence as a fence-type mission (mission_type = fence) and
  * reassemble it into the fence model.
  */
-export async function downloadFenceMission(ctx: MissionContext): Promise<FenceElement[]> {
+export function downloadFenceMission(ctx: MissionContext): Promise<FenceElement[]> {
+  return serialized(ctx, MAV_MISSION_TYPE_FENCE, () => startFenceDownload(ctx))
+}
+
+async function startFenceDownload(ctx: MissionContext): Promise<FenceElement[]> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
   const { promise, resolve, reject } = Promise.withResolvers<FenceElement[]>()
@@ -429,7 +498,11 @@ export async function downloadFenceMission(ctx: MissionContext): Promise<FenceEl
 }
 
 /** Upload rally points; an empty list uploads a count of 0, which clears them on the vehicle. */
-export async function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult> {
+export function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult> {
+  return serialized(ctx, 2, () => startRallyUpload(ctx, points))
+}
+
+async function startRallyUpload(ctx: MissionContext, points: Array<{ lat: number; lon: number; alt: number }>): Promise<CommandResult> {
   if (!ctx.transport?.isConnected) return { success: false, resultCode: -1, message: 'Not connected' }
 
   const { promise, resolve } = Promise.withResolvers<CommandResult>()
@@ -451,7 +524,11 @@ export async function uploadRallyPoints(ctx: MissionContext, points: Array<{ lat
   return promise
 }
 
-export async function downloadRallyPoints(ctx: MissionContext): Promise<Array<{ lat: number; lon: number; alt: number }>> {
+export function downloadRallyPoints(ctx: MissionContext): Promise<Array<{ lat: number; lon: number; alt: number }>> {
+  return serialized(ctx, 2, () => startRallyDownload(ctx))
+}
+
+async function startRallyDownload(ctx: MissionContext): Promise<Array<{ lat: number; lon: number; alt: number }>> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
 
   const { promise, resolve, reject } =

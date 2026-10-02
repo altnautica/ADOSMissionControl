@@ -188,8 +188,8 @@ describe("DO_JUMP — forward jump proves the two-pass resolution", () => {
   });
 });
 
-describe("DO_JUMP — collapse clamps a target inside an action block to the owning NAV", () => {
-  it("param1 pointing at an action seq resolves to the containing NAV id", () => {
+describe("DO_JUMP — collapse lands a target inside an action block on the next NAV", () => {
+  it("param1 pointing at an action seq resolves to the following NAV id", () => {
     // Hand-built wire: nav(0), action(1)=set_speed, nav(2), jump(3) targeting seq 1.
     const items: MissionItem[] = [
       wireNav(0, 10, 10, 30),
@@ -198,10 +198,54 @@ describe("DO_JUMP — collapse clamps a target inside an action block to the own
       { ...wireAction(3, cmdMap.DO_JUMP, 1 /* target seq (an action) */, 2 /* repeat */) },
     ];
     const wps = collapseFromItems(items);
-    // seq 1 is owned by the NAV at seq 0 → first collapsed waypoint.
+    // After the action at seq 1 the vehicle flies the NAV at seq 2.
     const jumpAction = known(wps[1].actions?.[0]);
     expect(jumpAction?.command).toBe("DO_JUMP");
-    expect(jumpAction?.jumpTargetId).toBe(wps[0].id);
+    expect(jumpAction?.jumpTargetId).toBe(wps[1].id);
+  });
+
+  it("a jump to the speed item in front of the first waypoint targets that waypoint", () => {
+    // iNav loop download: speed(0) for the first leg, nav(1), nav(2), jump → seq 0.
+    const items: MissionItem[] = [
+      { ...wireAction(0, cmdMap.DO_SET_SPEED, 1, 4), param3: -1 },
+      wireNav(1, 10, 10, 30),
+      wireNav(2, 20, 20, 30),
+      wireAction(3, cmdMap.DO_JUMP, 0, 2),
+    ];
+    const dropped: MissionItem[] = [];
+    const wps = collapseFromItems(items, (it) => dropped.push(it));
+    expect(dropped).toEqual([]);
+    expect(known(wps[1].actions?.[0])?.jumpTargetId).toBe(wps[0].id);
+  });
+
+  it("reports a jump with no waypoint at or after its target instead of losing it silently", () => {
+    const items: MissionItem[] = [
+      wireNav(0, 10, 10, 30),
+      wireAction(1, cmdMap.DO_JUMP, 7, 1),
+    ];
+    const dropped: MissionItem[] = [];
+    const wps = collapseFromItems(items, (it) => dropped.push(it));
+    expect(dropped.map((it) => it.command)).toEqual([cmdMap.DO_JUMP]);
+    expect(wps[0].actions ?? []).toEqual([]);
+  });
+});
+
+describe("DO_JUMP — the repeated leg keeps its planned speed", () => {
+  it("lands the jump on a speed item for the target's leg", () => {
+    const wps: Waypoint[] = [
+      { id: "a", lat: 1, lon: 1, alt: 10, command: "WAYPOINT", speed: 5 },
+      { id: "b", lat: 2, lon: 2, alt: 10, command: "WAYPOINT", speed: 5 },
+      { id: "c", lat: 3, lon: 3, alt: 10, command: "WAYPOINT", speed: 10,
+        actions: [{ id: "j", command: "DO_JUMP", jumpTargetId: "b", param2: 1 }] },
+    ];
+    const items = expandToItems(wps, OPTS);
+    const jump = items.find((it) => it.command === cmdMap.DO_JUMP);
+    const landing = items[jump?.param1 ?? -1];
+    // The leg into b repeats after a 10 m/s leg, so the jump must reset 5 m/s.
+    expect(landing.command).toBe(cmdMap.DO_SET_SPEED);
+    expect(landing.param2).toBe(5);
+    expect(items[landing.seq + 1].x).toBe(2 * 1e7);
+    expect(items.every((it, i) => it.seq === i)).toBe(true);
   });
 });
 

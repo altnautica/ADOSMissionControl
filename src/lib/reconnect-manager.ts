@@ -172,8 +172,8 @@ export class ReconnectManager {
 
     // Reconnect under the ORIGINAL id so the drone re-attaches to the same
     // fleet row instead of spawning a second one.
-    const name = `${link.vehicleInfo.firmwareVersionString} (${link.vehicleInfo.vehicleClass})`;
-    this.addDroneCallback(droneId, name, link.adapter, link.transport, link.vehicleInfo, link.meta);
+    // and keep the operator's name for it.
+    this.addDroneCallback(droneId, entry.droneName, link.adapter, link.transport, link.vehicleInfo, link.meta);
     entry.state = "connected";
     this.notify(entry);
     this.timers.delete(droneId);

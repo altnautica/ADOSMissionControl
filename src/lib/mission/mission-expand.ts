@@ -82,17 +82,23 @@ const THROTTLE_NO_CHANGE = -1;
 
 /**
  * One planned wire slot before sequence numbers are assigned. `owner` is the
- * index of the planner waypoint the slot belongs to.
+ * index of the planner waypoint the slot belongs to; a speed slot's `leg` is
+ * the index of the waypoint whose incoming leg it sets.
  */
 type Slot =
   | { kind: "nav"; wp: Waypoint; owner: number }
   | { kind: "action"; act: MissionAction; parentFrame: number; owner: number }
-  | { kind: "speed"; speed: number; frame: number; owner: number };
+  | { kind: "speed"; speed: number; frame: number; owner: number; leg: number };
 
 /**
  * Build the ordered slot list: navigation items, their attached actions (an
  * unresolvable DO_JUMP is dropped here so the slot count is final) and the
  * speed items the waypoint speeds require.
+ *
+ * A DO_JUMP target whose incoming leg has a planned speed gets that speed
+ * item directly in front of it, and the jump lands on the speed item, so the
+ * repeated leg flies at its planned speed rather than whatever speed the
+ * vehicle carried into the jump.
  */
 function planSlots(
   waypoints: readonly Waypoint[],
@@ -100,6 +106,14 @@ function planSlots(
   defaultSpeed: number | undefined,
 ): Slot[] {
   const navIds = new Set<string>(waypoints.map((w) => w.id));
+  const jumpTargets = new Set<string>();
+  for (const wp of waypoints) {
+    for (const act of wp.actions ?? []) {
+      if (act.command === "DO_JUMP" && act.jumpTargetId !== undefined && navIds.has(act.jumpTargetId)) {
+        jumpTargets.add(act.jumpTargetId);
+      }
+    }
+  }
   const slots: Slot[] = [];
   // The speed the vehicle is known to fly at; undefined before the first
   // speed item and after an operator-attached DO_SET_SPEED action.
@@ -107,12 +121,16 @@ function planSlots(
   // True while an attached DO_SET_SPEED action governs the speed: a waypoint
   // with no speed of its own then keeps that speed instead of the default.
   let actionOwnsSpeed = false;
+  // Planned speed of each waypoint's incoming leg, when the plan sets one.
+  const legSpeed = new Map<number, number>();
 
   const pushSpeedFor = (index: number, owner: number, frame: number) => {
     const wp = waypoints[index];
     const want = wp.speed ?? (actionOwnsSpeed ? undefined : defaultSpeed);
-    if (want === undefined || !(want > 0) || want === current) return;
-    slots.push({ kind: "speed", speed: want, frame, owner });
+    if (want === undefined || !(want > 0)) return;
+    legSpeed.set(index, want);
+    if (want === current) return;
+    slots.push({ kind: "speed", speed: want, frame, owner, leg: index });
     current = want;
     actionOwnsSpeed = false;
   };
@@ -120,6 +138,12 @@ function planSlots(
   waypoints.forEach((wp, i) => {
     const parentFrame = frameToMav(wp.frame ?? defaultFrame);
     if (i === 0) pushSpeedFor(0, 0, parentFrame);
+    const speed = legSpeed.get(i);
+    const prev = slots.at(-1);
+    if (jumpTargets.has(wp.id) && speed !== undefined && !(prev?.kind === "speed" && prev.leg === i)) {
+      // Same speed the normal path already flies here; a jump needs it again.
+      slots.push({ kind: "speed", speed, frame: parentFrame, owner: Math.max(i - 1, 0), leg: i });
+    }
     slots.push({ kind: "nav", wp, owner: i });
 
     const actions = wp.actions ?? [];
@@ -180,10 +204,14 @@ export function expandToItems(
   // The first mission seq: 1 when slot 0 holds the home position.
   const base = opts.reserveHomeSlot ? 1 : 0;
 
-  // Assign seq = base + index and record NAV id → seq for jump resolution.
+  // Assign seq = base + index and record each waypoint's jump-landing seq: the
+  // speed item directly in front of it for its own leg, else the nav item.
   const seqById = new Map<string, number>();
   slots.forEach((slot, i) => {
-    if (slot.kind === "nav") seqById.set(slot.wp.id, base + i);
+    if (slot.kind !== "nav") return;
+    const prev = slots[i - 1];
+    const landsOnSpeed = prev?.kind === "speed" && prev.leg === slot.owner;
+    seqById.set(slot.wp.id, base + (landsOnSpeed ? i - 1 : i));
   });
 
   // Pass 2: emit items.
@@ -354,9 +382,12 @@ function actionItem(
  *
  * Each navigation item starts a fresh `Waypoint`; each action item folds into
  * the current waypoint's `actions[]`. A `DO_JUMP` item's raw `param1` (target
- * seq) resolves to the `id` of the navigation waypoint that owns that seq (the
- * greatest NAV seq ≤ the target), so jump targets resolve by absolute seq and a
- * list that starts at seq 1 (ArduPilot, home slot removed) needs no rebasing.
+ * seq) resolves to the `id` of the first navigation waypoint at or after that
+ * seq: a jump aimed at a leg's speed item or at an attached action continues
+ * into the next waypoint, which is where the vehicle flies after it. Targets
+ * resolve by absolute seq, so a list that starts at seq 1 (ArduPilot, home
+ * slot removed) needs no rebasing. A jump with no waypoint at or after its
+ * target is removed and reported through `onDropped`, never silently lost.
  *
  * A command this GCS does not model is never turned into a navigation
  * waypoint: it rides the current waypoint as a `RAW` passthrough action and
@@ -383,7 +414,7 @@ export function collapseFromItems(
   /** NAV items in wire order, for jump-target resolution. */
   const navSeqToId: Array<{ seq: number; id: string }> = [];
   /** DO_JUMP actions awaiting a second-pass target-id resolution. */
-  const pendingJumps: Array<{ act: CommandMissionAction; targetSeq: number }> = [];
+  const pendingJumps: Array<{ act: CommandMissionAction; owner: Waypoint; item: MissionItem }> = [];
 
   let current: Waypoint | undefined;
   // Seq-order index of the last navigation item: a speed item after it has no
@@ -484,7 +515,7 @@ export function collapseFromItems(
       alt: positional ? item.z : undefined,
     };
     current.actions.push(action);
-    if (isJump) pendingJumps.push({ act: action, targetSeq: item.param1 });
+    if (isJump) pendingJumps.push({ act: action, owner: current, item });
   }
 
   // A leading position-inheriting item with no previous waypoint and no home
@@ -496,10 +527,15 @@ export function collapseFromItems(
     wp.lon = firstPositioned.lon;
   }
 
-  // Second pass: resolve DO_JUMP target seq → owning NAV waypoint id.
-  for (const { act, targetSeq } of pendingJumps) {
-    const owner = ownerNavId(navSeqToId, targetSeq);
-    if (owner !== undefined) act.jumpTargetId = owner;
+  // Second pass: resolve DO_JUMP target seq → the NAV waypoint it lands on.
+  for (const { act, owner, item } of pendingJumps) {
+    const target = landingNavId(navSeqToId, item.param1);
+    if (target !== undefined) {
+      act.jumpTargetId = target;
+      continue;
+    }
+    owner.actions = (owner.actions ?? []).filter((a) => a !== act);
+    onDropped?.(item);
   }
 
   return waypoints;
@@ -524,14 +560,14 @@ export function itemCarriesLocation(command: number): boolean {
   return POSITION_BEARING_ACTIONS.has(known as ActionCommand);
 }
 
-/** Find the id of the NAV waypoint with the greatest seq ≤ `targetSeq`. */
-function ownerNavId(
+/** Find the id of the NAV waypoint with the least seq ≥ `targetSeq`. */
+function landingNavId(
   navSeqToId: ReadonlyArray<{ seq: number; id: string }>,
   targetSeq: number,
 ): string | undefined {
   let best: { seq: number; id: string } | undefined;
   for (const nav of navSeqToId) {
-    if (nav.seq <= targetSeq && (best === undefined || nav.seq > best.seq)) best = nav;
+    if (nav.seq >= targetSeq && (best === undefined || nav.seq < best.seq)) best = nav;
   }
   return best?.id;
 }

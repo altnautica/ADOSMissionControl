@@ -1,9 +1,9 @@
 /**
  * @license GPL-3.0-only
  *
- * The reboot banner clears once the flight controller has rebooted (the
- * heartbeat resumes after a gap) even though heartbeats keep arriving, and a
- * dismissal does not hide a later parameter that also needs a reboot.
+ * The reboot banner clears once the flight controller has rebooted (its boot
+ * clock restarts), not on a mere link dropout, and a dismissal does not hide
+ * a later parameter that also needs a reboot.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -12,8 +12,9 @@ import { useMemo } from "react";
 
 import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 import { RebootRequiredBanner } from "@/components/indicators/RebootRequiredBanner";
-import { useDroneStore } from "@/stores/drone-store";
+import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useParamSafetyStore } from "@/stores/param-safety-store";
+import type { DroneProtocol, SystemTimeCallback } from "@/lib/protocol/types";
 
 function Harness() {
   const params = useParamSafetyStore((s) => s.rebootRequiredParams);
@@ -21,16 +22,31 @@ function Harness() {
   return <RebootRequiredBanner rebootParams={list} />;
 }
 
-function heartbeatAt(ms: number) {
+let systemTime: SystemTimeCallback | null = null;
+
+function selectFakeDrone() {
+  const protocol = {
+    onSystemTime: (cb: SystemTimeCallback) => {
+      systemTime = cb;
+      return () => { systemTime = null; };
+    },
+    reboot: vi.fn(async () => ({ success: true, resultCode: 0, message: "ok" })),
+  } as Partial<DroneProtocol> as DroneProtocol;
+  const drone = { id: "d1", name: "Drone 1", protocol } as Partial<ManagedDrone> as ManagedDrone;
+  useDroneManager.setState({ drones: new Map([["d1", drone]]), selectedDroneId: "d1" });
+}
+
+function bootClock(ms: number) {
   act(() => {
-    useDroneStore.setState({ lastHeartbeat: ms });
+    systemTime?.({ timestamp: Date.now(), timeUnixUsec: 0, timeBootMs: ms });
   });
 }
 
 describe("RebootRequiredBanner", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    useDroneStore.setState({ lastHeartbeat: 0 });
+    systemTime = null;
+    selectFakeDrone();
     useParamSafetyStore.getState().clearRebootParams();
   });
 
@@ -39,27 +55,37 @@ describe("RebootRequiredBanner", () => {
     vi.useRealTimers();
   });
 
-  it("clears the reboot params after a reboot while heartbeats keep arriving", () => {
+  it("clears the reboot params once the boot clock restarts", () => {
     useParamSafetyStore.getState().trackRebootParam("SERIAL1_PROTOCOL");
     renderWithIntl(<Harness />);
     expect(screen.getByText("SERIAL1_PROTOCOL")).toBeTruthy();
 
-    heartbeatAt(1_000);
-    heartbeatAt(2_000);
-    // Reboot: the heartbeat stops for several seconds, then resumes at 1 Hz.
-    heartbeatAt(8_000);
-    for (let t = 9_000; t <= 12_000; t += 1_000) {
-      act(() => {
-        vi.advanceTimersByTime(1_000);
-      });
-      heartbeatAt(t);
-    }
+    bootClock(600_000);
+    bootClock(601_000);
+    bootClock(1_200); // the FC came back up
     act(() => {
-      vi.advanceTimersByTime(1_000);
+      vi.advanceTimersByTime(5_000);
     });
 
     expect(useParamSafetyStore.getState().rebootRequiredParams.size).toBe(0);
     expect(screen.queryByText("SERIAL1_PROTOCOL")).toBeNull();
+  });
+
+  it("keeps the reboot params across a link dropout without a reboot", () => {
+    useParamSafetyStore.getState().trackRebootParam("SERIAL1_PROTOCOL");
+    renderWithIntl(<Harness />);
+
+    bootClock(600_000);
+    // Ten seconds of silence, then the same boot clock carries on.
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    bootClock(610_000);
+    act(() => {
+      vi.advanceTimersByTime(5_000);
+    });
+
+    expect(useParamSafetyStore.getState().rebootRequiredParams.size).toBe(1);
   });
 
   it("shows the banner again for a new reboot param after a dismissal", () => {

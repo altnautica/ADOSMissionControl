@@ -26,7 +26,7 @@ import { ParamAbsentError } from "@/lib/protocol/mavlink-adapter-params";
 import { decodeBoardId } from "@/lib/protocol/handlers/info-handlers";
 import { MOCK_PARAMS, ARDUPLANE_MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, BETAFLIGHT_MOCK_PARAMS, QUADPLANE_MOCK_PARAMS, TAILSITTER_MOCK_PARAMS, TILTROTOR_MOCK_PARAMS, ROVER_MOCK_PARAMS, BOAT_MOCK_PARAMS, type MockParam } from "./mock-params";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
-import type { ManualControlSample, PositionTargetSample, AttitudeTargetSample } from "./mock-control-samples";
+import type { ManualControlSample } from "./mock-control-samples";
 import * as E from "./mock-protocol-emitters";
 import { mockStartCalibration, type CalibrationContext } from "./mock-protocol-calibration";
 import { handleSerialCommand, startTelemetryTick, type TelemetryTickContext } from "./mock-protocol-serial";
@@ -70,8 +70,6 @@ export class MockProtocol implements DroneProtocol {
   private imageCounter = { value: 0 };
   private _rcChannelValues: number[] = Array(16).fill(1500);
   private _lastManualControl: ManualControlSample | null = null;
-  private _lastPositionTarget: PositionTargetSample | null = null;
-  private _lastAttitudeTarget: AttitudeTargetSample | null = null;
   private rallyPoints: Array<{ lat: number; lon: number; alt: number }> = [];
   private fenceElements: FenceElement[] = [];
 
@@ -186,7 +184,6 @@ export class MockProtocol implements DroneProtocol {
   async setServo(): Promise<CommandResult> { return ok("Servo set"); }
   async cameraTrigger(): Promise<CommandResult> { return ok("Camera triggered"); }
   async setGimbalAngle(): Promise<CommandResult> { return ok("Gimbal set"); }
-  async setCameraTriggerDistance(): Promise<CommandResult> { return ok("Camera trigger distance set"); }
   async setGimbalMode(): Promise<CommandResult> { return ok("Gimbal mode set"); }
   async setGimbalROI(): Promise<CommandResult> { return ok("Gimbal ROI set"); }
   async setRoiLocation(): Promise<CommandResult> { return ok("ROI location set"); }
@@ -200,7 +197,6 @@ export class MockProtocol implements DroneProtocol {
     await new Promise((r) => setTimeout(r, 200));
     return { ok: true };
   }
-  async startEscCalibration(): Promise<CommandResult> { this.emitStatusText(3, "WARNING: ESC calibration will spin motors! Remove props!"); return ok("ESC calibration started"); }
   async enableFence(): Promise<CommandResult> { return ok("Fence updated"); }
   async doLandStart(): Promise<CommandResult> { return ok("Land start"); }
   async controlVideo(): Promise<CommandResult> { return ok("Video control"); }
@@ -211,20 +207,10 @@ export class MockProtocol implements DroneProtocol {
   sendManualControl(roll: number, pitch: number, throttle: number, yaw: number, buttons: number): void {
     this._lastManualControl = { roll, pitch, throttle, yaw, buttons };
   }
-  sendPositionTarget(lat: number, lon: number, alt: number): void {
-    this._lastPositionTarget = { lat, lon, alt };
-  }
-  sendAttitudeTarget(roll: number, pitch: number, yaw: number, thrust: number): void {
-    this._lastAttitudeTarget = { roll, pitch, yaw, thrust };
-  }
   setRcChannelValues(channels: number[]): void { this._rcChannelValues = channels; }
 
   /** Last stick frame handed to this mock, or null if none. */
   getLastManualControl(): ManualControlSample | null { return this._lastManualControl; }
-  /** Last guided position setpoint handed to this mock, or null if none. */
-  getLastPositionTarget(): PositionTargetSample | null { return this._lastPositionTarget; }
-  /** Last attitude setpoint handed to this mock, or null if none. */
-  getLastAttitudeTarget(): AttitudeTargetSample | null { return this._lastAttitudeTarget; }
 
   /**
    * MAV_CMD_RUN_PREARM_CHECKS semantics: the command is accepted, failures are
@@ -244,8 +230,6 @@ export class MockProtocol implements DroneProtocol {
   }
 
   // ── Fence / Rally ──────────────────────────────────────
-  async uploadFence(): Promise<CommandResult> { await new Promise((r) => setTimeout(r, 500)); this.emitStatusText(6, "Fence uploaded"); return ok("Fence uploaded"); }
-  async downloadFence() { return MOCK_FENCE_POLYGON; }
   // PX4 stores the geofence as a mission plan (mission_type = fence). Round-trip
   // the uploaded elements so the demo mission-fence path is real, not a no-op.
   async uploadFenceMission(elements: FenceElement[]): Promise<CommandResult> {

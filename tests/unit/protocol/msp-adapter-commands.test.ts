@@ -108,10 +108,12 @@ const ARM_RANGE: ModeRange = {
  * every MSP_SET_RAW_RC assertion runs through the production channel model.
  * `rxMspEnabled` defaults to true because most cases are about the frame
  * contents; the cases that are about the receiver gate pass it explicitly.
+ * The FC status reports disarmed unless `armed` says otherwise; an arm case
+ * passes an FC that reports armed once asked.
  */
 function ctxWith(
   ranges: ModeRange[],
-  { rxMspEnabled = true }: { rxMspEnabled?: boolean } = {},
+  { rxMspEnabled = true, armed = () => false }: { rxMspEnabled?: boolean; armed?: () => boolean } = {},
 ): { ctx: MspCommandContext; frames: CapturedFrame[]; rc: MspRcOverride } {
   const { queue, frames } = createCapturingQueue();
   const rc = new MspRcOverride({
@@ -119,24 +121,18 @@ function ctxWith(
     modeRanges: ranges,
     rxMspEnabled,
   });
-  return { ctx: { queue, modeRanges: ranges, rc }, frames, rc };
+  return { ctx: { queue, modeRanges: ranges, rc, isArmed: armed }, frames, rc };
 }
 
 // ── Arm / Disarm without an arm mode range ─────────────────
 
 describe('mspArm / mspDisarm with no arm ModeRange', () => {
-  it('arm sends MSP_ARMING_DISABLE with payload[0]===0 (enable arming)', async () => {
+  it('arm refuses and sends nothing: MSP cannot arm without an ARM switch range', async () => {
     const { ctx, frames } = ctxWith([]);
     const result = await mspArm(ctx);
-    expect(result.success).toBe(true);
-    expect(frames).toHaveLength(1);
-    expect(frames[0].command).toBe(MSP.MSP_ARMING_DISABLE);
-    expect(frames[0].awaited).toBe(true);
-    expect(frames[0].payload[0]).toBe(0);
-
-    const rt = roundTrip(frames[0]);
-    expect(rt.command).toBe(MSP.MSP_ARMING_DISABLE);
-    expect(rt.payload[0]).toBe(0);
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('ARM');
+    expect(frames).toHaveLength(0);
   });
 
   it('disarm sends MSP_ARMING_DISABLE with payload[0]===1 (disable arming)', async () => {
@@ -152,11 +148,54 @@ describe('mspArm / mspDisarm with no arm ModeRange', () => {
   });
 });
 
+// ── Arm verification ───────────────────────────────────────
+
+describe('mspArm verifies the armed state', () => {
+  it('succeeds once the FC status shows armed inside the window', async () => {
+    vi.useFakeTimers();
+    try {
+      let armed = false;
+      const { ctx, rc } = ctxWith([ARM_RANGE], { armed: () => armed });
+      const result = mspArm(ctx);
+      await vi.advanceTimersByTimeAsync(500);
+      armed = true;
+      await vi.advanceTimersByTimeAsync(200);
+      expect(await result).toMatchObject({ success: true });
+      rc.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('fails with the FC arming blockers when the status never shows armed', async () => {
+    vi.useFakeTimers();
+    try {
+      const { ctx, rc } = ctxWith([ARM_RANGE], { armed: () => false });
+      // MSP2_INAV_STATUS with arming flag bit 8 (not level) set.
+      const status = new Uint8Array(13);
+      new DataView(status.buffer).setUint32(9, 1 << 8, true);
+      ctx.firmwareType = 'inav';
+      ctx.queue = {
+        send: async (command: number) => ({ version: 2 as const, command, payload: status, direction: 'response' as const }),
+        sendNoReply: () => {},
+      } as unknown as MspSerialQueue;
+      const result = mspArm(ctx);
+      await vi.advanceTimersByTimeAsync(2500);
+      const outcome = await result;
+      expect(outcome.success).toBe(false);
+      expect(outcome.message).toContain('Not level');
+      rc.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 // ── Arm / Disarm WITH an arm mode range (AUX path) ─────────
 
 describe('mspArm / mspDisarm with an arm ModeRange (AUX channel path)', () => {
   it('arm writes MSP_SET_RAW_RC putting AUX(auxChannel) at the range midpoint', async () => {
-    const { ctx, frames } = ctxWith([ARM_RANGE]);
+    const { ctx, frames } = ctxWith([ARM_RANGE], { armed: () => true });
     const result = await mspArm(ctx);
     expect(result.success).toBe(true);
     expect(frames).toHaveLength(1);
@@ -393,7 +432,7 @@ describe('mspKillSwitch', () => {
   });
 
   it('drops the arm channel with the cut, and arming is what releases it', async () => {
-    const { ctx, frames, rc } = ctxWith([ARM_RANGE]);
+    const { ctx, frames, rc } = ctxWith([ARM_RANGE], { armed: () => true });
     const armChannel = ARM_RANGE.auxChannel + 4;
 
     await mspArm(ctx);
@@ -429,7 +468,7 @@ describe('AUX channel writes', () => {
     // AUX6 is RC channel index 9, past the eight-channel frame the old sender
     // built, so the write used to be dropped while still reporting success.
     const aux6Arm: ModeRange = { boxId: 0, auxChannel: 5, rangeStart: 1700, rangeEnd: 2100 };
-    const { ctx, frames, rc } = ctxWith([aux6Arm]);
+    const { ctx, frames, rc } = ctxWith([aux6Arm], { armed: () => true });
 
     const result = await mspArm(ctx);
     expect(result.success).toBe(true);

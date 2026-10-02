@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { encodeFileTransferProtocol, FTP_MAX_DATA } from "../mavlink-encoder";
 import { decodeFileTransferProtocol, FtpOpcode, FtpError } from "../mavlink-messages";
 import { MAVLinkParser, crc16Accumulate, CRC_EXTRA, PAYLOAD_LENGTHS, type MAVLinkFrame } from "../mavlink-parser";
@@ -480,5 +480,69 @@ describe("FTP read session — robustness against a hostile/lossy FC", () => {
 
     await expect(promise).rejects.toThrow(/stalled/);
     expect(ctx.ftpDownload).toBeNull();
+  });
+});
+
+describe("FTP read session — completeness", () => {
+  function session() {
+    const sent: Uint8Array[] = [];
+    const ctx: FtpContext = {
+      transport: mockTransport(sent), targetSysId: 1, targetCompId: 1,
+      sysId: 255, compId: 190, ftpDownload: null,
+    };
+    return { sent, ctx };
+  }
+
+  it("re-reads the hole when the burst's EOF NAK follows a lost packet", () => {
+    const { sent, ctx } = session();
+    void downloadFileViaFtp(ctx, "/script.lua");
+    handleFileTransferProtocolAck(ctx, ftpResponse({
+      session: 2, opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.OpenFileRO, size: 0,
+    }));
+    handleFileTransferProtocolAck(ctx, ftpResponse({
+      session: 2, opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.BurstReadFile,
+      size: 4, offset: 0, data: new Uint8Array([1, 2, 3, 4]),
+    }));
+    // The chunk at 4..8 was lost; 8..12 arrived, then the burst ends with EOF.
+    handleFileTransferProtocolAck(ctx, ftpResponse({
+      session: 2, opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.BurstReadFile,
+      size: 4, offset: 8, data: new Uint8Array([9, 10, 11, 12]),
+    }));
+    handleFileTransferProtocolAck(ctx, ftpResponse({
+      session: 2, opcode: FtpOpcode.Nak, reqOpcode: FtpOpcode.BurstReadFile,
+      size: 1, data: new Uint8Array([FtpError.EndOfFile]),
+    }));
+    const next = decodeFileTransferProtocol(payloadOf(sent[sent.length - 1]));
+    expect(next.opcode).toBe(FtpOpcode.BurstReadFile);
+    expect(next.offset).toBe(4);
+  });
+
+  it("rejects a read whose CRC does not match the server's", async () => {
+    const { ctx } = session();
+    const promise = downloadFileViaFtp(ctx, "/x.bin");
+    handleFileTransferProtocolAck(ctx, ftpResponse({
+      session: 3, opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.OpenFileRO, size: 4, data: u32le(2),
+    }));
+    handleFileTransferProtocolAck(ctx, ftpResponse({
+      session: 3, opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.BurstReadFile,
+      size: 2, offset: 0, burstComplete: 1, data: new Uint8Array([1, 2]),
+    }));
+    handleFileTransferProtocolAck(ctx, ftpResponse({
+      session: 3, opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.CalcFileCRC32, size: 4, data: u32le(0xdeadbeef),
+    }));
+    await expect(promise).rejects.toThrow(/CRC-32 mismatch/);
+  });
+
+  it("rejects an open that never gets a reply instead of returning an empty file", async () => {
+    vi.useFakeTimers();
+    try {
+      const { ctx } = session();
+      const outcome = downloadFileViaFtp(ctx, "/none.bin").then(() => "resolved", (e: Error) => e.message);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(await outcome).toMatch(/got no reply/);
+      expect(ctx.ftpDownload).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

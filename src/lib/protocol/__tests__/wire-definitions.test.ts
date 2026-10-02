@@ -317,8 +317,7 @@ describe("MAV_CMD numbers", () => {
   it("covers every exported command sender", () => {
     // Senders of MAVLink messages rather than MAV_CMDs, and the generic one.
     const notCommands = new Set([
-      "cmdSendManualControl", "cmdSendSerialData", "cmdSendPositionTarget",
-      "cmdSendAttitudeTarget", "cmdSetEkfOrigin", "cmdSendCommand",
+      "cmdSendManualControl", "cmdSendSerialData", "cmdSetEkfOrigin", "cmdSendCommand",
     ]);
     const covered = new Set(SENDERS.map(([name]) => name));
     const missing = Object.keys(cmds).filter((k) => k.startsWith("cmd") && !notCommands.has(k) && !covered.has(k));

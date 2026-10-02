@@ -21,6 +21,7 @@ const FTP_INNER_OFFSET = 3;
 
 /** Build a FILE_TRANSFER_PROTOCOL frame payload (as the decoder expects). */
 function makeFrame(fields: {
+  seq?: number;
   session?: number;
   opcode: number;
   reqOpcode?: number;
@@ -30,6 +31,7 @@ function makeFrame(fields: {
   const buf = new Uint8Array(FTP_INNER_OFFSET + 12 + 239);
   const dv = new DataView(buf.buffer);
   const base = FTP_INNER_OFFSET;
+  dv.setUint16(base, fields.seq ?? 0, true);
   dv.setUint8(base + 2, fields.session ?? 0);
   dv.setUint8(base + 3, fields.opcode);
   dv.setUint8(base + 4, fields.size ?? (fields.data?.length ?? 0));
@@ -68,9 +70,9 @@ describe("MAVLink FTP write ops", () => {
     handleFtpOpAck(ctx, makeFrame({ opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.CreateFile, session: 7 }));
     expect(sent.length).toBe(2); // first WriteFile
 
-    // ACK each WriteFile until done.
+    // ACK each WriteFile until done; an ACK answers its request with seq + 1.
     for (let guard = 0; guard < 10 && ctx.ftpOp; guard++) {
-      handleFtpOpAck(ctx, makeFrame({ opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.WriteFile, session: 7 }));
+      handleFtpOpAck(ctx, makeFrame({ opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.WriteFile, session: 7, seq: ctx.ftpOp.seq }));
     }
     await expect(p).resolves.toBeUndefined();
     // 3 WriteFile + 1 CreateFile were sent (terminate is fire-and-forget after).
@@ -83,7 +85,9 @@ describe("MAVLink FTP write ops", () => {
     const payload = new Uint8Array(300);
     const p = uploadFileViaFtp(ctx, "APM/scripts/y.lua", payload, (w, t) => seen.push([w, t]));
     handleFtpOpAck(ctx, makeFrame({ opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.CreateFile, session: 3 }));
-    while (ctx.ftpOp) handleFtpOpAck(ctx, makeFrame({ opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.WriteFile, session: 3 }));
+    for (let guard = 0; guard < 10 && ctx.ftpOp; guard++) {
+      handleFtpOpAck(ctx, makeFrame({ opcode: FtpOpcode.Ack, reqOpcode: FtpOpcode.WriteFile, session: 3, seq: ctx.ftpOp.seq }));
+    }
     await p;
     expect(seen[seen.length - 1]).toEqual([300, 300]);
   });

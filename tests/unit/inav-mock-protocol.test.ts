@@ -189,72 +189,60 @@ describe("mission upload and download", () => {
   });
 });
 
-// ── Safehome CRUD ────────────────────────────────────────────
+// ── Safehomes and geozones ───────────────────────────────────
 
-describe("safehome CRUD", () => {
-  it("setSafehome then getSafehome round-trips", () => {
+describe("safehome table", () => {
+  it("downloads every slot, unused ones disabled", async () => {
     const proto = makeCopter();
-    proto.setSafehome({ index: 2, enabled: true, lat: 12.9716, lon: 77.5946 });
-    const sh = proto.getSafehome(2);
-    expect(sh).not.toBeNull();
-    expect(sh!.enabled).toBe(true);
-    expect(Math.abs(sh!.lat - 12.9716)).toBeLessThan(0.0001);
+    const slots = await proto.downloadSafehomes();
+    expect(slots).toHaveLength(8);
+    expect(slots.every((s) => !s.enabled)).toBe(true);
   });
 
-  it("clearSafehome removes the entry", () => {
+  it("upload then download round-trips and disables the slots past the list", async () => {
     const proto = makeCopter();
-    proto.setSafehome({ index: 0, enabled: true, lat: 12.9, lon: 77.5 });
-    proto.clearSafehome(0);
-    expect(proto.getSafehome(0)).toBeNull();
+    await proto.uploadSafehomes([
+      { index: 0, enabled: true, lat: 12.9, lon: 77.5 },
+      { index: 1, enabled: true, lat: 12.9716, lon: 77.5946 },
+    ]);
+    await proto.uploadSafehomes([{ index: 0, enabled: true, lat: 12.8, lon: 77.4 }]);
+    const slots = await proto.downloadSafehomes();
+    expect(slots[0]).toEqual({ index: 0, enabled: true, lat: 12.8, lon: 77.4 });
+    expect(slots[1].enabled).toBe(false);
   });
 
-  it("getSafehome returns null for empty slot", () => {
+  it("refuses more safehomes than the firmware has slots", async () => {
     const proto = makeCopter();
-    expect(proto.getSafehome(5)).toBeNull();
-  });
-
-  it("getAllSafehomes returns the firmware's 8 slots", () => {
-    const proto = makeCopter();
-    expect(proto.getAllSafehomes()).toHaveLength(8);
-  });
-});
-
-// ── Geozone CRUD ─────────────────────────────────────────────
-
-describe("geozone CRUD — circular", () => {
-  it("setGeozone circular then getGeozone round-trips", () => {
-    const proto = makeCopter();
-    proto.setGeozone({ index: 0, enabled: true, shape: 1, type: 1, minAltitude: 0, maxAltitude: 12000, lat: 12.9, lon: 77.5, radius: 50000 });
-    const gz = proto.getGeozone(0);
-    expect(gz).not.toBeNull();
-    expect(gz!.shape).toBe(1);
-    expect(gz!.radius).toBe(50000);
+    const nine = Array.from({ length: 9 }, (_, index) => ({ index, enabled: true, lat: 1, lon: 1 }));
+    expect((await proto.uploadSafehomes(nine)).success).toBe(false);
   });
 });
 
-describe("geozone CRUD — polygon", () => {
+describe("geozone table", () => {
+  const zone = { number: 1, type: 0, shape: 1, minAlt: 0, maxAlt: 5000, isSeaLevelRef: false, fenceAction: 0, vertexCount: 4 };
   const vertices = [
-    { lat: 12.91, lon: 77.59 }, { lat: 12.93, lon: 77.59 },
-    { lat: 12.93, lon: 77.61 }, { lat: 12.91, lon: 77.61 },
+    { geozoneId: 1, vertexIdx: 0, lat: 12.91, lon: 77.59 }, { geozoneId: 1, vertexIdx: 1, lat: 12.93, lon: 77.59 },
+    { geozoneId: 1, vertexIdx: 2, lat: 12.93, lon: 77.61 }, { geozoneId: 1, vertexIdx: 3, lat: 12.91, lon: 77.61 },
   ];
 
-  it("setGeozone polygon then getGeozone has correct vertex count", () => {
+  it("upload then download round-trips zones and their vertices", async () => {
     const proto = makePlane();
-    proto.setGeozone({ index: 1, enabled: true, shape: 0, type: 0, minAltitude: 0, maxAltitude: 5000, vertices });
-    const gz = proto.getGeozone(1);
-    expect(gz!.vertices).toHaveLength(4);
+    await proto.uploadGeozones([zone], vertices);
+    const read = await proto.downloadGeozones();
+    expect(read.zones).toEqual([zone]);
+    expect(read.vertices).toHaveLength(4);
   });
 
-  it("clearGeozone removes entry", () => {
+  it("an upload replaces every zone the FC held", async () => {
     const proto = makePlane();
-    proto.setGeozone({ index: 0, enabled: true, shape: 0, type: 0, minAltitude: 0, maxAltitude: 5000, vertices });
-    proto.clearGeozone(0);
-    expect(proto.getGeozone(0)).toBeNull();
+    await proto.uploadGeozones([zone], vertices);
+    await proto.uploadGeozones([], []);
+    expect(await proto.downloadGeozones()).toEqual({ zones: [], vertices: [] });
   });
 
-  it("getAllGeozones returns the firmware's 63 slots", () => {
+  it("refuses a zone outside the firmware's slots", async () => {
     const proto = makePlane();
-    expect(proto.getAllGeozones()).toHaveLength(63);
+    expect((await proto.uploadGeozones([{ ...zone, number: 63 }], [])).success).toBe(false);
   });
 });
 
@@ -346,24 +334,24 @@ describe("telemetry tick", () => {
 // ── Seeded config from constructor ───────────────────────────
 
 describe("constructor seeding", () => {
-  it("constructor-provided safehomes are immediately readable", () => {
+  it("constructor-provided safehomes are immediately readable", async () => {
     const proto = new INavMockProtocol({
       vehicleClass: "copter",
       safehomes: [{ index: 3, enabled: true, lat: 12.0, lon: 77.0 }],
     });
-    const sh = proto.getSafehome(3);
-    expect(sh).not.toBeNull();
-    expect(sh!.enabled).toBe(true);
+    const slots = await proto.downloadSafehomes();
+    expect(slots[3].enabled).toBe(true);
   });
 
-  it("constructor-provided geozones are immediately readable", () => {
+  it("constructor-provided geozones are immediately readable", async () => {
     const proto = new INavMockProtocol({
       vehicleClass: "plane",
-      geozones: [{ index: 2, enabled: true, shape: 1, type: 0, minAltitude: 0, maxAltitude: 9000, lat: 12.0, lon: 77.0, radius: 20000 }],
+      geozones: [{ number: 2, type: 0, shape: 0, minAlt: 0, maxAlt: 9000, isSeaLevelRef: false, fenceAction: 0, vertexCount: 1 }],
+      geozoneVertices: [{ geozoneId: 2, vertexIdx: 0, lat: 12.0, lon: 77.0, radius: 20000 }],
     });
-    const gz = proto.getGeozone(2);
-    expect(gz).not.toBeNull();
-    expect(gz!.radius).toBe(20000);
+    const read = await proto.downloadGeozones();
+    expect(read.zones.map((z) => z.number)).toEqual([2]);
+    expect(read.vertices[0].radius).toBe(20000);
   });
 
   it("constructor-provided waypoints are reflected in getINavWaypoints", async () => {

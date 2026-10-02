@@ -4,6 +4,18 @@
  */
 
 import type { Transport } from "../types";
+import { enqueueFrame } from "./send-backlog";
+
+/** A dial that has not opened by then never will on a black-holed host. */
+const CONNECT_TIMEOUT_MS = 10_000;
+/**
+ * Bytes the browser may hold unsent before frames wait in the bounded
+ * backlog instead, where stick frames coalesce. Small, so a congested link
+ * delays pilot input by a few frames, not seconds.
+ */
+const BUFFERED_HIGH_WATER = 512;
+/** Retry cadence for draining the backlog while the browser buffer is full. */
+const DRAIN_INTERVAL_MS = 10;
 
 type TransportEventMap = {
   data: Uint8Array;
@@ -22,6 +34,8 @@ export class WebSocketTransport implements Transport {
   private ws: WebSocket | null = null;
   private _connected = false;
   private _disconnecting = false;
+  private backlog: Uint8Array[] = [];
+  private drainTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners: Map<
     keyof TransportEventMap,
     Set<(data: never) => void>
@@ -55,8 +69,17 @@ export class WebSocketTransport implements Transport {
         reject(err);
         return;
       }
+      const ws = this.ws;
+      const timeout = setTimeout(() => {
+        if (this._connected || this.ws !== ws) return;
+        ws.onopen = null; ws.onerror = null; ws.onclose = null; ws.onmessage = null;
+        ws.close();
+        this.ws = null;
+        reject(new Error(`WebSocket did not open within ${CONNECT_TIMEOUT_MS / 1000} s`));
+      }, CONNECT_TIMEOUT_MS);
 
       this.ws.onopen = () => {
+        clearTimeout(timeout);
         this._connected = true;
         resolve();
       };
@@ -67,6 +90,7 @@ export class WebSocketTransport implements Transport {
         );
         if (!this._connected) {
           // Connection failed
+          clearTimeout(timeout);
           reject(error);
         } else {
           this.emit("error", error);
@@ -80,9 +104,11 @@ export class WebSocketTransport implements Transport {
       };
 
       this.ws.onclose = () => {
+        clearTimeout(timeout);
         const wasConnected = this._connected;
         this._connected = false;
         this.ws = null;
+        this.dropBacklog();
         if (wasConnected && !this._disconnecting) {
           this.emit("close", undefined as never);
         }
@@ -90,12 +116,40 @@ export class WebSocketTransport implements Transport {
     });
   }
 
-  /** Send raw bytes over WebSocket. */
+  /**
+   * Send raw bytes over WebSocket. While the browser buffer is above its
+   * high-water mark, frames wait in a bounded backlog where stick frames
+   * coalesce; a full backlog refuses the send.
+   */
   send(data: Uint8Array): void {
     if (!this._connected || !this.ws) {
       throw new Error("Not connected");
     }
-    this.ws.send(data);
+    if (this.backlog.length === 0 && !(this.ws.bufferedAmount > BUFFERED_HIGH_WATER)) {
+      this.ws.send(data);
+      return;
+    }
+    enqueueFrame(this.backlog, data, "WebSocket");
+    this.scheduleDrain();
+  }
+
+  private scheduleDrain(): void {
+    if (this.drainTimer !== null) return;
+    this.drainTimer = setTimeout(() => {
+      this.drainTimer = null;
+      const ws = this.ws;
+      if (!ws || !this._connected) return;
+      while (this.backlog.length > 0 && !(ws.bufferedAmount > BUFFERED_HIGH_WATER)) {
+        ws.send(this.backlog.shift()!);
+      }
+      if (this.backlog.length > 0) this.scheduleDrain();
+    }, DRAIN_INTERVAL_MS);
+  }
+
+  private dropBacklog(): void {
+    clearTimeout(this.drainTimer ?? undefined);
+    this.drainTimer = null;
+    this.backlog = [];
   }
 
   /** Close the WebSocket connection. Idempotent — safe to call multiple times. */
@@ -117,6 +171,7 @@ export class WebSocketTransport implements Transport {
       this.ws.close();
     }
     this.ws = null;
+    this.dropBacklog();
     this._disconnecting = false;
     this.emit("close", undefined as never);
   }

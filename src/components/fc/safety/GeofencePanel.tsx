@@ -11,6 +11,8 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFenceUploadStatus } from "@/hooks/use-upload-status";
@@ -79,6 +81,9 @@ function ArduPilotGeofencePanel() {
   const toggleZoneRole = useGeofenceStore((s) => s.toggleZoneRole);
   const uploadFence = useGeofenceStore((s) => s.uploadFence);
   const downloadFence = useGeofenceStore((s) => s.downloadFence);
+  const clearVehicleFence = useGeofenceStore((s) => s.clearVehicleFence);
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  const [confirmClear, setConfirmClear] = useState(false);
   const uploadState = useGeofenceStore((s) => s.uploadState);
   const downloadState = useGeofenceStore((s) => s.downloadState);
   // "Uploaded" only while this drone holds exactly the fence shown here.
@@ -127,6 +132,12 @@ function ArduPilotGeofencePanel() {
     toast(result.message, result.success ? "success" : "error");
   }, [downloadFence, toast]);
 
+  const handleClearVehicleFence = useCallback(async () => {
+    setConfirmClear(false);
+    const result = await clearVehicleFence();
+    toast(result.message, result.success ? "success" : "error");
+  }, [clearVehicleFence, toast]);
+
   const breachLabel = breachType === 0 ? "None" : breachType === 1 ? "Min Altitude" : breachType === 2 ? "Max Altitude" : "Boundary";
 
   return (
@@ -171,12 +182,25 @@ function ArduPilotGeofencePanel() {
                 <button onClick={handleDownload} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono border border-border-default text-text-primary hover:bg-bg-tertiary transition-colors cursor-pointer">
                   <Download size={10} />{downloadState === "downloading" ? "Downloading..." : "Download Points"}
                 </button>
+                <button onClick={() => setConfirmClear(true)} disabled={isHardBlocked} title={hardBlockMessage || undefined}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono border border-border-default text-status-error hover:bg-bg-tertiary transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Trash2 size={10} />Remove From Aircraft
+                </button>
               </div>
               {fenceStatus === "on-aircraft" && <p className="text-[10px] font-mono text-status-success mt-1">Fence points uploaded</p>}
               {fenceStatus === "older-on-aircraft" && <p className="text-[10px] font-mono text-status-warning mt-1">Aircraft holds an older fence</p>}
               {downloadState === "downloaded" && <p className="text-[10px] font-mono text-status-success mt-1">Fence points downloaded</p>}
             </Card>
           )}
+          <ConfirmDialog
+            open={confirmClear}
+            onConfirm={() => { void handleClearVehicleFence(); }}
+            onCancel={() => setConfirmClear(false)}
+            title="Remove fence from aircraft"
+            message="This deletes every fence boundary stored on the flight controller. The aircraft stops enforcing it. Continue?"
+            confirmLabel="Remove fence"
+            variant="danger"
+          />
 
           <Card icon={<MapPin size={14} />} title="Zones" description="Inclusion (must stay inside) and exclusion (must stay outside) zones">
             {zones.length === 0 && <p className="text-[10px] text-text-tertiary">No zones defined. Add zones using the buttons below.</p>}

@@ -215,12 +215,9 @@ export interface DroneProtocol {
   doPreArmCheck(): Promise<CommandResult>;
 
   // ── Fence Operations ──────────────────────────────────────
-  uploadFence?(points: Array<{ lat: number; lon: number }>): Promise<CommandResult>;
-  downloadFence?(): Promise<Array<{ idx: number; lat: number; lon: number }>>;
   /**
-   * Upload the geofence as a fence-type mission (mission_type = fence). Used by
-   * firmwares (PX4) that store the fence as a mission plan rather than the
-   * legacy FENCE_POINT protocol.
+   * Upload the geofence as a fence-type mission (mission_type = fence). An
+   * empty element list uploads a count of 0, which clears the vehicle's fence.
    */
   uploadFenceMission?(elements: FenceElement[]): Promise<CommandResult>;
   /** Download the geofence as a fence-type mission and reassemble the model. */
@@ -374,10 +371,6 @@ export interface DroneProtocol {
   /** Same slot semantics as `setModeRanges`, for adjustment ranges. */
   setAdjustmentRanges?(ranges: MspAdjustmentRange[]): Promise<CommandResult>;
 
-  // ── Guided Flight ─────────────────────────────────────────
-  sendPositionTarget?(lat: number, lon: number, alt: number): void;
-  sendAttitudeTarget?(roll: number, pitch: number, yaw: number, thrust: number): void;
-
   // ── Fence Enable ─────────────────────────────────────────
   enableFence?(enable: boolean): Promise<CommandResult>;
 
@@ -388,7 +381,6 @@ export interface DroneProtocol {
   startRxPair?(spektrum: number): Promise<CommandResult>;
 
   // ── Camera/Gimbal ─────────────────────────────────────────
-  setCameraTriggerDistance?(distance: number): Promise<CommandResult>;
   setGimbalMode?(mode: number): Promise<CommandResult>;
   setGimbalROI?(lat: number, lon: number, alt: number): Promise<CommandResult>;
   setRoiLocation?(lat: number, lon: number, alt: number): Promise<CommandResult>;
@@ -411,9 +403,6 @@ export interface DroneProtocol {
    * throwing, so the caller can render the right UX.
    */
   setEkfSourceSet(sourceSet: 1 | 2 | 3): Promise<{ ok: true } | { ok: false; reason: "px4-not-supported" | "no-ack" | "rejected" }>;
-
-  // ── Advanced Calibration ──────────────────────────────────
-  startEscCalibration?(): Promise<CommandResult>;
 
   // ── Manual Control ──────────────────────────────────────
   /**

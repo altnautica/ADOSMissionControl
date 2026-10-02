@@ -49,7 +49,7 @@ function seedDrone(): void {
   } as unknown as DroneProtocol;
   const drones = new Map([[DRONE, { id: DRONE, protocol } as unknown as ManagedDrone]]);
   useDroneManager.setState({ drones, selectedDroneId: DRONE });
-  useDroneStore.setState({ armState: "disarmed" });
+  useDroneStore.setState({ armState: "disarmed", lastHeartbeat: Date.now() });
 }
 
 function openPalette(): void {

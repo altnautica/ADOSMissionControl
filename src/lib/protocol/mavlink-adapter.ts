@@ -13,9 +13,9 @@
  */
 
 import type {
-  DroneProtocol, Transport, TransportMiddleware, VehicleInfo, CommandResult, ParameterValue,
+  DroneProtocol, Transport, VehicleInfo, CommandResult,
   MissionItem, FirmwareHandler, ProtocolCapabilities, UnifiedFlightMode,
-  LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo, GuidedGotoOptions,
+  LogDownloadProgressCallback, FtpDownloadProgressCallback, LinkInfo, GuidedGotoOptions,
   FenceElement,
 } from './types'
 import { MAVLinkParser, type MAVLinkFrame } from './mavlink-parser'
@@ -77,16 +77,11 @@ export class MAVLinkAdapter implements DroneProtocol {
   private commandQueue = new CommandQueue(3000)
   /** Multi-link support — Map of active transports reaching this drone. */
   private links = new Map<string, LinkState>()
-  private firmwareHandler: FirmwareHandler | null = null
-  private vehicleInfo: VehicleInfo | null = null
-  private targetSysId = 1
-  private targetCompId = 1
-  private sysId = 255
-  private compId = 190
   private _connected = false
   private _disconnected = false
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null
   private streamRequestInterval: ReturnType<typeof setInterval> | null = null
+  private linkLostCheckInterval: ReturnType<typeof setInterval> | null = null
   /** Signs every outbound v2 frame when set; null sends unsigned. */
   private signer: MavlinkSigner | null = null
 
@@ -143,84 +138,54 @@ export class MAVLinkAdapter implements DroneProtocol {
   private cbs = createCallbackStore()
   private cbm = bindCallbackMethods(this.cbs)
   private paramCache = new Map<string, prm.ParamCacheEntry>()
-  private lastVehicleHeartbeat = 0
-  private linkLostCheckInterval: ReturnType<typeof setInterval> | null = null
-  private linkIsLost = false
-  /** URI from the last COMPONENT_METADATA (msg 397), PX4 only. Null until received. */
-  private componentMetadataUri: string | null = null
-  private middleware: TransportMiddleware | null = null
   /** Latched once on PX4 to keep the console clean if the UI retries the call. */
   private px4EkfSourceWarned = false
-  /** Home altitude AMSL (m) from the last HOME_POSITION; null until one arrives. */
-  private homeAltitudeAmsl: number | null = null
-
-  // Protocol state machines
-  private parameterDownload: prm.ParamDownloadState | null = null
-  // Names from the last COMPLETE full param download; the "which params exist"
-  // oracle used to fast-fail reads of params this board lacks. Cleared on
-  // disconnect. Not touched by setParameter, so it stays stable.
-  private downloadedParamNames: Set<string> | null = null
-  private missionUpload: msn.MissionUploadState | null = null
-  private missionDownload: msn.MissionDownloadState | null = null
-  private rallyUpload: msn.RallyUploadState | null = null
-  private rallyDownload: msn.RallyDownloadState | null = null
-  private fenceUpload: msn.FenceUploadState | null = null
-  private fenceDownload: msn.FenceDownloadState | null = null
-  private logListDownload: logOps.LogListState | null = null
-  private logDataDownload: logOps.LogDataState | null = null
   /**
    * Single shared FTP context. The download method, the inbound frame handler,
    * and the session timers all operate on this one object so a session that
    * completes (or times out) via any path clears the same `ftpDownload` slot.
+   * Link and identity fields read live from the adapter.
    */
-  private _ftpCtx: ftpOps.FtpContext = {
-    transport: null, targetSysId: 1, targetCompId: 1, sysId: 255, compId: 190, ftpDownload: null, ftpOp: null,
-  }
-  private get ftpDownload(): ftpOps.FtpSessionState | null { return this._ftpCtx.ftpDownload }
-  private set ftpDownload(v: ftpOps.FtpSessionState | null) { this._ftpCtx.ftpDownload = v }
+  private readonly _ftpCtx: ftpOps.FtpContext = (() => {
+    // The getters below read the adapter's live link and identity.
+    const adapter = this
+    return {
+      get transport() { return adapter.commandTransport },
+      get targetSysId() { return adapter.st.targetSysId },
+      get targetCompId() { return adapter.st.targetCompId },
+      get sysId() { return adapter.st.sysId },
+      get compId() { return adapter.st.compId },
+      ftpDownload: null, ftpOp: null,
+    }
+  })()
 
   get isConnected(): boolean { return this._connected }
 
-  /** Attach optional middleware for intercepting transport data (e.g., encryption). */
-  setMiddleware(mw: TransportMiddleware | null): void { this.middleware = mw }
-
-  // ── Shared state object for frame handlers ──────────────
-  // Cached mutable object — updated in-place to avoid 50+/sec allocations
-  private _fhs: FrameHandlerState = {
-    transport: null, firmwareHandler: null, vehicleInfo: null,
-    targetSysId: 1, targetCompId: 1, sysId: 255, compId: 190,
-    commandQueue: this.commandQueue, cbs: this.cbs, paramCache: this.paramCache,
-    parameterDownload: null, downloadedParamNames: null, missionUpload: null, missionDownload: null,
-    rallyUpload: null, rallyDownload: null, fenceUpload: null, fenceDownload: null,
-    logListDownload: null, logDataDownload: null, ftpCtx: this._ftpCtx,
-    lastVehicleHeartbeat: 0, linkIsLost: false, HEARTBEAT_TIMEOUT_MS: TELEMETRY_STALE_MS,
-    componentMetadataUri: null, statusText: new StatusTextAssembler(), homeAltitudeAmsl: null,
-  }
-  private get fhs(): FrameHandlerState {
-    const s = this._fhs
-    s.transport = this.commandTransport; s.firmwareHandler = this.firmwareHandler; s.vehicleInfo = this.vehicleInfo
-    s.targetSysId = this.targetSysId; s.targetCompId = this.targetCompId; s.sysId = this.sysId; s.compId = this.compId
-    s.parameterDownload = this.parameterDownload; s.downloadedParamNames = this.downloadedParamNames; s.missionUpload = this.missionUpload
-    s.missionDownload = this.missionDownload; s.rallyUpload = this.rallyUpload; s.rallyDownload = this.rallyDownload
-    s.fenceUpload = this.fenceUpload; s.fenceDownload = this.fenceDownload
-    s.logListDownload = this.logListDownload; s.logDataDownload = this.logDataDownload
-    s.ftpCtx = this.fc
-    s.lastVehicleHeartbeat = this.lastVehicleHeartbeat; s.linkIsLost = this.linkIsLost
-    s.componentMetadataUri = this.componentMetadataUri; s.homeAltitudeAmsl = this.homeAltitudeAmsl
-    return s
-  }
-  private syncFhs(s: FrameHandlerState) {
-    this.vehicleInfo = s.vehicleInfo; this.parameterDownload = s.parameterDownload
-    this.downloadedParamNames = s.downloadedParamNames
-    this.missionUpload = s.missionUpload; this.missionDownload = s.missionDownload
-    this.rallyUpload = s.rallyUpload; this.rallyDownload = s.rallyDownload
-    this.fenceUpload = s.fenceUpload; this.fenceDownload = s.fenceDownload
-    this.logListDownload = s.logListDownload; this.logDataDownload = s.logDataDownload
-    // FTP state lives on the shared _ftpCtx (see s.ftpCtx); no copy-back needed.
-    this.lastVehicleHeartbeat = s.lastVehicleHeartbeat; this.linkIsLost = s.linkIsLost
-    this.componentMetadataUri = s.componentMetadataUri ?? null
-    this.homeAltitudeAmsl = s.homeAltitudeAmsl
-  }
+  /**
+   * The adapter's one mutable protocol state. Frame handlers, transfer timers
+   * and the adapter's methods all read and write this object, so a transfer
+   * that settles on any path is settled for every path. `transport` reads the
+   * current command link on every access.
+   */
+  private readonly st: FrameHandlerState = (() => {
+    // The transport getter reads the adapter's live link.
+    const adapter = this
+    return {
+      get transport() { return adapter.commandTransport },
+      firmwareHandler: null, vehicleInfo: null,
+      targetSysId: 1, targetCompId: 1, sysId: 255, compId: 190,
+      commandQueue: this.commandQueue, cbs: this.cbs, paramCache: this.paramCache,
+      PARAM_CACHE_TTL_MS: 300000,
+      onParameter: this.cbm.onParameter,
+      sendCommandLong: (cmd, p, timeout) => this.sendCommandLong(cmd, p, timeout),
+      parameterDownload: null, downloadedParamNames: null, missionUpload: null, missionDownload: null,
+      rallyUpload: null, rallyDownload: null, fenceUpload: null, fenceDownload: null,
+      transferChains: new Map(),
+      logListDownload: null, logDataDownload: null, ftpCtx: this._ftpCtx,
+      lastVehicleHeartbeat: 0, linkIsLost: false, HEARTBEAT_TIMEOUT_MS: TELEMETRY_STALE_MS,
+      componentMetadataUri: null, statusText: new StatusTextAssembler(), homeAltitudeAmsl: null,
+    }
+  })()
 
   /** Attach a transport as a link. Returns the link state. */
   private attachLink(transport: Transport, label: string, meta?: ConnectionMeta): LinkState {
@@ -237,7 +202,7 @@ export class MAVLinkAdapter implements DroneProtocol {
       lastByteAt: 0,
       dataHandler: (data: Uint8Array) => {
         link.lastByteAt = Date.now()
-        parser.feed(this.middleware ? this.middleware.unwrapInbound(data) : data)
+        parser.feed(data)
       },
       closeHandler: () => this.handleLinkClose(id),
     }
@@ -302,15 +267,16 @@ export class MAVLinkAdapter implements DroneProtocol {
         // A companion computer, gimbal or camera on the vehicle's sysid must
         // not win the lock: every command would target it instead of the FC.
         if (!isAutopilotHeartbeat(hb)) return
-        this.targetSysId = frame.systemId; this.targetCompId = frame.componentId
-        this.firmwareHandler = createFirmwareHandler(hb.autopilot, hb.type)
+        const st = this.st
+        st.targetSysId = frame.systemId; st.targetCompId = frame.componentId
+        st.firmwareHandler = createFirmwareHandler(hb.autopilot, hb.type)
         const info: VehicleInfo = {
-          firmwareType: this.firmwareHandler.firmwareType, vehicleClass: this.firmwareHandler.vehicleClass,
-          firmwareVersionString: this.firmwareHandler.getFirmwareVersion(),
+          firmwareType: st.firmwareHandler.firmwareType, vehicleClass: st.firmwareHandler.vehicleClass,
+          firmwareVersionString: st.firmwareHandler.getFirmwareVersion(),
           systemId: frame.systemId, componentId: frame.componentId,
           autopilotType: hb.autopilot, vehicleType: hb.type,
         }
-        this.vehicleInfo = info; gate.resolve(info)
+        st.vehicleInfo = info; gate.resolve(info)
       }
     })
 
@@ -336,21 +302,21 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.heartbeatInterval = setInterval(() => {
       const link = this.commandTransport
       if (link?.isConnected && link.canCommand) {
-        this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
+        this.sendWrapped(encodeHeartbeat(this.st.sysId, this.st.compId))
       }
     }, 1000)
     if (transport.canCommand) {
-      this.sendWrapped(encodeHeartbeat(this.sysId, this.compId))
+      this.sendWrapped(encodeHeartbeat(this.st.sysId, this.st.compId))
     }
-    requestDataStreams(this.fhs)
-    this.streamRequestInterval = setInterval(() => requestDataStreams(this.fhs), 10000)
-    this.lastVehicleHeartbeat = Date.now(); this.linkIsLost = false
-    this.linkLostCheckInterval = setInterval(() => { const s = this.fhs; checkLinkState(s); this.syncFhs(s) }, 1000)
+    requestDataStreams(this.st)
+    this.streamRequestInterval = setInterval(() => requestDataStreams(this.st), 10000)
+    this.st.lastVehicleHeartbeat = Date.now(); this.st.linkIsLost = false
+    this.linkLostCheckInterval = setInterval(() => checkLinkState(this.st), 1000)
     this.sendCommandLong(512, [242, 0, 0, 0, 0, 0, 0]).catch(() => {})
     this.sendCommandLong(512, [148, 0, 0, 0, 0, 0, 0]).catch(() => {})
     // COMPONENT_METADATA (397) is a PX4-only "component information" message;
     // ArduPilot does not implement it, so only request it for PX4 vehicles.
-    if (this.firmwareHandler?.firmwareType === 'px4') {
+    if (this.st.firmwareHandler?.firmwareType === 'px4') {
       this.sendCommandLong(512, [397, 0, 0, 0, 0, 0, 0]).catch(() => {})
     }
     return vehicleInfo
@@ -361,7 +327,7 @@ export class MAVLinkAdapter implements DroneProtocol {
    * Validates that the new transport reaches the same sysid as the existing connection.
    */
   async addLink(transport: Transport): Promise<{ ok: true; linkId: string } | { ok: false; error: string }> {
-    if (!this._connected || this.targetSysId === 0) {
+    if (!this._connected || this.st.targetSysId === 0) {
       return { ok: false, error: 'Adapter is not connected to a primary link' }
     }
     if (this._disconnected) {
@@ -371,7 +337,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     const link = this.attachLink(transport, label)
 
     // Wait for a heartbeat from the SAME sysid
-    const expectedSysId = this.targetSysId
+    const expectedSysId = this.st.targetSysId
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
         unsub()
@@ -460,13 +426,16 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (this.heartbeatInterval) { clearInterval(this.heartbeatInterval); this.heartbeatInterval = null }
     if (this.streamRequestInterval) { clearInterval(this.streamRequestInterval); this.streamRequestInterval = null }
     if (this.linkLostCheckInterval) { clearInterval(this.linkLostCheckInterval); this.linkLostCheckInterval = null }
-    this.commandQueue.clear(); this._fhs.statusText.clear(); this.paramCache.clear(); this.downloadedParamNames = null
+    const st = this.st
+    this.commandQueue.clear(); st.statusText.clear(); this.paramCache.clear(); st.downloadedParamNames = null
     this.routing = false
-    this.componentMetadataUri = null; this.homeAltitudeAmsl = null
-    if (this.logListDownload) { logOps.cancelLogList(this.lc, 'Disconnected during log list'); this.logListDownload = null }
-    if (this.logDataDownload) { logOps.cancelLogDownload(this.lc, 'Disconnected during log download'); this.logDataDownload = null }
-    if (this.ftpDownload) { if (this.ftpDownload.inactivityTimer) clearTimeout(this.ftpDownload.inactivityTimer); clearTimeout(this.ftpDownload.hardTimer); this.ftpDownload.reject(new Error('Disconnected during FTP download')); this.ftpDownload = null }
-    if (this.parameterDownload) { prm.finishParamDownload(this.pc); this.parameterDownload = null }
+    st.componentMetadataUri = null; st.homeAltitudeAmsl = null
+    logOps.cancelLogList(st, 'Disconnected during log list')
+    if (st.logDataDownload) logOps.cancelLogDownload(st, 'Disconnected during log download')
+    const ftp = this._ftpCtx.ftpDownload
+    if (ftp) { if (ftp.inactivityTimer) clearTimeout(ftp.inactivityTimer); clearTimeout(ftp.hardTimer); ftp.reject(new Error('Disconnected during FTP download')); this._ftpCtx.ftpDownload = null }
+    prm.finishParamDownload(st)
+    msn.cancelMissionTransfers(st, 'Disconnected during mission transfer')
     ftpWriteOps.cancelFtpOp(this._ftpCtx, 'Disconnected during FTP operation')
     // Detach all remaining links
     for (const link of Array.from(this.links.values())) {
@@ -490,7 +459,7 @@ export class MAVLinkAdapter implements DroneProtocol {
       rawHex = Array.from(pb.slice(0, 32)).map((b) => b.toString(16).padStart(2, '0')).join(' ') + (pb.length > 32 ? ' ...' : '')
     }
     diag.logMessage(frame.msgId, msgName, 'in', frame.payload.byteLength, rawHex)
-    const s = this.fhs
+    const s = this.st
     const cbStart = performance.now()
     try {
       routeFrame(s, frame, frame.payload)
@@ -503,16 +472,11 @@ export class MAVLinkAdapter implements DroneProtocol {
     // Callback-dispatch latency: time spent fanning out to telemetry
     // subscribers, tracked separately from total frame-processing time.
     diag.recordCallbackLatency(performance.now() - cbStart)
-    this.syncFhs(s)
     diag.recordFrameProcessingTime(performance.now() - startTime)
   }
 
   // ── Context helpers ────────────────────────────────────
-  private get cc(): cmds.CommandContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, commandQueue: this.commandQueue, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, homeAltitudeAmsl: this.homeAltitudeAmsl, sendCommandLong: this.sendCommandLong.bind(this), sendCommandInt: this.sendCommandIntTracked.bind(this) } }
-  private get pc(): prm.ParamContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, paramCache: this.paramCache, PARAM_CACHE_TTL_MS: 300000, parameterDownload: this.parameterDownload, downloadedParamNames: this.downloadedParamNames, onParameter: this.onParameter.bind(this) } }
-  private get mc(): msn.MissionContext { return { transport: this.commandTransport, firmwareHandler: this.firmwareHandler, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, missionUpload: this.missionUpload, missionDownload: this.missionDownload, rallyUpload: this.rallyUpload, rallyDownload: this.rallyDownload, fenceUpload: this.fenceUpload, fenceDownload: this.fenceDownload, sendCommandLong: this.sendCommandLong.bind(this) } }
-  private get lc(): logOps.LogContext { return { transport: this.commandTransport, targetSysId: this.targetSysId, targetCompId: this.targetCompId, sysId: this.sysId, compId: this.compId, logListDownload: this.logListDownload, logDataDownload: this.logDataDownload } }
-  private get fc(): ftpOps.FtpContext { const c = this._ftpCtx; c.transport = this.commandTransport; c.targetSysId = this.targetSysId; c.targetCompId = this.targetCompId; c.sysId = this.sysId; c.compId = this.compId; return c }
+  private get cc(): cmds.CommandContext { const s = this.st; return { transport: this.commandTransport, firmwareHandler: s.firmwareHandler, commandQueue: this.commandQueue, targetSysId: s.targetSysId, targetCompId: s.targetCompId, sysId: s.sysId, compId: s.compId, homeAltitudeAmsl: s.homeAltitudeAmsl, sendCommandLong: this.sendCommandLong.bind(this), sendCommandInt: this.sendCommandIntTracked.bind(this) } }
 
   // ── Delegated Commands ─────────────────────────────────
   async arm() { return cmds.cmdArm(this.cc) }
@@ -574,7 +538,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (sourceSet !== 1 && sourceSet !== 2 && sourceSet !== 3) {
       throw new TypeError(`setEkfSourceSet: sourceSet must be 1, 2, or 3 (received ${String(sourceSet)})`)
     }
-    if (this.firmwareHandler?.firmwareType === 'px4') {
+    if (this.st.firmwareHandler?.firmwareType === 'px4') {
       if (!this.px4EkfSourceWarned) {
         this.px4EkfSourceWarned = true
         console.warn('PX4 does not support runtime EKF source-set switching, parameter update plus EKF restart required')
@@ -625,10 +589,11 @@ export class MAVLinkAdapter implements DroneProtocol {
   /** Send a CAN_FRAME (msg 386) over the active transport. Fire-and-forget. */
   sendCanFrame(bus: number, id: number, data: Uint8Array): void {
     if (!this.transport?.isConnected) return
+    const s = this.st
     const frame = encodeCanFrame(
-      this.targetSysId, this.targetCompId, bus,
+      s.targetSysId, s.targetCompId, bus,
       { id, extended: (id & 0x80000000) !== 0, dlc: data.length, data },
-      this.sysId, this.compId,
+      s.sysId, s.compId,
     )
     this.sendWrapped(frame)
   }
@@ -636,50 +601,49 @@ export class MAVLinkAdapter implements DroneProtocol {
   /** Send a CANFD_FRAME (msg 387) over the active transport. Fire-and-forget. */
   sendCanFdFrame(bus: number, id: number, data: Uint8Array): void {
     if (!this.transport?.isConnected) return
+    const s = this.st
     const frame = encodeCanFdFrame(
-      this.targetSysId, this.targetCompId, bus,
+      s.targetSysId, s.targetCompId, bus,
       { id, extended: (id & 0x80000000) !== 0, dlc: data.length, data },
-      this.sysId, this.compId,
+      s.sysId, s.compId,
     )
     this.sendWrapped(frame)
   }
-  sendPositionTarget(lat: number, lon: number, alt: number) { cmds.cmdSendPositionTarget(this.cc, lat, lon, alt) }
-  sendAttitudeTarget(r: number, p: number, y: number, t: number) { cmds.cmdSendAttitudeTarget(this.cc, r, p, y, t) }
 
   // ── Delegated Parameters ───────────────────────────────
-  async getAllParameters() { const c = this.pc; const p = prm.getAllParameters(c); this.parameterDownload = c.parameterDownload; const r = await p; this.parameterDownload = c.parameterDownload; return r }
-  getCachedParameterNames() { return prm.getCachedParameterNames(this.pc) }
-  async getParameter(name: string) { return prm.getParameter(this.pc, name) }
-  async setParameter(name: string, value: number) { return prm.setParameter(this.pc, name, value) }
+  async getAllParameters() { return prm.getAllParameters(this.st) }
+  getCachedParameterNames() { return prm.getCachedParameterNames(this.st) }
+  async getParameter(name: string) { return prm.getParameter(this.st, name) }
+  async setParameter(name: string, value: number) { return prm.setParameter(this.st, name, value) }
 
   // ── Delegated Missions ─────────────────────────────────
-  async uploadMission(items: MissionItem[]) { const c = this.mc; const p = msn.uploadMission(c, items); this.missionUpload = c.missionUpload as msn.MissionUploadState | null; const r = await p; this.missionUpload = c.missionUpload as msn.MissionUploadState | null; return r }
-  async downloadMission() { const c = this.mc; const p = msn.downloadMission(c); this.missionDownload = c.missionDownload as msn.MissionDownloadState | null; const r = await p; this.missionDownload = c.missionDownload as msn.MissionDownloadState | null; return r }
-  async setCurrentMissionItem(seq: number) { return msn.setCurrentMissionItem(this.mc, seq) }
-  async clearMission() { const c = this.mc; const r = await msn.clearMission(c); this.missionUpload = c.missionUpload as msn.MissionUploadState | null; return r }
-  async uploadFenceMission(elements: FenceElement[]) { const c = this.mc; const p = msn.uploadFenceMission(c, elements); this.fenceUpload = c.fenceUpload; const r = await p; this.fenceUpload = c.fenceUpload; return r }
-  async downloadFenceMission() { const c = this.mc; const p = msn.downloadFenceMission(c); this.fenceDownload = c.fenceDownload; const r = await p; this.fenceDownload = c.fenceDownload; return r }
-  async uploadRallyPoints(pts: Array<{ lat: number; lon: number; alt: number }>) { const c = this.mc; const p = msn.uploadRallyPoints(c, pts); this.rallyUpload = c.rallyUpload as msn.RallyUploadState | null; const r = await p; this.rallyUpload = c.rallyUpload as msn.RallyUploadState | null; return r }
-  async downloadRallyPoints() { const c = this.mc; const p = msn.downloadRallyPoints(c); this.rallyDownload = c.rallyDownload as msn.RallyDownloadState | null; const r = await p; this.rallyDownload = c.rallyDownload as msn.RallyDownloadState | null; return r }
+  async uploadMission(items: MissionItem[]) { return msn.uploadMission(this.st, items) }
+  async downloadMission() { return msn.downloadMission(this.st) }
+  async setCurrentMissionItem(seq: number) { return msn.setCurrentMissionItem(this.st, seq) }
+  async clearMission() { return msn.clearMission(this.st) }
+  async uploadFenceMission(elements: FenceElement[]) { return msn.uploadFenceMission(this.st, elements) }
+  async downloadFenceMission() { return msn.downloadFenceMission(this.st) }
+  async uploadRallyPoints(pts: Array<{ lat: number; lon: number; alt: number }>) { return msn.uploadRallyPoints(this.st, pts) }
+  async downloadRallyPoints() { return msn.downloadRallyPoints(this.st) }
 
   // ── Delegated Logs ─────────────────────────────────────
-  async getLogList() { const c = this.lc; const p = logOps.getLogList(c); this.logListDownload = c.logListDownload; const r = await p; this.logListDownload = c.logListDownload; return r }
-  async downloadLog(id: number, onProgress?: LogDownloadProgressCallback) { const c = this.lc; const p = logOps.downloadLog(c, id, onProgress); this.logDataDownload = c.logDataDownload; const r = await p; this.logDataDownload = c.logDataDownload; return r }
-  async eraseAllLogs() { return logOps.eraseAllLogs(this.lc) }
-  cancelLogDownload() { const c = this.lc; logOps.cancelLogDownload(c); this.logListDownload = c.logListDownload; this.logDataDownload = c.logDataDownload }
+  async getLogList() { return logOps.getLogList(this.st) }
+  async downloadLog(id: number, onProgress?: LogDownloadProgressCallback) { return logOps.downloadLog(this.st, id, onProgress) }
+  async eraseAllLogs() { return logOps.eraseAllLogs(this.st) }
+  cancelLogDownload() { logOps.cancelLogDownload(this.st) }
 
   // ── Delegated FTP ──────────────────────────────────────
-  async downloadFileViaFtp(path: string, onProgress?: FtpDownloadProgressCallback) { return ftpOps.downloadFileViaFtp(this.fc, path, onProgress) }
-  cancelFtpDownload() { ftpOps.cancelFtp(this.fc) }
+  async downloadFileViaFtp(path: string, onProgress?: FtpDownloadProgressCallback) { return ftpOps.downloadFileViaFtp(this._ftpCtx, path, onProgress) }
+  cancelFtpDownload() { ftpOps.cancelFtp(this._ftpCtx) }
   // Write ops (upload/list/remove) — deliberate operator actions, e.g. Lua
   // script management. Transport-agnostic, so they work direct-to-FC and over
   // the agent's transparent MAVLink pipe alike.
-  async uploadFileViaFtp(path: string, bytes: Uint8Array, onProgress?: (written: number, total: number) => void) { return ftpWriteOps.uploadFileViaFtp(this.fc, path, bytes, onProgress) }
-  async listDirectoryViaFtp(path: string) { return ftpWriteOps.listDirectoryViaFtp(this.fc, path) }
-  async removeFileViaFtp(path: string) { return ftpWriteOps.removeFileViaFtp(this.fc, path) }
+  async uploadFileViaFtp(path: string, bytes: Uint8Array, onProgress?: (written: number, total: number) => void) { return ftpWriteOps.uploadFileViaFtp(this._ftpCtx, path, bytes, onProgress) }
+  async listDirectoryViaFtp(path: string) { return ftpWriteOps.listDirectoryViaFtp(this._ftpCtx, path) }
+  async removeFileViaFtp(path: string) { return ftpWriteOps.removeFileViaFtp(this._ftpCtx, path) }
 
   // ── Component Metadata ──────────────────────────────────
-  getComponentMetadataUri(): string | null { return this.componentMetadataUri }
+  getComponentMetadataUri(): string | null { return this.st.componentMetadataUri ?? null }
 
   // ── Telemetry Subscriptions ────────────────────────────
   onAttitude = this.cbm.onAttitude; onPosition = this.cbm.onPosition; onBattery = this.cbm.onBattery
@@ -714,9 +678,9 @@ export class MAVLinkAdapter implements DroneProtocol {
   onVisionPositionDelta = this.cbm.onVisionPositionDelta
 
   // ── Info ────────────────────────────────────────────────
-  getVehicleInfo(): VehicleInfo | null { return this.vehicleInfo }
+  getVehicleInfo(): VehicleInfo | null { return this.st.vehicleInfo }
   getCapabilities(): ProtocolCapabilities {
-    return this.firmwareHandler?.getCapabilities() ?? {
+    return this.st.firmwareHandler?.getCapabilities() ?? {
       supportsArming: false, supportsFlightModes: false, supportsMissionUpload: false, supportsMissionDownload: false,
       supportsManualControl: false, supportsParameters: false, supportsCalibration: false, supportsSerialPassthrough: false,
       supportsMotorTest: false, supportsAutonomousNav: false, supportsGeoFence: false, supportsRally: false, supportsLogDownload: false,
@@ -736,12 +700,13 @@ export class MAVLinkAdapter implements DroneProtocol {
       manualControlHz: 0, parameterCount: 0,
     }
   }
-  getFirmwareHandler(): FirmwareHandler | null { return this.firmwareHandler }
+  getFirmwareHandler(): FirmwareHandler | null { return this.st.firmwareHandler }
   getCommandQueueSnapshot() { return { pendingCount: this.commandQueue.pendingCount, entries: this.commandQueue.getSnapshot() } }
 
   private sendCommandLong(cmd: number, p: [number, number, number, number, number, number, number], timeout?: number): Promise<CommandResult> {
     if (!this.commandTransport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
-    return this.commandQueue.sendCommand(cmd, p, (d) => this.sendWrapped(d), this.targetSysId, this.targetCompId, this.sysId, this.compId, timeout)
+    const s = this.st
+    return this.commandQueue.sendCommand(cmd, p, (d) => this.sendWrapped(d), s.targetSysId, s.targetCompId, s.sysId, s.compId, timeout)
   }
 
   /** Ack-tracked COMMAND_INT, for commands whose x/y need 1e7 integer precision. */
@@ -755,17 +720,18 @@ export class MAVLinkAdapter implements DroneProtocol {
     timeout?: number,
   ): Promise<CommandResult> {
     if (!this.commandTransport?.isConnected) return Promise.resolve({ success: false, resultCode: -1, message: 'Not connected' })
-    return this.commandQueue.sendCommandInt(cmd, p, x, y, z, frame, (d) => this.sendWrapped(d), this.targetSysId, this.targetCompId, this.sysId, this.compId, timeout)
+    const s = this.st
+    return this.commandQueue.sendCommandInt(cmd, p, x, y, z, frame, (d) => this.sendWrapped(d), s.targetSysId, s.targetCompId, s.sysId, s.compId, timeout)
   }
 
-  /** Send data through transport, applying outbound middleware if set.
+  /** Send data through the command link.
    * A transport can throw ("Not connected") when it dropped between an
    * isConnected check and the send; swallow + log so a disconnect race never
    * escapes as an uncaught exception on any send path (heartbeat, params,
    * commands). The command queue additionally fails the command on throw. */
   private sendWrapped(data: Uint8Array): void {
     try {
-      this.commandTransport?.send(this.middleware ? this.middleware.wrapOutbound(data) : data)
+      this.commandTransport?.send(data)
     } catch (err) {
       console.warn('[MAVLinkAdapter] transport send failed:', err)
     }

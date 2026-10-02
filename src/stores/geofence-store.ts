@@ -12,10 +12,8 @@ import { indexedDBStorage } from "@/lib/storage";
 import { droneSelection, selectedDroneProtocol } from "./drone-selection";
 import { withPlannerHistory } from "@/lib/planner-history-adapter";
 import { polygonBounds } from "@/lib/drawing/geo-utils";
-import type { FenceElement } from "@/lib/protocol/types";
 import {
   nextZoneId,
-  flattenToPolygon,
   buildFenceElements,
   elementToZone,
   fenceContentHash,
@@ -126,6 +124,12 @@ interface GeofenceStoreState {
    *  Never resolves `success: true` for an upload the FC did not confirm. */
   uploadFence: () => Promise<FenceTransferResult>;
   downloadFence: () => Promise<FenceTransferResult>;
+  /**
+   * Remove every fence item from the flight controller (a fence-type mission
+   * with a count of 0) and drop the fence receipt. The caller confirms first:
+   * the vehicle stops enforcing the boundary it held.
+   */
+  clearVehicleFence: () => Promise<FenceTransferResult>;
   clearFence: () => void;
 
   /** Capture the operator-editable fence state for the coordinated undo timeline. */
@@ -227,12 +231,9 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     if (!protocol) {
       return { success: false, message: "No flight controller connected" };
     }
-    // The mission-type fence protocol carries every element (the primary
-    // boundary plus each inclusion/exclusion zone) and is what ArduPilot and
-    // PX4 both implement, so it wins whenever the adapter offers it. The
-    // point-list path is a single boundary polygon only.
-    const useMissionFence = typeof protocol.uploadFenceMission === "function";
-    if (!useMissionFence && !protocol.uploadFence) {
+    // The mission-type fence protocol carries every element: the primary
+    // boundary plus each inclusion/exclusion zone.
+    if (!protocol.uploadFenceMission) {
       return { success: false, message: "This flight controller does not support fence upload" };
     }
 
@@ -241,28 +242,12 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     const droneId = droneSelection().selectedDroneId;
     const firmware = protocol.getVehicleInfo()?.firmwareType;
 
-    // Build the payload before flipping upload state so an empty fence is a no-op.
-    let elements: FenceElement[] = [];
-    let points: Array<{ lat: number; lon: number }> = [];
-    if (useMissionFence) {
-      elements = buildFenceElements(fenceType, polygonPoints, circleCenter, circleRadius, zones);
-      if (elements.length === 0) {
-        return { success: false, message: "Nothing to upload — the fence is empty" };
-      }
-    } else {
-      // A zone the transfer cannot carry must stop the upload: reporting the
-      // boundary as uploaded would vouch for exclusion zones the FC never got.
-      if (zones.length > 0) {
-        return {
-          success: false,
-          message:
-            "This flight controller's fence protocol carries one boundary only; remove the inclusion and exclusion zones to upload",
-        };
-      }
-      points = flattenToPolygon(fenceType, polygonPoints, circleCenter, circleRadius);
-      if (points.length < 3) {
-        return { success: false, message: "A fence needs at least 3 boundary points" };
-      }
+    // Build the payload before flipping upload state so an empty fence is a
+    // no-op. Removing the fence from the vehicle is the explicit
+    // clearVehicleFence action, never a side effect of an empty upload.
+    const elements = buildFenceElements(fenceType, polygonPoints, circleCenter, circleRadius, zones);
+    if (elements.length === 0) {
+      return { success: false, message: "Nothing to upload — the fence is empty" };
     }
 
     const isPx4 = firmware === "px4";
@@ -270,9 +255,7 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     set({ uploadState: "uploading" });
     let outcome: FenceTransferResult;
     try {
-      const result = useMissionFence
-        ? await protocol.uploadFenceMission!(elements)
-        : await protocol.uploadFence!(points);
+      const result = await protocol.uploadFenceMission(elements);
       // The geometry alone enforces nothing: the enable flag, fence type,
       // altitude ceiling and breach action are parameters. A fence the FC
       // holds but does not enforce is not "uploaded", so any failed write
@@ -296,13 +279,39 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     return outcome;
   },
 
+  clearVehicleFence: async () => {
+    const protocol = selectedDroneProtocol();
+    if (!protocol) {
+      return { success: false, message: "No flight controller connected" };
+    }
+    if (!protocol.uploadFenceMission) {
+      return { success: false, message: "This flight controller does not support fence upload" };
+    }
+    const droneId = droneSelection().selectedDroneId;
+    set({ uploadState: "uploading" });
+    let outcome: FenceTransferResult;
+    try {
+      // A fence-type mission with a count of 0 removes every fence item.
+      const result = await protocol.uploadFenceMission([]);
+      outcome = result.success
+        ? { success: true, message: "Fence removed from the flight controller" }
+        : { success: false, message: result.message };
+    } catch (err) {
+      outcome = { success: false, message: err instanceof Error ? err.message : String(err) };
+    }
+    set({ uploadState: outcome.success ? "uploaded" : "error" });
+    // Whatever happened, the vehicle no longer holds the fence the last
+    // receipt describes (cleared, or left unknown by a failed transfer).
+    if (droneId) useUploadReceiptsStore.getState().clearKindForDrone("fence", droneId);
+    return outcome;
+  },
+
   downloadFence: async () => {
     const protocol = selectedDroneProtocol();
     if (!protocol) {
       return { success: false, message: "No flight controller connected" };
     }
-    const useMissionFence = typeof protocol.downloadFenceMission === "function";
-    if (!useMissionFence && !protocol.downloadFence) {
+    if (!protocol.downloadFenceMission) {
       return { success: false, message: "This flight controller does not support fence download" };
     }
 
@@ -315,50 +324,31 @@ export const useGeofenceStore = create<GeofenceStoreState>()(
     try {
       // Read everything before touching local state, so a failed read never
       // leaves a half-replaced fence.
-      let geometry: Partial<GeofenceSnapshot>;
-      let message: string;
-      if (useMissionFence) {
-        const elements = await protocol.downloadFenceMission!();
-        if (elements.length === 0) {
-          set({ downloadState: "downloaded" });
-          return noFence;
-        }
-        // The first inclusion element (else the first element) is the primary
-        // fence; every remaining element becomes an inclusion/exclusion zone.
-        const firstInclusion = elements.findIndex((e) => e.role === "inclusion");
-        const primaryIdx = firstInclusion >= 0 ? firstInclusion : 0;
-        const primary = elements[primaryIdx];
-        const zones = elements.filter((_, i) => i !== primaryIdx).map(elementToZone);
-        geometry =
-          primary.kind === "polygon"
-            ? {
-                fenceType: "polygon",
-                polygonPoints: primary.vertices.map((v) => [v.lat, v.lon] as [number, number]),
-                zones,
-              }
-            : {
-                fenceType: "circle",
-                circleCenter: [primary.center.lat, primary.center.lon],
-                circleRadius: primary.radius,
-                zones,
-              };
-        message = `Loaded ${elements.length} fence elements`;
-      } else {
-        const points = await protocol.downloadFence!();
-        if (points.length < 3) {
-          set({ downloadState: "downloaded" });
-          return noFence;
-        }
-        // The point-list protocol holds one boundary and no zones, so any
-        // local zone is not on the FC and must not survive into what the
-        // planner now presents as the FC's fence.
-        geometry = {
-          fenceType: "polygon",
-          polygonPoints: points.map((p) => [p.lat, p.lon] as [number, number]),
-          zones: [],
-        };
-        message = `Loaded ${points.length} fence points`;
+      const elements = await protocol.downloadFenceMission();
+      if (elements.length === 0) {
+        set({ downloadState: "downloaded" });
+        return noFence;
       }
+      // The first inclusion element (else the first element) is the primary
+      // fence; every remaining element becomes an inclusion/exclusion zone.
+      const firstInclusion = elements.findIndex((e) => e.role === "inclusion");
+      const primaryIdx = firstInclusion >= 0 ? firstInclusion : 0;
+      const primary = elements[primaryIdx];
+      const zones = elements.filter((_, i) => i !== primaryIdx).map(elementToZone);
+      const geometry: Partial<GeofenceSnapshot> =
+        primary.kind === "polygon"
+          ? {
+              fenceType: "polygon",
+              polygonPoints: primary.vertices.map((v) => [v.lat, v.lon] as [number, number]),
+              zones,
+            }
+          : {
+              fenceType: "circle",
+              circleCenter: [primary.center.lat, primary.center.lon],
+              circleRadius: primary.radius,
+              zones,
+            };
+      const message = `Loaded ${elements.length} fence elements`;
       const params = await readFenceParams(protocol, isPx4);
       // Replacing the operator's fence with the FC's is an edit like any
       // other: one undo step brings the local fence back.

@@ -28,6 +28,8 @@ export class WebSerialTransport implements Transport {
 
   private port: SerialPort | null = null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  /** Settles once the read loop has released its reader lock. */
+  private readLoopDone: Promise<void> | null = null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private _connected = false;
   private _disconnecting = false;
@@ -96,7 +98,7 @@ export class WebSerialTransport implements Transport {
     if (this.port.writable) {
       this.writer = this.port.writable.getWriter();
     }
-    void this.readLoop(this.port);
+    this.readLoopDone = this.readLoop(this.port);
   }
 
   /**
@@ -209,6 +211,10 @@ export class WebSerialTransport implements Transport {
         await this.reader.cancel().catch(() => {});
         this.reader = null;
       }
+      // The loop's finally releases the reader lock; close() rejects on a
+      // still-locked stream, which would leave the port open.
+      await this.readLoopDone;
+      this.readLoopDone = null;
       if (this.writer) {
         await this.writer.close().catch(() => {});
         this.writer.releaseLock();

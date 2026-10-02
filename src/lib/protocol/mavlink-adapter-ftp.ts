@@ -3,8 +3,9 @@
  *
  * Implements the file-read half of MAVLink FTP as a session state machine that
  * mirrors the log-download client: open a file, stream its contents with burst
- * reads (appending each chunk at its reported offset), optionally verify the
- * server CRC-32 as an advisory check, then terminate the session.
+ * reads (appending each chunk at its reported offset, re-reading any hole),
+ * check the server CRC-32 when the server offers one, then terminate the
+ * session. A read that cannot be completed or fails the CRC check rejects.
  *
  * The agent is a transparent MAVLink pipe, so this runs entirely in the GCS.
  *
@@ -40,6 +41,11 @@ export interface FtpSessionState {
    *  advance it, so the next request re-fetches the hole instead of leaving it
    *  zero-filled. */
   receivedBytes: number
+  /** Furthest byte any data chunk reached. Above `receivedBytes` means a hole
+   *  below it is still missing, so the file is not complete. */
+  highestEnd: number
+  /** True once any read ACK arrived; until then silence is not an empty file. */
+  dataAcked: boolean
   /** receivedBytes at the previous burst-window completion; used to bound
    *  consecutive no-progress bursts. */
   lastCompleteBytes: number
@@ -159,10 +165,14 @@ function onInactivity(ctx: FtpContext): void {
 
   st.retryCount++
   if (st.retryCount > MAX_RETRIES) {
-    if (st.fileSize > 0 && st.receivedBytes < st.fileSize) {
-      failFtp(ctx, new Error(`FTP read timed out at ${st.receivedBytes}/${st.fileSize} bytes`))
+    if (st.phase === 'opening') {
+      // No session was ever established: an FC without FTP, or a lost open.
+      failFtp(ctx, new Error(`FTP open of ${st.path} got no reply`))
+    } else if (isIncomplete(st) || !st.dataAcked) {
+      failFtp(ctx, new Error(`FTP read timed out at ${st.receivedBytes}${st.fileSize > 0 ? `/${st.fileSize}` : ''} bytes`))
     } else {
-      // Unknown size and no more data arriving, so treat what we have as the file.
+      // Unknown size, every byte contiguous, and no more data arriving: what
+      // we have is the file.
       finishReading(ctx)
     }
     return
@@ -171,6 +181,31 @@ function onInactivity(ctx: FtpContext): void {
     ctx.transport.send(st.lastRequest)
     armInactivity(ctx)
   }
+}
+
+/** Data is still missing: short of the reported size, or a hole below a later chunk. */
+function isIncomplete(st: FtpSessionState): boolean {
+  return (st.fileSize > 0 && st.receivedBytes < st.fileSize) || st.highestEnd > st.receivedBytes
+}
+
+/**
+ * Ask for the next burst at the contiguous frontier, bounding consecutive
+ * rounds that gain nothing so a server that never fills a hole fails the read
+ * instead of hammering it for the whole hard timeout.
+ */
+function rerequestFromFrontier(ctx: FtpContext, st: FtpSessionState): void {
+  if (st.receivedBytes > st.lastCompleteBytes) {
+    st.lastCompleteBytes = st.receivedBytes
+    st.stallCount = 0
+  } else if (++st.stallCount > MAX_RETRIES) {
+    if (isIncomplete(st)) {
+      failFtp(ctx, new Error(`FTP read stalled at ${st.receivedBytes}${st.fileSize > 0 ? `/${st.fileSize}` : ''} bytes`))
+    } else {
+      finishReading(ctx)
+    }
+    return
+  }
+  sendRequest(ctx, buildBurstRead(ctx))
 }
 
 function ensureCapacity(st: FtpSessionState, end: number): void {
@@ -225,7 +260,7 @@ export async function downloadFileViaFtp(
   onProgress?: FtpDownloadProgressCallback,
 ): Promise<Uint8Array> {
   if (!ctx.transport?.isConnected) throw new Error('Not connected')
-  if (ctx.ftpDownload) throw new Error('An FTP download is already in progress')
+  if (ctx.ftpDownload || ctx.ftpOp) throw new Error('An FTP operation is already in progress')
 
   return new Promise<Uint8Array>((resolve, reject) => {
     const hardTimer = setTimeout(() => {
@@ -234,7 +269,7 @@ export async function downloadFileViaFtp(
 
     ctx.ftpDownload = {
       path, phase: 'opening', session: 0, seq: 0,
-      fileSize: 0, data: new Uint8Array(0), receivedBytes: 0,
+      fileSize: 0, data: new Uint8Array(0), receivedBytes: 0, highestEnd: 0, dataAcked: false,
       lastCompleteBytes: 0, stallCount: 0, fileCrc: null,
       onProgress, resolve, reject,
       lastRequest: null, inactivityTimer: null, hardTimer, retryCount: 0,
@@ -280,8 +315,19 @@ export function handleFileTransferProtocolAck(ctx: FtpContext, frame: MAVLinkFra
   if (m.opcode === FtpOpcode.Nak) {
     const code = m.size >= 1 ? m.data[0] : FtpError.Fail
     if (code === FtpError.EndOfFile && st.phase === 'reading') {
-      // End of file reached; the read is complete.
-      finishReading(ctx)
+      // Both ArduPilot and PX4 end every burst with an EOF NAK, including a
+      // burst that lost a packet. A hole below received data is always
+      // re-read. Short of the reported size with no hole, read once more from
+      // the frontier: an EOF that brings nothing new there is the real end.
+      if (st.highestEnd > st.receivedBytes) {
+        rerequestFromFrontier(ctx, st)
+      } else if (st.fileSize > 0 && st.receivedBytes < st.fileSize && st.receivedBytes > st.lastCompleteBytes) {
+        st.lastCompleteBytes = st.receivedBytes
+        st.stallCount = 0
+        sendRequest(ctx, buildBurstRead(ctx))
+      } else {
+        finishReading(ctx)
+      }
       return
     }
     if (st.phase === 'crc') {
@@ -318,11 +364,13 @@ export function handleFileTransferProtocolAck(ctx: FtpContext, frame: MAVLinkFra
     case FtpOpcode.BurstReadFile:
     case FtpOpcode.ReadFile: {
       if (st.phase !== 'reading') return
+      st.dataAcked = true
       const count = Math.min(m.size, FTP_MAX_DATA)
       if (count > 0) {
         const end = m.offset + count
         ensureCapacity(st, end)
         st.data.set(m.data.subarray(0, count), m.offset)
+        st.highestEnd = Math.max(st.highestEnd, end)
         // Advance the received marker only across contiguous data. A chunk that
         // begins beyond the marker means an earlier chunk was lost or reordered;
         // its bytes are still stored, but the marker stays at the gap so the next
@@ -338,24 +386,7 @@ export function handleFileTransferProtocolAck(ctx: FtpContext, frame: MAVLinkFra
         return
       }
       // A completed burst window with more file to read needs a fresh request.
-      if (m.burstComplete === 1) {
-        // Guard against a server that keeps completing bursts without advancing
-        // the read (zero data, or an unfilled gap it never sends): bound the
-        // consecutive no-progress rounds so the download can't hammer for the
-        // whole hard-timeout window.
-        if (st.receivedBytes > st.lastCompleteBytes) {
-          st.lastCompleteBytes = st.receivedBytes
-          st.stallCount = 0
-        } else if (++st.stallCount > MAX_RETRIES) {
-          if (st.fileSize > 0 && st.receivedBytes < st.fileSize) {
-            failFtp(ctx, new Error(`FTP read stalled at ${st.receivedBytes}/${st.fileSize} bytes`))
-          } else {
-            finishReading(ctx)
-          }
-          return
-        }
-        sendRequest(ctx, buildBurstRead(ctx))
-      }
+      if (m.burstComplete === 1) rerequestFromFrontier(ctx, st)
       // Otherwise the server keeps streaming this burst; keep receiving.
       return
     }
@@ -365,7 +396,8 @@ export function handleFileTransferProtocolAck(ctx: FtpContext, frame: MAVLinkFra
         st.fileCrc = dv.getUint32(0, true)
         const local = crc32(st.data.slice(0, st.receivedBytes))
         if (local !== st.fileCrc) {
-          console.warn(`[FTP] CRC-32 mismatch on ${st.path}: server=${st.fileCrc.toString(16)} local=${local.toString(16)}`)
+          failFtp(ctx, new Error(`FTP CRC-32 mismatch on ${st.path}: server=${st.fileCrc.toString(16)} local=${local.toString(16)}`))
+          return
         }
       }
       finishFtp(ctx)

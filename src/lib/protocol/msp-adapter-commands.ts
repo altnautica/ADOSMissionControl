@@ -54,23 +54,44 @@ export interface MspCommandContext {
   isArmed?: () => boolean
 }
 
+/** How long an arm command has to show up as armed in MSP status. */
+const ARM_VERIFY_MS = 2000
+/** Spacing of the armed-flag checks inside that window. */
+const ARM_VERIFY_POLL_MS = 100
+
+/**
+ * Arm by moving the ARM switch range's AUX channel, then wait for the FC's
+ * status to report armed. Moving the switch is only a request: a failed
+ * pre-arm check leaves the craft disarmed, so success means the status
+ * showed armed within ARM_VERIFY_MS, and a refusal names the FC's arming
+ * blockers. With no ARM range configured, MSP has no way to arm at all.
+ */
 export async function mspArm(ctx: MspCommandContext): Promise<CommandResult> {
   if (!ctx.queue) return NOT_CONNECTED
+  const armRange = findModeRange(ctx.modeRanges, 0)
+  if (!armRange) {
+    return {
+      success: false, resultCode: -1,
+      message: 'Arm failed: no ARM switch range is configured. Assign ARM to an AUX range in the modes tab.',
+    }
+  }
   // Arming is the operator asking to fly, so it is the one command that
   // releases a latched motor cut. Nothing else clears the latch.
   ctx.rc?.releaseCut()
-  const armRange = findModeRange(ctx.modeRanges, 0)
-  if (!armRange) {
-    try {
-      const payload = new Uint8Array(1)
-      payload[0] = 0
-      await ctx.queue.send(MSP.MSP_ARMING_DISABLE, payload)
-      return { success: true, resultCode: 0, message: 'Arming enabled via MSP' }
-    } catch (err) {
-      return { success: false, resultCode: -1, message: `Arm failed: ${formatErrorMessage(err)}` }
+  const sent = await mspSetAuxChannel(ctx, armRange.auxChannel, Math.round((armRange.rangeStart + armRange.rangeEnd) / 2))
+  if (!sent.success) return sent
+  const deadline = Date.now() + ARM_VERIFY_MS
+  while (!ctx.isArmed?.()) {
+    if (Date.now() >= deadline) {
+      const verdict = await mspDoPreArmCheck(ctx)
+      const why = verdict.success ? 'the flight controller reports no arming blocker' : verdict.message
+      return { success: false, resultCode: -1, message: `Arm failed: not armed within ${ARM_VERIFY_MS / 1000} s (${why})` }
     }
+    const tick = Promise.withResolvers<void>()
+    setTimeout(tick.resolve, ARM_VERIFY_POLL_MS)
+    await tick.promise
   }
-  return mspSetAuxChannel(ctx, armRange.auxChannel, Math.round((armRange.rangeStart + armRange.rangeEnd) / 2))
+  return { success: true, resultCode: 0, message: 'Armed' }
 }
 
 export async function mspDisarm(ctx: MspCommandContext): Promise<CommandResult> {
@@ -459,8 +480,9 @@ export async function mspUploadMission(): Promise<CommandResult> { return NOT_SU
 export async function mspDownloadMission(): Promise<MissionItem[]> { throw new Error(NOT_SUPPORTED.message) }
 export async function mspSetCurrentMissionItem(): Promise<CommandResult> { return NOT_SUPPORTED }
 export async function mspResetParametersToDefault(): Promise<CommandResult> { return NOT_SUPPORTED }
-export async function mspGetLogList(): Promise<LogEntry[]> { return [] }
-export async function mspDownloadLog(_logId: number, _onProgress?: LogDownloadProgressCallback): Promise<Uint8Array> { return new Uint8Array(0) }
+/** Rejects: MSP has no onboard log list, and an empty list would claim the FC holds no logs. */
+export async function mspGetLogList(): Promise<LogEntry[]> { throw new Error(NOT_SUPPORTED.message) }
+export async function mspDownloadLog(_logId: number, _onProgress?: LogDownloadProgressCallback): Promise<Uint8Array> { throw new Error(NOT_SUPPORTED.message) }
 export async function mspEraseAllLogs(): Promise<CommandResult> { return NOT_SUPPORTED }
 
 async function mspSetAuxChannel(ctx: MspCommandContext, auxIndex: number, pwmValue: number): Promise<CommandResult> {

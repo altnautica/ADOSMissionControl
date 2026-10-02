@@ -3,13 +3,13 @@
  * @module protocol/mavlink-adapter-frame-handlers
  */
 
-import type { VehicleInfo, ParameterValue, CommandResult, MissionItem, FirmwareHandler, ParameterCallback } from './types'
+import type { VehicleInfo, ParameterValue, MissionItem } from './types'
 import type { MAVLinkFrame } from './mavlink-parser'
 import type { CallbackStore } from './mavlink-adapter-callbacks'
-import type { ParamDownloadState, ParamCacheEntry } from './mavlink-adapter-params'
-import type { MissionUploadState, MissionDownloadState, RallyUploadState, RallyDownloadState, FenceUploadState, FenceDownloadState } from './mavlink-adapter-missions'
+import type { ParamContext } from './mavlink-adapter-params'
+import type { MissionContext } from './mavlink-adapter-missions'
 import { decodeFenceMissionItems, firstMissingSeq } from './mavlink-adapter-missions'
-import type { LogListState, LogDataState } from './mavlink-adapter-logs'
+import type { LogContext } from './mavlink-adapter-logs'
 import {
   decodeCommandAck, decodeParamValue,
   decodeMissionAck, decodeMissionRequestInt,
@@ -57,33 +57,19 @@ import { finishParamDownload } from './mavlink-adapter-params'
 import { handleLogEntry, handleLogData } from './mavlink-adapter-logs'
 import { handleFileTransferProtocolAck, type FtpContext } from './mavlink-adapter-ftp'
 import { handleFtpOpAck } from './mavlink-adapter-ftp-ops'
-import type { Transport } from './types'
 import type { CommandQueue } from './command-queue'
 import { handleHeartbeat } from './heartbeat-source'
 
-/** Shared adapter state accessed by frame handlers. */
-export interface FrameHandlerState {
-  transport: Transport | null
-  firmwareHandler: FirmwareHandler | null
+/**
+ * The adapter's one mutable protocol state. Frame handlers, the transfer
+ * timers and the adapter's own methods all read and write this same object,
+ * so a transfer that settles on any path clears the slot every other path
+ * sees. It is also the param, mission and log context those modules take.
+ */
+export interface FrameHandlerState extends ParamContext, MissionContext, LogContext {
   vehicleInfo: VehicleInfo | null
-  targetSysId: number
-  targetCompId: number
-  sysId: number
-  compId: number
   commandQueue: CommandQueue
   cbs: CallbackStore
-  paramCache: Map<string, ParamCacheEntry>
-  parameterDownload: ParamDownloadState | null
-  /** Names from the last COMPLETE full param download (see ParamContext). */
-  downloadedParamNames: Set<string> | null
-  missionUpload: MissionUploadState | null
-  missionDownload: MissionDownloadState | null
-  rallyUpload: RallyUploadState | null
-  rallyDownload: RallyDownloadState | null
-  fenceUpload: FenceUploadState | null
-  fenceDownload: FenceDownloadState | null
-  logListDownload: LogListState | null
-  logDataDownload: LogDataState | null
   /** Shared FTP context (session state + timers live here). Optional so
    *  lightweight test fixtures need not construct it; always set in production. */
   ftpCtx?: FtpContext
@@ -169,8 +155,8 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 51:  handleMissionRequestFrame(s, frame); break
     case 73:  handleMissionItemIntResponse(s, frame); break
     case 110: if (s.ftpCtx) { handleFileTransferProtocolAck(s.ftpCtx, frame); handleFtpOpAck(s.ftpCtx, frame) } break
-    case 118: handleLogEntry({ transport: s.transport, targetSysId: s.targetSysId, targetCompId: s.targetCompId, sysId: s.sysId, compId: s.compId, logListDownload: s.logListDownload, logDataDownload: s.logDataDownload }, frame); break
-    case 120: handleLogData({ transport: s.transport, targetSysId: s.targetSysId, targetCompId: s.targetCompId, sysId: s.sysId, compId: s.compId, logListDownload: s.logListDownload, logDataDownload: s.logDataDownload }, frame); break
+    case 118: handleLogEntry(s, frame); break
+    case 120: handleLogData(s, frame); break
     case 148: if (frame.componentId === s.targetCompId) handleAutopilotVersionFrame(s, frame); break
     case 397: handleComponentMetadataFrame(s, frame); break
     case 1:   handleSysStatus(p, c.sysStatusCallbacks); break
@@ -279,9 +265,7 @@ function handleParamValueFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
       s.downloadedParamNames = new Set(
         Array.from(s.parameterDownload.params.values(), (p) => p.name),
       )
-      const ctx = { transport: s.transport, firmwareHandler: s.firmwareHandler, targetSysId: s.targetSysId, targetCompId: s.targetCompId, sysId: s.sysId, compId: s.compId, paramCache: s.paramCache, PARAM_CACHE_TTL_MS: 300000, parameterDownload: s.parameterDownload, downloadedParamNames: s.downloadedParamNames, onParameter: (() => () => {}) as (cb: ParameterCallback) => () => void }
-      finishParamDownload(ctx)
-      s.parameterDownload = ctx.parameterDownload
+      finishParamDownload(s)
       return
     }
     // Only a genuinely NEW index resets the inactivity timer. A duplicate or
@@ -301,7 +285,7 @@ function handleParamValueFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
 function handleMissionAckFrame(s: FrameHandlerState, frame: MAVLinkFrame): void {
   const ack = decodeMissionAck(frame.payload)
   if (ack.missionType === 2 && s.rallyUpload) {
-    clearTimeout(s.rallyUpload.timer)
+    s.rallyUpload.stop()
     s.rallyUpload.resolve({
       success: ack.type === 0, resultCode: ack.type,
       message: ack.type === 0 ? 'Rally points accepted' : `Rally points rejected: type ${ack.type}`,
@@ -310,7 +294,7 @@ function handleMissionAckFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
     return
   }
   if (ack.missionType === 1 && s.fenceUpload) {
-    clearTimeout(s.fenceUpload.timer)
+    s.fenceUpload.stop()
     s.fenceUpload.resolve({
       success: ack.type === 0, resultCode: ack.type,
       message: ack.type === 0 ? 'Fence accepted' : `Fence rejected: type ${ack.type}`,
@@ -319,7 +303,7 @@ function handleMissionAckFrame(s: FrameHandlerState, frame: MAVLinkFrame): void 
     return
   }
   if (ack.missionType === 0 && s.missionUpload) {
-    clearTimeout(s.missionUpload.timer)
+    s.missionUpload.stop()
     s.missionUpload.resolve({
       success: ack.type === 0, resultCode: ack.type,
       message: ack.type === 0 ? 'Mission accepted' : `Mission rejected: type ${ack.type}`,
@@ -369,21 +353,21 @@ function handleMissionCountResponse(s: FrameHandlerState, frame: MAVLinkFrame): 
   if (data.missionType === 2 && s.rallyDownload) {
     s.rallyDownload.total = data.count
     s.rallyDownload.restartTimer()
-    if (data.count === 0) { clearTimeout(s.rallyDownload.timer); s.rallyDownload.resolve([]); s.rallyDownload = null; return }
+    if (data.count === 0) { s.rallyDownload.stop(); s.rallyDownload.resolve([]); s.rallyDownload = null; return }
     s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 2))
     return
   }
   if (data.missionType === 1 && s.fenceDownload) {
     s.fenceDownload.total = data.count
     s.fenceDownload.restartTimer()
-    if (data.count === 0) { clearTimeout(s.fenceDownload.timer); s.fenceDownload.resolve([]); s.fenceDownload = null; return }
+    if (data.count === 0) { s.fenceDownload.stop(); s.fenceDownload.resolve([]); s.fenceDownload = null; return }
     s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 1))
     return
   }
   if (data.missionType !== 0 || !s.missionDownload) return
   s.missionDownload.total = data.count
   s.missionDownload.restartTimer()
-  if (data.count === 0) { clearTimeout(s.missionDownload.timer); s.missionDownload.resolve([]); s.missionDownload = null; return }
+  if (data.count === 0) { s.missionDownload.stop(); s.missionDownload.resolve([]); s.missionDownload = null; return }
   s.transport?.send(encodeMissionRequestInt(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId))
 }
 
@@ -398,7 +382,7 @@ function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame)
     s.rallyDownload.restartTimer()
     const next = firstMissingSeq(s.rallyDownload.items, s.rallyDownload.total)
     if (next === null) {
-      clearTimeout(s.rallyDownload.timer)
+      s.rallyDownload.stop()
       const items = Array.from(s.rallyDownload.items.entries()).sort((a, b) => a[0] - b[0]).map(([, pt]) => pt)
       s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 2))
       s.rallyDownload.resolve(items); s.rallyDownload = null
@@ -416,7 +400,7 @@ function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame)
     s.fenceDownload.restartTimer()
     const next = firstMissingSeq(s.fenceDownload.items, s.fenceDownload.total)
     if (next === null) {
-      clearTimeout(s.fenceDownload.timer)
+      s.fenceDownload.stop()
       const elements = decodeFenceMissionItems(Array.from(s.fenceDownload.items.values()))
       s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId, 1))
       s.fenceDownload.resolve(elements); s.fenceDownload = null
@@ -436,7 +420,7 @@ function handleMissionItemIntResponse(s: FrameHandlerState, frame: MAVLinkFrame)
   s.missionDownload.restartTimer()
   const next = firstMissingSeq(s.missionDownload.items, s.missionDownload.total)
   if (next === null) {
-    clearTimeout(s.missionDownload.timer)
+    s.missionDownload.stop()
     const items = Array.from(s.missionDownload.items.values()).sort((a, b) => a.seq - b.seq)
     s.transport?.send(encodeMissionAck(s.targetSysId, s.targetCompId, 0, s.sysId, s.compId))
     s.missionDownload.resolve(items); s.missionDownload = null
