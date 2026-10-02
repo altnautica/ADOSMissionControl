@@ -9,6 +9,7 @@
  */
 
 import type { FirmwareManifest, ManifestBoard, ManifestFirmware, ParsedFirmware } from "./types";
+import { WITH_BL_REQUIRED_MESSAGE } from "./types";
 import { parseApjFile } from "./apj-parser";
 import { parseHexFile } from "./hex-parser";
 
@@ -95,28 +96,32 @@ export class ArduPilotManifest {
     return Array.from(releaseTypes).sort((a, b) => order(a) - order(b));
   }
 
-  /** Resolve a firmware download URL for a specific board+type+version. */
-  async getFirmwareUrl(boardName: string, vehicleType: string, releaseType: string): Promise<string | null> {
+  /** The APJ build for a specific board+type+version (URL plus board id). */
+  async getApjFirmware(boardName: string, vehicleType: string, releaseType: string): Promise<ManifestFirmware | null> {
     const firmwares = await this.getFirmwareForBoard(boardName, vehicleType, releaseType);
-    const apj = firmwares.find((f) => f.format === "apj");
-    return apj?.url ?? null;
+    return firmwares.find((f) => f.format === "apj") ?? null;
   }
 
-  /** Download and parse a firmware file from URL. */
-  async downloadFirmware(url: string, options?: { forDfu?: boolean }): Promise<ParsedFirmware> {
-    // For DFU flashing, prefer _with_bl.hex (has bootloader + correct addresses)
-    if (options?.forDfu && url.endsWith(".apj")) {
+  /**
+   * Download and parse a firmware file from URL.
+   *
+   * `withBootloader` selects the absolute `_with_bl.hex` image (bootloader +
+   * application at real flash addresses), which DFU and the ST ROM bootloader
+   * need. The .apj application image is only for the ArduPilot bootloader, so
+   * there is no fallback to it: a missing `_with_bl.hex` is an error.
+   */
+  async downloadFirmware(url: string, options?: { withBootloader?: boolean }): Promise<ParsedFirmware> {
+    if (options?.withBootloader) {
+      if (!url.endsWith(".apj")) throw new Error(WITH_BL_REQUIRED_MESSAGE);
       const hexUrl = url.replace(/\.apj$/, "_with_bl.hex");
+      let hexResponse: Response;
       try {
-        const hexResponse = await fetch(`/api/firmware?url=${encodeURIComponent(hexUrl)}`);
-        if (hexResponse.ok) {
-          const hexText = await hexResponse.text();
-          return parseHexFile(hexText);
-        }
+        hexResponse = await fetch(`/api/firmware?url=${encodeURIComponent(hexUrl)}`);
       } catch {
-        // HEX unavailable — fall back to APJ below
+        throw new Error(WITH_BL_REQUIRED_MESSAGE);
       }
-      console.warn("[firmware] _with_bl.hex unavailable — falling back to APJ (address 0x08000000)");
+      if (!hexResponse.ok) throw new Error(WITH_BL_REQUIRED_MESSAGE);
+      return parseHexFile(await hexResponse.text());
     }
 
     const response = await fetch(`/api/firmware?url=${encodeURIComponent(url)}`);
@@ -126,13 +131,10 @@ export class ArduPilotManifest {
 
     const text = await response.text();
 
-    if (url.endsWith(".apj")) {
-      return parseApjFile(text);
-    }
-
     try {
       return parseApjFile(text);
-    } catch {
+    } catch (err) {
+      if (url.endsWith(".apj")) throw err;
       throw new Error("Unsupported firmware format. Expected .apj file.");
     }
   }
@@ -160,15 +162,16 @@ export class ArduPilotManifest {
     }
 
     const firmwares: ManifestFirmware[] = (json.firmwares || []).map(
-      (entry: Record<string, string>) => ({
-        board: entry.board || "",
-        vehicleType: entry.vehicleType || "",
-        version: entry.version || "",
-        releaseType: entry.releaseType || "",
-        url: entry.url || "",
-        format: entry.format || "apj",
-        gitHash: entry.gitHash,
-        buildDate: entry.buildDate,
+      (entry: Record<string, string | number | undefined>) => ({
+        board: String(entry.board ?? ""),
+        vehicleType: String(entry.vehicleType ?? ""),
+        version: String(entry.version ?? ""),
+        releaseType: String(entry.releaseType ?? ""),
+        url: String(entry.url ?? ""),
+        format: String(entry.format || "apj"),
+        gitHash: typeof entry.gitHash === "string" ? entry.gitHash : undefined,
+        buildDate: typeof entry.buildDate === "string" ? entry.buildDate : undefined,
+        boardId: typeof entry.boardId === "number" ? entry.boardId : undefined,
       }),
     );
 

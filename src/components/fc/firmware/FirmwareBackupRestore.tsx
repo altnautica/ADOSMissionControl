@@ -1,21 +1,25 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Download, Upload, HardDrive, Zap } from "lucide-react";
+import { Download, Upload, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import { downloadBlob } from "@/lib/download";
-import { parseParamFile, serializeParamFile } from "@/lib/formats/param-file-parser";
+import { parseParamFile, serializeParamFile, type ParsedParam } from "@/lib/formats/param-file-parser";
+import { useArmedLock } from "@/hooks/use-armed-lock";
+import { ParamRestoreDialog } from "./ParamRestoreDialog";
 
 interface FirmwareBackupRestoreProps {
   protocol: DroneProtocol | null;
   selectedDroneId: string | null;
+  /** Name of the connected vehicle, shown in the restore confirmation. */
+  targetLabel: string;
   isFlashing: boolean;
   allChecked: boolean;
   serialSupported: boolean;
   usbSupported: boolean;
   onFlash: () => void;
-  /** Why flashing is refused right now (the vehicle is armed), or null. */
+  /** Why flashing is refused right now (armed, or not on a local USB link), or null. */
   blockedReason: string | null;
   onMessage: (msg: string) => void;
   onParamBackupChecked: () => void;
@@ -24,6 +28,7 @@ interface FirmwareBackupRestoreProps {
 export function FirmwareBackupRestore({
   protocol,
   selectedDroneId,
+  targetLabel,
   isFlashing,
   allChecked,
   serialSupported,
@@ -34,7 +39,8 @@ export function FirmwareBackupRestore({
   onParamBackupChecked,
 }: FirmwareBackupRestoreProps) {
   const { toast } = useToast();
-  const [showCommitButton, setShowCommitButton] = useState(false);
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  const [restore, setRestore] = useState<{ fileName: string; entries: ParsedParam[] } | null>(null);
 
   const handleBackupParams = useCallback(async () => {
     if (!protocol) return;
@@ -57,62 +63,29 @@ export function FirmwareBackupRestore({
     }
   }, [protocol, toast, onMessage, onParamBackupChecked]);
 
-  const handleRestoreParams = useCallback(async () => {
+  // Pick a file, then review the diff in the dialog; nothing is written here.
+  const handleRestoreParams = useCallback(() => {
+    if (isHardBlocked) {
+      toast(hardBlockMessage, "error");
+      return;
+    }
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".param,.params,.txt";
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-
-      if (!protocol) {
-        onMessage("Connect a drone first");
-        return;
-      }
-
       // Mission Planner (NAME,VALUE / NAME VALUE) and QGC
       // (SYSID COMPID NAME VALUE TYPE) files both parse here.
       const entries = parseParamFile(await file.text());
-      onMessage(`Restoring ${entries.length} parameters...`);
-
-      let success = 0;
-      let failed = 0;
-      for (const { name, value } of entries) {
-        try {
-          const result = await protocol.setParameter(name, value);
-          if (result.success) success++;
-          else failed++;
-        } catch {
-          failed++;
-        }
+      if (entries.length === 0) {
+        toast("No parameters found in that file", "error");
+        return;
       }
-
-      onMessage(`Restored ${success} parameters (${failed} failed)`);
-      if (success > 0) {
-        setShowCommitButton(true);
-        toast(`Restored ${success} parameters`, "success");
-      }
-      if (failed > 0) {
-        toast(`${failed} parameters failed to restore`, "warning");
-      }
+      setRestore({ fileName: file.name, entries });
     };
     input.click();
-  }, [protocol, toast, onMessage]);
-
-  const commitToFlash = useCallback(async () => {
-    if (!protocol) return;
-    try {
-      const result = await protocol.commitParamsToFlash();
-      if (result.success) {
-        setShowCommitButton(false);
-        toast("Written to flash — persists after reboot", "success");
-      } else {
-        toast("Failed to write to flash", "error");
-      }
-    } catch {
-      toast("Failed to write to flash", "error");
-    }
-  }, [protocol, toast]);
+  }, [isHardBlocked, hardBlockMessage, toast]);
 
   return (
     <div className="flex items-center gap-3">
@@ -137,22 +110,23 @@ export function FirmwareBackupRestore({
 
       <button
         onClick={handleRestoreParams}
-        disabled={!selectedDroneId || isFlashing}
+        disabled={!selectedDroneId || isFlashing || isHardBlocked}
+        title={isHardBlocked ? hardBlockMessage : undefined}
         className="flex items-center gap-2 px-4 py-2 text-xs border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
       >
         <Upload size={14} />
         Restore Parameters
       </button>
 
-      {showCommitButton && (
-        <button
-          onClick={commitToFlash}
-          className="flex items-center gap-2 px-4 py-2 text-xs border border-accent-primary/50 text-accent-primary hover:bg-accent-primary/10 cursor-pointer transition-colors"
-        >
-          <HardDrive size={14} />
-          Write to Flash
-        </button>
-      )}
+      <ParamRestoreDialog
+        open={restore !== null}
+        sourceLabel={restore?.fileName ?? ""}
+        targetLabel={targetLabel}
+        entries={restore?.entries ?? []}
+        protocol={protocol}
+        onClose={() => setRestore(null)}
+        onApplied={() => onMessage("Parameters restored")}
+      />
     </div>
   );
 }

@@ -66,8 +66,23 @@ export type FlashLogCallback = (
   rawHex?: string,
 ) => void;
 
-/** Flash method selection. */
-export type FlashMethod = "serial" | "dfu" | "auto" | "px4-serial" | "dronecan-ota";
+/**
+ * Flash method selection.
+ *
+ * - `px4-serial`: PX4-protocol bootloader over USB serial (PX4 and ArduPilot
+ *   bootloaders). Takes .px4 / .apj application images.
+ * - `dfu`: STM32 USB DFU. Needs an absolute image (`_with_bl.hex`, .hex).
+ * - `st-rom-serial`: STM32 ROM bootloader over a UART (AN3155, BOOT0 or a
+ *   software jump into system memory). Needs an absolute image.
+ * - `auto`: pick from the image kind and the devices present.
+ */
+export type FlashMethod = "st-rom-serial" | "dfu" | "auto" | "px4-serial" | "dronecan-ota";
+
+/**
+ * Refusal when a bootloader application image (.apj / .px4) reaches a path
+ * that writes absolute addresses (USB DFU, ST ROM bootloader).
+ */
+export const WITH_BL_REQUIRED_MESSAGE = "This board needs the _with_bl.hex image for USB DFU flashing";
 
 /** Firmware stack selection for the Flash Tool UI. */
 export type FirmwareStack =
@@ -80,6 +95,13 @@ export type FirmwareStack =
 
 // ── Chip / STM32 ───────────────────────────────────────────
 
+/** A run of `count` equal-size erase sectors, in flash order. */
+export interface ChipSectorRun {
+  count: number;
+  /** Sector size in bytes. */
+  size: number;
+}
+
 /** Identified STM32 chip from bootloader. */
 export interface ChipInfo {
   /** 16-bit chip signature (e.g. 0x0450 for STM32H743). */
@@ -88,8 +110,8 @@ export interface ChipInfo {
   name: string;
   /** Total flash size in bytes. */
   flashSize: number;
-  /** Page/sector size in bytes (for erase granularity). */
-  pageSize: number;
+  /** Erase-sector map from flash base; erase commands take indices into it. */
+  sectors: ChipSectorRun[];
   /** Flash base address (typically 0x08000000). */
   flashBase: number;
   /** Whether this chip uses extended erase (0x44) vs basic erase (0x43). */
@@ -197,7 +219,17 @@ export interface FirmwareBlock {
   data: Uint8Array;
 }
 
-/** Parsed firmware image ready for flashing. */
+/**
+ * Parsed firmware image ready for flashing.
+ *
+ * An image is either an absolute image (Intel HEX, raw .bin) whose block
+ * addresses are real flash addresses, or a bootloader application image
+ * (`bootloaderApp`, from .apj / .px4) whose single block starts at offset 0
+ * of the application area. An application image is only ever written through
+ * the PX4-protocol bootloader, which places it at its own app offset; it must
+ * never be written at absolute addresses through DFU or the ST ROM bootloader,
+ * because flash base is where the bootloader itself lives.
+ */
 export interface ParsedFirmware {
   /** One or more contiguous blocks. */
   blocks: FirmwareBlock[];
@@ -209,6 +241,8 @@ export interface ParsedFirmware {
   boardRevision?: number;
   /** Description string from firmware file. */
   description?: string;
+  /** True for a PX4/ArduPilot bootloader application image (app-relative offsets). */
+  bootloaderApp?: boolean;
 }
 
 // ── ArduPilot Manifest ─────────────────────────────────────
@@ -239,6 +273,8 @@ export interface ManifestFirmware {
   gitHash?: string;
   /** Build timestamp. */
   buildDate?: string;
+  /** APJ_BOARD_ID of the build, when the manifest lists it. */
+  boardId?: number;
 }
 
 /** The full ArduPilot firmware manifest. */
@@ -323,8 +359,15 @@ export interface PX4Board {
 export interface FlashOptions {
   /** Flash method to use. */
   method: FlashMethod;
-  /** Whether to backup parameters before flashing. */
+  /**
+   * Back up parameters before rebooting (IndexedDB + .param download). A
+   * failed or empty backup aborts the flash.
+   */
   backupParams: boolean;
+  /** Board label for the backup key `fw-param-backup:<board>:<ISO time>`; defaults to the image board id. */
+  backupBoard?: string;
+  /** Selected Betaflight/iNav target, checked against the board name the FC reports. */
+  expectedBoardTarget?: string;
   /** Whether to verify after flashing. */
   verify: boolean;
   /** Baud rate for serial bootloader (default 115200). */

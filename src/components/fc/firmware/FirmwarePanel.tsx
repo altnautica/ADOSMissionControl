@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Zap } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useFirmwareState } from "./useFirmwareState";
@@ -14,7 +14,7 @@ import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager"
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useToast } from "@/components/ui/toast";
 import { FirmwareStackSelector, PreFlashChecklist } from "./FirmwareCommonSections";
-import { isAdosStack, isPeripheralStack, isFcStack } from "./firmware-constants";
+import { isAdosStack, isPeripheralStack, isFcStack, FIRMWARE_STACKS } from "./firmware-constants";
 import type { AdosAgentStack } from "@/lib/protocol/firmware/ados-agent-manifest";
 
 export function FirmwarePanel() {
@@ -28,6 +28,22 @@ export function FirmwarePanel() {
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const apPeriphManifestRef = useRef(new ApPeriphManifest());
   const flashDisposerRef = useRef<null | (() => Promise<void>)>(null);
+  // CAN node to preselect when opened from a node's "Update firmware" link.
+  const [linkedNodeId, setLinkedNodeId] = useState<number | null>(null);
+
+  // Deep link `?stack=<id>&target=<node id>`: preselect the stack (overriding
+  // auto-detection from the connected drone) and, for AP_Periph, the node.
+  const { preselectStack } = fw;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stack = FIRMWARE_STACKS.find((s) => s.id === params.get("stack"))?.id;
+    if (!stack) return;
+    const target = Number(params.get("target"));
+    if (Number.isInteger(target) && target >= 1 && target <= 127) setLinkedNodeId(target);
+    preselectStack(stack);
+    // Read once on mount: the link is a starting point, not a binding.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleApPeriphFlash = useCallback(
     async ({
@@ -179,6 +195,7 @@ export function FirmwarePanel() {
             <PreFlashChecklist items={fw.checklistItems} checked={fw.checked} setChecked={fw.setChecked} />
             <FirmwareApPeriphSection
               checklistAllChecked={fw.allChecked}
+              initialTargetNodeId={linkedNodeId}
               isFlashing={fw.isFlashing}
               onFlash={handleApPeriphFlash}
             />

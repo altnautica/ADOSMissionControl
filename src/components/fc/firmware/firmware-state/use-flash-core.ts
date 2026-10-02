@@ -27,6 +27,9 @@ import {
   CHECKLIST_ITEMS_BY_STACK, FC_CHECKLIST_ITEMS,
 } from "../firmware-constants";
 
+const FLASH_LEAVE_WARNING =
+  "A firmware flash is running. Leaving this page now can leave the flight controller half-written in its bootloader. Leave anyway?";
+
 export function useFlashCore(firmwareStack: FirmwareStack) {
   const [flashMethod, setFlashMethod] = useState<FlashMethod>("auto");
   const [dfuDevices, setDfuDevices] = useState<UsbDeviceInfo[]>([]);
@@ -71,6 +74,33 @@ export function useFlashCore(firmwareStack: FirmwareStack) {
       return () => { unsubConnect(); unsubDisconnect(); };
     }
   }, []);
+
+  // A reload, tab close or in-app navigation mid-erase or mid-write leaves
+  // the FC half-written in its bootloader. Warn before any of them while a
+  // flash runs: beforeunload covers the tab, a capture-phase click guard
+  // covers in-app links (it runs before the router's own click handler).
+  useEffect(() => {
+    if (!isFlashing) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    const onClickCapture = (e: MouseEvent) => {
+      const target = e.target;
+      const link = target instanceof Element ? target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || link.target === "_blank") return;
+      if (new URL(link.href, window.location.href).origin !== window.location.origin) return;
+      if (window.confirm(FLASH_LEAVE_WARNING)) return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClickCapture, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClickCapture, true);
+    };
+  }, [isFlashing]);
 
   // DFU detect
   async function handleDetectDfu() {

@@ -28,7 +28,7 @@ vi.mock("@/stores/drone-manager", () => ({
   selectSelectedDrone: () => null,
 }));
 vi.mock("../firmware-state/manifests", () => ({
-  apManifest: { getFirmwareUrl: () => getFirmwareUrl() },
+  apManifest: { getApjFirmware: () => getFirmwareUrl() },
   bfManifest: {},
   px4Manifest: {},
   adosManifest: {},

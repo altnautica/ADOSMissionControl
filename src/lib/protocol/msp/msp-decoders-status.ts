@@ -30,6 +30,8 @@ export interface MspBoardInfo {
   boardType: number;
   /** Target name string (Betaflight/iNav MSP_BOARD_INFO, when present). */
   targetName?: string;
+  /** Board name pstring (Betaflight only; unified targets put the MCU in targetName). */
+  boardName?: string;
   /**
    * Gyro sample rate in Hz, Betaflight MSP API 1.43+ only: the final U16 of
    * the reply, after the target/board/manufacturer pstrings, the 32-byte
@@ -175,6 +177,10 @@ export function decodeMspBoardInfo(dv: DataView): MspBoardInfo {
 
   // Two more pstrings follow only on Betaflight (board name, manufacturer id);
   // iNav stops after the target name, so the walk ends here.
+  if (off + 1 <= dv.byteLength) {
+    const boardLen = readU8(dv, off);
+    if (boardLen > 0 && off + 1 + boardLen <= dv.byteLength) out.boardName = readString(dv, off + 1, boardLen);
+  }
   const gyroOffset = tailGyroOffset(dv, off);
   if (gyroOffset !== null && gyroOffset + 2 <= dv.byteLength) {
     out.gyroSampleRateHz = readU16(dv, gyroOffset);

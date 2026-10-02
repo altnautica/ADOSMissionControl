@@ -5,12 +5,13 @@ import { useToast } from "@/components/ui/toast";
 import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import type {
-  FlashProgress, FirmwareStack, ParsedFirmware,
+  FlashMethod, FlashProgress, FirmwareStack, ParsedFirmware,
 } from "@/lib/protocol/firmware/types";
+import type { FlashParamBackup } from "@/lib/protocol/firmware/param-backup";
 import { useFlashLogStore, type FlashLogSource } from "@/stores/flash-log-store";
 import { categorize, mapError } from "./flash-error-map";
 import { isAdosStack } from "./firmware-constants";
-import { FlashManager } from "@/lib/protocol/firmware/flash-manager";
+import { FlashManager, USB_REQUIRED_MESSAGE } from "@/lib/protocol/firmware/flash-manager";
 import { parseApjFile } from "@/lib/protocol/firmware/apj-parser";
 import { parseHexFile } from "@/lib/protocol/firmware/hex-parser";
 import { parsePx4File } from "@/lib/protocol/firmware/px4-parser";
@@ -40,6 +41,12 @@ export function useFirmwareState() {
   // Flashing reboots the FC into its bootloader: never on an armed vehicle,
   // whatever the checklist says.
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  // A reboot-to-bootloader over a network link strands the remote FC, so a
+  // connected FC must be on this browser's own USB serial port.
+  const remoteLink = !!drone?.protocol?.isConnected && drone.transport?.type !== "webserial";
+  const flashBlockedReason = isHardBlocked ? hardBlockMessage : remoteLink ? USB_REQUIRED_MESSAGE : null;
+  // Parameters saved before the last flash, offered for a reviewed restore.
+  const [paramBackup, setParamBackup] = useState<FlashParamBackup | null>(null);
 
   const [firmwareStack, setFirmwareStack] = useState<FirmwareStack>("ardupilot");
 
@@ -71,13 +78,18 @@ export function useFirmwareState() {
 
   // Flash handler
   const handleFlash = useCallback(async () => {
-    if (isHardBlocked) {
-      toast(hardBlockMessage, "error");
+    if (flashBlockedReason) {
+      toast(flashBlockedReason, "error");
       return;
     }
     core.setIsFlashing(true); core.setProgress(null); core.setFlashMessage(""); core.setFlashError(null);
     core.lastMsgRef.current = ""; core.lastPhaseRef.current = "idle";
     const flashLog = useFlashLogStore.getState();
+    const method: FlashMethod = core.flashMethod;
+    // An absolute image (USB DFU / ST ROM) is needed when that is the chosen
+    // method, or when Auto will find a DFU device; otherwise ArduPilot uses
+    // its .apj through the ArduPilot bootloader.
+    const needsAbsoluteImage = method === "dfu" || method === "st-rom-serial" || (method === "auto" && core.dfuDevices.length > 0);
     try {
       let firmware: ParsedFirmware;
       if (core.useCustom && core.customFile) {
@@ -86,13 +98,20 @@ export function useFirmwareState() {
         if (name.endsWith(".hex")) firmware = parseHexFile(content);
         else if (name.endsWith(".apj")) firmware = parseApjFile(content);
         else if (name.endsWith(".px4")) firmware = parsePx4File(content);
-        else { const buffer = await core.customFile.arrayBuffer(); firmware = { blocks: [{ address: 0x08000000, data: new Uint8Array(buffer) }], totalBytes: buffer.byteLength }; }
+        else {
+          const data = new Uint8Array(await core.customFile.arrayBuffer());
+          // ArduPilot and PX4 .bin builds are application images for their
+          // bootloader; a Betaflight .bin is an image at flash base.
+          firmware = firmwareStack === "betaflight"
+            ? { blocks: [{ address: 0x08000000, data }], totalBytes: data.length }
+            : { blocks: [{ address: 0, data }], totalBytes: data.length, bootloaderApp: true };
+        }
       } else if (firmwareStack === "ardupilot") {
         core.setProgress({ phase: "idle", percent: 0, message: "Downloading firmware..." });
-        const url = await apManifest.getFirmwareUrl(ap.selectedApBoard, ap.selectedVehicleType, ap.selectedApVersion);
-        if (!url) throw new Error(`No firmware found for ${ap.selectedApBoard} / ${ap.selectedVehicleType} / ${ap.selectedApVersion}`);
-        const useDfu = core.flashMethod === "dfu" || (core.flashMethod === "auto" && core.dfuDevices.length > 0);
-        firmware = await apManifest.downloadFirmware(url, { forDfu: useDfu });
+        const entry = await apManifest.getApjFirmware(ap.selectedApBoard, ap.selectedVehicleType, ap.selectedApVersion);
+        if (!entry) throw new Error(`No firmware found for ${ap.selectedApBoard} / ${ap.selectedVehicleType} / ${ap.selectedApVersion}`);
+        const downloaded = await apManifest.downloadFirmware(entry.url, { withBootloader: needsAbsoluteImage });
+        firmware = { ...downloaded, boardId: downloaded.boardId ?? entry.boardId };
       } else if (firmwareStack === "betaflight") {
         core.setProgress({ phase: "idle", percent: 0, message: "Downloading firmware..." });
         if (bf.bfCustomBuild) {
@@ -113,8 +132,6 @@ export function useFirmwareState() {
       const transport = drone?.transport ?? null;
       const fm = new FlashManager(protocol, transport);
       core.flashManagerRef.current = fm;
-      let method = core.flashMethod;
-      if (firmwareStack === "px4" && method === "auto") method = "px4-serial";
 
       // Open a fresh log session and surface the full event + protocol trace.
       const board = firmwareStack === "ardupilot" ? ap.selectedApBoard
@@ -124,11 +141,12 @@ export function useFirmwareState() {
         : firmwareStack === "betaflight" ? bf.selectedBfRelease
         : firmwareStack === "px4" ? px4.selectedPx4Release : "";
       flashLog.startSession({ board: board || undefined, firmware: fwLabel || undefined, method });
-      // Tag protocol-level logs with the transport actually selected. For "auto"
-      // the manager tries DFU first when a DFU device is present (same heuristic
-      // as the firmware-format decision above), so reflect that in the tag
-      // rather than defaulting every "auto" flash to [serial].
-      const resolvedMethod = method === "auto" && core.dfuDevices.length > 0 ? "dfu" : method;
+      // Tag protocol-level logs with the transport the manager will use: an
+      // application image always goes to the PX4-protocol bootloader; Auto
+      // with an absolute image tries DFU first when a DFU device is present.
+      const resolvedMethod = method !== "auto" ? method
+        : firmware.bootloaderApp ? "px4-serial"
+        : core.dfuDevices.length > 0 ? "dfu" : "st-rom-serial";
       const logSource: FlashLogSource = resolvedMethod === "px4-serial" ? "px4" : resolvedMethod === "dfu" ? "dfu" : "serial";
 
       const onProgressCb = (p: FlashProgress) => {
@@ -144,7 +162,14 @@ export function useFirmwareState() {
         flashLog.log(lvl, logSource, msg, { rawHex: raw, phase: core.lastPhaseRef.current });
       };
 
-      await fm.flash(firmware, { method, backupParams: core.checked.paramBackup === true, verify: true }, onProgressCb, onLogCb);
+      const outcome = await fm.flash(firmware, {
+        method,
+        backupParams: core.checked.paramBackup === true,
+        backupBoard: firmware.boardId !== undefined ? String(firmware.boardId) : board || undefined,
+        expectedBoardTarget: firmwareStack === "betaflight" && !core.useCustom && !bf.bfCustomBuild ? bf.selectedBfTarget : undefined,
+        verify: true,
+      }, onProgressCb, onLogCb);
+      if (outcome.paramBackup) setParamBackup(outcome.paramBackup);
     } catch (err) {
       let userMessage = err instanceof Error ? err.message : "Unknown error";
       if (err instanceof DOMException) {
@@ -163,7 +188,7 @@ export function useFirmwareState() {
   }, [core, ap.selectedApBoard, ap.selectedVehicleType, ap.selectedApVersion,
       bf.selectedBfTarget, bf.selectedBfRelease, bf.bfCustomBuild, bf.bfBuildStatus,
       px4.selectedPx4Release, px4.selectedPx4Board, firmwareStack, drone, toast,
-      isHardBlocked, hardBlockMessage]);
+      flashBlockedReason]);
 
   const currentFlashMethods = firmwareStack === "px4" ? PX4_FLASH_METHODS : firmwareStack === "betaflight" ? BF_FLASH_METHODS : AP_FLASH_METHODS;
   const isLoading = firmwareStack === "ardupilot" ? ap.apLoading : firmwareStack === "betaflight" ? bf.bfLoading : px4.px4Loading;
@@ -208,7 +233,10 @@ export function useFirmwareState() {
     checked: core.checked, setChecked: core.setChecked, checklistItems: core.checklistItems, allChecked: core.allChecked,
     serialSupported: core.serialSupported, usbSupported: core.usbSupported,
     currentFlashMethods, isLoading, currentError, customFileAccept,
-    handleFlash, flashBlockedReason: isHardBlocked ? hardBlockMessage : null,
+    handleFlash, flashBlockedReason, usbRequired: remoteLink,
+    paramBackup, dismissParamBackup: () => setParamBackup(null),
+    // A stack chosen by a deep link wins over auto-detection from the drone.
+    preselectStack: (stack: FirmwareStack) => { core.hasAutoDetected.current = true; setFirmwareStack(stack); },
     handleAbort: core.handleAbort, handleCustomFile: core.handleCustomFile,
     handleDetectDfu: core.handleDetectDfu, handleSelectBootloader: core.handleSelectBootloader,
   };

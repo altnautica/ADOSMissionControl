@@ -5,20 +5,21 @@
  * firmware image. Format: { "magic": "PX4FWv1", "board_id": N,
  * "image": "base64(zlib(binary))", "image_size": N, ... }
  *
+ * The image is an application image for the PX4 bootloader, which writes it
+ * at its own application offset; the parsed block therefore starts at offset
+ * 0 of the app area and is flagged `bootloaderApp`.
+ *
  * @module protocol/firmware/px4-parser
  */
 
 import pako from "pako";
 import type { ParsedFirmware } from "./types";
 
-/** Default flash base address for STM32 MCUs. */
-const FLASH_BASE = 0x08000000;
-
 /**
  * Parse a PX4 .px4 firmware file.
  *
  * @param text — Raw file content as string (JSON)
- * @returns Parsed firmware with a single block at 0x08000000
+ * @returns Parsed application image, flagged `bootloaderApp`
  */
 export function parsePx4File(text: string): ParsedFirmware {
   let json: Record<string, unknown>;
@@ -73,9 +74,10 @@ export function parsePx4File(text: string): ParsedFirmware {
       : undefined;
 
   return {
-    blocks: [{ address: FLASH_BASE, data }],
+    blocks: [{ address: 0, data }],
     totalBytes: data.length,
     boardId,
     description,
+    bootloaderApp: true,
   };
 }

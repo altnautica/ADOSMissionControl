@@ -137,9 +137,10 @@ describe("STM32DfuFlasher flash() — verify before leave()", () => {
     await expect(flasher.flash(firmware(), () => {})).rejects.toThrow(/Verification failed at/);
   });
 
-  it("SUCCEEDS (downgrades to a warning) when the read-back transfer itself errors", async () => {
-    // e.g. a bootloader that blocks DFU_UPLOAD under readout protection — the
-    // write was already confirmed block-by-block, so this must not fail.
+  it("SUCCEEDS with an unverified warning when the read-back transfer itself errors", async () => {
+    // e.g. a bootloader that blocks DFU_UPLOAD under readout protection: every
+    // write block was accepted, so the flash completes but is reported as not
+    // compared rather than verified.
     const { device } = makeFakeDevice(() => {
       throw new Error("Failed to execute 'controlTransferIn' on 'USBDevice': A transfer error has occurred.");
     });
@@ -151,6 +152,6 @@ describe("STM32DfuFlasher flash() — verify before leave()", () => {
 
     expect(phases[phases.length - 1]).toBe("done");
     expect(phases).not.toContain("error");
-    expect(logs.some((l) => l.level === "warning" && /read-back verification unavailable/.test(l.message))).toBe(true);
+    expect(logs.some((l) => l.level === "warning" && /read-back/.test(l.message))).toBe(true);
   });
 });

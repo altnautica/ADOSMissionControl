@@ -54,21 +54,22 @@ export function isPeripheralStack(stack: FirmwareStack): boolean {
 }
 
 export const AP_FLASH_METHODS: { id: FlashMethod; label: string; icon: typeof Wifi; desc: string }[] = [
-  { id: "auto", label: "Auto", icon: Radio, desc: "Try serial first, then DFU" },
-  { id: "serial", label: "Serial", icon: Wifi, desc: "STM32 UART bootloader (most FCs)" },
-  { id: "dfu", label: "USB DFU", icon: Usb, desc: "Native USB DFU (some H7 boards)" },
+  { id: "auto", label: "Auto", icon: Radio, desc: "ArduPilot bootloader over USB; USB DFU when a DFU device is present" },
+  { id: "px4-serial", label: "Bootloader (USB)", icon: Wifi, desc: "ArduPilot bootloader over USB (.apj)" },
+  { id: "dfu", label: "USB DFU", icon: Usb, desc: "STM32 USB DFU with the _with_bl.hex image" },
+  { id: "st-rom-serial", label: "ST ROM (UART)", icon: Wifi, desc: "ST ROM bootloader (UART, BOOT0)" },
 ];
 
 export const BF_FLASH_METHODS: { id: FlashMethod; label: string; icon: typeof Wifi; desc: string }[] = [
-  { id: "auto", label: "Auto", icon: Radio, desc: "Try serial first, then DFU" },
-  { id: "serial", label: "Serial", icon: Wifi, desc: "STM32 UART bootloader" },
+  { id: "auto", label: "Auto", icon: Radio, desc: "USB DFU, then the ST ROM bootloader on the same port" },
   { id: "dfu", label: "USB DFU", icon: Usb, desc: "Native USB DFU" },
+  { id: "st-rom-serial", label: "ST ROM (UART)", icon: Wifi, desc: "ST ROM bootloader (UART, BOOT0)" },
 ];
 
 export const PX4_FLASH_METHODS: { id: FlashMethod; label: string; icon: typeof Wifi; desc: string }[] = [
-  { id: "auto", label: "Auto", icon: Radio, desc: "Try PX4 serial first, then DFU" },
-  { id: "px4-serial", label: "PX4 Serial", icon: Wifi, desc: "PX4 bootloader (px_uploader)" },
-  { id: "dfu", label: "USB DFU", icon: Usb, desc: "Native USB DFU" },
+  { id: "auto", label: "Auto", icon: Radio, desc: "PX4 bootloader over USB" },
+  { id: "px4-serial", label: "PX4 Bootloader", icon: Wifi, desc: "PX4 bootloader (px_uploader)" },
+  { id: "dfu", label: "USB DFU", icon: Usb, desc: "Native USB DFU (absolute .hex images only)" },
 ];
 
 // ── Pre-flash checklists per stack ─────────────────────────

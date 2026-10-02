@@ -24,6 +24,8 @@ const DEFAULT_CHANNELS: readonly string[] = ["stable", "beta", "latest"];
 
 interface Props {
   checklistAllChecked: boolean;
+  /** Node to preselect, e.g. when opened from that node's editor. */
+  initialTargetNodeId?: number | null;
   isFlashing: boolean;
   onFlash: (params: {
     targetNodeId: number;
@@ -35,6 +37,7 @@ interface Props {
 
 export function FirmwareApPeriphSection({
   checklistAllChecked,
+  initialTargetNodeId = null,
   isFlashing,
   onFlash,
 }: Props) {
@@ -65,7 +68,7 @@ export function FirmwareApPeriphSection({
   const canForwardEnabled = demo || (Array.isArray(canBuses) && canBuses.length > 0);
 
   // Target node selection
-  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(initialTargetNodeId);
 
   // Firmware selection
   const [boards, setBoards] = useState<readonly string[]>(EMBEDDED_BOARD_LIST);

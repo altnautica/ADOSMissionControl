@@ -32,6 +32,8 @@ interface FilteredEntry {
   format: string;
   gitHash?: string;
   buildDate?: string;
+  /** APJ_BOARD_ID of the build, checked against the connected FC before flashing. */
+  boardId?: number;
 }
 
 let cache: CachedData | null = null;
@@ -79,6 +81,7 @@ export async function GET() {
         format,
         gitHash: (entry["git-sha"] as string) || undefined,
         buildDate: (entry["build-date"] as string) || undefined,
+        boardId: typeof entry["board_id"] === "number" ? entry["board_id"] : undefined,
       });
     }
 

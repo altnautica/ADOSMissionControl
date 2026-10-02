@@ -26,6 +26,7 @@ import { FirmwareBackupRestore } from "./FirmwareBackupRestore";
 import { FirmwareFlashProgress } from "./FirmwareFlashProgress";
 import { FirmwareDebugPanel } from "./FirmwareDebugPanel";
 import { FirmwareErrorRemedy } from "./FirmwareErrorRemedy";
+import { ParamRestoreDialog } from "./ParamRestoreDialog";
 
 type FirmwareState = ReturnType<typeof useFirmwareState>;
 
@@ -35,6 +36,8 @@ type Step = (typeof STEPS)[number];
 export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
   const t = useTranslations("flashTool.wizard");
   const [step, setStep] = useState<Step>("connect");
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const targetLabel = fw.drone?.name ?? "the flight controller";
 
   // Jump to the flash step automatically once flashing begins.
   useEffect(() => {
@@ -90,7 +93,7 @@ export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
       {/* Step 1: Connect */}
       {step === "connect" && (
         <div className="space-y-4">
-          <FirmwarePreflightGate serialSupported={fw.serialSupported} usbSupported={fw.usbSupported} />
+          <FirmwarePreflightGate serialSupported={fw.serialSupported} usbSupported={fw.usbSupported} usbRequired={fw.usbRequired} />
           <DfuStatusBanner
             dfuDevices={fw.dfuDevices} selectedDroneId={fw.selectedDroneId}
             usbSupported={fw.usbSupported} isFlashing={fw.isFlashing}
@@ -186,6 +189,7 @@ export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
             <FirmwareBackupRestore
               protocol={fw.drone?.protocol ?? null}
               selectedDroneId={fw.selectedDroneId}
+              targetLabel={targetLabel}
               isFlashing={fw.isFlashing}
               allChecked={fw.allChecked}
               serialSupported={fw.serialSupported}
@@ -224,6 +228,37 @@ export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
                 <Check size={14} /> {t("doneTitle")}
               </p>
               <p className="text-[10px] text-text-secondary">{t("doneHint")}</p>
+            </div>
+          )}
+          {/* Parameters saved before the flash: restored only after review. */}
+          {done && fw.paramBackup && (
+            <div className="border border-border-default bg-bg-secondary p-4 flex items-center justify-between gap-3">
+              <p className="text-[10px] text-text-secondary">
+                {`${fw.paramBackup.params.length} parameters were saved before flashing (${fw.paramBackup.createdAt}). Reconnect the flight controller, then review what changed.`}
+              </p>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setRestoreOpen(true)}
+                  className="px-3 py-2 text-xs border border-accent-primary/50 text-accent-primary hover:bg-accent-primary/10 cursor-pointer transition-colors"
+                >
+                  {`Restore ${fw.paramBackup.params.length} parameters`}
+                </button>
+                <button
+                  onClick={fw.dismissParamBackup}
+                  className="px-3 py-2 text-xs border border-border-default text-text-secondary hover:text-text-primary cursor-pointer transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <ParamRestoreDialog
+                open={restoreOpen}
+                sourceLabel={`the backup from ${fw.paramBackup.createdAt}`}
+                targetLabel={targetLabel}
+                entries={fw.paramBackup.params}
+                protocol={fw.drone?.protocol ?? null}
+                onClose={() => setRestoreOpen(false)}
+                onApplied={fw.dismissParamBackup}
+              />
             </div>
           )}
           <FirmwareDebugPanel isFlashing={fw.isFlashing} defaultOpen={fw.isFlashing || errored} />

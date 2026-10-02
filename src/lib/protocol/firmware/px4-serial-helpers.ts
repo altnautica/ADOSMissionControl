@@ -1,12 +1,15 @@
 /**
- * CRC32 and utility helpers for PX4 bootloader protocol.
+ * CRC and image helpers for the PX4 bootloader protocol (also spoken by the
+ * ArduPilot bootloader).
  *
  * @module protocol/firmware/px4-serial-helpers
  */
 
+import type { ParsedFirmware } from "./types";
+
 // ── CRC32 Lookup Table ──────────────────────────────────────
 
-/** Pre-computed CRC32 table (IEEE 802.3 polynomial). */
+/** Pre-computed CRC32 table (IEEE 802.3 reflected polynomial). */
 const CRC32_TABLE = new Uint32Array(256);
 for (let i = 0; i < 256; i++) {
   let crc = i;
@@ -16,13 +19,33 @@ for (let i = 0; i < 256; i++) {
   CRC32_TABLE[i] = crc;
 }
 
-/** Compute CRC32 over a Uint8Array. */
-export function crc32(data: Uint8Array): number {
-  let crc = 0xffffffff;
-  for (let i = 0; i < data.length; i++) {
-    crc = (crc >>> 8) ^ CRC32_TABLE[(crc ^ data[i]) & 0xff];
+/**
+ * The CRC the bootloader answers to GET_CRC: the reflected CRC-32 table with
+ * initial state 0 and no final XOR, taken over the whole application area of
+ * `fwSize` bytes, where flash past the image is erased (0xFF).
+ *
+ * `image` must already be padded to a multiple of 4 bytes (see
+ * {@link padToWord}); `fwSize` is the INFO_FLASH_SIZE the bootloader reports.
+ */
+export function px4BootloaderCrc(image: Uint8Array, fwSize: number): number {
+  let state = 0;
+  for (let i = 0; i < image.length; i++) {
+    state = (CRC32_TABLE[(state ^ image[i]) & 0xff] ^ (state >>> 8)) >>> 0;
   }
-  return (crc ^ 0xffffffff) >>> 0;
+  for (let i = image.length; i < fwSize; i++) {
+    state = (CRC32_TABLE[(state ^ 0xff) & 0xff] ^ (state >>> 8)) >>> 0;
+  }
+  return state >>> 0;
+}
+
+/** Pad an image with erased-flash bytes (0xFF) to a multiple of 4 bytes. PROG_MULTI rejects other lengths. */
+export function padToWord(image: Uint8Array): Uint8Array {
+  const rem = image.length % 4;
+  if (rem === 0) return image;
+  const padded = new Uint8Array(image.length + (4 - rem));
+  padded.set(image);
+  padded.fill(0xff, image.length);
+  return padded;
 }
 
 // ── PX4 Bootloader Protocol Constants ────────────────────────
@@ -39,24 +62,28 @@ export const PX4_BL = {
   PROG_MULTI: 0x27,
   GET_CRC: 0x29,
   REBOOT: 0x30,
+  /** GET_DEVICE info selectors. */
+  INFO_BL_REV: 0x01,
+  INFO_BOARD_ID: 0x02,
+  INFO_BOARD_REV: 0x03,
+  INFO_FLASH_SIZE: 0x04,
+  /** Largest PROG_MULTI payload; a multiple of 4. */
   PROG_MULTI_MAX: 252,
   DEFAULT_TIMEOUT: 5000,
   ERASE_TIMEOUT: 30000,
 } as const;
 
-import type { ParsedFirmware } from "./types";
-
-/** Flatten all firmware blocks into a single contiguous Uint8Array. */
-export function flattenFirmware(firmware: ParsedFirmware): Uint8Array {
-  if (firmware.blocks.length === 1) {
-    return firmware.blocks[0].data;
+/**
+ * The single application image a PX4-protocol bootloader writes. Only
+ * bootloader application images (.apj, .px4, app .bin) qualify: an absolute
+ * image would be written at the app offset and corrupt the board.
+ */
+export function bootloaderAppImage(firmware: ParsedFirmware): Uint8Array {
+  if (!firmware.bootloaderApp || firmware.blocks.length !== 1 || firmware.blocks[0].address !== 0) {
+    throw new Error(
+      "The bootloader takes an application image (.apj, .px4 or application .bin). " +
+        "Use USB DFU or the ST ROM bootloader for a .hex image.",
+    );
   }
-  const total = firmware.blocks.reduce((sum, b) => sum + b.data.length, 0);
-  const result = new Uint8Array(total);
-  let offset = 0;
-  for (const block of firmware.blocks) {
-    result.set(block.data, offset);
-    offset += block.data.length;
-  }
-  return result;
+  return padToWord(firmware.blocks[0].data);
 }

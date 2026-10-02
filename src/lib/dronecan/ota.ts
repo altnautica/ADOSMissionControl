@@ -317,11 +317,9 @@ export class DroneCanOtaOrchestrator {
       ok: true,
     });
 
-    // A version mismatch is a FAILED verify, not a note attached to DONE.
-    // `VERIFYING → DONE` was unconditional with no failure branch, so
-    // `VERSION_MISMATCH` was unreachable and the state verified nothing —
-    // and `flashApPeriph` never passes `expectedSwVersion`, so the whole
-    // stage was a round trip with no assertion at all.
+    // A version mismatch is a FAILED verify, not a note attached to DONE: a
+    // bootloader that refused the image boots the old app, which still comes
+    // back OPERATIONAL. `flashApPeriph` passes the published version here.
     const expected = this.opts.expectedSwVersion;
     if (expected) {
       const got = info.software_version;

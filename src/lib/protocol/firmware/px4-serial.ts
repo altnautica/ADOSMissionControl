@@ -1,15 +1,16 @@
 /**
- * PX4 bootloader protocol over UART via Web Serial API.
+ * PX4 bootloader protocol over USB serial via Web Serial API.
  *
  * Implements the PX4 bootloader protocol (px_uploader) for flashing
- * .px4 firmware files to PX4-based flight controllers.
+ * application images. ArduPilot's bootloader speaks the same protocol, so
+ * .apj images flash through this path too. The bootloader writes the image
+ * at its own application offset.
  *
  * Reference: PX4 bootloader uploader protocol (GET_SYNC / GET_DEVICE /
  * CHIP_ERASE / PROG_MULTI / GET_CRC / REBOOT over a CDC-ACM serial link).
  *
  * @module protocol/firmware/px4-serial
  */
-
 /// <reference path="../web-serial.d.ts" />
 
 import type {
@@ -20,7 +21,7 @@ import type {
   FlashRunOptions,
   ParsedFirmware,
 } from "./types";
-import { crc32, PX4_BL, flattenFirmware } from "./px4-serial-helpers";
+import { px4BootloaderCrc, PX4_BL, bootloaderAppImage } from "./px4-serial-helpers";
 import { toHex } from "./hex";
 
 export class PX4SerialFlasher implements FirmwareFlasher {
@@ -91,6 +92,9 @@ export class PX4SerialFlasher implements FirmwareFlasher {
     if (signal) signal.addEventListener("abort", () => this.abort(), { once: true });
 
     try {
+      // Refuse an absolute image before touching the board.
+      const image = bootloaderAppImage(firmware);
+
       onProgress({ phase: "bootloader_init", percent: 5, message: "Opening serial port..." });
       await this.openPort();
 
@@ -99,7 +103,7 @@ export class PX4SerialFlasher implements FirmwareFlasher {
       this.checkAbort();
 
       onProgress({ phase: "chip_detect", percent: 10, message: "Reading board ID..." });
-      const boardId = await this.getBoardId();
+      const boardId = await this.getDeviceInfo(PX4_BL.INFO_BOARD_ID);
       this.log("info", `board id reported: ${boardId}`);
       if (firmware.boardId !== undefined && boardId !== firmware.boardId) {
         const detail = `firmware expects board id ${firmware.boardId}, connected board reports ${boardId}`;
@@ -107,10 +111,15 @@ export class PX4SerialFlasher implements FirmwareFlasher {
           this.log("warning", `board id mismatch overridden — ${detail}`);
           onProgress({ phase: "chip_detect", percent: 12, message: `Board id mismatch (continuing): ${detail}` });
         } else {
-          throw new Error(`Board ID mismatch: ${detail}. Pick the firmware that matches your board, or enable the override.`);
+          throw new Error(`Board ID mismatch: ${detail}. Pick the firmware that matches your board.`);
         }
       } else {
         onProgress({ phase: "chip_detect", percent: 12, message: `Board ID: ${boardId}` });
+      }
+      const fwSize = await this.getDeviceInfo(PX4_BL.INFO_FLASH_SIZE);
+      this.log("info", `application area: ${fwSize} bytes`);
+      if (image.length > fwSize) {
+        throw new Error(`Firmware image (${image.length} bytes) is too large for this board (${fwSize} bytes available)`);
       }
       this.checkAbort();
 
@@ -119,19 +128,17 @@ export class PX4SerialFlasher implements FirmwareFlasher {
       onProgress({ phase: "erasing", percent: 25, message: "Erase complete" });
       this.checkAbort();
 
-      const allData = flattenFirmware(firmware);
-      await this.programFirmware(allData, onProgress);
+      await this.programFirmware(image, onProgress);
       this.checkAbort();
 
       // Verify (GET_CRC) runs here, before reboot() — the correct place, while
       // still in the bootloader. The board leaves the bootloader at reboot().
       if (options?.verify !== false) {
         onProgress({ phase: "verifying", percent: 85, message: "Verifying CRC32..." });
-        await this.verifyCrc(allData);
+        await this.verifyCrc(image, fwSize);
         onProgress({ phase: "verifying", percent: 90, message: "CRC32 verified" });
         this.checkAbort();
       }
-
       onProgress({ phase: "restarting", percent: 95, message: "Rebooting flight controller..." });
       await this.reboot();
 
@@ -222,11 +229,12 @@ export class PX4SerialFlasher implements FirmwareFlasher {
     await this.expectInsyncOk(timeoutMs);
   }
 
-  private async getBoardId(): Promise<number> {
-    await this.sendBytes(new Uint8Array([PX4_BL.GET_DEVICE, PX4_BL.EOC]));
-    const idBytes = await this.waitForBytes(4);
+  /** GET_DEVICE with an info selector: `[GET_DEVICE, info, EOC]` → u32 LE + INSYNC OK. */
+  private async getDeviceInfo(info: number): Promise<number> {
+    await this.sendBytes(new Uint8Array([PX4_BL.GET_DEVICE, info, PX4_BL.EOC]));
+    const bytes = await this.waitForBytes(4);
     await this.expectInsyncOk();
-    return (idBytes[0]) | (idBytes[1] << 8) | (idBytes[2] << 16) | (idBytes[3] << 24);
+    return ((bytes[0]) | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)) >>> 0;
   }
 
   private async chipErase(): Promise<void> {
@@ -265,15 +273,15 @@ export class PX4SerialFlasher implements FirmwareFlasher {
     }
   }
 
-  private async verifyCrc(data: Uint8Array): Promise<void> {
+  private async verifyCrc(image: Uint8Array, fwSize: number): Promise<void> {
     await this.sendBytes(new Uint8Array([PX4_BL.GET_CRC, PX4_BL.EOC]));
-    const crcBytes = await this.waitForBytes(4);
+    const crcBytes = await this.waitForBytes(4, PX4_BL.ERASE_TIMEOUT);
     await this.expectInsyncOk();
-    const remoteCrc = (crcBytes[0]) | (crcBytes[1] << 8) | (crcBytes[2] << 16) | (crcBytes[3] << 24);
-    const localCrc = crc32(data);
-    this.log("debug", `crc local 0x${(localCrc >>> 0).toString(16)} remote 0x${(remoteCrc >>> 0).toString(16)}`);
-    if ((remoteCrc >>> 0) !== (localCrc >>> 0)) {
-      throw new Error(`CRC32 mismatch: local 0x${localCrc.toString(16).padStart(8, "0")}, remote 0x${(remoteCrc >>> 0).toString(16).padStart(8, "0")}`);
+    const remoteCrc = ((crcBytes[0]) | (crcBytes[1] << 8) | (crcBytes[2] << 16) | (crcBytes[3] << 24)) >>> 0;
+    const localCrc = px4BootloaderCrc(image, fwSize);
+    this.log("debug", `crc local 0x${localCrc.toString(16)} remote 0x${remoteCrc.toString(16)}`);
+    if (remoteCrc !== localCrc) {
+      throw new Error(`CRC32 mismatch: local 0x${localCrc.toString(16).padStart(8, "0")}, remote 0x${remoteCrc.toString(16).padStart(8, "0")}`);
     }
   }
 

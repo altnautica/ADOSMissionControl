@@ -1,60 +1,35 @@
 // Exempt from 300 LOC soft rule: self-contained WebUSB rockusb protocol
-// client. The maskrom/loader staging, CBW/CSW framing, and LBA streaming
-// share private device handles and protocol constants that have no
-// caller-facing seam; splitting them would expose internal transport
-// state across module boundaries with no consumer benefit.
+// client. The CBW/CSW framing, LBA streaming and read-back share private
+// device handles and protocol constants that have no caller-facing seam;
+// splitting them would expose internal transport state across module
+// boundaries with no consumer benefit.
 /**
  * Rockchip rockusb in-browser flasher.
  *
- * Talks the public Rockchip USB bootrom protocol over WebUSB to write a
- * full system image (.img.gz) to the eMMC of an SBC sitting in maskrom or
- * loader stage. Two stages:
+ * Talks the Rockchip rockusb loader protocol over WebUSB to write a full
+ * system image (.img.gz) to the eMMC of an SBC sitting in loader stage:
+ * bulk endpoints expose a SCSI-like command surface (CBW out, data, CSW in).
+ * We use READ_FLASH_ID to confirm the loader answers, WRITE_LBA to stream
+ * the decompressed image into eMMC, READ_LBA to read it back and compare,
+ * then RESET_DEVICE to reboot into the freshly flashed system.
  *
- *   1. Maskrom stage  — the SoC ROM enumerates as a Rockchip USB device
- *      with a tiny request set: control-transfer in/out for code-download
- *      followed by execute. We push a small DDR init / loader blob, the
- *      SoC re-enumerates as the loader stage device.
- *
- *   2. Loader stage   — bulk endpoints expose a SCSI-like command
- *      surface (CBW out, data, CSW in). We use READ_FLASH_ID to sanity
- *      check, WRITE_LBA to stream the decompressed image into eMMC,
- *      then RESET_DEVICE to reboot into the freshly flashed system.
+ * A board in maskrom (the SoC ROM, before any loader runs) does not answer
+ * rockusb commands, and loading a loader into it needs the SoC-specific
+ * DDR-init/usbplug download this client does not implement. prepare()
+ * detects that within a few seconds and tells the operator to boot the
+ * board into loader mode instead of hanging.
  *
  * Image input is always a gzip-compressed raw disk image (.img.gz). We
  * decompress with pako, slice into 512-byte LBA blocks, and stream the
  * payload into the device. The compressed blob ships with a SHA-256
- * digest and a minisign signature so the manifest layer can verify
- * before this flasher ever opens the device.
+ * digest and a minisign signature that the calling layer verifies before
+ * this flasher ever opens the device.
  *
- * Slice surface implemented in this revision:
- *   - VID/PID constants for the Rockchip bootrom and the known maskrom
- *     product ids for current Rockchip SoCs (RV1106 / RK3566 / RK3588
- *     family).
- *   - Maskrom code-download control-transfer surface and a
- *     re-enumeration wait that returns once the loader-stage device
- *     reappears under WebUSB.
- *   - Loader-stage CBW/CSW framing with a working command dispatcher
- *     covering READ_FLASH_ID (0x01), READ_LBA (0x14), WRITE_LBA (0x15),
- *     and RESET_DEVICE (0xff).
- *   - Streaming write of a gzipped image with progress callbacks and
- *     AbortSignal support.
+ * A data stage is never re-sent on its own: a timeout clears both bulk
+ * endpoints and restarts the whole CBW / data / CSW command, so the
+ * command and status framing cannot drift apart.
  *
- * Out of scope for this revision (left as TODOs in-line):
- *   - The DDR init / loader-stage transfer payload bytes. Those are
- *     SoC-specific binary blobs that ship with the manifest entry; this
- *     module assumes the caller provides them via the optional
- *     `loaderBlob` argument to {@link RockchipBootromFlasher.prepare}.
- *     When unavailable, prepare() will skip the maskrom uplift and
- *     attempt to talk to the device as if it is already in loader
- *     stage. That is the correct behavior for boards that ship a stock
- *     loader on eMMC and only need a partition rewrite.
- *   - GPT / partition-table aware writes. Today we write from sector 0
- *     of a flat raw image. Per-partition writes (parameter / uboot /
- *     boot / rootfs) become a follow-up once the manifest declares a
- *     partition layout.
- *   - Full minisign verification. SHA-256 verification happens in the
- *     calling layer; minisign signature verification is wired into a
- *     follow-up mission.
+ * Writes start at sector 0 of a flat raw image.
  *
  * @module protocol/firmware/rockchip-bootrom
  */
@@ -139,10 +114,6 @@ const ROCKUSB_OP = {
 const CBW_FLAG_IN = 0x80;
 const CBW_FLAG_OUT = 0x00;
 
-/** Maskrom code-download / execute control-transfer request ids. */
-const MASKROM_REQ_DOWNLOAD = 0x0471;
-const MASKROM_REQ_EXECUTE = 0x0472;
-
 /** Default LBA size. eMMC and the rockusb protocol both use 512-byte
  *  sectors; we don't expose this as configurable today. */
 const LBA_SIZE = 512;
@@ -158,43 +129,24 @@ const WRITE_CHUNK_LBAS = 256; // 256 * 512 = 128 KiB per op
 const BULK_TIMEOUT_MS = 30_000;
 
 /**
- * Control-transfer timeout. Maskrom code-download and execute are short
- * vendor control requests that should complete in well under a second
- * even on slow hubs; 10s is a generous ceiling that prevents a wedged
- * bootrom from freezing the UI indefinitely.
+ * Budget for the loader to answer READ_FLASH_ID. A loader answers in
+ * milliseconds; a board in maskrom never does.
  */
-const CONTROL_TIMEOUT_MS = 10_000;
+const PROBE_TIMEOUT_MS = 3_000;
 
-/**
- * Default time budget for re-enumeration after the maskrom code-download.
- * Some USB hubs and BSPs need 10+ seconds before the loader-stage device
- * shows up, so the budget is generous. Callers
- * can override via {@link RockchipPrepareOptions.reenumerateTimeoutMs}.
- */
-const REENUMERATE_TIMEOUT_MS = 18_000;
+/** How many times a whole command is run before a timeout is final. */
+const COMMAND_ATTEMPTS = 3;
+
+/** Shown when the board does not answer rockusb commands. */
+const MASKROM_MESSAGE =
+  "The board did not answer as a rockusb loader; it is probably in maskrom mode, which this tool cannot load. " +
+  "Boot it into loader mode (hold the recovery key while powering on, or run `reboot loader` on the board), then retry.";
 
 // ── Public API types ─────────────────────────────────────────
 
 /** Options accepted by {@link RockchipBootromFlasher.prepare}. */
 export interface RockchipPrepareOptions {
-  /**
-   * SoC-specific DDR init / loader blob. When provided, prepare() will
-   * push it via maskrom code-download and wait for re-enumeration. When
-   * omitted, prepare() assumes the device is already in loader stage.
-   */
-  loaderBlob?: Uint8Array;
-  /** Address to start execution from after code-download. */
-  loaderEntryAddress?: number;
-  /**
-   * Override the re-enumeration timeout (default 18s). Useful on slow
-   * USB hubs where the loader stage takes longer to appear.
-   */
-  reenumerateTimeoutMs?: number;
-  /**
-   * Abort signal honoured during the maskrom code-download and the
-   * re-enumeration wait. When the signal fires, prepare() throws an
-   * AbortError instead of leaving the device half-initialized.
-   */
+  /** Abort signal honoured while the loader is probed. */
   signal?: AbortSignal;
 }
 
@@ -213,14 +165,79 @@ export interface RockchipFlashId {
  */
 export interface SbcImageFlasher {
   prepare(opts?: RockchipPrepareOptions): Promise<void>;
+  /** Write the image, read it back and compare, then reset the board. */
   flash(
     image: ArrayBuffer | Uint8Array,
     onProgress: FlashProgressCallback,
     signal?: AbortSignal,
   ): Promise<void>;
-  verify(): Promise<void>;
   abort(): void;
   dispose(): Promise<void>;
+}
+
+// ── CBW framing ──────────────────────────────────────────────
+
+/** CBW direction for a rockusb command. */
+export type RockusbDirection = "in" | "out" | "none";
+
+/** One rockusb command: CBW fields plus an optional OUT data stage. */
+interface RockusbCommand {
+  opcode: number;
+  direction: RockusbDirection;
+  transferLength: number;
+  cb?: Uint8Array;
+  data?: Uint8Array;
+}
+
+/**
+ * Build a 31-byte command block wrapper. The opcode is CBWCB[0] (byte 15)
+ * and `cb` fills CBWCB[1..15] (bytes 16..30).
+ */
+export function buildRockusbCbw(args: {
+  tag: number;
+  transferLength: number;
+  direction: RockusbDirection;
+  opcode: number;
+  cb?: Uint8Array;
+}): Uint8Array {
+  if ((args.tag >>> 0) !== args.tag) {
+    throw new Error("CBW tag exceeds u32 range.");
+  }
+  if (args.transferLength < 0 || args.transferLength > 0xffffffff) {
+    throw new Error("CBW transferLength exceeds u32 range.");
+  }
+  if (args.opcode < 0 || args.opcode > 0xff) {
+    throw new Error("CBW opcode out of range (must fit in one byte).");
+  }
+  const cbw = new Uint8Array(CBW_LENGTH);
+  const view = new DataView(cbw.buffer);
+  view.setUint32(0, CBW_SIGNATURE, true);
+  view.setUint32(4, args.tag, true);
+  view.setUint32(8, args.transferLength, true);
+  // Per USB Mass Storage BOT spec, the direction flag is set to OUT
+  // (0x00) when there is no data stage; only IN commands set bit 7.
+  cbw[12] = args.direction === "in" ? CBW_FLAG_IN : CBW_FLAG_OUT;
+  cbw[13] = 0; // bCBWLUN
+  // bCBWCBLength: opcode + 15-byte command block.
+  cbw[14] = 16;
+  cbw[15] = args.opcode;
+  if (args.cb && args.cb.byteLength > 0) {
+    cbw.set(args.cb.subarray(0, Math.min(args.cb.byteLength, 15)), 16);
+  }
+  return cbw;
+}
+
+/**
+ * READ_LBA / WRITE_LBA command block (CBWCB[1..15]) in rkdeveloptool's
+ * packed layout {opcode, reserved, address(BE u32), reserved, length(BE u16), ...}:
+ * the address lands at CBWCB[2..5] and the sector count at CBWCB[7..8].
+ */
+export function lbaCommandBlock(startLba: number, lbaCount: number): Uint8Array {
+  const cb = new Uint8Array(15);
+  const view = new DataView(cb.buffer);
+  view.setUint32(1, startLba >>> 0, false);
+  view.setUint16(6, lbaCount & 0xffff, false);
+  return cb;
 }
 
 // ── Flasher implementation ───────────────────────────────────
@@ -255,42 +272,27 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
   }
 
   /**
-   * Open the device, optionally push the loader blob, then settle on a
-   * loader-stage interface with bulk in/out endpoints. Safe to call
-   * twice (idempotent).
+   * Open the device and confirm a rockusb loader answers on its bulk
+   * endpoints. A board in maskrom is refused with instructions. Safe to
+   * call twice (idempotent).
    */
   async prepare(opts: RockchipPrepareOptions = {}): Promise<void> {
     this.aborted = false;
     if (opts.signal) {
-      // Mirror flash() — the same abort path stops the wait loop and the
-      // bulk-transfer paths. Skipping signal plumbing in prepare leaves
-      // the device orphaned when the user clicks Cancel mid-uplift.
       opts.signal.addEventListener("abort", () => this.abort(), { once: true });
       this.checkAbort();
     }
     await this.openAndClaim();
+    if (this.epIn === 0 || this.epOut === 0) throw new Error(MASKROM_MESSAGE);
 
-    if (opts.loaderBlob && opts.loaderBlob.byteLength > 0) {
-      await this.maskromCodeDownload(opts.loaderBlob);
-      this.checkAbort();
-      await this.maskromExecute(opts.loaderEntryAddress ?? 0x00000000);
-      await this.releaseClaimed();
-      // Drop the maskrom-stage device reference so waitForLoaderStage
-      // does not skip the re-enumerated successor that often shares the
-      // same vendor id and just swaps interface descriptors.
-      const previousDevice = this.device;
-      this.device = await this.waitForLoaderStage(
-        opts.reenumerateTimeoutMs ?? REENUMERATE_TIMEOUT_MS,
-        previousDevice,
-      );
-      await this.openAndClaim();
+    // Loader stage probe: a successful READ_FLASH_ID confirms the bulk pipe
+    // and the CBW/CSW framing are good. A board in maskrom never answers.
+    try {
+      await this.readFlashId(PROBE_TIMEOUT_MS);
+    } catch (err) {
+      if (this.isTimeout(err)) throw new Error(MASKROM_MESSAGE);
+      throw err;
     }
-
-    // Loader stage probe: a successful READ_FLASH_ID confirms the
-    // bulk pipe and the CBW/CSW framing are good. Any error here means
-    // the device has not actually reached loader stage and the caller
-    // should be surfaced a useful message.
-    await this.readFlashId();
   }
 
   async flash(
@@ -372,7 +374,7 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
 
       writtenLbas += lbaCount;
       const bytesWritten = Math.min(writtenLbas * LBA_SIZE, totalBytes);
-      const percent = 5 + Math.floor((writtenLbas / totalLbas) * 90);
+      const percent = 5 + Math.floor((writtenLbas / totalLbas) * 45);
       const now = Date.now();
       const isFinal = writtenLbas >= totalLbas;
       const percentDelta = percent - lastReportedPercent;
@@ -385,6 +387,40 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
           bytesWritten,
           bytesTotal: totalBytes,
           phasePercent: Math.floor((writtenLbas / totalLbas) * 100),
+        });
+        lastReportedPercent = percent;
+        lastReportedAt = now;
+      }
+    }
+
+    // Read every sector back and compare before the board is reset. The
+    // SHA-256 checked before flashing covers the download, not the eMMC.
+    lastReportedPercent = 50;
+    lastReportedAt = Date.now();
+    let verifiedLbas = 0;
+    while (verifiedLbas < totalLbas) {
+      this.checkAbort();
+      const lbaCount = Math.min(WRITE_CHUNK_LBAS, totalLbas - verifiedLbas);
+      const byteOffset = verifiedLbas * LBA_SIZE;
+      const readBack = await this.readLba(verifiedLbas, lbaCount);
+      const expectedLen = Math.min(lbaCount * LBA_SIZE, totalBytes - byteOffset);
+      for (let i = 0; i < expectedLen; i++) {
+        if (readBack[i] !== raw[byteOffset + i]) {
+          throw new Error(`Verification failed at byte ${byteOffset + i} (sector ${verifiedLbas + Math.floor(i / LBA_SIZE)}). The eMMC holds a corrupt image; flash again.`);
+        }
+      }
+      verifiedLbas += lbaCount;
+      const bytesVerified = Math.min(verifiedLbas * LBA_SIZE, totalBytes);
+      const percent = 50 + Math.floor((verifiedLbas / totalLbas) * 45);
+      const now = Date.now();
+      if (verifiedLbas >= totalLbas || percent - lastReportedPercent >= 1 || now - lastReportedAt >= 250) {
+        onProgress({
+          phase: "verifying",
+          percent,
+          message: `Verified ${(bytesVerified / (1024 * 1024)).toFixed(1)} / ${(totalBytes / (1024 * 1024)).toFixed(1)} MB`,
+          bytesWritten: bytesVerified,
+          bytesTotal: totalBytes,
+          phasePercent: Math.floor((verifiedLbas / totalLbas) * 100),
         });
         lastReportedPercent = percent;
         lastReportedAt = now;
@@ -405,21 +441,10 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     onProgress({
       phase: "done",
       percent: 100,
-      message: "Flash complete. Unplug and re-plug the board to boot the new image.",
+      message: "Flash verified. Unplug and re-plug the board to boot the new image.",
     });
 
     await this.releaseClaimed();
-  }
-
-  /**
-   * Verification placeholder. A proper verify pass would READ_LBA each
-   * region back and compare against the expected SHA-256. That is a
-   * follow-up — for the slice we land, the SHA-256 check happens on the
-   * download side before flash even starts.
-   */
-  async verify(): Promise<void> {
-    // No-op for now. Keeps the method present on the SbcImageFlasher
-    // contract so the calling layer doesn't have to feature-test.
   }
 
   abort(): void {
@@ -441,10 +466,8 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     if (!conf) throw new Error("Rockchip device has no USB configuration.");
 
     // Pick the first interface that exposes both bulk-in and bulk-out
-    // endpoints. Maskrom-stage devices may have only a control surface;
-    // those still need to be opened so we can issue the code-download
-    // control transfer, but we won't have valid bulk endpoints until
-    // loader stage.
+    // endpoints. A board in maskrom may expose only a control surface; it
+    // is opened anyway so prepare() can refuse it with instructions.
     let chosen: USBInterface | null = null;
     let bulkIn = 0;
     let bulkOut = 0;
@@ -467,8 +490,7 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     }
 
     if (!chosen) {
-      // Maskrom stage — only the control endpoint matters. Claim the
-      // first interface so we can issue the code-download.
+      // No bulk pair: claim the first interface; prepare() refuses it.
       chosen = conf.interfaces[0] ?? null;
       if (!chosen) {
         throw new Error("Rockchip device exposes no USB interfaces.");
@@ -499,167 +521,16 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     this.claimed = false;
   }
 
-  /**
-   * Wait for the device to reappear after maskrom code-download. The
-   * SoC may keep the same vendor/product id pair and only swap its
-   * interface descriptor, or it may show up under a different pid; we
-   * accept any 0x2207 device that has a bulk-in/bulk-out pair.
-   */
-  private async waitForLoaderStage(
-    timeoutMs: number,
-    previousDevice: USBDevice | null,
-  ): Promise<USBDevice> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      this.checkAbort();
-      await this.delay(150);
-      const candidates = await navigator.usb.getDevices();
-      for (const d of candidates) {
-        if (d.vendorId !== ROCKCHIP_USB_VID) continue;
-        // Re-enumeration may keep the same vendor id and swap only the
-        // interface descriptor. We skip the *exact same* USBDevice
-        // instance only when it is still in maskrom mode (no bulk
-        // endpoints); the loader-stage successor is a different
-        // instance and is matched on bulk-pair presence below.
-        // Need to peek configuration to see if bulk endpoints exist;
-        // open lazily.
-        try {
-          if (!d.opened) await d.open();
-          if (d.configuration === null) await d.selectConfiguration(1);
-          const conf = d.configuration;
-          if (!conf) continue;
-          const hasBulk = conf.interfaces.some((iface) =>
-            iface.alternates.some(
-              (alt) =>
-                alt.endpoints.some(
-                  (e) => e.direction === "in" && e.type === "bulk",
-                ) &&
-                alt.endpoints.some(
-                  (e) => e.direction === "out" && e.type === "bulk",
-                ),
-            ),
-          );
-          if (hasBulk) {
-            // If we accidentally rediscovered the maskrom-stage device
-            // (same instance, same descriptor), skip and keep polling —
-            // the loader replacement may still be appearing on the bus.
-            if (d === previousDevice) {
-              await d.close().catch(() => {});
-              continue;
-            }
-            return d;
-          }
-          await d.close().catch(() => {});
-        } catch {
-          // Try next candidate.
-        }
-      }
-    }
-    throw new Error(
-      "Rockchip device did not re-enumerate into loader stage in time. Unplug, hold BOOT, and replug.",
-    );
-  }
-
-  // ── Maskrom-stage transfers ────────────────────────────────
-
-  /**
-   * Push a binary loader blob into the SoC SRAM via the maskrom
-   * code-download control transfer. The wValue field is the 16-bit
-   * starting address; the payload is sliced into 4 KiB control-OUT
-   * frames (the maskrom ROM expects per-frame XOR scrambling on some
-   * SoCs but the public protocol surface accepts plain bytes for
-   * RV-series targets, which is what we ship today).
-   */
-  private async maskromCodeDownload(blob: Uint8Array): Promise<void> {
-    const FRAME = 4096;
-    let offset = 0;
-    while (offset < blob.byteLength) {
-      this.checkAbort();
-      const slice = blob.subarray(offset, offset + FRAME);
-      await this.withTimeout(
-        this.device.controlTransferOut(
-          {
-            requestType: "vendor",
-            recipient: "device",
-            request: MASKROM_REQ_DOWNLOAD,
-            value: 0,
-            index: 0,
-          },
-          slice,
-        ),
-        CONTROL_TIMEOUT_MS,
-        "Maskrom code-download",
-      );
-      offset += slice.byteLength;
-    }
-  }
-
-  /**
-   * Tell the maskrom to jump to the freshly downloaded code at the
-   * supplied entry address. The SoC will re-enumerate as the loader
-   * stage device after this returns.
-   */
-  private async maskromExecute(entry: number): Promise<void> {
-    await this.withTimeout(
-      this.device.controlTransferOut({
-        requestType: "vendor",
-        recipient: "device",
-        request: MASKROM_REQ_EXECUTE,
-        value: entry & 0xffff,
-        index: (entry >> 16) & 0xffff,
-      }),
-      CONTROL_TIMEOUT_MS,
-      "Maskrom execute",
-    );
-  }
-
-  // ── Loader-stage CBW/CSW framing ───────────────────────────
-
-  /** Build a 31-byte command block wrapper. */
-  private buildCbw(args: {
-    tag: number;
-    transferLength: number;
-    direction: "in" | "out" | "none";
-    opcode: number;
-    cb?: Uint8Array;
-  }): Uint8Array {
-    if ((args.tag >>> 0) !== args.tag) {
-      throw new Error("CBW tag exceeds u32 range.");
-    }
-    if (args.transferLength < 0 || args.transferLength > 0xffffffff) {
-      throw new Error("CBW transferLength exceeds u32 range.");
-    }
-    if (args.opcode < 0 || args.opcode > 0xff) {
-      throw new Error("CBW opcode out of range (must fit in one byte).");
-    }
-    const cbw = new Uint8Array(CBW_LENGTH);
-    // Defensive: Uint8Array() is spec-zeroed but explicit fill guards
-    // against future refactors that pool or reuse the underlying buffer.
-    cbw.fill(0);
-    const view = new DataView(cbw.buffer);
-    view.setUint32(0, CBW_SIGNATURE, true);
-    view.setUint32(4, args.tag, true);
-    view.setUint32(8, args.transferLength, true);
-    // Per USB Mass Storage BOT spec, the direction flag is set to OUT
-    // (0x00) when there is no data stage; only IN commands set bit 7.
-    cbw[12] = args.direction === "in" ? CBW_FLAG_IN : CBW_FLAG_OUT;
-    cbw[13] = 0; // bCBWLUN
-    // bCBWCBLength: command block size in bytes. We pack opcode + a
-    // 15-byte payload, all little-endian.
-    cbw[14] = 16;
-    cbw[15] = args.opcode;
-    if (args.cb && args.cb.byteLength > 0) {
-      cbw.set(args.cb.subarray(0, Math.min(args.cb.byteLength, 15)), 16);
-    }
-    return cbw;
-  }
-
   /** Read and validate the 13-byte command status wrapper. */
-  private async readCsw(expectedTag: number): Promise<{
+  private async readCsw(expectedTag: number, timeoutMs: number): Promise<{
     residue: number;
     status: number;
   }> {
-    const result = await this.device.transferIn(this.epIn, CSW_LENGTH);
+    const result = await this.withTimeout(
+      this.device.transferIn(this.epIn, CSW_LENGTH),
+      timeoutMs,
+      "CSW",
+    );
     if (!result.data || result.data.byteLength < CSW_LENGTH) {
       throw new Error("Short CSW from device.");
     }
@@ -684,16 +555,35 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     return (Math.random() * 0xffffffff) >>> 0;
   }
 
-  /** Issue a CBW + optional data + CSW round trip. */
-  private async runCommand(args: {
-    opcode: number;
-    direction: "in" | "out" | "none";
-    transferLength: number;
-    cb?: Uint8Array;
-    data?: Uint8Array;
-  }): Promise<Uint8Array | null> {
+  /**
+   * Issue a CBW + optional data + CSW round trip. A timeout anywhere in the
+   * round trip clears both bulk endpoints and restarts the whole command
+   * with a fresh tag (up to `attempts` runs); a data stage is never re-sent
+   * on its own. Every rockusb command used here is idempotent.
+   */
+  private async runCommand(
+    args: RockusbCommand,
+    timeoutMs: number = BULK_TIMEOUT_MS,
+    attempts: number = COMMAND_ATTEMPTS,
+  ): Promise<Uint8Array | null> {
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      this.checkAbort();
+      try {
+        return await this.runCommandOnce(args, timeoutMs);
+      } catch (err) {
+        if (!this.isTimeout(err)) throw err;
+        lastErr = err;
+        await this.device.clearHalt("out", this.epOut).catch(() => {});
+        await this.device.clearHalt("in", this.epIn).catch(() => {});
+      }
+    }
+    throw lastErr;
+  }
+
+  private async runCommandOnce(args: RockusbCommand, timeoutMs: number): Promise<Uint8Array | null> {
     const tag = this.nextTag();
-    const cbw = this.buildCbw({
+    const cbw = buildRockusbCbw({
       tag,
       transferLength: args.transferLength,
       direction: args.direction,
@@ -701,16 +591,16 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
       cb: args.cb,
     });
 
-    await this.bulkOut(cbw);
+    await this.bulkOut(cbw, timeoutMs);
 
     let payload: Uint8Array | null = null;
     if (args.direction === "in" && args.transferLength > 0) {
-      payload = await this.bulkIn(args.transferLength);
+      payload = await this.bulkIn(args.transferLength, timeoutMs);
     } else if (args.direction === "out" && args.data) {
-      await this.bulkOut(args.data);
+      await this.bulkOut(args.data, timeoutMs);
     }
 
-    const csw = await this.readCsw(tag);
+    const csw = await this.readCsw(tag, timeoutMs);
     if (csw.status !== 0) {
       throw new Error(
         `rockusb command 0x${args.opcode.toString(16)} failed (CSW status ${csw.status}, residue ${csw.residue}).`,
@@ -725,37 +615,38 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
         `rockusb command 0x${args.opcode.toString(16)} reported ${csw.residue} bytes residue (expected full transfer of ${args.transferLength}).`,
       );
     }
+    if (payload && payload.byteLength !== args.transferLength) {
+      throw new Error(
+        `rockusb command 0x${args.opcode.toString(16)} returned ${payload.byteLength} of ${args.transferLength} bytes.`,
+      );
+    }
     return payload;
   }
 
-  private async bulkOut(data: Uint8Array): Promise<void> {
+  /**
+   * One bulk transfer with a deadline and no retry: a data stage must never
+   * be sent twice inside one command.
+   */
+  private async bulkOut(data: Uint8Array, timeoutMs: number): Promise<void> {
     // WebUSB transferOut wants a BufferSource backed by ArrayBuffer.
     // Newer lib.dom revisions narrow Uint8Array to ArrayBufferLike (so
     // SharedArrayBuffer-backed views are excluded); every caller passes a
     // view over a plain ArrayBuffer, so narrow the buffer type.
-    const result = await this.runWithRetry(
+    const result = await this.withTimeout(
+      this.device.transferOut(this.epOut, data as Uint8Array<ArrayBuffer>),
+      timeoutMs,
       "Bulk OUT",
-      (timeoutMs) =>
-        this.withTimeout(
-          this.device.transferOut(this.epOut, data as Uint8Array<ArrayBuffer>),
-          timeoutMs,
-          "Bulk OUT",
-        ),
     );
     if (result.status !== "ok") {
       throw new Error(`Bulk OUT transfer status: ${result.status}`);
     }
   }
 
-  private async bulkIn(length: number): Promise<Uint8Array> {
-    const result = await this.runWithRetry(
+  private async bulkIn(length: number, timeoutMs: number): Promise<Uint8Array> {
+    const result = await this.withTimeout(
+      this.device.transferIn(this.epIn, length),
+      timeoutMs,
       "Bulk IN",
-      (timeoutMs) =>
-        this.withTimeout(
-          this.device.transferIn(this.epIn, length),
-          timeoutMs,
-          "Bulk IN",
-        ),
     );
     if (result.status !== "ok" || !result.data) {
       throw new Error(`Bulk IN transfer status: ${result.status}`);
@@ -767,56 +658,22 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     );
   }
 
-  /**
-   * Drive a bulk transfer with one or two retries on transient timeouts.
-   * Timeout schedule: 30s, 5s, 10s (~45s total budget). NetworkError /
-   * SecurityError / aborts are terminal and propagate immediately.
-   */
-  private async runWithRetry<T>(
-    label: string,
-    op: (timeoutMs: number) => Promise<T>,
-  ): Promise<T> {
-    const schedule = [BULK_TIMEOUT_MS, 5_000, 10_000];
-    let lastErr: unknown;
-    for (let attempt = 0; attempt < schedule.length; attempt++) {
-      this.checkAbort();
-      try {
-        return await op(schedule[attempt]);
-      } catch (err) {
-        lastErr = err;
-        if (!this.isTransientUsbTimeout(err)) {
-          throw err;
-        }
-        this.checkAbort();
-      }
-    }
-    throw lastErr instanceof Error
-      ? lastErr
-      : new Error(`${label} failed after ${schedule.length} attempts.`);
-  }
-
-  private isTransientUsbTimeout(err: unknown): boolean {
+  private isTimeout(err: unknown): boolean {
     if (this.aborted) return false;
-    if (err instanceof Error && err.name === "TimeoutError") return true;
-    // DOMException flavoured timeouts surface with name "TimeoutError" too.
-    if (
-      typeof DOMException !== "undefined" &&
-      err instanceof DOMException &&
-      err.name === "TimeoutError"
-    ) {
-      return true;
-    }
-    return false;
+    // Error and DOMException timeouts both carry the name "TimeoutError".
+    return (err instanceof Error || (typeof DOMException !== "undefined" && err instanceof DOMException))
+      && err.name === "TimeoutError";
   }
 
   // ── rockusb commands ───────────────────────────────────────
 
-  private async readFlashId(): Promise<RockchipFlashId> {
-    const data = await this.runCommand({
-      opcode: ROCKUSB_OP.READ_FLASH_ID,
-      direction: "in",
-      transferLength: 5,
-    });
+  /** READ_FLASH_ID as a single short probe: a loader answers at once, a maskrom board never. */
+  private async readFlashId(probeTimeoutMs: number): Promise<RockchipFlashId> {
+    const data = await this.runCommand(
+      { opcode: ROCKUSB_OP.READ_FLASH_ID, direction: "in", transferLength: 5 },
+      probeTimeoutMs,
+      1,
+    );
     if (!data) throw new Error("READ_FLASH_ID returned no data.");
     const hex = Array.from(data)
       .map((b) => b.toString(16).padStart(2, "0"))
@@ -840,25 +697,16 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     if (lbaCount < 0 || lbaCount > 0xffff) {
       throw new Error("lbaCount exceeds u16 range.");
     }
-    const cb = new Uint8Array(15);
-    cb.fill(0);
-    const cbView = new DataView(cb.buffer);
-    // Big-endian sector address per the rockusb command block layout.
-    cbView.setUint32(1, startLba >>> 0, false);
-    cbView.setUint16(7, lbaCount & 0xffff, false);
     await this.runCommand({
       opcode: ROCKUSB_OP.WRITE_LBA,
       direction: "out",
       transferLength: payload.byteLength,
-      cb,
+      cb: lbaCommandBlock(startLba, lbaCount),
       data: payload,
     });
   }
 
-  /**
-   * READ_LBA is provided so a future verify pass can read sectors back
-   * for SHA-256 comparison. Not used by the current flash() flow.
-   */
+  /** READ_LBA, used by flash() to read the written image back. */
   private async readLba(
     startLba: number,
     lbaCount: number,
@@ -869,16 +717,11 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     if (lbaCount < 0 || lbaCount > 0xffff) {
       throw new Error("lbaCount exceeds u16 range.");
     }
-    const cb = new Uint8Array(15);
-    cb.fill(0);
-    const cbView = new DataView(cb.buffer);
-    cbView.setUint32(1, startLba >>> 0, false);
-    cbView.setUint16(7, lbaCount & 0xffff, false);
     const data = await this.runCommand({
       opcode: ROCKUSB_OP.READ_LBA,
       direction: "in",
       transferLength: lbaCount * LBA_SIZE,
-      cb,
+      cb: lbaCommandBlock(startLba, lbaCount),
     });
     if (!data) throw new Error("READ_LBA returned no data.");
     return data;
@@ -888,12 +731,12 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     const cb = new Uint8Array(15);
     cb.fill(0);
     cb[0] = 0x00; // subcommand: full reset
-    await this.runCommand({
-      opcode: ROCKUSB_OP.RESET_DEVICE,
-      direction: "none",
-      transferLength: 0,
-      cb,
-    });
+    // The board drops off the bus as it resets, so one short attempt.
+    await this.runCommand(
+      { opcode: ROCKUSB_OP.RESET_DEVICE, direction: "none", transferLength: 0, cb },
+      5_000,
+      1,
+    );
   }
 
   // ── Helpers ────────────────────────────────────────────────
@@ -902,21 +745,6 @@ export class RockchipBootromFlasher implements SbcImageFlasher {
     if (this.aborted) {
       throw new Error("Flash aborted by user.");
     }
-  }
-
-  private delay(ms: number): Promise<void> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    return new Promise<void>((resolve) => {
-      timer = setTimeout(() => {
-        timer = undefined;
-        resolve();
-      }, ms);
-    }).finally(() => {
-      if (timer !== undefined) {
-        clearTimeout(timer);
-        timer = undefined;
-      }
-    });
   }
 
   private withTimeout<T>(

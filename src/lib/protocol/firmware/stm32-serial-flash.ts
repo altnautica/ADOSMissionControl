@@ -8,6 +8,7 @@
  */
 
 import type { FlashProgressCallback, ParsedFirmware, ChipInfo } from "./types";
+import { sectorIndicesFor } from "./stm32-chip-table";
 
 // Bootloader commands
 const CMD_READ_MEMORY = 0x11;
@@ -31,66 +32,59 @@ export interface SerialFlashContext {
   checkAbort(): void;
 }
 
-/** Erase flash pages covered by firmware blocks. */
+/** Legacy ERASE (0x43) takes at most 255 one-byte page numbers per command (N = 0xFF means global erase). */
+const LEGACY_ERASE_MAX_PAGES = 255;
+
+/** Erase the flash sectors covered by firmware blocks, mapped through the chip's real sector map. */
 export async function eraseFlash(
   ctx: SerialFlashContext,
   chipInfo: ChipInfo,
   supportsExtendedErase: boolean,
   blocks: ParsedFirmware["blocks"],
 ): Promise<void> {
+  const sectors = new Set<number>();
+  for (const block of blocks) {
+    for (const s of sectorIndicesFor(chipInfo, block.address, block.data.length)) sectors.add(s);
+  }
+  const sectorList = Array.from(sectors).sort((a, b) => a - b);
+
   if (supportsExtendedErase || chipInfo.useExtendedErase) {
     await ctx.sendCommand(CMD_EXTENDED_ERASE);
-
-    const pages = new Set<number>();
-    for (const block of blocks) {
-      const startPage = Math.floor((block.address - chipInfo.flashBase) / chipInfo.pageSize);
-      const endPage = Math.floor((block.address + block.data.length - 1 - chipInfo.flashBase) / chipInfo.pageSize);
-      for (let p = startPage; p <= endPage; p++) pages.add(p);
-    }
-
-    const pageList = Array.from(pages).sort((a, b) => a - b);
-    const numPages = pageList.length;
+    const numPages = sectorList.length;
     const data = new Uint8Array(2 + numPages * 2);
     data[0] = ((numPages - 1) >> 8) & 0xff;
     data[1] = (numPages - 1) & 0xff;
     for (let i = 0; i < numPages; i++) {
-      data[2 + i * 2] = (pageList[i] >> 8) & 0xff;
-      data[2 + i * 2 + 1] = pageList[i] & 0xff;
+      data[2 + i * 2] = (sectorList[i] >> 8) & 0xff;
+      data[2 + i * 2 + 1] = sectorList[i] & 0xff;
     }
-
-    let checksum = 0;
-    for (const b of data) checksum ^= b;
-    const payload = new Uint8Array(data.length + 1);
-    payload.set(data);
-    payload[data.length] = checksum;
-
-    await ctx.sendBytes(payload);
+    await ctx.sendBytes(withXorChecksum(data));
     await ctx.waitForAck(ERASE_TIMEOUT);
-  } else {
+    return;
+  }
+
+  if (sectorList.some((p) => p > 0xff)) {
+    throw new Error("Legacy erase cannot address pages above 255; this chip needs extended erase");
+  }
+  for (let start = 0; start < sectorList.length; start += LEGACY_ERASE_MAX_PAGES) {
+    ctx.checkAbort();
+    const batch = sectorList.slice(start, start + LEGACY_ERASE_MAX_PAGES);
     await ctx.sendCommand(CMD_ERASE);
-
-    const pages = new Set<number>();
-    for (const block of blocks) {
-      const startPage = Math.floor((block.address - chipInfo.flashBase) / chipInfo.pageSize);
-      const endPage = Math.floor((block.address + block.data.length - 1 - chipInfo.flashBase) / chipInfo.pageSize);
-      for (let p = startPage; p <= endPage; p++) pages.add(p);
-    }
-
-    const pageList = Array.from(pages).sort((a, b) => a - b);
-    const numPages = pageList.length;
-    const data = new Uint8Array(1 + numPages);
-    data[0] = numPages - 1;
-    for (let i = 0; i < numPages; i++) data[1 + i] = pageList[i] & 0xff;
-
-    let checksum = 0;
-    for (const b of data) checksum ^= b;
-    const payload = new Uint8Array(data.length + 1);
-    payload.set(data);
-    payload[data.length] = checksum;
-
-    await ctx.sendBytes(payload);
+    const data = new Uint8Array(1 + batch.length);
+    data[0] = batch.length - 1;
+    batch.forEach((p, i) => { data[1 + i] = p; });
+    await ctx.sendBytes(withXorChecksum(data));
     await ctx.waitForAck(ERASE_TIMEOUT);
   }
+}
+
+function withXorChecksum(data: Uint8Array): Uint8Array {
+  let checksum = 0;
+  for (const b of data) checksum ^= b;
+  const payload = new Uint8Array(data.length + 1);
+  payload.set(data);
+  payload[data.length] = checksum;
+  return payload;
 }
 
 /** Write firmware blocks to flash. */
@@ -125,12 +119,18 @@ export async function writeFlash(
   }
 }
 
-/** WRITE_MEMORY command -- write up to 256 bytes at an address. */
+/**
+ * WRITE_MEMORY command -- write up to 256 bytes at an address. AN3155 needs
+ * the byte count to be a multiple of 4, so the tail is padded with erased
+ * flash (0xFF).
+ */
 async function writeMemory(ctx: SerialFlashContext, address: number, data: Uint8Array): Promise<void> {
   await ctx.sendCommand(CMD_WRITE_MEMORY);
   await ctx.sendAddress(address);
 
-  const padded = new Uint8Array(data.length + (data.length % 2 === 0 ? 0 : 1));
+  const rem = data.length % 4;
+  const padded = new Uint8Array(data.length + (rem === 0 ? 0 : 4 - rem));
+  padded.fill(0xff);
   padded.set(data);
 
   const payload = new Uint8Array(1 + padded.length + 1);

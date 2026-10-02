@@ -115,7 +115,7 @@ export function FlashMethodSelector({
       <h2 className="text-xs font-semibold text-text-primary">Flash Method</h2>
       <div className="flex gap-3">
         {currentFlashMethods.map(({ id, label, icon: Icon, desc }) => {
-          const disabled = (id === "serial" && !serialSupported) || (id === "px4-serial" && !serialSupported) || (id === "dfu" && !usbSupported);
+          const disabled = ((id === "st-rom-serial" || id === "px4-serial") && !serialSupported) || (id === "dfu" && !usbSupported);
           return (
             <button key={id} onClick={() => !disabled && setFlashMethod(id)} disabled={disabled}
               className={`flex-1 px-3 py-2 text-left border cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${

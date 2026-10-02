@@ -13,11 +13,12 @@
  * `useParamPanelActions`, matching the established Power panel pattern.
  *
  * The "Enter SLCAN mode" button at the foot of the SLCAN card hands off
- * to the SLCAN flash arbiter (`enterSlcanMode`). The arbiter writes the
- * `CAN_SLCAN_*` routing params, decides between reboot-and-poll (F4) or
- * MAV_CMD_CAN_FORWARD hot-switch (F7/H7/G4), opens the SLCAN session, and
- * returns an `exitFn` for the page to invoke when the operator clicks
- * "Resume MAVLink" (driven from the top-of-shell banner).
+ * to the SLCAN flash arbiter (`enterSlcanMode`). The arbiter writes
+ * `CAN_SLCAN_CPORT` and `CAN_SLCAN_TIMOUT`, reboots the FC when the CAN
+ * interface changed, writes `CAN_SLCAN_SERNUM` last to hand the USB port to
+ * SLCAN, opens the SLCAN session, and returns an `exitFn` for the page to
+ * invoke when the operator clicks "Resume MAVLink" (driven from the
+ * top-of-shell banner).
  *
  * @license GPL-3.0-only
  */

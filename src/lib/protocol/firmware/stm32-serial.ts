@@ -1,8 +1,11 @@
 /**
  * STM32 ROM bootloader protocol over UART via Web Serial API.
  *
- * Implements the ST AN3155 / AN2606 serial bootloader protocol.
- * Works with any STM32 FC connected via USB-UART bridge.
+ * Implements the ST AN3155 / AN2606 serial bootloader protocol. This is the
+ * chip's system-memory bootloader (BOOT0 strap, or a software jump into
+ * system memory over a USB-UART bridge); it writes absolute addresses, so it
+ * only takes absolute images (.hex, `_with_bl.hex`, raw .bin at flash base).
+ * The ArduPilot / PX4 USB bootloaders do not speak this protocol.
  *
  * @module protocol/firmware/stm32-serial
  */
@@ -10,6 +13,7 @@
 /// <reference path="../web-serial.d.ts" />
 
 import type { FirmwareFlasher, FlashProgressCallback, FlashLogCallback, FlashRunOptions, ParsedFirmware, ChipInfo } from "./types";
+import { WITH_BL_REQUIRED_MESSAGE } from "./types";
 import { CHIP_TABLE } from "./stm32-chip-table";
 import { eraseFlash, writeFlash, readFlash, jumpToApp, READ_BLOCK_SIZE, type SerialFlashContext } from "./stm32-serial-flash";
 
@@ -21,7 +25,7 @@ const CMD_EXTENDED_ERASE = 0x44;
 const DEFAULT_TIMEOUT = 3000;
 
 export class STM32SerialFlasher implements FirmwareFlasher {
-  readonly method = "serial" as const;
+  readonly method = "st-rom-serial" as const;
   private port: SerialPort;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
@@ -50,6 +54,9 @@ export class STM32SerialFlasher implements FirmwareFlasher {
   }
 
   async flash(firmware: ParsedFirmware, onProgress: FlashProgressCallback, signal?: AbortSignal, onLog?: FlashLogCallback, options?: FlashRunOptions): Promise<void> {
+    // An application image written at flash base would overwrite the board's
+    // bootloader with an app that expects to start past it.
+    if (firmware.bootloaderApp) throw new Error(WITH_BL_REQUIRED_MESSAGE);
     this.aborted = false;
     if (signal) signal.addEventListener("abort", () => this.abort(), { once: true });
     try {

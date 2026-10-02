@@ -20,6 +20,7 @@ import type {
 import { MspParser } from './msp/msp-parser'
 import { MspSerialQueue } from './msp/msp-serial-queue'
 import { MspTelemetryPoller } from './msp/msp-telemetry-poller'
+import { MspLinkMonitor } from './msp/msp-link-monitor'
 import { MSP, MSP2, FEATURE_FLAG } from './msp/msp-constants'
 import { buildBoxMap, parseModeRanges } from './msp/msp-mode-map'
 import { MspRcOverride } from './msp/msp-rc-override'
@@ -123,6 +124,8 @@ export class MSPAdapter implements DroneProtocol {
   private lastArmed = false
   private dataHandler: ((data: Uint8Array) => void) | null = null
   private closeHandler: (() => void) | null = null
+  /** Reports link loss and recovery; MSP has no heartbeat of its own. */
+  private linkMonitor: MspLinkMonitor | null = null
 
   get isConnected(): boolean { return this._connected }
 
@@ -226,6 +229,7 @@ export class MSPAdapter implements DroneProtocol {
       vehicleClass: 'copter', firmwareVersionString,
       systemId: 0, componentId: 0, autopilotType: 0, vehicleType: 0,
       gyroSampleRateHz: boardInfo.gyroSampleRateHz,
+      boardTargetName: boardInfo.boardName || boardInfo.targetName,
       mspApiVersion: { major: apiVersionMajor, minor: apiVersionMinor },
     }
     this.vehicleInfo = info
@@ -238,6 +242,14 @@ export class MSPAdapter implements DroneProtocol {
     this.poller = new MspTelemetryPoller(queue, info.firmwareType, (command, payload) =>
       dispatchMspTelemetry(command, payload, this.cbs, this.vehicleInfo, this.boxIds, telemetryState))
     this.poller.start()
+    this.linkMonitor = new MspLinkMonitor({
+      queue,
+      parser: this.parser,
+      paused: () => this.cli?.isActive === true,
+      onLost: () => { for (const cb of this.cbs.linkLostCallbacks) cb() },
+      onRestored: () => { for (const cb of this.cbs.linkRestoredCallbacks) cb() },
+    })
+    this.linkMonitor.start()
     this._connected = true
     return info
   }
@@ -253,6 +265,7 @@ export class MSPAdapter implements DroneProtocol {
     if (this.rcOverride) { this.rcOverride.destroy(); this.rcOverride = null }
     this.rxMspEnabled = false
     if (this.poller) { this.poller.stop(); this.poller = null }
+    if (this.linkMonitor) { this.linkMonitor.stop(); this.linkMonitor = null }
     if (this.queue) { cmds.mspCancelMotorTest(this.queue); this.queue.destroy(); this.queue = null }
     this.parser.reset(); this.paramCache.clear(); this.paramNameCache = []; this.lastArmed = false; this.settingsClient = null; this.settingsCapability = null; this.cli = null; this.cliSettingsCapability = null
     if (this.transport && this.dataHandler) {
@@ -270,7 +283,17 @@ export class MSPAdapter implements DroneProtocol {
   async motorTest(m: number, t: number, d: number) { return cmds.mspMotorTest(this.cmdCtx, m, t, d) }
   async setMotorTestOutputs(t: readonly number[], d: number) { return cmds.mspSetMotorOutputs(this.cmdCtx, t, d) }
   async reboot() { return cmds.mspReboot(this.cmdCtx) }
-  async rebootToBootloader() { return cmds.mspRebootToBootloader(this.cmdCtx) }
+  async rebootToBootloader() {
+    // iNav ignores MSP_SET_REBOOT's bootloader type byte and boots normal
+    // firmware; its CLI `dfu` command is what enters the ROM bootloader.
+    if (this.vehicleInfo?.firmwareType === 'inav' && this.cli) {
+      if (this.lastArmed) return { success: false, resultCode: -1, message: 'Bootloader reboot refused: vehicle is armed' }
+      await this.cli.enter()
+      this.cli.sendInteractive('dfu')
+      return { success: true, resultCode: 0, message: 'Rebooting to bootloader' }
+    }
+    return cmds.mspRebootToBootloader(this.cmdCtx)
+  }
   async startCalibration(type: 'accel'|'gyro'|'compass'|'level'|'airspeed'|'baro'|'rc'|'esc'|'compassmot') { return cmds.mspStartCalibration(this.cmdCtx, type) }
   async commitParamsToFlash() { return cmds.mspCommitParamsToFlash(this.cmdCtx) }
   async killSwitch() { return cmds.mspKillSwitch(this.cmdCtx) }
@@ -634,9 +657,6 @@ export class MSPAdapter implements DroneProtocol {
   async cancelCompassCal(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async cancelCalibration(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async startGnssMagCal(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
-  async startEscCalibration(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
-  sendPositionTarget(): void { /* no-op */ }
-  sendAttitudeTarget(): void { /* no-op */ }
   async enableFence(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async doLandStart(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async controlVideo(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
@@ -645,7 +665,5 @@ export class MSPAdapter implements DroneProtocol {
   async requestMessage(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async setMessageInterval(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
   async setGimbalMode(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
-  async uploadFence(): Promise<CommandResult> { return { success: false, resultCode: -1, message: 'Not supported by MSP firmware' } }
-  async downloadFence(): Promise<Array<{ idx: number; lat: number; lon: number }>> { return [] }
   getCommandQueueSnapshot() { return { pendingCount: 0, entries: [] } }
 }

@@ -1,22 +1,25 @@
 /**
  * ArduPilot APJ firmware file parser.
  *
- * APJ files are JSON with a base64-encoded firmware image.
- * Format: { "board_id": N, "image": "base64...", ... }
+ * APJ files are JSON with a base64-encoded, zlib-compressed application
+ * image: `{ "board_id": N, "image": "base64(zlib(app))", "image_size": N, ... }`.
+ *
+ * The image is the application only. It is written by the ArduPilot (PX4
+ * protocol) bootloader at its own application offset, so the parsed block
+ * starts at offset 0 of the app area and is flagged `bootloaderApp`. DFU and
+ * the ST ROM bootloader need the `_with_bl.hex` image instead.
  *
  * @module protocol/firmware/apj-parser
  */
 
+import pako from "pako";
 import type { ParsedFirmware } from "./types";
-
-/** Default flash base address for STM32 MCUs. */
-const FLASH_BASE = 0x08000000;
 
 /**
  * Parse an ArduPilot .apj firmware file.
  *
  * @param content — Raw file content as string (JSON)
- * @returns Parsed firmware with a single block at 0x08000000
+ * @returns Parsed application image (inflated), flagged `bootloaderApp`
  */
 export function parseApjFile(content: string): ParsedFirmware {
   let json: Record<string, unknown>;
@@ -29,17 +32,32 @@ export function parseApjFile(content: string): ParsedFirmware {
   if (typeof json.image !== "string") {
     throw new Error("Invalid APJ file: missing 'image' field");
   }
+  if (typeof json.image_size !== "number") {
+    throw new Error("Invalid APJ file: missing 'image_size' field");
+  }
 
-  // Decode base64 image to binary
-  let binaryString: string;
+  let compressed: Uint8Array;
   try {
-    binaryString = atob(json.image as string);
+    const binaryString = atob(json.image as string);
+    compressed = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      compressed[i] = binaryString.charCodeAt(i);
+    }
   } catch {
     throw new Error("Invalid APJ file: corrupt firmware image data");
   }
-  const data = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    data[i] = binaryString.charCodeAt(i);
+
+  let data: Uint8Array;
+  try {
+    data = pako.inflate(compressed);
+  } catch {
+    throw new Error("Invalid APJ file: zlib decompression failed");
+  }
+
+  if (data.length !== json.image_size) {
+    throw new Error(
+      `Invalid APJ file: decompressed size ${data.length} does not match image_size ${json.image_size}`,
+    );
   }
 
   const boardId = typeof json.board_id === "number" ? json.board_id : undefined;
@@ -47,10 +65,11 @@ export function parseApjFile(content: string): ParsedFirmware {
   const description = typeof json.summary === "string" ? json.summary : undefined;
 
   return {
-    blocks: [{ address: FLASH_BASE, data }],
+    blocks: [{ address: 0, data }],
     totalBytes: data.length,
     boardId,
     boardRevision,
     description,
+    bootloaderApp: true,
   };
 }

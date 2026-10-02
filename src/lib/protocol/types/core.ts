@@ -25,6 +25,8 @@ export interface VehicleInfo {
    * consumers render "unknown" rather than assuming.
    */
   gyroSampleRateHz?: number;
+  /** Board the MSP firmware reports (Betaflight board name, iNav target name, from MSP_BOARD_INFO); undefined on MAVLink links or when not reported. */
+  boardTargetName?: string;
   /** MSP_API_VERSION of an MSP flight controller; undefined on MAVLink links. */
   mspApiVersion?: { major: number; minor: number };
 }

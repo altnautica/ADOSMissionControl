@@ -2,10 +2,11 @@
 
 /**
  * Pre-flight environment gate for browser-based flashing. Web Serial / WebUSB
- * are Chromium-only and require a secure context (HTTPS or localhost). Shows a
- * compact "ready" strip when both hold, or a clear blocking card naming what is
- * missing — so a user on Firefox/Safari or an insecure origin never reaches a
- * dead "Flash" button.
+ * are Chromium-only and require a secure context (HTTPS or localhost), and the
+ * flight controller must be on this computer's own USB link: flashing over a
+ * network link would reboot the remote FC into a bootloader nobody can reach.
+ * Shows a compact "ready" strip when all hold, or a clear blocking card naming
+ * what is missing, so no one reaches a dead or dangerous "Flash" button.
  *
  * @module fc/firmware/FirmwarePreflightGate
  */
@@ -17,9 +18,11 @@ import { useTranslations } from "next-intl";
 interface FirmwarePreflightGateProps {
   serialSupported: boolean;
   usbSupported: boolean;
+  /** The selected FC is connected over a network link rather than local USB. */
+  usbRequired: boolean;
 }
 
-export function FirmwarePreflightGate({ serialSupported, usbSupported }: FirmwarePreflightGateProps) {
+export function FirmwarePreflightGate({ serialSupported, usbSupported, usbRequired }: FirmwarePreflightGateProps) {
   const t = useTranslations("flashTool.preflight");
   // Default optimistic so SSR/first paint doesn't flash a false warning.
   const [secure, setSecure] = useState(true);
@@ -29,7 +32,7 @@ export function FirmwarePreflightGate({ serialSupported, usbSupported }: Firmwar
 
   const apiOk = serialSupported || usbSupported;
 
-  if (apiOk && secure) {
+  if (apiOk && secure && !usbRequired) {
     return (
       <div className="flex items-center gap-2 text-[10px] text-status-success border border-status-success/30 bg-status-success/5 px-3 py-2">
         <Check size={12} />
@@ -46,8 +49,10 @@ export function FirmwarePreflightGate({ serialSupported, usbSupported }: Firmwar
       </p>
       <GateRow ok={apiOk} label={t("chromium")} />
       <GateRow ok={secure} label={t("secureContext")} />
+      <GateRow ok={!usbRequired} label={t("usbLink")} />
       {!apiOk && <p className="text-[10px] text-text-tertiary mt-1">{t("unsupported")}</p>}
       {!secure && <p className="text-[10px] text-text-tertiary mt-1">{t("insecure")}</p>}
+      {usbRequired && <p className="text-[10px] text-text-tertiary mt-1">{t("usbRequired")}</p>}
     </div>
   );
 }

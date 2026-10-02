@@ -241,12 +241,9 @@ export function useRockchipFlash({
       const flasher = new RockchipBootromFlasher(device);
       flasherRef.current = flasher;
 
-      // 4. Prepare. Without a SoC-specific loader blob in the manifest
-      //    today, prepare() will assume the device is already in
-      //    loader stage. That is the right behavior for boards that
-      //    ship a stock loader on eMMC; it surfaces a clear error if
-      //    the device is still in pure maskrom mode and needs a blob
-      //    we don't yet have.
+      // 4. Prepare: confirm a rockusb loader answers. A board still in
+      //    maskrom is refused within a few seconds with instructions to
+      //    boot it into loader mode.
       setProgress({
         phase: "bootloader_init",
         percent: 5,

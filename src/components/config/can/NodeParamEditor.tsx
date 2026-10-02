@@ -9,6 +9,11 @@
  * node, erase, reload). Quick actions row exposes restart / FLASH_BOOTLOADER
  * write / firmware update navigation / node-id change / erase.
  *
+ * Restart, FLASH_BOOTLOADER, node-ID change and erase can take out whatever
+ * the node drives, so they are refused while the vehicle is armed and each
+ * one asks for a confirmation naming the action and the node; the
+ * destructive three also need the node typed in.
+ *
  * Renders inside a fixed right-edge drawer; click the backdrop or the close
  * button to dismiss. Falls back to an empty-state hint when no client is
  * connected.
@@ -21,6 +26,8 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { X, RotateCcw, Save, Trash2, RefreshCw, Hash, FlaskConical, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useDroneCanNodeStore } from "@/stores/dronecan/node-store";
 import {
   useDroneCanNodeParams,
@@ -42,6 +49,20 @@ const MODE_LABELS: Record<number, string> = {
   3: "SOFTWARE_UPDATE",
   7: "OFFLINE",
 };
+
+/** Node actions that need an explicit confirmation. */
+type NodeAction = "restart" | "flashBootloader" | "erase" | "changeId";
+
+/** quickActions label key for each confirmed action. */
+const ACTION_LABEL_KEY: Record<NodeAction, string> = {
+  restart: "restart",
+  flashBootloader: "flashBootloader",
+  erase: "erase",
+  changeId: "changeNodeId",
+};
+
+/** Highest node ID handed to a node: 126 and 127 stay free for tools, 127 is this GCS. */
+const MAX_ASSIGNABLE_NODE_ID = 125;
 
 export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProps) {
   const t = useTranslations("canConfig.nodeParamEditor");
@@ -67,6 +88,10 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [newNodeIdStr, setNewNodeIdStr] = useState<string>("");
   const [showChangeId, setShowChangeId] = useState(false);
+  // A node action waiting for the operator's confirmation.
+  const [pending, setPending] = useState<{ action: NodeAction; newId?: number } | null>(null);
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  const blockedTitle = isHardBlocked ? hardBlockMessage : undefined;
 
   // Auto-load the first time we mount with a client. The hook depends on
   // client + nodeId; calling refresh again on every render is wasteful.
@@ -111,11 +136,41 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
       setStatusMsg(res.ok ? "Saved to node" : "Save failed");
     });
 
-  const onErase = () =>
+  // Runs only from the confirmation dialog, and never on an armed vehicle.
+  const runAction = (action: NodeAction, newId?: number) =>
     wrap(async () => {
-      const r = await eraseToDefaults();
-      setStatusMsg(r.ok ? "Erased to defaults" : "Erase failed");
-      if (r.ok) await refresh();
+      if (!client || isHardBlocked) return;
+      switch (action) {
+        case "restart": {
+          const r = await restartNode();
+          setStatusMsg(r.ok ? "Restart requested" : "Restart failed");
+          return;
+        }
+        case "flashBootloader": {
+          const res = await client.paramSet(nodeId, "FLASH_BOOTLOADER", {
+            tag: ValueTag.Integer,
+            value: BigInt(1),
+          });
+          setStatusMsg(res.name === "FLASH_BOOTLOADER" ? "FLASH_BOOTLOADER=1" : "Set failed");
+          return;
+        }
+        case "erase": {
+          const r = await eraseToDefaults();
+          setStatusMsg(r.ok ? "Erased to defaults" : "Erase failed");
+          if (r.ok) await refresh();
+          return;
+        }
+        case "changeId": {
+          if (newId === undefined) return;
+          const res = await client.paramSet(nodeId, "UAVCAN_NODE_ID", {
+            tag: ValueTag.Integer,
+            value: BigInt(newId),
+          });
+          setStatusMsg(res.name === "UAVCAN_NODE_ID" ? `Node ID set to ${newId}` : "Change failed");
+          setShowChangeId(false);
+          return;
+        }
+      }
     });
 
   const onReload = () =>
@@ -124,40 +179,18 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
       setStatusMsg("Reloaded");
     });
 
-  const onRestart = () =>
-    wrap(async () => {
-      const r = await restartNode();
-      setStatusMsg(r.ok ? "Restart requested" : "Restart failed");
-    });
-
-  const onFlashBootloader = () =>
-    wrap(async () => {
-      if (!client) return;
-      const res = await client.paramSet(nodeId, "FLASH_BOOTLOADER", {
-        tag: ValueTag.Integer,
-        value: BigInt(1),
-      });
-      setStatusMsg(res.name === "FLASH_BOOTLOADER" ? "FLASH_BOOTLOADER=1" : "Set failed");
-    });
-
-  const onChangeId = () =>
-    wrap(async () => {
-      if (!client) return;
-      const n = Number.parseInt(newNodeIdStr, 10);
-      if (!Number.isInteger(n) || n < 1 || n > 127) {
-        setStatusMsg("Node ID must be 1..127");
-        return;
-      }
-      const res = await client.paramSet(nodeId, "UAVCAN_NODE_ID", {
-        tag: ValueTag.Integer,
-        value: BigInt(n),
-      });
-      setStatusMsg(res.name === "UAVCAN_NODE_ID" ? `Node ID set to ${n}` : "Change failed");
-      setShowChangeId(false);
-    });
+  // 126 and 127 are left for tools; 127 is this GCS's own node ID.
+  const requestChangeId = () => {
+    const n = Number.parseInt(newNodeIdStr, 10);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_ASSIGNABLE_NODE_ID) {
+      setStatusMsg(`Node ID must be 1..${MAX_ASSIGNABLE_NODE_ID}`);
+      return;
+    }
+    setPending({ action: "changeId", newId: n });
+  };
 
   const onUpdateFirmware = () => {
-    router.push(`/config/firmware?stack=ap_periph&target=${nodeId}`);
+    router.push(`/config/firmware?stack=ap-periph&target=${nodeId}`);
   };
 
   const nodeName = node?.nodeInfo?.name ?? "—";
@@ -190,19 +223,19 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
 
         {/* Quick actions row */}
         <div className="flex flex-wrap gap-2 px-4 py-2 border-b border-border-default">
-          <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={onRestart} disabled={!client || busy}>
+          <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={() => setPending({ action: "restart" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
             {tQuick("restart")}
           </Button>
-          <Button variant="ghost" size="sm" icon={<FlaskConical size={12} />} onClick={onFlashBootloader} disabled={!client || busy}>
+          <Button variant="ghost" size="sm" icon={<FlaskConical size={12} />} onClick={() => setPending({ action: "flashBootloader" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
             {tQuick("flashBootloader")}
           </Button>
           <Button variant="ghost" size="sm" icon={<Upload size={12} />} onClick={onUpdateFirmware} disabled={!client}>
             {tQuick("updateFirmware")}
           </Button>
-          <Button variant="ghost" size="sm" icon={<Hash size={12} />} onClick={() => setShowChangeId((v) => !v)} disabled={!client || busy}>
+          <Button variant="ghost" size="sm" icon={<Hash size={12} />} onClick={() => setShowChangeId((v) => !v)} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
             {tQuick("changeNodeId")}
           </Button>
-          <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={onErase} disabled={!client || busy}>
+          <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => setPending({ action: "erase" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
             {tQuick("erase")}
           </Button>
         </div>
@@ -212,14 +245,14 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
             <input
               type="number"
               min={1}
-              max={127}
+              max={MAX_ASSIGNABLE_NODE_ID}
               value={newNodeIdStr}
               onChange={(e) => setNewNodeIdStr(e.target.value)}
-              placeholder="1..127"
+              placeholder={`1..${MAX_ASSIGNABLE_NODE_ID}`}
               className="px-2 py-1 text-xs font-mono bg-bg-tertiary border border-border-default rounded w-24 text-text-primary"
               aria-label="New node id"
             />
-            <Button variant="secondary" size="sm" onClick={onChangeId} disabled={!client || busy}>
+            <Button variant="secondary" size="sm" onClick={requestChangeId} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
               {tQuick("changeNodeId")}
             </Button>
           </div>
@@ -284,8 +317,9 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
               variant="ghost"
               size="sm"
               icon={<Trash2 size={12} />}
-              onClick={onErase}
-              disabled={!client || busy}
+              onClick={() => setPending({ action: "erase" })}
+              disabled={!client || busy || isHardBlocked}
+              title={blockedTitle}
             >
               {tFoot("erase")}
             </Button>
@@ -311,6 +345,21 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
           </div>
         </footer>
       </aside>
+      <ConfirmDialog
+        open={pending !== null}
+        variant="danger"
+        title={pending ? t(`confirm.${pending.action}Title`, { nodeId, newId: pending.newId ?? 0 }) : ""}
+        message={pending ? t(`confirm.${pending.action}Message`, { nodeId, name: nodeName, newId: pending.newId ?? 0 }) : ""}
+        confirmLabel={pending ? tQuick(ACTION_LABEL_KEY[pending.action]) : undefined}
+        typedPhrase={pending && pending.action !== "restart" ? `node ${nodeId}` : undefined}
+        confirmDisabled={isHardBlocked}
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          const p = pending;
+          setPending(null);
+          if (p) void runAction(p.action, p.newId);
+        }}
+      />
     </div>
   );
 }
