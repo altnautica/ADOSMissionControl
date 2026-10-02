@@ -64,11 +64,6 @@ export interface ActiveInstallJob {
   pairingKey?: string;
 }
 
-/** Why a drone reached only through its ground station's radio relay gets
- * no install: the agent refuses plugin installs from relayed requests. */
-export const RELAY_INSTALL_REFUSED =
-  "This drone is reached only through its ground station's radio relay, and it refuses plugin installs over the relay: a relayed request carries no credential for the drone itself, so accepting one would let anything in radio range install code. Connect to the drone on the LAN, or pair it with your cloud account, to install.";
-
 function isCloudPaired(deviceId: string): boolean {
   return usePairingStore.getState().pairedDrones.some((d) => d.deviceId === deviceId);
 }
@@ -238,22 +233,31 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
             "This plugin installs software on a drone. Open it from a drone's Plugins tab to choose where it runs.",
           );
         }
-        const relayOnly = () => resolveRelayTarget(targetDevice.deviceId) !== null;
+        // A drone reached only through its ground station's radio relay is
+        // installed on through the relay: each relayed request carries a
+        // ticket from the ground station's per-pair secret, so the drone
+        // accepts it with that ground station's authority. The relay carries
+        // no WebSocket, so the install's own reply is its progress.
+        const relayTarget = lanTarget ? null : resolveRelayTarget(targetDevice.deviceId);
+        const agentTarget = lanTarget ?? relayTarget;
+        const startJob = (target: { url: string; apiKey: string }) => {
+          if (lanTarget) {
+            onJobStarted({ jobId, transport: "lan", agentLanUrl: target.url, pairingKey: target.apiKey });
+          }
+        };
         const cloudReachable = convexAvailable && isCloudPaired(targetDevice.deviceId);
         if (source.kind === "registry") {
           // The agent fetches the archive itself, so a registry install
-          // needs the drone's own LAN reach.
-          if (!lanTarget) {
+          // needs a direct or relayed reach to the drone.
+          if (!agentTarget) {
             throw new Error(
-              relayOnly()
-                ? RELAY_INSTALL_REFUSED
-                : "Registry installs need the drone paired on this network. Pair it on the LAN and retry.",
+              "Registry installs need the drone reachable on this network or through its ground station. Pair it on the LAN and retry.",
             );
           }
-          onJobStarted({ jobId, transport: "lan", agentLanUrl: lanTarget.url, pairingKey: lanTarget.apiKey });
+          startJob(agentTarget);
           result = await installLanDirectFromUrl({
-            agentUrl: lanTarget.url,
-            pairingKey: lanTarget.apiKey,
+            agentUrl: agentTarget.url,
+            pairingKey: agentTarget.apiKey,
             url: source.url,
             expectedSha256: source.expectedSha256,
             grantedPermissions: grantedArr,
@@ -279,13 +283,13 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
               createJob,
               manifestHash,
             });
-          if (lanTarget) {
-            onJobStarted({ jobId, transport: "lan", agentLanUrl: lanTarget.url, pairingKey: lanTarget.apiKey });
+          if (agentTarget) {
+            startJob(agentTarget);
             try {
               result = await installLanDirect({
                 ...ctx,
-                agentUrl: lanTarget.url,
-                pairingKey: lanTarget.apiKey,
+                agentUrl: agentTarget.url,
+                pairingKey: agentTarget.apiKey,
                 jobId,
               });
             } catch (err) {
@@ -301,9 +305,7 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
             result = await viaCloud();
           } else {
             throw new Error(
-              relayOnly()
-                ? RELAY_INSTALL_REFUSED
-                : "This drone is not reachable for an install. Pair it on this network, or pair it with your cloud account.",
+              "This drone is not reachable for an install. Pair it on this network, or pair it with your cloud account.",
             );
           }
         }

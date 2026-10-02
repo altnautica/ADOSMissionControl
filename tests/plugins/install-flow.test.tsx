@@ -48,7 +48,6 @@ vi.mock("@/components/plugins/transports/resolve-lan-url", async (importOriginal
 
 import { PluginInstallDialog } from "@/components/plugins/PluginInstallDialog";
 import {
-  RELAY_INSTALL_REFUSED,
   useInstallHandler,
   type UseInstallHandlerArgs,
 } from "@/components/plugins/install-dialog/use-install-handler";
@@ -164,14 +163,26 @@ describe("install routing", () => {
     expect(onDone).not.toHaveBeenCalled();
   });
 
-  it("refuses a drone reached only over its ground station's relay", async () => {
-    relay.target = { url: "http://192.168.1.60:8080/api/v1/ground-station/relay-proxy/drone-1", apiKey: "k", relay: true };
-    const { install, setError, createJob } = run({});
+  it("installs on a drone reached only over its ground station's relay through the relay", async () => {
+    const relayUrl = "http://192.168.1.60:8080/api/v1/ground-station/relay-proxy/drone-1";
+    relay.target = { url: relayUrl, apiKey: "k", relay: true };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+      String(input).includes("/api/plugins/install")
+        ? new Response(JSON.stringify({ ok: true, plugin_id: "com.example.hello", granted: ["telemetry.subscribe"] }), { status: 200 })
+        : new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const onDone = vi.fn();
+    const { install, setError, createJob, args } = run({ onDone });
     await act(async () => {
       await install();
     });
-    expect(setError).toHaveBeenCalledWith(RELAY_INSTALL_REFUSED);
+    expect(setError.mock.calls.filter(([msg]) => msg !== null)).toEqual([]);
     expect(createJob).not.toHaveBeenCalled();
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(new RegExp(`^${relayUrl}/api/plugins/install\\?`));
+    // The relay carries no WebSocket, so no progress job is started.
+    expect(args.onJobStarted).not.toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ transport: "lan", enabledOnAgent: true }));
   });
 
   it("does not fall over to the cloud for a drone the cloud cannot reach", async () => {

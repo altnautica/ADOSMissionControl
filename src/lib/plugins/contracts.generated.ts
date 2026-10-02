@@ -173,7 +173,7 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     wire: "string",
     transport: "websocket-subprotocol",
     status: "metadata",
-    description: "String-tagged (v1) HMAC-SHA256 WebSocket auth ticket; the version is a string tag, not a wire integer.",
+    description: "String-tagged (v2) single-use HMAC-SHA256 WebSocket auth ticket; the version is a string tag, not a wire integer.",
   },
   "cloud-publish": {
     version: 1,
