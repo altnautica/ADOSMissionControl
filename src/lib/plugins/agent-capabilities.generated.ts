@@ -268,6 +268,13 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     risk: "low",
     risk_reason: "Detections are derived data on a sandboxed topic and do not affect flight.",
   },
+  "vision.offload.advertise": {
+    label: "Advertise a perception offload link",
+    description: "Lets the plugin report the perception offload link it holds (whether a compute node is paired, whether the bearer to it is good enough, its address and the model it runs). The node's perception tier and status read it. The agent counts the node as paired only when the advertised address answers, and only one plugin owns the link at a time.",
+    category: "compute_process",
+    risk: "medium",
+    risk_reason: "The advertised link changes the perception tier the node reports and where its detections come from.",
+  },
   "vision.detection.subscribe": {
     label: "Subscribe to detections from the vision engine",
     description: "Lets the plugin receive the detection batches the vision engine publishes (bounding boxes, class labels, confidence, and the tracker's stable track id and lock state on the locked object). Detections are derived data; subscribing does not command the vehicle or open the camera.",
