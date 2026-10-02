@@ -1,11 +1,16 @@
 /**
  * @module video/webrtc/mqtt-flow
  * @description MQTT-relayed SDP signaling path. Used when the browser
- * cannot reach the agent's local WHEP endpoint directly. The SDP
- * offer is published to `ados/{deviceId}/webrtc/offer`; the agent's
- * relay forwards it to local mediamtx and publishes the answer to
- * `ados/{deviceId}/webrtc/answer`. Media flows direct peer-to-peer
- * via STUN-punched ICE candidates after the handshake.
+ * cannot reach the agent's local WHEP endpoint directly. Each attempt mints
+ * a random session id; the offer is published to `ados/{deviceId}/webrtc/offer`
+ * as `{sessionId, sdp}` and the agent answers on
+ * `ados/{deviceId}/webrtc/answer/{sessionId}`, so concurrent viewers never
+ * read each other's answers. The broker connection stays open for the life
+ * of the stream: teardown publishes `{sessionId, close: true}` so the agent
+ * deletes its WHEP session, and the same close is the connection's last
+ * will, so a tab that vanishes is cleaned up once the broker notices.
+ * Media flows direct peer-to-peer via STUN-punched ICE candidates after the
+ * handshake.
  * @license GPL-3.0-only
  */
 
@@ -28,6 +33,7 @@ import {
   tryIceRestart,
 } from "./peer-utils";
 import { attachSeiTransform } from "./sei-transform";
+import { onPeerConnectionClose } from "./teardown";
 import {
   acquireSession,
   getPc,
@@ -44,6 +50,22 @@ import {
   getMqttBrokerCredential,
   getMqttBrokerUrl,
 } from "@/lib/mqtt-broker-credential";
+
+/**
+ * Keepalive for the signaling broker connection, in seconds. The broker
+ * publishes the last-will close about 1.5x this long after a tab vanishes.
+ */
+const SIGNALING_KEEPALIVE_S = 15;
+
+/**
+ * A fresh signaling session id: 32 hex characters from the platform RNG.
+ * `getRandomValues` works on plain-http LAN pages too, unlike `randomUUID`.
+ */
+export function newSignalingSessionId(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 /**
  * Acquire the MQTT-signalled P2P stream for `deviceId`.
@@ -103,8 +125,14 @@ async function negotiateViaMqtt(
       cb?: (err?: Error | null) => void,
     ) => void;
     end: (force?: boolean) => void;
+    connected?: boolean;
   };
   let mqttClient: MqttClient | null = null;
+  // Set once a stream is live; the broker connection then outlives this call
+  // and is released by the peer-connection close hook.
+  let keepSignaling = false;
+  // Sends the session close and ends the broker connection, once.
+  let releaseSignaling: (() => void) | null = null;
 
   // Hold a local pc reference for the handlers' closure.
   let localPc: RTCPeerConnection | null = null;
@@ -204,13 +232,19 @@ async function negotiateViaMqtt(
       throw new Error("mqtt.connect not found in module");
     }
 
+    const sessionId = newSignalingSessionId();
     const topicOffer = `ados/${deviceId}/webrtc/offer`;
-    const topicAnswer = `ados/${deviceId}/webrtc/answer`;
+    const topicAnswer = `ados/${deviceId}/webrtc/answer/${sessionId}`;
+    const closeMessage = JSON.stringify({ sessionId, close: true });
 
     const mqttConnectOptions: Record<string, unknown> = {
       protocolVersion: 5,
       clean: true,
       reconnectPeriod: 0,
+      keepalive: SIGNALING_KEEPALIVE_S,
+      // A tab that closes or loses its network never sends the close itself;
+      // the broker sends it for us so the agent stops streaming to nobody.
+      will: { topic: topicOffer, payload: closeMessage, qos: 1, retain: false },
     };
     const cred = auth ?? getMqttBrokerCredential();
     if (cred?.username && cred?.password) {
@@ -221,6 +255,30 @@ async function negotiateViaMqtt(
       getMqttBrokerUrl(),
       mqttConnectOptions,
     ) as unknown as MqttClient;
+
+    // Release the signaling session exactly once: tell the agent to delete
+    // its WHEP session, then close the broker connection. Runs from the
+    // peer-connection close hook (stream teardown or a failed attempt) and
+    // from the cleanup below.
+    const client = mqttClient;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      if (!client.connected) {
+        try { client.end(true); } catch { /* noop */ }
+        return;
+      }
+      try {
+        client.publish(topicOffer, closeMessage, { qos: 1 }, () => {
+          try { client.end(); } catch { /* noop */ }
+        });
+      } catch {
+        try { client.end(true); } catch { /* noop */ }
+      }
+    };
+    releaseSignaling = release;
+    onPeerConnectionClose(newPc, release);
 
     // Wait for broker connect (separate timeout from answer wait so we can
     // distinguish "broker unreachable" from "agent unreachable").
@@ -298,7 +356,8 @@ async function negotiateViaMqtt(
           // with a message blaming the agent for a broker-side denial.
           // Surface it immediately, and name the real cause.
           const offerSdp = localPc!.localDescription!.sdp;
-          mqttClient!.publish(topicOffer, offerSdp, { qos: 1 }, (pubErr) => {
+          const offerMessage = JSON.stringify({ sessionId, sdp: offerSdp });
+          mqttClient!.publish(topicOffer, offerMessage, { qos: 1 }, (pubErr) => {
             if (!pubErr) return;
             clearTimeout(timer);
             reject(
@@ -355,6 +414,7 @@ async function negotiateViaMqtt(
     // frames; no-ops on browsers without RTCRtpScriptTransform.
     attachSeiTransform(localPc);
 
+    keepSignaling = true;
     return stream;
   } catch (err) {
     // Tear down the local pc on any failure. Only clear the global if we're
@@ -367,11 +427,15 @@ async function negotiateViaMqtt(
     reportHealth("p2p-mqtt", { state: "failed", code, error: message });
     throw err;
   } finally {
-    // Guaranteed mqtt.js client cleanup. Earlier the .end(true) call
-    // lived inside the inner Promise handlers — if any unrelated error
-    // path threw before reaching them, the broker connection leaked.
-    if (mqttClient) {
-      try { mqttClient.end(true); } catch { /* noop */ }
+    // Guaranteed mqtt.js client cleanup on every path that did not leave a
+    // live stream. A live stream keeps the connection for its close message;
+    // the peer-connection close hook releases it then.
+    if (!keepSignaling) {
+      if (releaseSignaling) {
+        releaseSignaling();
+      } else if (mqttClient) {
+        try { mqttClient.end(true); } catch { /* noop */ }
+      }
     }
   }
 }
