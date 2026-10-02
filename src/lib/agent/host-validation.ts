@@ -139,6 +139,39 @@ function ipv6Literal(host: string): string | null {
   return host.includes(":") ? host : null;
 }
 
+/** The IPv4 inside an IPv4-mapped IPv6 address (`::ffff:192.168.1.50`), as a
+ * dotted quad, or null for any other IPv6 address. */
+function mappedIpv4(literal: string): string | null {
+  const h = parseIpv6(literal);
+  if (!h || h.slice(0, 5).some((g) => g !== 0) || h[5] !== 0xffff) return null;
+  return [h[6] >> 8, h[6] & 0xff, h[7] >> 8, h[7] & 0xff].join(".");
+}
+
+/** True when `literal` (an IPv4 literal, or an IPv6 literal with or without
+ * brackets) is a loopback address: 127.0.0.0/8, `::1`, or 127/8 mapped into
+ * IPv6. A DNS name is never a loopback literal. */
+export function isLoopbackIp(literal: string): boolean {
+  const v6 = ipv6Literal(literal.toLowerCase());
+  if (v6 === null) return parseIpv4(literal)?.[0] === 127;
+  if (isLoopbackV6(v6)) return true;
+  const v4 = mappedIpv4(v6);
+  return v4 !== null && parseIpv4(v4)?.[0] === 127;
+}
+
+/** True when `literal` (an IPv4 literal, or an IPv6 literal with or without
+ * brackets) is loopback or inside a range {@link normaliseAndCheckHost}
+ * admits: the private IPv4 ranges of {@link isPrivateIpv4}, IPv6 ULA and
+ * link-local, or any of those IPv4 ranges mapped into IPv6. A DNS name is
+ * never classified, so a public name that resolves to a private address is
+ * not a private literal. */
+export function isPrivateIp(literal: string): boolean {
+  const v6 = ipv6Literal(literal.toLowerCase());
+  if (v6 === null) return isPrivateIpv4(literal);
+  if (isLoopbackV6(v6) || isPrivateV6Range(v6)) return true;
+  const v4 = mappedIpv4(v6);
+  return v4 !== null && isPrivateIpv4(v4);
+}
+
 export type HostValidationResult =
   | { url: string; host: string; port: number; error?: never; message?: never }
   | { error: string; message: string; url?: never; host?: never; port?: never };

@@ -21,6 +21,7 @@ import * as ReactDom from "react-dom";
 import * as ReactDomClient from "react-dom/client";
 import * as JsxRuntime from "react/jsx-runtime";
 
+import YAML from "yaml";
 import { fetchRegistryArchive, sha256Hex, type ArchivePin } from "./archive-pin";
 import { InlineHostError, type InlinePluginModule } from "./inline-host-types";
 import {
@@ -108,11 +109,40 @@ function gcsRelative(entrypoint: string): string {
 }
 
 /**
+ * Path → SHA-256 for the payload files a verified manifest declares
+ * (`agent.payloads`). A payload is downloaded after install, so the archive
+ * signature does not cover it; the manifest that declares its digest does.
+ */
+function manifestPayloadDigests(manifestText: string): Map<string, string> {
+  const out = new Map<string, string>();
+  let doc: unknown;
+  try {
+    doc = YAML.parse(manifestText, { strict: false });
+  } catch {
+    return out;
+  }
+  if (typeof doc !== "object" || doc === null || !("agent" in doc)) return out;
+  const agent = doc.agent;
+  if (typeof agent !== "object" || agent === null || !("payloads" in agent)) return out;
+  const payloads = agent.payloads;
+  if (!Array.isArray(payloads)) return out;
+  for (const p of payloads as unknown[]) {
+    if (typeof p !== "object" || p === null || !("path" in p) || !("sha256" in p)) continue;
+    const { path, sha256 } = p;
+    if (typeof path === "string" && typeof sha256 === "string") {
+      out.set(path.replace(/^\.\//, ""), sha256.toLowerCase());
+    }
+  }
+  return out;
+}
+
+/**
  * Load an inline module from the node agent that runs the plugin, over the
  * node's LAN address or its ground station's relay (through the same-origin
  * proxy on an HTTPS page). The entrypoint is read from the manifest the
- * attestation signs, and signed assets are checked against their attested
- * digests as they are read.
+ * attestation signs. An asset is served only when a signed digest covers it
+ * (an archive file the signature lists, or a payload the signed manifest
+ * declares) and its bytes match that digest; any other path is refused.
  */
 export async function loadInlineFromNode(
   src: { deviceId: string; pluginId: string },
@@ -144,17 +174,25 @@ export async function loadInlineFromNode(
     manifestBytes,
     attestation,
   });
+  // Digests the signature vouches for: archive files directly, payloads
+  // through the (already verified) manifest that declares them.
   const signedDigest = new Map(
     attestation.files.filter((f) => f.payload !== true).map((f) => [f.path, f.sha256]),
   );
+  for (const [path, sha256] of manifestPayloadDigests(new TextDecoder().decode(manifestBytes))) {
+    if (!signedDigest.has(path)) signedDigest.set(path, sha256);
+  }
   return {
     kind: "inline",
     module: await importInlineModule(moduleBytes),
     trust,
     readAsset: async (path) => {
-      const bytes = new Uint8Array(await client.getGcsAsset(pluginId, path));
       const expected = signedDigest.get(`gcs/${path}`);
-      if (expected !== undefined && expected !== (await sha256Hex(bytes))) {
+      if (expected === undefined) {
+        throw new InlineHostError("asset_unavailable", `gcs/${path} is not covered by the plugin's signature`);
+      }
+      const bytes = new Uint8Array(await client.getGcsAsset(pluginId, path));
+      if (expected !== (await sha256Hex(bytes))) {
         throw new InlineHostError("asset_unavailable", `gcs/${path} does not match its signed digest`);
       }
       return new Blob([toArrayBuffer(bytes)]);

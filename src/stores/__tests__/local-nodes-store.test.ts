@@ -1,9 +1,10 @@
 /**
  * @license GPL-3.0-only
  *
- * Unit tests for the local-nodes registry identity reconciliation: in-place
- * deviceId migration (re-flash heal) and host de-duplication (re-pair replaces
- * the stale-identity ghost instead of leaving a second offline card).
+ * Unit tests for the local-nodes registry: in-place deviceId migration
+ * (re-flash heal), what pairing a node at an address another node held does
+ * to that node, presence coalescing, cross-tab writes, and how the desktop
+ * app persists keys.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -103,32 +104,35 @@ describe("migrateNode", () => {
 });
 
 describe("reconcileHost", () => {
-  it("drops a different-identity node reachable at the same hostname", () => {
+  it("keeps a keyed node that shared the address, and marks the address taken", () => {
     const s = useLocalNodesStore.getState();
-    s.addNode(node({ deviceId: "ghost", hostname: "http://192.168.0.5:8080" }));
-    s.addNode(node({ deviceId: "live", hostname: "http://192.168.0.5:8080" }));
+    s.addNode(node({ deviceId: "old", apiKey: "only-copy", hostname: "http://192.168.0.5:8080" }));
+    s.addNode(node({ deviceId: "new", hostname: "http://192.168.0.5:8080" }));
 
-    s.reconcileHost({ hostname: "http://192.168.0.5:8080" }, "live");
+    s.reconcileHost({ hostname: "http://192.168.0.5:8080" }, "new");
 
-    expect(nodes().map((n) => n.deviceId)).toEqual(["live"]);
+    const old = nodes().find((n) => n.deviceId === "old");
+    expect(old?.apiKey).toBe("only-copy");
+    expect(old?.hostTakenBy?.deviceId).toBe("new");
+    expect(nodes().find((n) => n.deviceId === "new")?.hostTakenBy).toBeUndefined();
   });
 
   it("matches a bare IPv4 against a node's full hostname URL", () => {
     const s = useLocalNodesStore.getState();
-    s.addNode(node({ deviceId: "ghost", hostname: "http://192.168.0.5:8080" }));
-    s.addNode(node({ deviceId: "live", hostname: "http://ados-x.local:8080" }));
+    s.addNode(node({ deviceId: "old", hostname: "http://192.168.0.5:8080" }));
+    s.addNode(node({ deviceId: "new", hostname: "http://ados-x.local:8080" }));
 
-    // Pairing the live box by IPv4 should clear the ghost on the same IP.
-    s.reconcileHost({ ipv4: "192.168.0.5" }, "live");
+    s.reconcileHost({ ipv4: "192.168.0.5" }, "new");
 
-    expect(nodes().map((n) => n.deviceId)).toEqual(["live"]);
+    expect(nodes().find((n) => n.deviceId === "old")?.hostTakenBy?.deviceId).toBe("new");
   });
 
-  it("matches an mDNS host against a node carrying the same mdnsHost", () => {
+  it("drops a keyless leftover at the same mDNS host", () => {
     const s = useLocalNodesStore.getState();
     s.addNode(
       node({
         deviceId: "ghost",
+        apiKey: "",
         hostname: "http://10.0.0.9:8080",
         mdnsHost: "ados-21b0db.local",
       }),
@@ -137,18 +141,31 @@ describe("reconcileHost", () => {
     expect(nodes()).toHaveLength(0);
   });
 
-  it("keeps nodes on unrelated hosts", () => {
+  it("leaves nodes on unrelated hosts untouched", () => {
     const s = useLocalNodesStore.getState();
     s.addNode(node({ deviceId: "other", hostname: "http://192.168.0.99:8080" }));
+    const before = nodes();
     s.reconcileHost({ hostname: "http://192.168.0.5:8080" }, "live");
-    expect(nodes().map((n) => n.deviceId)).toEqual(["other"]);
+    expect(nodes()).toBe(before);
   });
 
-  it("never drops the kept node even if it shares the host", () => {
+  it("never marks the kept node even if it shares the host", () => {
     const s = useLocalNodesStore.getState();
     s.addNode(node({ deviceId: "live", hostname: "http://192.168.0.5:8080" }));
     s.reconcileHost({ hostname: "http://192.168.0.5:8080" }, "live");
-    expect(nodes().map((n) => n.deviceId)).toEqual(["live"]);
+    expect(nodes()[0].hostTakenBy).toBeUndefined();
+  });
+
+  it("clears the mark once the node answers at its address or the address changes", () => {
+    const s = useLocalNodesStore.getState();
+    s.addNode(node({ deviceId: "a", hostname: "http://192.168.0.5:8080" }));
+    s.markHostTaken("a", "b");
+    s.setNodeHostname("a", "192.168.0.7");
+    expect(nodes()[0].hostTakenBy).toBeUndefined();
+
+    s.markHostTaken("a", "b");
+    s.recordReachOk("a", "http://192.168.0.7:8080");
+    expect(nodes()[0].hostTakenBy).toBeUndefined();
   });
 });
 
@@ -192,5 +209,75 @@ describe("touchLastSeen (presence debounce)", () => {
     const arr2 = nodes();
     expect(arr2).not.toBe(arr1); // fresh stamp → new array (stays live)
     expect(arr2[0].lastSeenAt).toBe(1_000_000 + 21_000);
+  });
+});
+
+const STORE_KEY = "altcmd:local-nodes";
+
+/** What another tab does when it pairs a node: rewrite the whole registry. */
+function otherTabAdds(added: LocalNode) {
+  const value = JSON.parse(localStorage.getItem(STORE_KEY)!) as {
+    state: { nodes: LocalNode[] };
+  };
+  value.state.nodes.push(added);
+  localStorage.setItem(STORE_KEY, JSON.stringify(value));
+}
+
+function persistedIds(): string[] {
+  const value = JSON.parse(localStorage.getItem(STORE_KEY)!) as {
+    state: { nodes: LocalNode[] };
+  };
+  return value.state.nodes.map((n) => n.deviceId);
+}
+
+describe("cross-tab writes", () => {
+  it("a stale tab's presence stamp keeps a node another tab just paired", () => {
+    const s = useLocalNodesStore.getState();
+    s.addNode(node({ deviceId: "a" }));
+    otherTabAdds(node({ deviceId: "b", apiKey: "b-key" }));
+
+    s.touchLastSeen("a");
+
+    expect(persistedIds()).toEqual(["a", "b"]);
+    expect(nodes().find((n) => n.deviceId === "b")?.apiKey).toBe("b-key");
+  });
+
+  it("takes another tab's registry when its storage event arrives", async () => {
+    useLocalNodesStore.getState().addNode(node({ deviceId: "a" }));
+    otherTabAdds(node({ deviceId: "b" }));
+
+    window.dispatchEvent(new StorageEvent("storage", { key: STORE_KEY }));
+
+    await vi.waitFor(() => {
+      expect(nodes().map((n) => n.deviceId)).toEqual(["a", "b"]);
+    });
+  });
+});
+
+describe("desktop key sealing", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, "electronAPI");
+  });
+
+  it("persists only ciphertext and opens it again on rehydrate", async () => {
+    Object.defineProperty(window, "electronAPI", {
+      configurable: true,
+      value: {
+        localNodes: {
+          encrypt: async (key: string) => btoa(`sealed:${key}`),
+          decrypt: async (sealed: string) => atob(sealed).slice("sealed:".length),
+        },
+      },
+    });
+
+    useLocalNodesStore.getState().addNode(node({ deviceId: "d", apiKey: "secret-key" }));
+
+    await vi.waitFor(() => {
+      expect(localStorage.getItem(STORE_KEY)).toContain("safestorage:");
+    });
+    expect(localStorage.getItem(STORE_KEY)).not.toContain("secret-key");
+
+    await useLocalNodesStore.persist.rehydrate();
+    expect(nodes()[0].apiKey).toBe("secret-key");
   });
 });

@@ -31,6 +31,7 @@
 
 import { isPrivateIpv4 } from "../host-validation";
 import { PairClientError } from "./errors";
+import { PROXY_ERROR_HEADER } from "./transport";
 
 /** Which half of the pair flow failed. Selects the unpair-specific copy; probe
  * and claim share the matrix because the operator-visible condition (and the
@@ -50,8 +51,10 @@ export interface PairFailureInput {
   /** `detail` / `message` / `error` from the agent's JSON error body. Shown
    * only on a 5xx, where it names the fault the operator has to clear. */
   detail?: string | null;
-  /** The Mission Control proxy's own error code when the proxy failed before
-   * reaching the agent (`upstream_unreachable`, `host_not_private`, …). */
+  /** The Mission Control proxy's own error code when the proxy refused or
+   * failed before an agent answered (`upstream_unreachable`,
+   * `host_not_private`, `local_only`, …). Null when the status and body came
+   * from the agent. */
   proxyError?: string | null;
   /** True when this Mission Control is served from off the operator's network
    * (https from a non-loopback host), so its server-side proxy hop can never
@@ -79,24 +82,48 @@ export function isServedRemotely(): boolean {
   );
 }
 
+/** Proxy codes that mean the address itself was refused before any request. */
+const BAD_ADDRESS_CODES: Record<string, true> = {
+  host_required: true,
+  bad_host: true,
+  bad_scheme: true,
+  userinfo_not_allowed: true,
+  port_not_allowed: true,
+  bad_path: true,
+};
+
+/** Proxy codes that mean something answered, but not as an agent does. */
+const NOT_AN_AGENT_CODES: Record<string, true> = {
+  upstream_redirect: true,
+  upstream_too_large: true,
+  upstream_not_json: true,
+};
+
 /**
  * Map one transport condition onto the operator-facing failure. Pure.
  *
  * The matrix, in evaluation order:
  *
- * | condition                              | key                        |
- * |----------------------------------------|----------------------------|
- * | proxy refused the host as non-private  | `hostNotPrivateError`      |
- * | releasing a node failed, any cause     | `unpairFailedError`        |
- * | nothing answered, GCS hosted off-LAN   | `pairHostedRemotelyError`  |
- * | nothing answered, GCS on the LAN       | `pairUnreachableError`     |
- * | 401 — answered, key refused            | `pairKeyRejectedError`     |
- * | 403 — answered, dashboard PIN unset    | `pairPinRequiredError`     |
- * | 404 — answered, no pairing endpoint    | `pairRouteMissingError`    |
- * | 408 / 504 — answered, did not finish   | `pairTimedOutError`        |
- * | 502 / 503 — answered, still starting   | `pairAgentNotReadyError`   |
- * | other 5xx — answered, internal fault   | `pairAgentFaultError`      |
- * | other 4xx — answered and refused       | `pairRefusedError`         |
+ * | condition                                   | key                        |
+ * |---------------------------------------------|----------------------------|
+ * | proxy refused the host as non-private       | `hostNotPrivateError`      |
+ * | releasing a node failed, any cause          | `unpairFailedError`        |
+ * | nothing answered, GCS hosted off-LAN        | `pairHostedRemotelyError`  |
+ * | nothing answered, GCS on the LAN            | `pairUnreachableError`     |
+ * | proxy: the name did not resolve             | `pairNameUnresolvedError`  |
+ * | proxy: the address is malformed             | `pairBadAddressError`      |
+ * | proxy: the answer was not an agent's        | `pairNotAnAgentError`      |
+ * | proxy: any other refusal of its own         | `pairProxyRefusedError`    |
+ * | 401 — answered, key refused                 | `pairKeyRejectedError`     |
+ * | 403 — answered, dashboard PIN unset         | `pairPinRequiredError`     |
+ * | 404 — answered, no pairing endpoint         | `pairRouteMissingError`    |
+ * | 408 / 504 — answered, did not finish        | `pairTimedOutError`        |
+ * | 502 / 503 — answered, still starting        | `pairAgentNotReadyError`   |
+ * | other 5xx — answered, internal fault        | `pairAgentFaultError`      |
+ * | other 4xx — answered and refused            | `pairRefusedError`         |
+ *
+ * The status rows apply only to an answer the agent gave: a refusal the
+ * proxy produced itself never reads as the agent's.
  */
 export function pairFailure(input: PairFailureInput): PairClientError {
   // Name the address the way the operator typed it: no scheme, and no port
@@ -148,6 +175,36 @@ export function pairFailure(input: PairFailureInput): PairClientError {
           `Nothing answered at ${host}.`,
           details,
         );
+  }
+
+  const proxyCode = input.proxyError ?? null;
+  if (proxyCode === "host_unresolved") {
+    return new PairClientError(
+      "pairNameUnresolvedError",
+      `${host} did not resolve to an address on your network.`,
+      details,
+    );
+  }
+  if (proxyCode !== null && BAD_ADDRESS_CODES[proxyCode] === true) {
+    return new PairClientError(
+      "pairBadAddressError",
+      `${host} is not an address Mission Control can pair with.`,
+      details,
+    );
+  }
+  if (proxyCode !== null && NOT_AN_AGENT_CODES[proxyCode] === true) {
+    return new PairClientError(
+      "pairNotAnAgentError",
+      `Something at ${host} answered, but not as an ADOS agent.`,
+      details,
+    );
+  }
+  if (proxyCode !== null) {
+    return new PairClientError(
+      "pairProxyRefusedError",
+      `Mission Control's server would not contact ${host} for this page.`,
+      details,
+    );
   }
 
   switch (input.status) {
@@ -210,11 +267,15 @@ export function pairFailure(input: PairFailureInput): PairClientError {
  * itself threw) plus its already-parsed JSON body, logging the raw transport
  * facts for a developer on the way through. This is the only place the status
  * code is recorded, and it goes to the console — never into copy.
+ *
+ * A refusal the Mission Control proxy produced itself carries its code in the
+ * `PROXY_ERROR_HEADER` response header; without that header the answer is the
+ * agent's, relayed verbatim, whatever its body says.
  */
 export function pairFailureFromResponse(
   operation: PairOperation,
   host: string,
-  resp: { status: number; statusText?: string },
+  resp: { status: number; statusText?: string; headers?: Headers },
   body: unknown,
 ): PairClientError {
   const parsed =
@@ -231,7 +292,7 @@ export function pairFailureFromResponse(
     // The agent answers `{detail}`; the Mission Control proxy answers
     // `{error, message}`. Take whichever is present.
     detail: pick("detail") ?? pick("message"),
-    proxyError: pick("error"),
+    proxyError: resp.headers?.get(PROXY_ERROR_HEADER) || null,
     servedRemotely: isServedRemotely(),
   };
   console.warn(`[local-pair] ${operation} failed`, {

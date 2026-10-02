@@ -75,6 +75,9 @@ const BUCKET_BY_PAIR_CODE: Record<string, ReachErrorBucket> = {
   pairRouteMissingError: "refused",
   pairRefusedError: "refused",
   hostNotPrivateError: "proxy-refused",
+  pairBadAddressError: "proxy-refused",
+  pairProxyRefusedError: "proxy-refused",
+  pairNameUnresolvedError: "no-answer",
   pairAgentFaultError: "fault",
   pairUnreachableError: "no-answer",
   pairHostedRemotelyError: "no-answer",
@@ -91,6 +94,25 @@ export function reachErrorBucket(error: unknown): ReachErrorBucket {
   // transport failure, which is the same observable as nothing answering.
   if (error instanceof TypeError) return "no-answer";
   return "unknown";
+}
+
+/** What a LAN-only node says on an https page. */
+export const SECURE_PAGE_LAN_MESSAGE =
+  "This secure page can't reach LAN nodes directly. Open Mission Control over http on the local network, or use the desktop app.";
+
+/**
+ * True when this page cannot reach the LAN node `deviceId` at all: the page
+ * is served over https, so the browser blocks plain-HTTP calls to the node,
+ * and the node has no cloud relay to use instead (no cloud-paired row among
+ * `cloudPaired`). Cloud relay is opt-in, so a LAN-only node is never moved
+ * onto it.
+ */
+export function lanBlockedOnSecurePage(
+  deviceId: string,
+  cloudPaired: ReadonlyArray<{ deviceId: string }>,
+): boolean {
+  if (typeof window === "undefined" || window.location.protocol !== "https:") return false;
+  return !cloudPaired.some((d) => d.deviceId === deviceId);
 }
 
 /**

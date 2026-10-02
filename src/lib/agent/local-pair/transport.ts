@@ -59,6 +59,12 @@ export const LAN_PAIR_UPSTREAM_TIMEOUT_MS = 8000;
  * its own unreachable reply before the browser gives up on it. */
 export const FETCH_TIMEOUT_MS = LAN_PAIR_UPSTREAM_TIMEOUT_MS + 2000;
 
+/** Response header Mission Control's own server sets, carrying its error code,
+ * on every refusal it produces itself (the `/api/lan-pair/*` proxy and the
+ * local-only route gate). Its absence means the status and body came from the
+ * agent, relayed verbatim. */
+export const PROXY_ERROR_HEADER = "x-ados-proxy-error";
+
 /** True when a window exists, so the calls should be routed through the
  * Mission Control proxy rather than a direct cross-origin fetch. */
 export function shouldUseProxy(): boolean {

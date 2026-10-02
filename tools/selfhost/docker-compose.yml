@@ -72,6 +72,8 @@ services:
       - "4000:4000"
     environment:
       - NEXT_PUBLIC_CONVEX_URL=${NEXT_PUBLIC_CONVEX_URL}
+      - ADOS_LOCAL_ROUTES=${ADOS_LOCAL_ROUTES:-}
+      - ADOS_LOCAL_ROUTE_HOSTS=${ADOS_LOCAL_ROUTE_HOSTS:-}
 
   mosquitto:
     image: eclipse-mosquitto:2

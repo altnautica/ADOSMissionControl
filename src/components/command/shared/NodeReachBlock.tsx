@@ -25,16 +25,26 @@
  * Self-contained: it resolves everything from `local-nodes-store` by bare
  * device id, so any node surface mounts it with one line and no plumbing.
  *
+ * Above the reach line it names the three states in which the node cannot be
+ * used from here although nothing is wrong with it: this https page cannot
+ * reach a LAN-only node; the node answered but refused this browser's key; or
+ * another agent now answers at the node's address. The last two offer a
+ * re-pair.
+ *
  * @license GPL-3.0-only
  */
 
 import { useTranslations } from "next-intl";
-import { ArrowRight, Wifi, WifiOff } from "lucide-react";
+import { ArrowRight, KeyRound, ShieldAlert, Wifi, WifiOff } from "lucide-react";
+import type { ReactNode } from "react";
 import { useLocalNodesStore, useReachOkLiveStore } from "@/stores/local-nodes-store";
+import { usePairingStore } from "@/stores/pairing-store";
 import { getFreshness, useClockTick } from "@/lib/agent/freshness";
+import { openPairNode } from "@/components/shared/link-up/link-up-actions";
 import {
   alternateReach,
   bucketSuggestsOtherAddress,
+  lanBlockedOnSecurePage,
   reachDisplayHost,
   REACH_ERROR_BUCKETS,
   type ReachErrorBucket,
@@ -56,11 +66,36 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
   const setNodeHostname = useLocalNodesStore((s) => s.setNodeHostname);
   // The persisted stamp is coalesced; the live one moves on every success.
   const liveOkAt = useReachOkLiveStore((s) => (deviceId ? s.at[deviceId] : undefined));
+  const cloudPaired = usePairingStore((s) => s.pairedDrones);
 
-  // Not a LAN-paired node, or nothing has been tried yet: say nothing.
+  // Not a LAN-paired node: say nothing.
   if (!node || !deviceId) return null;
   const { lastReachOk, lastReachError } = node;
-  if (!lastReachOk && !lastReachError) return null;
+  const host = reachDisplayHost(node.hostname);
+
+  let notice: ReactNode = null;
+  if (lanBlockedOnSecurePage(deviceId, cloudPaired)) {
+    notice = <ReachNotice icon={<ShieldAlert size={12} />} text={t("securePageBlocked")} />;
+  } else if (node.hostTakenBy) {
+    notice = (
+      <ReachNotice
+        icon={<WifiOff size={12} />}
+        text={t("hostTaken", { host })}
+        action={t("rePair")}
+      />
+    );
+  } else if (node.keyRejectedAt !== undefined) {
+    notice = (
+      <ReachNotice
+        icon={<KeyRound size={12} />}
+        text={t("keyRejected", { host })}
+        action={t("rePair")}
+      />
+    );
+  }
+
+  // Nothing has been tried yet and nothing blocks the node: say nothing.
+  if (!lastReachOk && !lastReachError) return notice;
 
   const failing = lastReachError !== undefined;
   const bucket = lastReachError ? asBucket(lastReachError.error) : null;
@@ -69,7 +104,7 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
   const alternate =
     bucket !== null && bucketSuggestsOtherAddress(bucket) ? alternateReach(node) : null;
 
-  return (
+  const reachLine = (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
       {failing ? (
         <WifiOff size={12} className="shrink-0 text-status-warning" />
@@ -114,6 +149,44 @@ export function NodeReachBlock({ deviceId }: NodeReachBlockProps) {
           className="inline-flex items-center gap-1 rounded border border-border-default px-1.5 py-0.5 font-medium text-text-secondary transition-colors hover:border-accent-primary/40 hover:text-text-primary"
         >
           {t("useThisAddress", { host: reachDisplayHost(alternate) })}
+          <ArrowRight size={10} />
+        </button>
+      )}
+    </div>
+  );
+  if (!notice) return reachLine;
+  return (
+    <div className="space-y-1">
+      {notice}
+      {reachLine}
+    </div>
+  );
+}
+
+/** One blocking state, its sentence, and the re-pair action when one helps. */
+function ReachNotice({
+  icon,
+  text,
+  action,
+}: {
+  icon: ReactNode;
+  text: string;
+  action?: string;
+}) {
+  return (
+    <div
+      role="status"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-status-warning"
+    >
+      <span className="shrink-0">{icon}</span>
+      <span className="text-text-secondary">{text}</span>
+      {action && (
+        <button
+          type="button"
+          onClick={openPairNode}
+          className="inline-flex items-center gap-1 rounded border border-border-default px-1.5 py-0.5 font-medium text-text-secondary transition-colors hover:border-accent-primary/40 hover:text-text-primary"
+        >
+          {action}
           <ArrowRight size={10} />
         </button>
       )}

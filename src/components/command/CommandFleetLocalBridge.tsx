@@ -14,6 +14,7 @@
 
 import { useEffect, useRef } from "react";
 import { AgentClient } from "@/lib/agent/agent-client/client";
+import { AgentHttpError } from "@/lib/agent/agent-client/transport";
 import { probeAgent } from "@/lib/agent/local-pair-client";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
@@ -65,10 +66,11 @@ export function CommandFleetLocalBridge({
       }
     }
 
-    // Disabled or wrong protocol → tear everything down. Browsers
-    // block mixed-content fetches to http://*.local from an https
-    // origin, so https deployments route LAN nodes through the cloud
-    // relay instead (see `selectNode` in node-click-handler).
+    // Disabled or wrong protocol → tear everything down. Browsers block
+    // mixed-content fetches to http://*.local from an https origin, so an
+    // https page cannot poll a LAN node at all. The node's own surfaces say
+    // so (see `lanBlockedOnSecurePage` in node-click-handler); a LAN-only
+    // node is never quietly moved onto the cloud relay.
     if (!enabled) {
       stopAll();
       return;
@@ -114,35 +116,35 @@ export function CommandFleetLocalBridge({
           .nodes.find((n) => n.deviceId === deviceId);
         if (!live) return;
 
-        // Reverse-reconcile pairing identity so a stale card self-heals.
-        // probeAgent hits the unauthenticated /api/pairing/info. Act ONLY on a
-        // definitive "reachable but not ours" signal: the agent now reports a
-        // different device id (the box at this hostname was re-flashed or
-        // reassigned), or it is no longer paired (it was unpaired from its own
-        // webapp, another browser, or the CLI). An unreachable probe is
-        // transient — an offline-but-paired drone — and must never drop the row.
+        // Reverse-reconcile pairing identity. probeAgent hits the
+        // unauthenticated /api/pairing/info. Act ONLY on a definitive
+        // "reachable but not ours" signal. An unreachable probe is transient —
+        // an offline-but-paired drone — and never touches the row.
         let probeReachable = isDemoMode();
         if (!isDemoMode()) {
           try {
             const info = await probeAgent(live.hostname);
             if (!alive()) return;
             probeReachable = true;
-            // Provenance: this is the one place the GCS learns which of a
-            // node's up-to-three candidate reaches actually answers. Record
-            // it so the node surface can name the address carrying the
-            // session instead of leaving the operator to guess.
-            useLocalNodesStore.getState().recordReachOk(deviceId, live.hostname);
-            const staleIdentity = isStaleLocalIdentity(info, deviceId);
-            if (staleIdentity) {
-              stop(deviceId);
+            if (isStaleLocalIdentity(info, deviceId)) {
               useCommandFleetStore.getState().removeCloudStatuses([deviceId]);
-              // Leave the node in place when the operator is focused on it: the
-              // connect path has already flagged `stalePairing`, so the detail
-              // panel shows a truthful re-pair / remove prompt the operator can
-              // act on, rather than the card vanishing from under them. Other
-              // (background) stale ghosts still self-heal silently. The
-              // selection id is the canonical `node:<deviceId>` (see node-id +
-              // use-fleet-nodes).
+              if (info.deviceId.length > 0 && info.deviceId !== deviceId) {
+                // A different agent answers at this address: the lease moved
+                // to another box, or this box was re-flashed under a new id.
+                // Either way this node's key is the only copy, so the row
+                // stays, marked, and the loop keeps probing in case the
+                // address is changed or comes back.
+                useLocalNodesStore.getState().markHostTaken(deviceId, info.deviceId);
+                return;
+              }
+              // The agent itself reports it is no longer paired, so the key is
+              // dead. Leave the node in place when the operator is focused on
+              // it: the connect path has already flagged `stalePairing`, so the
+              // detail panel shows a truthful re-pair / remove prompt rather
+              // than the card vanishing from under them. A background card is
+              // dropped. The selection id is the canonical `node:<deviceId>`
+              // (see node-id + use-fleet-nodes).
+              stop(deviceId);
               const focused =
                 usePairingStore.getState().selectedPairedId ===
                 nodeIdForDevice(deviceId);
@@ -151,6 +153,11 @@ export function CommandFleetLocalBridge({
               }
               return;
             }
+            // Provenance: this is the one place the GCS learns which of a
+            // node's up-to-three candidate reaches actually answers as this
+            // node. Record it so the node surface can name the address
+            // carrying the session instead of leaving the operator to guess.
+            useLocalNodesStore.getState().recordReachOk(deviceId, live.hostname);
           } catch (e) {
             if (!alive()) return;
             // Unreachable / probe failed — transient for presence purposes, so
@@ -186,6 +193,7 @@ export function CommandFleetLocalBridge({
           const client = new AgentClient(live.hostname, live.apiKey);
           const resp = await client.getFullStatus();
           if (!alive()) return;
+          useLocalNodesStore.getState().setKeyRejected(deviceId, false);
           if (!resp) return; // older agent that lacks /api/status/full
           const row = mapFullStatusToCloudStatus(resp, {
             deviceId,
@@ -196,10 +204,18 @@ export function CommandFleetLocalBridge({
           });
           useCommandFleetStore.getState().upsertCloudStatuses([row]);
           useLocalNodesStore.getState().touchLastSeen(deviceId);
-        } catch {
-          // Swallow — the tile degrades to offline via the freshness
-          // watchdog reading `lastSeenAt`. We do not want a single bad
-          // network round to crash the overview grid.
+        } catch (e) {
+          if (!alive()) return;
+          // The node answered and refused this browser's key: it is up, so
+          // presence is stamped, and the node's surfaces offer a re-pair
+          // instead of an offline tile.
+          if (e instanceof AgentHttpError && (e.status === 401 || e.status === 403)) {
+            useLocalNodesStore.getState().setKeyRejected(deviceId, true);
+            useLocalNodesStore.getState().touchLastSeen(deviceId);
+          }
+          // Anything else: the tile degrades to offline via the freshness
+          // watchdog reading `lastSeenAt`. A single bad network round must not
+          // crash the overview grid.
         }
       }
 

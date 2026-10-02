@@ -31,6 +31,9 @@ import { GroundStationVideoCard } from "../shared/GroundStationVideoCard";
 import { PairedDroneCard } from "../shared/PairedDroneCard";
 import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewGrid, OverviewTile } from "./OverviewGrid";
+import { NodeReachBlock } from "../shared/NodeReachBlock";
+import { usePairingStore } from "@/stores/pairing-store";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 
 /** Cadence of the summary poll; the cards age out after a few misses. */
 const GS_SUMMARY_POLL_MS = 3000;
@@ -49,6 +52,7 @@ export function GroundStationOverview({ name }: { name?: string }) {
   const fetchLogs = useAgentSystemStore((s) => s.fetchLogs);
   const restartService = useAgentSystemStore((s) => s.restartService);
   const restartAll = useAgentSystemStore((s) => s.restartAll);
+  const selectedNodeId = usePairingStore((s) => s.selectedPairedId);
 
   useEffect(() => {
     if (connected) {
@@ -101,7 +105,18 @@ export function GroundStationOverview({ name }: { name?: string }) {
   }, [agentUrl, apiKey, subscribeUplinkWs]);
 
   if (!status) {
-    if (!connected) return <AgentDisconnectedPage />;
+    if (!connected) {
+      return (
+        <>
+          {/* Why this browser cannot use the node, when the reason is known
+              (secure page, refused key, address taken by another agent). */}
+          <div className="px-4 pt-4">
+            <NodeReachBlock deviceId={deviceIdFromNodeId(selectedNodeId)} />
+          </div>
+          <AgentDisconnectedPage />
+        </>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />

@@ -25,8 +25,10 @@ import messages from "../../../../../locales/en.json";
 import {
   isServedRemotely,
   pairFailure,
+  pairFailureFromResponse,
   type PairFailureInput,
 } from "../failure-copy";
+import { PROXY_ERROR_HEADER } from "../transport";
 
 const HOST = "http://testnode.local:8080";
 
@@ -85,6 +87,31 @@ const MATRIX: ReadonlyArray<{
     condition: "the proxy could not reach the agent from its own server",
     input: { status: 502, proxyError: "upstream_unreachable" },
     code: "pairUnreachableError",
+  },
+  {
+    condition: "the proxy could not resolve the name",
+    input: { status: 502, proxyError: "host_unresolved" },
+    code: "pairNameUnresolvedError",
+  },
+  {
+    condition: "the proxy refused a page served off the local network",
+    input: { status: 403, proxyError: "local_only" },
+    code: "pairProxyRefusedError",
+  },
+  {
+    condition: "the proxy refused a request from another origin",
+    input: { status: 403, proxyError: "cross_origin" },
+    code: "pairProxyRefusedError",
+  },
+  {
+    condition: "the proxy refused a port other than the agent's",
+    input: { status: 400, proxyError: "port_not_allowed" },
+    code: "pairBadAddressError",
+  },
+  {
+    condition: "something answered with a redirect instead of an agent reply",
+    input: { status: 502, proxyError: "upstream_redirect" },
+    code: "pairNotAnAgentError",
   },
   {
     condition: "401 — the agent answered and refused this browser's key",
@@ -239,6 +266,25 @@ describe("pair failure matrix", () => {
     ) => string)("codeNoLanMatchError", { hint: "" });
     expect(message.toLowerCase()).not.toContain("cloud relay");
     expect(message).toContain("hostname or IP");
+  });
+
+  it("reads a proxy refusal from the response header, not from the body", () => {
+    const fromProxy = pairFailureFromResponse(
+      "probe",
+      HOST,
+      { status: 403, headers: new Headers({ [PROXY_ERROR_HEADER]: "cross_origin" }) },
+      { error: "cross_origin", message: "Origin is not this site" },
+    );
+    expect(fromProxy.code).toBe("pairProxyRefusedError");
+
+    // The same status and body relayed from the agent is the agent's answer.
+    const fromAgent = pairFailureFromResponse(
+      "probe",
+      HOST,
+      { status: 403, headers: new Headers() },
+      { error: "cross_origin" },
+    );
+    expect(fromAgent.code).toBe("pairPinRequiredError");
   });
 });
 

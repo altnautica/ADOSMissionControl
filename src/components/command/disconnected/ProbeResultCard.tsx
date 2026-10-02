@@ -182,11 +182,11 @@ function ProbeResultCardInner({
     try {
       const claim = await pairLocally(probe.hostname, ctrl.signal);
       if (!mountedRef.current) return;
-      // Drop any prior card reachable at the same host under a different
-      // device id: this box re-identified (a re-flash mints a new
-      // machine-id-derived device id), so the old entry is a dead ghost
-      // whose stale key no longer validates. Reconciling here means a
-      // re-pair REPLACES it instead of leaving a second offline card.
+      // Any other card reachable at this node's addresses is no longer there:
+      // either this box re-identified (a re-flash mints a new device id) or
+      // DHCP handed its old address on. That card keeps its key (the only
+      // copy) and is marked as having lost its address, so the operator can
+      // move it or remove it; it is never deleted on an address match.
       useLocalNodesStore.getState().reconcileHost(
         { hostname: probe.hostname, ipv4: probe.ipv4, mdnsHost: claim.mdnsHost },
         claim.deviceId,
@@ -214,10 +214,11 @@ function ProbeResultCardInner({
         lastSeenAt: Date.now(),
       });
       // The canonical local-node path: tear down whatever session was
-      // attached, select this node, then connect on the LAN (or subscribe to
-      // the relay on an HTTPS page). connect() reports failure through the
-      // store rather than by throwing, so the outcome is what says whether
-      // the node is live.
+      // attached, select this node, then connect on the LAN. An HTTPS page
+      // cannot reach a LAN-only node and says so (`blocked`); it uses the
+      // relay only for a node that is also cloud-paired. connect() reports
+      // failure through the store rather than by throwing, so the outcome is
+      // what says whether the node is live.
       const outcome = await connectLocalNode(claim.deviceId, { onFocusAgent: () => {} });
       if (!mountedRef.current) return;
       if (outcome === "failed" || outcome === "blocked") {

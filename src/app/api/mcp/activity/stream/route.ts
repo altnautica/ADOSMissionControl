@@ -12,10 +12,11 @@
  * not open the stream there.
  *
  * The feed carries every tool name and argument the MCP handled, so it is served
- * only to a same-machine browser: the peer address must be loopback, the page
- * must have been addressed by a loopback host name, and a browser request must
- * come from this origin. `next dev` / `next start` listen on every interface,
- * so without these checks any host on the network could tail the log.
+ * only to a same-machine browser: `checkLocalOnlyRoute` with `loopback` requires
+ * a loopback Host and loopback forwarded hops (and honours the deployment-wide
+ * `ADOS_LOCAL_ROUTES=off`), and a browser request must come from this origin.
+ * `next dev` / `next start` listen on every interface, so without these checks
+ * any page on the network could tail the log.
  * @license GPL-3.0-only
  */
 
@@ -23,6 +24,7 @@ import type { NextRequest } from "next/server";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { open, stat } from "node:fs/promises";
+import { checkLocalOnlyRoute } from "@/lib/server/local-only-route";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,35 +36,17 @@ const BACKLOG_LINES = 100;
 /** Most bytes read in one poll; a burst larger than this drains over later polls. */
 const MAX_POLL_BYTES = 256 * 1024;
 
-const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-/** True for a loopback peer address as Node reports it (IPv4, IPv6 or mapped). */
-function isLoopbackAddress(addr: string): boolean {
-  const a = addr.trim().toLowerCase();
-  return a === "::1" || /^(::ffff:)?127\.\d+\.\d+\.\d+$/.test(a);
-}
-
 /** Refuse anything but a same-machine browser page on this origin.
  *
- *  - Peer: Next fills `x-forwarded-for` from the socket's remote address; a
- *    LAN caller reaching the server directly carries its own address there.
- *    Every hop listed must be loopback.
- *  - Host: the page must have been loaded from a loopback name, so a request
- *    addressed to the machine's LAN address is refused.
+ *  - Host and forwarded peers: `checkLocalOnlyRoute` in loopback mode. A
+ *    route handler cannot see the socket address, and a client-supplied
+ *    `x-forwarded-for` survives Next untouched, so the loopback Host is the
+ *    check a browser on another machine cannot pass.
  *  - Origin: a browser marks a cross-site subresource with `Sec-Fetch-Site`,
  *    and a cross-origin request carries `Origin`; either must name this site. */
 function refuseNonLocal(request: Request): Response | null {
-  const peers = (request.headers.get("x-forwarded-for") ?? "")
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (peers.length === 0 || !peers.every(isLoopbackAddress)) {
-    return new Response("forbidden", { status: 403 });
-  }
-  const host = (request.headers.get("host") ?? "").toLowerCase().replace(/:\d+$/, "");
-  if (!LOOPBACK_HOSTS.has(host)) {
-    return new Response("forbidden", { status: 403 });
-  }
+  const local = checkLocalOnlyRoute(request, { loopback: true });
+  if (local) return local;
   const site = request.headers.get("sec-fetch-site");
   if (site !== null && site !== "same-origin" && site !== "none") {
     return new Response("forbidden", { status: 403 });

@@ -50,6 +50,20 @@ impl Tls {
     }
 }
 
+/// How Mission Control's local-network routes (the LAN pairing proxy and the
+/// MCP activity feed) are configured for the address the stack is reached at.
+/// Mission Control already admits loopback, private IP and `*.local` hosts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalRoutes {
+    /// A loopback, private IP or `.local` host: the routes need no setting.
+    Default,
+    /// A private DNS name (single label, `.lan`, `.home.arpa`, `.internal`,
+    /// `.localdomain`): admitted through `ADOS_LOCAL_ROUTE_HOSTS`.
+    AllowHost(String),
+    /// A public domain or a public IP: `ADOS_LOCAL_ROUTES=off`.
+    Off,
+}
+
 /// The full set of collected deploy answers.
 #[derive(Debug, Clone)]
 pub struct DeployConfig {
@@ -251,6 +265,52 @@ impl DeployConfig {
             svc.push(SVC_VIDEO_RELAY);
         }
         svc
+    }
+
+    /// The local-route posture for [`Self::host`]. A public address turns the
+    /// routes off: a GCS reached from the internet must never act on the LAN
+    /// it happens to run on.
+    pub fn local_routes(&self) -> LocalRoutes {
+        use std::net::IpAddr;
+        let host = self
+            .host
+            .trim()
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .trim_end_matches('.')
+            .to_ascii_lowercase();
+        if let Ok(ip) = host.parse::<IpAddr>() {
+            let local = match ip {
+                IpAddr::V4(v4) => {
+                    let [a, b, ..] = v4.octets();
+                    v4.is_private()
+                        || v4.is_loopback()
+                        || v4.is_link_local()
+                        || (a == 100 && (64..=127).contains(&b))
+                }
+                IpAddr::V6(v6) => {
+                    let first = v6.segments()[0];
+                    v6.is_loopback() || (first & 0xfe00) == 0xfc00 || (first & 0xffc0) == 0xfe80
+                }
+            };
+            return if local {
+                LocalRoutes::Default
+            } else {
+                LocalRoutes::Off
+            };
+        }
+        if host == "localhost" || host.ends_with(".local") {
+            return LocalRoutes::Default;
+        }
+        let private_name = !host.contains('.')
+            || [".lan", ".home.arpa", ".internal", ".localdomain"]
+                .iter()
+                .any(|suffix| host.ends_with(suffix));
+        if private_name {
+            LocalRoutes::AllowHost(host)
+        } else {
+            LocalRoutes::Off
+        }
     }
 }
 

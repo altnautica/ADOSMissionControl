@@ -7,10 +7,11 @@
  * (LAN-paired) nodes: it resolves the hostname + apiKey from the
  * local-nodes store (never from caller args, which are empty right
  * after pairing), selects the fleet row, and branches LAN-vs-cloud.
- * On HTTPS, locally-paired nodes go through the cloud relay because
- * the browser blocks mixed-content fetches to ``http://*.local``; on
- * HTTP origins the direct REST path is preferred so the pair stays a
- * single round-trip. `selectNode` routes local nodes through it, sends
+ * On HTTPS the browser blocks mixed-content fetches to ``http://*.local``,
+ * so a locally-paired node is reached through the cloud relay only when
+ * the operator also cloud-paired it; a LAN-only node says the page cannot
+ * reach it and never falls silently onto the relay. On HTTP origins the
+ * direct REST path is used. `selectNode` routes local nodes through it, sends
  * cloud-paired entries to the relay, and dials a node reached only over
  * another node's radio through that ground station's relay-proxy route —
  * or, when the ground station is not paired here, says so rather than
@@ -27,6 +28,7 @@ import {
   relayProxyBaseUrl,
   resolveRelayReach,
 } from "@/lib/nodes/relay-reach";
+import { lanBlockedOnSecurePage, SECURE_PAGE_LAN_MESSAGE } from "@/lib/nodes/local-reach";
 
 /**
  * What selecting a node achieved.
@@ -63,8 +65,10 @@ interface SelectNodeOpts {
  * because the post-pair handoff forwards only the deviceId (the
  * credentials are already persisted by the pair flow). Selects the
  * `local:<deviceId>` fleet row, tears down any prior connection, then
- * connects via the cloud relay on HTTPS or the direct LAN REST path on
- * HTTP. This is the one place local-node connection logic lives.
+ * connects via the direct LAN REST path on HTTP. On HTTPS it uses the cloud
+ * relay when the node is also cloud-paired, and otherwise reports that the
+ * page cannot reach it. This is the one place local-node connection logic
+ * lives.
  */
 export async function connectLocalNode(
   deviceId: string,
@@ -83,8 +87,13 @@ export async function connectLocalNode(
     typeof window !== "undefined" && window.location.protocol === "https:";
   if (onHttps) {
     // Mixed-content block: the browser refuses to fetch http://*.local from
-    // an https origin. The cloud relay is the only reachable path (and only
-    // when the agent beacons there).
+    // an https origin. The cloud relay reaches the node only when the
+    // operator opted it in by cloud-pairing it.
+    if (lanBlockedOnSecurePage(deviceId, usePairingStore.getState().pairedDrones)) {
+      useAgentConnectionStore.setState({ connectionError: SECURE_PAGE_LAN_MESSAGE });
+      opts.onError?.("lan_blocked_by_https");
+      return "blocked";
+    }
     conn.connectCloud(deviceId);
     return "cloud";
   }

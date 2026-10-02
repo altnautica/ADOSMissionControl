@@ -50,4 +50,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return () => ipcRenderer.removeListener("net:close", handler);
     },
   },
+
+  // Paired-node API keys are sealed with the OS key store in the main process;
+  // the renderer persists only the ciphertext.
+  localNodes: {
+    encrypt: (key: string): Promise<string | null> =>
+      ipcRenderer.invoke("localNodes:encrypt", key),
+    decrypt: (sealed: string): Promise<string> =>
+      ipcRenderer.invoke("localNodes:decrypt", sealed),
+  },
 });

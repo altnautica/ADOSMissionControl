@@ -283,6 +283,17 @@ npx convex env set VIDEO_RELAY_SECRET "<same value as the relay's .env>" \
 
 The GCS reads these from the `clientConfig` query at runtime. If you leave them unset, the build falls back to the official hosted deployment's broker and relay, which only work for that instance. A self-hosted deployment must set both so the GCS points at your infrastructure.
 
+### Local-network routes
+
+Mission Control's server also acts on its own network: the LAN pairing proxy (`/api/lan-pair/*`) reaches agents next to the server, and the MCP activity feed streams the local MCP log. These routes answer only a page opened at a loopback address, a private or link-local IP, or a `.local` name, and refuse any request a reverse proxy forwarded for a public client.
+
+| Variable | Effect |
+|---|---|
+| `ADOS_LOCAL_ROUTES=off` | Refuses every local-network route. Set it whenever the GCS is reached by a public domain or IP. `ados-deploy` writes it for a public host. |
+| `ADOS_LOCAL_ROUTE_HOSTS` | Comma-separated extra host names admitted as local, for a private DNS name such as `gcs.lan`. `ados-deploy` writes it for a private name. |
+
+On a public deployment, pair agents from the desktop app or a Mission Control opened on the agents' own network.
+
 ---
 
 ## Step 5: Verify

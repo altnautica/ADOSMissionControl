@@ -21,6 +21,7 @@ vi.mock("node:dns", () => ({
 }));
 
 import { POST as pinStatusPost } from "../pin-status/route";
+import { POST as claimPost } from "../claim/route";
 import { POST as probePost } from "../probe/route";
 import { GET as pluginGetRoute } from "../plugin/route";
 import { POST as visionUploadPost } from "../vision-upload/route";
@@ -87,6 +88,41 @@ describe("caller gate", () => {
       origin: ORIGIN,
     });
     expect(res.status).toBe(415);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a claim from a page served under a public name", async () => {
+    const res = await call(claimPost, { host: "192.168.1.50", user_id: "u" }, {
+      host: "cloud.example.com",
+      "content-type": "application/json",
+      origin: "https://cloud.example.com",
+    });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual(expect.objectContaining({ error: "local_only" }));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a claim relayed for a public client", async () => {
+    const res = await call(claimPost, { host: "192.168.1.50", user_id: "u" }, {
+      "content-type": "application/json",
+      origin: ORIGIN,
+      "x-forwarded-for": "203.0.113.9",
+    });
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a plugin call from a page served under a public name", async () => {
+    const q = new URLSearchParams({
+      host: "192.168.1.50",
+      path: "/api/plugins/com.example.p/manifest",
+    });
+    const res = await pluginGetRoute(
+      new NextRequest(`https://cloud.example.com/api/lan-pair/plugin?${q.toString()}`, {
+        headers: { host: "cloud.example.com", "x-ados-key": "k" },
+      }),
+    );
+    expect(res.status).toBe(403);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

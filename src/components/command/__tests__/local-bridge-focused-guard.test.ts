@@ -1,11 +1,15 @@
 /**
  * @license GPL-3.0-only
  *
- * CommandFleetLocalBridge drops a LAN-paired node whose hostname now answers
- * as a different (or unpaired) agent, except the node the operator is focused
- * on: that one stays so the detail panel can offer re-pair / remove. The poll
- * loop also arms its next tick only after the previous one settles, so a slow
- * agent never stacks overlapping probes.
+ * CommandFleetLocalBridge and a LAN-paired node whose stored address stops
+ * answering as that node:
+ *  - another agent answers there → the node and its key are kept and marked
+ *    `hostTakenBy` (its key exists nowhere else);
+ *  - the agent itself reports it is unpaired → a background card is dropped,
+ *    the focused one stays so the detail panel can offer re-pair / remove.
+ * A node that answers its status call by refusing this browser's key is alive:
+ * presence is stamped and `keyRejectedAt` set, never left to go offline.
+ * The poll loop arms its next tick only after the previous one settles.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -29,14 +33,26 @@ const h = vi.hoisted(() => {
       },
     },
   });
-  return { probeAgent: vi.fn<(hostname: string) => Promise<unknown>>() };
+  return {
+    probeAgent: vi.fn<(hostname: string) => Promise<unknown>>(),
+    getFullStatus: vi.fn<() => Promise<unknown>>(),
+  };
 });
 
 vi.mock("@/lib/agent/local-pair-client", () => ({
   probeAgent: (hostname: string) => h.probeAgent(hostname),
 }));
 
+vi.mock("@/lib/agent/agent-client/client", () => ({
+  AgentClient: class {
+    getFullStatus() {
+      return h.getFullStatus();
+    }
+  },
+}));
+
 import { CommandFleetLocalBridge } from "../CommandFleetLocalBridge";
+import { AgentHttpError } from "@/lib/agent/agent-client/transport";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { usePairingStore } from "@/stores/pairing-store";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
@@ -55,22 +71,27 @@ function localNode(deviceId: string): LocalNode {
   };
 }
 
-/** A reachable agent that now reports a different device id. */
-function reassignedProbe() {
+function probe(deviceId: string, paired: boolean) {
   return Promise.resolve({
-    deviceId: "cccc3333",
-    name: "other",
+    deviceId,
+    name: "agent",
     version: "1",
     board: "x",
-    paired: true,
-    mdnsHost: "other.local",
+    paired,
+    mdnsHost: "agent.local",
     profile: "drone",
     hostname: "http://192.168.1.52:8080",
   });
 }
 
+function node(deviceId: string): LocalNode | undefined {
+  return useLocalNodesStore.getState().nodes.find((n) => n.deviceId === deviceId);
+}
+
 beforeEach(() => {
   h.probeAgent.mockReset();
+  h.getFullStatus.mockReset();
+  h.getFullStatus.mockResolvedValue(null);
   useLocalNodesStore.setState({ nodes: [localNode(FOCUSED), localNode(BACKGROUND)] });
   usePairingStore.setState({ selectedPairedId: nodeIdForDevice(FOCUSED) });
 });
@@ -80,17 +101,29 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("CommandFleetLocalBridge stale-identity self-heal", () => {
-  it("drops a background stale node but keeps the focused one", async () => {
-    h.probeAgent.mockImplementation(reassignedProbe);
+describe("CommandFleetLocalBridge identity checks", () => {
+  it("keeps a node whose address now answers as another agent, and marks it", async () => {
+    h.probeAgent.mockImplementation(() => probe("cccc3333", true));
     render(createElement(CommandFleetLocalBridge, { enabled: true }));
 
     await waitFor(() => {
-      const ids = useLocalNodesStore.getState().nodes.map((n) => n.deviceId);
-      expect(ids).not.toContain(BACKGROUND);
+      expect(node(BACKGROUND)?.hostTakenBy?.deviceId).toBe("cccc3333");
     });
-    const ids = useLocalNodesStore.getState().nodes.map((n) => n.deviceId);
-    expect(ids).toContain(FOCUSED);
+    expect(node(BACKGROUND)?.apiKey).toBe("key");
+    expect(node(FOCUSED)?.hostTakenBy?.deviceId).toBe("cccc3333");
+    expect(h.getFullStatus).not.toHaveBeenCalled();
+  });
+
+  it("drops a background node the agent reports unpaired but keeps the focused one", async () => {
+    h.probeAgent.mockImplementation((hostname) =>
+      probe(hostname.includes(".50:") ? FOCUSED : BACKGROUND, false),
+    );
+    render(createElement(CommandFleetLocalBridge, { enabled: true }));
+
+    await waitFor(() => {
+      expect(node(BACKGROUND)).toBeUndefined();
+    });
+    expect(node(FOCUSED)).toBeDefined();
   });
 
   it("does not start another probe while the previous one is still pending", async () => {
@@ -103,5 +136,19 @@ describe("CommandFleetLocalBridge stale-identity self-heal", () => {
       await vi.advanceTimersByTimeAsync(30_000);
     });
     expect(h.probeAgent).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CommandFleetLocalBridge key refusal", () => {
+  it.each([401, 403])("treats a %i on status as alive with its key rejected", async (status) => {
+    useLocalNodesStore.setState({ nodes: [localNode(FOCUSED)] });
+    h.probeAgent.mockImplementation(() => probe(FOCUSED, true));
+    h.getFullStatus.mockRejectedValue(new AgentHttpError(status, "{}"));
+    render(createElement(CommandFleetLocalBridge, { enabled: true }));
+
+    await waitFor(() => {
+      expect(node(FOCUSED)?.keyRejectedAt).toBeTypeOf("number");
+    });
+    expect(node(FOCUSED)?.lastSeenAt).toBeTypeOf("number");
   });
 });

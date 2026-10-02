@@ -4,6 +4,7 @@ import { startServer, stopServer } from "./server";
 import { applyNavigationPolicy, createMainWindow } from "./window";
 import { setupAutoUpdater } from "./updater";
 import { setupNetSockets, closeAllSockets } from "./net-sockets";
+import { setupLocalNodeKeys } from "./local-node-keys";
 
 // Enable Chromium features required by Command GCS
 app.commandLine.appendSwitch("enable-features", "WebSerial,WebUSB");
@@ -94,6 +95,9 @@ app.whenReady().then(async () => {
 
     // Native UDP/TCP MAVLink sockets (the browser can't open raw sockets).
     setupNetSockets(win);
+
+    // Paired-node API keys sealed with the OS key store.
+    setupLocalNodeKeys(win);
 
     // Setup auto-updater (silent check on startup)
     setupAutoUpdater(win);

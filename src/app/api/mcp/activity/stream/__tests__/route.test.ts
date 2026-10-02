@@ -79,6 +79,30 @@ describe("caller gate", () => {
     const { res } = get({ ...LOCAL, origin: "http://example.com" });
     expect((await res).status).toBe(403);
   });
+
+  it("refuses a request a reverse proxy forwarded for a public host", async () => {
+    const { res } = get({ ...LOCAL, "x-forwarded-host": "cloud.example.com" });
+    expect((await res).status).toBe(403);
+  });
+
+  it("refuses a LAN page that claims a loopback forwarded peer", async () => {
+    const { res } = get({
+      ...LOCAL,
+      host: "192.168.1.50:4000",
+      "x-forwarded-for": "127.0.0.1",
+    });
+    expect((await res).status).toBe(403);
+  });
+
+  it("refuses every caller when local routes are turned off", async () => {
+    process.env.ADOS_LOCAL_ROUTES = "off";
+    try {
+      const { res } = get(LOCAL);
+      expect((await res).status).toBe(403);
+    } finally {
+      delete process.env.ADOS_LOCAL_ROUTES;
+    }
+  });
 });
 
 describe("channel state", () => {

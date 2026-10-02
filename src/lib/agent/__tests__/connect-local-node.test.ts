@@ -8,7 +8,7 @@
  * agent store empty and the detail panel permanently "offline".
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Persisted local-nodes-store: bind an in-memory localStorage before import.
 vi.hoisted(() => {
@@ -32,7 +32,7 @@ vi.hoisted(() => {
 import { connectLocalNode } from "../node-click-handler";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
-import { usePairingStore } from "@/stores/pairing-store";
+import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 
 const HOST = "http://192.168.0.5:8080";
 const KEY = "real-key";
@@ -150,5 +150,59 @@ describe("connectLocalNode", () => {
     );
 
     vi.restoreAllMocks();
+  });
+});
+
+describe("connectLocalNode on an https page", () => {
+  const dom = (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM;
+  const cloudRow: PairedDrone = {
+    _id: "cloud-row",
+    userId: "u",
+    deviceId: DEV,
+    name: "drone",
+    apiKey: "",
+    pairedAt: 1,
+  };
+
+  beforeEach(() => {
+    dom.setURL("https://gcs.example.com/");
+    seed({});
+    vi.spyOn(useAgentConnectionStore.getState(), "disconnect").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    dom.setURL("http://localhost:3000/");
+    usePairingStore.setState({ pairedDrones: [] });
+    useAgentConnectionStore.setState({ connectionError: null });
+    vi.restoreAllMocks();
+  });
+
+  it("never moves a LAN-only node onto the cloud relay, and says why", async () => {
+    usePairingStore.setState({ pairedDrones: [] });
+    const connectCloud = vi
+      .spyOn(useAgentConnectionStore.getState(), "connectCloud")
+      .mockImplementation(() => {});
+    const onError = vi.fn();
+
+    const outcome = await connectLocalNode(DEV, { onFocusAgent: () => {}, onError });
+
+    expect(outcome).toBe("blocked");
+    expect(connectCloud).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith("lan_blocked_by_https");
+    expect(useAgentConnectionStore.getState().connectionError).toBe(
+      "This secure page can't reach LAN nodes directly. Open Mission Control over http on the local network, or use the desktop app.",
+    );
+  });
+
+  it("uses the cloud relay for a node the operator also cloud-paired", async () => {
+    usePairingStore.setState({ pairedDrones: [cloudRow] });
+    const connectCloud = vi
+      .spyOn(useAgentConnectionStore.getState(), "connectCloud")
+      .mockImplementation(() => {});
+
+    const outcome = await connectLocalNode(DEV, { onFocusAgent: () => {} });
+
+    expect(outcome).toBe("cloud");
+    expect(connectCloud).toHaveBeenCalledWith(DEV);
   });
 });

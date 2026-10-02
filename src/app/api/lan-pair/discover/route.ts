@@ -12,11 +12,18 @@
  * hosted deployment — the multicast scan returns an empty list; the
  * caller's Convex fallback path takes over there.
  *
+ * The scan enumerates the server's LAN, including unpaired agents' pair
+ * codes, so it answers only a local-network caller (`checkLocalOnlyRoute`)
+ * whose request a cross-site page did not send, and runs one scan at a
+ * time: a request that arrives while a scan is open is refused with 429.
+ *
  * @license GPL-3.0-only
  */
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { Bonjour } from "bonjour-service";
+import { checkLocalOnlyRoute } from "@/lib/server/local-only-route";
+import { proxyError } from "../_proxy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +41,9 @@ interface DiscoveredAgent {
 
 const DISCOVER_WINDOW_MS = 3000;
 
+/** True while a multicast scan is open; process-wide. */
+let scanInFlight = false;
+
 function pickIpv4(addresses: string[] | undefined): string | undefined {
   if (!addresses) return undefined;
   return addresses.find((a) => /^\d+\.\d+\.\d+\.\d+$/.test(a));
@@ -50,32 +60,45 @@ function normaliseTxt(txt: unknown): Record<string, string> {
   return out;
 }
 
-export async function GET() {
-  const bonjour = new Bonjour();
+export async function GET(req: NextRequest) {
+  const local = checkLocalOnlyRoute(req);
+  if (local) return local;
+  const site = req.headers.get("sec-fetch-site");
+  if (site !== null && site !== "same-origin") {
+    return proxyError(403, "cross_origin", "Request did not come from this site");
+  }
+  if (scanInFlight) {
+    return proxyError(429, "scan_in_progress", "A network scan is already running");
+  }
+  scanInFlight = true;
   const agents = new Map<string, DiscoveredAgent>();
-
   try {
-    const browser = bonjour.find({ type: "ados" });
+    const bonjour = new Bonjour();
+    try {
+      const browser = bonjour.find({ type: "ados" });
 
-    browser.on("up", (service) => {
-      const host = (service.host ?? "").replace(/\.$/, "");
-      if (!host) return;
-      const entry: DiscoveredAgent = {
-        host,
-        ipv4: pickIpv4(service.addresses),
-        port: typeof service.port === "number" ? service.port : 8080,
-        txt: normaliseTxt(service.txt),
-      };
-      agents.set(host, entry);
-    });
+      browser.on("up", (service) => {
+        const host = (service.host ?? "").replace(/\.$/, "");
+        if (!host) return;
+        const entry: DiscoveredAgent = {
+          host,
+          ipv4: pickIpv4(service.addresses),
+          port: typeof service.port === "number" ? service.port : 8080,
+          txt: normaliseTxt(service.txt),
+        };
+        agents.set(host, entry);
+      });
 
-    await new Promise<void>((resolve) =>
-      setTimeout(resolve, DISCOVER_WINDOW_MS),
-    );
+      await new Promise<void>((resolve) =>
+        setTimeout(resolve, DISCOVER_WINDOW_MS),
+      );
 
-    browser.stop();
+      browser.stop();
+    } finally {
+      bonjour.destroy();
+    }
   } finally {
-    bonjour.destroy();
+    scanInFlight = false;
   }
 
   return NextResponse.json({

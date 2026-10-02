@@ -6,19 +6,23 @@
  * pasting a hostname into the Add-a-Node card.
  *
  * Independent of the Convex-backed ``pairing-store`` so the GCS
- * works fully offline. Persisted to localStorage with a version /
- * migrate handler per the project convention.
+ * works fully offline. Persisted with a version / migrate handler per
+ * the project convention, through ``local-nodes-storage``.
  *
  * THREAT MODEL (local-first credential storage):
  *   - Each ``LocalNode`` stores an ``apiKey`` returned by the
  *     agent's ``/api/pairing/claim``. This key is the credential
- *     for every subsequent REST call to that agent. localStorage is
- *     plaintext: any XSS that runs on the GCS origin reads every
- *     paired agent's apiKey. Browser-extension access and devtools
- *     see the same.
- *   - There is no key derivation, no encryption at rest, no
- *     hardware-backed key isolation. This is the local-first
- *     trade-off and the pragmatic posture for v1.
+ *     for every subsequent REST call to that agent.
+ *   - Desktop app: the key is sealed with the OS key store
+ *     (Electron ``safeStorage``) before it is written, so the profile
+ *     directory holds ciphertext. A script running in the app's page
+ *     still sees the opened key in memory.
+ *   - Web: localStorage is plaintext. Any XSS that runs on the GCS
+ *     origin reads every paired agent's apiKey; browser extensions and
+ *     devtools see the same.
+ *   - A key exists only here, and the agent issues no second one while
+ *     paired, so nothing in this store deletes a node that holds a key
+ *     on an address match alone (see ``reconcileHost``).
  *   - If the operator clears browser storage the apiKeys are lost.
  *     Recovery: run ``ados unpair`` on the node (or release it from
  *     the node's own dashboard under Settings), then pair again from
@@ -26,6 +30,12 @@
  *   - See also ``browser-identity-store.ts`` for the per-browser
  *     UUID that acts as pair-owner identifier on the same threat
  *     surface.
+ *
+ * CROSS-TAB: every open tab holds the registry. A tab re-reads the store
+ * when another tab writes it (``storage`` event → ``persist.rehydrate``),
+ * and every mutation is applied to the newest persisted list, merged by
+ * device id, so a background tab's presence stamp never writes back a list
+ * that is missing a node (and its key) another tab just paired.
  *
  * @license GPL-3.0-only
  */
@@ -40,6 +50,15 @@ import type {
   AgentBindState,
   AgentRadioSnapshot,
 } from "@/lib/agent/local-pair-client";
+import {
+  LOCAL_NODES_STORE_KEY,
+  localNodesStorage,
+  persistedNodesIfChanged,
+  type PersistedLocalNodes,
+} from "./local-nodes-storage";
+
+/** Persisted schema version. */
+const STORE_VERSION = 6;
 
 /** Reduce any host string (full URL, bare host, mDNS name with a trailing
  * dot, IPv4) to its comparable host key so two ways of naming the same box
@@ -127,6 +146,15 @@ export interface LocalNode {
    * succeeds, so its presence means "the stored address is not answering
    * right now" and never a stale scare. */
   lastReachError?: { host: string; error: string; at: number };
+  /** When the node last answered an authenticated call by refusing this
+   * browser's key (401 / 403). The node is up; the key no longer opens it, so
+   * the recovery is a re-pair. Cleared by the next accepted call or a new key. */
+  keyRejectedAt?: number;
+  /** Another agent now answers at this node's stored address (a DHCP lease
+   * moved to a different box, or this box was re-flashed under a new id).
+   * Recorded instead of deleting the node so its key survives; cleared when
+   * the stored address answers as this node again or the address changes. */
+  hostTakenBy?: { deviceId: string; at: number };
 }
 
 interface LocalNodesState {
@@ -144,10 +172,11 @@ interface LocalNodesState {
     newDeviceId: string,
     patch?: Partial<LocalNode>,
   ) => void;
-  /** Drop any node reachable at the same host as `ident` but carrying a
-   * different deviceId than `keepDeviceId`. Called at pair time so re-pairing a
-   * re-flashed box REPLACES its stale-identity card instead of leaving a second
-   * offline ghost behind. */
+  /** Called at pair time with the newly paired node's addresses. Every other
+   * node reachable at one of those addresses is no longer at it: a node that
+   * holds a key is marked `hostTakenBy` (its key is the only one this browser
+   * has, so it is never deleted on an address match), and a keyless leftover
+   * is dropped. */
   reconcileHost: (
     ident: { hostname?: string; ipv4?: string; mdnsHost?: string },
     keepDeviceId: string,
@@ -161,13 +190,20 @@ interface LocalNodesState {
    * stopped resolving can switch the node onto the IP that answered without
    * re-pairing (which would mint a new key and orphan the card). */
   setNodeHostname: (deviceId: string, hostname: string) => void;
-  /** Record that `host` answered for this node, clearing any recorded reach
-   * failure. Coalesced on the same interval as `touchLastSeen`. */
+  /** Record that `host` answered as this node, clearing any recorded reach
+   * failure and any `hostTakenBy`. Coalesced on the same interval as
+   * `touchLastSeen`. */
   recordReachOk: (deviceId: string, host: string) => void;
   /** Record that `host` did not answer, and why. Leaves `lastReachOk` in
    * place: "the address that used to work" is exactly the fact the operator
    * needs when the current one stops. */
   recordReachError: (deviceId: string, host: string, error: string) => void;
+  /** Record that a different agent (`byDeviceId`) answers at this node's
+   * stored address. */
+  markHostTaken: (deviceId: string, byDeviceId: string) => void;
+  /** Record whether the node refused this browser's key on its last
+   * authenticated call. Writes only on a change. */
+  setKeyRejected: (deviceId: string, rejected: boolean) => void;
   touchLastSeen: (deviceId: string) => void;
   clear: () => void;
 }
@@ -191,156 +227,206 @@ const PRESENCE_STAMP_MIN_MS = 20_000;
  */
 export const useReachOkLiveStore = create<{ at: Record<string, number> }>(() => ({ at: {} }));
 
+/** Rewrite one node, or return `nodes` itself when it is absent. */
+function patchNode(
+  nodes: LocalNode[],
+  deviceId: string,
+  patch: (n: LocalNode) => LocalNode,
+): LocalNode[] {
+  if (!nodes.some((n) => n.deviceId === deviceId)) return nodes;
+  return nodes.map((n) => (n.deviceId === deviceId ? patch(n) : n));
+}
+
 export const useLocalNodesStore = create<LocalNodesState>()(
   persist(
-    (set) => ({
-      nodes: [],
-      addNode: (node) =>
+    (set) => {
+      /** Apply `change` to the newest node list and publish the result. The
+       * newest list is the persisted one when another tab wrote after this
+       * tab did: it is the authority per device id (an id missing from it was
+       * removed there), so this tab's mutation lands on top of it rather than
+       * replacing it. `change` returns its input unchanged for a no-op. */
+      const update = (change: (nodes: LocalNode[]) => LocalNode[]) =>
         set((state) => {
-          const existing = state.nodes.findIndex(
-            (n) => n.deviceId === node.deviceId,
-          );
-          if (existing >= 0) {
-            const next = state.nodes.slice();
-            next[existing] = { ...next[existing], ...node };
-            return { nodes: next };
-          }
-          return { nodes: [...state.nodes, node] };
-        }),
-      removeNode: (deviceId) =>
-        set((state) => ({
-          nodes: state.nodes.filter((n) => n.deviceId !== deviceId),
-        })),
-      migrateNode: (oldDeviceId, newDeviceId, patch) =>
-        set((state) => {
-          if (oldDeviceId === newDeviceId) {
-            if (!patch) return state;
-            return {
-              nodes: state.nodes.map((n) =>
-                n.deviceId === oldDeviceId ? { ...n, ...patch } : n,
-              ),
-            };
-          }
-          const src = state.nodes.find((n) => n.deviceId === oldDeviceId);
-          if (!src) return state;
-          const migrated: LocalNode = { ...src, ...patch, deviceId: newDeviceId };
-          const next: LocalNode[] = [];
-          for (const n of state.nodes) {
-            if (n.deviceId === oldDeviceId) next.push(migrated);
-            else if (n.deviceId === newDeviceId) continue; // collision — migrated wins
-            else next.push(n);
-          }
-          return { nodes: next };
-        }),
-      reconcileHost: (ident, keepDeviceId) =>
-        set((state) => {
-          const target = nodeHostKeys(ident);
-          if (target.size === 0) return state;
-          const next = state.nodes.filter((n) => {
-            if (n.deviceId === keepDeviceId) return true;
-            const keys = nodeHostKeys(n);
-            for (const k of keys) if (target.has(k)) return false;
-            return true;
-          });
-          return next.length !== state.nodes.length ? { nodes: next } : state;
-        }),
-      renameNode: (deviceId, name) =>
-        set((state) => ({
-          nodes: state.nodes.map((n) =>
-            n.deviceId === deviceId ? { ...n, name } : n,
-          ),
-        })),
-      setNodeRegion: (deviceId, region) =>
-        set((state) => ({
-          nodes: state.nodes.map((n) =>
-            n.deviceId === deviceId ? { ...n, region } : n,
-          ),
-        })),
-      setNodeHostname: (deviceId, hostname) =>
-        set((state) => {
-          // `hostname` is a BASE URL for every consumer (`AgentClient` appends
-          // a path to it verbatim and adds no scheme), so a bare address from
-          // a reach block or a settings field is normalised here rather than
-          // at each call site.
-          const next = normaliseHost(hostname);
-          if (!next) return state;
-          return {
-            nodes: state.nodes.map((n) =>
-              n.deviceId === deviceId ? { ...n, hostname: next } : n,
-            ),
-          };
-        }),
-      recordReachOk: (deviceId, host) => {
-        const now = Date.now();
-        useReachOkLiveStore.setState((s) => ({ at: { ...s.at, [deviceId]: now } }));
-        set((state) => {
-          const node = state.nodes.find((n) => n.deviceId === deviceId);
-          if (!node) return state;
-          // Coalesce on the same interval as `touchLastSeen` — this runs off
-          // the same ~5s poll and rewrites the persisted array. A CHANGE of
-          // reach, or a failure that needs clearing, always writes through:
-          // those are the two facts the operator is watching for.
-          const unchanged =
-            node.lastReachOk?.host === host &&
-            node.lastReachError === undefined &&
-            now - node.lastReachOk.at < PRESENCE_STAMP_MIN_MS;
-          if (unchanged) return state;
-          return {
-            nodes: state.nodes.map((n) =>
-              n.deviceId === deviceId
-                ? { ...n, lastReachOk: { host, at: now }, lastReachError: undefined }
-                : n,
-            ),
-          };
+          const base = persistedNodesIfChanged(STORE_VERSION) ?? state.nodes;
+          const next = change(base);
+          return next === state.nodes ? state : { nodes: next };
         });
-      },
-      recordReachError: (deviceId, host, error) =>
-        set((state) => {
-          const node = state.nodes.find((n) => n.deviceId === deviceId);
-          if (!node) return state;
+
+      return {
+        nodes: [],
+        addNode: (node) =>
+          update((nodes) => {
+            const existing = nodes.findIndex((n) => n.deviceId === node.deviceId);
+            if (existing < 0) return [...nodes, node];
+            const prev = nodes[existing];
+            const next = nodes.slice();
+            // A new key has not been refused, and a new address has not been
+            // taken by anyone.
+            const keyRejectedAt =
+              node.apiKey !== prev.apiKey
+                ? node.keyRejectedAt
+                : (node.keyRejectedAt ?? prev.keyRejectedAt);
+            const hostTakenBy =
+              node.hostname !== prev.hostname
+                ? node.hostTakenBy
+                : (node.hostTakenBy ?? prev.hostTakenBy);
+            next[existing] = { ...prev, ...node, keyRejectedAt, hostTakenBy };
+            return next;
+          }),
+        removeNode: (deviceId) =>
+          update((nodes) =>
+            nodes.some((n) => n.deviceId === deviceId)
+              ? nodes.filter((n) => n.deviceId !== deviceId)
+              : nodes,
+          ),
+        migrateNode: (oldDeviceId, newDeviceId, patch) =>
+          update((nodes) => {
+            if (oldDeviceId === newDeviceId) {
+              return patch ? patchNode(nodes, oldDeviceId, (n) => ({ ...n, ...patch })) : nodes;
+            }
+            const src = nodes.find((n) => n.deviceId === oldDeviceId);
+            if (!src) return nodes;
+            const migrated: LocalNode = { ...src, ...patch, deviceId: newDeviceId };
+            const next: LocalNode[] = [];
+            for (const n of nodes) {
+              if (n.deviceId === oldDeviceId) next.push(migrated);
+              else if (n.deviceId === newDeviceId) continue; // collision — migrated wins
+              else next.push(n);
+            }
+            return next;
+          }),
+        reconcileHost: (ident, keepDeviceId) =>
+          update((nodes) => {
+            const target = nodeHostKeys(ident);
+            if (target.size === 0) return nodes;
+            const at = Date.now();
+            let changed = false;
+            const next: LocalNode[] = [];
+            for (const n of nodes) {
+              const shares =
+                n.deviceId !== keepDeviceId &&
+                [...nodeHostKeys(n)].some((k) => target.has(k));
+              if (!shares) {
+                next.push(n);
+                continue;
+              }
+              changed = true;
+              if (n.apiKey) next.push({ ...n, hostTakenBy: { deviceId: keepDeviceId, at } });
+            }
+            return changed ? next : nodes;
+          }),
+        renameNode: (deviceId, name) =>
+          update((nodes) => patchNode(nodes, deviceId, (n) => ({ ...n, name }))),
+        setNodeRegion: (deviceId, region) =>
+          update((nodes) => patchNode(nodes, deviceId, (n) => ({ ...n, region }))),
+        setNodeHostname: (deviceId, hostname) =>
+          update((nodes) => {
+            // `hostname` is a BASE URL for every consumer (`AgentClient` appends
+            // a path to it verbatim and adds no scheme), so a bare address from
+            // a reach block or a settings field is normalised here rather than
+            // at each call site.
+            const next = normaliseHost(hostname);
+            if (!next) return nodes;
+            return patchNode(nodes, deviceId, (n) =>
+              n.hostname === next ? n : { ...n, hostname: next, hostTakenBy: undefined },
+            );
+          }),
+        recordReachOk: (deviceId, host) => {
           const now = Date.now();
-          const unchanged =
-            node.lastReachError?.host === host &&
-            node.lastReachError.error === error &&
-            now - node.lastReachError.at < PRESENCE_STAMP_MIN_MS;
-          if (unchanged) return state;
-          return {
-            nodes: state.nodes.map((n) =>
-              n.deviceId === deviceId
-                ? { ...n, lastReachError: { host, error, at: now } }
-                : n,
-            ),
-          };
-        }),
-      touchLastSeen: (deviceId) =>
-        set((state) => {
-          const now = Date.now();
-          const node = state.nodes.find((n) => n.deviceId === deviceId);
-          if (!node) return state;
-          // Coalesce: skip the rewrite (and its re-render + localStorage write)
-          // when the last stamp is still fresh. The 1 Hz clock keeps the node
-          // "live" between stamps, so this never flaps the online badge.
-          if (node.lastSeenAt && now - node.lastSeenAt < PRESENCE_STAMP_MIN_MS) {
-            return state;
-          }
-          return {
-            nodes: state.nodes.map((n) =>
-              n.deviceId === deviceId ? { ...n, lastSeenAt: now } : n,
-            ),
-          };
-        }),
-      clear: () => set({ nodes: [] }),
-    }),
+          useReachOkLiveStore.setState((s) => ({ at: { ...s.at, [deviceId]: now } }));
+          update((nodes) => {
+            const node = nodes.find((n) => n.deviceId === deviceId);
+            if (!node) return nodes;
+            // Coalesce on the same interval as `touchLastSeen` — this runs off
+            // the same ~5s poll and rewrites the persisted array. A CHANGE of
+            // reach, or a failure that needs clearing, always writes through:
+            // those are the two facts the operator is watching for.
+            const unchanged =
+              node.lastReachOk?.host === host &&
+              node.lastReachError === undefined &&
+              node.hostTakenBy === undefined &&
+              now - node.lastReachOk.at < PRESENCE_STAMP_MIN_MS;
+            if (unchanged) return nodes;
+            return patchNode(nodes, deviceId, (n) => ({
+              ...n,
+              lastReachOk: { host, at: now },
+              lastReachError: undefined,
+              hostTakenBy: undefined,
+            }));
+          });
+        },
+        recordReachError: (deviceId, host, error) =>
+          update((nodes) => {
+            const node = nodes.find((n) => n.deviceId === deviceId);
+            if (!node) return nodes;
+            const now = Date.now();
+            const unchanged =
+              node.lastReachError?.host === host &&
+              node.lastReachError.error === error &&
+              now - node.lastReachError.at < PRESENCE_STAMP_MIN_MS;
+            if (unchanged) return nodes;
+            return patchNode(nodes, deviceId, (n) => ({
+              ...n,
+              lastReachError: { host, error, at: now },
+            }));
+          }),
+        markHostTaken: (deviceId, byDeviceId) =>
+          update((nodes) => {
+            const node = nodes.find((n) => n.deviceId === deviceId);
+            if (!node || node.hostTakenBy?.deviceId === byDeviceId) return nodes;
+            return patchNode(nodes, deviceId, (n) => ({
+              ...n,
+              hostTakenBy: { deviceId: byDeviceId, at: Date.now() },
+            }));
+          }),
+        setKeyRejected: (deviceId, rejected) =>
+          update((nodes) => {
+            const node = nodes.find((n) => n.deviceId === deviceId);
+            if (!node || (node.keyRejectedAt !== undefined) === rejected) return nodes;
+            return patchNode(nodes, deviceId, (n) => ({
+              ...n,
+              keyRejectedAt: rejected ? Date.now() : undefined,
+            }));
+          }),
+        touchLastSeen: (deviceId) =>
+          update((nodes) => {
+            const now = Date.now();
+            const node = nodes.find((n) => n.deviceId === deviceId);
+            if (!node) return nodes;
+            // Coalesce: skip the rewrite (and its re-render) when the last
+            // stamp is still fresh. The 1 Hz clock keeps the node "live"
+            // between stamps, so this never flaps the online badge.
+            if (node.lastSeenAt && now - node.lastSeenAt < PRESENCE_STAMP_MIN_MS) {
+              return nodes;
+            }
+            return patchNode(nodes, deviceId, (n) => ({ ...n, lastSeenAt: now }));
+          }),
+        clear: () => set({ nodes: [] }),
+      };
+    },
     {
-      name: "altcmd:local-nodes",
-      version: 5,
+      name: LOCAL_NODES_STORE_KEY,
+      version: STORE_VERSION,
+      storage: localNodesStorage,
+      partialize: (state): PersistedLocalNodes => ({ nodes: state.nodes }),
       // v1→v2 added ipv4; v2→v3 added optional bindState + radio; v3→v4 added
-      // optional region; v4→v5 added optional lastReachOk / lastReachError.
-      // All optional additions, so migration is an identity passthrough.
+      // optional region; v4→v5 added optional lastReachOk / lastReachError;
+      // v5→v6 added optional keyRejectedAt / hostTakenBy. All optional
+      // additions, so migration is an identity passthrough.
       migrate: (persisted, version) => {
         void version;
-        return persisted as LocalNodesState;
+        return persisted as PersistedLocalNodes;
       },
     },
   ),
 );
+
+// Another tab wrote the registry: take its list, so a node it paired (and the
+// key that exists nowhere else) shows up here and is never written over.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === LOCAL_NODES_STORE_KEY || event.key === null) {
+      void useLocalNodesStore.persist.rehydrate();
+    }
+  });
+}

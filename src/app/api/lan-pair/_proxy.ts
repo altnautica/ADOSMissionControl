@@ -4,9 +4,11 @@
  * route runs through. A route declares its fixed upstream path, method and
  * timeout; this module owns everything security-relevant around that:
  *
- *  - **Caller gate.** A proxy call must come from a page on this origin: the
- *    `Origin` header is required and its host must equal the host the request
- *    was addressed to. A JSON envelope must also declare
+ *  - **Caller gate.** A proxy call must pass `checkLocalOnlyRoute` (the page
+ *    was opened by a local-network Host, no forwarded hop is public, and the
+ *    deployment has not turned local routes off), then come from a page on
+ *    this origin: the `Origin` header is required and its host must equal the
+ *    host the request was addressed to. A JSON envelope must also declare
  *    `Content-Type: application/json` (a cross-site `<form>` can only send
  *    `text/plain`, urlencoded or multipart, and cannot set `Origin`).
  *  - **Target gate.** The host must pass `normaliseAndCheckHost` (private /
@@ -19,7 +21,9 @@
  *    can never move the request somewhere else.
  *  - **Response.** Always `application/json` with `nosniff` and a sandbox CSP.
  *    The upstream body is passed through only when it parses as JSON;
- *    redirects are not followed and bodies are size-capped.
+ *    redirects are not followed and bodies are size-capped. A refusal the
+ *    proxy produces itself names its code in the `PROXY_ERROR_HEADER`
+ *    response header, so the browser never mistakes it for the agent's answer.
  *
  * Co-located under the route folder with a leading underscore so it is never
  * treated as a route.
@@ -29,6 +33,8 @@
 
 import { NextResponse } from "next/server";
 import { normaliseAndCheckHost } from "@/lib/agent/host-validation";
+import { PROXY_ERROR_HEADER } from "@/lib/agent/local-pair/transport";
+import { checkLocalOnlyRoute } from "@/lib/server/local-only-route";
 import { agentFetchBase } from "./_ipv4";
 
 /** The only port a proxy call may target: the agent's control front. */
@@ -65,7 +71,7 @@ export function proxyError(
 ): NextResponse {
   return new NextResponse(JSON.stringify({ error, message }), {
     status,
-    headers: RESPONSE_HEADERS,
+    headers: { ...RESPONSE_HEADERS, [PROXY_ERROR_HEADER]: error },
   });
 }
 
@@ -81,8 +87,11 @@ function addressedHost(req: Request): string {
   return host.toLowerCase();
 }
 
-/** Refuse a request that did not come from a page on this origin. */
+/** Refuse a request that did not come from a local-network page on this
+ * origin. */
 export function checkSameOrigin(req: Request): Refusal | null {
+  const local = checkLocalOnlyRoute(req);
+  if (local) return { reject: local };
   const origin = req.headers.get("origin");
   if (!origin) {
     return refuse(403, "origin_required", "Origin header is required");

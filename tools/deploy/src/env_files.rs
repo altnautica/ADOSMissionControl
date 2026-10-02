@@ -10,7 +10,7 @@
 use std::path::Path;
 
 use crate::services::{self, Ports};
-use crate::wizard::state::DeployConfig;
+use crate::wizard::state::{DeployConfig, LocalRoutes};
 
 /// Render the `tools/selfhost/.env` content for `cfg`. Matches the keys the
 /// compose file + the MQTT bridge read.
@@ -60,6 +60,25 @@ pub fn render_env(cfg: &DeployConfig) -> String {
         "# Viewer-token secret; the same value is set on Convex, which mints the tokens.\n",
     );
     kv(&mut out, "VIDEO_RELAY_SECRET", &cfg.video_relay_secret);
+
+    out.push_str(
+        "\n# --- Mission Control local-network routes (LAN pairing proxy, MCP feed) ---\n",
+    );
+    match cfg.local_routes() {
+        LocalRoutes::Default => {
+            out.push_str(
+                "# Reached at a loopback, private IP or .local address: no setting needed.\n",
+            );
+        }
+        LocalRoutes::AllowHost(host) => {
+            out.push_str("# Reached by a private DNS name the GCS admits as local.\n");
+            kv(&mut out, "ADOS_LOCAL_ROUTE_HOSTS", &host);
+        }
+        LocalRoutes::Off => {
+            out.push_str("# Reached by a public address: the routes are turned off.\n");
+            kv(&mut out, "ADOS_LOCAL_ROUTES", "off");
+        }
+    }
     out
 }
 
@@ -258,6 +277,40 @@ mod tests {
         ] {
             assert!(e.contains(k), "env missing {k}\n---\n{e}");
         }
+    }
+
+    #[test]
+    fn public_domain_turns_local_routes_off() {
+        let mut c = cfg();
+        c.host = "fleet.example.com".to_string();
+        let e = render_env(&c);
+        assert!(e.contains("ADOS_LOCAL_ROUTES=off\n"), "{e}");
+        assert!(!e.contains("ADOS_LOCAL_ROUTE_HOSTS="), "{e}");
+
+        c.host = "203.0.113.9".to_string();
+        assert!(render_env(&c).contains("ADOS_LOCAL_ROUTES=off\n"));
+    }
+
+    #[test]
+    fn local_hosts_keep_local_routes_on() {
+        for host in [
+            "192.168.1.50",
+            "100.64.0.1",
+            "gcs.local",
+            "localhost",
+            "fd00::5",
+        ] {
+            let mut c = cfg();
+            c.host = host.to_string();
+            let e = render_env(&c);
+            assert!(!e.contains("ADOS_LOCAL_ROUTES="), "{host}: {e}");
+            assert!(!e.contains("ADOS_LOCAL_ROUTE_HOSTS="), "{host}: {e}");
+        }
+        let mut c = cfg();
+        c.host = "gcs.lan".to_string();
+        let e = render_env(&c);
+        assert!(e.contains("ADOS_LOCAL_ROUTE_HOSTS=gcs.lan\n"), "{e}");
+        assert!(!e.contains("ADOS_LOCAL_ROUTES="), "{e}");
     }
 
     #[test]

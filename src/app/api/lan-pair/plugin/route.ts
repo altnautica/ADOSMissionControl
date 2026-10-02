@@ -31,6 +31,7 @@ import {
   isSafeSubPath,
   proxyError,
 } from "../_proxy";
+import { checkLocalOnlyRoute } from "@/lib/server/local-only-route";
 import { isValidPeerDeviceId } from "../_peer-device-id";
 
 export const runtime = "nodejs";
@@ -90,11 +91,13 @@ function allowedMethods(sub: string): ReadonlySet<Method> {
   return new Set(["GET"]);
 }
 
-/** Refuse a request a cross-site page could have sent. The pairing key rides
- * a custom header, which no cross-site request carries without a CORS
- * preflight this route never answers; a present Origin or Fetch-Metadata
- * header must also name this origin. */
+/** Refuse a request from off the local network, or one a cross-site page
+ * could have sent. The pairing key rides a custom header, which no cross-site
+ * request carries without a CORS preflight this route never answers; a present
+ * Origin or Fetch-Metadata header must also name this origin. */
 function checkCaller(req: NextRequest): NextResponse | null {
+  const local = checkLocalOnlyRoute(req);
+  if (local) return local;
   if (req.headers.get("origin") !== null) {
     const cross = checkSameOrigin(req);
     if (cross) return cross.reject;

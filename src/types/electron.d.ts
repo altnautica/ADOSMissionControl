@@ -48,6 +48,15 @@ interface ElectronUpdatesAPI {
   install: () => Promise<void>;
 }
 
+/** Seals paired-node API keys with the OS key store (Electron `safeStorage`)
+ *  in the main process. Only ciphertext reaches the renderer's storage. */
+interface ElectronLocalNodesAPI {
+  /** Base64 ciphertext, or null when this OS offers no key store. */
+  encrypt: (key: string) => Promise<string | null>;
+  /** The key sealed in `sealed` (base64); rejects when it cannot be opened. */
+  decrypt: (sealed: string) => Promise<string>;
+}
+
 interface ElectronAPI {
   isElectron: true;
   platform: "darwin" | "win32" | "linux";
@@ -58,6 +67,8 @@ interface ElectronAPI {
   updates: ElectronUpdatesAPI;
   /** Native UDP/TCP MAVLink sockets — desktop builds only (absent in browsers). */
   net?: ElectronNetAPI;
+  /** Paired-node key sealing — desktop builds only (absent in browsers). */
+  localNodes?: ElectronLocalNodesAPI;
 }
 
 declare global {
