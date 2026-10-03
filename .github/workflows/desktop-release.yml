@@ -21,7 +21,7 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # electron-builder publishes to the release named after package.json's
       # version, while the notes job below looks the release up by the pushed

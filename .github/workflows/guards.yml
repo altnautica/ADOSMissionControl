@@ -24,7 +24,7 @@ jobs:
     name: Tree and commit hygiene
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The commit-message scan needs the range, so shallow will not do.
           fetch-depth: 0
@@ -148,7 +148,7 @@ jobs:
     name: CHANGELOG is newest-first
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # This file is read top-down by humans and, on a release tag, by the
       # desktop-release workflow's section extractor. At 1,800+ lines an entry
@@ -206,11 +206,11 @@ jobs:
       # only on an agent push, so a change made here (a client call to a route
       # the agent never served, a hand-edited mirror) would merge green. Both
       # checks run here too, against the agent beside this checkout.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: ADOSMissionControl
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: altnautica/ADOSDroneAgent
           path: ADOSDroneAgent
@@ -248,7 +248,7 @@ jobs:
     name: Convex exposure and authorization
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The authorization-parity and twin-exposure gates for the Convex
       # backend live outside this repository and therefore never ran on a push
