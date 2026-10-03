@@ -11,6 +11,14 @@ updates:
       # Batch low-risk dev tooling into one PR to cut review noise.
       dev-dependencies:
         dependency-type: "development"
+    ignore:
+      # TypeScript 7 ships no JS compiler API, which typescript-eslint and the
+      # Next.js build type check both require.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # ESLint 10 breaks eslint-plugin-react, which eslint-config-next bundles.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   # Keep the GitHub Actions used by CI current too.
   - package-ecosystem: "github-actions"
