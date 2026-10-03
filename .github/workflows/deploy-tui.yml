@@ -125,6 +125,6 @@ jobs:
             minisign -V -q -P "${RELEASE_PUBKEY}" -m "$f" -x "$f.minisig"
           done
           ls -l
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: tools/deploy/dist/*
