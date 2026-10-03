@@ -184,7 +184,7 @@ jobs:
           cat SHA256SUMS
 
       - name: Update release notes from CHANGELOG
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
