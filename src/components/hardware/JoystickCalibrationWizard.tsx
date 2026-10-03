@@ -4,6 +4,9 @@
  * @module JoystickCalibrationWizard
  * @description 3-step joystick/gamepad calibration wizard.
  * Step 1: Record center position. Step 2: Record axis extremes. Step 3: Verify and save.
+ * Calibration is recorded per physical axis of the connected controller and
+ * saved under that controller's id, so the stick mode and a different pad
+ * never pick up the wrong stick's centre and travel.
  * @license GPL-3.0-only
  */
 
@@ -12,10 +15,10 @@ import { ChevronRight, RotateCcw, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { useInputStore, type GamepadCalibration } from "@/stores/input-store";
+import { applyCal } from "@/lib/input/gamepad-poller";
 
 type Step = "center" | "range" | "verify";
 
-const AXIS_LABELS = ["Roll", "Pitch", "Throttle", "Yaw"] as const;
 const CENTER_SAMPLE_MS = 1500;
 const RANGE_SAMPLE_MS = 5000;
 
@@ -60,19 +63,20 @@ function AxisBar({ label, raw, calibrated }: { label: string; raw: number; calib
 
 export function JoystickCalibrationWizard({ onClose }: Props) {
   const [step, setStep] = useState<Step>("center");
-  const rawAxes = useInputStore((s) => s.rawAxes);
-  const axes = useInputStore((s) => s.axes);
+  const padAxes = useInputStore((s) => s.padAxes);
   const setCalibration = useInputStore((s) => s.setCalibration);
+  // The controller being calibrated, fixed when the wizard opens: the result
+  // is saved under this id even if another pad becomes active meanwhile.
+  const [gamepadId] = useState(() => useInputStore.getState().gamepadId);
 
   // Sampling state
   const [sampling, setSampling] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [centerSamples, setCenterSamples] = useState<number[][]>([]);
   const [cal, setCal] = useState<GamepadCalibration | null>(null);
 
-  // Range tracking refs (updated in rAF, not state)
-  const rangeMin = useRef<[number, number, number, number]>([0, 0, 0, 0]);
-  const rangeMax = useRef<[number, number, number, number]>([0, 0, 0, 0]);
+  // Range tracking refs (updated in the sampling interval, not state)
+  const rangeMin = useRef<number[]>([]);
+  const rangeMax = useRef<number[]>([]);
 
   // Step 1: Sample center
   const startCenterSampling = useCallback(() => {
@@ -85,31 +89,26 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
       const elapsed = Date.now() - startTime;
       setProgress(Math.min(elapsed / CENTER_SAMPLE_MS, 1));
 
-      const currentRaw = useInputStore.getState().rawAxes;
-      samples.push([...currentRaw]);
+      samples.push([...useInputStore.getState().padAxes]);
 
       if (elapsed >= CENTER_SAMPLE_MS) {
         clearInterval(interval);
         setSampling(false);
-        setCenterSamples(samples);
 
-        // Average all samples for center values
-        const center: [number, number, number, number] = [0, 0, 0, 0];
+        // Average all samples per physical axis.
+        const axisCount = Math.min(...samples.map((s) => s.length));
+        const center = new Array<number>(axisCount).fill(0);
         for (const s of samples) {
-          for (let i = 0; i < 4; i++) center[i] += s[i];
+          for (let i = 0; i < axisCount; i++) center[i] += s[i];
         }
-        for (let i = 0; i < 4; i++) center[i] /= samples.length;
+        for (let i = 0; i < axisCount; i++) center[i] /= samples.length;
 
         // Initialize range with center values
-        rangeMin.current = [...center] as [number, number, number, number];
-        rangeMax.current = [...center] as [number, number, number, number];
+        rangeMin.current = [...center];
+        rangeMax.current = [...center];
 
         // Pre-build cal with center, will fill min/max in step 2
-        setCal({
-          center,
-          min: [...center] as [number, number, number, number],
-          max: [...center] as [number, number, number, number],
-        });
+        setCal({ center, min: [...center], max: [...center] });
 
         setStep("range");
       }
@@ -126,10 +125,12 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
       const elapsed = Date.now() - startTime;
       setProgress(Math.min(elapsed / RANGE_SAMPLE_MS, 1));
 
-      const currentRaw = useInputStore.getState().rawAxes;
-      for (let i = 0; i < 4; i++) {
-        if (currentRaw[i] < rangeMin.current[i]) rangeMin.current[i] = currentRaw[i];
-        if (currentRaw[i] > rangeMax.current[i]) rangeMax.current[i] = currentRaw[i];
+      const current = useInputStore.getState().padAxes;
+      for (let i = 0; i < rangeMin.current.length; i++) {
+        const v = current[i];
+        if (v === undefined) continue;
+        if (v < rangeMin.current[i]) rangeMin.current[i] = v;
+        if (v > rangeMax.current[i]) rangeMax.current[i] = v;
       }
 
       if (elapsed >= RANGE_SAMPLE_MS) {
@@ -138,11 +139,7 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
 
         setCal((prev) => {
           if (!prev) return prev;
-          return {
-            ...prev,
-            min: [...rangeMin.current] as [number, number, number, number],
-            max: [...rangeMax.current] as [number, number, number, number],
-          };
+          return { ...prev, min: [...rangeMin.current], max: [...rangeMax.current] };
         });
 
         setStep("verify");
@@ -163,15 +160,14 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
   }, [step, startCenterSampling, startRangeSampling]);
 
   function handleSave() {
-    if (cal) {
-      setCalibration(cal);
+    if (cal && gamepadId) {
+      setCalibration(gamepadId, cal);
       onClose();
     }
   }
 
   function handleRedo() {
     setCal(null);
-    setCenterSamples([]);
     setStep("center");
   }
 
@@ -251,8 +247,8 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
               </div>
             )}
             <div className="space-y-2">
-              {AXIS_LABELS.map((label, i) => (
-                <AxisBar key={label} label={label} raw={rawAxes[i]} />
+              {padAxes.map((v, i) => (
+                <AxisBar key={i} label={`Axis ${i}`} raw={v} />
               ))}
             </div>
           </>
@@ -275,8 +271,8 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
               </div>
             )}
             <div className="space-y-2">
-              {AXIS_LABELS.map((label, i) => (
-                <AxisBar key={label} label={label} raw={rawAxes[i]} />
+              {padAxes.map((v, i) => (
+                <AxisBar key={i} label={`Axis ${i}`} raw={v} />
               ))}
             </div>
           </>
@@ -288,8 +284,17 @@ export function JoystickCalibrationWizard({ onClose }: Props) {
               Move sticks to verify calibration. Gray = raw input, blue = calibrated output. Center should read 0.000, extremes should reach -1.000 / 1.000.
             </p>
             <div className="space-y-2">
-              {AXIS_LABELS.map((label, i) => (
-                <AxisBar key={label} label={label} raw={rawAxes[i]} calibrated={axes[i]} />
+              {padAxes.map((v, i) => (
+                <AxisBar
+                  key={i}
+                  label={`Axis ${i}`}
+                  raw={v}
+                  calibrated={
+                    cal && i < cal.center.length
+                      ? applyCal(v, cal.center[i], cal.min[i], cal.max[i])
+                      : undefined
+                  }
+                />
               ))}
             </div>
           </>

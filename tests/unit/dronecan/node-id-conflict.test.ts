@@ -13,8 +13,8 @@ function info(uidByte: number): GetNodeInfoResponse {
   } as GetNodeInfoResponse;
 }
 
-function status(uptime: number): NodeStatus {
-  return { uptime_sec: uptime, health: 0, mode: 0, sub_mode: 0, vendor_specific_status_code: 0 } as NodeStatus;
+function status(uptime: number, health = 0): NodeStatus {
+  return { uptime_sec: uptime, health, mode: 0, sub_mode: 0, vendor_specific_status_code: 0 } as NodeStatus;
 }
 
 /** Client whose GetNodeInfo answers come from a per-ID queue and whose
@@ -34,7 +34,7 @@ function makeClient(answers: Record<number, Array<number | "timeout">>) {
       };
     },
   };
-  const emit = (src: number, uptime: number) => listener?.(src, status(uptime));
+  const emit = (src: number, uptime: number, health = 0) => listener?.(src, status(uptime, health));
   return { client, emit };
 }
 
@@ -76,6 +76,36 @@ describe("scanNodeIdConflicts", () => {
     const report = await scan;
     expect(report.silent).toEqual([30]);
     expect(report.clean).toEqual([]);
+  });
+
+  it("does not call two nodes powered together clean: doubled NodeStatus rate is inconclusive", async () => {
+    // Same responder wins every GetNodeInfo; both nodes broadcast equal uptimes.
+    const { client, emit } = makeClient({ 40: [0xaa, 0xaa, 0xaa] });
+    const scan = scanNodeIdConflicts(client, [40], { windowMs: 3_000 });
+    for (const uptime of [7, 7, 8, 8, 9, 9]) emit(40, uptime);
+    await vi.advanceTimersByTimeAsync(3_000);
+    const report = await scan;
+    expect(report.clean).toEqual([]);
+    expect(report.inconclusive).toEqual([40]);
+  });
+
+  it("flags an ID whose same-second NodeStatus frames disagree on health", async () => {
+    const { client, emit } = makeClient({ 41: [0xaa, 0xaa, 0xaa] });
+    const scan = scanNodeIdConflicts(client, [41], { windowMs: 3_000 });
+    emit(41, 7, 0);
+    emit(41, 7, 1);
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect((await scan).conflicts.map((c) => c.nodeId)).toEqual([41]);
+  });
+
+  it("reports an ID heard only on NodeStatus as inconclusive when GetNodeInfo never answers", async () => {
+    const { client, emit } = makeClient({});
+    const scan = scanNodeIdConflicts(client, [42], { windowMs: 3_000 });
+    for (const uptime of [7, 8, 9]) emit(42, uptime);
+    await vi.advanceTimersByTimeAsync(3_000);
+    const report = await scan;
+    expect(report.clean).toEqual([]);
+    expect(report.inconclusive).toEqual([42]);
   });
 
   it("counts only backward uptime steps", () => {

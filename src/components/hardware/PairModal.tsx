@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
 
 interface PairModalProps {
   open: boolean;
@@ -29,6 +30,7 @@ export function PairModal({ open, onClose }: PairModalProps) {
   const startPair = useGroundStationStore((s) => s.startPair);
   const unpair = useGroundStationStore((s) => s.unpair);
   const clearPair = useGroundStationStore((s) => s.clearPair);
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
 
   const [pairKey, setPairKey] = useState("");
   const [droneId, setDroneId] = useState("");
@@ -61,7 +63,12 @@ export function PairModal({ open, onClose }: PairModalProps) {
     setUnpairConfirmOpen(false);
     const client = groundStationApiFromAgent(agentUrl, apiKey);
     if (!client) return;
-    await unpair(client);
+    try {
+      await withArmedOverride((force) => unpair(client, { force }));
+    } catch {
+      // The operator declined the armed override: the pair stays as it is.
+      return;
+    }
     await startPair(client, pairKey.trim(), droneId.trim() || undefined);
   };
 
@@ -166,6 +173,7 @@ export function PairModal({ open, onClose }: PairModalProps) {
       onCancel={() => setUnpairConfirmOpen(false)}
       onConfirm={handleConfirmUnpair}
     />
+    {armedOverrideDialog}
     </>
   );
 }

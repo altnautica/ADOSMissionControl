@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -114,6 +114,7 @@ function ConvexSignInForm({
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const fieldId = useId();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -149,11 +150,16 @@ function ConvexSignInForm({
       <form onSubmit={handleSubmit} className="space-y-3">
         {mode === "signUp" && (
           <div>
-            <label className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1">
+            <label
+              htmlFor={`${fieldId}-name`}
+              className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1"
+            >
               {t("name")}
             </label>
             <input
+              id={`${fieldId}-name`}
               type="text"
+              autoComplete="name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="w-full bg-bg-primary border border-border-default px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary"
@@ -163,11 +169,16 @@ function ConvexSignInForm({
         )}
 
         <div>
-          <label className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1">
+          <label
+            htmlFor={`${fieldId}-email`}
+            className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1"
+          >
             {t("email")}
           </label>
           <input
+            id={`${fieldId}-email`}
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -177,11 +188,16 @@ function ConvexSignInForm({
         </div>
 
         <div>
-          <label className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1">
+          <label
+            htmlFor={`${fieldId}-password`}
+            className="text-[10px] text-text-secondary uppercase tracking-wider block mb-1"
+          >
             {t("password")}
           </label>
           <input
+            id={`${fieldId}-password`}
             type="password"
+            autoComplete={mode === "signUp" ? "new-password" : "current-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

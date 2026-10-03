@@ -84,6 +84,14 @@ export function resolveTargetActions(target: SelectedTarget): TargetAction[] {
     .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 }
 
+/** Whether designate can reach this drone's vision engine. It needs a direct
+ * (LAN) agent link: the cloud relay does not carry the designate call. */
+function canDesignate(target: SelectedTarget): boolean {
+  if (isDemoMode()) return true;
+  const deviceId = deviceIdFromNodeId(target.droneId) ?? target.droneId;
+  return resolveLocalAgentForDrone(deviceId) != null;
+}
+
 /**
  * DESIGNATE a target: lock the vision engine's tracker onto the clicked box so
  * any consumer (a Follow-Me plugin, a gimbal, …) follows what is locked. Shared
@@ -104,7 +112,10 @@ export async function designateTarget(
   const deviceId = deviceIdFromNodeId(target.droneId) ?? target.droneId;
   const agent = resolveLocalAgentForDrone(deviceId);
   if (!agent) {
-    notify("No local agent for this drone", "error");
+    notify(
+      "Designate needs a direct link to this drone; it is not available over the cloud relay",
+      "error",
+    );
     return false;
   }
   try {
@@ -136,6 +147,9 @@ const DESIGNATE_ACTION: TargetAction = {
   source: "builtin",
   order: 10,
   defaultKey: "d",
+  // Offered only where it can work, so a relay-linked drone never shows an
+  // action that always fails.
+  appliesTo: canDesignate,
   activate: async ({ target, notify }) => {
     if (await designateTarget(target, notify)) {
       notify("Target designated", "success");

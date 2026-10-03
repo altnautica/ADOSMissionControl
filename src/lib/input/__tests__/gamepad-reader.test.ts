@@ -17,9 +17,11 @@ describe("gamepad reader", () => {
   let connected = true;
   let axes = [0, 0, 0, 0];
   let timestamp = 1;
+  let id = "pad-a";
 
   function pad(): Gamepad {
     return {
+      id,
       axes,
       timestamp,
       buttons: new Array(16).fill({ pressed: false, touched: false, value: 0 }),
@@ -40,6 +42,7 @@ describe("gamepad reader", () => {
     connected = true;
     axes = [0, 0, 0, 0];
     timestamp = 1;
+    id = "pad-a";
     vi.stubGlobal("requestAnimationFrame", (cb: () => void) => {
       frame = cb;
       return 1;
@@ -53,7 +56,7 @@ describe("gamepad reader", () => {
     stopGamepadPolling();
     vi.unstubAllGlobals();
     vi.useRealTimers();
-    useInputStore.setState({ txMode: 2 });
+    useInputStore.setState({ txMode: 2, calibrations: {} });
     useInputStore.getState().resetInput();
   });
 
@@ -107,5 +110,30 @@ describe("gamepad reader", () => {
     step();
     expect(useInputStore.getState().axes[2]).toBeCloseTo(1);
     expect(useInputStore.getState().axes[1]).toBe(0);
+  });
+
+  it("applies a pad's calibration to its physical axis in either stick mode, and never to another pad", () => {
+    // The left stick's vertical axis rests at 0.2 on this pad.
+    useInputStore.setState({
+      calibrations: {
+        "pad-a": { center: [0, 0.2, 0, 0], min: [-1, -0.6, -1, -1], max: [1, 1, 1, 1] },
+      },
+    });
+    axes = [0, 0.2, 0, 0];
+    startGamepadPolling();
+    step();
+    // Mode 2: the left vertical axis is throttle, and it reads centred.
+    expect(useInputStore.getState().axes[2]).toBe(0);
+
+    // Mode 1: the same physical axis is now pitch, and it still reads centred.
+    useInputStore.setState({ txMode: 1 });
+    step();
+    expect(useInputStore.getState().axes[1]).toBe(0);
+    expect(useInputStore.getState().axes[2]).toBe(0);
+
+    // A different controller does not inherit that calibration.
+    id = "pad-b";
+    step();
+    expect(useInputStore.getState().axes[1]).toBeLessThan(0);
   });
 });

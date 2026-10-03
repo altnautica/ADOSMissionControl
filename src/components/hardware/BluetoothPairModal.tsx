@@ -49,6 +49,12 @@ export function BluetoothPairModal({ open, onClose }: BluetoothPairModalProps) {
     }
   }, [bluetooth.scanning]);
 
+  // The scan progress interval must not outlive the modal.
+  useEffect(() => {
+    const timer = progressTimerRef;
+    return () => clearInterval(timer.current ?? undefined);
+  }, []);
+
   const handleScan = async () => {
     const client = groundStationApiFromAgent(agentUrl, apiKey);
     if (!client) return;

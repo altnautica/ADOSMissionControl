@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { PairModal } from "@/components/hardware/PairModal";
 import { WifiScanModal } from "@/components/hardware/WifiScanModal";
 import { EthernetConfigModal } from "@/components/hardware/EthernetConfigModal";
@@ -30,6 +31,8 @@ interface Props {
   setShareUplinkConfirmOpen: (v: boolean) => void;
   onConfirmShareUplink: () => void;
   modemOpen: boolean;
+  /** The modem's current enabled state, or null when unknown. */
+  modemEnabled: boolean | null;
   setModemOpen: (v: boolean) => void;
   apnDraft: string;
   capGbDraft: number;
@@ -42,6 +45,7 @@ interface Props {
 }
 
 export function NetworkPageModals(p: Props) {
+  const t = useTranslations("hardware.connectionRisk");
   return (
     <>
       <PairModal open={p.pairOpen} onClose={() => p.setPairOpen(false)} />
@@ -64,9 +68,10 @@ export function NetworkPageModals(p: Props) {
 
       <ConfirmDialog
         open={p.shareUplinkConfirmOpen}
-        title="Share uplink with WiFi clients?"
-        message="This installs a NAT rule and routes connected clients' traffic over the active uplink."
-        confirmLabel="Share"
+        title={t("shareTitle")}
+        message={t("shareMessage")}
+        confirmLabel={t("shareConfirm")}
+        variant="danger"
         onCancel={() => p.setShareUplinkConfirmOpen(false)}
         onConfirm={p.onConfirmShareUplink}
       />
@@ -76,6 +81,7 @@ export function NetworkPageModals(p: Props) {
         apnDraft={p.apnDraft}
         capGbDraft={p.capGbDraft}
         modemEnabledDraft={p.modemEnabledDraft}
+        modemEnabled={p.modemEnabled}
         saving={p.savingModem}
         setApnDraft={p.setApnDraft}
         setCapGbDraft={p.setCapGbDraft}

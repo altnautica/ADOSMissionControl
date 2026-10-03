@@ -27,6 +27,7 @@ import type { NodeProfile } from "@/components/dashboard/node-detail/surface-typ
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { NetworkStatus } from "@/lib/api/ground-station/types";
 import { Toggle } from "@/components/ui/toggle";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { ConfigToggleField } from "./ConfigFields";
 import { HotspotApFields } from "./HotspotApFields";
@@ -55,6 +56,8 @@ export function NetworkUplinkSection({
 }: SectionProps) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const tRisk = useTranslations("hardware.connectionRisk");
+  const [shareConfirmOpen, setShareConfirmOpen] = useState(false);
   const agent = useNodeDirectAgent(nodeDeviceId);
 
   const isGroundStation = profile === "ground-station";
@@ -222,12 +225,24 @@ export function NetworkUplinkSection({
               <Toggle
                 label={t("network.shareLabel")}
                 checked={net.share_uplink}
-                onChange={(v) => void onShareToggle(v)}
+                onChange={(v) => (v ? setShareConfirmOpen(true) : void onShareToggle(false))}
                 disabled={readOnly || savingShare}
               />
               <p className="text-[11px] text-text-tertiary">
                 {t("network.shareHint")}
               </p>
+              <ConfirmDialog
+                open={shareConfirmOpen}
+                variant="danger"
+                title={tRisk("shareTitle")}
+                message={tRisk("shareMessage")}
+                confirmLabel={tRisk("shareConfirm")}
+                onCancel={() => setShareConfirmOpen(false)}
+                onConfirm={() => {
+                  setShareConfirmOpen(false);
+                  void onShareToggle(true);
+                }}
+              />
             </div>
           ) : null}
         </>
@@ -244,6 +259,12 @@ export function NetworkUplinkSection({
           config={config}
           readOnly={readOnly}
           setValue={setValue}
+          confirm={{
+            when: (next) => !next,
+            title: tRisk("apTitle"),
+            message: tRisk("apMessage"),
+            confirmLabel: tRisk("apConfirm"),
+          }}
         />
         <HotspotApFields
           key={nodeDeviceId ?? ""}

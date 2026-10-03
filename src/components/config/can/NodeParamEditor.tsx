@@ -14,8 +14,9 @@
  * one asks for a confirmation naming the action and the node; the
  * destructive three also need the node typed in.
  *
- * Renders inside a fixed right-edge drawer; click the backdrop or the close
- * button to dismiss. Falls back to an empty-state hint when no client is
+ * Renders in the shared Modal, so Escape, the focus trap and the labelled
+ * close control match every other dialog, and a confirmation stacked on top
+ * takes Escape first. Falls back to an empty-state hint when no client is
  * connected.
  *
  * @license GPL-3.0-only
@@ -24,8 +25,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { X, RotateCcw, Save, Trash2, RefreshCw, Hash, FlaskConical, Upload } from "lucide-react";
+import { RotateCcw, Save, Trash2, RefreshCw, Hash, FlaskConical, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useDroneCanNodeStore } from "@/stores/dronecan/node-store";
@@ -69,6 +71,7 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
   const tCol = useTranslations("canConfig.nodeParamEditor.column");
   const tFoot = useTranslations("canConfig.nodeParamEditor.footer");
   const tQuick = useTranslations("canConfig.nodeParamEditor.quickActions");
+  const tStatus = useTranslations("canConfig.nodeParamEditor.status");
   const router = useRouter();
 
   const node = useDroneCanNodeStore((s) => s.nodes.get(nodeId));
@@ -122,8 +125,8 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
       const r = await saveAllDirty();
       setStatusMsg(
         r.failed === 0
-          ? `Saved ${r.saved}`
-          : `Saved ${r.saved}, failed ${r.failed}`,
+          ? tStatus("saved", { saved: r.saved })
+          : tStatus("savedWithFailures", { saved: r.saved, failed: r.failed }),
       );
     });
 
@@ -133,7 +136,7 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
       // ExecuteOpcode SAVE is opcode 0. Use the hook's eraseToDefaults
       // sibling pathway via a direct client call to keep behaviour explicit.
       const res = await client.paramExecuteOpcode(nodeId, 0);
-      setStatusMsg(res.ok ? "Saved to node" : "Save failed");
+      setStatusMsg(res.ok ? tStatus("savedToNode") : tStatus("saveFailed"));
     });
 
   // Runs only from the confirmation dialog, and never on an armed vehicle.
@@ -143,7 +146,7 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
       switch (action) {
         case "restart": {
           const r = await restartNode();
-          setStatusMsg(r.ok ? "Restart requested" : "Restart failed");
+          setStatusMsg(r.ok ? tStatus("restartRequested") : tStatus("restartFailed"));
           return;
         }
         case "flashBootloader": {
@@ -151,12 +154,12 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
             tag: ValueTag.Integer,
             value: BigInt(1),
           });
-          setStatusMsg(res.name === "FLASH_BOOTLOADER" ? "FLASH_BOOTLOADER=1" : "Set failed");
+          setStatusMsg(res.name === "FLASH_BOOTLOADER" ? tStatus("flashBootloaderSet") : tStatus("setFailed"));
           return;
         }
         case "erase": {
           const r = await eraseToDefaults();
-          setStatusMsg(r.ok ? "Erased to defaults" : "Erase failed");
+          setStatusMsg(r.ok ? tStatus("erased") : tStatus("eraseFailed"));
           if (r.ok) await refresh();
           return;
         }
@@ -166,7 +169,7 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
             tag: ValueTag.Integer,
             value: BigInt(newId),
           });
-          setStatusMsg(res.name === "UAVCAN_NODE_ID" ? `Node ID set to ${newId}` : "Change failed");
+          setStatusMsg(res.name === "UAVCAN_NODE_ID" ? tStatus("nodeIdSet", { newId }) : tStatus("changeFailed"));
           setShowChangeId(false);
           return;
         }
@@ -176,14 +179,14 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
   const onReload = () =>
     wrap(async () => {
       await refresh();
-      setStatusMsg("Reloaded");
+      setStatusMsg(tStatus("reloaded"));
     });
 
   // 126 and 127 are left for tools; 127 is this GCS's own node ID.
   const requestChangeId = () => {
     const n = Number.parseInt(newNodeIdStr, 10);
     if (!Number.isInteger(n) || n < 1 || n > MAX_ASSIGNABLE_NODE_ID) {
-      setStatusMsg(`Node ID must be 1..${MAX_ASSIGNABLE_NODE_ID}`);
+      setStatusMsg(tStatus("nodeIdRange", { max: MAX_ASSIGNABLE_NODE_ID }));
       return;
     }
     setPending({ action: "changeId", newId: n });
@@ -197,104 +200,14 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
   const modeLabel = MODE_LABELS[node?.lastStatus?.mode ?? -1] ?? "—";
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex"
-      role="dialog"
-      aria-modal="true"
-      data-testid="node-param-editor"
-    >
-      <div className="flex-1 bg-bg-primary/60" onClick={onClose} />
-      <aside className="w-[560px] max-w-[95vw] h-full bg-bg-secondary border-l border-border-default flex flex-col">
-        <header className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-          <div>
-            <h3 className="text-sm font-semibold text-text-primary">
-              {t("title", { nodeId, name: nodeName })}
-            </h3>
-            <p className="text-[11px] text-text-tertiary font-mono">{modeLabel}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-text-tertiary hover:text-text-primary"
-            aria-label="Close"
-          >
-            <X size={16} />
-          </button>
-        </header>
-
-        {/* Quick actions row */}
-        <div className="flex flex-wrap gap-2 px-4 py-2 border-b border-border-default">
-          <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={() => setPending({ action: "restart" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
-            {tQuick("restart")}
-          </Button>
-          <Button variant="ghost" size="sm" icon={<FlaskConical size={12} />} onClick={() => setPending({ action: "flashBootloader" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
-            {tQuick("flashBootloader")}
-          </Button>
-          <Button variant="ghost" size="sm" icon={<Upload size={12} />} onClick={onUpdateFirmware} disabled={!client}>
-            {tQuick("updateFirmware")}
-          </Button>
-          <Button variant="ghost" size="sm" icon={<Hash size={12} />} onClick={() => setShowChangeId((v) => !v)} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
-            {tQuick("changeNodeId")}
-          </Button>
-          <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => setPending({ action: "erase" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
-            {tQuick("erase")}
-          </Button>
-        </div>
-
-        {showChangeId && (
-          <div className="flex items-center gap-2 px-4 py-2 border-b border-border-default">
-            <input
-              type="number"
-              min={1}
-              max={MAX_ASSIGNABLE_NODE_ID}
-              value={newNodeIdStr}
-              onChange={(e) => setNewNodeIdStr(e.target.value)}
-              placeholder={`1..${MAX_ASSIGNABLE_NODE_ID}`}
-              className="px-2 py-1 text-xs font-mono bg-bg-tertiary border border-border-default rounded w-24 text-text-primary"
-              aria-label="New node id"
-            />
-            <Button variant="secondary" size="sm" onClick={requestChangeId} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
-              {tQuick("changeNodeId")}
-            </Button>
-          </div>
-        )}
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          {!client ? (
-            <div className="px-4 py-6 text-xs text-text-tertiary text-center">—</div>
-          ) : loading && rows.length === 0 ? (
-            <div className="px-4 py-6 text-xs text-text-tertiary text-center">Loading…</div>
-          ) : error ? (
-            <div className="px-4 py-6 text-xs text-status-error text-center" role="alert">
-              {error}
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="px-4 py-6 text-xs text-text-tertiary text-center">—</div>
-          ) : (
-            <table className="w-full text-xs">
-              <thead className="bg-bg-tertiary text-text-tertiary text-[10px] uppercase tracking-wider">
-                <tr>
-                  <th className="text-left py-1.5 px-2 font-medium">{tCol("name")}</th>
-                  <th className="text-left py-1.5 px-2 font-medium">{tCol("value")}</th>
-                  <th className="text-left py-1.5 px-2 font-medium">{tCol("type")}</th>
-                  <th className="text-left py-1.5 px-2 font-medium">{tCol("description")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((entry) => (
-                  <NodeParamRow
-                    key={entry.name}
-                    entry={entry}
-                    onChange={(v) => setLocal(entry.name, v)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Footer */}
-        <footer className="px-4 py-2 border-t border-border-default flex items-center justify-between gap-2">
+    <Modal
+      open
+      onClose={onClose}
+      title={t("title", { nodeId, name: nodeName })}
+      size="xl"
+      noBodyPadding
+      footer={
+        <div className="flex w-full items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-[11px] text-text-tertiary">
             <span data-testid="node-param-editor-dirty-count">
               {tFoot("dirty", { count: dirtyCount })}
@@ -343,8 +256,83 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
               {tFoot("sendAll")}
             </Button>
           </div>
-        </footer>
-      </aside>
+        </div>
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col" data-testid="node-param-editor">
+        <p className="px-4 pt-2 text-[11px] text-text-tertiary font-mono">{modeLabel}</p>
+        {/* Quick actions row */}
+        <div className="flex flex-wrap gap-2 px-4 py-2 border-b border-border-default">
+          <Button variant="ghost" size="sm" icon={<RotateCcw size={12} />} onClick={() => setPending({ action: "restart" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
+            {tQuick("restart")}
+          </Button>
+          <Button variant="ghost" size="sm" icon={<FlaskConical size={12} />} onClick={() => setPending({ action: "flashBootloader" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
+            {tQuick("flashBootloader")}
+          </Button>
+          <Button variant="ghost" size="sm" icon={<Upload size={12} />} onClick={onUpdateFirmware} disabled={!client}>
+            {tQuick("updateFirmware")}
+          </Button>
+          <Button variant="ghost" size="sm" icon={<Hash size={12} />} onClick={() => setShowChangeId((v) => !v)} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
+            {tQuick("changeNodeId")}
+          </Button>
+          <Button variant="ghost" size="sm" icon={<Trash2 size={12} />} onClick={() => setPending({ action: "erase" })} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
+            {tQuick("erase")}
+          </Button>
+        </div>
+
+        {showChangeId && (
+          <div className="flex items-center gap-2 px-4 py-2 border-b border-border-default">
+            <input
+              type="number"
+              min={1}
+              max={MAX_ASSIGNABLE_NODE_ID}
+              value={newNodeIdStr}
+              onChange={(e) => setNewNodeIdStr(e.target.value)}
+              placeholder={`1..${MAX_ASSIGNABLE_NODE_ID}`}
+              className="px-2 py-1 text-xs font-mono bg-bg-tertiary border border-border-default rounded w-24 text-text-primary"
+              aria-label={tQuick("newNodeIdLabel")}
+            />
+            <Button variant="secondary" size="sm" onClick={requestChangeId} disabled={!client || busy || isHardBlocked} title={blockedTitle}>
+              {tQuick("changeNodeId")}
+            </Button>
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {!client ? (
+            <div className="px-4 py-6 text-xs text-text-tertiary text-center">—</div>
+          ) : loading && rows.length === 0 ? (
+            <div className="px-4 py-6 text-xs text-text-tertiary text-center">{tStatus("loading")}</div>
+          ) : error ? (
+            <div className="px-4 py-6 text-xs text-status-error text-center" role="alert">
+              {error}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="px-4 py-6 text-xs text-text-tertiary text-center">—</div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="bg-bg-tertiary text-text-tertiary text-[10px] uppercase tracking-wider">
+                <tr>
+                  <th className="text-left py-1.5 px-2 font-medium">{tCol("name")}</th>
+                  <th className="text-left py-1.5 px-2 font-medium">{tCol("value")}</th>
+                  <th className="text-left py-1.5 px-2 font-medium">{tCol("type")}</th>
+                  <th className="text-left py-1.5 px-2 font-medium">{tCol("description")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((entry) => (
+                  <NodeParamRow
+                    key={entry.name}
+                    entry={entry}
+                    onChange={(v) => setLocal(entry.name, v)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
       <ConfirmDialog
         open={pending !== null}
         variant="danger"
@@ -360,6 +348,6 @@ export function NodeParamEditor({ nodeId, client, onClose }: NodeParamEditorProp
           if (p) void runAction(p.action, p.newId);
         }}
       />
-    </div>
+    </Modal>
   );
 }

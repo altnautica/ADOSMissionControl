@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   ShieldAlert,
   ShieldCheck,
+  ShieldQuestion,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,10 @@ import type {
 } from "@/lib/api/ground-station/types";
 
 export interface PairingCardProps {
+  /** Last pair-status answer; null while unknown (none yet, or the last
+   *  check failed). Unknown never offers a bind. */
   pairStatus: PairStatusResponse | null;
+  onRetryPairStatus: () => void;
   bindSession: LocalBindSession | null;
   bindBusy: boolean;
   unpairBusy: boolean;
@@ -34,6 +38,7 @@ export interface PairingCardProps {
 
 export function PairingCard({
   pairStatus,
+  onRetryPairStatus,
   bindSession,
   bindBusy,
   unpairBusy,
@@ -44,6 +49,7 @@ export function PairingCard({
   retryBusy,
 }: PairingCardProps) {
   const t = useTranslations("hardware.radio");
+  const unknown = pairStatus == null;
   const paired = pairStatus?.paired === true;
   const autoArmed =
     !paired && pairStatus?.auto_pair_enabled === true;
@@ -165,6 +171,8 @@ export function PairingCard({
       <div className="mb-3 flex items-center gap-2">
         {paired ? (
           <ShieldCheck size={16} className="text-status-success" />
+        ) : unknown ? (
+          <ShieldQuestion size={16} className="text-text-tertiary" />
         ) : (
           <ShieldAlert size={16} className="text-status-warning" />
         )}
@@ -214,7 +222,20 @@ export function PairingCard({
         </div>
       ) : null}
 
-      {paired ? (
+      {unknown ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-secondary">
+              {t("pairing.statusUnknown")}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button variant="secondary" size="sm" onClick={onRetryPairStatus}>
+              {t("pairing.actionRetryStatus")}
+            </Button>
+          </div>
+        </div>
+      ) : paired ? (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded border border-status-success/40 bg-status-success/10 px-2.5 py-1 text-xs text-status-success">

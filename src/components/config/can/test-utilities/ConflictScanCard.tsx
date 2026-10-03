@@ -80,6 +80,11 @@ export function ConflictScanCard({ client }: ConflictScanCardProps) {
                   {t("noConflicts", { count: result.clean.length })}
                 </div>
               ) : null}
+              {result.inconclusive.length > 0 && (
+                <div className="text-status-warning" data-testid="conflict-scan-inconclusive">
+                  {t("inconclusive", { ids: result.inconclusive.join(", ") })}
+                </div>
+              )}
               {result.silent.length > 0 && (
                 <div className="text-status-warning" data-testid="conflict-scan-silent">
                   {t("noResponse", { ids: result.silent.join(", ") })}

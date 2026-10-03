@@ -58,8 +58,8 @@ function applyDeadzone(value: number, deadzone: number): number {
   return (sign * (Math.abs(value) - deadzone)) / (1 - deadzone);
 }
 
-/** Apply calibration offset — normalize raw axis to -1..1 based on measured center/min/max. */
-function applyCal(raw: number, center: number, min: number, max: number): number {
+/** Normalize one raw axis to -1..1 from its measured center/min/max. */
+export function applyCal(raw: number, center: number, min: number, max: number): number {
   const adjusted = raw - center;
   const halfRange = adjusted >= 0 ? (max - center) : (center - min);
   if (halfRange <= 0.01) return 0;
@@ -202,23 +202,31 @@ export function startGamepadPolling(): void {
       inputStore.setController("gamepad");
     }
 
-    const { deadzone, expo, calibration, txMode } = inputStore;
+    const { deadzone, expo, calibrations, txMode } = inputStore;
     const mapping = getMappingForMode(txMode);
 
-    // Read raw axes and apply mapping
-    let rawRoll = gp.axes[mapping.rollAxis] ?? 0;
-    let rawPitch = -(gp.axes[mapping.pitchAxis] ?? 0); // Invert Y
-    let rawThrottle = -(gp.axes[mapping.throttleAxis] ?? 0); // Invert Y: up = positive
-    let rawYaw = gp.axes[mapping.yawAxis] ?? 0;
-    const rawAxes: [number, number, number, number] = [rawRoll, rawPitch, rawThrottle, rawYaw];
+    // Calibration belongs to this pad's physical axes, so it is applied before
+    // the TX-mode mapping picks which axis is which stick function.
+    const padAxes = Array.from(gp.axes);
+    const cal = calibrations[gp.id];
+    const physical = (i: number): number => {
+      const v = padAxes[i] ?? 0;
+      return cal && i < cal.center.length
+        ? applyCal(v, cal.center[i], cal.min[i], cal.max[i])
+        : v;
+    };
 
-    // Apply calibration offsets if available
-    if (calibration) {
-      rawRoll = applyCal(rawRoll, calibration.center[0], calibration.min[0], calibration.max[0]);
-      rawPitch = applyCal(rawPitch, calibration.center[1], calibration.min[1], calibration.max[1]);
-      rawThrottle = applyCal(rawThrottle, calibration.center[2], calibration.min[2], calibration.max[2]);
-      rawYaw = applyCal(rawYaw, calibration.center[3], calibration.min[3], calibration.max[3]);
-    }
+    // Uncalibrated mapped values, for the raw readouts.
+    const rawAxes: [number, number, number, number] = [
+      padAxes[mapping.rollAxis] ?? 0,
+      -(padAxes[mapping.pitchAxis] ?? 0), // Invert Y
+      -(padAxes[mapping.throttleAxis] ?? 0), // Invert Y: up = positive
+      padAxes[mapping.yawAxis] ?? 0,
+    ];
+    const rawRoll = physical(mapping.rollAxis);
+    const rawPitch = -physical(mapping.pitchAxis);
+    const rawThrottle = -physical(mapping.throttleAxis);
+    const rawYaw = physical(mapping.yawAxis);
 
     // Apply deadzone + expo
     const axes: [number, number, number, number] = [
@@ -231,6 +239,8 @@ export function startGamepadPolling(): void {
     // One store update per frame: three separate writes re-rendered every
     // subscriber three times at display rate.
     inputStore.publishGamepadFrame({
+      gamepadId: gp.id,
+      padAxes,
       axes,
       rawAxes,
       // The physical right stick, independent of the TX-mode mapping, for

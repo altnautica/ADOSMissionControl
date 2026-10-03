@@ -320,6 +320,10 @@ describe("NetworkUplinkSection hotspot AP settings", () => {
     expect(screen.queryByDisplayValue("supersecret")).toBeNull();
     fireEvent.change(pw, { target: { value: "newpass123" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    // The AP restart can disconnect this computer, so nothing is written until
+    // the operator confirms.
+    expect(puts.some((p) => p.url.endsWith("/network/ap"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Apply and restart AP" }));
 
     await waitFor(() =>
       expect(puts.some((p) => p.url.endsWith("/network/ap"))).toBe(true),

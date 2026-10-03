@@ -91,6 +91,20 @@ function activeElementOrNull(): HTMLElement | null {
   return typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null);
 }
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Controls inside `root` that Tab can actually reach: enabled, not inside a
+ *  hidden or inert subtree, and not styled out of view. */
+function focusableWithin(root: HTMLElement | null): HTMLElement[] {
+  if (!root) return [];
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((el) => {
+    if (el.closest("[hidden], [inert], fieldset[disabled]")) return false;
+    const style = window.getComputedStyle(el);
+    return style.display !== "none" && style.visibility !== "hidden";
+  });
+}
+
 export function Modal({
   open,
   onClose,
@@ -149,17 +163,16 @@ export function Modal({
       }
       // Focus trap: keep Tab within the dialog's focusable elements.
       if (e.key === "Tab" && dialogRef.current) {
-        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
-        );
+        const focusable = focusableWithin(dialogRef.current);
         if (focusable.length === 0) return;
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
         const active = document.activeElement as HTMLElement | null;
-        if (e.shiftKey && active === first) {
+        const inList = active != null && focusable.includes(active);
+        if (e.shiftKey && (!inList || active === first)) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && active === last) {
+        } else if (!e.shiftKey && (!inList || active === last)) {
           e.preventDefault();
           first.focus();
         }
@@ -180,10 +193,7 @@ export function Modal({
     const node = dialogRef.current;
     if (!node?.contains(document.activeElement)) {
       const target =
-        initialFocusRefRef.current?.current ??
-        node?.querySelector<HTMLElement>(
-          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
-        );
+        initialFocusRefRef.current?.current ?? focusableWithin(node)[0];
       (target ?? node)?.focus();
     }
     const restore = restoreTargetRef.current;

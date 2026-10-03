@@ -57,7 +57,10 @@ export function ControllersSection() {
   const expo = useInputStore((s) => s.expo);
   const setDeadzone = useInputStore((s) => s.setDeadzone);
   const setExpo = useInputStore((s) => s.setExpo);
-  const calibration = useInputStore((s) => s.calibration);
+  const gamepadId = useInputStore((s) => s.gamepadId);
+  const calibration = useInputStore((s) =>
+    s.gamepadId ? (s.calibrations[s.gamepadId] ?? null) : null,
+  );
   const clearCalibration = useInputStore((s) => s.clearCalibration);
   const manualControlEnabled = useInputStore((s) => s.manualControlEnabled);
   const setManualControlEnabled = useInputStore((s) => s.setManualControlEnabled);
@@ -141,8 +144,8 @@ export function ControllersSection() {
         </div>
       </Card>
 
-      {/* Calibration */}
-      {isConnected && (
+      {/* Calibration: per controller, per physical axis */}
+      {hasGamepad && gamepadId && (
         <Card title="Calibration">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -157,7 +160,7 @@ export function ControllersSection() {
             <div className="flex items-center gap-2">
               {calibration && (
                 <button
-                  onClick={clearCalibration}
+                  onClick={() => clearCalibration(gamepadId)}
                   className="text-[10px] text-text-tertiary hover:text-status-error transition-colors"
                 >
                   Reset

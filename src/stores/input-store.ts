@@ -14,6 +14,11 @@ const loadTxMode = (): TxMode => (safeLocalRead<unknown>(TX_MODE_STORAGE_KEY, 2)
 
 /** One poll pass of the gamepad, published as a single store update. */
 export interface GamepadFrame {
+  /** The pad's `Gamepad.id`, which keys its calibration. */
+  gamepadId: string;
+  /** The pad's physical axes as the Gamepad API reports them, before
+   *  calibration, inversion or TX-mode mapping. */
+  padAxes: number[];
   axes: [number, number, number, number];
   rawAxes: [number, number, number, number];
   rightStick: [number, number];
@@ -32,39 +37,52 @@ function sameButtons(a: readonly boolean[], b: readonly boolean[]): boolean {
   return true;
 }
 
+/**
+ * One controller's calibration, indexed by PHYSICAL axis (the `Gamepad.axes`
+ * index) in the API's own sign. It is applied before the TX-mode mapping, so
+ * switching stick mode never moves one stick's centre and travel onto another.
+ */
 export interface GamepadCalibration {
-  center: [number, number, number, number]; // roll, pitch, throttle, yaw center values
-  min: [number, number, number, number];    // axis minimums
-  max: [number, number, number, number];    // axis maximums
+  center: number[];
+  min: number[];
+  max: number[];
 }
 
-/** A four-element numeric tuple, as the calibration shape requires. */
-function isAxisTuple(v: unknown): v is [number, number, number, number] {
+/** Calibrations by `Gamepad.id`: a different controller never inherits one. */
+export type GamepadCalibrations = Record<string, GamepadCalibration>;
+
+/** Equal-length arrays of finite numbers, as the poller indexes them. */
+function isCalibration(v: unknown): v is GamepadCalibration {
+  if (!v || typeof v !== "object") return false;
+  const c = v as Partial<Record<keyof GamepadCalibration, unknown>>;
+  const arrays = [c.center, c.min, c.max];
+  if (!arrays.every(Array.isArray)) return false;
+  const [center, min, max] = arrays as number[][];
   return (
-    Array.isArray(v) &&
-    v.length === 4 &&
-    v.every((n) => typeof n === "number" && Number.isFinite(n))
+    center.length > 0 &&
+    min.length === center.length &&
+    max.length === center.length &&
+    [...center, ...min, ...max].every((n) => typeof n === "number" && Number.isFinite(n))
   );
 }
 
 /**
- * Read the persisted calibration, rejecting anything that is not the exact
- * shape the poller indexes.
+ * Read the persisted calibrations, keeping only entries of the exact shape the
+ * poller indexes.
  *
  * `safeLocalRead` only guarantees the JSON parsed. A corrupt or hand-edited
- * `ados-gamepad-cal` entry therefore reached `calibration.center[0]` inside
- * the RAF poll body and THREW — which killed the poll loop permanently while
- * `activeController` stayed `"gamepad"`, so the manual-control gate kept
+ * entry once reached the RAF poll body and THREW, which killed the poll loop
+ * while `activeController` stayed `"gamepad"`, so the manual-control gate kept
  * passing and the stream kept re-sending the last stick snapshot.
  */
-const loadCalibration = (): GamepadCalibration | null => {
+const loadCalibrations = (): GamepadCalibrations => {
   const raw = safeLocalRead<unknown>(CAL_STORAGE_KEY, null);
-  if (!raw || typeof raw !== "object") return null;
-  const c = raw as Partial<GamepadCalibration>;
-  if (!isAxisTuple(c.center) || !isAxisTuple(c.min) || !isAxisTuple(c.max)) {
-    return null;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: GamepadCalibrations = {};
+  for (const [id, cal] of Object.entries(raw as Record<string, unknown>)) {
+    if (isCalibration(cal)) out[id] = cal;
   }
-  return { center: c.center, min: c.min, max: c.max };
+  return out;
 };
 
 interface InputStoreState {
@@ -81,7 +99,11 @@ interface InputStoreState {
    * ArduPilot's 3 s `RC_OVERRIDE_TIME`, so the vehicle never saw a dropout.
    */
   axesAt: number | null;
-  rawAxes: [number, number, number, number]; // pre-calibration raw values
+  rawAxes: [number, number, number, number]; // mapped, pre-calibration values
+  /** The connected pad's `Gamepad.id`, or null with no pad. */
+  gamepadId: string | null;
+  /** The connected pad's physical axes, uncalibrated and unmapped. */
+  padAxes: number[];
   /**
    * The physical right stick (standard-mapping axes 2 and 3), x right = +,
    * y up = +, before calibration, deadzone or TX-mode mapping. The skill
@@ -94,7 +116,7 @@ interface InputStoreState {
   txMode: TxMode;
   deadzone: number;
   expo: number;
-  calibration: GamepadCalibration | null;
+  calibrations: GamepadCalibrations;
   /**
    * The operator opted in to flying with the gamepad. Off at every start and
    * revoked whenever the controller drops, because the stream it authorizes is
@@ -135,8 +157,8 @@ interface InputStoreState {
   setTxMode: (mode: TxMode) => void;
   setDeadzone: (deadzone: number) => void;
   setExpo: (expo: number) => void;
-  setCalibration: (cal: GamepadCalibration) => void;
-  clearCalibration: () => void;
+  setCalibration: (gamepadId: string, cal: GamepadCalibration) => void;
+  clearCalibration: (gamepadId: string) => void;
   setManualControlEnabled: (enabled: boolean) => void;
   setManualControlLinkBlock: (reason: string | null) => void;
   setSticksCaptured: (captured: boolean) => void;
@@ -148,12 +170,14 @@ export const useInputStore = create<InputStoreState>((set) => ({
   axes: [0, 0, 0, 0],
   axesAt: null,
   rawAxes: [0, 0, 0, 0],
+  gamepadId: null,
+  padAxes: [],
   rightStick: [0, 0],
   buttons: new Array(16).fill(false),
   txMode: loadTxMode(),
   deadzone: 0.05,
   expo: 0.3,
-  calibration: loadCalibration(),
+  calibrations: loadCalibrations(),
   manualControlEnabled: false,
   manualControlLinkBlock: null,
   sticksCaptured: false,
@@ -165,6 +189,8 @@ export const useInputStore = create<InputStoreState>((set) => ({
   setButtons: (buttons) => set({ buttons }),
   publishGamepadFrame: (frame) =>
     set((s) => ({
+      gamepadId: frame.gamepadId,
+      padAxes: frame.padAxes,
       axes: frame.axes,
       rawAxes: frame.rawAxes,
       rightStick: frame.rightStick,
@@ -177,14 +203,19 @@ export const useInputStore = create<InputStoreState>((set) => ({
   },
   setDeadzone: (deadzone) => set({ deadzone }),
   setExpo: (expo) => set({ expo }),
-  setCalibration: (calibration) => {
-    localStorage.setItem(CAL_STORAGE_KEY, JSON.stringify(calibration));
-    set({ calibration });
-  },
-  clearCalibration: () => {
-    localStorage.removeItem(CAL_STORAGE_KEY);
-    set({ calibration: null });
-  },
+  setCalibration: (gamepadId, cal) =>
+    set((s) => {
+      const calibrations = { ...s.calibrations, [gamepadId]: cal };
+      localStorage.setItem(CAL_STORAGE_KEY, JSON.stringify(calibrations));
+      return { calibrations };
+    }),
+  clearCalibration: (gamepadId) =>
+    set((s) => {
+      const calibrations = { ...s.calibrations };
+      delete calibrations[gamepadId];
+      localStorage.setItem(CAL_STORAGE_KEY, JSON.stringify(calibrations));
+      return { calibrations };
+    }),
   setManualControlEnabled: (manualControlEnabled) => set({ manualControlEnabled }),
   setManualControlLinkBlock: (manualControlLinkBlock) => set({ manualControlLinkBlock }),
   // Returning the same state object on a no-op keeps subscribers from being
@@ -201,6 +232,8 @@ export const useInputStore = create<InputStoreState>((set) => ({
       axes: [0, 0, 0, 0],
       axesAt: null,
       rawAxes: [0, 0, 0, 0],
+      gamepadId: null,
+      padAxes: [],
       rightStick: [0, 0],
       buttons: new Array(16).fill(false),
       // The reason belongs to a link that is no longer being written to.

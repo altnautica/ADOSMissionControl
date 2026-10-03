@@ -3,20 +3,28 @@
  * @description Detects two DroneCAN nodes claiming the same node ID.
  *
  * A single GetNodeInfo call resolves on the first responder, so one call per
- * ID can never see a duplicate. The scan instead gathers two kinds of
- * evidence over a listening window:
+ * ID can never see a duplicate. The scan instead gathers evidence over a
+ * listening window:
  *   - several GetNodeInfo samples per ID; more than one distinct unique_id
  *     means more than one node answered;
  *   - the NodeStatus uptime stream per ID; two nodes sharing an ID interleave
  *     their broadcasts, so uptime steps backwards repeatedly. A single step
- *     back is a reboot and is not counted as a conflict.
- * IDs that produced neither a response nor a NodeStatus are reported as
- * silent, separately from IDs that were checked and found clean.
+ *     back is a reboot and is not counted as a conflict;
+ *   - two NodeStatus frames in the same uptime second that disagree on
+ *     health, mode or vendor status, which one node cannot produce.
+ * Two identical nodes powered together report equal uptimes and the same
+ * one usually answers GetNodeInfo first, so neither of the first two signals
+ * fires. Such an ID is never reported clean on thin evidence: when
+ * GetNodeInfo never succeeds (interleaved multi-frame answers fail their
+ * CRC), or NodeStatus arrives at about twice the nominal 1 Hz, the ID is
+ * reported inconclusive. IDs that produced neither a response nor a
+ * NodeStatus are reported as silent.
  *
  * @license GPL-3.0-only
  */
 
 import type { DroneCanClient } from "./client";
+import type { NodeStatus } from "./dsdl/node-status";
 
 export type ConflictScanClient = Pick<DroneCanClient, "getNodeInfo" | "onNodeStatus">;
 
@@ -28,8 +36,10 @@ export interface NodeIdConflict {
 
 export interface ConflictScanReport {
   conflicts: NodeIdConflict[];
-  /** IDs that answered or broadcast and showed a single node. */
+  /** IDs that answered GetNodeInfo and showed a single node. */
   clean: number[];
+  /** IDs heard on the bus whose evidence could not rule out a duplicate. */
+  inconclusive: number[];
   /** IDs that neither answered GetNodeInfo nor broadcast NodeStatus. */
   silent: number[];
 }
@@ -45,6 +55,33 @@ export interface ConflictScanOptions {
 
 /** Uptime regressions at or above this count mean interleaved publishers. */
 const INTERLEAVE_REGRESSIONS = 2;
+
+/** NodeStatus frames per uptime second at or above this look like two 1 Hz publishers. */
+const DOUBLED_RATE = 1.8;
+
+/** Uptime span, in seconds, needed before the rate is judged. */
+const RATE_MIN_SPAN_S = 2;
+
+/** Whether two frames in the same uptime second disagree on node state. */
+export function hasSameSecondDisagreement(statuses: readonly NodeStatus[]): boolean {
+  const bySecond = new Map<number, string>();
+  for (const s of statuses) {
+    const state = `${s.health}/${s.mode}/${s.vendor_specific_status_code}`;
+    const seen = bySecond.get(s.uptime_sec);
+    if (seen !== undefined && seen !== state) return true;
+    bySecond.set(s.uptime_sec, state);
+  }
+  return false;
+}
+
+/** Whether NodeStatus arrived at about twice the nominal 1 Hz over the window. */
+export function hasDoubledRate(statuses: readonly NodeStatus[]): boolean {
+  if (statuses.length === 0) return false;
+  const uptimes = statuses.map((s) => s.uptime_sec);
+  const span = Math.max(...uptimes) - Math.min(...uptimes);
+  if (span < RATE_MIN_SPAN_S) return false;
+  return statuses.length / (span + 1) >= DOUBLED_RATE;
+}
 
 /** Count strictly decreasing steps in an uptime sequence. */
 export function countUptimeRegressions(uptimes: readonly number[]): number {
@@ -73,12 +110,12 @@ export async function scanNodeIdConflicts(
   { windowMs = 3_000, samples = 3, timeoutMs = 700 }: ConflictScanOptions = {},
 ): Promise<ConflictScanReport> {
   const wanted = new Set(nodeIds);
-  const uptimes = new Map<number, number[]>();
+  const statuses = new Map<number, NodeStatus[]>();
   const unsubscribe = client.onNodeStatus((src, status) => {
     if (!wanted.has(src)) return;
-    const list = uptimes.get(src) ?? [];
-    list.push(status.uptime_sec);
-    uptimes.set(src, list);
+    const list = statuses.get(src) ?? [];
+    list.push(status);
+    statuses.set(src, list);
   });
 
   const uids = new Map<number, Set<string>>();
@@ -102,17 +139,24 @@ export async function scanNodeIdConflicts(
     unsubscribe();
   }
 
-  const report: ConflictScanReport = { conflicts: [], clean: [], silent: [] };
+  const report: ConflictScanReport = { conflicts: [], clean: [], inconclusive: [], silent: [] };
   for (const id of [...nodeIds].sort((a, b) => a - b)) {
     const seenUids = uids.get(id);
-    const seenUptimes = uptimes.get(id) ?? [];
-    if (!seenUids && seenUptimes.length === 0) {
+    const seenStatuses = statuses.get(id) ?? [];
+    if (!seenUids && seenStatuses.length === 0) {
       report.silent.push(id);
       continue;
     }
     const uidList = seenUids ? Array.from(seenUids) : [];
-    if (uidList.length > 1 || countUptimeRegressions(seenUptimes) >= INTERLEAVE_REGRESSIONS) {
+    const uptimes = seenStatuses.map((s) => s.uptime_sec);
+    if (
+      uidList.length > 1 ||
+      countUptimeRegressions(uptimes) >= INTERLEAVE_REGRESSIONS ||
+      hasSameSecondDisagreement(seenStatuses)
+    ) {
       report.conflicts.push({ nodeId: id, uniqueIds: uidList });
+    } else if (!seenUids || hasDoubledRate(seenStatuses)) {
+      report.inconclusive.push(id);
     } else {
       report.clean.push(id);
     }

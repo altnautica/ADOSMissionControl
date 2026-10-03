@@ -132,7 +132,9 @@ export function formatHours(
 
 /**
  * Format a lat/lon coordinate pair to a fixed precision. Default 5 decimals
- * gives ~1.1m resolution, matching the existing `.toFixed(5)` sites.
+ * gives ~1.1m resolution, matching the existing `.toFixed(5)` sites. The pair
+ * is joined with "; " because comma-decimal locales (fr, de, es, pt, id)
+ * render each number with a comma, which made "48,85837, 2,29448" ambiguous.
  */
 export function formatCoord(
   lat: number | null | undefined,
@@ -143,5 +145,5 @@ export function formatCoord(
 ): string {
   const a = formatDecimal(lat, decimals, locale, placeholder);
   const b = formatDecimal(lon, decimals, locale, placeholder);
-  return `${a}, ${b}`;
+  return `${a}; ${b}`;
 }

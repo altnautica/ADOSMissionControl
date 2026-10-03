@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,18 +33,19 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
   const [deleting, setDeleting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const t = useTranslations("community.changelogDetail");
 
   if (state === "skipped") {
     return (
       <div className="flex flex-col items-center justify-center h-32 gap-2">
         <p className="text-sm text-text-tertiary">
-          Changelog details need the community backend, which is not available here.
+          {t("backendUnavailable")}
         </p>
         <Link
           href="/community/changelog"
           className="text-sm text-accent-primary hover:underline"
         >
-          Back to changelog
+          {t("back")}
         </Link>
       </div>
     );
@@ -52,7 +54,7 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
   if (state === "loading") {
     return (
       <div className="flex items-center justify-center h-32 text-sm text-text-tertiary">
-        Loading...
+        {t("loading")}
       </div>
     );
   }
@@ -63,13 +65,13 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
     return (
       <div className="flex flex-col items-center justify-center h-32 gap-2">
         <p className="text-sm text-text-tertiary">
-          {state === "error" ? "Entry not found or could not be loaded" : "Entry not found"}
+          {state === "error" ? t("notFoundOrFailed") : t("notFound")}
         </p>
         <Link
           href="/community/changelog"
           className="text-sm text-accent-primary hover:underline"
         >
-          Back to changelog
+          {t("back")}
         </Link>
       </div>
     );
@@ -80,7 +82,7 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
   const displayBody = typedEntry.translations?.[locale]?.description ?? typedEntry.body;
 
   const handleDelete = async () => {
-    if (!confirm("Delete this changelog entry?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     setDeleting(true);
     try {
       await removeChangelog({ id: typedEntry._id as never });
@@ -88,7 +90,7 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
     } catch (err) {
       setDeleting(false);
       toast(
-        `Could not delete the entry: ${err instanceof Error ? err.message : String(err)}`,
+        t("deleteFailed", { error: err instanceof Error ? err.message : String(err) }),
         "error",
       );
     }
@@ -101,7 +103,7 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
         className="flex items-center gap-1 text-sm text-text-tertiary hover:text-text-secondary transition-colors"
       >
         <ArrowLeft size={12} />
-        Back to changelog
+        {t("back")}
       </Link>
 
       <div className="space-y-3">
@@ -129,10 +131,10 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
             {formatDate(typedEntry.commitDate ?? typedEntry.publishedAt)}
           </span>
           {typedEntry.source === "auto" && (
-            <span className="text-[10px] text-text-tertiary">(auto)</span>
+            <span className="text-[10px] text-text-tertiary">{t("auto")}</span>
           )}
           {typedEntry.editedByAdmin && (
-            <span className="text-[10px] text-text-tertiary">(edited)</span>
+            <span className="text-[10px] text-text-tertiary">{t("edited")}</span>
           )}
         </div>
 
@@ -179,7 +181,7 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
               className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors"
             >
               <Pencil size={12} />
-              Edit
+              {t("edit")}
             </button>
             <button
               onClick={() => void handleDelete()}
@@ -187,7 +189,7 @@ export function ChangelogDetail({ id }: ChangelogDetailProps) {
               className="flex items-center gap-1 text-xs text-text-tertiary hover:text-status-error transition-colors"
             >
               <Trash2 size={12} />
-              Delete
+              {t("delete")}
             </button>
           </div>
         )}

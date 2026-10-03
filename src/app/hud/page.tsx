@@ -3,7 +3,7 @@
 // HUD page. Full-screen flight display for HDMI kiosk mode on the SBC.
 //
 // Live telemetry, WebRTC/WHEP video background, gamepad polling, PIC
-// claim stub.
+// claim, and the stick-control opt-in.
 //
 // Query params:
 //   ?layer=minimal    render lightweight inline HUD for low-power SBCs
@@ -26,6 +26,7 @@ import {
 import { useInputStore } from "@/stores/input-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { MinimalHud } from "./components/MinimalHud";
+import { StickControlToggle } from "./components/StickControlToggle";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
@@ -145,6 +146,7 @@ function GamepadIndicator() {
       <div className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 bg-scrim/50 text-on-media/60 border border-on-media/10 rounded">
         {picLabel}
       </div>
+      <StickControlToggle />
     </div>
   );
 }

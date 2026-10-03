@@ -67,7 +67,6 @@ export interface UplinkSlice {
   ) => Promise<{
     config: EthernetConfig | null;
     error: string | null;
-    backendPending: boolean;
   }>;
 }
 
@@ -126,7 +125,7 @@ export const createUplinkSlice: GroundStationSliceCreator<UplinkSlice> = (
         if (res.joined) {
           try {
             const net = await api.getNetwork();
-            const modemFromNet = net.modem_4g ?? net.modem ?? null;
+            const modemFromNet = net.modem_4g ?? null;
             set({
               network: net,
               ap: net.ap,
@@ -294,17 +293,9 @@ export const createUplinkSlice: GroundStationSliceCreator<UplinkSlice> = (
         const prev = get().ethernetConfig;
         const merged = prev ? { ...prev, ...cfg } : cfg;
         if (owns(api)) set({ ethernetConfig: merged });
-        return { config: merged, error: null, backendPending: false };
+        return { config: merged, error: null };
       } catch (err) {
-        const { message, status } = errorMessage(err);
-        if (status === 404) {
-          return {
-            config: null,
-            error: "Ethernet config backend pending",
-            backendPending: true,
-          };
-        }
-        return { config: null, error: message, backendPending: false };
+        return { config: null, error: errorMessage(err).message };
       }
     },
   };

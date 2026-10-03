@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  DETECTION_STALE_MS,
   streamKey,
   useVisionDetectionsStore,
   type VisionDetectionBatch,
@@ -73,5 +74,44 @@ describe("vision-detections-store stream keying", () => {
 
   it("streamKey is model::camera", () => {
     expect(streamKey("person", "uvc-0")).toBe("person::uvc-0");
+  });
+});
+
+describe("vision-detections-store ordering and age", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    useVisionDetectionsStore.getState().clear();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("drops a late batch taken before the one its stream is showing", () => {
+    const s = useVisionDetectionsStore.getState();
+    s.setBatch(DRONE, batch({ frameId: 5, tsMs: 9_990 }));
+    vi.setSystemTime(10_050);
+    s.setBatch(DRONE, batch({ frameId: 4, tsMs: 9_950 }));
+    const st = useVisionDetectionsStore.getState();
+    expect(st.batches[DRONE].frameId).toBe(5);
+    expect(st.streamsForDrone(DRONE)[0].frameId).toBe(5);
+  });
+
+  it("ages a backlogged batch by when it was taken, not when it arrived", () => {
+    const s = useVisionDetectionsStore.getState();
+    // Live: taken 10 ms before it arrived.
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 9_990 }));
+    // The link stalls; a frame taken at 10 500 is delivered at 15 000.
+    vi.setSystemTime(15_000);
+    s.setBatch(DRONE, batch({ frameId: 2, tsMs: 10_500 }));
+    const late = useVisionDetectionsStore.getState().batches[DRONE];
+    expect(late.frameId).toBe(2);
+    expect(Date.now() - late.receivedAt).toBeGreaterThan(DETECTION_STALE_MS);
+  });
+
+  it("reads a batch arriving with the stream's usual latency as just received", () => {
+    const s = useVisionDetectionsStore.getState();
+    s.setBatch(DRONE, batch({ frameId: 1, tsMs: 9_990 }));
+    vi.setSystemTime(10_100);
+    s.setBatch(DRONE, batch({ frameId: 2, tsMs: 10_090 }));
+    expect(useVisionDetectionsStore.getState().batches[DRONE].receivedAt).toBe(10_100);
   });
 });

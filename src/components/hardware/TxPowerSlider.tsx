@@ -134,14 +134,12 @@ export function TxPowerSlider({
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col text-xs text-text-tertiary">
-          {currentDbm != null ? (
-            <span>
-              {t("txPower")}:{" "}
-              <span className="font-mono text-text-secondary">
-                {currentDbm.toFixed(0)} dBm
-              </span>
+          <span>
+            {t("txPower")}:{" "}
+            <span className="font-mono text-text-secondary">
+              {currentDbm != null ? `${currentDbm.toFixed(0)} dBm` : "—"}
             </span>
-          ) : null}
+          </span>
           {requiresConfirm ? (
             <span className="text-status-warning">{t("txPowerWarn")}</span>
           ) : null}

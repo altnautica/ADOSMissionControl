@@ -67,7 +67,7 @@ vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
-import { RadioPanel } from "@/components/hardware/RadioPanel";
+import { RadioPanel } from "@/components/hardware/radio/RadioPanel";
 import { TxPowerSlider } from "@/components/hardware/TxPowerSlider";
 
 describe("RadioPanel", () => {

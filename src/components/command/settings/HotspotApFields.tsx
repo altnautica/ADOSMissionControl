@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import type { GroundStationApi } from "@/lib/api/ground-station-api";
 import type { ApUpdate } from "@/lib/api/ground-station/types";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 
@@ -51,6 +52,8 @@ export function HotspotApFields({
   readOnly: boolean;
 }) {
   const t = useTranslations("nodeSettings");
+  const tRisk = useTranslations("hardware.connectionRisk");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const { toast } = useToast();
   const [ssid, setSsid] = useState("");
   const [channel, setChannel] = useState("");
@@ -155,11 +158,23 @@ export function HotspotApFields({
       <Button
         variant="secondary"
         size="sm"
-        onClick={() => void onApply()}
+        onClick={() => setConfirmOpen(true)}
         disabled={!canApply}
       >
         {saving ? t("saving") : t("apply")}
       </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        variant="danger"
+        title={tRisk("apTitle")}
+        message={tRisk("apMessage")}
+        confirmLabel={tRisk("apConfirm")}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void onApply();
+        }}
+      />
     </div>
   );
 }

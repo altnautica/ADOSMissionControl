@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
-import { Download, Clipboard, Check } from "lucide-react";
+import { Download, Clipboard, Check, X } from "lucide-react";
 import { downloadBlob } from "@/lib/download";
 
 function buildSnapshot(): Record<string, unknown> {
@@ -63,7 +64,8 @@ function buildSnapshot(): Record<string, unknown> {
 }
 
 export function DiagnosticsExport() {
-  const [copied, setCopied] = useState(false);
+  const t = useTranslations("diagnosticsExport");
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const handleDownload = useCallback(() => {
     const snapshot = buildSnapshot();
@@ -75,21 +77,26 @@ export function DiagnosticsExport() {
   const handleCopy = useCallback(async () => {
     const snapshot = buildSnapshot();
     const json = JSON.stringify(snapshot, null, 2);
+    let ok: boolean;
     try {
       await navigator.clipboard.writeText(json);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      ok = true;
     } catch {
-      // Fallback for non-secure contexts
+      // Fallback for non-secure contexts. execCommand reports whether the
+      // copy happened; a refused copy is shown as a failure, not "Copied".
       const textarea = document.createElement("textarea");
       textarea.value = json;
       document.body.appendChild(textarea);
       textarea.select();
-      document.execCommand("copy");
+      try {
+        ok = document.execCommand("copy");
+      } catch {
+        ok = false;
+      }
       document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopyState(ok ? "copied" : "failed");
+    setTimeout(() => setCopyState("idle"), 2000);
   }, []);
 
   return (
@@ -99,14 +106,26 @@ export function DiagnosticsExport() {
         className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer border border-border-default hover:border-text-tertiary transition-colors"
       >
         <Download size={10} />
-        Export JSON
+        {t("exportJson")}
       </button>
       <button
         onClick={handleCopy}
         className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] text-text-secondary hover:text-text-primary cursor-pointer border border-border-default hover:border-text-tertiary transition-colors"
       >
-        {copied ? <Check size={10} className="text-status-success" /> : <Clipboard size={10} />}
-        {copied ? "Copied" : "Copy to Clipboard"}
+        {copyState === "copied" ? (
+          <Check size={10} className="text-status-success" />
+        ) : copyState === "failed" ? (
+          <X size={10} className="text-status-error" />
+        ) : (
+          <Clipboard size={10} />
+        )}
+        <span className={copyState === "failed" ? "text-status-error" : undefined}>
+          {copyState === "copied"
+            ? t("copied")
+            : copyState === "failed"
+              ? t("copyFailed")
+              : t("copyToClipboard")}
+        </span>
       </button>
     </div>
   );

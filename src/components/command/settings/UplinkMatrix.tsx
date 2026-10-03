@@ -173,7 +173,7 @@ export function UplinkMatrix({
 
   const ap = (net?.ap ?? null) as ApLive | null;
   const wifi = net?.wifi_client ?? null;
-  const modem = (net?.modem_4g ?? net?.modem ?? null) as ModemLive | null;
+  const modem = (net?.modem_4g ?? null) as ModemLive | null;
 
   const ethernetLeg: LegState = (() => {
     if (!ethernet || typeof ethernet.link !== "boolean") return notReported;

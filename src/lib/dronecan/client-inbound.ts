@@ -200,10 +200,16 @@ function handleIncomingRequest(
   }
 }
 
+/** uavcan.protocol.file.Error NOT_FOUND. */
+const FILE_ERROR_NOT_FOUND = 2;
+
 async function handleFileReadRequest(
   t: DecodedTransfer,
   ctx: InboundContext,
 ): Promise<void> {
+  // Only requests addressed to this node are ours to answer: a read aimed at
+  // another node's file server must never get our image bytes back.
+  if (t.dstNodeId !== ctx.selfNodeId()) return;
   const server = ctx.fileServer();
   if (!server) return;
   let request;
@@ -213,16 +219,17 @@ async function handleFileReadRequest(
     return;
   }
   const offset = Number(request.offset);
+  const servesPath = request.path === server.path;
   const total = server.fileData.length;
   const chunk =
-    offset >= total
+    !servesPath || offset >= total
       ? new Uint8Array(0)
       : server.fileData.subarray(
           offset,
           Math.min(offset + FILE_READ_MAX_DATA, total),
         );
   const payload = encodeFileReadResponse({
-    error: { value: 0 },
+    error: { value: servesPath ? 0 : FILE_ERROR_NOT_FOUND },
     data: chunk,
   });
   const descriptor: OutboundTransfer = {
@@ -244,7 +251,7 @@ async function handleFileReadRequest(
       data: f.data,
     });
   }
-  server.onChunkServed?.(offset, chunk.length);
+  if (servesPath) server.onChunkServed?.(offset, chunk.length);
 }
 
 function emitAnyFromDecoded(

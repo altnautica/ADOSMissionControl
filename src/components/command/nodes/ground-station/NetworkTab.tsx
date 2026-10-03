@@ -138,9 +138,10 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
     if (ssid !== ap.ssid) update.ssid = ssid;
     if (passphrase !== ap.passphrase) update.passphrase = passphrase;
     if (channel !== ap.channel) update.channel = channel;
-    await applyAp(client, update);
+    const res = await applyAp(client, update);
     setSaving(false);
-    setDirty(false);
+    // A failed write keeps the edits so the operator can retry or revert.
+    if (res) setDirty(false);
   };
 
   const handleConfirmLeaveWifi = async () => {
@@ -282,6 +283,7 @@ export function NetworkTab({ nodeDeviceId }: NetworkTabProps) {
           setShareUplinkConfirmOpen={setShareUplinkConfirmOpen}
           onConfirmShareUplink={handleConfirmShareUplink}
           modemOpen={modemOpen}
+          modemEnabled={modem?.enabled ?? null}
           setModemOpen={setModemOpen}
           apnDraft={apnDraft}
           capGbDraft={capGbDraft}

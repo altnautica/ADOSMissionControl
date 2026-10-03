@@ -7,7 +7,10 @@
  * @license GPL-3.0-only
  */
 
+import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
@@ -17,6 +20,8 @@ interface Props {
   apnDraft: string;
   capGbDraft: number;
   modemEnabledDraft: boolean;
+  /** The modem's current enabled state, or null when unknown. */
+  modemEnabled: boolean | null;
   saving: boolean;
   setApnDraft: (v: string) => void;
   setCapGbDraft: (v: number) => void;
@@ -30,6 +35,7 @@ export function ModemConfigModal({
   apnDraft,
   capGbDraft,
   modemEnabledDraft,
+  modemEnabled,
   saving,
   setApnDraft,
   setCapGbDraft,
@@ -37,7 +43,13 @@ export function ModemConfigModal({
   onClose,
   onSave,
 }: Props) {
+  const t = useTranslations("hardware.connectionRisk");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Turning the modem off can cut the only uplink: confirm before saving.
+  const disabling = !modemEnabledDraft && modemEnabled !== false;
+  const save = () => (disabling ? setConfirmOpen(true) : onSave());
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -48,7 +60,7 @@ export function ModemConfigModal({
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={onSave} loading={saving}>
+          <Button variant="primary" onClick={save} loading={saving}>
             Save
           </Button>
         </>
@@ -91,5 +103,18 @@ export function ModemConfigModal({
         />
       </div>
     </Modal>
+    <ConfirmDialog
+      open={confirmOpen}
+      variant="danger"
+      title={t("modemDisableTitle")}
+      message={t("modemDisableMessage")}
+      confirmLabel={t("modemDisableConfirm")}
+      onCancel={() => setConfirmOpen(false)}
+      onConfirm={() => {
+        setConfirmOpen(false);
+        onSave();
+      }}
+    />
+    </>
   );
 }

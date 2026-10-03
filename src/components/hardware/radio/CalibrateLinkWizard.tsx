@@ -63,19 +63,27 @@ export function CalibrateLinkWizard({
 
   const abortRef = useRef<{ aborted: boolean }>({ aborted: false });
   const runningRef = useRef(false);
+  // The parent re-renders on every poll tick and hands down fresh `sweep` and
+  // `lastGood` identities. The run reads the latest sweep through a ref, and
+  // the trio to restore is captured once when Start is pressed, so a parent
+  // render never aborts or reverts a run in flight.
+  const sweepRef = useRef(sweep);
+  sweepRef.current = sweep;
+  const lastGoodRef = useRef<CalTrio | null>(null);
 
-  // Restore the last-good trio. Best-effort: a restore failure is logged in the
-  // note but never throws (the link may already be re-acquiring).
+  // Restore the trio captured at Start. Best-effort: a restore failure is
+  // never thrown (the link may already be re-acquiring).
   const restore = useCallback(async () => {
-    if (!lastGood) return;
+    const trio = lastGoodRef.current;
+    if (!trio) return;
     try {
-      await sweep(lastGood);
+      await sweepRef.current(trio);
     } catch {
       /* best-effort revert */
     }
-  }, [lastGood, sweep]);
+  }, []);
 
-  // Always revert if the dialog unmounts mid-run.
+  // Revert only when the dialog really unmounts mid-run.
   useEffect(() => {
     return () => {
       if (runningRef.current) {
@@ -86,6 +94,7 @@ export function CalibrateLinkWizard({
   }, [restore]);
 
   const start = async () => {
+    lastGoodRef.current = lastGood;
     setPhase("running");
     setResults([]);
     setBest(null);
@@ -95,7 +104,7 @@ export function CalibrateLinkWizard({
     runningRef.current = true;
     try {
       const outcome = await runCalibration(DEFAULT_CAL_CONFIG, {
-        sweep,
+        sweep: (trio) => sweepRef.current(trio),
         measure: async () => measure(),
         sleep,
         now: Date.now,
@@ -137,7 +146,7 @@ export function CalibrateLinkWizard({
     setNote(null);
     runningRef.current = true;
     try {
-      await sweep(best.trio);
+      await sweepRef.current(best.trio);
       const check = await measureAfter(
         DEFAULT_CAL_CONFIG,
         { measure: async () => measure(), sleep, now: Date.now },

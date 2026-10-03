@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Wifi, Lock } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ function isOpenNetwork(security: string): boolean {
 }
 
 export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
+  const t = useTranslations("hardware.wifiScan");
+  const tCommon = useTranslations("common");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
 
@@ -65,6 +68,12 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
     }
   }, [wifiScan.scanning]);
 
+  // The scan progress interval must not outlive the modal.
+  useEffect(() => {
+    const timer = progressTimerRef;
+    return () => clearInterval(timer.current ?? undefined);
+  }, []);
+
   const handleScan = async () => {
     const client = groundStationApiFromAgent(agentUrl, apiKey);
     if (!client) return;
@@ -91,7 +100,7 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
     const res = await joinWifi(client, selected.ssid, pass, force);
     setJoining(false);
     if (res.joined) {
-      toast("Joined " + selected.ssid, "success");
+      toast(t("joined", { ssid: selected.ssid }), "success");
       onClose();
       return;
     }
@@ -99,7 +108,7 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
       setForceDialogOpen(true);
       return;
     }
-    toast(res.error || "Failed to join " + selected.ssid, "error");
+    toast(res.error || t("joinFailed", { ssid: selected.ssid }), "error");
   };
 
   const handleJoinClick = () => {
@@ -122,7 +131,7 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
   const footer = (
     <>
       <Button variant="secondary" onClick={onClose} disabled={joining}>
-        Close
+        {tCommon("close")}
       </Button>
       <Button
         variant="ghost"
@@ -130,7 +139,7 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
         disabled={!hasAgent || wifiScan.scanning || joining}
         loading={wifiScan.scanning}
       >
-        {wifiScan.scanning ? "Scanning..." : "Scan"}
+        {wifiScan.scanning ? t("scanning") : t("scan")}
       </Button>
       {selected ? (
         <Button
@@ -139,7 +148,7 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
           disabled={!canJoin}
           loading={joining}
         >
-          Join
+          {t("join")}
         </Button>
       ) : null}
     </>
@@ -150,19 +159,19 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
       <Modal
         open={open}
         onClose={onClose}
-        title="WiFi networks"
+        title={t("title")}
         footer={footer}
         className="max-w-md"
       >
         {!hasAgent ? (
           <div className="rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-xs text-status-warning">
-            No ground station connected.
+            {t("noAgent")}
           </div>
         ) : (
           <div className="space-y-3">
             {wifiScan.scanning ? (
               <div className="flex flex-col gap-1">
-                <div className="text-xs text-text-secondary">Scanning for networks...</div>
+                <div className="text-xs text-text-secondary">{t("scanningNetworks")}</div>
                 <div className="h-1.5 w-full overflow-hidden rounded bg-bg-tertiary">
                   <div
                     className="h-full bg-accent-primary transition-all"
@@ -174,14 +183,14 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
 
             {!wifiScan.scanning && wifiScan.results.length === 0 ? (
               <div className="py-6 text-center text-xs text-text-secondary">
-                Tap Scan to look for nearby networks.
+                {t("empty")}
               </div>
             ) : null}
 
             {wifiScan.results.length > 0 ? (
               <div className="flex flex-col gap-2">
                 <div className="text-xs uppercase tracking-wide text-text-secondary">
-                  Networks
+                  {t("networks")}
                 </div>
                 <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
                   {wifiScan.results.map((net) => {
@@ -206,11 +215,11 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
                             <Wifi size={14} className="text-text-secondary" />
                             <div className="flex flex-col">
                               <span className="text-sm text-text-primary">
-                                {net.ssid || "(hidden)"}
+                                {net.ssid || t("hidden")}
                               </span>
                               <span className="font-mono text-[10px] text-text-tertiary">
                                 {net.bssid}
-                                {net.in_use ? " (in use)" : ""}
+                                {net.in_use ? ` ${t("inUse")}` : ""}
                               </span>
                             </div>
                           </div>
@@ -229,11 +238,11 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
             {selected && requiresPass ? (
               <div className="flex flex-col gap-1">
                 <Input
-                  label={"Passphrase for " + selected.ssid}
+                  label={t("passphraseFor", { ssid: selected.ssid })}
                   type="password"
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
-                  placeholder="WPA/WPA2 passphrase"
+                  placeholder={t("passphrasePlaceholder")}
                   spellCheck={false}
                   autoComplete="off"
                 />
@@ -242,7 +251,7 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
 
             {selected && !requiresPass ? (
               <div className="rounded border border-border-default/40 px-3 py-2 text-xs text-text-secondary">
-                Selected: {selected.ssid} (open network)
+                {t("selectedOpen", { ssid: selected.ssid })}
               </div>
             ) : null}
 
@@ -257,13 +266,9 @@ export function WifiScanModal({ open, onClose }: WifiScanModalProps) {
 
       <ConfirmDialog
         open={forceDialogOpen}
-        title="Stop the Access Point?"
-        message={
-          "Joining " +
-          (selected?.ssid ?? "this network") +
-          " will stop the Access Point. Connected clients will lose the ground station WiFi. Continue?"
-        }
-        confirmLabel="Stop AP and join"
+        title={t("forceTitle")}
+        message={t("forceMessage", { ssid: selected?.ssid ?? t("thisNetwork") })}
+        confirmLabel={t("forceConfirm")}
         variant="danger"
         onCancel={() => setForceDialogOpen(false)}
         onConfirm={handleConfirmForce}

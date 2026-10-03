@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ function buildSparklinePoints(samples: VibrationData[], key: keyof Pick<Vibratio
  * that stopped arriving reads as no data, never as its last level.
  */
 export function VibrationGauges({ className }: { className?: string }) {
+  const t = useTranslations("indicators.vibrationGauges");
   const vibration = useTelemetryStore((s) => s.vibration);
   // Keyed on the newest VIBRATION sample, which arrives at 1-2 Hz, not on the
   // store-wide version that bumps for every telemetry channel.
@@ -75,7 +77,7 @@ export function VibrationGauges({ className }: { className?: string }) {
         className={cn("text-[10px]", heard ? "text-status-error" : "text-text-tertiary", className)}
         data-telemetry-stale={heard || undefined}
       >
-        {heard ? "Vibration · no current data" : "No vibration data"}
+        {heard ? t("noCurrentData") : t("noData")}
       </div>
     );
   }
@@ -89,7 +91,15 @@ export function VibrationGauges({ className }: { className?: string }) {
         const critPct = (THRESHOLD_CRITICAL / MAX_DISPLAY) * 100;
 
         return (
-          <Tooltip key={key} content={`Vibration ${label}: ${value.toFixed(1)} m/s/s (warn: ${THRESHOLD_WARNING}, crit: ${THRESHOLD_CRITICAL})`}>
+          <Tooltip
+            key={key}
+            content={t("axisTooltip", {
+              axis: label,
+              value: value.toFixed(1),
+              warn: THRESHOLD_WARNING,
+              crit: THRESHOLD_CRITICAL,
+            })}
+          >
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-mono text-text-tertiary w-3">{label}</span>
               <div className="flex-1 h-2 bg-bg-tertiary/50 rounded-full overflow-hidden relative">
@@ -119,7 +129,7 @@ export function VibrationGauges({ className }: { className?: string }) {
       {/* Vibration sparkline history */}
       {sparklines && (
         <div className="pt-1 border-t border-border-default/30">
-          <div className="text-[9px] font-mono text-text-tertiary mb-0.5">Vibration Trend</div>
+          <div className="text-[9px] font-mono text-text-tertiary mb-0.5">{t("trend")}</div>
           <svg
             width={SPARKLINE_W}
             height={SPARKLINE_H}
@@ -157,7 +167,13 @@ export function VibrationGauges({ className }: { className?: string }) {
 
       {/* Clipping counters */}
       <div className="flex gap-2 text-[9px] font-mono text-text-tertiary">
-        <span>Clip: {latest.clipping0}/{latest.clipping1}/{latest.clipping2}</span>
+        <span>
+          {t("clip", {
+            c0: latest.clipping0,
+            c1: latest.clipping1,
+            c2: latest.clipping2,
+          })}
+        </span>
       </div>
     </div>
   );

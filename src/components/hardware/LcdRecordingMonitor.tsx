@@ -65,6 +65,10 @@ function formatStarted(item: RecordingFileEntry): string | null {
   }
 }
 
+/** How long a start/stop may wait for the heartbeat to confirm it: a few
+ * heartbeat intervals. */
+const OPTIMISTIC_CONFIRM_MS = 15_000;
+
 export function LcdRecordingMonitor() {
   const client = useAgentConnectionStore((s) => s.client);
   const videoRecording = useAgentCapabilitiesStore((s) => s.videoRecording);
@@ -78,6 +82,9 @@ export function LcdRecordingMonitor() {
     null,
   );
   const [streamPublishing, setStreamPublishing] = useState<boolean | null>(null);
+  // The recording state a successful request asked for that the heartbeat
+  // never confirmed within OPTIMISTIC_CONFIRM_MS.
+  const [unconfirmed, setUnconfirmed] = useState<boolean | null>(null);
 
   const isRecording = optimisticRecording ?? Boolean(videoRecording);
 
@@ -125,6 +132,21 @@ export function LcdRecordingMonitor() {
     }
   }, [videoRecording, optimisticRecording]);
 
+  // A shadow the heartbeat never confirms is not the device's state: expire
+  // it and say so.
+  useEffect(() => {
+    if (optimisticRecording == null || pending) return;
+    const timer = setTimeout(() => {
+      setOptimisticRecording(null);
+      setUnconfirmed(optimisticRecording);
+    }, OPTIMISTIC_CONFIRM_MS);
+    return () => clearTimeout(timer);
+  }, [optimisticRecording, pending]);
+
+  useEffect(() => {
+    if (unconfirmed != null && Boolean(videoRecording) === unconfirmed) setUnconfirmed(null);
+  }, [videoRecording, unconfirmed]);
+
   // Fetch the list on mount and whenever the recording state flips.
   useEffect(() => {
     if (!client) return;
@@ -134,6 +156,7 @@ export function LcdRecordingMonitor() {
   const onStart = async () => {
     if (!client || pending || isRecording) return;
     setOptimisticRecording(true);
+    setUnconfirmed(null);
     setPending(true);
     try {
       await client.startRecording();
@@ -150,6 +173,7 @@ export function LcdRecordingMonitor() {
   const onStop = async () => {
     if (!client || pending || !isRecording) return;
     setOptimisticRecording(false);
+    setUnconfirmed(null);
     setPending(true);
     try {
       await client.stopRecording();
@@ -240,6 +264,11 @@ export function LcdRecordingMonitor() {
             {t("refresh")}
           </button>
         </div>
+        {unconfirmed != null ? (
+          <p role="status" className="text-[11px] text-status-warning">
+            {unconfirmed ? t("startNotConfirmed") : t("stopNotConfirmed")}
+          </p>
+        ) : null}
         {streamPublishing === false && !isRecording ? (
           <p className="text-[11px] text-text-tertiary">
             {t("streamIdleHint")}

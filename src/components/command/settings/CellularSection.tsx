@@ -22,6 +22,7 @@ import type { NodeProfile } from "@/components/dashboard/node-detail/surface-typ
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { ModemDetailStatus, ModemView } from "@/lib/api/ground-station/types";
 import { Toggle } from "@/components/ui/toggle";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { ApplyTextField } from "./ApplyTextField";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
@@ -61,6 +62,8 @@ export function CellularSection({
 }: SectionProps) {
   const t = useTranslations("nodeSettings");
   const { toast } = useToast();
+  const tRisk = useTranslations("hardware.connectionRisk");
+  const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);
   const agent = useNodeDirectAgent(nodeDeviceId);
 
   const isGroundStation = profile === "ground-station";
@@ -292,12 +295,24 @@ export function CellularSection({
                 <Toggle
                   label={t("cellular.enabledLabel")}
                   checked={modem.enabled === true}
-                  onChange={(v) => void onToggleEnabled(v)}
+                  onChange={(v) => (v ? void onToggleEnabled(true) : setConfirmDisableOpen(true))}
                   disabled={readOnly || togglePending}
                 />
                 <p className="-mt-3 text-[11px] text-text-tertiary">
                   {t("cellular.enabledHint")}
                 </p>
+                <ConfirmDialog
+                  open={confirmDisableOpen}
+                  variant="danger"
+                  title={tRisk("modemDisableTitle")}
+                  message={tRisk("modemDisableMessage")}
+                  confirmLabel={tRisk("modemDisableConfirm")}
+                  onCancel={() => setConfirmDisableOpen(false)}
+                  onConfirm={() => {
+                    setConfirmDisableOpen(false);
+                    void onToggleEnabled(false);
+                  }}
+                />
 
                 <ApplyTextField
                   label={t("cellular.apnLabel")}

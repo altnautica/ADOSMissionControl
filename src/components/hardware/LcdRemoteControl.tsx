@@ -46,6 +46,10 @@ const PAGES: PageButtonDef[] = [
   { id: "more", labelKey: "pageMore", icon: MoreHorizontal },
 ];
 
+/** How long a page switch may wait for the heartbeat to confirm it: a few
+ * heartbeat intervals. */
+const OPTIMISTIC_CONFIRM_MS = 15_000;
+
 export function LcdRemoteControl() {
   const display = useAgentCapabilitiesStore((s) => s.display);
   const loaded = useAgentCapabilitiesStore((s) => s.loaded);
@@ -55,8 +59,10 @@ export function LcdRemoteControl() {
   const { toast } = useToast();
 
   // Optimistic active-page override. Cleared when the heartbeat
-  // confirms the new page (or the request fails and we roll back).
+  // confirms the new page, when the request fails (roll back), or when the
+  // heartbeat has not confirmed it within OPTIMISTIC_CONFIRM_MS.
   const [optimisticPage, setOptimisticPage] = useState<PageId | null>(null);
+  const [unconfirmedPage, setUnconfirmedPage] = useState<PageId | null>(null);
   const [pending, setPending] = useState(false);
 
   // When the heartbeat catches up, drop the optimistic shadow.
@@ -66,6 +72,22 @@ export function LcdRemoteControl() {
       setOptimisticPage(null);
     }
   }, [display?.activePage, optimisticPage]);
+
+  // A shadow the device never confirms is not its state: expire it and say so.
+  useEffect(() => {
+    if (!optimisticPage || pending) return;
+    const timer = setTimeout(() => {
+      setOptimisticPage(null);
+      setUnconfirmedPage(optimisticPage);
+    }, OPTIMISTIC_CONFIRM_MS);
+    return () => clearTimeout(timer);
+  }, [optimisticPage, pending]);
+
+  useEffect(() => {
+    if (unconfirmedPage && display?.activePage === unconfirmedPage) setUnconfirmedPage(null);
+  }, [display?.activePage, unconfirmedPage]);
+
+  const unconfirmedDef = PAGES.find((p) => p.id === unconfirmedPage);
 
   if (!loaded || !display || display.type === "none") {
     return null;
@@ -81,6 +103,7 @@ export function LcdRemoteControl() {
     if (!client || pending) return;
     const previous = display.activePage ?? null;
     setOptimisticPage(id);
+    setUnconfirmedPage(null);
     setPending(true);
     try {
       await client.setDisplayPage(id);
@@ -108,6 +131,11 @@ export function LcdRemoteControl() {
         ) : null}
       </header>
       <p className="px-4 pt-3 text-xs text-text-secondary">{t("description")}</p>
+      {unconfirmedDef ? (
+        <p role="status" className="px-4 pt-2 text-xs text-status-warning">
+          {t("notConfirmed", { page: t(unconfirmedDef.labelKey) })}
+        </p>
+      ) : null}
       <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4">
         {PAGES.map((p) => {
           const Icon = p.icon;

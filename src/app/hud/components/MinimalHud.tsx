@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { CornerAlerts } from "@/components/hud/CornerAlerts";
 import { HorizonSvg } from "@/components/hud/HorizonSvg";
 import { VideoBackground } from "@/components/hud/VideoBackground";
+import { StickControlToggle } from "./StickControlToggle";
 import {
   startGamepadPolling,
   stopGamepadPolling,
@@ -63,6 +64,8 @@ export function MinimalHud() {
       </div>
 
       <CornerAlerts />
+
+      <StickControlToggle className="absolute top-10 right-3" />
 
       <div className="absolute bottom-0 left-0 right-0 h-10 px-3 flex items-center justify-between bg-scrim/60 text-sm pointer-events-none">
         <span>HDG {f(hud.heading)}</span>

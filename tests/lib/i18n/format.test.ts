@@ -56,8 +56,9 @@ describe("format helpers", () => {
     expect(formatDurationSeconds(-1)).toBe("—");
   });
 
-  it("formats coord pairs with fixed precision", () => {
-    expect(formatCoord(12.345678, 77.65432, 5, "en")).toBe("12.34568, 77.65432");
-    expect(formatCoord(null, 1)).toBe("—, 1.00000");
+  it("formats coord pairs with fixed precision, separated so a decimal comma stays unambiguous", () => {
+    expect(formatCoord(12.345678, 77.65432, 5, "en")).toBe("12.34568; 77.65432");
+    expect(formatCoord(12.345678, 77.65432, 5, "de")).toBe("12,34568; 77,65432");
+    expect(formatCoord(null, 1)).toBe("—; 1.00000");
   });
 });

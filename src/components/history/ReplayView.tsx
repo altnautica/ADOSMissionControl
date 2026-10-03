@@ -98,6 +98,8 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
         return;
       }
+      // Chorded keys belong to the app (Ctrl/Cmd+K opens the command palette).
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const status = getPlaybackState();
 
       if (e.key === " " || e.code === "Space") {
@@ -139,12 +141,6 @@ export function ReplayView({ recording, flightRecord, onExit }: ReplayViewProps)
         const idx = SPEED_LADDER.indexOf(status.playbackSpeed);
         const next = SPEED_LADDER[Math.max(0, idx - 1)];
         playerSetSpeed(next);
-        return;
-      }
-      if (e.key === "k" || e.key === "K") {
-        e.preventDefault();
-        if (status.state === "playing") playerPause();
-        else run(playerResume);
         return;
       }
       if (e.key === "l" || e.key === "L") {

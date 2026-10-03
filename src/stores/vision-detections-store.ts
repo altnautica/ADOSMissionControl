@@ -45,6 +45,19 @@ const RATE_WINDOW_CAP = 128;
  */
 const MAX_STREAMS_PER_DRONE = 32;
 
+/** Recent (receipt − tsMs) samples kept per stream. The smallest is the
+ * stream's clock offset plus its best-case latency; a bounded window lets the
+ * offset follow an agent clock step instead of pinning a stream stale. */
+const OFFSET_WINDOW_CAP = 32;
+
+/** Whether `next` was taken before `current` on the same stream. */
+function isOlderFrame(
+  next: Pick<VisionDetectionBatch, "tsMs" | "frameId">,
+  current: VisionDetectionBatch,
+): boolean {
+  return next.tsMs < current.tsMs || (next.tsMs === current.tsMs && next.frameId < current.frameId);
+}
+
 /**
  * Insert `batch` under `key`, evicting the stalest stream once the per-drone
  * ceiling is reached.
@@ -154,9 +167,12 @@ export interface VisionDetectionBatch {
   frameWidth: number;
   frameHeight: number;
   detections: VisionDetection[];
-  /** Epoch ms the GCS received the batch. Used to age out stale boxes
-   * so an overlay does not pin the last detection forever after the
-   * feed stops. */
+  /** GCS-clock time of the frame, used to age boxes out. It is the frame's
+   * capture time `tsMs` shifted onto the GCS clock by the stream's smallest
+   * recent (receipt − tsMs) offset, so a frame that arrives with the usual
+   * latency reads as just received, while a frame delivered late (a relay or
+   * socket backlog, a reconnect) is aged by when it was taken and is not
+   * drawn as live. Never later than its actual receipt. */
   receivedAt: number;
 }
 
@@ -181,8 +197,12 @@ interface VisionDetectionsState {
    * never grows unbounded (bounded memory). Not part of the reactive render path — read
    * on a tick via {@link receiptTimes}. */
   rateWindows: Record<string, RingBuffer<number>>;
+  /** Per-stream (receipt − tsMs) window, keyed `droneId -> streamKey`. Not
+   * part of the reactive render path. */
+  offsetWindows: Record<string, Record<string, RingBuffer<number>>>;
   /** Replace the latest batch for a drone (and its stream). `receivedAt` is
-   * stamped here so callers do not have to. */
+   * stamped here so callers do not have to. A batch taken before the one its
+   * stream already shows is dropped while that one is still fresh. */
   setBatch: (
     droneId: string,
     batch: Omit<VisionDetectionBatch, "receivedAt">,
@@ -203,10 +223,33 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
     batches: {},
     streams: {},
     rateWindows: {},
+    offsetWindows: {},
     setBatch: (droneId, batch) =>
       set((state) => {
-        const stamped: VisionDetectionBatch = { ...batch, receivedAt: Date.now() };
-        const key = streamKey(stamped.modelId, stamped.cameraId);
+        const now = Date.now();
+        const key = streamKey(batch.modelId, batch.cameraId);
+        const current = state.streams[droneId]?.[key];
+        // Out-of-order delivery: never let an older frame replace a newer one
+        // that is still on screen.
+        if (
+          current &&
+          now - current.receivedAt <= DETECTION_STALE_MS &&
+          isOlderFrame(batch, current)
+        ) {
+          return state;
+        }
+
+        let offsetWindows = state.offsetWindows;
+        let droneOffsets = offsetWindows[droneId];
+        let offsets = droneOffsets?.[key];
+        if (!offsets) {
+          offsets = new RingBuffer<number>(OFFSET_WINDOW_CAP);
+          droneOffsets = { ...droneOffsets, [key]: offsets };
+          offsetWindows = { ...offsetWindows, [droneId]: droneOffsets };
+        }
+        offsets.push(now - batch.tsMs);
+        const offset = Math.min(...offsets.toArray());
+        const stamped: VisionDetectionBatch = { ...batch, receivedAt: batch.tsMs + offset };
         // Rolling receipt window for live throughput. Push in place on the
         // existing ring buffer; only take a new map ref when this drone's
         // window is created, so steady-state pushes cost nothing.
@@ -216,7 +259,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
           win = new RingBuffer<number>(RATE_WINDOW_CAP);
           rateWindows = { ...rateWindows, [droneId]: win };
         }
-        win.push(stamped.receivedAt);
+        win.push(now);
         return {
           // Latest-across-streams (the cockpit's simple view).
           batches: { ...state.batches, [droneId]: stamped },
@@ -229,6 +272,7 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
             [droneId]: withStream(state.streams[droneId] ?? {}, key, stamped),
           },
           rateWindows,
+          offsetWindows,
         };
       }),
     receiptTimes: (droneId) => get().rateWindows[droneId]?.toArray() ?? [],
@@ -242,7 +286,8 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         if (
           !(droneId in state.batches) &&
           !(droneId in state.streams) &&
-          !(droneId in state.rateWindows)
+          !(droneId in state.rateWindows) &&
+          !(droneId in state.offsetWindows)
         ) {
           return state;
         }
@@ -252,8 +297,10 @@ export const useVisionDetectionsStore = create<VisionDetectionsState>(
         delete streams[droneId];
         const rateWindows = { ...state.rateWindows };
         delete rateWindows[droneId];
-        return { batches, streams, rateWindows };
+        const offsetWindows = { ...state.offsetWindows };
+        delete offsetWindows[droneId];
+        return { batches, streams, rateWindows, offsetWindows };
       }),
-    clear: () => set({ batches: {}, streams: {}, rateWindows: {} }),
+    clear: () => set({ batches: {}, streams: {}, rateWindows: {}, offsetWindows: {} }),
   }),
 );

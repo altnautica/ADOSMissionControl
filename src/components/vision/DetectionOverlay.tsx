@@ -50,13 +50,6 @@ interface DetectionOverlayProps {
   /** Drop boxes older than this (ms). Default 2s. */
   staleAfterMs?: number;
   className?: string;
-  /**
-   * Click-to-follow handler. When provided, each box becomes clickable and
-   * invoking it designates that box as the engine's follow target. When absent,
-   * the overlay is read-only (boxes do not intercept pointer events) so the
-   * video pane behind it stays interactive.
-   */
-  onSelectBox?: (detection: VisionDetection, cameraId: string) => void;
 }
 
 /**
@@ -82,7 +75,6 @@ export function DetectionOverlay({
   streamKey,
   staleAfterMs = DETECTION_STALE_MS,
   className,
-  onSelectBox,
 }: DetectionOverlayProps) {
   const batch = useVisionDetectionsStore((s) =>
     streamKey ? s.streams[droneId]?.[streamKey] : s.batches[droneId],
@@ -170,26 +162,16 @@ export function DetectionOverlay({
               d.trackId != null
                 ? `${d.classLabel} #${d.trackId} ${pct}%`
                 : `${d.classLabel} ${pct}%`;
-            const clickable = onSelectBox != null;
             return (
               <div
-                key={`${batch.frameId}-${i}`}
-                className={`absolute border ${boxColorClass(d)} ${
-                  clickable
-                    ? "pointer-events-auto cursor-pointer hover:border-2"
-                    : ""
-                }`}
+                key={d.trackId != null ? `track-${d.trackId}` : `idx-${i}`}
+                className={`absolute border ${boxColorClass(d)}`}
                 style={{
                   left: `${rect.left + fx * rect.width}px`,
                   top: `${rect.top + fy * rect.height}px`,
                   width: `${fw * rect.width}px`,
                   height: `${fh * rect.height}px`,
                 }}
-                onClick={
-                  clickable ? () => onSelectBox(d, batch.cameraId) : undefined
-                }
-                role={clickable ? "button" : undefined}
-                title={clickable ? "Click to follow this target" : undefined}
               >
                 <span className="absolute left-0 top-0 -translate-y-full whitespace-nowrap bg-bg-primary/80 px-1 font-mono text-[10px] leading-tight">
                   {label}

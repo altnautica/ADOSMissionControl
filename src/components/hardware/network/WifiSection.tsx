@@ -8,15 +8,20 @@
  * @license GPL-3.0-only
  */
 
+import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import type { ApStatus, WifiClientStatus } from "@/lib/api/ground-station/types";
+import { wpaPassphraseProblem } from "@/components/command/settings/HotspotApFields";
 import { StatRow } from "./StatRow";
 
 const EMPTY = "…";
-const CHANNEL_OPTIONS: number[] = [1, 6, 11, 36, 40, 44, 48, 149, 153, 157, 161];
+/** The AP runs hostapd with hw_mode=g, so only 2.4 GHz channels are valid. */
+const CHANNEL_OPTIONS: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 interface ApFormState {
   ssid: string;
@@ -60,6 +65,12 @@ export function WifiSection({
   onScan,
   onLeave,
 }: Props) {
+  const t = useTranslations("hardware.connectionRisk");
+  const tNet = useTranslations("nodeSettings");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const ssidBytes = new TextEncoder().encode(form.ssid).length;
+  const ssidBad = ssidBytes < 1 || ssidBytes > 32 || /[\x00-\x1f\x7f]/.test(form.ssid);
+  const passProblem = wpaPassphraseProblem(form.passphrase);
   return (
     <>
       {/* AP card (live) */}
@@ -129,6 +140,10 @@ export function WifiSection({
               onChange={setEnabled}
             />
 
+            {form.dirty && passProblem ? (
+              <div className="text-xs text-status-error">{tNet(`network.${passProblem}`)}</div>
+            ) : null}
+
             {lastError ? (
               <div className="rounded border border-status-error/40 bg-status-error/10 px-3 py-2 text-xs text-status-error">
                 {lastError}
@@ -136,13 +151,31 @@ export function WifiSection({
             ) : null}
 
             <div className="flex justify-end">
-              <Button variant="primary" onClick={onSave} disabled={!form.dirty} loading={form.saving}>
+              <Button
+                variant="primary"
+                onClick={() => setConfirmOpen(true)}
+                disabled={!form.dirty || ssidBad || passProblem !== null}
+                loading={form.saving}
+              >
                 Save
               </Button>
             </div>
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        variant="danger"
+        title={t("apTitle")}
+        message={t("apMessage")}
+        confirmLabel={t("apConfirm")}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          onSave();
+        }}
+      />
 
       {/* WiFi Client card (live) */}
       <section className="rounded border border-border-default bg-bg-secondary p-5">

@@ -281,6 +281,66 @@ describe("DroneCanClient — file-read server", () => {
     await client.stop();
   });
 
+  it("ignores a file read addressed to another node", async () => {
+    const transport = new MockTransport();
+    const client = new DroneCanClient(transport, { selfNodeId: SELF });
+    await client.start();
+    const served: Array<{ offset: number; len: number }> = [];
+    client.serveFileReads({
+      fileData: new Uint8Array(512),
+      onChunkServed: (offset, len) => served.push({ offset, len }),
+    });
+
+    transport.outbound.length = 0;
+    transport.injectServiceRequest({
+      srcNodeId: TARGET,
+      dstNodeId: SELF - 1,
+      dataTypeId: DATA_TYPE_IDS.fileRead,
+      signature: DSDL_SIGNATURES.fileRead,
+      transferId: 4,
+      payload: encodeFileReadRequest({ offset: BigInt(0), path: "a.bin" }),
+    });
+
+    await vi.advanceTimersByTimeAsync(1);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(served.length).toBe(0);
+    expect(transport.outbound.length).toBe(0);
+    await client.stop();
+  });
+
+  it("answers NOT_FOUND with no data for a path it does not serve", async () => {
+    const transport = new MockTransport();
+    const client = new DroneCanClient(transport, { selfNodeId: SELF });
+    await client.start();
+    const served: Array<{ offset: number; len: number }> = [];
+    client.serveFileReads({
+      fileData: new Uint8Array(512).fill(0xaa),
+      onChunkServed: (offset, len) => served.push({ offset, len }),
+    });
+
+    transport.outbound.length = 0;
+    transport.injectServiceRequest({
+      srcNodeId: TARGET,
+      dstNodeId: SELF,
+      dataTypeId: DATA_TYPE_IDS.fileRead,
+      signature: DSDL_SIGNATURES.fileRead,
+      transferId: 5,
+      payload: encodeFileReadRequest({ offset: BigInt(0), path: "other.bin" }),
+    });
+
+    await vi.advanceTimersByTimeAsync(1);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(served.length).toBe(0);
+    const res = decodeFileReadResponse(reassemblePayload(transport.outbound));
+    expect(res.error.value).toBe(2);
+    expect(res.data.length).toBe(0);
+    await client.stop();
+  });
+
   it("emits onAnyTransfer for inbound NodeStatus", async () => {
     const transport = new MockTransport();
     const client = new DroneCanClient(transport, { selfNodeId: SELF });

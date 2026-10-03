@@ -84,7 +84,7 @@ export function RcNeutralQuickFix({ channelNumber, onTrimApplied }: { channelNum
   return (
     <div className="mt-1.5 ml-3 p-2 bg-bg-tertiary border border-border-default space-y-1.5">
       <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] font-mono">
-        <span className="text-text-tertiary">RC{channelNumber} Current:</span>
+        <span className="text-text-tertiary">{t("trimFix.current", { channel: channelNumber })}</span>
         <span className="text-text-primary">{currentValue || "—"}</span>
         <span className="text-text-tertiary">RC{channelNumber}_TRIM:</span>
         <span className="text-text-primary">{trimValue ?? "—"}</span>
@@ -92,9 +92,11 @@ export function RcNeutralQuickFix({ channelNumber, onTrimApplied }: { channelNum
         <span className="text-text-primary">{dzValue ?? "—"}</span>
         {offset !== null && (
           <>
-            <span className="text-text-tertiary">Offset:</span>
+            <span className="text-text-tertiary">{t("trimFix.offset")}</span>
             <span className={outsideDz ? "text-status-error" : "text-status-success"}>
-              {offset}{outsideDz ? " (outside DZ)" : " (within DZ)"}
+              {outsideDz
+                ? t("trimFix.outsideDz", { offset })
+                : t("trimFix.withinDz", { offset })}
             </span>
           </>
         )}
@@ -118,7 +120,10 @@ export function RcNeutralQuickFix({ channelNumber, onTrimApplied }: { channelNum
             disabled={currentValue === 0 || !protocol}
             onClick={applyTrim}
           >
-            Set RC{channelNumber} Trim to {currentValue || "..."}
+            {t("trimFix.setTrimTo", {
+              channel: channelNumber,
+              value: currentValue ? String(currentValue) : "...",
+            })}
           </Button>
         </>
       )}

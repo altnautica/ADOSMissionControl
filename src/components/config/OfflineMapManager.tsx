@@ -7,11 +7,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { getCacheStats, clearAllTiles, MAX_CACHE_SIZE } from "@/lib/tile-cache";
 import { formatBytes } from "@/lib/tile-math";
 import { useSettingsStore } from "@/stores/settings-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Toggle } from "@/components/ui/toggle";
 import { Trash2, WifiOff, HardDrive } from "lucide-react";
 import { CustomTileSourceEditor } from "@/components/map/CustomTileSourceEditor";
 
@@ -26,6 +28,7 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
 }
 
 export function OfflineMapManager() {
+  const t = useTranslations("offlineMapManager");
   const [stats, setStats] = useState({ tileCount: 0, totalBytes: 0 });
   const [loading, setLoading] = useState(true);
   const [cacheError, setCacheError] = useState<string | null>(null);
@@ -65,7 +68,7 @@ export function OfflineMapManager() {
   }, []);
 
   const handleClear = useCallback(async () => {
-    if (!confirm("Clear all cached map tiles? This cannot be undone.")) return;
+    if (!confirm(t("clearConfirm"))) return;
     setClearing(true);
     try {
       await clearAllTiles();
@@ -75,7 +78,7 @@ export function OfflineMapManager() {
       await refreshStats();
       setClearing(false);
     }
-  }, [refreshStats]);
+  }, [refreshStats, t]);
 
   const usagePct = MAX_CACHE_SIZE > 0 ? (stats.totalBytes / MAX_CACHE_SIZE) * 100 : 0;
 
@@ -85,20 +88,18 @@ export function OfflineMapManager() {
       {!isOnline && (
         <div className="flex items-center gap-2 px-3 py-2 bg-status-warning/10 border border-status-warning/30 rounded-lg">
           <WifiOff size={14} className="text-status-warning" />
-          <span className="text-xs text-status-warning">
-            You are offline. Cached tiles will be used for maps.
-          </span>
+          <span className="text-xs text-status-warning">{t("offlineWarning")}</span>
         </div>
       )}
 
       {/* Operator-supplied basemap. This is the only map-settings surface in
           /config, and it is where an operator sets up offline use — the map
           popover alone is unreachable on /plan before a plan exists. */}
-      <Card title="Custom Map Source" padding={true}>
+      <Card title={t("customSourceTitle")} padding={true}>
         <CustomTileSourceEditor />
       </Card>
 
-      <Card title="Offline Map Cache" padding={true}>
+      <Card title={t("cacheTitle")} padding={true}>
         <div className="flex flex-col gap-3">
           {/* Usage bar */}
           <div>
@@ -118,29 +119,23 @@ export function OfflineMapManager() {
           <div className="flex items-center gap-4 text-[10px] font-mono text-text-secondary">
             <div className="flex items-center gap-1">
               <HardDrive size={10} />
-              <span>{loading ? "..." : cacheError ? "—" : stats.tileCount.toLocaleString()} tiles cached</span>
+              <span>
+                {t("tilesCached", {
+                  count: loading ? "..." : cacheError ? "—" : stats.tileCount.toLocaleString(),
+                })}
+              </span>
             </div>
           </div>
           {cacheError && (
-            <p className="text-[10px] text-status-error">Tile cache unavailable: {cacheError}</p>
+            <p className="text-[10px] text-status-error">{t("unavailable", { error: cacheError })}</p>
           )}
 
           {/* Caching toggle */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-primary">Tile caching</span>
-            <button
-              onClick={() => setCachingEnabled(!cachingEnabled)}
-              className={`relative w-8 h-4 rounded-full transition-colors cursor-pointer ${
-                cachingEnabled ? "bg-accent-primary" : "bg-bg-tertiary border border-border-default"
-              }`}
-            >
-              <div
-                className={`absolute top-0.5 w-3 h-3 rounded-full bg-text-primary transition-transform ${
-                  cachingEnabled ? "translate-x-4" : "translate-x-0.5"
-                }`}
-              />
-            </button>
-          </div>
+          <Toggle
+            label={t("tileCaching")}
+            checked={cachingEnabled}
+            onChange={setCachingEnabled}
+          />
 
           {/* Clear button */}
           <Button
@@ -150,13 +145,10 @@ export function OfflineMapManager() {
             onClick={handleClear}
             disabled={clearing || stats.tileCount === 0}
           >
-            {clearing ? "Clearing..." : "Clear All Cache"}
+            {clearing ? t("clearing") : t("clearAll")}
           </Button>
 
-          <p className="text-[9px] text-text-tertiary">
-            Download map tiles for offline use from the Plan tab (Download button in toolbar).
-            Tiles are cached in your browser and available without internet.
-          </p>
+          <p className="text-[9px] text-text-tertiary">{t("help")}</p>
         </div>
       </Card>
     </div>

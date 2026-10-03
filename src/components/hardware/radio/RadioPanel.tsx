@@ -19,6 +19,7 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useToast } from "@/components/ui/toast";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
 import { cmdDroneStatusApi } from "@/lib/community-api-drones";
 import {
   fetchPairStatus,
@@ -78,7 +79,10 @@ export function RadioPanel() {
 
   const [wfbTxPowerDbm, setWfbTxPowerDbm] = useState<number | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
+  // null means the pair state is unknown: no answer yet, or the last check
+  // failed. It is never read as "unpaired".
   const [pairStatus, setPairStatus] = useState<PairStatusResponse | null>(null);
+  const [pairCheckNonce, setPairCheckNonce] = useState(0);
   const [bindSession, setBindSession] = useState<LocalBindSession | null>(null);
   const [bindBusy, setBindBusy] = useState(false);
   const [unpairBusy, setUnpairBusy] = useState(false);
@@ -92,6 +96,7 @@ export function RadioPanel() {
   );
 
   const { toast } = useToast();
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
 
   const cloudStatuses = useConvexSkipQuery(cmdDroneStatusApi.listMyCloudStatuses, {
     enabled: hasAgent,
@@ -260,7 +265,9 @@ export function RadioPanel() {
             typeof wfb.tx_power_dbm === "number" ? wfb.tx_power_dbm : null,
           );
         } catch {
-          // WFB endpoint missing on this agent profile is fine.
+          // No answer means no reading: the slider shows "—" rather than
+          // the last value as if it were live.
+          if (!cancelled) setWfbTxPowerDbm(null);
         }
         setPollError(null);
       } catch (err) {
@@ -292,7 +299,7 @@ export function RadioPanel() {
     if (!agentUrl || !groundStationApiFromAgent(agentUrl, apiKey)) return;
     const ctx = { baseUrl: agentUrl, apiKey };
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
       if (cancelled || (typeof document !== "undefined" && document.hidden)) {
         if (!cancelled) timer = setTimeout(poll, PAIR_POLL_INTERVAL_MS);
@@ -302,8 +309,8 @@ export function RadioPanel() {
         const status = await fetchPairStatus(ctx);
         if (!cancelled) setPairStatus(status);
       } catch {
-        // Older agents lack the /api/wfb/pair endpoint; treat as
-        // "unpaired, not auto-pairing" without spamming a toast.
+        // A failed check is "unknown", never "unpaired": the card offers a
+        // retry and no bind until an answer arrives.
         if (!cancelled) setPairStatus(null);
       } finally {
         if (!cancelled) timer = setTimeout(poll, PAIR_POLL_INTERVAL_MS);
@@ -312,9 +319,13 @@ export function RadioPanel() {
     void poll();
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
+      clearTimeout(timer);
     };
-  }, [agentUrl, apiKey]);
+  }, [agentUrl, apiKey, pairCheckNonce]);
+
+  const handleRetryPairStatus = useCallback(() => {
+    setPairCheckNonce((n) => n + 1);
+  }, []);
 
   // Local-bind action. Synchronous: the agent runs the upstream
   // protocol to completion (≤60s) and returns the terminal session.
@@ -347,7 +358,7 @@ export function RadioPanel() {
           const status = await fetchPairStatus({ baseUrl: agentUrl, apiKey });
           setPairStatus(status);
         } catch {
-          /* swallow */
+          setPairStatus(null);
         }
       } else {
         toast(
@@ -380,13 +391,15 @@ export function RadioPanel() {
     }
     setUnpairBusy(true);
     try {
-      await unpairRig({ baseUrl: agentUrl, apiKey });
+      await withArmedOverride((force) =>
+        unpairRig({ baseUrl: agentUrl, apiKey }, { force }),
+      );
       toast(t("pairing.statusUnpaired"), "info");
       try {
         const status = await fetchPairStatus({ baseUrl: agentUrl, apiKey });
         setPairStatus(status);
       } catch {
-        /* swallow */
+        setPairStatus(null);
       }
     } catch (exc) {
       const msg = exc instanceof Error ? exc.message : String(exc);
@@ -394,7 +407,7 @@ export function RadioPanel() {
     } finally {
       setUnpairBusy(false);
     }
-  }, [agentUrl, apiKey, unpairBusy, toast, t]);
+  }, [agentUrl, apiKey, unpairBusy, toast, t, withArmedOverride]);
 
   // Ask the rig's auto-pair supervisor to retry the local bind when the
   // heartbeat says the link has failed over to the cloud relay. The agent
@@ -425,6 +438,44 @@ export function RadioPanel() {
     }
   }, [agentUrl, apiKey, retryBusy, toast, t]);
 
+  // Calibration callbacks are memoized: the wizard holds a run across parent
+  // renders, and the poll ticks above re-render this panel twice a second.
+  // Sweep the connected (transmit) agent's trio; setFec + setMcs are applied
+  // in sequence (the agent persists each) and the wizard's settle window
+  // covers the respawns.
+  const calibrationSweep = useCallback(
+    async (trio: CalTrio): Promise<void> => {
+      const api = groundStationApiFromAgent(agentUrl, apiKey);
+      if (!api) throw new Error("agent not connected");
+      await api.setFec(trio.fecK, trio.fecN);
+      await api.setMcs(trio.mcs);
+    },
+    [agentUrl, apiKey],
+  );
+  const calibrationMeasure = useCallback((): CalMeasurement => {
+    const { radio: r, updatedAt } = receiverRef.current;
+    return {
+      // The row's own write stamp: the engine only scores snapshots written
+      // after the trio under test was applied.
+      sampledAtMs: r ? updatedAt : null,
+      lossPercent: r?.lossPercent ?? null,
+      // The receiver's unrecoverable-block counter is the decode-side fail
+      // signal: scored from confirmed reception, never the transmitter's
+      // own tx_bytes (an advancing TX counter is not proof of a live link).
+      fecFailed: r?.fecLost ?? null,
+      validRxPacketsPerS: r?.validRxPacketsPerS ?? null,
+      bitrateKbps: r?.bitrateKbps ?? null,
+      rssiDbm: r?.rssiDbm ?? null,
+    };
+  }, []);
+  const calibrationLastGood = useMemo<CalTrio | null>(
+    () =>
+      mcsIndex != null && fecK != null && fecN != null
+        ? { mcs: mcsIndex, fecK, fecN }
+        : null,
+    [mcsIndex, fecK, fecN],
+  );
+
   if (!hasAgent) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
@@ -443,7 +494,7 @@ export function RadioPanel() {
     if (!api) {
       throw new Error("agent not connected");
     }
-    return api.setTxPower(dbm);
+    return withArmedOverride((force) => api.setTxPower(dbm, { force }));
   };
 
   // Radio link-tuning callbacks. Each builds the agent API client fresh (the
@@ -462,35 +513,6 @@ export function RadioPanel() {
     requireApi().setMcs(mcs);
   const onToggleAdaptive = (enabled: boolean): Promise<VideoConfigResponse> =>
     requireApi().setAdaptive(enabled);
-
-  // Calibration: sweep the connected (transmit) agent's trio, measure the
-  // receiver node's decode-side stats. setFec + setMcs are applied in sequence
-  // (the agent persists each); the wizard's settle window covers the respawns.
-  const calibrationSweep = async (trio: CalTrio): Promise<void> => {
-    const api = requireApi();
-    await api.setFec(trio.fecK, trio.fecN);
-    await api.setMcs(trio.mcs);
-  };
-  const calibrationMeasure = (): CalMeasurement => {
-    const { radio: r, updatedAt } = receiverRef.current;
-    return {
-      // The row's own write stamp: the engine only scores snapshots written
-      // after the trio under test was applied.
-      sampledAtMs: r ? updatedAt : null,
-      lossPercent: r?.lossPercent ?? null,
-      // The receiver's unrecoverable-block counter is the decode-side fail
-      // signal: scored from confirmed reception, never the transmitter's
-      // own tx_bytes (an advancing TX counter is not proof of a live link).
-      fecFailed: r?.fecLost ?? null,
-      validRxPacketsPerS: r?.validRxPacketsPerS ?? null,
-      bitrateKbps: r?.bitrateKbps ?? null,
-      rssiDbm: r?.rssiDbm ?? null,
-    };
-  };
-  const calibrationLastGood: CalTrio | null =
-    mcsIndex != null && fecK != null && fecN != null
-      ? { mcs: mcsIndex, fecK, fecN }
-      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -549,6 +571,7 @@ export function RadioPanel() {
 
       <PairingCard
         pairStatus={pairStatus}
+        onRetryPairStatus={handleRetryPairStatus}
         bindSession={bindSession}
         bindBusy={bindBusy}
         unpairBusy={unpairBusy}
@@ -587,7 +610,7 @@ export function RadioPanel() {
         lastGood={calibrationLastGood}
         receiverName={receiverName}
       />
-
+      {armedOverrideDialog}
     </div>
   );
 }

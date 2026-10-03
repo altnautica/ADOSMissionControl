@@ -11,9 +11,10 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Type } from "lucide-react";
 import type {
@@ -63,11 +64,23 @@ export function CustomOsdElementsPanel() {
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
   const [info, setInfo] = useState<INavCustomOsdElementsInfo | null>(null);
   const [elements, setElements] = useState<OsdElement[]>([]);
+  // What the FC holds for each row: set on read and on each row's save.
+  const [baseline, setBaseline] = useState<OsdElement[]>([]);
+  const dirty = useMemo(
+    () =>
+      elements.some((el, i) => {
+        const base = baseline[i];
+        return !base || base.visible !== el.visible || base.text !== el.text;
+      }),
+    [elements, baseline],
+  );
+  useUnsavedGuard(dirty);
 
   const { isArmed, lockMessage } = useArmedLock();
 
   const handleReset = useCallback(() => {
     setElements([]);
+    setBaseline([]);
     setInfo(null);
     setHasLoaded(false);
     setError(null);
@@ -80,7 +93,9 @@ export function CustomOsdElementsPanel() {
     try {
       const { info: fcInfo, elements: fcElements } = await protocol.getCustomOsdElements();
       setInfo(fcInfo);
-      setElements(fcElements.map(fromWire));
+      const rows = fcElements.map(fromWire);
+      setElements(rows);
+      setBaseline(rows);
       setHasLoaded(true);
     } catch (err) {
       setError(String(err));
@@ -100,8 +115,10 @@ export function CustomOsdElementsPanel() {
     if (!protocol?.setCustomOsdElement) { setError("Custom OSD elements not available on this firmware"); return; }
     setSavingIdx(idx); setError(null);
     try {
-      const result = await protocol.setCustomOsdElement(toWire(elements[idx]));
+      const row = elements[idx];
+      const result = await protocol.setCustomOsdElement(toWire(row));
       if (!result.success) setError(result.message);
+      else setBaseline((prev) => prev.map((b, i) => (i === idx ? row : b)));
     } catch (err) {
       setError(String(err));
     } finally {

@@ -110,17 +110,13 @@ export default function PairDeepLinkPage() {
       <main className="flex h-full items-center justify-center bg-bg-primary text-text-primary">
         <div className="max-w-md rounded-md border border-border-default bg-bg-secondary p-6">
           <h1 className="text-base font-semibold">{t("pairNewNode")}</h1>
-          <p className="mt-2 text-sm text-text-secondary">
-            This link is missing a pairing code. Open the setup wizard on
-            your device and try again, or open Mission Control directly to
-            pair manually.
-          </p>
+          <p className="mt-2 text-sm text-text-secondary">{t("pairLink.missingCode")}</p>
           <button
             type="button"
             onClick={() => router.push("/")}
             className="mt-4 rounded-sm border border-border-strong bg-bg-tertiary px-3 py-2 text-sm hover:bg-bg-tertiary"
           >
-            Back to dashboard
+            {t("pairLink.backToDashboard")}
           </button>
         </div>
       </main>
@@ -130,22 +126,19 @@ export default function PairDeepLinkPage() {
   return (
     <main className="flex h-full items-center justify-center bg-bg-primary text-text-primary">
       <div className="max-w-md rounded-md border border-border-default bg-bg-secondary p-6">
-        <h1 className="text-base font-semibold">Pairing this device</h1>
+        <h1 className="text-base font-semibold">{t("pairLink.title")}</h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Code:{" "}
+          {t("pairLink.codeLabel")}{" "}
           <span className="font-mono text-sm tracking-[0.4em]">
             {effectiveCode}
           </span>
         </p>
         {effectiveHost ? (
           <p className="mt-1 text-xs text-text-tertiary">
-            Device: <span className="font-mono">{effectiveHost}</span>
+            {t("pairLink.deviceLabel")} <span className="font-mono">{effectiveHost}</span>
           </p>
         ) : null}
-        <p className="mt-3 text-xs text-text-tertiary">
-          Sign in if prompted; the dialog below claims this code on your
-          account.
-        </p>
+        <p className="mt-3 text-xs text-text-tertiary">{t("pairLink.signInHint")}</p>
       </div>
       <PairingDialog
         open={open}
