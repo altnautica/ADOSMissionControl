@@ -51,7 +51,7 @@
     "@react-pdf/renderer": "^4.4.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
-    "@tanstack/react-virtual": "^3.13.22",
+    "@tanstack/react-virtual": "^3.14.5",
     "ajv": "^8.20.0",
     "bonjour-service": "^1.3.0",
     "cesium": "^1.143.0",
