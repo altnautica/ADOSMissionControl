@@ -50,8 +50,11 @@ export default defineConfig({
         'src/hooks/**',
         'src/components/**',
         'src/app/**',
+        // The Convex backend: tests/convex exercises its authorization and
+        // command-delivery code, which otherwise had no coverage floor at all.
+        'convex/**/*.ts',
       ],
-      exclude: ['src/mock/**'],
+      exclude: ['src/mock/**', 'convex/_generated/**'],
       reporter: ['text', 'html', 'lcov'],
       // Global floor seeded a few points below the measured level so a drop
       // toward zero fails the build while normal run-to-run variance does

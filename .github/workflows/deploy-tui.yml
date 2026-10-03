@@ -10,6 +10,10 @@ on:
   pull_request:
     paths: ["tools/deploy/**", ".github/workflows/deploy-tui.yml"]
 
+# Read-only by default; only the publish job writes the release.
+permissions:
+  contents: read
+
 defaults:
   run:
     working-directory: tools/deploy
@@ -36,8 +40,8 @@ jobs:
       - name: gallery renders
         run: cargo run --quiet --example ui_gallery
 
-  release:
-    name: release binaries
+  build:
+    name: build (${{ matrix.target }})
     needs: gate
     if: startsWith(github.ref, 'refs/tags/ados-deploy-v')
     runs-on: ${{ matrix.os }}
@@ -63,6 +67,64 @@ jobs:
           [[ "${{ matrix.os }}" == "windows-latest" ]] && bin="ados-deploy.exe"
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/$bin" "dist/ados-deploy-${{ matrix.target }}${bin##ados-deploy}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ados-deploy-${{ matrix.target }}
+          path: tools/deploy/dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # The deployer runs on an operator laptop and carries the stack's
+  # credentials, so every binary ships with a .sha256 and a minisign signature
+  # from the release key, plus a signed SHA256SUMS. A run without the signing
+  # secret fails instead of publishing binaries nobody can check.
+  release:
+    name: sign + publish
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SIGNING_KEY: ${{ secrets.ADOS_DRIVER_SIGNING_KEY }}
+      # Public half of the release key; each signature is checked against it
+      # before anything is published.
+      RELEASE_PUBKEY: RWQ/CJ1+gk7rjVfGSoy6MOL50e8TmO30KD/J+goaEj+WMI1uzEf92rHN
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: tools/deploy/dist
+          pattern: ados-deploy-*
+          merge-multiple: true
+      - name: checksums + signatures
+        run: |
+          set -euo pipefail
+          if [ -z "${SIGNING_KEY}" ]; then
+            echo "ADOS_DRIVER_SIGNING_KEY is not set; refusing to publish unsigned deployer binaries." >&2
+            exit 1
+          fi
+          sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y minisign
+          cd dist
+          shopt -s nullglob
+          bins=(ados-deploy-*)
+          if [ "${#bins[@]}" -ne 4 ]; then
+            echo "FAIL: expected 4 deployer binaries, found ${#bins[@]}: ${bins[*]}" >&2
+            exit 1
+          fi
+          rm -f SHA256SUMS
+          for f in "${bins[@]}"; do
+            sha256sum "$f" > "$f.sha256"
+            sha256sum "$f" >> SHA256SUMS
+          done
+          key="$(mktemp)"
+          printf '%s' "${SIGNING_KEY}" > "$key"
+          for f in "${bins[@]}" SHA256SUMS; do
+            minisign -S -s "$key" -m "$f" -x "$f.minisig"
+          done
+          shred -u "$key"
+          for f in "${bins[@]}" SHA256SUMS; do
+            minisign -V -q -P "${RELEASE_PUBKEY}" -m "$f" -x "$f.minisig"
+          done
+          ls -l
       - uses: softprops/action-gh-release@v2
         with:
           files: tools/deploy/dist/*

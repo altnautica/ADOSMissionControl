@@ -197,6 +197,53 @@ jobs:
             }
           ' CHANGELOG.md
 
+  agent-contract:
+    name: Agent contract (client routes and generated mirrors)
+    runs-on: ubuntu-latest
+    steps:
+      # The agent repository owns the route table and the generator for the
+      # three *.generated.ts mirrors in this tree. Its own CI compares them, but
+      # only on an agent push, so a change made here (a client call to a route
+      # the agent never served, a hand-edited mirror) would merge green. Both
+      # checks run here too, against the agent beside this checkout.
+      - uses: actions/checkout@v4
+        with:
+          path: ADOSMissionControl
+
+      - uses: actions/checkout@v4
+        with:
+          repository: altnautica/ADOSDroneAgent
+          path: ADOSDroneAgent
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Every agent call in this tree resolves against the agent's route table
+        run: python ADOSDroneAgent/scripts/check-api-surface.py
+
+      - name: Generated mirrors match the agent's codegen
+        run: |
+          set -uo pipefail
+          MANIFEST=ADOSDroneAgent/crates/ados-capabilities-codegen/gcs-mirror.sha256
+          # Hash rows only: GNU sha256sum -c treats the manifest's comment lines
+          # as malformed. The paths are relative to the parent of both checkouts.
+          grep -E '^[0-9a-f]{64}  ' "$MANIFEST" > mirror-rows.sha256 || true
+          rows="$(grep -c . mirror-rows.sha256 || true)"
+          if [ "${rows:-0}" -lt 1 ]; then
+            echo "FAIL: no hash rows parsed from $MANIFEST; this job stopped measuring anything."
+            exit 1
+          fi
+          echo "checking $rows mirrored file(s)"
+          if ! sha256sum -c mirror-rows.sha256; then
+            echo
+            echo "FAIL: a generated file under src/lib/plugins/ differs from what the agent's"
+            echo "  codegen produces. Never edit these by hand: regenerate in the agent repo"
+            echo "  (cargo run -p ados-capabilities-codegen) and commit the output here."
+            exit 1
+          fi
+          echo "PASS: every mirrored generated file matches"
+
   convex-exposure:
     name: Convex exposure and authorization
     runs-on: ubuntu-latest
@@ -226,9 +273,16 @@ jobs:
 
           // ---- invariant 1: the private research corpus never reaches this tree.
           // Expressed as a prefix on tables and functions; the tripwire is that
-          // the prefix appears at all.
+          // the prefix appears at all. Recursive, so helpers under convex/lib/
+          // are scanned too; the generated API stubs are not source.
           const RESEARCH = /research_/;
-          for (const f of files) {
+          const allFiles = readdirSync(dir, { recursive: true })
+            .map(String)
+            .filter((f) => f.endsWith('.ts') && !f.split(/[\\/]/).includes('_generated'));
+          if (!allFiles.some((f) => /[\\/]/.test(f))) {
+            fail('the research_ scan found no file below the top level of convex/; the recursive read stopped working');
+          }
+          for (const f of allFiles) {
             if (RESEARCH.test(readFileSync(join(dir, f), 'utf8'))) {
               fail(`${f} references the private research_ prefix`);
             }
@@ -308,11 +362,6 @@ jobs:
           // requires reviewing the function first.
           const KNOWN_UNGUARDED = new Set(`
           clientConfig.ts:getClientConfig
-          cmdDroneCommands.ts:enqueueCommand
-          cmdDroneCommands.ts:getCommandStatus
-          cmdDroneCommands.ts:listRecentCommands
-          cmdDroneStatus.ts:getCloudStatus
-          cmdLogdWindows.ts:getLogdWindows
           cmdMcpReach.ts:verifyCredential
           cmdMcpReach.ts:listNodes
           cmdMcpReach.ts:getStatus
@@ -342,8 +391,12 @@ jobs:
           pluginRegistry.ts:getRevokedList
           `.trim().split('\n').map((s) => s.trim()).filter(Boolean));
 
-          // requireGcsAccess (pluginRecords) and assertOwnsDevice (cmdVideoRelayTokens) are local helpers that call getAuthUserId and check the grant or ownership.
-          const AUTH = /getAuthUserId|requireAdmin|requireRole|requireUser|assertAdmin|ctx\.auth\.getUserIdentity|requireGcsAccess|assertOwnsDevice/;
+          // requireGcsAccess (pluginRecords), assertOwnsDevice (cmdVideoRelayTokens),
+          // requireOwnedDroneByDeviceId and requireOwnedCommand (cmdDroneAccess) are
+          // local helpers that call getAuthUserId and check the grant or ownership.
+          // requireCommandForDevice is deliberately absent: it only matches a
+          // command to a device id and authenticates no caller.
+          const AUTH = /getAuthUserId|requireAdmin|requireRole|requireUser|assertAdmin|ctx\.auth\.getUserIdentity|requireGcsAccess|assertOwnsDevice|requireOwnedDroneByDeviceId|requireOwnedCommand/;
           const DECL = /export const (\w+)\s*=\s*(internalMutation|internalQuery|internalAction|mutation|query|action|httpAction)\s*\(/g;
 
           let total = 0;
