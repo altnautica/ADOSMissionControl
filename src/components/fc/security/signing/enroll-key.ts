@@ -10,7 +10,8 @@
  * key is stored as "unconfirmed" with the old key retained beside it, and the
  * operator settles which one the FC holds. Only an answer from the agent that
  * proves nothing was sent (a 4xx, the link-unavailable 503, a pre-send 500)
- * discards the new key.
+ * discards the new key. A send the agent completed but could not verify (it
+ * saw no frame signed with the new key) is also kept as "unconfirmed".
  *
  * @license GPL-3.0-only
  */
@@ -35,8 +36,9 @@ export type EnrollOutcome =
       keyHex: string;
       /** The key kept beside the new one, if this browser had one. */
       previousKeyId: string | null;
-      /** Why the FC's state is unknown. */
-      reason: string;
+      /** Why the FC's state is unknown, or null when the agent sent the key
+       * and answered but did not see the FC sign with it. */
+      reason: string | null;
     }
   | {
       kind: "failed";
@@ -57,19 +59,7 @@ export async function enrollNewKey(opts: {
   const rawBytes = generateRandomKey();
   const keyHex = keyBytesToHex(rawBytes);
 
-  let result: SigningEnrollResult;
-  try {
-    result = await client.enrollSigningKey(keyHex, linkId);
-  } catch (e) {
-    if (e instanceof AgentHttpError) {
-      // The agent answered and sent nothing: the FC still has its old key.
-      zeroize(rawBytes);
-      return { kind: "failed", error: message(e) };
-    }
-    // A partial send, or a request that may have landed before it failed.
-    const reason = e instanceof SigningPartialEnrollError
-      ? "The first key frame reached the flight controller but the repeat failed."
-      : `The enrollment request did not complete (${message(e)}); it may have reached the flight controller.`;
+  async function storeUnconfirmed(reason: string | null): Promise<EnrollOutcome> {
     try {
       const record = await importAndStore({
         droneId, userId, keyBytes: rawBytes, linkId,
@@ -85,8 +75,30 @@ export async function enrollNewKey(opts: {
       };
     } catch (storeErr) {
       zeroize(rawBytes);
-      return { kind: "failed", error: `${reason} The new key could not be stored in this browser: ${message(storeErr)}` };
+      const lead = reason ?? "The flight controller was sent the new key but was not seen using it.";
+      return { kind: "failed", error: `${lead} The new key could not be stored in this browser: ${message(storeErr)}` };
     }
+  }
+
+  let result: SigningEnrollResult;
+  try {
+    result = await client.enrollSigningKey(keyHex, linkId);
+  } catch (e) {
+    if (e instanceof AgentHttpError) {
+      // The agent answered and sent nothing: the FC still has its old key.
+      zeroize(rawBytes);
+      return { kind: "failed", error: message(e) };
+    }
+    // A partial send, or a request that may have landed before it failed.
+    const reason = e instanceof SigningPartialEnrollError
+      ? "The first key frame reached the flight controller but the repeat failed."
+      : `The enrollment request did not complete (${message(e)}); it may have reached the flight controller.`;
+    return storeUnconfirmed(reason);
+  }
+
+  if (!result.verified) {
+    // Sent, but the FC was never seen signing with the new key.
+    return storeUnconfirmed(null);
   }
 
   try {

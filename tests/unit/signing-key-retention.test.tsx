@@ -8,7 +8,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import messages from "../../locales/en.json";
 
 const storeById = new Map<symbol, Map<string, unknown>>();
 
@@ -41,9 +44,25 @@ import { useSigningStore } from "@/stores/signing-store";
 import type { AgentClient } from "@/lib/agent/client";
 
 const DRONE = "drone-1";
+
+function withIntl({ children }: { children: ReactNode }) {
+  return (
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {children}
+    </NextIntlClientProvider>
+  );
+}
+
+function renderActions() {
+  return renderHook(() => useSigningActions(DRONE), { wrapper: withIntl });
+}
+
 const initialConnection = useAgentConnectionStore.getState();
 
-function stubClient(enroll: (...args: unknown[]) => Promise<unknown>) {
+function stubClient(
+  enroll: (...args: unknown[]) => Promise<unknown>,
+  disable: () => Promise<unknown> = async () => ({ sent: true, verified: false }),
+) {
   const client = {
     getSigningCapability: vi.fn(async () => ({
       supported: true,
@@ -53,7 +72,7 @@ function stubClient(enroll: (...args: unknown[]) => Promise<unknown>) {
       signing_params_present: false,
     })),
     enrollSigningKey: vi.fn(enroll),
-    disableSigningOnFc: vi.fn(async () => ({ success: true })),
+    disableSigningOnFc: vi.fn(disable),
   };
   useAgentConnectionStore.setState({ client: client as never });
   return client;
@@ -82,7 +101,7 @@ describe("enrollment that may have reached the FC", () => {
     stubClient(async () => {
       throw new TypeError("Failed to fetch");
     });
-    const { result } = renderHook(() => useSigningActions(DRONE));
+    const { result } = renderActions();
 
     await act(async () => {
       await result.current.handleEnable();
@@ -112,7 +131,7 @@ describe("enrollment that may have reached the FC", () => {
     )));
     const ctx = { baseUrl: "http://192.168.1.50:8080", apiKey: "k" };
     stubClient((...args: unknown[]) => enrollSigningKey(ctx, args[0] as string, args[1] as number));
-    const { result } = renderHook(() => useSigningActions(DRONE));
+    const { result } = renderActions();
 
     await act(async () => {
       await result.current.handleEnable();
@@ -129,7 +148,7 @@ describe("enrollment that may have reached the FC", () => {
     stubClient(async () => {
       throw new AgentHttpError(503, '{"detail":"MAVLink command link unavailable"}');
     });
-    const { result } = renderHook(() => useSigningActions(DRONE));
+    const { result } = renderActions();
 
     await act(async () => {
       await result.current.handleEnable();
@@ -139,19 +158,51 @@ describe("enrollment that may have reached the FC", () => {
     expect(rec?.keyId).toBe(oldKeyId);
     expect(rec?.enrollmentState).toBe("enrolled");
   });
+
+  it("keeps both keys when the agent sent the key but never saw the FC sign with it", async () => {
+    const oldKeyId = await seedKey();
+    stubClient(async () => ({ sent: true, verified: false, key_id: "abcd1234", enrolled_at: "2026-01-01T00:00:00Z" }));
+    const { result } = renderActions();
+
+    await act(async () => {
+      await result.current.handleEnable();
+    });
+
+    const rec = await getRecord(DRONE);
+    expect(rec?.enrollmentState).toBe("unconfirmed");
+    expect(rec?.keyId).not.toBe(oldKeyId);
+    expect(rec?.previous?.keyId).toBe(oldKeyId);
+    expect(result.current.error).toBe(messages.fcSigning.enrollSentNotConfirmed);
+  });
+
+  it("replaces the key outright once the agent saw the FC sign with it", async () => {
+    const oldKeyId = await seedKey();
+    stubClient(async () => ({ sent: true, verified: true, key_id: "abcd1234", enrolled_at: "2026-01-01T00:00:00Z" }));
+    const { result } = renderActions();
+
+    await act(async () => {
+      await result.current.handleEnable();
+    });
+
+    const rec = await getRecord(DRONE);
+    expect(rec?.enrollmentState).toBe("enrolled");
+    expect(rec?.keyId).not.toBe(oldKeyId);
+    expect(result.current.error).toBeNull();
+  });
 });
 
 describe("disable", () => {
   it("keeps the key, still signing, until the operator confirms unsigned commands work", async () => {
     await seedKey();
     stubClient(async () => ({}));
-    const { result } = renderHook(() => useSigningActions(DRONE));
+    const { result } = renderActions();
 
     await act(async () => {
       await result.current.handleDisable();
     });
 
     expect((await getRecord(DRONE))?.enrollmentState).toBe("disable_unconfirmed");
+    expect(result.current.error).toBe(messages.fcSigning.disableSentNotConfirmed);
     expect(await getSigner(DRONE)).not.toBeNull();
 
     await act(async () => {
@@ -159,11 +210,24 @@ describe("disable", () => {
     });
     expect(await getRecord(DRONE)).toBeNull();
   });
+
+  it("drops the key once the agent saw the FC send unsigned frames", async () => {
+    await seedKey();
+    stubClient(async () => ({}), async () => ({ sent: true, verified: true }));
+    const { result } = renderActions();
+
+    await act(async () => {
+      await result.current.handleDisable();
+    });
+
+    expect(await getRecord(DRONE)).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
 });
 
 describe("export", () => {
   it("keeps the enrolled key and offers the copy again when the clipboard refuses", async () => {
-    const client = stubClient(async () => ({ success: true, key_id: "abcd1234", enrolled_at: "2026-01-01T00:00:00Z" }));
+    const client = stubClient(async () => ({ sent: true, verified: true, key_id: "abcd1234", enrolled_at: "2026-01-01T00:00:00Z" }));
     const writeText = vi.fn<(text: string) => Promise<void>>(async () => {
       throw new DOMException("Document is not focused", "NotAllowedError");
     });
@@ -187,7 +251,7 @@ describe("export", () => {
   });
 
   it("does not claim the clipboard was cleared when the wipe is refused", async () => {
-    const client = stubClient(async () => ({ success: true, key_id: "abcd1234", enrolled_at: "2026-01-01T00:00:00Z" }));
+    const client = stubClient(async () => ({ sent: true, verified: true, key_id: "abcd1234", enrolled_at: "2026-01-01T00:00:00Z" }));
     const writeText = vi.fn<(text: string) => Promise<void>>(async (text) => {
       if (text === "") throw new DOMException("Document is not focused", "NotAllowedError");
     });

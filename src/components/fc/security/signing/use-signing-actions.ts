@@ -8,12 +8,13 @@
  * toggle, plus the two settle steps for an unconfirmed state. ArduPilot never
  * acknowledges SETUP_SIGNING, so a key that may be on the FC is never
  * discarded: an interrupted enrollment keeps both keys until the operator says
- * which one the FC holds, and a disable keeps the key until the operator
- * confirms unsigned commands are accepted. Also runs the on-mount effect that
- * pulls capability and key presence.
+ * which one the FC holds, and a disable the agent could not verify keeps the
+ * key until the operator confirms unsigned commands are accepted. Also runs
+ * the on-mount effect that pulls capability and key presence.
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
 import type { ConvexReactClient } from "convex/react";
 
@@ -70,6 +71,7 @@ export interface SigningActions {
 
 export function useSigningActions(droneId: string): SigningActions {
   const client = useAgentConnectionStore((s) => s.client);
+  const t = useTranslations("fcSigning");
 
   const state = useSigningStore((s) => s.drones[droneId]);
   const setCapability = useSigningStore((s) => s.setCapability);
@@ -221,7 +223,7 @@ export function useSigningActions(droneId: string): SigningActions {
           enrollmentState: "unconfirmed",
           previousKeyId: outcome.previousKeyId,
         });
-        setError(outcome.reason);
+        setError(outcome.reason ?? t("enrollSentNotConfirmed"));
         return;
       }
 
@@ -240,17 +242,32 @@ export function useSigningActions(droneId: string): SigningActions {
     } finally {
       setBusy(false);
     }
-  }, [client, droneId, setBrowserKey, convexClient, isAuthenticated, state?.keyId]);
+  }, [client, droneId, setBrowserKey, convexClient, isAuthenticated, state?.keyId, t]);
 
   const handleDisable = useCallback(async () => {
     if (!client || !droneId) return;
-    if (!confirm("Disable MAVLink signing for this drone?\n\nThis sends the flight controller an empty key. The flight controller does not acknowledge it, so this browser keeps its key until you confirm unsigned commands are accepted.")) {
+    if (!confirm("Disable MAVLink signing for this drone?\n\nThis sends the flight controller an empty key. Unless the agent sees the flight controller stop signing, this browser keeps its key until you confirm unsigned commands are accepted.")) {
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      await client.disableSigningOnFc();
+      const result = await client.disableSigningOnFc();
+      if (result.verified) {
+        // The FC was seen sending unsigned frames after the empty key: signing
+        // is off, so this browser's key has nothing left to sign for.
+        const prevKeyId = state?.keyId ?? undefined;
+        await clearKeystoreRecord(droneId);
+        setBrowserKey(droneId, null);
+        void emitSigningEvent(convexClient, isAuthenticated, {
+          droneId,
+          eventType: "disable",
+          keyIdOld: prevKeyId,
+        });
+        setBusy(false);
+        return;
+      }
+      setError(t("disableSentNotConfirmed"));
     } catch (e) {
       if (e instanceof AgentHttpError) {
         // The agent answered and sent nothing: signing is unchanged.
@@ -264,7 +281,7 @@ export function useSigningActions(droneId: string): SigningActions {
     await updateEnrollmentState(droneId, "disable_unconfirmed");
     setEnrollmentState(droneId, "disable_unconfirmed");
     setBusy(false);
-  }, [client, droneId, setEnrollmentState]);
+  }, [client, droneId, setEnrollmentState, setBrowserKey, state?.keyId, convexClient, isAuthenticated, t]);
 
   const handleSettleDisable = useCallback(async (signingOff: boolean) => {
     if (!droneId) return;
