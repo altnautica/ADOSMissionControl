@@ -4,6 +4,55 @@ All notable changes to ADOS Mission Control are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+
+- The LAN-pair proxy and the MCP activity feed answer only when the page is
+  served from a local host (loopback, private address, `.local`, or a name in
+  `ADOS_LOCAL_ROUTE_HOSTS`), and refuse everything when `ADOS_LOCAL_ROUTES=off`.
+  `ados-deploy` sets that for a public domain.
+- In the desktop app, local node API keys are encrypted with the operating
+  system keystore. Inline extension assets without a signed digest are refused.
+
+### Changed
+
+- **Armed actions ask first.** When a node refuses an action because the
+  vehicle is armed, Mission Control asks whether to continue and retries with
+  an explicit override.
+- **Fleet identity.** When two aircraft behind one ground station share a
+  MAVLink system id, a blocking banner names the id and commands to it are
+  held. A relayed drone opens its MAVLink session only once its system id is
+  known, and accepts frames from that id only. Live video follows the
+  selected drone, with a "Show this drone" action.
+- **Firmware flashing.** ArduPilot images go through the bootloader protocol
+  with a matching CRC; USB DFU needs the `_with_bl.hex` image. Parameters are
+  backed up (browser storage and a `.param` download) before flashing and can
+  be restored afterwards from a diff. Flashing needs a USB cable to the flight
+  controller. CAN node restart, erase, bootloader and node-id changes ask for
+  confirmation and are refused while armed.
+- **Planner.** Terrain samples are dropped when a waypoint moves and the
+  validator reports "terrain unknown" until resampled. Every waypoint carries
+  an explicit altitude frame, and pattern generators plan relative to home.
+  Downloading an empty mission leaves the open plan alone.
+- **Flight logs.** Recordings are stored in chunks with no frame cap and are
+  never evicted while a flight references them; a full disk is reported.
+  ULog array fields parse correctly, ULog and tlog import in a worker with
+  progress and cancel, and re-importing a file no longer duplicates it.
+- **Protocol.** MAVLink transfers share one state, so a second parameter or
+  mission download works after the first. MSP arming is confirmed from the
+  vehicle's status, and MSP link loss is detected. BLE and WebSocket send
+  queues are bounded.
+- Reconnecting sockets and video players retry on a fixed cadence and never
+  give up. Relayed nodes show why a relay ticket was refused, and relayed
+  logs support live tail and export.
+- Node capabilities come from what the agent declares, not from a SoC table.
+
+### Fixed
+
+- Many smaller fixes across hardware pages, input calibration, replay,
+  vision overlays, DroneCAN tools, offline maps and translations.
+
 ## [0.59.0] - 2026-09-25
 
 This release covers everything since 0.58.0: forty-two commits over two and a
