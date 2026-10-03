@@ -11,9 +11,10 @@
 
 import { GroundStationApiError } from "@/lib/api/ground-station-api";
 import type { GroundStationRole } from "@/lib/api/ground-station/types";
+import { AgentArmedRefusal, AgentHttpError } from "@/lib/agent/agent-client/transport";
 
 export function errorMessage(err: unknown): { message: string; status: number | null } {
-  if (err instanceof GroundStationApiError) {
+  if (err instanceof GroundStationApiError || err instanceof AgentHttpError) {
     let parsedMsg = err.body;
     try {
       const parsed = JSON.parse(err.body) as { detail?: string; message?: string };
@@ -40,6 +41,8 @@ export function roleSwitchErrorMessage(
   role: GroundStationRole,
 ): string {
   const { message, status } = errorMessage(err);
+  // An armed refusal is not a missing invite: name the actual cause.
+  if (err instanceof AgentArmedRefusal) return message;
   if (status === 409 && role === "relay") {
     return "Relay role needs an approved invite bundle first. Pair with the receiver from the OLED, then retry.";
   }

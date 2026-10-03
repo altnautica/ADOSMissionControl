@@ -43,11 +43,15 @@
  * `AgentMavlinkBridge` session already owns that same node id, and re-adding
  * under it would tear that (better) direct session down.
  *
- * Known limitation (tracked, not solved here): `ados-mavlink-router` on the
- * ground station is single-source today, so two DIFFERENT drones relayed
- * through the SAME ground station would both attach to whichever sysid
- * heartbeats first on its one `:8765` socket. Safe for one relayed drone per
- * ground station; N>1 needs an agent-side per-peer port or sysid filter.
+ * One ground station republishes EVERY drone in its fleet on its one `:8765`
+ * socket, so each session is confined to its own aircraft: it is opened only
+ * once the station's fleet slot table names the drone's MAVLink system id, its
+ * inbound stream is filtered to that system id (`SystemIdFilterTransport`), so
+ * the adapter's target system — and every command it sends — is that
+ * aircraft's. A drone whose system id is still unknown, or shared with another
+ * slot (the station holds commands to a shared id), gets no session; the node
+ * notices say why. A session whose slot reports a different system id later is
+ * torn down and redialled.
  *
  * Renders nothing — pure bridge component, mounted once beside
  * `RelayedDroneBridge`.
@@ -68,6 +72,8 @@ import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { normalizeRadio } from "@/stores/agent-capabilities/normalizer";
 import { linkStateReach } from "@/components/hardware/radio/labels";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
+import { SystemIdFilterTransport } from "@/lib/agent/relayed-sysid-filter";
+import { useFleetSlotsStore } from "@/stores/ground-station/fleet-slots-store";
 import {
   planRelayedEnrollment,
   type RelayGroundNode,
@@ -115,14 +121,16 @@ export function RelayedMavlinkBridge() {
   const localNodes = useLocalNodesStore((s) => s.nodes);
   const cloudStatuses = useCommandFleetStore((s) => s.cloudStatuses);
 
-  // nodeIds this bridge currently holds a live session for, and ones mid-dial
-  // (so a retry tick never opens a second concurrent dial for the same drone).
-  const connectedIds = useRef<Set<string>>(new Set());
+  // nodeIds this bridge currently holds a live session for (with the system id
+  // the session is confined to), and ones mid-dial (so a retry tick never
+  // opens a second concurrent dial for the same drone).
+  const connectedIds = useRef<Map<string, number>>(new Map());
   const connectingIds = useRef<Set<string>>(new Set());
-  // The latest reconcile's relay-eligible set, and whether the bridge has
-  // unmounted: a dial re-checks both after its awaits, since eligibility can
-  // change (a direct pairing lands, the ground link drops) while it waits.
-  const wantedIds = useRef<Set<string>>(new Set());
+  // The latest reconcile's relay-eligible drones and the system id each must
+  // be confined to, and whether the bridge has unmounted: a dial re-checks
+  // both after its awaits, since eligibility can change (a direct pairing
+  // lands, the ground link drops, the slot's system id changes) while it waits.
+  const wantedIds = useRef<Map<string, number>>(new Map());
   const disposed = useRef(false);
 
   useEffect(() => {
@@ -130,6 +138,7 @@ export function RelayedMavlinkBridge() {
       nodeId: string,
       droneDeviceId: string,
       agent: { agentUrl: string; apiKey: string },
+      systemId: number,
     ) {
       let transport: Transport | undefined;
       let handedOff = false;
@@ -162,8 +171,9 @@ export function RelayedMavlinkBridge() {
         const wsTransport = new WebSocketTransport();
         // Owned from the moment the dial starts: when the timeout wins the
         // race, the catch below closes the still-CONNECTING socket instead of
-        // leaving it to open later with no owner.
-        transport = wsTransport;
+        // leaving it to open later with no owner. The filter wraps it before
+        // any byte can arrive, so the adapter never sees another aircraft.
+        transport = new SystemIdFilterTransport(wsTransport, systemId);
         const dialTimeout = Promise.withResolvers<never>();
         const dialTimer = setTimeout(
           () => dialTimeout.reject(new Error("timeout")),
@@ -171,7 +181,7 @@ export function RelayedMavlinkBridge() {
         );
         try {
           await Promise.race([
-            wsTransport.connect(wsUrl, [WS_TICKET_PROTOCOL, ticket]),
+            transport.connect(wsUrl, [WS_TICKET_PROTOCOL, ticket]),
             dialTimeout.promise,
           ]);
         } finally {
@@ -190,6 +200,13 @@ export function RelayedMavlinkBridge() {
         );
         const adapter = await createFcAdapter(fcVariant);
         const vehicleInfo = await adapter.connect(transport);
+        if (vehicleInfo.systemId !== systemId) {
+          // The filter admits only `systemId`, so this cannot lock elsewhere;
+          // refuse rather than register a session on the wrong aircraft.
+          handedOff = true;
+          void adapter.disconnect().catch(() => {});
+          return;
+        }
 
         // Re-check after the awaits: addDrone replaces any session already
         // under this id, so a direct session that came up meanwhile (or a
@@ -200,7 +217,7 @@ export function RelayedMavlinkBridge() {
           useLocalNodesStore.getState().nodes.some((n) => n.deviceId === droneDeviceId);
         if (
           disposed.current ||
-          !wantedIds.current.has(nodeId) ||
+          wantedIds.current.get(nodeId) !== systemId ||
           directlyPaired ||
           useDroneManager.getState().drones.has(nodeId)
         ) {
@@ -222,7 +239,7 @@ export function RelayedMavlinkBridge() {
             // selection.
             { ownsFleetRow: false, autoSelect: false },
           );
-        connectedIds.current.add(nodeId);
+        connectedIds.current.set(nodeId, systemId);
       } catch (err) {
         console.warn(
           "[RelayedMavlinkBridge] MAVLink connection failed:",
@@ -243,6 +260,7 @@ export function RelayedMavlinkBridge() {
       for (const d of pairedDrones) directDeviceIds.add(d.deviceId);
       for (const n of localNodes) directDeviceIds.add(n.deviceId);
 
+      const slotsByGround = useFleetSlotsStore.getState().byGround;
       const groundNodes: RelayGroundNode[] = [];
       const seenGs = new Set<string>();
       const addGs = (deviceId: string, profile: string | undefined) => {
@@ -255,6 +273,7 @@ export function RelayedMavlinkBridge() {
           nodeId: `node:${deviceId}`,
           status,
           radioUp: radioUpFor(status),
+          fleetSlots: slotsByGround[deviceId]?.slots,
         });
       };
       for (const d of pairedDrones) addGs(d.deviceId, d.profile);
@@ -265,20 +284,28 @@ export function RelayedMavlinkBridge() {
         directlyPairedDeviceIds: directDeviceIds,
       });
 
-      const wanted = new Set<string>();
+      const wanted = new Map<string, number>();
       for (const e of enrollments) {
         // A drone that is ALSO directly paired owns its own AgentMavlinkBridge
         // session under this same node id — never compete with it.
         if (directDeviceIds.has(e.deviceId)) continue;
         const groundDeviceId = deviceIdFromNodeId(e.reachedVia);
         if (!groundDeviceId) continue;
-        wanted.add(e.nodeId);
+        // Waiting for vehicle identity, or the id is shared with another slot:
+        // no session until the station names one aircraft for this drone.
+        const systemId = e.slot?.fc_system_id ?? null;
+        if (systemId === null || e.slot?.system_id_conflict) continue;
+        wanted.set(e.nodeId, systemId);
 
-        if (connectedIds.current.has(e.nodeId)) {
-          if (useDroneManager.getState().drones.has(e.nodeId)) continue;
-          // Torn down from under us (e.g. transport closed) — clear so a
-          // retry can re-dial.
+        const heldSystemId = connectedIds.current.get(e.nodeId);
+        if (heldSystemId !== undefined) {
+          if (heldSystemId === systemId && useDroneManager.getState().drones.has(e.nodeId)) {
+            continue;
+          }
+          // Torn down from under us (e.g. transport closed), or confined to a
+          // system id the slot no longer reports — drop it so a retry re-dials.
           connectedIds.current.delete(e.nodeId);
+          if (heldSystemId !== systemId) useDroneManager.getState().removeDrone(e.nodeId);
         }
         if (connectingIds.current.has(e.nodeId)) continue;
 
@@ -288,7 +315,7 @@ export function RelayedMavlinkBridge() {
         if (!agent) continue;
 
         connectingIds.current.add(e.nodeId);
-        connectOne(e.nodeId, e.deviceId, agent).finally(() => {
+        connectOne(e.nodeId, e.deviceId, agent, systemId).finally(() => {
           connectingIds.current.delete(e.nodeId);
         });
       }
@@ -297,7 +324,7 @@ export function RelayedMavlinkBridge() {
       // Tear down sessions for drones no longer relay-eligible: the ground
       // link dropped, the peer is no longer reported, or the drone was just
       // paired directly (its new AgentMavlinkBridge session takes over the id).
-      for (const nodeId of Array.from(connectedIds.current)) {
+      for (const nodeId of Array.from(connectedIds.current.keys())) {
         if (!wanted.has(nodeId)) {
           connectedIds.current.delete(nodeId);
           useDroneManager.getState().removeDrone(nodeId);
@@ -314,7 +341,7 @@ export function RelayedMavlinkBridge() {
       // bump it, but a genuinely dead/wedged transport still stops advancing it
       // within one or two reconcile ticks, falling back to beacon-only
       // freshness exactly as today.
-      for (const nodeId of connectedIds.current) {
+      for (const nodeId of connectedIds.current.keys()) {
         const drone = useDroneManager.getState().drones.get(nodeId);
         const links = drone?.protocol.linkInfo;
         if (!links) continue; // e.g. an MSP-variant relayed FC — leave to the beacon
@@ -341,7 +368,7 @@ export function RelayedMavlinkBridge() {
     disposed.current = false;
     return () => {
       disposed.current = true;
-      for (const nodeId of owned) {
+      for (const nodeId of owned.keys()) {
         useDroneManager.getState().removeDrone(nodeId);
       }
       owned.clear();

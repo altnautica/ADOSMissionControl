@@ -123,6 +123,53 @@ describe("planRelayedEnrollment", () => {
     expect(e.funneledStatus?.videoWhepUrl).toBeUndefined();
   });
 
+  it("labels the station's served video only as the hero slot's drone", () => {
+    const slot = (deviceId: string, slotNo: number, hero: boolean) => ({
+      slot: slotNo,
+      device_id: deviceId,
+      paired_at_ms: 0,
+      fc_system_id: slotNo,
+      system_id_conflict: false,
+      video_hero: hero,
+      relay_credential: "held" as const,
+    });
+    const enrollments = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({
+            linkedPeers: [{ deviceId: "drone-a" }, { deviceId: "drone-b" }],
+            videoState: "running",
+            lastIp: "192.168.1.50",
+            videoWhepUrl: "/whep",
+          }),
+          fleetSlots: [slot("drone-a", 1, false), slot("drone-b", 2, true)],
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    const byId = new Map(enrollments.map((e) => [e.deviceId, e]));
+    expect(byId.get("drone-b")?.funneledStatus?.videoWhepUrl).toBe("http://192.168.1.50:8080/whep");
+    expect(byId.get("drone-a")?.funneledStatus?.videoWhepUrl).toBeUndefined();
+    expect(byId.get("drone-a")?.slot?.fc_system_id).toBe(1);
+  });
+
+  it("attributes no served video among several peers when the slot table is unknown", () => {
+    const enrollments = planRelayedEnrollment({
+      groundNodes: [
+        ground({
+          status: gsStatus({
+            linkedPeers: [{ deviceId: "drone-a" }, { deviceId: "drone-b" }],
+            videoState: "running",
+            lastIp: "192.168.1.50",
+            videoWhepUrl: "/whep",
+          }),
+        }),
+      ],
+      directlyPairedDeviceIds: new Set(),
+    });
+    expect(enrollments.every((e) => e.funneledStatus?.videoWhepUrl === undefined)).toBe(true);
+  });
+
   it("enrolls the relay link but withholds the funneled status when the drone is ALSO paired directly", () => {
     // Dedup / upgrade-in-place: a directly-paired drone owns its own status via
     // its own bridge, so the relay must not clobber the direct video/telemetry —

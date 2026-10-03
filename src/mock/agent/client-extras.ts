@@ -15,7 +15,6 @@
 import type {
   AgentVersionInfo,
   FullStatusResponse,
-  TelemetrySnapshot,
   VideoStatus,
 } from "@/lib/agent/types";
 import type {
@@ -31,27 +30,6 @@ import { delay } from "./utils";
 /** Simulated round trip, the same order as the rest of the demo client. */
 const DEMO_LATENCY_MS = 60;
 
-/** The demo vehicle sits on the ground, disarmed, with no GPS fix. */
-const DEMO_TELEMETRY: TelemetrySnapshot = {
-  lat: 0,
-  lon: 0,
-  alt: 0,
-  relative_alt: 0,
-  heading: 0,
-  groundspeed: 0,
-  airspeed: 0,
-  roll: 0,
-  pitch: 0,
-  yaw: 0,
-  battery_voltage: 0,
-  battery_current: 0,
-  battery_remaining: 0,
-  gps_fix: 0,
-  satellites: 0,
-  mode: "STABILIZE",
-  armed: false,
-};
-
 export class MockAgentClientExtras {
   private demoRecording: { filename: string; startedAt: number } | null = null;
 
@@ -62,16 +40,6 @@ export class MockAgentClientExtras {
 
   async supports(_capability: string): Promise<boolean> {
     return false;
-  }
-
-  async getTelemetry(): Promise<TelemetrySnapshot> {
-    await delay(DEMO_LATENCY_MS);
-    return { ...DEMO_TELEMETRY };
-  }
-
-  async getParams(): Promise<Record<string, number>> {
-    await delay(DEMO_LATENCY_MS);
-    return {};
   }
 
   /** `null` sends the status poll down its per-endpoint path. */
@@ -92,12 +60,12 @@ export class MockAgentClientExtras {
 
   async startTouchCalibration(): Promise<TouchCalibrationStart> {
     await delay(DEMO_LATENCY_MS);
-    return { requested: true, target_count: 5 };
+    return { requested: true, target_count: 5, request_id: "demo" };
   }
 
   async getTouchCalibrationStatus(): Promise<TouchCalibrationStatus> {
     await delay(DEMO_LATENCY_MS);
-    return { calibrated: false, requested: false };
+    return { calibrated: false, requested: false, request_id: null, calib_mtime_ms: null };
   }
 
   async applySetup(_update: Record<string, unknown>): Promise<{ ok?: boolean }> {

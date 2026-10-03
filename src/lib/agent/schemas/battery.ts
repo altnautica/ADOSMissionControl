@@ -68,6 +68,8 @@ export const BatteryHistoryEventSchema = z
 export const BatteryPackSchema = z
   .object({
     id: z.number(),
+    /** This pack's own report stopped arriving; the values are its last one. */
+    stale: z.boolean(),
     cells_plausible: z.boolean(),
     cell_voltages_v: z.array(z.number()),
     weakest_cell_index: NullableNumber,

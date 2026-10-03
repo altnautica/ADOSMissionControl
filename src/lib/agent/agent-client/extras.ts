@@ -30,6 +30,7 @@ import type {
   RecordingListResponse,
   SigningCapability,
   SigningCounters,
+  SigningDisableResult,
   SigningEnrollResult,
 } from "./types";
 
@@ -280,8 +281,8 @@ export async function enrollSigningKey(
 
 export function disableSigningOnFc(
   ctx: RequestContext,
-): Promise<{ success: boolean }> {
-  return agentRequest<{ success: boolean }>(
+): Promise<SigningDisableResult> {
+  return agentRequest<SigningDisableResult>(
     ctx,
     "/api/mavlink/signing/disable-on-fc",
     { method: "POST", timeoutMs: SIGNING_WRITE_TIMEOUT_MS },

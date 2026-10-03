@@ -24,6 +24,7 @@ import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import {
   useAgentCapabilitiesStore,
   selectDeviceCapabilities,
@@ -58,6 +59,7 @@ import {
 import { NodeTabStrip } from "./NodeTabStrip";
 import { NodeHeaderActions } from "./NodeHeaderActions";
 import { NodeAuthorityChip, NodeConnectChip } from "./NodeHeaderChips";
+import { RelayedNodeNotices } from "./RelayedNodeNotices";
 
 interface NodeDetailPanelProps {
   droneId: string;
@@ -116,14 +118,20 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
   // The agent advertises an FC before the GCS has finished dialing the live
   // MAVLink session (or an identified MSP FC with its transport open, which
   // never sets fc_connected). During that window the Configure tab reads
-  // "linking", not the hard "no FC / connect one" placeholder.
+  // "linking", not the hard "no FC / connect one" placeholder. The status is
+  // read only when the attached connection IS this node's: the system store
+  // holds the one focused agent, and another node's FC must never mark this
+  // one as linking.
+  const attachedDeviceId = useAgentConnectionStore((s) => s.nodeDeviceId);
   const agentStatus = useAgentSystemStore((s) => s.status);
+  const ownStatus =
+    agentDeviceId !== null && attachedDeviceId === agentDeviceId ? agentStatus : null;
   const agentFcReachable = isFcReachable({
-    fcConnected: agentStatus?.fc_connected,
-    fcVariant: agentStatus?.fc_variant,
-    transportOpen: agentStatus?.transport_open,
+    fcConnected: ownStatus?.fc_connected,
+    fcVariant: ownStatus?.fc_variant,
+    transportOpen: ownStatus?.transport_open,
   });
-  const fcLinking = !isConnected && agentDeviceId !== null && agentFcReachable;
+  const fcLinking = !isConnected && ownStatus !== null && agentFcReachable;
 
   const immersiveMode = useUiStore((s) => s.immersiveMode);
   const displayName = metadata?.displayName ?? drone?.name ?? droneId;
@@ -241,6 +249,12 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
             />
         </div>
 
+        <RelayedNodeNotices
+          deviceId={bareDeviceId}
+          profile={drone.profile}
+          reachedVia={drone.reachedVia}
+          relayReach={relayReach}
+        />
         {/* The surface key carries BOTH the tab and the node id: the panel is
             not remounted per node, so keying on the tab alone would carry one
             node's surface state (and a dirty parameter edit) onto the next. */}

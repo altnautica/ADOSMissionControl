@@ -7,6 +7,7 @@
 import type { StateCreator } from "zustand";
 import type { AgentClient } from "@/lib/agent/client";
 import type { AgentStatus } from "@/lib/agent/types";
+import type { RelayRefusal } from "@/lib/agent/agent-client/transport";
 import type { RelayCommandName } from "../../../convex/commandVocabulary";
 
 /**
@@ -71,6 +72,10 @@ export interface LocalState {
    * fire-and-forget side reads all branch on it: what is free on the LAN is
    * paid for in airtime here. Set by `connect()`, cleared by `disconnect()`. */
   relay: boolean;
+  /** Why the last relay connect was refused, when the relay itself (ticket or
+   * the drone's API behind it) answered the refusal. Null on success, on a
+   * direct connection, and on a plain unreachable failure. */
+  relayRefusal: RelayRefusal | null;
 }
 
 /**

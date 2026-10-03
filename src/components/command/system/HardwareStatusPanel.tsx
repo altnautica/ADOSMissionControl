@@ -195,14 +195,6 @@ export function HardwareStatusPanel() {
   const fcLive = fcConnected && !stale;
   const uptimeSeconds = status?.uptime_seconds;
 
-  // Declared-vs-probed SoC drift. Only flag when both are present and the
-  // probed (kernel) value disagrees with what the board profile declared.
-  const socDeclared = status?.board?.soc_declared;
-  const socProbed = status?.board?.soc_probed;
-  const socDrift = Boolean(
-    socDeclared && socProbed && socDeclared !== socProbed,
-  );
-
   return (
     <CollapsibleSection
       title="Hardware"
@@ -235,36 +227,6 @@ export function HardwareStatusPanel() {
                 {status.board?.cpu_cores ? ` · ${status.board.cpu_cores} cores` : ""}
                 {status.board?.ram_mb ? ` · ${status.board.ram_mb} MB RAM` : ""}
               </p>
-              {socDrift && (
-                <Tooltip
-                  multiline
-                  content={
-                    <div className="space-y-1">
-                      <p className="text-xs text-text-secondary">
-                        The board profile declares a different SoC than the
-                        running kernel reports. Showing the probed value.
-                      </p>
-                      <p className="text-xs font-mono text-text-tertiary">
-                        Declared {status.board?.soc_declared}
-                      </p>
-                      <p className="text-xs font-mono text-text-tertiary">
-                        Probed {status.board?.soc_probed}
-                      </p>
-                    </div>
-                  }
-                >
-                  <Badge variant="warning">SoC: declared/probed differ</Badge>
-                </Tooltip>
-              )}
-              {(status.board?.cpu_probed || status.board?.hw_encoder_probed) && (
-                <p className="text-[11px] font-mono text-text-tertiary mt-0.5">
-                  {status.board?.cpu_probed ? `Probed ${status.board.cpu_probed}` : ""}
-                  {status.board?.cpu_probed && status.board?.hw_encoder_probed ? " · " : ""}
-                  {status.board?.hw_encoder_probed
-                    ? `HW encoder ${status.board.hw_encoder_probed}`
-                    : ""}
-                </p>
-              )}
               {status.kernel_release && (
                 <p className="text-[11px] font-mono text-text-tertiary mt-0.5">
                   Kernel {status.kernel_release}

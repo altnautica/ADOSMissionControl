@@ -51,7 +51,9 @@ describe("ServiceTable restart", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Restart" }));
     });
-    expect(onRestart).toHaveBeenCalledWith("ados-mavlink");
+    // The first attempt is unforced; only the agent's armed refusal and a
+    // second confirmation send `force`.
+    expect(onRestart).toHaveBeenCalledWith("ados-mavlink", { force: false });
     await waitFor(() => expect(toast).toHaveBeenCalledWith("Restarted ados-mavlink", "success"));
   });
 

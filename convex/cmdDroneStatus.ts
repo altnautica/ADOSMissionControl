@@ -106,6 +106,9 @@ export const pushStatusArgs = {
     // a plain boolean on every packaged-loop heartbeat, so a validator that
     // omits it rejects the entire heartbeat. Optional for older agents.
     fcReachable: v.optional(v.boolean()),
+    // True when the FC link reads connected but GCS commands to the FC are
+    // dropped (telemetry-only source such as MAVLink over ELRS). Optional.
+    fcCommandDownGated: v.optional(v.boolean()),
     // Absolute resource values
     memoryUsedMb: v.optional(v.number()),
     memoryTotalMb: v.optional(v.number()),
@@ -150,6 +153,7 @@ export const pushStatusArgs = {
           role: v.optional(v.string()),
           codec: v.optional(v.string()),
           live: v.optional(v.boolean()),
+          whepUrl: v.optional(v.string()),
         }),
       ),
     ),

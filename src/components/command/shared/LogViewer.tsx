@@ -184,7 +184,7 @@ export function LogViewer({ logs, onRefresh }: LogViewerProps) {
         { onRow, onError },
       );
     } catch {
-      // No host / relayed agent: the polling effect below keeps the prop feed
+      // No resolvable host: the polling effect below keeps the prop feed
       // current; refresh once now so it shows current data immediately.
       onRefresh(levelFilterRef.current);
       return;

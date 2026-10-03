@@ -330,21 +330,20 @@ export function CloudStatusBridge() {
       useAgentConnectionStore.getState().setMavlinkUrl(mavlinkUrl);
     }
 
-    // Infer capabilities from cloud status (board SoC → NPU, peripherals → cameras).
-    // Read THIS node's remembered slice, not the focused one: the focused slice
-    // belongs to whichever node the operator has open, so merging the relay
-    // heartbeat over it cross-contaminated two nodes' capability sets.
-    const capState =
-      selectDeviceCapabilities(
-        useAgentCapabilitiesStore.getState(),
-        cloudDeviceId,
-      ) ?? useAgentCapabilitiesStore.getState();
+    // Capabilities from cloud status: compute from the agent's declared NPU
+    // fields, cameras from peripherals. Read THIS node's remembered slice only:
+    // a node with no slice yet is not loaded, so its first reading is built
+    // fresh instead of merged over whichever node the operator has open.
+    const capState = selectDeviceCapabilities(
+      useAgentCapabilitiesStore.getState(),
+      cloudDeviceId,
+    );
     const extras = buildHeartbeatExtras(cloudRecord);
 
     // An empty camera list is a legitimate steady state (a ground station has
     // none), so it must not force a full re-infer on every tick — that made the
     // merge branch below dead code on any node with no cameras.
-    if (!capState.loaded) {
+    if (!capState?.loaded) {
       const periphList = useAgentPeripheralsStore.getState().peripherals;
       const inferred = inferCapabilities(
         mapped,
@@ -491,7 +490,14 @@ export function CloudStatusBridge() {
         // Latest heartbeat wins for the per-leg streams; a sparse tick that
         // resolves no legs keeps the prior set so the switcher doesn't flicker.
         videoStreams: videoStreams.length > 0 ? videoStreams : capState.videoStreams,
-        compute: capState.compute,
+        // The agent declares its NPU on every heartbeat; a tick that omits the
+        // declaration keeps the prior compute block.
+        compute:
+          reInferred && extras.inferOverrides?.npuTops !== undefined
+            ? reInferred.compute
+            : capState.compute,
+        npuTops: extras.inferOverrides?.npuTops ?? undefined,
+        hasAccelerator: extras.inferOverrides?.hasAccelerator ?? undefined,
         vision: capState.vision,
         models: capState.models,
         setupState: capState.setupState,

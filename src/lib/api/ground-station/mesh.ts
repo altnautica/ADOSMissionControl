@@ -19,6 +19,7 @@ import type {
   RoleInfo,
 } from "./types";
 import { gsRequest, type RequestContext } from "./request";
+import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 import { subscribeWebSocket } from "./ws";
 
 // --- Role ---
@@ -28,11 +29,17 @@ export function getRole(ctx: RequestContext): Promise<RoleInfo> {
   return gsRequest<RoleInfo>(ctx, "/api/v1/ground-station/role");
 }
 
-/** Apply a role transition. 409 E_NOT_PAIRED when relay target is unpaired. */
-export function setRole(ctx: RequestContext, role: GroundStationRole): Promise<RoleInfo> {
+/** Apply a role transition. 409 E_NOT_PAIRED when relay target is unpaired;
+ *  409 E_ARMED (thrown as `AgentArmedRefusal`) while the vehicle is armed
+ *  unless `opts.force` is set. */
+export function setRole(
+  ctx: RequestContext,
+  role: GroundStationRole,
+  opts?: ArmedOverrideOptions,
+): Promise<RoleInfo> {
   return gsRequest<RoleInfo>(ctx, "/api/v1/ground-station/role", {
     method: "PUT",
-    body: JSON.stringify({ role }),
+    body: JSON.stringify(opts?.force ? { role, force: true } : { role }),
   });
 }
 

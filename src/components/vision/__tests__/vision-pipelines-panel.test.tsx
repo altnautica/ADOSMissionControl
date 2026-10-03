@@ -24,11 +24,13 @@ function seed(
   cameraId: string,
   detections: VisionDetection[] = [],
 ) {
+  // A publishing stream stamps each batch with its capture time; freshness is
+  // judged from that, so a repeated stamp would read as a frozen stream.
   useVisionDetectionsStore.getState().setBatch(DRONE, {
     modelId,
     cameraId,
     frameId: 1,
-    tsMs: 0,
+    tsMs: Date.now(),
     frameWidth: 1280,
     frameHeight: 720,
     detections,

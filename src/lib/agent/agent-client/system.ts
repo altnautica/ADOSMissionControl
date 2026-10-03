@@ -17,7 +17,6 @@ import type {
   MavlinkPort,
   ServiceInfo,
   SystemResources,
-  TelemetrySnapshot,
 } from "../types";
 import {
   AgentStatusSchema,
@@ -28,12 +27,19 @@ import {
   PingResponseSchema,
   ServicesResponseSchema,
   SystemResourcesRawSchema,
-  TelemetrySnapshotSchema,
 } from "../schemas";
-import { agentRequest, type RequestContext } from "./transport";
+import {
+  AgentHttpError,
+  agentRequest,
+  withForceQuery,
+  type ArmedOverrideOptions,
+  type RequestContext,
+} from "./transport";
 import { agentSupports, fetchVersionInfo } from "./version-cache";
+import { legacyLogEntry } from "./logging-wire";
 import {
   configWriteFailure,
+  persistFailureBody,
   type ConfigWriteResult,
 } from "@/lib/agent/config-write";
 
@@ -98,13 +104,6 @@ export async function getStatus(ctx: RequestContext): Promise<AgentStatus> {
   return { ...status, ...snakeLivenessPatch(status) };
 }
 
-export function getTelemetry(ctx: RequestContext): Promise<TelemetrySnapshot> {
-  return agentRequest<TelemetrySnapshot>(ctx, "/api/telemetry", {
-    schema: TelemetrySnapshotSchema as z.ZodType<TelemetrySnapshot>,
-    allowSchemaFallback: true,
-  });
-}
-
 /** Per-service rows. A metric the agent does not send (the native front sends
  * no CPU, uptime or transition stamp) stays null so the table shows "—". */
 export async function getServices(ctx: RequestContext): Promise<ServiceInfo[]> {
@@ -130,25 +129,24 @@ export async function getSystemResources(
   return normaliseSystemResources(res);
 }
 
+/** Recent log entries, oldest first, in the viewer's `LogEntry` shape. The
+ * agent answers newest first with an upper-case level and a `logger` field, so
+ * each entry goes through the same normaliser the cloud-relayed read uses. The
+ * store names the warning level `warn`. */
 export async function getLogs(
   ctx: RequestContext,
   params?: { level?: string; limit?: number },
 ): Promise<LogEntry[]> {
   const qs = new URLSearchParams();
-  if (params?.level) qs.set("level", params.level);
+  if (params?.level) qs.set("level", params.level === "warning" ? "warn" : params.level);
   if (params?.limit) qs.set("limit", String(params.limit));
   const query = qs.toString();
-  const res = await agentRequest<LogEntry[] | { entries: LogEntry[] }>(
+  const res = await agentRequest<unknown[] | { entries?: unknown[] }>(
     ctx,
     `/api/logs${query ? `?${query}` : ""}`,
   );
-  return Array.isArray(res) ? res : (res.entries ?? []);
-}
-
-export function getParams(
-  ctx: RequestContext,
-): Promise<Record<string, number>> {
-  return agentRequest<Record<string, number>>(ctx, "/api/params");
+  const entries = Array.isArray(res) ? res : (res.entries ?? []);
+  return [...entries].reverse().map((raw) => legacyLogEntry(raw));
 }
 
 /**
@@ -289,19 +287,33 @@ export function getConfig(ctx: RequestContext): Promise<Record<string, unknown>>
  * Write a single config value via the agent's PUT /api/config endpoint.
  * Dot-separated key paths are supported by the agent
  * (e.g. `ground_station.display.type`). The agent coerces the string
- * value to the underlying field type at the Pydantic boundary, so the
- * caller hands in a plain string. Returns the {key, value} echo the
- * agent sends back so the UI can confirm the round-trip.
+ * value to the underlying field type, so the caller hands in a plain string.
+ * Returns the agent's answer, including the 500 persist-failure body, so
+ * `configWriteFailure` names the node's own reason.
  */
-export function setConfigValue(
+export async function setConfigValue(
   ctx: RequestContext,
   key: string,
   value: string,
 ): Promise<ConfigWriteResult> {
-  return agentRequest<ConfigWriteResult>(ctx, "/api/config", {
-    method: "PUT",
-    body: JSON.stringify({ key, value }),
-  });
+  try {
+    return await agentRequest<ConfigWriteResult>(ctx, "/api/config", {
+      method: "PUT",
+      body: JSON.stringify({ key, value }),
+    });
+  } catch (err) {
+    if (err instanceof AgentHttpError) {
+      let body: unknown = null;
+      try {
+        body = JSON.parse(err.body);
+      } catch {
+        throw err;
+      }
+      const failure = persistFailureBody(body);
+      if (failure) return failure;
+    }
+    throw err;
+  }
 }
 
 export type ServiceRestartResult = z.infer<typeof ServiceRestartResultSchema>;
@@ -314,14 +326,16 @@ export const SERVICE_RESTART_TIMEOUT_MS = 40_000;
 
 /** Restart one agent unit. The agent answers HTTP 200 for every outcome, so
  * a `status:"error"` body (unknown unit, failed or unconfirmed restart) is
- * thrown with the agent's message. */
+ * thrown with the agent's message. A flight-critical unit is refused with
+ * `AgentArmedRefusal` while armed unless `opts.force` is set. */
 export async function restartService(
   ctx: RequestContext,
   name: string,
+  opts?: ArmedOverrideOptions,
 ): Promise<ServiceRestartResult> {
   const res = await agentRequest(
     ctx,
-    `/api/services/${encodeURIComponent(name)}/restart`,
+    withForceQuery(`/api/services/${encodeURIComponent(name)}/restart`, opts),
     {
       method: "POST",
       schema: ServiceRestartResultSchema,
@@ -334,11 +348,13 @@ export async function restartService(
 
 /** Restart the supervisor, which cycles every agent service. The agent
  * schedules the restart and answers at once; `ok:false` means it could not
- * schedule it and is thrown with the agent's message. */
+ * schedule it and is thrown with the agent's message. Refused with
+ * `AgentArmedRefusal` while armed unless `opts.force` is set. */
 export async function restartSupervisor(
   ctx: RequestContext,
+  opts?: ArmedOverrideOptions,
 ): Promise<SupervisorRestartResult> {
-  const res = await agentRequest(ctx, "/api/v1/system/restart-supervisor", {
+  const res = await agentRequest(ctx, withForceQuery("/api/v1/system/restart-supervisor", opts), {
     method: "POST",
     schema: SupervisorRestartResultSchema,
   });
@@ -366,6 +382,7 @@ interface SnakeLiveness {
   fc_firmware?: string;
   fc_variant?: string;
   fc_reachable?: boolean;
+  fc_command_down_gated?: boolean;
 }
 
 /**
@@ -414,6 +431,11 @@ function snakeLivenessPatch(obj: SnakeLiveness): SnakeLiveness {
     // LAN-direct path, and the FC surfaces claim "no flight controller".
     fc_variant: str(obj.fc_variant, raw.fcVariant),
     fc_reachable: bool(obj.fc_reachable, raw.fcReachable),
+    // Telemetry flows but GCS commands to the FC are dropped.
+    fc_command_down_gated: bool(
+      obj.fc_command_down_gated,
+      raw.fcCommandDownGated,
+    ),
   };
 }
 
@@ -481,9 +503,9 @@ export async function getMavlinkPorts(
  * on the next status poll to confirm a live link.
  *
  * Throws when a write did not land. The agent answers a rejected value with
- * HTTP 200 + `{error}`, and a value it took in memory but could not write to
- * disk with HTTP 200 + `persisted: false` — so discarding these results
- * reports an applied FC source that reverts at the next agent restart. The
+ * HTTP 200 + `{error}`, and a value it could not write to its config file
+ * with HTTP 500 + `persisted: false` — so discarding these results
+ * reports an applied FC source the node never stored. The
  * first failure stops the sequence: writing a serial port for a source the
  * node never accepted would leave a half-applied configuration.
  */

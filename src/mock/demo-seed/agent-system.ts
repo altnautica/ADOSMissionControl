@@ -198,8 +198,6 @@ export function seedFocusedAgentSystem(now: number): void {
     resources,
     services,
     logs: demoLogs(agent, now),
-    processCpuPercent: demoJitter(4, 2),
-    processMemoryMb: demoJitter(60, 12),
     lastUpdatedAt: now,
     stale: false,
   });

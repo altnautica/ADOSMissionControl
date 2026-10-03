@@ -26,6 +26,7 @@ import { useNodeDirectAgent } from "@/components/command/settings/use-node-direc
 import { getFreshness, useClockTick } from "@/lib/agent/freshness";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { TxPowerSlider } from "@/components/hardware/TxPowerSlider";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
 import { WifiPowersaveCard } from "@/components/hardware/network/WifiPowersaveCard";
 import {
   linkDiagLabel,
@@ -106,6 +107,7 @@ export function DroneRadioPanel({ droneId, nodeDeviceId }: DroneRadioPanelProps)
   const agent = useNodeDirectAgent(nodeDeviceId);
   const agentUrl = agent?.agentUrl ?? null;
   const apiKey = agent?.apiKey ?? null;
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
 
   if (!radio) {
     return (
@@ -184,7 +186,7 @@ export function DroneRadioPanel({ droneId, nodeDeviceId }: DroneRadioPanelProps)
     if (!api) {
       throw new Error(tDrone("noAgent"));
     }
-    return api.setTxPower(dbm);
+    return withArmedOverride((force) => api.setTxPower(dbm, { force }));
   };
 
   const initialSliderValue = txPowerDbm ?? DEFAULT_INITIAL_TX_DBM;
@@ -351,6 +353,7 @@ export function DroneRadioPanel({ droneId, nodeDeviceId }: DroneRadioPanelProps)
       </section>
 
       <WifiPowersaveCard />
+      {armedOverrideDialog}
     </div>
   );
 }

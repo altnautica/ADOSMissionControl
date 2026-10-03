@@ -1,8 +1,9 @@
 /**
  * @module InferCapabilities
- * @description Infers agent capabilities (NPU, cameras) from existing agent data
- * when the capabilities API is not available (agent < v0.3.20).
- * Uses board SoC name to look up NPU specs and peripherals list for cameras.
+ * @description Builds the agent capability snapshot from the agent's status
+ * and peripherals list. Compute capability (NPU throughput and accelerator
+ * presence) comes from the values the agent declares on its status and
+ * heartbeat; cameras come from the peripherals list.
  * @license GPL-3.0-only
  */
 
@@ -64,6 +65,12 @@ export interface InferHeartbeatExtras {
   visionDetectionsPerSec?: number | null;
   /** Vision pipeline frames-per-second (post-inference). */
   visionFps?: number | null;
+  /** NPU throughput the agent declares for its board, in TOPS (0 when the
+   * board has none). The authoritative compute source; undefined when the
+   * producer omitted it. */
+  npuTops?: number | null;
+  /** The agent's own declaration that the board carries NPU hardware. */
+  hasAccelerator?: boolean | null;
 }
 
 const KNOWN_RANGEFINDER_TOPOLOGIES: ReadonlySet<
@@ -181,38 +188,30 @@ const KNOWN_GESTURES: ReadonlySet<LcdGesture> = new Set([
   "drag",
 ]);
 
-/** Known NPU specs by SoC name. A SoC with no NPU (e.g. the Broadcom Pi-class
- * parts) has no entry: an entry is a claim that an accelerator exists. */
-const NPU_BY_SOC: Record<string, { tops: number; runtime: "rknn" | "tensorrt" }> = {
-  // Rockchip RK3588 family (6 TOPS RKNN)
-  RK3588: { tops: 6.0, runtime: "rknn" },
-  RK3588S: { tops: 6.0, runtime: "rknn" },
-  RK3588S2: { tops: 6.0, runtime: "rknn" },
-  RK3582: { tops: 6.0, runtime: "rknn" },
-  // Rockchip RK3576 (6 TOPS RKNN)
-  RK3576: { tops: 6.0, runtime: "rknn" },
-  // Rockchip mid-range
-  RK3566: { tops: 0.8, runtime: "rknn" },
-  RK3568: { tops: 0.8, runtime: "rknn" },
-  // Rockchip vision SoCs
-  RV1126: { tops: 2.0, runtime: "rknn" },
-  RV1126B: { tops: 2.0, runtime: "rknn" },
-  RV1109: { tops: 2.0, runtime: "rknn" },
-  RV1103: { tops: 0.5, runtime: "rknn" },
-  // NVIDIA Jetson
-  "Jetson Orin Nano": { tops: 40.0, runtime: "tensorrt" },
-  "Jetson Orin NX": { tops: 100.0, runtime: "tensorrt" },
-};
+/**
+ * The inference runtime family for an NPU the agent declared, recognised from
+ * the SoC family name. Null when the agent declared no NPU, or when the
+ * silicon family has no known runtime.
+ */
+function npuRuntimeFor(
+  soc: string,
+  npuTops: number,
+): ComputeCapability["npu_runtime"] {
+  if (npuTops <= 0) return null;
+  const family = soc.toUpperCase();
+  if (/^R[KV]\d/.test(family)) return "rknn";
+  if (/TEGRA|JETSON|ORIN/.test(family)) return "tensorrt";
+  return null;
+}
 
 /**
- * Infer capabilities from existing agent status + peripherals.
- * Used as a fallback when the agent doesn't have the /api/capabilities endpoint.
+ * Build capabilities from agent status + peripherals.
  *
- * The optional `heartbeatExtras` argument carries top-level fields
- * the cloud relay forwards on every heartbeat (LCD live state,
- * local video tap, recording flag, UI theme). Inference reads them
- * defensively: each field is independent and any one being absent
- * leaves the matching capability undefined.
+ * The optional `heartbeatExtras` argument carries top-level fields the agent
+ * reports on every status or heartbeat (declared NPU throughput, LCD live
+ * state, local video tap, recording flag, UI theme). Each field is read
+ * defensively and independently: any one being absent leaves the matching
+ * capability undefined, and an undeclared NPU reads as none.
  */
 export function inferCapabilities(
   status: AgentStatus | null,
@@ -226,27 +225,27 @@ export function inferCapabilities(
   if (!board) return null;
 
   // A workstation (Mac / Win / Linux box) runs a GPU, not a tiered SBC NPU, and
-  // is not on the board "tier" ladder. Skip the SoC→NPU/tier lookup entirely so
-  // we never infer a phantom "Tier 0 / no NPU" for it; instead surface that it
-  // is GPU-capable. The live GPU identity + utilisation come from the
-  // compute-status poll (compute store), not from the heartbeat board.
+  // is not on the board "tier" ladder; surface that it is GPU-capable. The live
+  // GPU identity + utilisation come from the compute-status poll (compute
+  // store), not from the heartbeat board.
   const isWorkstation = profile === "workstation";
+  const extras = heartbeatExtras ?? {};
 
-  // Infer NPU from SoC. Prefer the probed (kernel device-tree) SoC over
-  // the board-YAML declared value when the agent sends it: the silicon is
-  // authoritative, and the declared string can be wrong or stale. The NPU
-  // lookup table is keyed by the declared family name (e.g. "RK3588S2"),
-  // so try the probed string first, then fall back to the declared `soc`.
-  const soc = board.soc ?? "";
-  const socProbed = board.soc_probed ?? "";
-  const npuInfo = isWorkstation
-    ? null
-    : NPU_BY_SOC[socProbed] ?? NPU_BY_SOC[soc] ?? null;
+  // The agent's declaration is the only source of NPU capability: it reads
+  // the board profile it actually booted on.
+  const npuTops =
+    typeof extras.npuTops === "number" && Number.isFinite(extras.npuTops)
+      ? extras.npuTops
+      : 0;
+  const npuAvailable =
+    typeof extras.hasAccelerator === "boolean"
+      ? extras.hasAccelerator
+      : npuTops > 0;
 
   const compute: ComputeCapability = {
-    npu_available: npuInfo !== null,
-    npu_runtime: npuInfo?.runtime ?? null,
-    npu_tops: npuInfo?.tops ?? 0,
+    npu_available: npuAvailable,
+    npu_runtime: npuAvailable ? npuRuntimeFor(board.soc ?? "", npuTops) : null,
+    npu_tops: npuTops,
     npu_utilization_pct: null,
     gpu_available: isWorkstation,
   };
@@ -274,7 +273,6 @@ export function inferCapabilities(
   // the heartbeat wins because it's authoritative for the current
   // running state (peripheral.extra.rotation reflects only what
   // /etc/ados/display.conf had at boot).
-  const extras = heartbeatExtras ?? {};
   const heartbeatGestureRaw =
     typeof extras.lcdLastGesture === "string"
       ? extras.lcdLastGesture
@@ -463,6 +461,6 @@ export function inferCapabilities(
     // Inference cannot know the RESOLVED perceptionTier (an agent decision), so
     // that stays undefined here; the accelerator headroom it can derive.
     npuTops: compute.npu_tops,
-    hasAccelerator: compute.npu_tops > 0 || compute.gpu_available,
+    hasAccelerator: compute.npu_available || compute.gpu_available,
   };
 }

@@ -198,6 +198,9 @@ export function buildHeartbeatExtras(
     visionBackend: readString(cloudStatus.visionBackend),
     visionDetectionsPerSec: readNumber(cloudStatus.visionDetectionsPerSec),
     visionFps: readNumber(cloudStatus.visionFps),
+    // The board's declared NPU capability; the agent sends both on every tick.
+    npuTops: readNumber(cloudStatus.npuTops),
+    hasAccelerator: readBoolean(cloudStatus.hasAccelerator),
   };
 
   const setupState =

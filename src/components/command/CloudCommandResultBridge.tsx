@@ -16,7 +16,7 @@ import { useFleetNetworkStore } from "@/stores/fleet-network-store";
 import { cmdDroneCommandsApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { normalizeServiceInfo } from "@/lib/agent/service-state";
-import { toLogLevel } from "@/lib/agent/agent-client/logging-wire";
+import { legacyLogEntry } from "@/lib/agent/agent-client/logging-wire";
 import type { LogEntry } from "@/lib/agent/types";
 
 const asRecord = (v: unknown): Record<string, unknown> | null =>
@@ -44,15 +44,7 @@ export function routeCommandResult(command: string, data: unknown): void {
       const entries = asRecord(data)?.entries;
       if (!Array.isArray(entries)) return;
       // The viewer expects chronological order.
-      const logs: LogEntry[] = [...entries].reverse().map((raw) => {
-        const e = asRecord(raw) ?? {};
-        return {
-          timestamp: typeof e.timestamp === "string" ? e.timestamp : "",
-          level: toLogLevel(e.level),
-          service: typeof e.logger === "string" ? e.logger : "",
-          message: typeof e.message === "string" ? e.message : "",
-        };
-      });
+      const logs: LogEntry[] = [...entries].reverse().map((raw) => legacyLogEntry(raw));
       useAgentSystemStore.setState({ logs, lastUpdatedAt: Date.now(), stale: false });
       return;
     }

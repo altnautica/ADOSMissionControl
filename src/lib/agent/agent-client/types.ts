@@ -20,10 +20,23 @@ export interface SigningCapability {
   signing_params_present: boolean;
 }
 
+/** `POST /api/mavlink/signing/enroll-fc`. ArduPilot never acknowledges
+ * SETUP_SIGNING, so after sending the agent watches the FC for a few seconds:
+ * `verified` is true only when a frame from the FC arrived signed with the new
+ * key. `sent: true, verified: false` means the key went out but the FC was
+ * not seen using it. */
 export interface SigningEnrollResult {
-  success: boolean;
+  sent: boolean;
+  verified: boolean;
   key_id: string;
   enrolled_at: string;
+}
+
+/** `POST /api/mavlink/signing/disable-on-fc`. `verified` is true only when an
+ * unsigned frame from the FC arrived after the empty key was sent. */
+export interface SigningDisableResult {
+  sent: boolean;
+  verified: boolean;
 }
 
 /** `GET /api/mavlink/signing/counters`. An agent with no signed-frame observer
@@ -39,16 +52,19 @@ export interface SigningCounters {
   last_signed_rx_at: number | null;
 }
 
+/** One entry of `GET /api/video/cameras`. The agent sends `device_path`,
+ * `type`, `label`, `width` and `height`; `name`, `hardware_role` and
+ * `resolution` are carried only by the demo roster. */
 export interface CameraEntry {
-  name: string;
-  type: string;
   device_path: string;
-  hardware_role: string;
-  /** Optional resolution string ("1920x1080"). Surfaced when the
-   * agent's HAL probe could read it; absent on opaque vendor cameras. */
-  resolution?: string | null;
-  /** Optional friendly label for the camera; falls back to `name`. */
+  type: string;
+  /** Friendly label for the camera. */
   label?: string | null;
+  width?: number | null;
+  height?: number | null;
+  name?: string;
+  hardware_role?: string;
+  resolution?: string | null;
 }
 
 export interface CameraListResponse {

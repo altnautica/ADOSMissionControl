@@ -41,6 +41,7 @@ import type {
   UplinkSlice,
   WifiScanCache,
 } from "./types";
+import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 
 export interface GroundStationState {
   // link slice
@@ -85,6 +86,9 @@ export interface GroundStationState {
   role: RoleSlice;
   distributedRx: DistributedRxSlice;
   mesh: MeshSlice;
+  /** Agent origin the role, mesh and distributed-RX slices belong to (see
+   * mesh-store). */
+  meshFor: string | null;
 
   // link actions
   loadStatus: (
@@ -113,7 +117,7 @@ export interface GroundStationState {
     pairKey: string,
     droneId?: string,
   ) => Promise<void>;
-  unpair: (api: GroundStationApi) => Promise<void>;
+  unpair: (api: GroundStationApi, opts?: ArmedOverrideOptions) => Promise<void>;
   clearPair: () => void;
 
   // peripherals actions
@@ -182,7 +186,6 @@ export interface GroundStationState {
   ) => Promise<{
     config: EthernetConfig | null;
     error: string | null;
-    backendPending: boolean;
   }>;
 
   // mesh actions
@@ -190,6 +193,7 @@ export interface GroundStationState {
   applyRole: (
     api: GroundStationApi,
     role: GroundStationRole,
+    opts?: ArmedOverrideOptions,
   ) => Promise<RoleInfo | null>;
   loadDistributedRx: (api: GroundStationApi) => Promise<void>;
   loadMesh: (api: GroundStationApi) => Promise<void>;

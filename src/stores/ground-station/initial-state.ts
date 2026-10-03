@@ -160,4 +160,5 @@ export const INITIAL_STORE_SLICE = {
   role: INITIAL_ROLE,
   distributedRx: INITIAL_DISTRIBUTED_RX,
   mesh: INITIAL_MESH,
+  meshFor: null,
 } as const;

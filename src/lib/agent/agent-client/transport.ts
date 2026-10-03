@@ -54,6 +54,89 @@ export class AgentHttpError extends Error {
   }
 }
 
+/**
+ * The agent refused a flight-affecting action because the vehicle is armed
+ * (HTTP 409, `{"error":"E_ARMED","override":"force"}`). The same request
+ * carrying the override (`"force": true` in a JSON body, `?force=1` on a
+ * bodiless call) is accepted; `useArmedOverrideConfirm` asks the operator
+ * before sending it.
+ */
+export class AgentArmedRefusal extends AgentHttpError {
+  constructor(body: string) {
+    super(409, body);
+    this.name = "AgentArmedRefusal";
+  }
+}
+
+/** An armed refusal when a non-2xx answer is a 409 naming `E_ARMED`, else
+ * null. Shared by `agentRequest` and the ground-station `gsRequest`. */
+export function armedRefusalFrom(status: number, body: string): AgentArmedRefusal | null {
+  if (status !== 409) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (typeof parsed === "object" && parsed !== null && "error" in parsed && parsed.error === "E_ARMED") {
+    return new AgentArmedRefusal(body);
+  }
+  return null;
+}
+
+/** The armed-override options every flight-affecting client call accepts. */
+export interface ArmedOverrideOptions {
+  force?: boolean;
+}
+
+/** Append `force=1` to a bodiless request's path when the override is set. */
+export function withForceQuery(path: string, opts?: ArmedOverrideOptions): string {
+  if (!opts?.force) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}force=1`;
+}
+
+/** The reasons a drone (or the relaying ground station) refuses a relay
+ * ticket, as carried in `{"error":"E_RELAY_TICKET","reason":…}`. */
+export const RELAY_TICKET_REASONS = [
+  "expired",
+  "clock_skew",
+  "replayed",
+  "bad_signature",
+  "binding_mismatch",
+  "no_secret",
+  "secret_conflict",
+] as const;
+export type RelayTicketReason = (typeof RELAY_TICKET_REASONS)[number];
+
+/** Why a call over a ground station's relay-proxy was refused: the relay
+ * ticket itself (`ticket`), or the drone's own API failing behind a working
+ * relay (`peerApi`, `{"error":"E_RELAY_PEER_API"}`). */
+export type RelayRefusal =
+  | { kind: "ticket"; reason: RelayTicketReason | "unknown" }
+  | { kind: "peerApi"; detail: string | null };
+
+/** The relay refusal an agent error carries, or null for any other failure. */
+export function relayRefusalFrom(err: unknown): RelayRefusal | null {
+  if (!(err instanceof AgentHttpError)) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(err.body);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || !("error" in parsed)) return null;
+  if (parsed.error === "E_RELAY_TICKET") {
+    const raw = "reason" in parsed ? parsed.reason : undefined;
+    const reason = RELAY_TICKET_REASONS.find((r) => r === raw) ?? "unknown";
+    return { kind: "ticket", reason };
+  }
+  if (parsed.error === "E_RELAY_PEER_API") {
+    const detail = "detail" in parsed && typeof parsed.detail === "string" ? parsed.detail : null;
+    return { kind: "peerApi", detail };
+  }
+  return null;
+}
+
 export async function agentRequest<T>(
   ctx: RequestContext,
   path: string,
@@ -83,7 +166,7 @@ export async function agentRequest<T>(
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "Unknown error");
-    throw new AgentHttpError(res.status, text);
+    throw armedRefusalFrom(res.status, text) ?? new AgentHttpError(res.status, text);
   }
   const json = (await res.json()) as unknown;
   if (schema) {

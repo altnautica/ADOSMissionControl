@@ -18,8 +18,8 @@
 
 import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { MeshHealthCard } from "@/components/hardware/MeshHealthCard";
 import { MeshNeighborsTable } from "@/components/hardware/MeshNeighborsTable";
 import { MeshGatewaysTable } from "@/components/hardware/MeshGatewaysTable";
@@ -33,19 +33,32 @@ import { useGroundStationPoll } from "./use-gs-poll";
 
 const POLL_INTERVAL_MS = 3000;
 
-export function MeshTab() {
+export interface MeshTabProps {
+  /** The node this tab is rendered for; its reads and the role write go to
+   * this node's own connection, never the (lagging) focused one. */
+  nodeDeviceId: string | null;
+}
+
+export function MeshTab({ nodeDeviceId }: MeshTabProps) {
   const t = useTranslations("hardware.mesh");
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const agentUrl = direct?.agentUrl ?? null;
+  const apiKey = direct?.apiKey ?? null;
+  const target = groundStationApiFromAgent(agentUrl, apiKey)?.baseUrl ?? null;
+  // The role and mesh slices are shown only when they were read from this node.
+  const owned = useGroundStationStore((s) => target !== null && s.meshFor === target);
   const loadRole = useGroundStationStore((s) => s.loadRole);
   const loadMesh = useGroundStationStore((s) => s.loadMesh);
   const loadDistributedRx = useGroundStationStore((s) => s.loadDistributedRx);
   // Read the role INFO, not a `?? "direct"` collapse. A failed `/role` fetch
   // leaves `info` null, and reporting that as "this node is in direct mode" is
   // an affirmative, wrong statement that also buried the error naming the fix.
-  const roleInfo = useGroundStationStore((s) => s.role.info);
-  const roleError = useGroundStationStore((s) => s.role.error);
-  const meshError = useGroundStationStore((s) => s.mesh.error);
+  const storeRoleInfo = useGroundStationStore((s) => s.role.info);
+  const storeRoleError = useGroundStationStore((s) => s.role.error);
+  const storeMeshError = useGroundStationStore((s) => s.mesh.error);
+  const roleInfo = owned ? storeRoleInfo : null;
+  const roleError = owned ? storeRoleError : null;
+  const meshError = owned ? storeMeshError : null;
 
   useGroundStationPoll(agentUrl, apiKey, POLL_INTERVAL_MS, async (api) => {
     await loadRole(api);
@@ -60,7 +73,7 @@ export function MeshTab() {
 
   const role = roleInfo?.current ?? null;
   const meshCarriesTraffic = role === "relay" || role === "receiver";
-  const onCloudOnly = !agentUrl;
+  const onCloudOnly = direct === null;
 
   return (
     <div className="flex flex-col">
@@ -88,7 +101,10 @@ export function MeshTab() {
         {/* The role picker leads: it is the control that makes the rest of
             this surface meaningful, and on a direct / unset node it is the
             only thing to do here. */}
-        <RoleChangeCard variant={meshCarriesTraffic ? "switch" : "empty"} />
+        <RoleChangeCard
+          nodeDeviceId={nodeDeviceId}
+          variant={meshCarriesTraffic ? "switch" : "empty"}
+        />
 
         {meshCarriesTraffic ? (
           <>
@@ -107,7 +123,7 @@ export function MeshTab() {
                 </Button>
               </div>
             ) : null}
-            <DistributedRxPanel />
+            <DistributedRxPanel nodeDeviceId={nodeDeviceId} />
           </>
         ) : (
           <div className="text-text-secondary">

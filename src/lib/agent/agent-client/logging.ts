@@ -1,12 +1,15 @@
 /**
  * @module agent/agent-client/logging
  * @description The `LoggingService` domain module. Reads the durable
- * on-device log/telemetry/event/hardware store over the LAN and surfaces
- * it through a single typed client. Transport resolution is local-first
- * and two-tier:
+ * on-device log/telemetry/event/hardware store and surfaces it through a
+ * single typed client. Transport resolution is local-first and two-tier:
  *
- *   1. proxy        http://<host>:8080/api/v2/observability/v1/...  (primary)
- *   2. legacy       http://<host>:8080/api/logs                     (older agents)
+ *   1. proxy        <agent>/api/v2/observability/v1/...  (primary)
+ *   2. legacy       <agent>/api/logs                     (store off / older agents)
+ *
+ * `<agent>` is `http://<host>:8080` on the LAN, or the ground station's
+ * relay-proxy prefix for a relayed drone: both tiers live on the agent's
+ * `:8080` front, which is exactly what the relay forwards to.
  *
  * The store's own query port is not a tier: it serves no CORS headers, so a
  * browser (and the desktop app, which keeps web security on) can never read
@@ -14,6 +17,9 @@
  * on a service-unavailable signal (404 / 502 / 503 / network error).
  * Bad-request / auth / rate-limit responses (400 / 401 / 403 / 429) do NOT
  * cascade — they are surfaced as the real error.
+ *
+ * The relay carries unary request/response only, so over it the live tail
+ * is a 2 s poll of the same query and an export pages through the query.
  *
  * Every successful response is normalised to one envelope shape so a
  * caller never has to know which tier answered. The legacy tier (a flat
@@ -268,15 +274,9 @@ export interface StatsResponse {
 
 export interface HealthzResponse {
   ok: boolean;
-  /** Durable-store internals. Absent when the answering tier cannot observe
-   * them at all — a radio relay reaches only the agent's `:8080`, so the store
-   * is unobservable rather than broken, and reporting `false` there would
-   * assert a failure nothing measured. */
-  db_open?: boolean;
-  /** @see db_open */
-  writer_alive?: boolean;
-  /** @see db_open */
-  integrity?: boolean;
+  db_open: boolean;
+  writer_alive: boolean;
+  integrity: boolean;
   source: LoggingSource;
 }
 
@@ -285,6 +285,16 @@ export interface HealthzResponse {
 /** The agent REST port; the proxy bridge and the legacy route both live here. */
 const FASTAPI_PORT = 8080;
 const PROXY_PREFIX = "/api/v2/observability";
+
+/** Cadence of the relayed live tail's query poll. */
+const RELAY_TAIL_POLL_MS = 2000;
+/** Rows per relayed tail poll page and per relayed export page. A relayed
+ * response body is capped near 69 KB, and a stored log row with its fields
+ * runs a few hundred bytes, so a page this size leaves headroom. */
+const RELAY_PAGE_ROWS = 100;
+/** Pages one relayed tail poll may walk. A burst beyond this many rows in
+ * one poll interval skips ahead to the newest rather than lagging behind. */
+const RELAY_TAIL_MAX_PAGES = 10;
 
 /** Longest the streaming export may wait for its next bytes (headers first,
  * then each chunk). An inactivity bound, not a total one: a large window
@@ -340,27 +350,22 @@ class TierHardError extends Error {
  * hostname/IP) and only the port + path prefix change per tier.
  *
  * Under relay there is no port to swap: `ctx.baseUrl` is the ground
- * station's relay-proxy prefix, and only `:8080/api/...` traverses the
- * radio. Rebuilding an origin here would discard the prefix and dial the
- * GROUND STATION's own REST port, returning the ground station's own logs labelled
- * as the drone's. So the relay pins the legacy shape and returns the prefix
- * verbatim — no `new URL()`, no port surgery. */
+ * station's relay-proxy prefix, which already lands on the drone's own
+ * `:8080`. Rebuilding an origin here would discard the prefix and dial the
+ * GROUND STATION's own REST port, returning the ground station's own logs
+ * labelled as the drone's. So the relay keeps the prefix verbatim and
+ * appends the tier path — no `new URL()`, no port surgery. */
 function tierBase(
   ctx: RequestContext,
   tier: Tier,
 ): { origin: string; prefix: string } {
+  const prefix = tier === "proxy" ? `${PROXY_PREFIX}/v1` : "/api/logs";
   if (ctx.relay) {
-    return { origin: ctx.baseUrl, prefix: "/api/logs" };
+    return { origin: ctx.baseUrl, prefix };
   }
   const u = new URL(ctx.baseUrl);
-  const proto = u.protocol; // http: on LAN; https: cloud origins won't take this path
-  const host = u.hostname;
-  switch (tier) {
-    case "proxy":
-      return { origin: `${proto}//${host}:${FASTAPI_PORT}`, prefix: `${PROXY_PREFIX}/v1` };
-    case "legacy":
-      return { origin: `${proto}//${host}:${FASTAPI_PORT}`, prefix: "/api/logs" };
-  }
+  // http: on LAN; https: cloud origins won't take this path
+  return { origin: `${u.protocol}//${u.hostname}:${FASTAPI_PORT}`, prefix };
 }
 
 /** Wrap an export body so a read that waits longer than `idleMs` for the
@@ -466,10 +471,9 @@ function wrapLegacy(rows: unknown[]): LoggingEnvelope<LoggingRow> {
   };
 }
 
-/** The empty result a read surface returns when the tier that answered cannot
- * carry it at all: the legacy `/api/logs` shape, or a radio relay where legacy
- * is the only tier there is. Four surfaces must agree on this shape, so it is
- * built in one place. */
+/** The empty result a read surface returns when the tier that answered (the
+ * legacy `/api/logs` shape) cannot carry it at all. Several surfaces must
+ * agree on this shape, so it is built in one place. */
 function emptyLegacyEnvelope<T>(): LoggingEnvelope<T> {
   return {
     data: [],
@@ -592,18 +596,13 @@ export class LoggingService {
    * that produced it. Every call tries the tiers in natural order: the
    * legacy route answers any path, so letting a tier that answered last time
    * jump the queue would stop the proxy from ever being retried after one
-   * outage.
-   *
-   * Under relay only one tier exists: the radio lane carries `:8080/api/...`
-   * and nothing else, so probing the proxy would cost a full relay round
-   * trip before failing. */
+   * outage. */
   private async resolve(
     path: string,
     query: string,
   ): Promise<{ body: unknown; tier: Tier }> {
     let lastErr: Error | null = null;
-    const tiers: readonly Tier[] = this.ctx.relay ? ["legacy"] : TIER_ORDER;
-    for (const tier of tiers) {
+    for (const tier of TIER_ORDER) {
       try {
         const body = await this.fetchTier(tier, path, query);
         return { body, tier };
@@ -667,28 +666,19 @@ export class LoggingService {
     } while (cursor && pages < maxPages);
   }
 
-  // ── tail (SSE) ─────────────────────────────────────────────────────────
+  // ── tail ─────────────────────────────────────────────────────────────
 
-  /** Open a live log tail (`kind=logs`). The stream is read with `fetch` so
-   * the key travels in the `X-ADOS-Key` header, never in the URL; each row
-   * reaches `handlers.onRow` already normalised, and a dropped or refused
-   * stream reaches `handlers.onError` once. Tail rides the proxy bridge (the legacy
-   * `/api/logs/stream` is not wired here — callers fall back to polling when
-   * no tail source is available). Throws when no host is resolvable or the
-   * agent is reached through a radio relay (so the caller can fall back). */
+  /** Open a live log tail (`kind=logs`). Each row reaches `handlers.onRow`
+   * already normalised, and a dropped or refused tail reaches
+   * `handlers.onError` once.
+   *
+   * On the LAN the tail is the store's SSE stream, read with `fetch` so the
+   * key travels in the `X-ADOS-Key` header, never in the URL. The relay
+   * carries unary request/response only, so a relayed tail polls the query
+   * surface instead (see {@link pollTail}). Throws when no host is
+   * resolvable (so the caller can fall back). */
   tail(params: TailParams, handlers: LogTailHandlers): LogTail {
-    if (this.ctx.relay) {
-      // Not a radio limit — the measured link carries 4 Mbps of H.264
-      // continuously. The aux lane's Request/Response channels are unary by
-      // construction (`aux_mux.rs`), so a long-lived stream has no channel to
-      // ride yet; a bounded-rate unary poll does, which is the substitution
-      // `VisionDetectionsBridge` already makes for detections. Throwing drops
-      // the caller to that poll rather than opening a stream against the
-      // ground station's own logd, which would tail the WRONG node.
-      throw new Error(
-        "log tail is not yet multiplexed onto the relay lane — polling instead",
-      );
-    }
+    if (this.ctx.relay) return this.pollTail(params, handlers);
     const { origin, prefix } = tierBase(this.ctx, "proxy");
     const qs = new URLSearchParams(buildQueryString({ ...params, kind: "logs" }));
     if (params.replay != null) qs.set("replay", String(params.replay));
@@ -701,6 +691,106 @@ export class LoggingService {
       this.ctx.defaultTimeoutMs ?? AGENT_FETCH_TIMEOUT_MS,
       handlers,
     );
+  }
+
+  /**
+   * The relayed live tail: poll the query every {@link RELAY_TAIL_POLL_MS}
+   * with a time cursor (the newest delivered `ts_us`, inclusive on the
+   * store, plus the rows already delivered at exactly that stamp so none
+   * repeats). The first poll delivers the newest `replay` rows; each later
+   * poll pages back from the newest row to the cursor and delivers what is
+   * new, oldest first. Polls never overlap. A failed poll ends the tail
+   * through `onError`, like a dropped stream.
+   */
+  private pollTail(params: TailParams, handlers: LogTailHandlers): LogTail {
+    const replay = params.replay ?? 0;
+    // The tail owns the time bound and the paging cursor.
+    const filters: QueryParams = { ...params, from: undefined, cursor: undefined };
+    let closed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let sinceUs: number | null = null;
+    let deliveredAtSince = new Set<string>();
+    const rowKey = (row: LoggingRow) => `${row.ts_us}\u0000${row.source}\u0000${row.message}`;
+    // The store pages newest first; the legacy route's order is not part of
+    // its contract, so every page is put newest first here.
+    const newestFirst = (rows: LoggingRow[]) => [...rows].sort((a, b) => b.ts_us - a.ts_us);
+
+    const pollOnce = async (): Promise<LoggingRow[]> => {
+      if (sinceUs === null) {
+        // First poll: establish the cursor at the newest row and replay.
+        const page = await this.query<LoggingRow>({
+          ...filters,
+          kind: "logs",
+          limit: Math.min(Math.max(replay, 1), RELAY_PAGE_ROWS),
+        });
+        const rows = newestFirst(page.data);
+        const newestUs = rows.length > 0 ? rows[0].ts_us : 0;
+        sinceUs = newestUs;
+        deliveredAtSince = new Set(rows.filter((r) => r.ts_us === newestUs).map(rowKey));
+        return rows.slice(0, replay);
+      }
+      const since = sinceUs;
+      const fresh: LoggingRow[] = [];
+      let cursor: string | undefined;
+      for (let pages = 0; pages < RELAY_TAIL_MAX_PAGES && !closed; pages += 1) {
+        const page = await this.query<LoggingRow>({
+          ...filters,
+          kind: "logs",
+          from: String(since),
+          limit: RELAY_PAGE_ROWS,
+          cursor,
+        });
+        // Rows come newest first; the legacy tier ignores `from`, so the
+        // bound is enforced here as well.
+        let reachedCursor = false;
+        for (const row of newestFirst(page.data)) {
+          if (row.ts_us < since) {
+            reachedCursor = true;
+            break;
+          }
+          if (row.ts_us === since && deliveredAtSince.has(rowKey(row))) continue;
+          fresh.push(row);
+        }
+        cursor = page.page.next_cursor ?? undefined;
+        if (reachedCursor || !cursor || page.data.length === 0) break;
+      }
+      if (fresh.length > 0) {
+        const newestUs = fresh[0].ts_us;
+        const atNewest = fresh.filter((r) => r.ts_us === newestUs).map(rowKey);
+        if (newestUs === since) {
+          for (const key of atNewest) deliveredAtSince.add(key);
+        } else {
+          sinceUs = newestUs;
+          deliveredAtSince = new Set(atNewest);
+        }
+      }
+      return fresh;
+    };
+
+    const tick = async () => {
+      let rows: LoggingRow[];
+      try {
+        rows = await pollOnce();
+      } catch (err) {
+        if (!closed) {
+          closed = true;
+          handlers.onError(err instanceof Error ? err : new Error(String(err)));
+        }
+        return;
+      }
+      if (closed) return;
+      // Oldest first, the order a stream would have delivered them in.
+      for (let i = rows.length - 1; i >= 0; i -= 1) handlers.onRow(rows[i]);
+      timer = setTimeout(() => void tick(), RELAY_TAIL_POLL_MS);
+    };
+    void tick();
+
+    return {
+      close: () => {
+        closed = true;
+        clearTimeout(timer);
+      },
+    };
   }
 
   // ── aggregate ──────────────────────────────────────────────────────────
@@ -717,13 +807,8 @@ export class LoggingService {
     if (params.bucket) qs.set("bucket", params.bucket);
     if (params.agg) qs.set("agg", params.agg);
     appendList(qs, "group_by", params.group_by);
-    // Aggregate is a logd/proxy capability. Over the radio relay `legacy` is
-    // the only tier, so resolving would spend a full radio round trip on an
-    // `/api/logs` body that can never be a series: answer empty here instead.
-    // Empty is all this says — the drone's agent is not old, it is remote.
-    if (this.ctx.relay) return emptyLegacyEnvelope<AggregatePoint>();
-    // Legacy has no equivalent either, so a legacy answer (flat array) yields
-    // an empty series rather than throwing.
+    // Legacy has no equivalent, so a legacy answer (flat array) yields an
+    // empty series rather than throwing.
     const { body, tier } = await this.resolve("/aggregate", qs.toString());
     if (tier === "legacy") {
       return emptyLegacyEnvelope<AggregatePoint>();
@@ -734,10 +819,8 @@ export class LoggingService {
   // ── sessions ───────────────────────────────────────────────────────────
 
   /** The boot / flight / manual session list. Legacy has no sessions, so
-   * an old agent yields an empty list (the session picker then shows
-   * "no sessions" rather than failing). A relayed agent yields the same empty
-   * list, for the unrelated reason that the radio lane carries no sessions
-   * endpoint at all. */
+   * a store-less agent yields an empty list (the session picker then shows
+   * "no sessions" rather than failing). */
   async sessions(
     params: SessionListParams = {},
   ): Promise<LoggingEnvelope<SessionRow>> {
@@ -748,10 +831,6 @@ export class LoggingService {
     if (params.open != null) qs.set("open", String(params.open));
     if (params.limit != null) qs.set("limit", String(params.limit));
     if (params.cursor) qs.set("cursor", params.cursor);
-    // Same as `aggregate`: the relay lane has no sessions endpoint to reach,
-    // so the picker shows "no sessions" without a wasted round trip and
-    // without implying the agent predates the durable store.
-    if (this.ctx.relay) return emptyLegacyEnvelope<SessionRow>();
     const { body, tier } = await this.resolve("/sessions", qs.toString());
     if (tier === "legacy") {
       return emptyLegacyEnvelope<SessionRow>();
@@ -764,33 +843,22 @@ export class LoggingService {
   /** Stream a bulk export. Returns the raw byte stream so the caller can
    * pipe it to a Blob/download without buffering the whole window. The
    * format defaults to `jsonl.zst`. Export is a store capability served by
-   * the proxy bridge (legacy has no export endpoint); throws on a pre-store
-   * agent (the caller surfaces "export unavailable"), throws the refusal on
-   * an auth or request error, and throws with a relay-specific message over
-   * the radio, where the archive could not be carried anyway.
+   * the proxy bridge (legacy has no export endpoint); throws on a store-less
+   * agent (the caller surfaces "export unavailable") and throws the refusal
+   * on an auth or request error. Over a relay, which carries unary
+   * request/response only, the window is paged through the query instead
+   * (see {@link pagedExport}) and always arrives as plain `jsonl`.
    */
   async export(params: ExportParams = {}): Promise<{
     stream: ReadableStream<Uint8Array>;
     format: ExportFormat;
     source: LoggingSource;
   }> {
+    if (this.ctx.relay) return this.pagedExport(params);
     const format: ExportFormat = params.format ?? "jsonl.zst";
     const qs = new URLSearchParams(buildQueryString(params));
     qs.set("format", format);
     const query = qs.toString();
-
-    if (this.ctx.relay) {
-      // The one genuinely size-bound case. A relayed response is capped at
-      // MAX_RESPONSE_BODY (69 060 B, `aux_rpc/response.rs`) and an export is a
-      // bulk archive, so carrying it needs server-side paging on the export
-      // endpoint plus a paging client here — not more radio. Named as a gap
-      // with its cause rather than as a property of the link.
-      throw new Error(
-        "log export is not yet multiplexed onto the relay lane: an archive " +
-          "exceeds the lane's 69 KB per-response ceiling and the endpoint has " +
-          "no paging yet. Reach this node over the LAN or the cloud to export.",
-      );
-    }
 
     let origin: string;
     let prefix: string;
@@ -838,6 +906,66 @@ export class LoggingService {
       format,
       source: TIER_SOURCE.proxy,
     };
+  }
+
+  /**
+   * The relayed export: walk the store's query with its keyset cursor, one
+   * {@link RELAY_PAGE_ROWS}-row page per relay round trip, and emit each
+   * wire row as one JSONL line (the same rows, filters and line format the
+   * store's own export writes). The first page is read before returning so
+   * a refusal or a store that is not serving throws like the LAN export;
+   * later pages are read as the consumer pulls. Only the proxy tier is
+   * asked, because the legacy route has no export.
+   */
+  private async pagedExport(params: ExportParams): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    format: ExportFormat;
+    source: LoggingSource;
+  }> {
+    const readPage = async (
+      cursor: string | undefined,
+    ): Promise<{ rows: unknown[]; next: string | null }> => {
+      // `format` is not a query parameter; the window's filters are.
+      const query = buildQueryString({ ...params, limit: RELAY_PAGE_ROWS, cursor });
+      let body: unknown;
+      try {
+        body = await this.fetchTier("proxy", "/query", query);
+      } catch (err) {
+        if (err instanceof TierHardError) throw new Error(`export refused: ${err.status}`);
+        throw new Error(
+          `export unavailable: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      const env = asEnvelope(body, TIER_SOURCE.proxy, (raw) => raw);
+      return { rows: env.data, next: env.page.next_cursor };
+    };
+
+    const encoder = new TextEncoder();
+    let page = await readPage(params.cursor);
+    let done = false;
+    const seenCursors = new Set<string>();
+    const stream = new ReadableStream<Uint8Array>({
+      pull: async (controller) => {
+        if (done) {
+          controller.close();
+          return;
+        }
+        if (page.rows.length > 0) {
+          controller.enqueue(
+            encoder.encode(page.rows.map((row) => `${JSON.stringify(row)}\n`).join("")),
+          );
+        }
+        // A repeated cursor would loop forever; treat it as the end.
+        const next = page.next;
+        if (next === null || page.rows.length === 0 || seenCursors.has(next)) {
+          done = true;
+          return;
+        }
+        seenCursors.add(next);
+        page = await readPage(next);
+      },
+    });
+    return { stream, format: "jsonl", source: TIER_SOURCE.proxy };
   }
 
   // ── push ───────────────────────────────────────────────────────────────
@@ -908,21 +1036,8 @@ export class LoggingService {
   // ── stats / healthz ────────────────────────────────────────────────────
 
   /** DB + ingest + sync health. Drives the health/sync badge. Legacy has
-   * no stats; an old agent throws (the badge then renders "unknown"), as does
-   * a relayed agent whose logd sits behind the radio. */
+   * no stats; a store-less agent throws (the badge then renders "unknown"). */
   async stats(): Promise<StatsResponse> {
-    if (this.ctx.relay) {
-      // The stats body is small unary JSON and would cross the lane fine; what
-      // is missing is a route on the drone's `:8080` that serves it, because
-      // the relay reaches only that port and the stats live behind logd. The
-      // agent-side work is a native forwarder for `/api/v2/observability/*`
-      // onto `/run/ados/logd-query.sock`; once that exists this branch is
-      // deleted and the relay tier reads stats like any other unary GET.
-      throw new Error(
-        "log store stats are not yet multiplexed onto the relay lane — the " +
-          "drone serves them on a port the lane does not reach",
-      );
-    }
     const { body, tier } = await this.resolve("/stats", "");
     if (tier === "legacy") {
       throw new Error("stats unavailable on legacy agent");
@@ -933,12 +1048,6 @@ export class LoggingService {
   /** Liveness/readiness probe. Returns `{ ok:false }` rather than throwing
    * when no tier answers, so a reachability check is a single await. */
   async healthz(): Promise<HealthzResponse> {
-    if (this.ctx.relay) {
-      // The relay proves reachability and nothing else: the durable store is
-      // not observable from this side, so the store fields stay absent rather
-      // than claiming a failure nothing measured.
-      return { ok: true, source: "legacy" };
-    }
     try {
       const { body, tier } = await this.resolve("/healthz", "");
       if (tier === "legacy") {

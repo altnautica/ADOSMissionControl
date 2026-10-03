@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import {
   NAV_SECTIONS,
   resolveAgentNav,
+  resolveSubpage,
 } from "@/components/dashboard/node-detail/agent/agent-nav-sections";
 import { AGENT_NAV_ITEMS } from "@/components/dashboard/node-detail/agent/agent-nav-items";
 import {
@@ -164,6 +165,27 @@ describe("resolveAgentNav", () => {
     expect(nav("ground-station").entries.map((e) => e.id)).toContain(
       "radio-config",
     );
+  });
+
+  it("opens a stand-alone configuration row instead of redirecting to an absent host", () => {
+    // The ground station's radio config row has no `radio` host to merge into;
+    // selecting it must open it, not fall back to the first page.
+    const entries = nav("ground-station").entries;
+    expect(resolveSubpage("radio-config", entries)).toEqual({
+      id: "radio-config",
+      segment: "live",
+    });
+    // Same for a drone whose radio has not been proven present yet.
+    const drone = nav("drone", { radioPresent: "unknown" }).entries;
+    expect(drone.map((e) => e.id)).toContain("radio-config");
+    expect(resolveSubpage("radio-config", drone).id).toBe("radio-config");
+  });
+
+  it("still sends a retired id to the Setup half of a live host that is offered", () => {
+    expect(resolveSubpage("radio-config", nav("drone").entries)).toEqual({
+      id: "radio",
+      segment: "setup",
+    });
   });
 
   it("never offers two entries with the same id, on any profile", () => {

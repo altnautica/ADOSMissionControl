@@ -19,7 +19,6 @@ import {
   NumberLike,
   OptionalNumberLike,
 } from "./primitives";
-import { AgentCapabilitiesRawSchema } from "./capabilities";
 
 // ── Board + Health ──────────────────────────────────────
 
@@ -135,30 +134,6 @@ export const SystemResourcesRawSchema = z
   })
   .passthrough();
 
-// ── Telemetry snapshot ──────────────────────────────────
-
-export const TelemetrySnapshotSchema = z
-  .object({
-    lat: NumberLike,
-    lon: NumberLike,
-    alt: NumberLike,
-    relative_alt: NumberLike,
-    heading: NumberLike,
-    groundspeed: NumberLike,
-    airspeed: NumberLike,
-    roll: NumberLike,
-    pitch: NumberLike,
-    yaw: NumberLike,
-    battery_voltage: NumberLike,
-    battery_current: NumberLike,
-    battery_remaining: NumberLike,
-    gps_fix: NumberLike,
-    satellites: NumberLike,
-    mode: z.string(),
-    armed: z.boolean(),
-  })
-  .passthrough();
-
 // ── Services ────────────────────────────────────────────
 
 export const ServiceSummarySchema = z
@@ -262,7 +237,9 @@ const FullStatusResourcesSchema = z
     swap_used_mb: OptionalNumberLike,
     swap_percent: OptionalNumberLike,
     disk_percent: OptionalNumberLike,
-    temperature: NullableNumber,
+    // Absent when the agent could not take a full hardware reading: the
+    // resource block is then `{}`.
+    temperature: NullableNumber.optional(),
   })
   .passthrough();
 
@@ -276,7 +253,8 @@ const FullStatusVideoSchema = z
 export const FullStatusResponseSchema = z
   .object({
     version: z.string(),
-    uptime_seconds: NumberLike,
+    // The agent's own uptime. Absent stays absent rather than reading as 0.
+    uptime_seconds: OptionalNumberLike,
     board: BoardInfoSchema.optional(),
     health: HealthInfoSchema,
     fc_connected: z.boolean(),
@@ -296,7 +274,6 @@ export const FullStatusResponseSchema = z
     resources: FullStatusResourcesSchema.optional(),
     video: FullStatusVideoSchema.optional(),
     telemetry: z.record(z.string(), z.unknown()).optional(),
-    capabilities: AgentCapabilitiesRawSchema.optional(),
   })
   .passthrough();
 

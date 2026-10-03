@@ -6,7 +6,7 @@
 // shared with the MAVLink bridge so both dial the agent's gated WS
 // handlers the same way.
 
-import { openReconnectingSocket } from "@/lib/net/reconnecting-socket";
+import { SOCKET_LIVENESS_TIMEOUT_MS, openReconnectingSocket } from "@/lib/net/reconnecting-socket";
 import type { RequestContext } from "./request";
 import {
   WS_TICKET_PROTOCOL,
@@ -17,7 +17,8 @@ import {
 export type { WsAuthScope } from "./ws-ticket";
 
 /** Policy-violation close: the agent's handler refuses this node's profile
- *  (`E_PROFILE_MISMATCH`). Retrying cannot change the answer. */
+ *  (`E_PROFILE_MISMATCH`). The profile can change in setup, so the stream is
+ *  redialled on the loop's slower fixed cadence rather than abandoned. */
 const CLOSE_POLICY_VIOLATION = 1008;
 
 export interface SubscribeOptions<E> {
@@ -27,36 +28,49 @@ export interface SubscribeOptions<E> {
    *  The agent's WS handler validates the same scope on consume. */
   scope: WsAuthScope;
   onEvent: (event: E) => void;
-  /** `closed` is also reported when the agent refuses the stream for this
-   *  node's profile (close 1008); the subscription stops retrying then. */
+  /** `closed` is reported only after the returned teardown runs; a refused
+   *  or silent stream reports `reconnecting` while it keeps retrying. */
   onState?: (state: "connected" | "reconnecting" | "closed") => void;
+  /** The handler sends a `{kind:"keepalive"}` frame every few seconds, so a
+   *  socket silent past the liveness timeout is dead and is redialled. True
+   *  for the ground-station event streams; false for a stream that can go
+   *  quiet while healthy. Default true. */
+  peerSendsKeepalive?: boolean;
 }
 
 export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
   if (typeof window === "undefined") {
     return () => {};
   }
-  const { ctx, path, scope, onEvent, onState } = opts;
+  const { ctx, path, scope, onEvent, onState, peerSendsKeepalive = true } = opts;
   // No ``?api_key=`` query param. The pairing key never reaches the URL.
   const url = ctx.baseUrl.replace(/^http/, "ws") + path;
 
   return openReconnectingSocket({
+    livenessTimeoutMs: peerSendsKeepalive ? SOCKET_LIVENESS_TIMEOUT_MS : undefined,
     // Every dial mints a fresh ticket: a ticket is consumed by one handshake.
     open: async (signal) => {
       const ticket = await mintWsTicket(ctx, scope, signal);
       return ticket ? new WebSocket(url, [WS_TICKET_PROTOCOL, ticket]) : new WebSocket(url);
     },
     onMessage: (data) => {
+      let frame: unknown;
       try {
-        onEvent(JSON.parse(String(data)) as E);
+        frame = JSON.parse(String(data));
       } catch {
-        // ignore malformed frames
+        return; // ignore malformed frames
       }
+      // The agent's `{kind:"keepalive"}` frame feeds the loop's liveness
+      // timer and is not an event.
+      if (typeof frame === "object" && frame !== null && "kind" in frame && frame.kind === "keepalive") {
+        return;
+      }
+      onEvent(frame as E);
     },
     // The first dial is not a state these streams report.
     onState: (state) => {
       if (state !== "connecting") onState?.(state);
     },
-    terminalCloseCodes: [CLOSE_POLICY_VIOLATION],
+    slowRetryCloseCodes: [CLOSE_POLICY_VIOLATION],
   });
 }

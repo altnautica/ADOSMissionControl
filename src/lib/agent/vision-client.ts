@@ -45,7 +45,7 @@ export interface VisionInstalledModel {
   id: string;
   filename: string;
   sizeBytes: number;
-  /** File format: "rknn" | "tflite" | "onnx" | "engine". */
+  /** File format: "rknn" | "tflite" | "onnx". */
   format: string;
 }
 
@@ -63,12 +63,12 @@ export interface VisionCustomModel {
   name: string;
   filename: string;
   sizeBytes: number;
-  /** File format / runtime: "rknn" | "tflite" | "onnx" | "engine". */
+  /** File format / runtime: "rknn" | "tflite" | "onnx". */
   format: string;
   /** Detector head family (e.g. "yolov8", "yolo11"). Free-form. */
   head: string;
-  /** Inference runtime the file targets ("onnx" | "rknn" | "tflite" |
-   * "tensorrt"). Free-form so a future agent can advertise another. */
+  /** Inference runtime the file targets ("onnx" | "rknn" | "tflite").
+   * Free-form so a future agent can advertise another. */
   runtime: string;
   /** Detection class labels the model emits. */
   classes: string[];

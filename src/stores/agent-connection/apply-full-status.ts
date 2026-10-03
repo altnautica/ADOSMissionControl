@@ -85,6 +85,9 @@ export function fullStatusToAgentStatus(full: FullStatusResponse): AgentStatus {
     ...(typeof full.fc_firmware === "string" && {
       fc_firmware: full.fc_firmware,
     }),
+    ...(typeof full.fc_command_down_gated === "boolean" && {
+      fc_command_down_gated: full.fc_command_down_gated,
+    }),
   };
   return status as AgentStatus;
 }
@@ -138,16 +141,31 @@ export function applyFullStatus(
       .getState()
       .setAgentVideoStatus(full.video.state, whep);
   }
-  // Populate capabilities from consolidated response or infer from legacy data.
-  // FullStatusResponse.capabilities is optional (older agents omit it).
-  // Several air-side status fields (camera discovery/recovery, per-leg
-  // video streams, the CRSF control lane) are SIBLINGS of `capabilities`
-  // in the consolidated status rather than nested inside it, so fold them
-  // into the object handed to setCapabilities. Folding them in (rather
-  // than a follow-up setState) means setCapabilities' single setState
-  // carries them, so each reaches the store atomically with the rest of
-  // the snapshot — no null-then-real write that flickers a dependent tab.
+  // Capabilities: the agent declares compute (npuTops / hasAccelerator) and
+  // the perception tier at the top level of the consolidated status; cameras
+  // come from the peripherals list. Several air-side status fields (camera
+  // discovery/recovery, per-leg video streams, the CRSF control lane) are
+  // siblings in the consolidated status, so fold them into the object handed
+  // to setCapabilities. Folding them in (rather than a follow-up setState)
+  // means setCapabilities' single setState carries them, so each reaches the
+  // store atomically with the rest of the snapshot — no null-then-real write
+  // that flickers a dependent tab.
   const statusExtras: Record<string, unknown> = {};
+  if (typeof full.npuTops === "number" && Number.isFinite(full.npuTops)) {
+    statusExtras.npuTops = full.npuTops;
+  }
+  if (typeof full.hasAccelerator === "boolean") {
+    statusExtras.hasAccelerator = full.hasAccelerator;
+  }
+  if (typeof full.perceptionTier === "string") {
+    statusExtras.perceptionTier = full.perceptionTier;
+    // The agent sends the target as null when perception runs locally; an
+    // omitted target alongside a tier also means nothing is offloaded.
+    statusExtras.perceptionOffloadTarget =
+      typeof full.perceptionOffloadTarget === "string"
+        ? full.perceptionOffloadTarget
+        : null;
+  }
   if (typeof full.cameraState !== "undefined") {
     statusExtras.cameraState = full.cameraState;
   }
@@ -193,7 +211,7 @@ export function applyFullStatus(
         role: leg.role,
         codec: leg.codec,
         live: leg.live,
-        whepUrl: resolveAgentWhepUrl(leg.whep, agentUrl),
+        whepUrl: resolveAgentWhepUrl(leg.whepUrl, agentUrl),
       }))
       .filter((leg) => leg.id && leg.whepUrl);
   }
@@ -231,61 +249,30 @@ export function applyFullStatus(
   ) {
     statusExtras.runtimeMode = full.runtimeMode;
   }
-  if (full.capabilities) {
-    // Agent has capabilities API; normalize and store (handles shape differences).
+  const peripherals = useAgentPeripheralsStore.getState().peripherals;
+  const inferred = inferCapabilities(
+    status as AgentStatus,
+    peripherals,
+    {
+      npuTops: typeof full.npuTops === "number" ? full.npuTops : undefined,
+      hasAccelerator:
+        typeof full.hasAccelerator === "boolean"
+          ? full.hasAccelerator
+          : undefined,
+    },
+    full.profile,
+  );
+  if (inferred) {
     useAgentCapabilitiesStore.getState().setCapabilities(
       {
-        ...(full.capabilities as Record<string, unknown>),
+        ...inferred,
         ...statusExtras,
       },
       nodeDeviceId,
     );
-  } else {
-    // Agent doesn't have capabilities API; infer from board SoC + peripherals.
-    const peripherals = useAgentPeripheralsStore.getState().peripherals;
-    const inferred = inferCapabilities(
-      status as AgentStatus,
-      peripherals,
-      undefined,
-      full.profile,
-    );
-    if (inferred) {
-      useAgentCapabilitiesStore.getState().setCapabilities(
-        {
-          ...inferred,
-          ...statusExtras,
-        },
-        nodeDeviceId,
-      );
-    } else if (Object.values(statusExtras).some((v) => v !== null)) {
-      useAgentCapabilitiesStore
-        .getState()
-        .setCapabilities(statusExtras, nodeDeviceId);
-    }
-  }
-  // Fallback: if capabilities store still has no cameras but we know board SoC,
-  // re-infer on every poll to pick up peripherals that loaded after first poll.
-  const capState = useAgentCapabilitiesStore.getState();
-  if (capState.cameras.length === 0 && (status as AgentStatus)?.board?.soc) {
-    const peripherals = useAgentPeripheralsStore.getState().peripherals;
-    if (peripherals.length > 0) {
-      const inferred = inferCapabilities(
-        status as AgentStatus,
-        peripherals,
-        undefined,
-        full.profile,
-      );
-      if (inferred && inferred.cameras.length > 0) {
-        // Carry the extras again: this call REPLACES radio/crsf, so omitting
-        // them would drop the lane the write above just established.
-        useAgentCapabilitiesStore.getState().setCapabilities(
-          {
-            ...inferred,
-            ...statusExtras,
-          },
-          nodeDeviceId,
-        );
-      }
-    }
+  } else if (Object.values(statusExtras).some((v) => v !== null)) {
+    useAgentCapabilitiesStore
+      .getState()
+      .setCapabilities(statusExtras, nodeDeviceId);
   }
 }

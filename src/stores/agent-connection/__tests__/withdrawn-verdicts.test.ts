@@ -44,7 +44,6 @@ const BASE = {
   fc_port: "",
   fc_baud: 0,
   profile: "drone",
-  capabilities: {},
 };
 
 const WITH_VERDICTS = {

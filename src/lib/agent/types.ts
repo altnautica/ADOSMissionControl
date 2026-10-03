@@ -27,23 +27,6 @@ export interface BoardInfo {
   soc: string;
   arch: string;
   hw_video_codecs: string[];
-  /** SoC string the board YAML declares (hand-authored). Kept separate
-   * from `soc` so the UI can show declared-vs-probed drift. Undefined on
-   * agents that predate the probed-truth surface. */
-  soc_declared?: string;
-  /** SoC compatible string the kernel actually reports (device-tree
-   * compatible, most-specific first). Authoritative over the declared
-   * value. Undefined when the boot probe sidecar is absent or the SoC
-   * was not probed. */
-  soc_probed?: string;
-  /** Probed CPU-cluster summary the silicon reports, one entry per
-   * big.LITTLE cluster (e.g. "Cortex-A76 x2 + Cortex-A55 x4").
-   * Undefined when not probed. */
-  cpu_probed?: string;
-  /** Confirmed hardware H.264 encoder node, present only after a real
-   * trial-init (not an advertised-but-absent wrapper). Undefined when
-   * no hardware encoder was probed. */
-  hw_encoder_probed?: string;
 }
 
 /**
@@ -148,6 +131,10 @@ export interface AgentStatus {
    * this distinguishes the two MAVLink stacks (ArduPilot vs PX4) so the fleet /
    * node surfaces can name them. Absent on older agents. */
   fc_firmware?: string;
+  /** True when the FC link reads connected but GCS commands to the FC are
+   * dropped: a telemetry-only source such as MAVLink over ExpressLRS. Absent
+   * on older agents. */
+  fc_command_down_gated?: boolean;
   /** Running kernel release (uname -r). Absent on older agents. */
   kernel_release?: string;
   /** How the WFB radio kernel module was provided on this board. */
@@ -214,26 +201,6 @@ export interface SystemResources {
   disk_used_gb?: number;
   disk_total_gb?: number;
   temperature: number | null;
-}
-
-export interface TelemetrySnapshot {
-  lat: number;
-  lon: number;
-  alt: number;
-  relative_alt: number;
-  heading: number;
-  groundspeed: number;
-  airspeed: number;
-  roll: number;
-  pitch: number;
-  yaw: number;
-  battery_voltage: number;
-  battery_current: number;
-  battery_remaining: number;
-  gps_fix: number;
-  satellites: number;
-  mode: string;
-  armed: boolean;
 }
 
 export interface LogEntry {
@@ -476,7 +443,8 @@ export interface CameraUsbRecovery {
 /** Response from `/api/status/full` (agent v0.3.19+). */
 export interface FullStatusResponse {
   version: string;
-  uptime_seconds: number;
+  /** Agent uptime in seconds. Absent when the agent did not report it. */
+  uptime_seconds?: number;
   board: BoardInfo;
   health: HealthInfo;
   fc_connected: boolean;
@@ -505,10 +473,22 @@ export interface FullStatusResponse {
    * `"inav"` | `"unknown"`), distinguishing the two MAVLink stacks. Absent on
    * older agents. */
   fc_firmware?: string;
+  /** True when the FC link reads connected but GCS commands to the FC are
+   * dropped (telemetry-only source). Normalised from the wire `fcCommandDownGated`. */
+  fc_command_down_gated?: boolean;
+  /** The board's declared NPU throughput in TOPS (0 when none). */
+  npuTops?: number;
+  /** The board's declaration that it carries NPU hardware. */
+  hasAccelerator?: boolean;
+  /** Where perception runs: `"local"` | `"offload"` | `"hybrid"` | `"none"`. */
+  perceptionTier?: string;
+  /** The workstation perception is offloaded to, or null when it runs locally. */
+  perceptionOffloadTarget?: string | null;
   /** One row per ados-* unit: systemd ActiveState in `state`, the unit's
    * sub-state in `sub_state`. No uptime: the agent does not measure one here. */
   services: Array<{ name: string; state: string; sub_state?: string; task_done: boolean; memory_mb?: number }>;
-  resources: { cpu_percent: number; memory_percent: number; disk_percent: number; temperature: number | null };
+  /** Any field is absent when the agent could not take that reading. */
+  resources: { cpu_percent?: number; memory_percent?: number; disk_percent?: number; temperature?: number | null };
   video: {
     state: string;
     whep_url: string | null;
@@ -520,8 +500,8 @@ export interface FullStatusResponse {
      * wire contract stays complete, not because this client uses it. Absent
      * on agents that predate it. */
     hls_url?: string | null;
-    /** Per-leg video streams on a multi-stream node (each `whep` is the agent's
-     * own-host WHEP URL, re-pointed to the reachable host by the client).
+    /** Per-leg video streams on a multi-stream node (each `whepUrl` is the
+     * agent's same-origin relative WHEP path, resolved against the reachable host).
      * `live` is the agent's per-leg liveness sample: `false` = a known-dead leg;
      * `true` = producing; absent/`null` = not-yet-sampled or an idle on-demand
      * secondary (treated as selectable, never dead). */
@@ -529,7 +509,7 @@ export interface FullStatusResponse {
       id: string;
       role?: string;
       codec?: string;
-      whep: string;
+      whepUrl: string;
       /** Relative HLS playlist for this leg (`/hls/<id>/index.m3u8`). Same
        * consumer as `hls_url` above: the agent's on-box cockpit, not this
        * client. */
@@ -538,8 +518,6 @@ export interface FullStatusResponse {
     }[];
   };
   telemetry: Record<string, unknown>;
-  /** Newer agents include the capabilities snapshot here. Optional for older agents. */
-  capabilities?: Record<string, unknown>;
   /** WFB radio snapshot (camelCase) for the LAN-direct path. Optional for older agents. */
   radio?: Record<string, unknown> | null;
   /** CRSF / ExpressLRS RC control-lane snapshot: the lane's crsf-stats sidecar

@@ -2,9 +2,11 @@
 
 /**
  * @module EthernetConfigModal
- * @description Form for Ethernet static-IP configuration.
- * Posts to the not-yet-shipped agent endpoint; a 404 surfaces as a clear
- * "backend pending" message instead of a generic error toast.
+ * @description Form for the ground station's Ethernet IPv4 profile (DHCP or
+ * static). The ground station does not report the saved profile, so unless
+ * a previous save in this session returned it the form opens with no mode
+ * selected and Save stays disabled until the operator picks one: seeding
+ * DHCP would let one click revert a static setup and cut LAN access.
  * @license GPL-3.0-only
  */
 
@@ -15,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
-import type { EthernetConfig } from "@/lib/api/ground-station-api";
+import type { EthernetConfig, EthernetConfigUpdate, EthernetMode } from "@/lib/api/ground-station-api";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 
@@ -49,7 +51,7 @@ export function EthernetConfigModal({ open, onClose, initial }: EthernetConfigMo
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
   const applyEthernetConfig = useGroundStationStore((s) => s.applyEthernetConfig);
 
-  const [mode, setMode] = useState<"dhcp" | "static">("dhcp");
+  const [mode, setMode] = useState<EthernetMode | null>(null);
   const [ipCidr, setIpCidr] = useState("");
   const [gateway, setGateway] = useState("");
   const [dns1, setDns1] = useState("");
@@ -60,7 +62,7 @@ export function EthernetConfigModal({ open, onClose, initial }: EthernetConfigMo
   // Seed defaults whenever the modal opens.
   useEffect(() => {
     if (!open) return;
-    setMode(initial?.mode ?? "dhcp");
+    setMode(initial?.mode ?? null);
     setIpCidr(initial?.ip ?? "");
     setGateway(initial?.gateway ?? "");
     const dns = initial?.dns ?? [];
@@ -93,16 +95,16 @@ export function EthernetConfigModal({ open, onClose, initial }: EthernetConfigMo
   const hasFieldErrors =
     Boolean(ipError) || Boolean(gatewayError) || Boolean(dns1Error) || Boolean(dns2Error);
 
-  const canSave = !saving && !hasFieldErrors && !staticIncomplete;
+  const canSave = !saving && mode !== null && !hasFieldErrors && !staticIncomplete;
 
   const handleSave = async () => {
     const client = groundStationApiFromAgent(agentUrl, apiKey);
-    if (!client) return;
+    if (!client || mode === null) return;
 
     setInlineError(null);
     setSaving(true);
 
-    let update: { mode: "dhcp" | "static"; ip?: string; gateway?: string; dns?: string[] };
+    let update: EthernetConfigUpdate;
     if (mode === "dhcp") {
       update = { mode: "dhcp" };
     } else {
@@ -121,11 +123,6 @@ export function EthernetConfigModal({ open, onClose, initial }: EthernetConfigMo
     if (res.config) {
       toast(t("savedToast"), "success");
       onClose();
-      return;
-    }
-
-    if (res.backendPending) {
-      setInlineError(t("backendPending"));
       return;
     }
 
@@ -238,8 +235,10 @@ export function EthernetConfigModal({ open, onClose, initial }: EthernetConfigMo
               ) : null}
             </div>
           </div>
-        ) : (
+        ) : mode === "dhcp" ? (
           <p className="text-xs text-text-tertiary">{t("dhcpHint")}</p>
+        ) : (
+          <p className="text-xs text-text-tertiary">{t("chooseMode")}</p>
         )}
 
         {inlineError ? (

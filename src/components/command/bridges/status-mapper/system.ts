@@ -1,8 +1,9 @@
 /**
  * @module command/bridges/status-mapper/system
- * @description Builds the System-tab update payload (resources,
- * cpu/memory history, service list, process metrics) from the
- * already-mapped `AgentStatus` plus the raw Convex row. Pure.
+ * @description Builds the System-tab update payload (resources, service
+ * list, config errors) from the already-mapped `AgentStatus` plus the raw
+ * Convex row. CPU and memory history are accumulated by the cloud-state
+ * writer, not read from the row. Pure.
  * @license GPL-3.0-only
  */
 
@@ -30,11 +31,7 @@ export interface MappedSystemUpdate {
     disk_total_gb?: number;
     temperature: number | null;
   };
-  cpuHistory?: number[];
-  memoryHistory?: number[];
   services?: ServiceInfo[];
-  processCpuPercent?: number | null;
-  processMemoryMb?: number | null;
   /** Services whose config failed to parse on the agent. Always present (a
    * clean heartbeat clears any prior errors); empty when every config
    * loaded. */
@@ -85,24 +82,11 @@ export function buildSystemUpdate(
     },
   };
 
-  const cpuHistory = cloudStatus.cpuHistory;
-  if (Array.isArray(cpuHistory) && cpuHistory.length > 0) {
-    update.cpuHistory = cpuHistory as number[];
-  }
-  const memoryHistory = cloudStatus.memoryHistory;
-  if (Array.isArray(memoryHistory) && memoryHistory.length > 0) {
-    update.memoryHistory = memoryHistory as number[];
-  }
-
   const services = cloudStatus.services;
   if (Array.isArray(services)) {
     update.services = services.map((s: Record<string, unknown>) =>
       normalizeServiceInfo(s),
     );
-    update.processCpuPercent =
-      (cloudStatus.processCpuPercent as number | null | undefined) ?? null;
-    update.processMemoryMb =
-      (cloudStatus.processMemoryMb as number | null | undefined) ?? null;
   }
 
   return update;

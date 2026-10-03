@@ -272,6 +272,9 @@ export function connectVisionDetections(
       // the store a mis-mapped batch.
       if (mapped) setBatch(droneId, mapped);
     },
+    // The detections handler forwards engine batches only and sends no
+    // keepalive, so a quiet engine is not a dead socket.
+    peerSendsKeepalive: false,
     onState,
   });
 

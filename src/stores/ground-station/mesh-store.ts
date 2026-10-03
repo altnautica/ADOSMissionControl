@@ -31,16 +31,29 @@ import type {
   MeshGatewayPreferenceUpdate,
   RoleInfo,
 } from "@/lib/api/ground-station-api";
+import {
+  AgentArmedRefusal,
+  type ArmedOverrideOptions,
+} from "@/lib/agent/agent-client/transport";
 
 export interface MeshSlice {
   role: RoleSliceShape;
   distributedRx: DistributedRxSliceShape;
   mesh: MeshSliceShape;
+  /** The agent origin `role`, `mesh` and `distributedRx` were read from. A
+   * load for another origin resets them first, and a late answer from any
+   * other origin is dropped, so one ground station's role or neighbours never
+   * render under another's name. */
+  meshFor: string | null;
 
   loadRole: (api: GroundStationApi) => Promise<void>;
+  /** Resolves with the new role, or null on a failure recorded in
+   * `role.error`. Rejects only with `AgentArmedRefusal` (the vehicle is armed
+   * and `opts.force` is unset), which the caller answers. */
   applyRole: (
     api: GroundStationApi,
     role: GroundStationRole,
+    opts?: ArmedOverrideOptions,
   ) => Promise<RoleInfo | null>;
   loadDistributedRx: (api: GroundStationApi) => Promise<void>;
   loadMesh: (api: GroundStationApi) => Promise<void>;
@@ -66,15 +79,27 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
   role: INITIAL_ROLE,
   distributedRx: INITIAL_DISTRIBUTED_RX,
   mesh: INITIAL_MESH,
+  meshFor: null,
 
   loadRole: async (api) => {
+    const target = api.baseUrl;
+    if (get().meshFor !== target) {
+      set({
+        role: INITIAL_ROLE,
+        mesh: INITIAL_MESH,
+        distributedRx: INITIAL_DISTRIBUTED_RX,
+        meshFor: target,
+      });
+    }
     set({ role: { ...get().role, loading: true, error: null } });
     try {
       const info = await api.getRole();
+      if (get().meshFor !== target) return;
       set({
         role: { info, loading: false, switching: false, error: null, fetchedAt: Date.now() },
       });
     } catch (err) {
+      if (get().meshFor !== target) return;
       const { message, status } = errorMessage(err);
       const friendly =
         status === 404
@@ -84,15 +109,19 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
     }
   },
 
-  applyRole: async (api, role) => {
+  applyRole: async (api, role, opts) => {
     set({ role: { ...get().role, switching: true, error: null } });
     try {
-      const info = await api.setRole(role);
+      const info = await api.setRole(role, opts);
       set({
         role: { info, loading: false, switching: false, error: null, fetchedAt: Date.now() },
       });
       return info;
     } catch (err) {
+      if (err instanceof AgentArmedRefusal) {
+        set({ role: { ...get().role, switching: false } });
+        throw err;
+      }
       const friendly = roleSwitchErrorMessage(err, role);
       set({ role: { ...get().role, switching: false, error: friendly } });
       return null;
@@ -102,6 +131,8 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
   loadDistributedRx: (api) => loadDistributedRx(api, set, get),
 
   loadMesh: async (api) => {
+    // The role this decision rests on must be this node's own.
+    if (get().meshFor !== api.baseUrl) return;
     const knownRole = get().role.info?.current ?? null;
     if (knownRole === null || knownRole === "direct") {
       // A direct node carries no mesh, which is itself a reading; an unknown
@@ -119,6 +150,7 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
         api.getMeshRoutes(),
         api.getMeshGateways(),
       ]);
+      if (get().meshFor !== api.baseUrl) return;
       set({
         mesh: {
           ...get().mesh,
@@ -133,6 +165,7 @@ export const createMeshSlice: GroundStationSliceCreator<MeshSlice> = (
         },
       });
     } catch (err) {
+      if (get().meshFor !== api.baseUrl) return;
       const { message } = errorMessage(err);
       set({ mesh: { ...get().mesh, loading: false, error: message } });
     }

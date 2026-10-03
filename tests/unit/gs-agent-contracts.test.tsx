@@ -167,12 +167,32 @@ describe("uplink events", () => {
         internet_reachable: false,
         data_cap_state: null,
         timestamp_ms: 1_000,
+        stale: false,
       },
       2_000,
     );
     expect(next?.health).toBe("degraded");
     expect(next?.active).toBe("modem_4g");
     expect(next?.failover_log[0]).toMatchObject({ from: "wifi_client", to: "modem_4g", timestamp: 1_000 });
+  });
+
+  it("reads a stale frame as unreported health, not as the router's last write", () => {
+    const next = applyUplinkEvent(
+      base,
+      {
+        kind: "health_changed",
+        active_uplink: "modem_4g",
+        available: ["modem_4g"],
+        internet_reachable: true,
+        data_cap_state: null,
+        timestamp_ms: 1_000,
+        stale: true,
+      },
+      2_000,
+    );
+    expect(next?.health).toBeNull();
+    expect(next?.active).toBeNull();
+    expect(next?.failover_log).toEqual([]);
   });
 });
 

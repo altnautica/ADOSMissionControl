@@ -13,6 +13,7 @@ import type {
 } from "./ground-station/types";
 export type * from "./ground-station/types";
 import { GroundStationApiError, type RequestContext } from "./ground-station/request";
+import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 import { getStatus } from "./ground-station/status";
 import * as wfb from "./ground-station/wfb";
 import * as net from "./ground-station/network";
@@ -36,13 +37,13 @@ export class GroundStationApi {
   }
   getStatus = () => getStatus(this.ctx);
   getWfb = () => wfb.getWfb(this.ctx);
-  setTxPower = (dbm: number) => wfb.setTxPower(this.ctx, dbm);
+  setTxPower = (dbm: number, opts?: ArmedOverrideOptions) => wfb.setTxPower(this.ctx, dbm, opts);
   setFec = (fecK: number, fecN: number) => wfb.setFec(this.ctx, fecK, fecN);
   setMcs = (mcs: number) => wfb.setMcs(this.ctx, mcs);
   setPreset = (preset: wfb.LinkPreset) => wfb.setPreset(this.ctx, preset);
   setAdaptive = (enabled: boolean) => wfb.setAdaptive(this.ctx, enabled);
   pairDrone = (pairKey: string, droneId?: string) => wfb.pairDrone(this.ctx, pairKey, droneId);
-  unpairDrone = () => wfb.unpairDrone(this.ctx);
+  unpairDrone = (opts?: ArmedOverrideOptions) => wfb.unpairDrone(this.ctx, opts);
   getWfbRelayStatus = () => wfb.getWfbRelayStatus(this.ctx);
   getWfbReceiverRelays = () => wfb.getWfbReceiverRelays(this.ctx);
   getWfbReceiverCombined = () => wfb.getWfbReceiverCombined(this.ctx);
@@ -64,7 +65,6 @@ export class GroundStationApi {
   setOled = (update: OledUpdate) => ui.setOled(this.ctx, update);
   setButtons = (mapping: Record<string, unknown>) => ui.setButtons(this.ctx, mapping);
   setScreens = (update: ScreensUpdate) => ui.setScreens(this.ctx, update);
-  factoryReset = (confirmToken: string) => ui.factoryReset(this.ctx, confirmToken);
   getDisplay = () => p.getDisplay(this.ctx);
   setDisplay = (update: DisplayUpdate) => p.setDisplay(this.ctx, update);
   scanBluetooth = (durationS = 10) => p.scanBluetooth(this.ctx, durationS);
@@ -82,7 +82,7 @@ export class GroundStationApi {
   createPicConfirmToken = (clientId: string) => pic.createPicConfirmToken(this.ctx, clientId);
   subscribePicEvents = (onEvent: (e: PicEvent) => void) => pic.subscribePicEvents(this.ctx, onEvent);
   getRole = () => mesh.getRole(this.ctx);
-  setRole = (role: GroundStationRole) => mesh.setRole(this.ctx, role);
+  setRole = (role: GroundStationRole, opts?: ArmedOverrideOptions) => mesh.setRole(this.ctx, role, opts);
   getMeshHealth = () => mesh.getMeshHealth(this.ctx);
   getMeshNeighbors = () => mesh.getMeshNeighbors(this.ctx);
   getMeshRoutes = () => mesh.getMeshRoutes(this.ctx);

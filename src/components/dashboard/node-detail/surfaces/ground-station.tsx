@@ -68,7 +68,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     labelKey: "command.groundStation.tabs.radio",
     group: LINK_GROUP,
     when: (ctx) => ctx.role !== "receiver",
-    render: () => <RadioTab />,
+    render: (ctx) => <RadioTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     id: "network",
@@ -83,7 +83,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     id: "mesh",
     labelKey: "command.groundStation.tabs.meshAndRx",
     group: LINK_GROUP,
-    render: () => <MeshTab />,
+    render: (ctx) => <MeshTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     // Capability-gated on a PROVEN crsf lane: `unknown` is not `present`, so
@@ -110,7 +110,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     id: "peripherals",
     labelKey: "command.groundStation.tabs.peripherals",
     group: DEVICE_GROUP,
-    render: () => <PeripheralsTab />,
+    render: (ctx) => <PeripheralsTab nodeDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     id: "logs",

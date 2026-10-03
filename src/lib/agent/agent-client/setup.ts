@@ -16,7 +16,7 @@ import {
   SetupActionResultSchema,
   SetupStatusSchema,
 } from "../schemas";
-import { agentRequest, type RequestContext } from "./transport";
+import { agentRequest, type ArmedOverrideOptions, type RequestContext } from "./transport";
 
 export function getSetupStatus(ctx: RequestContext): Promise<SetupStatus> {
   return agentRequest<SetupStatus>(ctx, "/api/v1/setup/status", {
@@ -27,17 +27,20 @@ export function getSetupStatus(ctx: RequestContext): Promise<SetupStatus> {
 
 /**
  * Persist the operator's profile choice from the onboarding wizard.
- * Pass `ground_role` only when `profile === "ground_station"`.
+ * Pass `ground_role` only when `profile === "ground_station"`. Refused with
+ * `AgentArmedRefusal` while armed unless `opts.force` is set.
  */
 export function postProfileChoice(
   ctx: RequestContext,
   profile: "drone" | "ground_station",
   ground_role?: "direct" | "relay" | "receiver" | null,
+  opts?: ArmedOverrideOptions,
 ): Promise<SetupActionResult> {
-  const body: { profile: string; ground_role?: string | null } = { profile };
+  const body: { profile: string; ground_role?: string | null; force?: true } = { profile };
   if (profile === "ground_station") {
     body.ground_role = ground_role ?? "direct";
   }
+  if (opts?.force) body.force = true;
   return agentRequest<SetupActionResult>(ctx, "/api/v1/setup/profile", {
     method: "POST",
     body: JSON.stringify(body),
@@ -106,19 +109,26 @@ export function startDisplayCalibration(
 
 /** Response of `POST /api/v1/display/calibrate/start`. The agent only queues
  * the request for the display service; `target_count` is the crosshair count
- * of the on-panel wizard. There is no remote step counter. */
+ * of the on-panel wizard. There is no remote step counter. `request_id`
+ * names this start in the status poll. */
 export interface TouchCalibrationStart {
   requested: boolean;
   target_count: number;
+  request_id: string;
 }
 
-/** State from `GET /api/v1/display/calibrate/status`. `calibrated` is the
- * stored fit on disk; `requested` stays true while a start request is queued
- * and the display service has not picked it up (it stays true when no display
- * service is running). */
+/** State from `GET /api/v1/display/calibrate/status`. `calibrated` is a fit
+ * on disk newer than the latest start (`request_id`; null when none was made
+ * since the agent API came up, in which case it is just "a fit exists").
+ * `calib_mtime_ms` is the fit file's mtime, null when there is none.
+ * `requested` stays true while a start request is queued and the display
+ * service has not picked it up (it stays true when no display service is
+ * running). */
 export interface TouchCalibrationStatus {
   calibrated: boolean;
   requested: boolean;
+  request_id: string | null;
+  calib_mtime_ms: number | null;
 }
 
 /**

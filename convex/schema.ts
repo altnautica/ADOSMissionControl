@@ -743,6 +743,9 @@ export default defineSchema({
     // a plain boolean on every packaged-loop heartbeat, so a validator that
     // omits it rejects the entire heartbeat. Optional for older agents.
     fcReachable: v.optional(v.boolean()),
+    // True when the FC link reads connected but GCS commands to the FC are
+    // dropped (telemetry-only source such as MAVLink over ELRS). Optional.
+    fcCommandDownGated: v.optional(v.boolean()),
     // Absolute resource values
     memoryUsedMb: v.optional(v.number()),
     memoryTotalMb: v.optional(v.number()),
@@ -782,8 +785,9 @@ export default defineSchema({
     videoState: v.optional(v.string()),
     videoWhepPort: v.optional(v.number()),
     videoWhepUrl: v.optional(v.string()),
-    // Per-leg video streams (id/role/codec) a multi-stream node serves; the GCS
-    // resolves each leg's :8889/<id>/whep URL against the node's reachable host.
+    // Per-leg video streams a multi-stream node serves. `whepUrl` is the
+    // same-origin relative WHEP path the node serves for that leg; the GCS
+    // resolves it against the node's reachable base URL.
     videoStreams: v.optional(
       v.array(
         v.object({
@@ -791,6 +795,7 @@ export default defineSchema({
           role: v.optional(v.string()),
           codec: v.optional(v.string()),
           live: v.optional(v.boolean()),
+          whepUrl: v.optional(v.string()),
         }),
       ),
     ),

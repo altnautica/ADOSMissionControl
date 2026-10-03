@@ -26,7 +26,11 @@ import type {
   CameraLegInput,
   RosterCamera,
 } from "@/lib/agent/feature-types";
-import type { SigningCounters } from "@/lib/agent/agent-client/types";
+import type {
+  SigningCounters,
+  SigningDisableResult,
+  SigningEnrollResult,
+} from "@/lib/agent/agent-client/types";
 import type {
   ServiceRestartResult,
   SupervisorRestartResult,
@@ -276,7 +280,7 @@ export class MockAgentClient extends MockAgentClientExtras {
   async restartService(name: string): Promise<ServiceRestartResult> {
     await delay(300);
     const unit = name.startsWith("ados-") ? name : `ados-${name}`;
-    return { status: "ok", message: `Restarted ${unit}`, unit, aliased_from: null };
+    return { status: "ok", message: `Restarted ${unit}`, unit };
   }
 
   async restartSupervisor(): Promise<SupervisorRestartResult> {
@@ -407,21 +411,22 @@ export class MockAgentClient extends MockAgentClientExtras {
   async enrollSigningKey(
     keyHex: string,
     _linkId: number,
-  ): Promise<{ success: boolean; key_id: string; enrolled_at: string }> {
+  ): Promise<SigningEnrollResult> {
     await delay(400);
     // Derive a fake fingerprint from the first 8 hex chars of SHA-256.
     // Using a synchronous pseudo-hash keeps the demo zero-dep.
     const keyId = keyHex.slice(0, 8);
     return {
-      success: true,
+      sent: true,
+      verified: true,
       key_id: keyId,
       enrolled_at: new Date().toISOString(),
     };
   }
 
-  async disableSigningOnFc(): Promise<{ success: boolean }> {
+  async disableSigningOnFc(): Promise<SigningDisableResult> {
     await delay(200);
-    return { success: true };
+    return { sent: true, verified: true };
   }
 
   async getSigningCounters(): Promise<SigningCounters> {

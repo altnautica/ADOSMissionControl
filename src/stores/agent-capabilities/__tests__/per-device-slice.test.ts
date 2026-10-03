@@ -88,4 +88,21 @@ describe("per-device capability slices", () => {
     expect(useAgentCapabilitiesStore.getState().crsf).not.toBeNull();
     expect(useAgentCapabilitiesStore.getState().focusedDeviceId).toBe(GS);
   });
+
+  it("never seeds a new node's slice from the node that is focused", () => {
+    const s = useAgentCapabilitiesStore.getState();
+    s.setCapabilities(
+      { role: "relay", npuTops: 6, perceptionTier: "local", hasAccelerator: true },
+      DRONE,
+    );
+    // A sparse first reading for another node: every keep-prior field must
+    // come from that node's own (empty) history, not the drone's.
+    useAgentCapabilitiesStore.getState().setCapabilities({}, GS);
+
+    expect(caps(GS)?.role).toBeUndefined();
+    expect(caps(GS)?.npuTops).toBeUndefined();
+    expect(caps(GS)?.perceptionTier).toBeUndefined();
+    expect(caps(GS)?.hasAccelerator).toBeUndefined();
+    expect(caps(DRONE)?.npuTops).toBe(6);
+  });
 });

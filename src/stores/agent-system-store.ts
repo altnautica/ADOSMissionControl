@@ -15,6 +15,7 @@ import type {
   ConfigError,
 } from "@/lib/agent/types";
 import { appendHistorySample } from "@/lib/agent/history";
+import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 import { agentConnectionLink, isCurrentAgentClient } from "./agent-connection/link";
 
 const MAX_CPU_HISTORY = 60;
@@ -26,8 +27,6 @@ interface AgentSystemState {
   logs: LogEntry[];
   cpuHistory: number[];
   memoryHistory: number[];
-  processCpuPercent: number | null;
-  processMemoryMb: number | null;
   /** Services whose config file failed to parse on the agent (it ran on
    * defaults). Empty when every config loaded cleanly. Drives the red
    * config-error panel on the Health surface. */
@@ -53,11 +52,11 @@ interface AgentSystemActions {
   /** Restart one agent unit. Resolves with the agent's confirmation, or null
    * when the request was queued over the cloud relay (its outcome arrives as
    * a command result). Rejects with the agent's reason on a failed, refused
-   * or unconfirmed restart. */
-  restartService: (name: string) => Promise<string | null>;
+   * or unconfirmed restart; `opts.force` carries the armed override. */
+  restartService: (name: string, opts?: ArmedOverrideOptions) => Promise<string | null>;
   /** Restart the supervisor, cycling every agent service. Needs a direct
    * client; rejects with the agent's reason when it cannot be scheduled. */
-  restartAll: () => Promise<string>;
+  restartAll: (opts?: ArmedOverrideOptions) => Promise<string>;
   sendCommand: (cmd: string, args?: unknown[]) => Promise<CommandResult | null>;
   clear: () => void;
 }
@@ -71,8 +70,6 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
   logs: [],
   cpuHistory: [],
   memoryHistory: [],
-  processCpuPercent: null,
-  processMemoryMb: null,
   configErrors: [],
   lastUpdatedAt: null,
   stale: false,
@@ -192,7 +189,7 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     } catch { /* silent — logs are best-effort */ }
   },
 
-  async restartService(name: string) {
+  async restartService(name: string, opts?: ArmedOverrideOptions) {
     const link = agentConnectionLink();
     if (!link) throw new Error("Agent not connected");
     const { client, cloudMode } = link;
@@ -202,7 +199,7 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     }
     if (!client) throw new Error("Agent not connected");
     try {
-      const res = await client.restartService(name);
+      const res = await client.restartService(name, opts);
       return res.message;
     } finally {
       // A failed restart can still leave the unit in a new state.
@@ -210,12 +207,12 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
     }
   },
 
-  async restartAll() {
+  async restartAll(opts?: ArmedOverrideOptions) {
     const link = agentConnectionLink();
     if (!link) throw new Error("Agent not connected");
     const { client, cloudMode } = link;
     if (cloudMode || !client) throw new Error("Agent not connected");
-    const res = await client.restartSupervisor();
+    const res = await client.restartSupervisor(opts);
     return res.message;
   },
 
@@ -243,8 +240,6 @@ export const useAgentSystemStore = create<AgentSystemStore>((set, get) => ({
       logs: [],
       cpuHistory: [],
       memoryHistory: [],
-      processCpuPercent: null,
-      processMemoryMb: null,
       configErrors: [],
       lastUpdatedAt: null,
       stale: false,

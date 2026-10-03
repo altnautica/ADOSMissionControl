@@ -189,8 +189,6 @@ function CompanionBand({ droneId }: { droneId: string }) {
   const services = useAgentSystemStore((s) => s.services);
   const resources = useAgentSystemStore((s) => s.resources);
   const logs = useAgentSystemStore((s) => s.logs);
-  const processCpu = useAgentSystemStore((s) => s.processCpuPercent);
-  const processMemMb = useAgentSystemStore((s) => s.processMemoryMb);
   const fetchServices = useAgentSystemStore((s) => s.fetchServices);
   const fetchResources = useAgentSystemStore((s) => s.fetchResources);
   const fetchLogs = useAgentSystemStore((s) => s.fetchLogs);
@@ -239,8 +237,6 @@ function CompanionBand({ droneId }: { droneId: string }) {
             services={services}
             onRestart={restartService}
             onRestartAll={restartAll}
-            processCpu={processCpu}
-            processMemoryMb={processMemMb}
           />
         </OverviewTile>
         <OverviewTile span="full">

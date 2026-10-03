@@ -262,6 +262,16 @@ export function AgentStatusCard({ status, profile }: AgentStatusCardProps) {
         </div>
       )}
 
+      {!isWorkstation && status.fc_command_down_gated === true && (
+        <div
+          role="alert"
+          className="flex items-start gap-1.5 text-[11px] px-2 py-1 rounded bg-status-warning/10 text-status-warning"
+        >
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+          <span>{t("fcCommandGated")}</span>
+        </div>
+      )}
+
       {radioStackDegraded && (
         <div
           className="flex items-center gap-1.5 text-[11px] px-2 py-1 rounded bg-status-error/10 text-status-error"

@@ -12,6 +12,7 @@
  */
 
 import { AgentClient } from "@/lib/agent/client";
+import { relayRefusalFrom, type RelayRefusal } from "@/lib/agent/agent-client/transport";
 import type { AgentStatus, FullStatusResponse } from "@/lib/agent/types";
 import { inferCapabilities } from "@/lib/agent/infer-capabilities";
 import { useAgentSystemStore } from "../agent-system-store";
@@ -96,6 +97,10 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
     const resolvedKey = apiKey ?? get().apiKey;
     const generation = ++connectGeneration;
     const superseded = () => generation !== connectGeneration;
+    // The relay's own refusal on the latest attempt (ticket, or the drone's
+    // API behind the relay), surfaced with the failure so the node can say
+    // why rather than only "offline".
+    let relayRefusal: RelayRefusal | null = null;
 
     // Attempt a real-agent connect at the given URL. Returns null when the
     // connect is finished (success: state is set and polling started; or
@@ -119,6 +124,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         client,
         connectionError: null,
         relay: opts?.relay ?? false,
+        relayRefusal: null,
       });
       try {
         // The relay lane loses uplink datagrams outright, so the single probe
@@ -171,7 +177,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
             connectId = answeredId;
           }
         }
-        set({ connected: true, stalePairing: null, mavlinkPairRequired: false });
+        set({ connected: true, stalePairing: null, mavlinkPairRequired: false, relayRefusal: null });
         if (!opts?.relay) {
           // Under relay `attemptUrl`'s hostname is the GROUND STATION, so this
           // would point AgentMavlinkBridge at the ground station's own FC lane
@@ -211,7 +217,15 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         if (superseded()) return null;
         if (!capsLoaded) {
           const peripherals = useAgentPeripheralsStore.getState().peripherals;
-          const inferred = inferCapabilities(status, peripherals);
+          // `/api/status` declares the board's NPU at the top level.
+          const declared: Record<string, unknown> = { ...status };
+          const inferred = inferCapabilities(status, peripherals, {
+            npuTops: typeof declared.npuTops === "number" ? declared.npuTops : undefined,
+            hasAccelerator:
+              typeof declared.hasAccelerator === "boolean"
+                ? declared.hasAccelerator
+                : undefined,
+          });
           if (inferred)
             useAgentCapabilitiesStore
               .getState()
@@ -221,6 +235,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         return null;
       } catch (err) {
         if (superseded()) return null;
+        relayRefusal = opts?.relay ? relayRefusalFrom(err) : null;
         return err instanceof Error ? err.message : "Connection failed";
       }
     }
@@ -237,6 +252,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
         connectionError: errMsg,
         client: null,
         agentUrl: null,
+        relayRefusal,
       } as const;
       const node = useLocalNodesStore
         .getState()
@@ -396,6 +412,7 @@ export const clientManagerSlice: AgentConnectionSliceCreator<
       mavlinkPairRequired: false,
       controlRttMs: null,
       relay: false,
+      relayRefusal: null,
     });
     // Clear all other stores so a freshly-focused agent never shows the
     // previous one's data. Capabilities gate the radio/vision tabs and video

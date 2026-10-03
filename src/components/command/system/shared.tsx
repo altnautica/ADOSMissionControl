@@ -50,7 +50,7 @@ export function NpuBadge() {
   return (
     <p className="text-[11px] text-status-success mt-0.5 flex items-center gap-1">
       <Cpu size={10} />
-      NPU: {npuTops} TOPS ({npuRuntime?.toUpperCase()})
+      NPU: {npuTops} TOPS{npuRuntime ? ` (${npuRuntime.toUpperCase()})` : ""}
     </p>
   );
 }

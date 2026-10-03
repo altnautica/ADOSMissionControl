@@ -26,13 +26,12 @@ import type {
   VisionUploadResult,
 } from "@/lib/agent/vision-client";
 
-const ACCEPT = ".rknn,.onnx,.tflite,.engine";
+const ACCEPT = ".rknn,.onnx,.tflite";
 
 const RUNTIME_OPTIONS = [
   { value: "onnx", label: "ONNX (CPU / portable)" },
   { value: "rknn", label: "RKNN (Rockchip NPU)" },
   { value: "tflite", label: "TFLite" },
-  { value: "tensorrt", label: "TensorRT (Jetson)" },
 ];
 
 /** Guess the runtime from a file extension so the form pre-fills sanely. */
@@ -40,7 +39,6 @@ function runtimeFromName(name: string): string {
   const lower = name.toLowerCase();
   if (lower.endsWith(".rknn")) return "rknn";
   if (lower.endsWith(".tflite")) return "tflite";
-  if (lower.endsWith(".engine")) return "tensorrt";
   return "onnx";
 }
 

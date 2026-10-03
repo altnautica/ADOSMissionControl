@@ -71,10 +71,13 @@ describe("inferCapabilities vision flag", () => {
     });
   });
 
-  it("falls back to NPU-bearing SoC when the surface is not advertised", () => {
-    // RK3588 has a real NPU; no advertised surface, but the hardware
+  it("treats a declared NPU as vision-capable when the surface is not advertised", () => {
+    // The agent declares 6 TOPS; no advertised surface, but the hardware
     // prerequisite is present → vision-capable.
-    const caps = inferCapabilities(statusWithSoc("RK3588"), []);
+    const caps = inferCapabilities(statusWithSoc("RK3588"), [], {
+      npuTops: 6,
+      hasAccelerator: true,
+    });
     expect(caps!.compute.npu_available).toBe(true);
     expect(caps!.visionAvailable).toBe(true);
     // No advertised surface → no fabricated summary
@@ -100,9 +103,9 @@ describe("cmd_droneStatus vision mapping", () => {
   // The vision-summary fields ARE on the cloud wire: Convex declares them as
   // `cmd_droneStatus` columns and `convex/http.ts` picks them off the ingest
   // body. The bridge used to discard them one layer from their consumers, so
-  // `visionAvailable` fell back to "is this SoC in the NPU table with
-  // TOPS > 0" and a Pi-class drone running a USB/CPU vision engine showed the
-  // Vision tab over LAN and not over the cloud relay.
+  // `visionAvailable` fell back to the board's NPU alone and a Pi-class drone
+  // running a USB/CPU vision engine showed the Vision tab over LAN and not
+  // over the cloud relay.
   it("reads the vision summary fields off a cloud row", () => {
     const extras = buildHeartbeatExtras({
       visionActiveModel: "com.example.weeds",
@@ -117,9 +120,9 @@ describe("cmd_droneStatus vision mapping", () => {
   });
 
   it("lights up vision from the advertised surface on a board with no NPU", () => {
-    // BCM2711 (Pi 4) is not in the NPU table, so hardware inference alone
-    // leaves vision unknown. The agent advertising an engine is the fact that
-    // decides it — and that fact now survives the relay.
+    // BCM2711 (Pi 4) declares no NPU, so hardware alone leaves vision
+    // unknown. The agent advertising an engine is the fact that decides it —
+    // and that fact now survives the relay.
     const extras = buildHeartbeatExtras({
       visionActiveModel: "com.example.people",
       visionBackend: "rknn",

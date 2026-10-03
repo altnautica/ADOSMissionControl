@@ -182,6 +182,12 @@ export function BatteryPackCard({
         </span>
       </div>
 
+      {pack.stale && (
+        <p className="text-xs text-status-warning" data-testid={`battery-pack-${pack.id}-stale`}>
+          {t("packStale")}
+        </p>
+      )}
+
       <div>
         <div className="mb-1 text-[11px] text-text-tertiary">{t("cellsTitle")}</div>
         <CellBar pack={pack} t={t} />

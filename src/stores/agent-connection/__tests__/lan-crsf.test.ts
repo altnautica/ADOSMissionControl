@@ -46,9 +46,6 @@ const FULL_WITH_CRSF = {
   fc_port: "",
   fc_baud: 0,
   profile: "drone",
-  // An empty capabilities object takes the primary `if (full.capabilities)`
-  // branch deterministically; the lane still folds in alongside it.
-  capabilities: {},
   radio: { state: "connected" },
   crsf: {
     v: 1,

@@ -197,10 +197,10 @@ describe("useNodeConfig with no path to the node", () => {
 });
 
 describe("useNodeConfig honours the agent's persisted flag", () => {
-  /** The exact shape `PUT /api/config` returns when it took the value into the
-   * running model but could not write `/etc/ados/config.yaml`: HTTP 200,
-   * `status: "ok"`, the new value echoed back, `persisted: false`. */
-  function wireRamOnlyAgent(persistError?: string) {
+  /** The exact shape `PUT /api/config` returns when it could not write
+   * `/etc/ados/config.yaml`: HTTP 500, `status: "error"`, the value echoed
+   * back, `persisted: false`, and the reason when the agent has one. */
+  function wirePersistFailingAgent(persistError?: string) {
     useAgentConnectionStore.setState({
       client: null,
       cloudMode: true,
@@ -220,40 +220,40 @@ describe("useNodeConfig honours the agent's persisted flag", () => {
         }
         return new Response(
           JSON.stringify({
-            status: "ok",
+            status: "error",
             key: "logging.level",
             value: "debug",
             persisted: false,
             ...(persistError ? { persist_error: persistError } : {}),
           }),
-          { status: 200 },
+          { status: 500 },
         );
       }),
     );
   }
 
-  it("rejects a write the node could not put on disk, naming the consequence and the action", async () => {
-    wireRamOnlyAgent("[Errno 30] Read-only file system: '/etc/ados/config.yaml'");
+  it("rejects a write the node could not put on disk, naming the consequence and the node's reason", async () => {
+    wirePersistFailingAgent("[Errno 30] Read-only file system: '/etc/ados/config.yaml'");
     const { result } = renderHook(() => useNodeConfig("dev-1"));
     await waitFor(() => expect(result.current.config).not.toBeNull());
 
     // A resolved promise here is what every field primitive turns into the
     // green "Saved" toast, so the write MUST reject.
     const write = result.current.setValue("logging.level", "debug");
-    await expect(write).rejects.toThrow(/lost when the node restarts/i);
+    await expect(write).rejects.toThrow(/nothing was changed/i);
     await expect(
       result.current.setValue("logging.level", "debug"),
     ).rejects.toThrow(/Read-only file system/);
   });
 
   it("still rejects when the agent reports no reason (a non-root agent)", async () => {
-    wireRamOnlyAgent();
+    wirePersistFailingAgent();
     const { result } = renderHook(() => useNodeConfig("dev-1"));
     await waitFor(() => expect(result.current.config).not.toBeNull());
 
     await expect(
       result.current.setValue("logging.level", "debug"),
-    ).rejects.toThrow(/could not write it to disk/i);
+    ).rejects.toThrow(/could not write this value to its config file/i);
   });
 
   it("accepts a write the node persisted", async () => {

@@ -119,10 +119,9 @@ export interface NodeConfig {
   error: string | null;
   refresh: () => Promise<void>;
   /** Write a single dot-path key. Throws with the agent's error message when
-   * the agent rejects the value (422), and when the agent accepted the value
-   * in memory but could not write it to disk (`persisted: false`) — a change
-   * that dies at the next restart is not a saved change. Re-reads the config
-   * on success. */
+   * the agent rejects the value, and when it could not write its config file
+   * (`persisted: false`), naming the node's reason. Re-reads the config on
+   * success. */
   setValue: (key: string, value: string) => Promise<void>;
 }
 
@@ -248,11 +247,11 @@ export function useNodeConfig(
   const setValue = useCallback(
     async (key: string, value: string) => {
       const res = await setConfigValueViaAccess(access, key, value);
-      // Covers both halves of the agent's 200-means-nothing contract: a
-      // rejected value (`{error}`) and a value accepted in RAM but never
-      // written to disk (`persisted: false`). Throwing routes into the same
-      // error toast + optimistic-rollback path every field primitive already
-      // has, so no caller reports "Saved" for a write that did not land.
+      // Covers both failure answers of the write route: a rejected value
+      // (`{error}`) and a config file the node could not write (`persisted:
+      // false`). Throwing routes into the same error toast + optimistic-
+      // rollback path every field primitive already has, so no caller reports
+      // "Saved" for a write that did not land.
       const failure = configWriteFailure(res);
       if (failure) throw new Error(failure);
       // Re-read so the field reflects the real persisted value, not an

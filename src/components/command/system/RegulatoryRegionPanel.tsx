@@ -219,10 +219,9 @@ export function RegulatoryRegionPanel({
       // boundary; an empty region string clears any prior pin. The writes
       // ride whichever transport resolved for this node.
       //
-      // `configWriteFailure` covers both halves of the agent's
-      // 200-means-nothing contract: a rejected value (`{error}`) and a value
-      // taken in RAM but never written to disk (`persisted: false`). A legal
-      // RF posture that dies at the next restart must not report "applied".
+      // `configWriteFailure` covers both failure answers of the write route:
+      // a rejected value (`{error}`) and a config file the node could not
+      // write (`persisted: false`). Neither may report "applied".
       const modeFailure = configWriteFailure(
         await setConfigValueViaAccess(
           access,

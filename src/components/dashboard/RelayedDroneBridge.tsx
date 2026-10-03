@@ -41,6 +41,8 @@ import {
   fetchRelayedStatus,
   type RelayedPeerStatus,
 } from "@/lib/agent/relayed-status-client";
+import { fetchFleetSlots } from "@/lib/agent/fleet-slots-client";
+import { useFleetSlotsStore } from "@/stores/ground-station/fleet-slots-store";
 
 /** How often each directly-paired ground station is polled for the compact
  * status its relayed drones pushed over the aux lane. Well under the route's
@@ -80,6 +82,9 @@ export function RelayedDroneBridge() {
   const pairedDrones = usePairingStore((s) => s.pairedDrones);
   const localNodes = useLocalNodesStore((s) => s.nodes);
   const cloudStatuses = useCommandFleetStore((s) => s.cloudStatuses);
+  // Each LAN ground station's fleet slot table (system id per drone, which
+  // drone's video it serves), polled beside the relayed status below.
+  const slotsByGround = useFleetSlotsStore((s) => s.byGround);
 
   // The latest relayed/status peers reported by each LAN-paired ground
   // station, keyed by ground deviceId -> (peer deviceId -> status). Populated
@@ -104,14 +109,19 @@ export function RelayedDroneBridge() {
 
       const results = await Promise.all(
         groundStations.map(async (gs) => {
-          const resp = await fetchRelayedStatus(gs.hostname, gs.apiKey);
+          const [resp, slots] = await Promise.all([
+            fetchRelayedStatus(gs.hostname, gs.apiKey),
+            fetchFleetSlots(gs.hostname, gs.apiKey),
+          ]);
           const byPeer = new Map<string, RelayedPeerStatus>();
           for (const p of resp.peers) byPeer.set(p.deviceId, p);
-          return [gs.deviceId, byPeer] as const;
+          return { deviceId: gs.deviceId, byPeer, slots };
         }),
       );
       if (cancelled) return;
-      setRelayedStatusByGround(new Map(results));
+      setRelayedStatusByGround(new Map(results.map((r) => [r.deviceId, r.byPeer] as const)));
+      const slotsStore = useFleetSlotsStore.getState();
+      for (const r of results) slotsStore.setGroundSlots(r.deviceId, r.slots);
     }
 
     pollOnce();
@@ -143,6 +153,7 @@ export function RelayedDroneBridge() {
         status,
         radioUp: radioUpFor(status),
         relayedStatusByPeer: relayedStatusByGround.get(deviceId),
+        fleetSlots: slotsByGround[deviceId]?.slots,
       });
     };
     for (const d of pairedDrones) addGs(d.deviceId, d.profile);
@@ -206,7 +217,7 @@ export function RelayedDroneBridge() {
 
     ownedNodeIds.current = nextNodeIds;
     ownedStatusIds.current = nextStatusIds;
-  }, [pairedDrones, localNodes, cloudStatuses, relayedStatusByGround]);
+  }, [pairedDrones, localNodes, cloudStatuses, relayedStatusByGround, slotsByGround]);
 
   useEffect(() => {
     const nodeIds = ownedNodeIds.current;

@@ -30,6 +30,7 @@ export const localStateSlice: AgentConnectionSliceCreator<LocalStateSlice> = (
   mavlinkPairRequired: false,
   controlRttMs: null,
   relay: false,
+  relayRefusal: null,
 
   setApiKey(key) {
     set({ apiKey: key });

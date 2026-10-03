@@ -1,11 +1,6 @@
-// Physical UI surfaces: OLED screens, button mappings, menu screens, plus the factory-reset call.
+// Physical UI surfaces: OLED screens, button mappings and menu screens.
 
-import type {
-  FactoryResetResult,
-  OledUpdate,
-  ScreensUpdate,
-  UiConfig,
-} from "./types";
+import type { OledUpdate, ScreensUpdate, UiConfig } from "./types";
 import { gsRequest, type RequestContext } from "./request";
 
 export function getUi(ctx: RequestContext): Promise<UiConfig> {
@@ -34,16 +29,4 @@ export function setScreens(ctx: RequestContext, update: ScreensUpdate): Promise<
     method: "PUT",
     body: JSON.stringify(update),
   });
-}
-
-export function factoryReset(
-  ctx: RequestContext,
-  confirmToken: string,
-): Promise<FactoryResetResult> {
-  const q = encodeURIComponent(confirmToken);
-  return gsRequest<FactoryResetResult>(
-    ctx,
-    `/api/v1/ground-station/factory-reset?confirm=${q}`,
-    { method: "POST" },
-  );
 }

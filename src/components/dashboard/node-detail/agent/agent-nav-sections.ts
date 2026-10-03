@@ -123,9 +123,18 @@ export interface ResolvedSubpage {
   segment: "live" | "setup";
 }
 
-export function resolveSubpage(requested: string): ResolvedSubpage {
+/**
+ * Resolve a requested sub-page id against the entries this node offers. A
+ * retired id redirects to its live host only when that host is offered; a
+ * profile whose host is gated away keeps the configuration page as its own
+ * row, and the request lands on that row.
+ */
+export function resolveSubpage(
+  requested: string,
+  offered: ReadonlyArray<{ id: string }>,
+): ResolvedSubpage {
   const host = MERGED_SUBPAGE_HOSTS[requested];
-  return host
+  return host && offered.some((e) => e.id === host)
     ? { id: host, segment: "setup" }
     : { id: requested, segment: "live" };
 }

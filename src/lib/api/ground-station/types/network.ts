@@ -33,24 +33,39 @@ export interface WifiClientStatus {
   gateway?: string | null;
 }
 
+/** The `ethernet` leg of `GET .../network` (ados-control `gs_network.rs`
+ * ethernet_view): the board's first physical wired port, found by device
+ * class. The leg is `null` only when the board has no wired port. */
 export interface EthernetStatus {
-  available: boolean;
-  link?: boolean;
-  speed_mbps?: number | null;
-  ip?: string | null;
-  gateway?: string | null;
-  iface?: string | null;
+  available: true;
+  iface: string;
+  /** Carrier present; `null` when the kernel would not say. */
+  link: boolean | null;
+  /** Negotiated speed; `null` without a link or when the driver reports none. */
+  speed_mbps: number | null;
+  ip: string | null;
+  gateway: string | null;
 }
 
-// Ethernet static-IP config (backend pending)
+export type EthernetMode = "dhcp" | "static";
+
+/** The saved Ethernet IPv4 profile (`GET`/`PUT .../network/ethernet`). The
+ * read route does not read the saved profile, so `mode` is `null` there;
+ * the write route answers with the profile it applied. */
 export interface EthernetConfig {
-  mode: "dhcp" | "static";
-  ip?: string;       // IPv4 with prefix, e.g., "192.168.1.42/24"
-  gateway?: string;
-  dns?: string[];    // IPv4 addresses
+  mode: EthernetMode | null;
+  ip?: string | null;       // IPv4 with prefix, e.g., "192.168.1.42/24"
+  gateway?: string | null;
+  dns?: string[] | null;    // IPv4 addresses
 }
 
-export type EthernetConfigUpdate = Partial<EthernetConfig>;
+/** The `PUT .../network/ethernet` body: `mode` is required by the agent. */
+export interface EthernetConfigUpdate {
+  mode: EthernetMode;
+  ip?: string;
+  gateway?: string;
+  dns?: string[];
+}
 
 export type DataCapState = "ok" | "warn_80" | "throttle_95" | "blocked_100";
 
@@ -99,10 +114,8 @@ export type UplinkHealth = "ok" | "degraded" | "down";
 export interface NetworkStatus {
   ap: ApStatus;
   wifi_client: WifiClientStatus;
-  ethernet?: EthernetStatus;
+  ethernet: EthernetStatus | null;
   modem_4g?: ModemView;
-  // legacy field
-  modem?: ModemView;
   active_uplink?: string | null;
   priority?: string[];
   share_uplink?: boolean;
@@ -170,4 +183,7 @@ export interface UplinkEvent {
   internet_reachable: boolean;
   data_cap_state: DataCapState | null;
   timestamp_ms: number | null;
+  /** True unless the uplink router is confirmed running: the other keys are
+   * then the last thing it wrote, not live health. */
+  stale: boolean;
 }

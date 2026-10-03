@@ -321,6 +321,10 @@ http.route({
       fcVariant: stringField(body, "fcVariant"),
       fcFirmware: stringField(body, "fcFirmware"),
       fcReachable: booleanField(body, "fcReachable"),
+      // True when the FC link carries telemetry but GCS commands to the FC
+      // are dropped (a MAVLink-over-ELRS source); the GCS warns on its FC
+      // surfaces instead of offering controls that silently do nothing.
+      fcCommandDownGated: booleanField(body, "fcCommandDownGated"),
       memoryUsedMb: numberField(body, "memoryUsedMb"),
       memoryTotalMb: numberField(body, "memoryTotalMb"),
       memoryAvailableMb: numberField(body, "memoryAvailableMb"),

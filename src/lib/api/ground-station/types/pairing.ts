@@ -78,6 +78,26 @@ export interface LocalBindSession {
   nm_enumerable?: boolean | null;
 }
 
+/** Whether a fleet drone holds this ground station's relay credential:
+ *  `pending` (not delivered yet), `held`, or `conflict` (it holds another
+ *  station's, so relayed calls to it are refused until it is unpaired there). */
+export type RelayCredentialState = "pending" | "held" | "conflict";
+
+/** One fleet slot row as the ground station renders its roster. */
+export interface FleetSlotRow {
+  slot: number;
+  device_id: string;
+  paired_at_ms: number;
+  /** MAVLink system id heard on this slot; null until a HEARTBEAT is heard. */
+  fc_system_id: number | null;
+  /** Another linked slot heartbeats with the same system id; commands to that
+   *  id are held by the ground station until one aircraft is renumbered. */
+  system_id_conflict: boolean;
+  /** This slot's video is the one the ground station decodes and serves. */
+  video_hero: boolean;
+  relay_credential: RelayCredentialState;
+}
+
 export interface PairStatusResponse {
   paired: boolean;
   paired_with_device_id: string | null;
@@ -85,6 +105,8 @@ export interface PairStatusResponse {
   fingerprint: string | null;
   auto_pair_enabled: boolean;
   role: "drone" | "gs";
+  /** The fleet roster; empty on a drone, which holds no registry. */
+  slots: FleetSlotRow[];
 }
 
 export interface AutoPairToggleResponse {

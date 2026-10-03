@@ -137,3 +137,76 @@ describe("mapFullStatusToCloudStatus — linked_peers", () => {
     expect(enrollment.lastHeartbeat).toBe(SEEN_AT_UNIX * 1000);
   });
 });
+
+/** The `telemetry` block exactly as the agent emits it: the router's vehicle
+ * snapshot with the runtime-only extras stripped. Readings are nested. */
+const ROUTER_TELEMETRY: Record<string, unknown> = {
+  mav_type: 2,
+  autopilot: 3,
+  vehicle_firmware: "copter",
+  armed: true,
+  mode: "GUIDED",
+  position: {
+    lat: 12.97,
+    lon: 77.59,
+    alt_msl: 100.0,
+    alt_rel: 50.0,
+    heading: 90.0,
+  },
+  velocity: {
+    vx: 1.0,
+    vy: 2.0,
+    vz: 0.5,
+    groundspeed: 2.2,
+    airspeed: 2.5,
+    climb: 0.5,
+  },
+  attitude: { roll: 0.01, pitch: -0.02, yaw: 1.57 },
+  battery: {
+    voltage: 16.4,
+    current: 12.1,
+    remaining: 87,
+    temperature: 25.0,
+    cell_voltages: [4.1, 4.1],
+  },
+  batteries: [],
+  gps: { fix_type: 3, satellites: 14, eph: 1.0, epv: 1.2 },
+  rc: { channels: [1500, 1500, 1500, 1500], rssi: 100 },
+  throttle: 30,
+  last_heartbeat: "2026-01-01T00:00:00Z",
+  last_update: "2026-01-01T00:00:01Z",
+  position_age_ms: 120,
+};
+
+describe("mapFullStatusToCloudStatus — telemetry", () => {
+  it("reads position, velocity, battery and GPS from the agent's nested blocks", () => {
+    const resp = { ...fullStatus(undefined), telemetry: ROUTER_TELEMETRY };
+    const t = mapFullStatusToCloudStatus(resp, groundNode).telemetry;
+
+    expect(t?.armed).toBe(true);
+    expect(t?.mode).toBe("GUIDED");
+    expect(t?.position).toEqual({
+      lat: 12.97,
+      lon: 77.59,
+      alt_msl: 100.0,
+      alt_rel: 50.0,
+      heading: 90.0,
+    });
+    expect(t?.velocity).toEqual({ groundspeed: 2.2, airspeed: 2.5, climb: 0.5 });
+    expect(t?.battery).toEqual({ voltage: 16.4, current: 12.1, remaining: 87 });
+    expect(t?.gps).toEqual({ fix_type: 3, satellites: 14 });
+  });
+
+  it("keeps an unreported battery reading absent instead of inventing one", () => {
+    const resp = {
+      ...fullStatus(undefined),
+      telemetry: {
+        ...ROUTER_TELEMETRY,
+        battery: { voltage: null, current: null, remaining: null },
+      },
+    };
+    const t = mapFullStatusToCloudStatus(resp, groundNode).telemetry;
+    expect(t?.battery).toBeUndefined();
+    expect(t?.position?.alt_rel).toBe(50.0);
+  });
+});

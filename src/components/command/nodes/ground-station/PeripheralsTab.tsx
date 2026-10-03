@@ -16,7 +16,7 @@ import { PageIntro } from "@/components/hardware/PageIntro";
 import { Button } from "@/components/ui/button";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { PeripheralSummary } from "@/lib/api/ground-station-api";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
 import { PluginHardwarePanels } from "@/components/command/system/PluginHardwarePanels";
@@ -44,12 +44,19 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-export function PeripheralsTab() {
+export interface PeripheralsTabProps {
+  /** The node this tab is rendered for; its reads go to this node's own
+   * connection, never the (lagging) focused one. */
+  nodeDeviceId: string | null;
+}
+
+export function PeripheralsTab({ nodeDeviceId }: PeripheralsTabProps) {
   const t = useTranslations("hardware");
 
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
-  const agentClient = useAgentConnectionStore((s) => s.client);
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const agentUrl = direct?.agentUrl ?? null;
+  const apiKey = direct?.apiKey ?? null;
+  const agentClient = direct?.client ?? null;
 
   const peripherals = useGroundStationStore((s) => s.peripherals);
   const loadPeripherals = useGroundStationStore((s) => s.loadPeripherals);
@@ -105,8 +112,9 @@ export function PeripheralsTab() {
     void loadPeripheralDetail(client, id);
   };
 
-  const rows = useMemo(() => peripherals.list, [peripherals.list]);
-  const onCloudOnly = !agentUrl;
+  const onCloudOnly = direct === null;
+  // Without this node's own connection the store's list may be another node's.
+  const rows = useMemo(() => (onCloudOnly ? [] : peripherals.list), [onCloudOnly, peripherals.list]);
 
   return (
     <div className="flex flex-col">

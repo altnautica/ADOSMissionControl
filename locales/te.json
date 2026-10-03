@@ -475,6 +475,19 @@
         "released": "విడుదలైంది",
         "wont_do": "చేయము"
       }
+    },
+    "changelogDetail": {
+      "backendUnavailable": "Changelog details need the community backend, which is not available here.",
+      "back": "Back to changelog",
+      "loading": "Loading...",
+      "notFoundOrFailed": "Entry not found or could not be loaded",
+      "notFound": "Entry not found",
+      "deleteConfirm": "Delete this changelog entry?",
+      "deleteFailed": "Could not delete the entry: {error}",
+      "auto": "(auto)",
+      "edited": "(edited)",
+      "edit": "Edit",
+      "delete": "Delete"
     }
   },
   "shell": {
@@ -2269,7 +2282,8 @@
         "physicalUi": "OLED brightness, screen cycle, and Bluetooth pairing route through the agent's REST surface, which is only reachable on the same LAN. Connect on LAN to make changes.",
         "peripherals": "Peripheral rescan and per-peripheral actions route through the agent's REST surface, which is only reachable on the same LAN. The list below comes from the cloud heartbeat and is read-only.",
         "mesh": "batman-adv mesh topology (neighbours, routes, gateways) is local to the ground station and never relayed through the cloud. Connect on LAN to inspect mesh health.",
-        "distributedRx": "Distributed receive fragment counters and pairing controls are local to the ground station and never relayed through the cloud. Connect on LAN for the live view."
+        "distributedRx": "Distributed receive fragment counters and pairing controls are local to the ground station and never relayed through the cloud. Connect on LAN for the live view.",
+        "radio": "Radio link stats and TX power route through this ground station's own REST surface, which is only reachable over a direct connection to it. Connect to this node on the LAN to view or change its radio."
       }
     },
     "nodeReach": {
@@ -2290,7 +2304,15 @@
       "hostTaken": "Another node now answers at {host}, so this node has moved or was re-flashed. Use its new address, or re-pair it.",
       "rePair": "Re-pair"
     },
-    "alreadyInstalledRepair": "Already installed? The same command re-pairs it with this code without reinstalling."
+    "alreadyInstalledRepair": "Already installed? The same command re-pairs it with this code without reinstalling.",
+    "pairLink": {
+      "missingCode": "This link is missing a pairing code. Open the setup wizard on your device and try again, or open Mission Control directly to pair manually.",
+      "backToDashboard": "Back to dashboard",
+      "title": "Pairing this device",
+      "codeLabel": "Code:",
+      "deviceLabel": "Device:",
+      "signInHint": "Sign in if prompted; the dialog below claims this code on your account."
+    }
   },
   "agent": {
     "status": "ఏజెంట్ స్థితి",
@@ -2387,7 +2409,8 @@
     "restartArmedWarning": "The vehicle is armed. This restart interrupts its flight link, video or control until the service is back.",
     "restartConfirmLabel": "Restart",
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
-    "restartAllServices": "Restart all services"
+    "restartAllServices": "Restart all services",
+    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller."
   },
   "fleetNetwork": {
     "title": "ఫ్లీట్ నెట్‌వర్క్",
@@ -3701,7 +3724,14 @@
     "fcReportsFailures": "The flight controller reports pre-arm failures",
     "rcReadingStale": "No current RC reading. Turn the transmitter on and try again.",
     "trimWriteFailed": "RC{channel}_TRIM not written: {reason}",
-    "trimsPartlyFixed": "{ok} of {total} trims written"
+    "trimsPartlyFixed": "{ok} of {total} trims written",
+    "trimFix": {
+      "current": "RC{channel} Current:",
+      "offset": "Offset:",
+      "outsideDz": "{offset} (outside DZ)",
+      "withinDz": "{offset} (within DZ)",
+      "setTrimTo": "Set RC{channel} Trim to {value}"
+    }
   },
   "indicators": {
     "connectionQuality": "కనెక్షన్ నాణ్యత",
@@ -3759,7 +3789,14 @@
       "rtk": "RTK స్థిరం"
     },
     "txBufferFree": "TX buffer free",
-    "ekfFlags": "EKF flags"
+    "ekfFlags": "EKF flags",
+    "vibrationGauges": {
+      "noCurrentData": "Vibration · no current data",
+      "noData": "No vibration data",
+      "axisTooltip": "Vibration {axis}: {value} m/s/s (warn: {warn}, crit: {crit})",
+      "trend": "Vibration Trend",
+      "clip": "Clip: {c0}/{c1}/{c2}"
+    }
   },
   "flightInfo": {
     "vehicleInfo": "వాహన సమాచారం",
@@ -4069,7 +4106,8 @@
       "emptyDirectTitle": "This node is in direct mode.",
       "emptyUnsetTitle": "This node has no role set.",
       "emptyHint": "Switch to relay or receiver to carry mesh traffic and see this view with live data.",
-      "demoReadOnly": "Demo mode is read-only — this control is disabled on the sample fleet."
+      "demoReadOnly": "Demo mode is read-only — this control is disabled on the sample fleet.",
+      "armedDeclined": "Role unchanged: the vehicle is armed."
     },
     "confirms": {
       "unpair": {
@@ -4174,7 +4212,8 @@
       "downloadLogsComingSoon": "Backend bundle endpoint not yet available.",
       "emptyDirect": "This node is in direct mode. Set the role to relay or receiver to view the mesh.",
       "pinHint": "మెష్ సేవ పునఃప్రారంభంలో పిన్ వర్తిస్తుంది. ఆటో తిరిగి సెట్ చేస్తుంది.",
-      "emptyUnset": "This node has no role set. Choose relay or receiver above, or set it from the device's own display."
+      "emptyUnset": "This node has no role set. Choose relay or receiver above, or set it from the device's own display.",
+      "healthUnknown": "Unknown"
     },
     "overview": "అవలోకనం",
     "network": "నెట్‌వర్క్",
@@ -4301,13 +4340,19 @@
       "dns": "DNS సర్వర్లు",
       "invalidIp": "చెల్లని IPv4 చిరునామా",
       "invalidCidr": "చెల్లని CIDR (0-32)",
-      "backendPending": "ఈథర్నెట్ కాన్ఫిగ్ బ్యాకెండ్ పెండింగ్",
       "modalTitle": "ఈథర్నెట్ కాన్ఫిగర్ చేయండి",
       "save": "సేవ్",
       "cancel": "రద్దు",
       "savedToast": "ఈథర్నెట్ కాన్ఫిగ్ సేవ్ చేయబడింది.",
       "genericError": "ఈథర్నెట్ కాన్ఫిగ్ సేవ్ చేయడంలో విఫలం.",
-      "dhcpHint": "DHCP స్వయంచాలకంగా చిరునామాను అభ్యర్థిస్తుంది."
+      "dhcpHint": "DHCP స్వయంచాలకంగా చిరునామాను అభ్యర్థిస్తుంది.",
+      "up": "Up",
+      "down": "Down",
+      "ip": "IP",
+      "interface": "Interface",
+      "speedValue": "{speed} Mbps",
+      "noPort": "No wired Ethernet port on this ground station.",
+      "chooseMode": "Choose DHCP or Static. The ground station does not report its current setting, so nothing is preselected."
     },
     "priority": {
       "title": "अपलिंक प्राथमिकता",
@@ -4424,7 +4469,8 @@
       "pageSettings": "Settings",
       "pageMore": "More",
       "agentOffline": "Agent offline",
-      "switchFailed": "Could not switch page"
+      "switchFailed": "Could not switch page",
+      "notConfirmed": "The display has not confirmed the switch to {page}."
     },
     "lcdCalibration": {
       "title": "Calibrate touch screen",
@@ -4474,7 +4520,9 @@
       "emptyDescription": "No recordings on disk yet.",
       "listError": "Could not list recordings",
       "startError": "Could not start recording",
-      "stopError": "Could not stop recording"
+      "stopError": "Could not stop recording",
+      "startNotConfirmed": "The agent has not confirmed that recording started.",
+      "stopNotConfirmed": "The agent has not confirmed that recording stopped."
     },
     "androidRc": {
       "title": "ADOS Android RC कंट्रोलर",
@@ -4613,7 +4661,9 @@
           "failed": "Pairing failed",
           "retryBlockedPaired": "This rig is already paired, so it will not re-arm pairing. The local link returns on its own when the radio can reach the peer; unpair first to pair again.",
           "retryNotApplied": "The rig did not accept the retry request"
-        }
+        },
+        "statusUnknown": "Unknown (last check failed)",
+        "actionRetryStatus": "Retry"
       },
       "rssi": "RSSI",
       "bitrate": "Bitrate",
@@ -4826,7 +4876,39 @@
     "physicalUiPage": {
       "description": "గ్రౌండ్ స్టేషన్ బాక్స్‌పై ఉన్న OLED స్క్రీన్ మరియు నాలుగు ముందు బటన్‌ల ప్రత్యక్ష ప్రివ్యూ. Bluetooth పరికరాలను కూడా ఇక్కడే జత చేయండి."
     },
-    "demoReadOnly": "Demo mode is read-only: this change is not sent to the sample fleet."
+    "demoReadOnly": "Demo mode is read-only: this change is not sent to the sample fleet.",
+    "wifiScan": {
+      "title": "WiFi networks",
+      "scan": "Scan",
+      "scanning": "Scanning...",
+      "join": "Join",
+      "joined": "Joined {ssid}",
+      "joinFailed": "Failed to join {ssid}",
+      "noAgent": "No ground station connected.",
+      "scanningNetworks": "Scanning for networks...",
+      "empty": "Tap Scan to look for nearby networks.",
+      "networks": "Networks",
+      "hidden": "(hidden)",
+      "inUse": "(in use)",
+      "passphraseFor": "Passphrase for {ssid}",
+      "passphrasePlaceholder": "WPA/WPA2 passphrase",
+      "selectedOpen": "Selected: {ssid} (open network)",
+      "forceTitle": "Stop the Access Point?",
+      "forceMessage": "Joining {ssid} will stop the Access Point. Connected clients will lose the ground station WiFi. Continue?",
+      "forceConfirm": "Stop AP and join",
+      "thisNetwork": "this network"
+    },
+    "connectionRisk": {
+      "apTitle": "Apply access point changes?",
+      "apMessage": "The access point restarts with the new settings. Every client on it, including this computer if it is connected through it, is disconnected and may not reconnect.",
+      "apConfirm": "Apply and restart AP",
+      "modemDisableTitle": "Disable the cellular modem?",
+      "modemDisableMessage": "If cellular is this ground station's only uplink, disabling the modem drops your remote connection to it until someone re-enables it on site.",
+      "modemDisableConfirm": "Disable modem",
+      "shareTitle": "Share uplink with WiFi clients?",
+      "shareMessage": "This installs a NAT rule and routes connected clients' traffic over the active uplink, which can use metered data and can drop your connection while the uplink is reconfigured.",
+      "shareConfirm": "Share"
+    }
   },
   "toast": {
     "mesh": {
@@ -5917,7 +5999,8 @@
         "flashBootloader": "FLASH_BOOTLOADER=1 రాయండి",
         "updateFirmware": "ఫర్మ్‌వేర్ నవీకరణ",
         "changeNodeId": "Node ID మార్చు",
-        "erase": "డిఫాల్ట్‌లకు రీసెట్"
+        "erase": "డిఫాల్ట్‌లకు రీసెట్",
+        "newNodeIdLabel": "New node ID"
       },
       "column": {
         "name": "పేరు",
@@ -5931,6 +6014,23 @@
         "saveToNode": "Node కి సేవ్",
         "erase": "తొలగించు",
         "reload": "రీలోడ్"
+      },
+      "status": {
+        "saved": "Saved {saved}",
+        "savedWithFailures": "Saved {saved}, failed {failed}",
+        "savedToNode": "Saved to node",
+        "saveFailed": "Save failed",
+        "restartRequested": "Restart requested",
+        "restartFailed": "Restart failed",
+        "flashBootloaderSet": "FLASH_BOOTLOADER=1",
+        "setFailed": "Set failed",
+        "erased": "Erased to defaults",
+        "eraseFailed": "Erase failed",
+        "nodeIdSet": "Node ID set to {newId}",
+        "changeFailed": "Change failed",
+        "reloaded": "Reloaded",
+        "nodeIdRange": "Node ID must be 1..{max}",
+        "loading": "Loading…"
       }
     },
     "diagnostics": {
@@ -5973,7 +6073,8 @@
         "button": "స్కాన్",
         "noConflicts": "No conflicts on {count} responding node(s)",
         "conflictDetected": "{count} node ID(s) claimed by more than one node: {ids}",
-        "noResponse": "No response from node ID(s) {ids}; not checked"
+        "noResponse": "No response from node ID(s) {ids}; not checked",
+        "inconclusive": "Inconclusive on node ID(s) {ids}; identical nodes powered together can hide a duplicate"
       },
       "escSweep": {
         "title": "ESC RawCommand స్వీప్",
@@ -7239,6 +7340,7 @@
     "disabled": "Battery health monitoring is off on this node. Turn it on under Setup.",
     "noPacks": "The flight controller has not reported a battery yet.",
     "stale": "No new battery report from the flight controller for over 5 seconds. The values below are the last ones received.",
+    "packStale": "No new report from this pack for over 5 seconds. The values below are its last ones.",
     "packTitle": "Pack {id}",
     "cellsTitle": "Cells",
     "cellsNotReported": "Per-cell data not reported by the FC",
@@ -7280,5 +7382,53 @@
       "predictive_low": "Reserve imminent"
     },
     "alert": "Pack {pack}: {rule} ({value})"
+  },
+  "armedOverride": {
+    "title": "Vehicle is armed",
+    "message": "The vehicle is armed. This action can drop the link or change flight behaviour. Continue?",
+    "confirm": "Continue"
+  },
+  "nodeNotices": {
+    "sysidConflict": "Two aircraft share MAVLink system ID {id}. Commands to ID {id} are blocked. Give one aircraft a unique SYSID_THISMAV and reboot it.",
+    "waitingIdentity": "Waiting for vehicle identity",
+    "waitingIdentityDetail": "The ground station has not heard this drone's flight controller yet, so no flight link is opened.",
+    "credentialPending": "This ground station has not delivered its relay credential to the drone yet. Relayed calls are refused until it does.",
+    "credentialConflict": "This drone holds another ground station's relay credential. Relayed calls are refused until it is unpaired from that station.",
+    "videoFollowsHero": "Live video follows the selected drone",
+    "showThisDrone": "Show this drone",
+    "showThisDroneFailed": "Could not switch the live video to this drone: {reason}",
+    "relayRefusal": {
+      "expired": "The drone refused the relayed call: the ticket had expired. Check that the ground station's and the drone's clocks agree.",
+      "clock_skew": "The drone refused the relayed call: the ground station's clock and the drone's differ by more than five minutes.",
+      "replayed": "The drone refused a repeated relay ticket. Retry the action.",
+      "bad_signature": "The drone refused the relay ticket's signature. Re-pair the drone with this ground station.",
+      "binding_mismatch": "The drone refused the relay ticket: it was issued for a different request.",
+      "no_secret": "This ground station holds no relay credential for the drone yet. Relayed calls are refused until the drone receives it.",
+      "secret_conflict": "The drone holds another ground station's relay credential. Unpair it from that station to relay through this one.",
+      "unknown": "The drone refused the relayed call.",
+      "peerApi": "The relay works, but the drone's own API failed: {detail}"
+    }
+  },
+  "diagnosticsExport": {
+    "exportJson": "Export JSON",
+    "copyToClipboard": "Copy to Clipboard",
+    "copied": "Copied",
+    "copyFailed": "Copy failed"
+  },
+  "offlineMapManager": {
+    "offlineWarning": "You are offline. Cached tiles will be used for maps.",
+    "customSourceTitle": "Custom Map Source",
+    "cacheTitle": "Offline Map Cache",
+    "tilesCached": "{count} tiles cached",
+    "unavailable": "Tile cache unavailable: {error}",
+    "tileCaching": "Tile caching",
+    "clearing": "Clearing...",
+    "clearAll": "Clear All Cache",
+    "clearConfirm": "Clear all cached map tiles? This cannot be undone.",
+    "help": "Download map tiles for offline use from the Plan tab (Download button in toolbar). Tiles are cached in your browser and available without internet."
+  },
+  "fcSigning": {
+    "enrollSentNotConfirmed": "Key sent, not confirmed. The flight controller was sent the new key but was not seen signing with it. This browser keeps both keys until you confirm which one the flight controller holds.",
+    "disableSentNotConfirmed": "Disable sent, not confirmed. The flight controller was not seen sending unsigned messages. This browser keeps its key until you confirm unsigned commands are accepted."
   }
 }

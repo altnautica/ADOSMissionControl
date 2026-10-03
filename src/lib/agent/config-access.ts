@@ -45,7 +45,10 @@
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
 import { usePairingStore, type PairedDrone } from "@/stores/pairing-store";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
-import type { ConfigWriteResult } from "@/lib/agent/config-write";
+import {
+  persistFailureBody,
+  type ConfigWriteResult,
+} from "@/lib/agent/config-write";
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
 import {
   CONFIG_PROXY_CLIENT_MARGIN_MS,
@@ -223,8 +226,8 @@ export function configAccessFrom(
  *  - Log streaming is an `EventSource` (a long-lived streaming GET). This
  *    route buffers the upstream with `response.text()` and answers once, and
  *    the relay is a fragmented request/response RPC over the aux radio lane —
- *    neither can hold a stream open. `LoggingService.tail` already refuses on
- *    `ctx.relay` for exactly this reason and drops its caller to polling.
+ *    neither can hold a stream open. `LoggingService.tail` polls the query
+ *    surface on `ctx.relay` instead of streaming for exactly this reason.
  *
  * So on the relay lane those two surfaces genuinely have no path, and the
  * gate stays truthful by staying as it is.
@@ -287,6 +290,9 @@ async function proxyConfigRequest(
     json = null;
   }
   if (!res.ok) {
+    // The write route's own failure answer (500, `persisted: false`) is a
+    // result, so `configWriteFailure` names the node's reason.
+    if (method === "PUT" && persistFailureBody(json)) return json;
     const row = (json ?? {}) as { message?: unknown; error?: unknown };
     const message =
       typeof row.message === "string"

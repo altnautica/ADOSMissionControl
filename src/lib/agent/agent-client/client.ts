@@ -23,7 +23,6 @@ import type {
   SetupActionResult,
   SetupStatus,
   SystemResources,
-  TelemetrySnapshot,
   VideoStatus,
 } from "../types";
 import * as system from "./system";
@@ -32,7 +31,7 @@ import * as extras from "./extras";
 import * as camera from "./camera";
 import * as battery from "./battery";
 import { LoggingService } from "./logging";
-import type { RequestContext } from "./transport";
+import type { ArmedOverrideOptions, RequestContext } from "./transport";
 import { agentSupports, fetchVersionInfo } from "./version-cache";
 import type {
   CameraListResponse,
@@ -40,6 +39,7 @@ import type {
   RecordingListResponse,
   SigningCapability,
   SigningCounters,
+  SigningDisableResult,
   SigningEnrollResult,
 } from "./types";
 import type { CameraLegInput, RosterCamera } from "../feature-types";
@@ -96,10 +96,6 @@ export class AgentClient {
     return agentSupports(info, capability);
   }
 
-  getTelemetry(): Promise<TelemetrySnapshot> {
-    return system.getTelemetry(this.ctx);
-  }
-
   getServices(): Promise<ServiceInfo[]> {
     return system.getServices(this.ctx);
   }
@@ -110,10 +106,6 @@ export class AgentClient {
 
   getLogs(params?: { level?: string; limit?: number }): Promise<LogEntry[]> {
     return system.getLogs(this.ctx, params);
-  }
-
-  getParams(): Promise<Record<string, number>> {
-    return system.getParams(this.ctx);
   }
 
   sendCommand(cmd: string, args?: unknown[]): Promise<CommandResult> {
@@ -136,12 +128,12 @@ export class AgentClient {
     return system.setConfigValue(this.ctx, key, value);
   }
 
-  restartService(name: string): Promise<system.ServiceRestartResult> {
-    return system.restartService(this.ctx, name);
+  restartService(name: string, opts?: ArmedOverrideOptions): Promise<system.ServiceRestartResult> {
+    return system.restartService(this.ctx, name, opts);
   }
 
-  restartSupervisor(): Promise<system.SupervisorRestartResult> {
-    return system.restartSupervisor(this.ctx);
+  restartSupervisor(opts?: ArmedOverrideOptions): Promise<system.SupervisorRestartResult> {
+    return system.restartSupervisor(this.ctx, opts);
   }
 
   getFullStatus(): Promise<FullStatusResponse | null> {
@@ -180,8 +172,9 @@ export class AgentClient {
   postProfileChoice(
     profile: "drone" | "ground_station",
     ground_role?: "direct" | "relay" | "receiver" | null,
+    opts?: ArmedOverrideOptions,
   ): Promise<SetupActionResult> {
-    return setup.postProfileChoice(this.ctx, profile, ground_role);
+    return setup.postProfileChoice(this.ctx, profile, ground_role, opts);
   }
 
   getHardwareCheck(): Promise<HardwareCheckStatus> {
@@ -322,7 +315,7 @@ export class AgentClient {
     return extras.enrollSigningKey(this.ctx, keyHex, linkId);
   }
 
-  disableSigningOnFc(): Promise<{ success: boolean }> {
+  disableSigningOnFc(): Promise<SigningDisableResult> {
     return extras.disableSigningOnFc(this.ctx);
   }
 

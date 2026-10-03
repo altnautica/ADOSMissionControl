@@ -35,6 +35,7 @@ import type { GroundStationRole } from "@/lib/api/ground-station/types";
 import { roleSwitchErrorMessage } from "@/stores/ground-station-store";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { useToast } from "@/components/ui/toast";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import type { NodeReachDescriptor } from "@/lib/nodes/node-reach";
 import { Chip, NEUTRAL_CHIP, UnknownValue } from "./cell-primitives";
@@ -62,6 +63,7 @@ export function RelayModeCell({
   const { toast } = useToast();
   const [switching, setSwitching] = useState(false);
   const reasonId = useId();
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
 
   if (!hasRelayRole(node)) {
     return <UnknownValue title={t("relay.notApplicable")} />;
@@ -83,7 +85,7 @@ export function RelayModeCell({
     if (!api) return;
     setSwitching(true);
     try {
-      const info = await api.setRole(role);
+      const info = await withArmedOverride((force) => api.setRole(role, { force }));
       // The authoritative role is the one the node's own sentinel reports back,
       // which during a transition is still the old one — so the toast says
       // "switching" rather than claiming a role the node has not taken yet.
@@ -152,18 +154,28 @@ export function RelayModeCell({
   // While inert the trigger stands alone: a change is either unreachable on
   // this lane or already in flight, and opening a menu of dead options would
   // contradict the reason the control just gave.
-  if (inert) return trigger;
+  if (inert) {
+    return (
+      <>
+        {trigger}
+        {armedOverrideDialog}
+      </>
+    );
+  }
 
   return (
-    <DropdownMenu
-      align="left"
-      trigger={trigger}
-      items={GROUND_STATION_ROLES.map((role) => ({
-        id: role,
-        label: t(`relay.${role}`),
-        disabled: switching || role === node.role,
-      }))}
-      onSelect={(role) => void applyRole(role as GroundStationRole)}
-    />
+    <>
+      <DropdownMenu
+        align="left"
+        trigger={trigger}
+        items={GROUND_STATION_ROLES.map((role) => ({
+          id: role,
+          label: t(`relay.${role}`),
+          disabled: switching || role === node.role,
+        }))}
+        onSelect={(role) => void applyRole(role as GroundStationRole)}
+      />
+      {armedOverrideDialog}
+    </>
   );
 }

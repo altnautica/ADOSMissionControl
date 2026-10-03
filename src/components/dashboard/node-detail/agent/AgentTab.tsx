@@ -138,8 +138,9 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
   //
   // A retired "…-config" id resolves to the live page that absorbed it, with
   // the Setup segment named — so a deep link to the old page lands on the
-  // half the operator asked for, not the live view beside it.
-  const requested = resolveSubpage(active);
+  // half the operator asked for. When this node has no such live page the
+  // configuration page is its own row, and the id selects it directly.
+  const requested = resolveSubpage(active, entries);
   const activeItem =
     entries.find((e) => e.id === requested.id) ?? entries[0];
   const activeId = activeItem?.id ?? DEFAULT_PANEL;

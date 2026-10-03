@@ -46,6 +46,7 @@ export function buildMockBatteryHealth(nowMs: number): BatteryHealth {
     packs: [
       {
         id: 0,
+        stale: false,
         cells_plausible: true,
         cell_voltages_v: primaryCells,
         weakest_cell_index: 2,
@@ -87,6 +88,7 @@ export function buildMockBatteryHealth(nowMs: number): BatteryHealth {
       },
       {
         id: 1,
+        stale: false,
         cells_plausible: true,
         cell_voltages_v: secondaryCells,
         weakest_cell_index: 3,

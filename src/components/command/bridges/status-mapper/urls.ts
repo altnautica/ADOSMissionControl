@@ -93,7 +93,7 @@ export function resolveVideoStreams(
         role?: string;
         codec?: string;
         live?: boolean | null;
-        whep?: string;
+        whepUrl?: string;
       }[]
     | undefined;
   if (videoState !== "running" || !streams?.length) return [];
@@ -101,7 +101,7 @@ export function resolveVideoStreams(
   // Only a leg the node advertised is dialable; its relative path resolves
   // against the node's :8080 front.
   return streams.flatMap((s) => {
-    const whepUrl = s.id && s.whep ? resolveMediaPath(s.whep, base) : null;
+    const whepUrl = s.id && s.whepUrl ? resolveMediaPath(s.whepUrl, base) : null;
     return whepUrl
       ? [{ id: s.id, role: s.role, codec: s.codec, live: s.live, whepUrl }]
       : [];

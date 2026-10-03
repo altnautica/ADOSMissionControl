@@ -15,6 +15,7 @@ import type {
   WfbRelayStatus,
 } from "./types";
 import { gsRequest, type RequestContext } from "./request";
+import { withForceQuery, type ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 
 /** Operator-facing radio link presets the agent maps to an (mcs, fec) trio. */
 export type LinkPreset = "conservative" | "balanced" | "aggressive";
@@ -28,10 +29,11 @@ export function getWfb(ctx: RequestContext): Promise<WfbConfig> {
 export function setTxPower(
   ctx: RequestContext,
   dbm: number,
+  opts?: ArmedOverrideOptions,
 ): Promise<SetTxPowerResult> {
   return gsRequest<SetTxPowerResult>(ctx, "/api/wfb/tx-power", {
     method: "PUT",
-    body: JSON.stringify({ tx_power_dbm: dbm }),
+    body: JSON.stringify(opts?.force ? { tx_power_dbm: dbm, force: true } : { tx_power_dbm: dbm }),
   });
 }
 
@@ -99,8 +101,11 @@ export function pairDrone(
   });
 }
 
-export function unpairDrone(ctx: RequestContext): Promise<UnpairResult> {
-  return gsRequest<UnpairResult>(ctx, "/api/v1/ground-station/wfb/pair", {
+export function unpairDrone(
+  ctx: RequestContext,
+  opts?: ArmedOverrideOptions,
+): Promise<UnpairResult> {
+  return gsRequest<UnpairResult>(ctx, withForceQuery("/api/v1/ground-station/wfb/pair", opts), {
     method: "DELETE",
   });
 }
@@ -194,8 +199,9 @@ export function getPairStatus(
  *  Leaves auto_pair_enabled = false; re-arming is explicit. */
 export function unpairRadio(
   ctx: RequestContext,
+  opts?: ArmedOverrideOptions,
 ): Promise<{ paired: false; role: "drone" | "gs" }> {
-  return gsRequest(ctx, "/api/wfb/pair/unpair", {
+  return gsRequest(ctx, withForceQuery("/api/wfb/pair/unpair", opts), {
     method: "POST",
   });
 }

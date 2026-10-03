@@ -469,6 +469,7 @@ export interface VideoStreamEntry {
   role?: string;
   codec?: string;
   live?: boolean;
+  whepUrl?: string;
 }
 
 // Build the per-leg video-stream list, keeping only entries the strict inner
@@ -490,6 +491,7 @@ export function videoStreamsField(
       role: stringField(row, "role"),
       codec: stringField(row, "codec"),
       live: booleanField(row, "live"),
+      whepUrl: stringField(row, "whepUrl"),
     });
   }
   // An EMPTY list is a real reading — the node has no linked peers / no

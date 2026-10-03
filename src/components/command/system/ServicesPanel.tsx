@@ -2,8 +2,8 @@
 
 /**
  * @module ServicesPanel
- * @description systemd-style service list with restart action and per-process
- * CPU and memory readouts.
+ * @description systemd-style service list with a restart action and
+ * per-service CPU and memory readouts.
  * @license GPL-3.0-only
  */
 
@@ -14,8 +14,6 @@ import { CollapsibleSection } from "./shared";
 
 export function ServicesPanel() {
   const services = useAgentSystemStore((s) => s.services);
-  const processCpuPercent = useAgentSystemStore((s) => s.processCpuPercent);
-  const processMemoryMb = useAgentSystemStore((s) => s.processMemoryMb);
   const restartService = useAgentSystemStore((s) => s.restartService);
 
   return (
@@ -29,8 +27,6 @@ export function ServicesPanel() {
         <ServiceTable
           services={services}
           onRestart={restartService}
-          processCpu={processCpuPercent}
-          processMemoryMb={processMemoryMb}
         />
       ) : (
         <p className="text-xs text-text-tertiary py-4 text-center">

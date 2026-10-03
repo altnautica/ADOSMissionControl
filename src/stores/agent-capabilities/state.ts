@@ -100,6 +100,9 @@ function snapshotOf(state: AgentCapabilitiesState): AgentCapabilitySnapshot {
   return slice;
 }
 
+/** The slice a node starts from before it has described itself. */
+const INITIAL_SLICE: AgentCapabilitySnapshot = snapshotOf(INITIAL_STATE);
+
 /**
  * One node's capability reading, or null when this browser has never heard
  * that node describe itself. Returns a stored object reference (never a fresh
@@ -190,6 +193,15 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
 
       const raw = caps as Record<string, unknown>;
       set((state) => {
+        // Every keep-prior fallback reads the slice of the node this payload
+        // describes, or the initial slice when that node has none yet. The
+        // focused flat slice belongs to whichever node is open, so falling
+        // back to it copied one node's cameras, NPU, role and peer into
+        // another node's first reading.
+        const target = deviceId ?? state.focusedDeviceId;
+        const prior: AgentCapabilitySnapshot = target
+          ? (state.byDevice[target] ?? INITIAL_SLICE)
+          : snapshotOf(state);
         const patch = {
         tier: normalized.tier,
         cameras: normalized.cameras,
@@ -200,7 +212,7 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         setupState,
         profileSource,
         profile,
-        role: role === undefined ? state.role : role,
+        role: role === undefined ? prior.role : role,
         display: normalized.display,
         // Forward-permissive: a sparse payload that omits the field
         // keeps whatever the store had. CloudStatusBridge sets this
@@ -209,7 +221,7 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // without it.
         displayType:
           normalized.displayType === undefined
-            ? state.displayType
+            ? prior.displayType
             : normalized.displayType,
         videoLocalTap: normalized.videoLocalTap,
         videoRecording: normalized.videoRecording,
@@ -220,14 +232,14 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // only carries when a payload lands without the field.
         runtimeMode:
           normalized.runtimeMode === undefined
-            ? state.runtimeMode
+            ? prior.runtimeMode
             : normalized.runtimeMode,
         // Forward-permissive: a sparse heartbeat that omits the
         // navigation block keeps whatever the store had on the prior
         // tick. CloudStatusBridge always passes the freshest block when
         // the agent emits one, so the prior value only survives when an
         // /api/capabilities call lands without it.
-        navigation: normalized.navigation ?? state.navigation,
+        navigation: normalized.navigation ?? prior.navigation,
         radio,
         // Replace every tick, matching radio: a heartbeat that omits the crsf
         // block (the lane is down / its sidecar is stale — the block is never
@@ -242,109 +254,109 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // payload lands without the field.
         radioStackState:
           normalized.radioStackState === undefined
-            ? state.radioStackState
+            ? prior.radioStackState
             : normalized.radioStackState,
         macStability: mergeWithdrawable(
           raw,
           "macStability",
           normalized.macStability,
-          state.macStability,
+          prior.macStability,
         ),
         managementLink: mergeWithdrawable(
           raw,
           "managementLink",
           normalized.managementLink,
-          state.managementLink,
+          prior.managementLink,
         ),
         wifiPowersave: mergeWithdrawable(
           raw,
           "wifiPowersave",
           normalized.wifiPowersave,
-          state.wifiPowersave,
+          prior.wifiPowersave,
         ),
         mgmtLinkMode: mergeWithdrawable(
           raw,
           "mgmtLinkMode",
           normalized.mgmtLinkMode,
-          state.mgmtLinkMode,
+          prior.mgmtLinkMode,
         ),
         mgmtFailoverIface: mergeWithdrawable(
           raw,
           "mgmtFailoverIface",
           normalized.mgmtFailoverIface,
-          state.mgmtFailoverIface,
+          prior.mgmtFailoverIface,
         ),
         mgmtFailoverReason: mergeWithdrawable(
           raw,
           "mgmtFailoverReason",
           normalized.mgmtFailoverReason,
-          state.mgmtFailoverReason,
+          prior.mgmtFailoverReason,
         ),
         usbRehomeState: mergeWithdrawable(
           raw,
           "usbRehomeState",
           normalized.usbRehomeState,
-          state.usbRehomeState,
+          prior.usbRehomeState,
         ),
         usbRehomeAttempts: mergeWithdrawable(
           raw,
           "usbRehomeAttempts",
           normalized.usbRehomeAttempts,
-          state.usbRehomeAttempts,
+          prior.usbRehomeAttempts,
         ),
         usbRehomeLastResult: mergeWithdrawable(
           raw,
           "usbRehomeLastResult",
           normalized.usbRehomeLastResult,
-          state.usbRehomeLastResult,
+          prior.usbRehomeLastResult,
         ),
         // Forward-permissive merges: keep the prior value when the
         // payload omits the field. CloudStatusBridge always sets these
         // explicitly, so prior values only carry over when an
         // /api/capabilities call lands without them.
         videoRestartAttempts:
-          videoRestartAttempts ?? state.videoRestartAttempts,
+          videoRestartAttempts ?? prior.videoRestartAttempts,
         pairingCodeExpiresAt:
           pairingCodeExpiresAt === undefined
-            ? state.pairingCodeExpiresAt
+            ? prior.pairingCodeExpiresAt
             : pairingCodeExpiresAt,
         wfbFailoverState:
           wfbFailoverState === undefined
-            ? state.wfbFailoverState
+            ? prior.wfbFailoverState
             : wfbFailoverState,
         manualConnectionUrls:
           manualConnectionUrls === undefined
-            ? state.manualConnectionUrls
+            ? prior.manualConnectionUrls
             : manualConnectionUrls,
         cloudRelayUrl:
-          cloudRelayUrl === undefined ? state.cloudRelayUrl : cloudRelayUrl,
+          cloudRelayUrl === undefined ? prior.cloudRelayUrl : cloudRelayUrl,
         cloudflareUrl:
-          cloudflareUrl === undefined ? state.cloudflareUrl : cloudflareUrl,
+          cloudflareUrl === undefined ? prior.cloudflareUrl : cloudflareUrl,
         // Peer presence — sparse heartbeats preserve the prior value
         // until the agent's 60s staleness window drops it explicitly.
         peerDeviceId:
           normalized.peerDeviceId === undefined
-            ? state.peerDeviceId
+            ? prior.peerDeviceId
             : normalized.peerDeviceId,
         peerRole:
           normalized.peerRole === undefined
-            ? state.peerRole
+            ? prior.peerRole
             : normalized.peerRole,
         peerChannel:
           normalized.peerChannel === undefined
-            ? state.peerChannel
+            ? prior.peerChannel
             : normalized.peerChannel,
         peerRssiDbm:
           normalized.peerRssiDbm === undefined
-            ? state.peerRssiDbm
+            ? prior.peerRssiDbm
             : normalized.peerRssiDbm,
         peerSeenAtUnix:
           normalized.peerSeenAtUnix === undefined
-            ? state.peerSeenAtUnix
+            ? prior.peerSeenAtUnix
             : normalized.peerSeenAtUnix,
         cameraState:
           normalized.cameraState === undefined
-            ? state.cameraState
+            ? prior.cameraState
             : normalized.cameraState,
         // Forward-permissive: a sparse heartbeat that omits the camera
         // recovery block keeps whatever the store had on the prior tick; an
@@ -354,7 +366,7 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
           raw,
           "cameraUsbRecovery",
           normalized.cameraUsbRecovery,
-          state.cameraUsbRecovery,
+          prior.cameraUsbRecovery,
         ),
         // Forward-permissive: a sparse heartbeat that omits the
         // canBuses block keeps whatever the store had on the prior
@@ -364,7 +376,7 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // CAN data yet" via `undefined`.
         canBuses:
           normalized.canBuses === undefined
-            ? state.canBuses
+            ? prior.canBuses
             : normalized.canBuses,
         // Forward-permissive: a sparse payload that omits the vision
         // availability flag or the live-detection summary keeps the
@@ -373,11 +385,11 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // only survives across an /api/capabilities call that omits it.
         visionAvailable:
           normalized.visionAvailable === undefined
-            ? state.visionAvailable
+            ? prior.visionAvailable
             : normalized.visionAvailable,
         visionSummary:
           normalized.visionSummary === undefined
-            ? state.visionSummary
+            ? prior.visionSummary
             : normalized.visionSummary,
         // Forward-permissive: a sparse heartbeat that omits the perception
         // tier signal keeps whatever the store had. CloudStatusBridge passes
@@ -385,17 +397,17 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // prior value only survives across a payload that lands without it.
         perceptionTier:
           normalized.perceptionTier === undefined
-            ? state.perceptionTier
+            ? prior.perceptionTier
             : normalized.perceptionTier,
         perceptionOffloadTarget:
           normalized.perceptionOffloadTarget === undefined
-            ? state.perceptionOffloadTarget
+            ? prior.perceptionOffloadTarget
             : normalized.perceptionOffloadTarget,
         npuTops:
-          normalized.npuTops === undefined ? state.npuTops : normalized.npuTops,
+          normalized.npuTops === undefined ? prior.npuTops : normalized.npuTops,
         hasAccelerator:
           normalized.hasAccelerator === undefined
-            ? state.hasAccelerator
+            ? prior.hasAccelerator
             : normalized.hasAccelerator,
         loaded: true,
         receivedAt: Date.now(),
@@ -403,14 +415,13 @@ export const useAgentCapabilitiesStore = create<AgentCapabilitiesStore>(
         // File the reading under the node it describes. A node switch then
         // paints the target node's own gates on the first frame instead of the
         // previous node's, and a `clear()` in between does not erase it.
-        const target = deviceId ?? state.focusedDeviceId;
         if (!target) return patch;
         return {
           ...patch,
           focusedDeviceId: target,
           byDevice: {
             ...state.byDevice,
-            [target]: { ...snapshotOf(state), ...patch },
+            [target]: { ...prior, ...patch },
           },
         };
       });

@@ -22,6 +22,7 @@ import type {
   StatsResponse,
   HealthzResponse,
 } from "./logging";
+import type { LogEntry } from "../types";
 
 type Obj = Record<string, unknown>;
 
@@ -56,6 +57,20 @@ export function toLogLevel(v: unknown): LogLevel {
     return "error";
   }
   return "info";
+}
+
+/** One `/api/logs` entry (`{seq, timestamp, level, logger, message}`, an
+ * upper-case level) as the `LogEntry` the log viewer renders: the level folded
+ * onto the four rendered levels and `logger` carried as `service`. Shared by
+ * the LAN read and the cloud-relayed read of the same route. */
+export function legacyLogEntry(raw: unknown): LogEntry {
+  const e = asObj(raw);
+  return {
+    timestamp: typeof e.timestamp === "string" ? e.timestamp : "",
+    level: toLogLevel(e.level),
+    service: typeof e.logger === "string" ? e.logger : "",
+    message: typeof e.message === "string" ? e.message : "",
+  };
 }
 
 function numberMap(v: unknown): Record<string, number> {

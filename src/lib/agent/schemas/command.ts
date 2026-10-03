@@ -24,7 +24,6 @@ export const ServiceRestartResultSchema = z
     status: z.enum(["ok", "error"]),
     message: z.string(),
     unit: z.string().optional(),
-    aliased_from: z.string().nullable().optional(),
   })
   .passthrough();
 

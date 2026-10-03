@@ -162,8 +162,7 @@ describe("buildSystemUpdate", () => {
     }
     expect(update.resources.swap_percent).toBeUndefined();
     expect(update.resources.temperature).toBeNull();
-    // No history / services blocks when the row omits them.
-    expect(update.cpuHistory).toBeUndefined();
+    // No services block when the row omits it.
     expect(update.services).toBeUndefined();
   });
 
@@ -183,7 +182,7 @@ describe("buildSystemUpdate", () => {
     expect(update.resources.disk_total_gb).toBeUndefined();
   });
 
-  it("reports an unknown service status as degraded and carries process metrics", () => {
+  it("reports an unknown service status as degraded", () => {
     const cloudStatus = {
       ...base,
       services: [
@@ -191,8 +190,6 @@ describe("buildSystemUpdate", () => {
         { name: "ados-mystery", status: "bogus", pid: 101 },
         { name: "ados-nopid", status: "stopped" },
       ],
-      processCpuPercent: 3.5,
-      processMemoryMb: 120,
     };
     const mapped = mapCloudStatus(cloudStatus);
     const update = buildSystemUpdate(mapped, cloudStatus, true);
@@ -212,8 +209,6 @@ describe("buildSystemUpdate", () => {
     expect(update.services?.[1].pid).toBe(101);
     // A service with no pid falls back to null.
     expect(update.services?.[2].pid).toBeNull();
-    expect(update.processCpuPercent).toBe(3.5);
-    expect(update.processMemoryMb).toBe(120);
   });
 
   it("forwards per-service config errors and drops malformed entries", () => {

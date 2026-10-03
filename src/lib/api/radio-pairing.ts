@@ -27,6 +27,7 @@ import {
   unpairRadio,
 } from "@/lib/api/ground-station/wfb";
 import type { RequestContext } from "@/lib/api/ground-station/request";
+import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 
 export interface LocalBindOptions {
   role?: "drone" | "gs";
@@ -56,11 +57,13 @@ export async function fetchPairStatus(
 
 /** Explicit unpair on the rig at `ctx`. Wipes both key files, clears
  *  pair state, restarts the wfb service. Leaves auto_pair_enabled
- *  false — re-arming is a separate call. */
+ *  false — re-arming is a separate call. Refused while the vehicle is
+ *  armed unless `opts.force` carries the operator's override. */
 export async function unpairRig(
   ctx: RequestContext,
+  opts?: ArmedOverrideOptions,
 ): Promise<{ paired: false; role: "drone" | "gs" }> {
-  return unpairRadio(ctx);
+  return unpairRadio(ctx, opts);
 }
 
 /** Toggle auto-pair on the rig. Re-arming is rejected (returns

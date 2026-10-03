@@ -19,5 +19,6 @@ export type {
   RecordingListResponse,
   SigningCapability,
   SigningCounters,
+  SigningDisableResult,
   SigningEnrollResult,
 } from "./agent-client/types";

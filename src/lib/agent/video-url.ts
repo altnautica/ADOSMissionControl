@@ -14,10 +14,12 @@ import type { CommandCloudStatus } from "@/stores/command-fleet-store";
 
 /** The agent's control front that the GCS reaches `/api/*` against, rebuilt
  * from the known-reachable LAN IP. Current agents proxy WHEP (`/whep`) on this
- * same `:8080` front, so a RELATIVE video path resolves to that origin —
- * same-origin with the `/api/*` poll and (through the LAN-pair proxy on a
- * hosted GCS) HTTPS-mixed-content-safe. A `.local`/mDNS host is never used
- * here. `null` when we have no reachable IP to build an origin from. */
+ * same `:8080` front, so a RELATIVE video path resolves to that origin, the
+ * same origin as the `/api/*` poll. It is plain http: no LAN-pair proxy lane
+ * carries WHEP, so a GCS served over HTTPS cannot play it (mixed content);
+ * LAN video needs the GCS opened over http on the local network or the
+ * desktop app. A `.local`/mDNS host is never used here. `null` when we have
+ * no reachable IP to build an origin from. */
 export function agentMediaBase(lastIp: string | undefined): string | null {
   return lastIp ? `http://${lastIp}:8080` : null;
 }

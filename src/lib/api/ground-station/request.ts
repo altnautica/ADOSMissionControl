@@ -11,6 +11,7 @@
 // solved this; this is the same helper.
 
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
+import { armedRefusalFrom } from "@/lib/agent/agent-client/transport";
 
 /**
  * Per-request deadline for ground-station REST calls.
@@ -58,7 +59,7 @@ export async function gsRequest<T>(
   );
   if (!res.ok) {
     const text = await res.text().catch(() => "Unknown error");
-    throw new GroundStationApiError(res.status, text);
+    throw armedRefusalFrom(res.status, text) ?? new GroundStationApiError(res.status, text);
   }
   return res.json() as Promise<T>;
 }

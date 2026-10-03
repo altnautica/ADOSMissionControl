@@ -4,9 +4,12 @@
  * focused on REST actions.
  *
  * `/ws/uplink` emits one frame shape, `{kind:"health_changed", active_uplink,
- * available, internet_reachable, data_cap_state, timestamp_ms}`, whenever the
- * uplink snapshot changes. Health, the active uplink, the failover log and the
- * data-cap state are all derived from it.
+ * available, internet_reachable, data_cap_state, timestamp_ms, stale}`,
+ * whenever the uplink snapshot changes. Health, the active uplink, the
+ * failover log and the data-cap state are all derived from it. A frame is
+ * `stale` unless the agent confirmed the uplink router is running; its keys
+ * are then the router's last write, so health and the active uplink read as
+ * not reported instead of as live.
  *
  * @license GPL-3.0-only
  */
@@ -56,6 +59,10 @@ export function applyUplinkEvent(
 ): UplinkSlice | null {
   const e = raw as Partial<UplinkEvent> | null;
   if (!e || e.kind !== "health_changed") return null;
+  // Anything but an explicit `stale: false` is not a live reading.
+  if (e.stale !== false) {
+    return { ...current, active: null, health: null, fetchedAt: now };
+  }
   const active = typeof e.active_uplink === "string" ? e.active_uplink : null;
   const reachable = e.internet_reachable === true;
   const health: UplinkHealth = reachable ? "ok" : active !== null ? "degraded" : "down";

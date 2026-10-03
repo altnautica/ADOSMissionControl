@@ -42,20 +42,33 @@ function parseWhepPort(url: string | null | undefined): number | undefined {
   }
 }
 
+function block(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+/** Map the agent's vehicle-state snapshot (`/api/status/full` `telemetry`),
+ * which nests its readings in `position`, `velocity`, `battery` and `gps`
+ * blocks, onto the fleet telemetry snapshot. */
 function mapTelemetry(raw: Record<string, unknown>): CommandTelemetrySnapshot {
-  const lat = numberOrUndefined(raw.lat);
-  const lon = numberOrUndefined(raw.lon);
-  const alt = numberOrUndefined(raw.alt);
-  const altRel = numberOrUndefined(raw.relative_alt);
-  const heading = numberOrUndefined(raw.heading);
-  const groundspeed = numberOrUndefined(raw.groundspeed);
-  const airspeed = numberOrUndefined(raw.airspeed);
-  const climb = numberOrUndefined(raw.climb);
-  const batteryVoltage = numberOrUndefined(raw.battery_voltage);
-  const batteryCurrent = numberOrUndefined(raw.battery_current);
-  const batteryRemaining = numberOrUndefined(raw.battery_remaining);
-  const gpsFix = numberOrUndefined(raw.gps_fix);
-  const satellites = numberOrUndefined(raw.satellites);
+  const position = block(raw.position);
+  const velocity = block(raw.velocity);
+  const battery = block(raw.battery);
+  const gps = block(raw.gps);
+  const lat = numberOrUndefined(position.lat);
+  const lon = numberOrUndefined(position.lon);
+  const alt = numberOrUndefined(position.alt_msl);
+  const altRel = numberOrUndefined(position.alt_rel);
+  const heading = numberOrUndefined(position.heading);
+  const groundspeed = numberOrUndefined(velocity.groundspeed);
+  const airspeed = numberOrUndefined(velocity.airspeed);
+  const climb = numberOrUndefined(velocity.climb);
+  const batteryVoltage = numberOrUndefined(battery.voltage);
+  const batteryCurrent = numberOrUndefined(battery.current);
+  const batteryRemaining = numberOrUndefined(battery.remaining);
+  const gpsFix = numberOrUndefined(gps.fix_type);
+  const satellites = numberOrUndefined(gps.satellites);
 
   const snapshot: CommandTelemetrySnapshot = {
     armed: booleanOrUndefined(raw.armed),
@@ -181,6 +194,7 @@ export function mapFullStatusToCloudStatus(
         : undefined,
     fcLinkHint: stringOrUndefined(resp.fc_link_hint),
     fcVariant: stringOrUndefined(resp.fc_variant),
+    fcCommandDownGated: booleanOrUndefined(resp.fc_command_down_gated),
     fcFirmware: stringOrUndefined(resp.fc_firmware),
     cpuPercent: resp.resources?.cpu_percent,
     memoryPercent: resp.resources?.memory_percent,

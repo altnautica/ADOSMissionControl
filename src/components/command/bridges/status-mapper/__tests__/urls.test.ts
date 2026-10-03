@@ -59,13 +59,13 @@ describe("resolveVideoUrls — relative same-origin resolution", () => {
 });
 
 describe("resolveVideoStreams — per-leg relative resolution", () => {
-  it("resolves the per-leg relative whep against the agent base, and no hls", () => {
+  it("resolves the per-leg relative whepUrl the heartbeat carries against the agent base, and no hls", () => {
     const legs = resolveVideoStreams(
       {
         videoState: "running",
         lastIp: "192.168.1.50",
         videoStreams: [
-          { id: "ir", whep: "/whep?camera=ir", hls: "/hls/ir/index.m3u8" },
+          { id: "ir", whepUrl: "/whep?camera=ir", hls: "/hls/ir/index.m3u8" },
         ],
       },
     );
@@ -84,7 +84,7 @@ describe("resolveVideoStreams — per-leg relative resolution", () => {
     const legs = resolveVideoStreams({
       videoState: "running",
       lastIp: "192.168.1.50",
-      videoStreams: [{ id: "ir" }, { id: "eo", whep: "/whep?camera=eo" }],
+      videoStreams: [{ id: "ir" }, { id: "eo", whepUrl: "/whep?camera=eo" }],
     });
     expect(legs.map((l) => l.whepUrl)).toEqual(["http://192.168.1.50:8080/whep?camera=eo"]);
   });

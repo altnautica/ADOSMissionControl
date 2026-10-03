@@ -23,7 +23,8 @@ export type CloudLimitedFeature =
   | "physicalUi"
   | "peripherals"
   | "mesh"
-  | "distributedRx";
+  | "distributedRx"
+  | "radio";
 
 interface CloudModeLimitedNoticeProps {
   feature: CloudLimitedFeature;

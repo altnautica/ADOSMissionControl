@@ -73,9 +73,12 @@ export async function loadDistributedRx(
     }
   } catch (err) {
     const { message, status } = errorMessage(err);
+    // Of the reads above only the pairing snapshot answers 503, when the
+    // mesh pairing daemon is not reachable. The receiver routes never do, so
+    // naming a receiver port here would send the operator to the wrong place.
     const friendly =
       status === 503
-        ? "WFB receiver cannot bind to UDP 5801 on bat0. Confirm `bat0` is up (ados gs mesh health) and no other process is holding the port."
+        ? "The mesh pairing service is not answering, so the Accept window and join requests cannot be read. Check that ados-mesh-pairing.service is running on this ground station."
         : message;
     set({
       distributedRx: {

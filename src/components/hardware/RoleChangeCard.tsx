@@ -19,12 +19,17 @@ import {
   groundStationApiFromAgent,
   type GroundStationRole,
 } from "@/lib/api/ground-station-api";
-import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
+import { AgentArmedRefusal } from "@/lib/agent/agent-client/transport";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { isDemoMode } from "@/lib/utils";
 
 interface RoleChangeCardProps {
+  /** The node the card is rendered for. Reads and the role write go to this
+   * node's own connection; with no such connection the picker is disabled. */
+  nodeDeviceId: string | null;
   /** Copy variant. `empty` renders the "this node carries no mesh yet"
    * framing. `switch` renders a generic role picker inside the role-active
    * views. */
@@ -37,13 +42,18 @@ interface RoleChangeCardProps {
 const ROLES: GroundStationRole[] = ["direct", "relay", "receiver"];
 const SWITCHING_TIMEOUT_MS = 20_000;
 
-export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
+export function RoleChangeCard({ nodeDeviceId, variant = "switch" }: RoleChangeCardProps) {
   const t = useTranslations("hardware.role");
   const { toast } = useToast();
-  const role = useGroundStationStore((s) => s.role);
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const agentUrl = direct?.agentUrl ?? null;
+  const apiKey = direct?.apiKey ?? null;
+  const target = groundStationApiFromAgent(agentUrl, apiKey)?.baseUrl ?? null;
+  const owned = useGroundStationStore((s) => target !== null && s.meshFor === target);
+  const storeRole = useGroundStationStore((s) => s.role);
+  const role = owned ? storeRole : { ...storeRole, info: null, error: null, switching: false };
   const applyRole = useGroundStationStore((s) => s.applyRole);
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
 
   const [selected, setSelected] = useState<GroundStationRole>(
     role.info?.current ?? "direct",
@@ -106,7 +116,13 @@ export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
       if (isDemoMode()) toast(t("demoReadOnly"), "info");
       return;
     }
-    await applyRole(api, selected);
+    try {
+      await withArmedOverride((force) => applyRole(api, selected, { force }));
+    } catch (err) {
+      // A declined armed override leaves the role unchanged; say so.
+      if (err instanceof AgentArmedRefusal) toast(t("armedDeclined"), "info");
+      else throw err;
+    }
   };
 
   const current = role.info?.current ?? null;
@@ -183,6 +199,7 @@ export function RoleChangeCard({ variant = "switch" }: RoleChangeCardProps) {
           {localTimeoutError}
         </p>
       ) : null}
+      {armedOverrideDialog}
     </div>
   );
 }

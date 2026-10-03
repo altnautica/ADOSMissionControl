@@ -143,10 +143,10 @@ export async function writeConfigForNodes(
         try {
           const res = await setConfigValueViaAccess(access, key, value);
           // The agent answers 200 with an `{error}` body for a rejected value
-          // and 200 with `persisted: false` for one it took in memory but
-          // could not write to disk, so a 2xx is not by itself a success. A
-          // fleet directive that survives on 19 of 24 nodes and evaporates on
-          // the rest at their next restart must be reported as a failure now.
+          // and 500 with `persisted: false` when it could not write its config
+          // file; the transports hand both back as results. A fleet directive
+          // that lands on 19 of 24 nodes must be reported as a failure on the
+          // other five.
           const failure = configWriteFailure(res);
           if (failure) {
             return { deviceId, mode: access.mode, ok: false, error: failure };

@@ -1,8 +1,7 @@
 /**
  * @module api/ground-station/types/ui
  * @description Physical UI types: OLED panel config, button bindings,
- * screen rotation, HDMI display, Bluetooth devices, gamepads, and the
- * factory-reset surface.
+ * screen rotation, HDMI display, Bluetooth devices and gamepads.
  *
  * @license GPL-3.0-only
  */
@@ -42,11 +41,6 @@ export interface OledUpdate {
 export interface ScreensUpdate {
   order?: string[];
   enabled?: string[];
-}
-
-export interface FactoryResetResult {
-  reset: boolean;
-  timestamp: string;
 }
 
 // Display

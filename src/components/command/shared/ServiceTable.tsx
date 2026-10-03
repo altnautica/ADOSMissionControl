@@ -14,15 +14,17 @@ import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useFreshness } from "@/lib/agent/freshness";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
+import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 
 interface ServiceTableProps {
   services: ServiceInfo[];
   /** Resolves with the agent's confirmation (null when queued over the
-   * cloud relay); rejects with the agent's reason on a failed restart. */
-  onRestart: (name: string) => Promise<string | null>;
-  onRestartAll?: () => Promise<string>;
-  processCpu?: number | null;
-  processMemoryMb?: number | null;
+   * cloud relay); rejects with the agent's reason on a failed restart, or
+   * with `AgentArmedRefusal` when the vehicle is armed and `opts.force` is
+   * unset. */
+  onRestart: (name: string, opts?: ArmedOverrideOptions) => Promise<string | null>;
+  onRestartAll?: (opts?: ArmedOverrideOptions) => Promise<string>;
 }
 
 function statusBadge(status: string, stale: boolean) {
@@ -79,7 +81,7 @@ type RestartTarget = { kind: "one"; name: string } | { kind: "all" };
 /** In-flight key for the restart-all action; never a unit name. */
 const ALL_KEY = "*";
 
-export function ServiceTable({ services, onRestart, onRestartAll, processCpu, processMemoryMb }: ServiceTableProps) {
+export function ServiceTable({ services, onRestart, onRestartAll }: ServiceTableProps) {
   const t = useTranslations("agent");
   const agentDependencies = useVideoStore((s) => s.agentDependencies);
   const freshness = useFreshness();
@@ -89,14 +91,18 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
     nodeDeviceId ? s.nodes[nodeIdForDevice(nodeDeviceId)]?.fc.armState === "armed" : false,
   );
   const [confirmTarget, setConfirmTarget] = useState<RestartTarget | null>(null);
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
   const [inFlight, setInFlight] = useState<Record<string, true>>({});
   const isStale = freshness.state !== "live" && freshness.state !== "unknown";
 
   const runRestart = (target: RestartTarget) => {
     const key = target.kind === "all" ? ALL_KEY : target.name;
-    const pending =
-      target.kind === "all" && onRestartAll ? onRestartAll() : target.kind === "one" ? onRestart(target.name) : null;
-    if (!pending) return;
+    if (target.kind === "all" && !onRestartAll) return;
+    const pending = withArmedOverride((force) =>
+      target.kind === "all" && onRestartAll
+        ? onRestartAll({ force })
+        : onRestart(key, { force }),
+    );
     setInFlight((s) => ({ ...s, [key]: true }));
     pending
       .then(
@@ -200,12 +206,6 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
               )}
             </button>
           )}
-          {processCpu != null && (
-            <span>CPU {processCpu.toFixed(1)}%</span>
-          )}
-          {processMemoryMb != null && (
-            <span>RAM {processMemoryMb.toFixed(0)} MB</span>
-          )}
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -295,6 +295,7 @@ export function ServiceTable({ services, onRestart, onRestartAll, processCpu, pr
         </table>
       </div>
       {confirmDialog}
+      {armedOverrideDialog}
     </div>
   );
 }

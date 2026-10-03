@@ -167,39 +167,179 @@ describe("LoggingService over a ground station's relay-proxy", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps the relay-proxy prefix instead of swapping to a port", async () => {
+  const RELAY_PREFIX =
+    "http://192.168.1.50:8080/api/v1/ground-station/relay-proxy/0a1b2c3d4e5f";
+
+  function logRow(id: number, tsUs: number, msg: string) {
+    return { ...LOGD_ROW, id, ts_us: tsUs, msg };
+  }
+
+  it("reads the drone's store through the relay prefix, never a rebuilt origin", async () => {
     // Port-swapping here would discard the prefix and dial the GROUND
     // STATION's own REST port, returning the ground station's logs labelled
     // as the drone's — a shipped surface reporting known-false data.
-    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    fetchMock.mockResolvedValueOnce(jsonResponse(envelope([LOGD_ROW])));
     const svc = new LoggingService(RELAY_CTX);
-    await svc.query({ limit: 5 });
+    const res = await svc.query({ limit: 5 });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toContain(
-      "/api/v1/ground-station/relay-proxy/0a1b2c3d4e5f/api/logs",
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${RELAY_PREFIX}/api/v2/observability/v1/query?limit=5`,
     );
-    expect(url).toContain("limit=5");
-    expect(url).not.toContain("observability");
+    expect(res.data).toHaveLength(1);
   });
 
-  it("probes exactly one tier — the radio carries only :8080/api", async () => {
-    // The proxy tier would cost a full relay round trip before failing, so
-    // it is never tried.
-    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+  it("falls back to the legacy route behind the same prefix when the store is off", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({}, 503))
+      .mockResolvedValueOnce(jsonResponse([]));
     const svc = new LoggingService(RELAY_CTX);
     const res = await svc.query();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[1][0]).toBe(`${RELAY_PREFIX}/api/logs`);
     expect(res.meta.source).toBe("legacy");
   });
 
-  it("refuses to open a tail rather than tailing the ground station", () => {
+  it("lists the relayed drone's sessions and metric series instead of answering empty", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(
+          envelope([
+            { id: 9, kind: "boot", started_us: 1_780_000_000_000_000, ended_us: null },
+          ]),
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          envelope([{ bucket_us: 1, metric: "system.cpu_percent", value: 33, count: 4 }]),
+        ),
+      );
     const svc = new LoggingService(RELAY_CTX);
-    expect(() =>
-      svc.tail({}, { onRow: vi.fn(), onError: vi.fn() }),
-    ).toThrow(/relay/i);
-    expect(fetchMock).not.toHaveBeenCalled();
+    const sessions = await svc.sessions();
+    const series = await svc.aggregate({ metric: ["system.cpu_percent"] });
+    expect(sessions.data).toHaveLength(1);
+    expect(series.data).toHaveLength(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${RELAY_PREFIX}/api/v2/observability/v1/sessions`,
+    );
+    expect(String(fetchMock.mock.calls[1][0])).toContain(
+      `${RELAY_PREFIX}/api/v2/observability/v1/aggregate?`,
+    );
+  });
+
+  it("reads the store's health over the relay instead of assuming it", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: true, db_open: true, writer_alive: false, integrity: "ok" }),
+    );
+    const health = await new LoggingService(RELAY_CTX).healthz();
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${RELAY_PREFIX}/api/v2/observability/v1/healthz`,
+    );
+    expect(health.writer_alive).toBe(false);
+  });
+
+  describe("live tail", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("polls the query every 2 s from a time cursor and delivers only new rows, oldest first", async () => {
+      const rows: string[] = [];
+      fetchMock
+        // First poll: the replay window, newest first.
+        .mockResolvedValueOnce(
+          jsonResponse(envelope([logRow(3, 3_000, "c"), logRow(2, 2_000, "b")])),
+        )
+        // Second poll: everything from the cursor, including the row already
+        // delivered at exactly the cursor stamp.
+        .mockResolvedValueOnce(
+          jsonResponse(
+            envelope([
+              logRow(5, 5_000, "e"),
+              logRow(4, 4_000, "d"),
+              logRow(3, 3_000, "c"),
+            ]),
+          ),
+        )
+        .mockResolvedValue(jsonResponse(envelope([logRow(5, 5_000, "e")])));
+
+      const onError = vi.fn();
+      const tail = new LoggingService(RELAY_CTX).tail(
+        { replay: 2, level: "info" },
+        { onRow: (r) => rows.push(r.message), onError },
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(rows).toEqual(["b", "c"]);
+      const first = String(fetchMock.mock.calls[0][0]);
+      expect(first.startsWith(`${RELAY_PREFIX}/api/v2/observability/v1/query?`)).toBe(true);
+      expect(first).toContain("level=info");
+
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(rows).toEqual(["b", "c", "d", "e"]);
+      expect(String(fetchMock.mock.calls[1][0])).toContain("from=3000");
+
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(String(fetchMock.mock.calls[2][0])).toContain("from=5000");
+      expect(rows).toEqual(["b", "c", "d", "e"]);
+      expect(onError).not.toHaveBeenCalled();
+
+      tail.close();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("pages back to the cursor when more rows arrived than one page holds", async () => {
+      const rows: string[] = [];
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse(envelope([logRow(1, 1_000, "a")])))
+        .mockResolvedValueOnce(
+          jsonResponse(envelope([logRow(3, 3_000, "c"), logRow(2, 2_000, "b")], "next-1")),
+        )
+        .mockResolvedValueOnce(jsonResponse(envelope([logRow(1, 1_000, "a")], null)));
+      new LoggingService(RELAY_CTX).tail(
+        { replay: 1 },
+        { onRow: (r) => rows.push(r.message), onError: vi.fn() },
+      );
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(String(fetchMock.mock.calls[2][0])).toContain("cursor=next-1");
+      expect(rows).toEqual(["a", "b", "c"]);
+    });
+
+    it("ends the tail through onError once when a poll fails", async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse(envelope([])))
+        .mockResolvedValueOnce(jsonResponse({ error: "unauth" }, 401));
+      const onError = vi.fn();
+      new LoggingService(RELAY_CTX).tail({}, { onRow: vi.fn(), onError });
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("exports by paging the query and writing each wire row as one JSONL line", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(envelope([logRow(2, 2_000, "b"), logRow(1, 1_000, "a")], "page-2")),
+      )
+      .mockResolvedValueOnce(jsonResponse(envelope([logRow(0, 500, "z")], null)));
+    const svc = new LoggingService(RELAY_CTX);
+    const { stream, format } = await svc.export({ format: "jsonl.zst", session: "4" });
+    expect(format).toBe("jsonl");
+    const lines = (await new Response(stream).text()).trim().split("\n");
+    expect(lines.map((l) => JSON.parse(l).msg)).toEqual(["b", "a", "z"]);
+    const firstUrl = String(fetchMock.mock.calls[0][0]);
+    expect(firstUrl.startsWith(`${RELAY_PREFIX}/api/v2/observability/v1/query?`)).toBe(true);
+    expect(firstUrl).toContain("session=4");
+    expect(firstUrl).not.toContain("format=");
+    expect(String(fetchMock.mock.calls[1][0])).toContain("cursor=page-2");
+  });
+
+  it("surfaces a refused relayed export instead of an empty file", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}, 403));
+    await expect(new LoggingService(RELAY_CTX).export()).rejects.toThrow(
+      /export refused: 403/,
+    );
   });
 
   it("pushes through the relay prefix, never a rebuilt origin", async () => {

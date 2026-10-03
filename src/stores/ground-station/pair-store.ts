@@ -21,6 +21,10 @@ import type {
   ScreensUpdate,
   UiConfig,
 } from "@/lib/api/ground-station-api";
+import {
+  AgentArmedRefusal,
+  type ArmedOverrideOptions,
+} from "@/lib/agent/agent-client/transport";
 
 export interface PairSlice {
   network: NetworkStatus | null;
@@ -50,7 +54,9 @@ export interface PairSlice {
     pairKey: string,
     droneId?: string,
   ) => Promise<void>;
-  unpair: (api: GroundStationApi) => Promise<void>;
+  /** Rejects only with `AgentArmedRefusal` (the vehicle is armed and
+   * `opts.force` is unset); every other failure lands in `pair.error`. */
+  unpair: (api: GroundStationApi, opts?: ArmedOverrideOptions) => Promise<void>;
   clearPair: () => void;
 }
 
@@ -67,7 +73,7 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
   loadNetwork: async (api) => {
     try {
       const net = await api.getNetwork();
-      const modemFromNet = net.modem_4g ?? net.modem ?? null;
+      const modemFromNet = net.modem_4g ?? null;
       const currentUplink = get().uplink;
       set({
         network: net,
@@ -166,14 +172,17 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
     }
   },
 
-  unpair: async (api) => {
+  unpair: async (api, opts) => {
     try {
-      await api.unpairDrone();
+      await api.unpairDrone(opts);
       set({
         pair: INITIAL_PAIR,
         status: { ...get().status, paired_drone: null },
       });
     } catch (err) {
+      // The armed refusal is the caller's to answer (it asks the operator and
+      // retries with the override); it is not a failed unpair.
+      if (err instanceof AgentArmedRefusal) throw err;
       const { message, status } = errorMessage(err);
       set({
         pair: {

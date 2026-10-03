@@ -26,6 +26,7 @@ import type {
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { resolveAgentVideoUrl } from "@/lib/agent/video-url";
 import type { RelayedPeerStatus } from "@/lib/agent/relayed-status-client";
+import type { FleetSlotRow } from "@/lib/api/ground-station/types";
 
 /** A directly-paired ground node that may be relaying drones. */
 export interface RelayGroundNode {
@@ -41,6 +42,9 @@ export interface RelayGroundNode {
   /** The most recently polled `relayed/status` peers this ground node
    * reported, keyed by device id. Undefined before the first poll lands. */
   relayedStatusByPeer?: ReadonlyMap<string, RelayedPeerStatus>;
+  /** The ground node's fleet slot table, when it could be read. Undefined
+   * means unknown (cloud-only station, or the read failed), not empty. */
+  fleetSlots?: readonly FleetSlotRow[];
 }
 
 /** One enrollment intent for a WFB-linked drone reached through a ground node. */
@@ -80,6 +84,8 @@ export interface RelayedEnrollment {
    * Undefined until an identity snapshot lands — the caller falls back to
    * `Agent <hash>` in that case. */
   realName?: string;
+  /** This drone's row in the ground node's fleet slot table, when known. */
+  slot?: FleetSlotRow;
 }
 
 /**
@@ -131,9 +137,26 @@ function peerObservedAt(
   return gs.radioUp ? gs.status?.updatedAt : undefined;
 }
 
+/**
+ * Whether the ground node's served video is THIS drone's. A ground station
+ * decodes only one slot's video (the hero, `main`); every other drone in its
+ * fleet has no live feed there. With the slot table in hand the answer is the
+ * row's `video_hero`. Without it, the served video can be attributed only when
+ * the station reports this drone as its sole peer.
+ */
+function servesVideoOf(
+  slot: FleetSlotRow | undefined,
+  gs: RelayGroundNode,
+  peerCount: number,
+): boolean {
+  if (gs.fleetSlots !== undefined) return slot?.video_hero === true;
+  return peerCount === 1;
+}
+
 /** Build the funneled-feed status row for a relayed-only drone. Honest: the
- * feed is present only while the ground node's WFB link is verified up (no fabricated reading),
- * and it points at the ground node's own WHEP (the drone has no direct reach).
+ * feed is present only while the ground node's WFB link is verified up (no
+ * fabricated reading) AND the station's served video is this drone's, and it
+ * points at the ground node's own WHEP (the drone has no direct reach).
  *
  * `updatedAt` is the peer-observation time, not the ground node's report time,
  * because this row is the DRONE's status and the fleet projection folds its
@@ -144,6 +167,8 @@ function funneledStatusFor(args: {
   peerRssiDbm: number | null;
   groundStatus: CommandCloudStatus | undefined;
   radioUp: boolean;
+  /** True when the ground node's served video belongs to this drone. */
+  servesThisVideo: boolean;
   updatedAt: number;
   /** The compact node-status snapshot the drone pushed over the aux lane, via
    * the ground station's relayed/status route — undefined until the first
@@ -157,10 +182,11 @@ function funneledStatusFor(args: {
     peerRssiDbm,
     groundStatus,
     radioUp,
+    servesThisVideo,
     updatedAt,
     relayedStatus,
   } = args;
-  const funneledUrl = radioUp ? resolveAgentVideoUrl(groundStatus) : null;
+  const funneledUrl = radioUp && servesThisVideo ? resolveAgentVideoUrl(groundStatus) : null;
   const s = relayedStatus?.status;
 
   return {
@@ -217,6 +243,7 @@ export function planRelayedEnrollment(args: {
 
   for (const gs of groundNodes) {
     const peers = extractLinkedPeers(gs.status);
+    const peerCount = peers.filter((p) => p.deviceId !== gs.deviceId).length;
     for (const peer of peers) {
       const droneDeviceId = peer.deviceId;
       // Guard self-reference and duplicates across ground nodes.
@@ -233,6 +260,7 @@ export function planRelayedEnrollment(args: {
           : null;
       const direct = directlyPairedDeviceIds.has(droneDeviceId);
       const relayedStatus = gs.relayedStatusByPeer?.get(droneDeviceId);
+      const slot = gs.fleetSlots?.find((r) => r.device_id === droneDeviceId);
 
       enrollments.push({
         nodeId: nodeIdForDevice(droneDeviceId),
@@ -243,6 +271,7 @@ export function planRelayedEnrollment(args: {
         agentIdentityKnown: relayedStatus?.profile !== undefined,
         realProfile: relayedStatus?.profile,
         realName: relayedStatus?.name,
+        slot,
         funneledStatus: direct
           ? undefined
           : funneledStatusFor({
@@ -251,6 +280,7 @@ export function planRelayedEnrollment(args: {
               peerRssiDbm,
               groundStatus: gs.status,
               radioUp: gs.radioUp,
+              servesThisVideo: servesVideoOf(slot, gs, peerCount),
               updatedAt: lastHeartbeat,
               relayedStatus,
             }),

@@ -29,17 +29,10 @@ export interface GroundStationStatusResponse extends GroundStationStatus {
   link_health?: Partial<GroundStationLinkHealth>;
 }
 
-export type WfbBitrateProfile = "low-latency" | "balanced" | "long-range";
-
-/** WFB link configuration as the ground agent's /wfb route reads and writes it. */
+/** The ground station's WFB view (`GET /api/v1/ground-station/wfb`). Each
+ *  value comes from the live radio sidecar and is null when the radio has not
+ *  reported it, never a placeholder 0. */
 export interface WfbConfig {
-  channel: number;
-  bitrate_profile: WfbBitrateProfile;
-  /** Optional regulatory/transmit-power request, in dBm. Caller-supplied;
-   *  the agent clamps to the per-driver maximum and reports back the
-   *  effective value via the radio status block. */
-  tx_power_dbm?: number;
-  /** Optional MCS index for the radio link; agent rejects unsupported
-   *  values per the active driver. */
-  mcs_index?: number;
+  channel: number | null;
+  tx_power_dbm: number | null;
 }

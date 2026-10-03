@@ -32,7 +32,7 @@ function EmptyRoleCard({ message }: { message: string }) {
   );
 }
 
-export function DistributedRxPanel() {
+export function DistributedRxPanel({ nodeDeviceId }: { nodeDeviceId: string | null }) {
   const t = useTranslations("hardware.distributedRx");
   const role = useGroundStationStore((s) => s.role.info?.current ?? "direct");
   const distRx = useGroundStationStore((s) => s.distributedRx);
@@ -41,7 +41,7 @@ export function DistributedRxPanel() {
     return (
       <div className="flex flex-col gap-4">
         <EmptyRoleCard message={t("emptyDirect")} />
-        <RoleChangeCard variant="empty" />
+        <RoleChangeCard nodeDeviceId={nodeDeviceId} variant="empty" />
       </div>
     );
   }
@@ -50,7 +50,7 @@ export function DistributedRxPanel() {
     return (
       <div className="flex flex-col gap-4">
         <EmptyRoleCard message={t("emptyUnset")} />
-        <RoleChangeCard variant="empty" />
+        <RoleChangeCard nodeDeviceId={nodeDeviceId} variant="empty" />
       </div>
     );
   }
