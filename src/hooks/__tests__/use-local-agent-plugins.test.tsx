@@ -282,6 +282,17 @@ describe("useLocalAgentPlugins", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
+  it("hands back one array across renders when the node reports no plugins", async () => {
+    listImpl.value = async () => ({ installs: [] });
+    const { result, rerender } = renderHook(() => useLocalAgentPlugins("drone-1"));
+    await waitFor(() => expect(result.current).toEqual([]));
+    const first = result.current;
+    rerender();
+    // Readers key effects on this value; a fresh empty array per render
+    // re-runs them and loops any effect that sets state.
+    expect(result.current).toBe(first);
+  });
+
   describe("fleet (null device) branch", () => {
     it("is inert (null) when signed in", () => {
       authState.value = true;

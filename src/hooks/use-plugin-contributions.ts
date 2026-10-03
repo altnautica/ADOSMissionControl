@@ -106,6 +106,17 @@ function isKnownSlot(slot: string): slot is PluginSlotName {
   return KNOWN_SLOTS.has(slot);
 }
 
+/** Whether two maps hold the same values under the same keys. A lifecycle
+ * effect re-publishes its map on every run; keeping the previous instance when
+ * nothing changed stops a no-op publish from re-rendering the host. */
+function sameEntries<K, V>(a: ReadonlyMap<K, V>, b: ReadonlyMap<K, V>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [key, value] of a) {
+    if (b.get(key) !== value) return false;
+  }
+  return true;
+}
+
 /** Whether a manifest entry mounts in `slot` (any slot when unset) on a node of
  * `nodeProfile`: a known slot, with a per-node page slot profile-narrowed to
  * the node, matching the header/body filter so an off-profile page never
@@ -329,7 +340,7 @@ export function usePluginContributions(
         const view = peekBundle(key);
         if (view) next.set(installId, view);
       }
-      setLoaded(next);
+      setLoaded((prev) => (sameEntries(prev, next) ? prev : next));
     };
     publish();
     for (const target of loadTargets) {
@@ -404,7 +415,7 @@ export function usePluginContributions(
       }
       next.set(pluginId, surface);
     }
-    setHandlers(next);
+    setHandlers((prev) => (sameEntries(prev, next) ? prev : next));
   }, [activePluginIdsKey, deviceId, translate, cloudQuery, recordsBackend]);
 
   // ── Teardown: drop every reference this host holds on unmount ───────

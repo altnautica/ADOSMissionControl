@@ -240,6 +240,11 @@ function fleetRecordToDetail(install: LocalPluginInstall): LocalAgentPluginDetai
   };
 }
 
+/** The resolved "no live plugins" answer. One frozen instance, so a node with
+ * nothing installed hands every render the same array and readers that key
+ * effects on it do not re-run. */
+const NO_PLUGINS: ReadonlyArray<LocalAgentPluginDetail> = Object.freeze([]);
+
 /**
  * Local-first plugin detail for `deviceId`. Returns `null` when not in
  * local mode (signed in, or demo) or while the agent fetch is in flight;
@@ -256,7 +261,7 @@ function fleetRecordToDetail(install: LocalPluginInstall): LocalAgentPluginDetai
  */
 export function useLocalAgentPlugins(
   deviceId: string | null,
-): LocalAgentPluginDetail[] | null {
+): ReadonlyArray<LocalAgentPluginDetail> | null {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const node = useLocalNodesStore((s) =>
     deviceId ? s.nodes.find((n) => n.deviceId === deviceId) : undefined,
@@ -421,6 +426,6 @@ export function useLocalAgentPlugins(
   // branch resolves via the async agent reads above.
   if (deviceId === null) return fleetRows;
   if (!fetchKey) return null;
-  if (liveInstalls?.length === 0) return [];
+  if (liveInstalls?.length === 0) return NO_PLUGINS;
   return read !== null && read.key === fetchKey ? read.rows : null;
 }
