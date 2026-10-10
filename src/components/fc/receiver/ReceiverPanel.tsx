@@ -5,8 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
+import { useTranslations } from "next-intl";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { usePanelParams } from "@/hooks/use-panel-params";
@@ -26,9 +26,6 @@ import {
 
 export function ReceiverPanel() {
   const protocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
-  const [saving, setSaving] = useState(false);
 
   // Live RC data: re-read on every telemetry push and dropped once stale, so
   // the bars and the calibration capture never work from a frozen frame.
@@ -48,8 +45,13 @@ export function ReceiverPanel() {
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
+    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames, panelId: "receiver", autoLoad: true });
+  const t = useTranslations("fcToasts.receiver");
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+    { saveAllToRam, commitToFlash, revertAll },
+    { saved: t("receiverParamsSaved"), flash: { successMessage: t("paramsWrittenToFlash") } },
+  );
   useUnsavedGuard(dirtyParams.size > 0);
 
   // ── Helpers to read/write params from flat Map ──────────────
@@ -75,18 +77,6 @@ export function ReceiverPanel() {
   }, [rcProtocolsValue]);
 
   // ── Save / Flash ───────────────────────────────────────────
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Receiver parameters saved to RAM", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    showFlashResult(await commitToFlash(), { successMessage: "Parameters written to flash" });
-  }
 
   // ── RC data guard ─────────────────────────────────────────
   const hasRcData = latestRc != null && channels.some((c) => c > 0);

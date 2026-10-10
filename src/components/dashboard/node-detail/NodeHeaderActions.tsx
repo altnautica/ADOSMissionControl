@@ -3,7 +3,7 @@
 /**
  * @module node-detail/NodeHeaderActions
  * @description The right side of the node-detail header: the node id, the
- * Remove action, the link pills, the HUD link and Reboot FC, with their
+ * Remove action, the link pills, Open cockpit and Reboot FC, with their
  * confirmation dialogs.
  *
  * Remove reports the node removed only once the forget has finished, and a
@@ -16,6 +16,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { MonitorPlay, RotateCcw, Trash2 } from "lucide-react";
+import { useUiStore } from "@/stores/ui-store";
+import { requestImmersiveCockpit } from "@/lib/cockpit/immersive-request";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -28,6 +30,12 @@ import { ConnectionQualityMeter } from "@/components/indicators/ConnectionQualit
 import { NavStatePill } from "@/components/indicators/NavStatePill";
 import { RuntimeModeBadge } from "@/components/indicators/RuntimeModeBadge";
 import { TrafficPill } from "@/components/indicators/TrafficPill";
+
+/** Show this node's Cockpit tab and take it full-screen once it is showing. */
+function openCockpit(): void {
+  useUiStore.getState().setPendingDetailTab("cockpit");
+  requestImmersiveCockpit();
+}
 
 export function NodeHeaderActions({
   droneId,
@@ -104,20 +112,18 @@ export function NodeHeaderActions({
       {isConnected && <NavStatePill />}
       {isConnected && <TrafficPill />}
       {isConnected && <ConnectionQualityMeter />}
-      {isConnected && isDroneProfile && (
-        // `/hud` is the chromeless HDMI kiosk surface. It opens in a new tab
-        // deliberately: the route strips all GCS chrome, so navigating in
-        // place would leave the operator with no way back.
-        <a
-          href="/hud"
-          target="_blank"
-          rel="noopener noreferrer"
-          title={t("openHud")}
-          aria-label={t("openHud")}
+      {isDroneProfile && (
+        // Opens this node's Cockpit tab full-screen (immersive); the band's
+        // exit control and Escape return to the dashboard.
+        <button
+          type="button"
+          onClick={openCockpit}
+          title={t("openCockpit")}
+          aria-label={t("openCockpit")}
           className="flex h-7 shrink-0 items-center gap-1 px-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary focus-ring"
         >
           <MonitorPlay size={12} aria-hidden="true" />
-        </a>
+        </button>
       )}
       {isConnected && (
         <Button

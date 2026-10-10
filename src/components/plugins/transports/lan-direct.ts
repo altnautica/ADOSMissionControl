@@ -67,7 +67,7 @@ export async function installLanDirect(
   if (!inputs.pairingKey) {
     throw new LanDirectError(
       "auth-missing",
-      "Drone is not paired. Pair the drone before installing a plugin.",
+      "Drone is not paired. Pair the drone before installing an extension.",
     );
   }
 
@@ -113,7 +113,7 @@ export async function sendLanInstall(
     if (err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError")) {
       throw new LanDirectError(
         "timeout",
-        `The drone did not answer within ${Math.round(timeoutMs / 60_000)} minutes. The install may still be running on it; check the drone's plugin list before retrying.`,
+        `The drone did not answer within ${Math.round(timeoutMs / 60_000)} minutes. The install may still be running on it; check the drone's extension list before retrying.`,
       );
     }
     // `TypeError: Failed to fetch` is the browser's catch-all for
@@ -175,7 +175,7 @@ export async function finishLanInstall(
     enabledOnAgent = true;
   } catch (err) {
     notices.push(
-      `Installed, but the drone did not enable it (${err instanceof Error ? err.message : String(err)}). Enable it from the drone's Plugins tab.`,
+      `Installed, but the drone did not enable it (${err instanceof Error ? err.message : String(err)}). Enable it from the drone's Extensions page.`,
     );
   }
 

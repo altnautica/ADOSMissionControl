@@ -11,6 +11,7 @@ import { renderHook, act } from "@testing-library/react";
 
 import { useFlightModeParams } from "../use-flight-mode-params";
 import { ArduCopterHandler, ArduRoverHandler } from "@/lib/protocol/firmware/ardupilot";
+import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import type { FirmwareHandler } from "@/lib/protocol/types/firmware";
 
@@ -34,6 +35,7 @@ async function load(handler: FirmwareHandler, isCopter: boolean) {
   const { protocol, getParameter, setParameter } = fakeProtocol();
   const { result } = renderHook(() =>
     useFlightModeParams({ protocol, firmwareHandler: handler, isCopter, toast: vi.fn() }),
+    { wrapper: IntlWrapper },
   );
   await act(async () => {
     await result.current.fetchParams();

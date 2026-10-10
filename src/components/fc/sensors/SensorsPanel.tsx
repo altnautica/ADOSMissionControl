@@ -8,8 +8,7 @@ import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -27,8 +26,6 @@ import {
 
 export function SensorsPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
   const { label: pl } = useParamLabel();
@@ -36,7 +33,6 @@ export function SensorsPanel() {
   const { enumValues } = useParamEnums(metadata);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
   const scrollRef = usePanelScroll("sensors");
-  const [saving, setSaving] = useState(false);
 
   // Live readouts follow every sample and disappear once the link goes quiet,
   // rather than holding the last value under a "Live" label.
@@ -46,8 +42,9 @@ export function SensorsPanel() {
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
+    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: SENSOR_PARAMS, optionalParams: OPTIONAL_SENSOR_PARAMS, panelId: "sensors" });
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -82,19 +79,6 @@ export function SensorsPanel() {
     const next = availableRngfnd.find((n) => !extraRngfnd.includes(n));
     if (next) setRevealedRngfnd((prev) => new Set(prev).add(next));
   };
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok);
-  }
 
   return (
     <ArmedWarningBanner>

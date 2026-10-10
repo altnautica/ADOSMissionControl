@@ -206,6 +206,8 @@ function collectSlotContributions(
     if (title !== undefined) row.title = title;
     if (icon !== undefined) row.icon = icon;
     if (order !== undefined) row.order = order;
+    const zone = str(entry.zone);
+    if (zone !== undefined && slot === "cockpit.widget") row.zone = zone;
     into.push(row);
   }
 }

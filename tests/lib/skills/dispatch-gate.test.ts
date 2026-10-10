@@ -133,6 +133,7 @@ describe("skill dispatch gate", () => {
         title: "t",
         message: "m",
         confirmLabel: "c",
+        gesture: "hold",
         variant: "danger",
       },
       activate: activateFn,
@@ -154,6 +155,7 @@ describe("skill dispatch gate", () => {
         title: "t",
         message: "m",
         confirmLabel: "c",
+        gesture: "hold",
         variant: "danger",
       },
       activate: activateFn,
@@ -326,10 +328,10 @@ describe("built-in arm adapter", () => {
     await activate("arm", ctx);
 
     expect(confirm).toHaveBeenCalledTimes(1);
-    // The confirm policy carries the danger variant + typed phrase.
+    // The confirm policy carries the danger variant + the slide gesture.
     expect(seen).not.toBeNull();
     expect((seen as unknown as ConfirmPolicy).variant).toBe("danger");
-    expect((seen as unknown as ConfirmPolicy).typedPhrase).toBe("ARM");
+    expect((seen as unknown as ConfirmPolicy).gesture).toBe("slide");
     expect(arm).toHaveBeenCalledTimes(1);
   });
 

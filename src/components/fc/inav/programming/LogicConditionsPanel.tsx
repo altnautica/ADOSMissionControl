@@ -15,6 +15,7 @@ import type { INavLogicCondition } from "@/lib/protocol/msp/msp-decoders-inav";
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -180,6 +181,7 @@ const LogicConditionRow = memo(function LogicConditionRow({ idx, cond, status, s
 export function LogicConditionsPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.inav");
   const { isArmed } = useArmedLock();
 
   const conditions = useProgrammingStore((s) => s.conditions);
@@ -213,7 +215,7 @@ export function LogicConditionsPanel() {
   const handleRead = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     await loadFromFc(protocol);
@@ -221,14 +223,14 @@ export function LogicConditionsPanel() {
     if (err) {
       toast(err, "error");
     } else {
-      toast("Logic conditions loaded from FC", "success");
+      toast(t("logicConditionsLoaded"), "success");
     }
-  }, [selectedProtocol, loadFromFc, toast]);
+  }, [selectedProtocol, loadFromFc, toast, t]);
 
   const handleWrite = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     await uploadConditions(protocol);
@@ -236,9 +238,9 @@ export function LogicConditionsPanel() {
     if (err) {
       toast(err, "error");
     } else {
-      toast("Logic conditions written to FC", "success");
+      toast(t("logicConditionsWritten"), "success");
     }
-  }, [selectedProtocol, uploadConditions, toast]);
+  }, [selectedProtocol, uploadConditions, toast, t]);
 
   // Live values are shown only while the last status read is recent.
   useClockTick();

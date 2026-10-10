@@ -8,7 +8,7 @@
  */
 
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
-import { useFleetStore } from "@/stores/fleet-store";
+import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 
 /**
@@ -21,7 +21,7 @@ export function resolveFleetRowId(node: string): string | null {
   const target =
     node === "local" ? useAgentConnectionStore.getState().nodeDeviceId : node;
   if (!target) return null;
-  const fleet = useFleetStore.getState().drones;
+  const fleet = getFleetDrones();
   if (fleet.some((d) => d.id === target)) return target;
   const nid = nodeIdForDevice(target);
   if (fleet.some((d) => d.id === nid)) return nid;

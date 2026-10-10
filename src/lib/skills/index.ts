@@ -10,11 +10,17 @@
  * @license GPL-3.0-only
  */
 
-import type { Skill, SkillContext, SkillActivateArgs } from "./types";
+import type {
+  Skill,
+  SkillContext,
+  SkillActivateArgs,
+  ConfirmResult,
+} from "./types";
 import {
   useSkillRegistry,
   buildSkillContextFor,
   setSkillNotifier,
+  isSkillLinkFresh,
 } from "./registry";
 import { builtinSkills } from "./builtins";
 import {
@@ -25,6 +31,7 @@ import {
 } from "./cooldown";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useChecklistStore } from "@/stores/checklist-store";
 import { useFollowMeStore } from "@/stores/follow-me-store";
 import { stopFollowMe } from "@/lib/follow-me";
 
@@ -41,12 +48,26 @@ export type {
   SkillContext,
   SkillActivateArgs,
   ConfirmPolicy,
+  ConfirmGesture,
+  ConfirmResult,
+  ConfirmChoice,
+  ConfirmAltitude,
   SkillCategory,
   SkillSource,
   ArmRequirement,
   SkillProtocol,
 } from "./types";
-export { useSkillRegistry, setSkillNotifier, notifySkill } from "./registry";
+export {
+  CONFIRM_HOLD_DEFAULT_MS,
+  GUARD_WINDOW_MS,
+  confirmHoldMs,
+} from "./types";
+export {
+  useSkillRegistry,
+  setSkillNotifier,
+  notifySkill,
+  SKILL_LINK_FRESH_MS,
+} from "./registry";
 export {
   buildSkillContextForNode,
   availableModesForNode,
@@ -67,6 +88,9 @@ export function buildSkillContext(droneId: string): SkillContext {
 
 /** Default one-shot debounce window (ms) — swallows a stuttered double-press. */
 const DEBOUNCE_MS = 750;
+
+/** How often the FC heartbeat age is sampled for link freshness (ms). */
+const LINK_FRESH_POLL_MS = 500;
 
 /**
  * Per-(droneId, skillId) dispatch guards. `busy` blocks re-entrant presses
@@ -151,20 +175,33 @@ export async function activate(
     return;
   }
 
-  // Confirm gate — open the shared dialog and await the operator.
-  if (skill.confirm) {
+  // Confirm gate — open the shared sheet and await the operator. A `tap`
+  // policy is confirmed by the press itself and opens nothing.
+  let activateArgs = args;
+  const policy = skill.confirmFor ? skill.confirmFor(args) : skill.confirm;
+  if (policy && policy.gesture !== "tap") {
     busy.add(key);
-    let confirmed = false;
+    let result: ConfirmResult = false;
     try {
-      confirmed = await ctx.confirm(
-        skill.confirmValues
-          ? { ...skill.confirm, values: skill.confirmValues(args) }
-          : skill.confirm,
-      );
+      const altitude =
+        policy.altitude && typeof args?.altitudeM === "number"
+          ? { ...policy.altitude, defaultM: args.altitudeM }
+          : policy.altitude;
+      result = await ctx.confirm({
+        ...policy,
+        ...(altitude ? { altitude } : {}),
+        ...(skill.confirmValues ? { values: skill.confirmValues(args) } : {}),
+        ...(typeof args?.gamepadButton === "number"
+          ? { gamepadButton: args.gamepadButton }
+          : {}),
+      });
     } finally {
       busy.delete(key);
     }
-    if (!confirmed) return;
+    if (!result) return;
+    if (typeof result === "object" && typeof result.altitudeM === "number") {
+      activateArgs = { ...args, altitudeM: result.altitudeM };
+    }
   }
 
   // Idempotency: swallow a repeat one-shot inside the debounce window. Toggles
@@ -185,7 +222,7 @@ export async function activate(
 
   busy.add(key);
   try {
-    const result = await skill.activate(ctx, args);
+    const result = await skill.activate(ctx, activateArgs);
     // A returned result with success=false is the vehicle's (or its lane's)
     // own refusal. Silence here reads as success on a surface with no other
     // feedback, so the answer is surfaced in the operator's face.
@@ -256,9 +293,10 @@ export function registerBuiltins(): void {
 let subscriptionsInitialised = false;
 
 /**
- * Subscribe the stores that drive skill state (arm/mode/selected-drone, the
- * Follow-Me behavior store) and recompute the selected drone's state on any
- * change, debounced to animation-frame cadence so a 10 Hz telemetry stream
+ * Subscribe the stores that drive skill state (arm/mode/connection, the
+ * selected drone, FC link freshness, checklist readiness, the Follow-Me
+ * behavior store, cooldown ends) and recompute the selected drone's state on
+ * any change, coalesced to animation-frame cadence so a 10 Hz telemetry stream
  * does not thrash the bar. Idempotent; app-lifetime singletons, no teardown.
  */
 export function initSkillSubscriptions(): void {
@@ -280,9 +318,38 @@ export function initSkillSubscriptions(): void {
     }
   };
 
-  // The cooldown/charge clock recomputes the bar at each sweep frame + recharge
-  // boundary so the conic sweep animates and the charge badge updates live.
+  // The cooldown/charge clock recomputes the bar once at each window end and
+  // recharge boundary; the sweep in between animates in CSS.
   setCooldownTick(schedule);
+
+  // Link freshness. A heartbeat that stops arriving changes no store field, so
+  // without a clock the bar would keep offering commands over a dead link. The
+  // ticker samples the selected drone's heartbeat age and recomputes only when
+  // freshness (or the selection it was sampled for) flips.
+  let linkDroneId: string | null = null;
+  let linkFresh: boolean | null = null;
+  setInterval(() => {
+    const droneId = useDroneManager.getState().selectedDroneId;
+    const fresh = isSkillLinkFresh(
+      useDroneStore.getState().lastHeartbeat,
+      Date.now(),
+    );
+    if (droneId === linkDroneId && fresh === linkFresh) return;
+    linkDroneId = droneId;
+    linkFresh = fresh;
+    schedule();
+  }, LINK_FRESH_POLL_MS);
+
+  // Checklist readiness gates arm/take-off; recompute when it flips for the
+  // selected drone.
+  let checklistReady: boolean | null = null;
+  useChecklistStore.subscribe((state) => {
+    const droneId = useDroneManager.getState().selectedDroneId;
+    const ready = droneId ? state.isReadyToArm(droneId) : false;
+    if (ready === checklistReady) return;
+    checklistReady = ready;
+    schedule();
+  });
 
   useDroneStore.subscribe((next, prev) => {
     if (

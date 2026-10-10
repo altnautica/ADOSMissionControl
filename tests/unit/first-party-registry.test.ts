@@ -47,7 +47,8 @@ describe("first-party registry demo fixture", () => {
     expect((summary.contributesTabs ?? []).length).toBeGreaterThan(0);
     expect((summary.contributesSlots ?? []).length).toBeGreaterThan(0);
     expect((summary.contributesParameters ?? []).length).toBeGreaterThan(0);
-    expect((summary.contributesTargetActions ?? []).length).toBe(1);
+    // The real SIYI manifest declares no target actions; neither does its mock.
+    expect(summary.contributesTargetActions ?? []).toEqual([]);
     expect((summary.screenshots ?? []).length).toBe(2);
     expect(summary.features && summary.features.length).toBeGreaterThan(0);
     // An agent-half tool carries its half stamp.

@@ -238,7 +238,7 @@ interface CachedRow {
 }
 
 /**
- * A stateful, identity-preserving fleet projector. One instance per consumer.
+ * A stateful, identity-preserving fleet projector.
  */
 export type FleetDronesProjector = (
   input: SelectFleetDronesInput,
@@ -248,8 +248,8 @@ export type FleetDronesProjector = (
  * Create a memoizing wrapper around {@link selectFleetDrones} that preserves
  * object identity for rows — and for the whole array — that did not change.
  *
- * Why this exists: `useFleetStore((s) => s.drones)` selects the array, so a
- * fresh array reference re-renders all nine of its consumers even when nothing
+ * Why this exists: `useFleetDrones` selectors compare rows and arrays by
+ * identity, so a fresh reference re-renders every consumer even when nothing
  * about the fleet moved. The projection itself is cheap; replacing the array is
  * what cost. Reference stability turns a fleet tick with no change into zero
  * re-renders.
@@ -259,7 +259,7 @@ export type FleetDronesProjector = (
  * the offline or heartbeat-staleness threshold and leaves every other row
  * alone.
  *
- * Stateful by design — one instance per consumer. Not for use inside a pure
+ * Stateful by design (`use-fleet-drones` holds the shared one). Not for use inside a pure
  * test of the projection; call {@link selectFleetDrones} for that.
  */
 export function createFleetDronesProjector(): FleetDronesProjector {

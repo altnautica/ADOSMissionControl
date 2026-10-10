@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -21,6 +22,7 @@ interface MotorTestSectionProps {
 
 export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: MotorTestSectionProps) {
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.motors");
   const [motorTestEnabled, setMotorTestEnabled] = useState(false);
   const [testMotor, setTestMotor] = useState("1");
   const [testThrottle, setTestThrottle] = useState(5);
@@ -39,16 +41,16 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
       // both resolve with success=false rather than throwing.
       const result = await protocol.motorTest(Number(testMotor), testThrottle, testDuration);
       if (result.success) {
-        toast(`Motor ${testMotor} test started`, "info");
+        toast(t("motorTestRunning", { motor: testMotor }), "info");
       } else {
-        toast(`Motor ${testMotor} test did not run: ${result.message || "the FC gave no reason"}`, "error");
+        toast(t("motorTestNotRun", { motor: testMotor, reason: result.message || t("motorTestNoReason") }), "error");
       }
     } catch {
-      toast("Motor test failed", "error");
+      toast(t("motorTestFailed"), "error");
     } finally {
       setMotorTesting(false);
     }
-  }, [protocol, motorTestEnabled, testMotor, testThrottle, testDuration, toast]);
+  }, [protocol, motorTestEnabled, testMotor, testThrottle, testDuration, toast, t]);
 
   const motorOptions = useMemo(
     () => Array.from({ length: 8 }, (_, i) => ({ value: String(i + 1), label: `Motor ${i + 1}` })),

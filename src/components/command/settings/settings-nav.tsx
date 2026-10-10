@@ -40,7 +40,6 @@ import {
 import type { NodeProfile } from "@/components/dashboard/node-detail/surface-types";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import { RegulatoryRegionPanel } from "@/components/command/system/RegulatoryRegionPanel";
-import { isDemoMode } from "@/lib/utils";
 import { configMayAdvertise } from "./use-node-config";
 import { ProfilePage, CloudPage, AdvancedPage } from "./CorePages";
 import { VideoSection } from "./VideoSection";
@@ -79,6 +78,8 @@ export interface SettingsPageContext {
   config: Record<string, unknown> | null;
   readOnly: boolean;
   setValue: (key: string, value: string) => Promise<void>;
+  /** Demo mode is on (reactive; demo shows every capability-gated page). */
+  demoMode: boolean;
 }
 
 export interface SettingsNavItem {
@@ -248,7 +249,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     // and the config banner explains the gap.
     when: (ctx) =>
       isDroneProfile(ctx) &&
-      (configMayAdvertise(ctx.config, "swarm") || isDemoMode()),
+      (configMayAdvertise(ctx.config, "swarm") || ctx.demoMode),
     render: (ctx) => (
       <SwarmSection
         config={ctx.config}
@@ -271,7 +272,7 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     // (or demo), the same gate the swarm page uses.
     when: (ctx) =>
       isDroneProfile(ctx) &&
-      (configMayAdvertise(ctx.config, "battery") || isDemoMode()),
+      (configMayAdvertise(ctx.config, "battery") || ctx.demoMode),
     render: (ctx) => (
       <BatterySection
         config={ctx.config}

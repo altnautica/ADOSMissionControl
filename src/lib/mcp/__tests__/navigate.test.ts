@@ -1,7 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { canNavigateToRow, navigateToRow } from "../navigate";
 import type { McpActivityRow, McpSurface } from "../activity";
-import { useFleetStore } from "@/stores/fleet-store";
+import { setFixtureFleet } from "../../../../tests/helpers/fleet-drones";
+
+vi.mock("@/stores/node-registry/use-fleet-drones", async (importOriginal: () => Promise<typeof import("@/stores/node-registry/use-fleet-drones")>) =>
+  (await import("../../../../tests/helpers/fleet-drones")).fleetDronesModuleMock(await importOriginal()),
+);
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import type { FleetDrone } from "@/lib/types";
 
@@ -26,13 +30,13 @@ function row(node: string, surface: McpSurface): McpActivityRow {
 const TAB: McpSurface = { kind: "tab", id: "parameters" };
 
 function seedFleet(deviceId: string) {
-  useFleetStore.setState({
+  setFixtureFleet({
     drones: [{ id: `node:${deviceId}`, name: "Rig" } as unknown as FleetDrone],
   });
 }
 
 afterEach(() => {
-  useFleetStore.setState({ drones: [] });
+  setFixtureFleet({ drones: [] });
   useAgentConnectionStore.setState({ nodeDeviceId: null });
 });
 

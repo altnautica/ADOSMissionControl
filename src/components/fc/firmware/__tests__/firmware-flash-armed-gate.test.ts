@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 
 import { useFirmwareState } from "../useFirmwareState";
 
@@ -60,7 +61,7 @@ describe("useFirmwareState · armed vehicle", () => {
 
   it("refuses to start a flash while the vehicle is armed", async () => {
     lock.isHardBlocked = true;
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
     expect(result.current.flashBlockedReason).toBe("armed");
     await act(async () => {
       await result.current.handleFlash();
@@ -71,7 +72,7 @@ describe("useFirmwareState · armed vehicle", () => {
 
   it("starts the flash path when disarmed", async () => {
     lock.isHardBlocked = false;
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
     expect(result.current.flashBlockedReason).toBeNull();
     await act(async () => {
       await result.current.handleFlash();

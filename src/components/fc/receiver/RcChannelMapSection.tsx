@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
+import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Save, HardDrive } from "lucide-react";
@@ -26,30 +25,20 @@ const RCMAP_LABELS: Record<string, string> = {
 
 export function RcChannelMapSection() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
-  const [saving, setSaving] = useState(false);
 
   const {
     params, loading, dirtyParams, hasRamWrites,
-    hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash,
+    hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: RCMAP_PARAMS, panelId: "rc-channel-map", autoLoad: false });
+  const t = useTranslations("fcToasts.receiver");
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+    { saveAllToRam, commitToFlash, revertAll },
+    { saved: t("rcMappingSaved"), flash: { successMessage: t("writtenToFlash") } },
+  );
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("RC mapping saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    showFlashResult(await commitToFlash(), { successMessage: "Written to flash" });
-  }
 
   return (
     <div className="border border-border-default bg-bg-secondary p-4">

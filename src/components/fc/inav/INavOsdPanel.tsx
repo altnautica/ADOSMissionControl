@@ -12,6 +12,7 @@ import { useCallback, useRef, useState } from "react";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ export function INavOsdPanel() {
 
   const { isArmed, lockMessage } = useArmedLock();
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.inav");
   useUnsavedGuard(alarmsDirty || prefsDirty);
 
   const fontInputRef = useRef<HTMLInputElement>(null);
@@ -66,20 +68,20 @@ export function INavOsdPanel() {
   const handleFontFile = useCallback(async (file: File) => {
     const protocol = selectedProtocol;
     if (!protocol?.uploadOsdFont) {
-      toast("Font upload is not available on this connection", "error");
+      toast(t("fontUploadUnavailable"), "error");
       return;
     }
     try {
       const { glyphs } = parseMcmFont(await file.text());
       setFontProgress({ done: 0, total: glyphs.length });
       const r = await protocol.uploadOsdFont(glyphs, (done, total) => setFontProgress({ done, total }));
-      toast(r.success ? `Uploaded ${glyphs.length} font glyphs` : r.message, r.success ? "success" : "error");
+      toast(r.success ? t("fontUploaded", { count: glyphs.length }) : r.message, r.success ? "success" : "error");
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Font upload failed", "error");
+      toast(err instanceof Error ? err.message : t("fontUploadFailed"), "error");
     } finally {
       setFontProgress(null);
     }
-  }, [selectedProtocol, toast]);
+  }, [selectedProtocol, toast, t]);
 
   const handleRead = useCallback(async () => {
     const protocol = selectedProtocol;

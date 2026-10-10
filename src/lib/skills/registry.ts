@@ -28,7 +28,18 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
-import { isFresh } from "@/lib/telemetry/freshness";
+
+/**
+ * A command is offered only while the FC heartbeat is younger than this. Past
+ * it the link is stale: a dispatched command most likely goes nowhere, so every
+ * command skill reads "no FC link".
+ */
+export const SKILL_LINK_FRESH_MS = 3000;
+
+/** Whether a heartbeat stamp is recent enough to command through. */
+export function isSkillLinkFresh(lastHeartbeat: number, now: number): boolean {
+  return lastHeartbeat > 0 && now - lastHeartbeat <= SKILL_LINK_FRESH_MS;
+}
 
 const IDLE_STATE: SkillState = { kind: "idle" };
 
@@ -87,7 +98,7 @@ export function buildSkillContextFor(droneId: string): SkillContext {
   // An open transport is not an FC link: a skill dispatched while the FC
   // heartbeat is stale goes into a void, so the command surface is offered
   // only while the heartbeat is fresh and every skill reads "no FC link".
-  const fcReachable = isFresh(droneState.lastHeartbeat, Date.now());
+  const fcReachable = isSkillLinkFresh(droneState.lastHeartbeat, Date.now());
 
   return {
     droneId,
@@ -272,7 +283,12 @@ function mergeDispatcherState(
 
   const cooldown = getCooldownState(droneId, skill.id);
   if (cooldown && state.kind === "idle") {
-    state = { ...state, kind: "cooldown", progress: cooldown.progress };
+    state = {
+      ...state,
+      kind: "cooldown",
+      progress: cooldown.progress,
+      cooldown: { startedAt: cooldown.startedAt, durationMs: cooldown.durationMs },
+    };
   }
 
   const charge = getChargeCount(droneId, skill);

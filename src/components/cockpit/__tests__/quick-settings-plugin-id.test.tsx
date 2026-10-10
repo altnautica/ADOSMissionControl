@@ -51,17 +51,14 @@ vi.mock("@/components/plugins/parameters/PluginParametersPanel", () => ({
 }));
 
 import { CockpitQuickSettings } from "../CockpitQuickSettings";
-import { useDroneManager } from "@/stores/drone-manager";
 
 afterEach(() => {
   cleanup();
-  useDroneManager.setState({ selectedDroneId: null });
 });
 
 describe("CockpitQuickSettings plugin id namespace", () => {
   it("mounts a bare-id install row's parameters for a node-id selection", () => {
-    useDroneManager.setState({ selectedDroneId: "node:abc" });
-    renderWithIntl(<CockpitQuickSettings onClose={() => {}} />);
+    renderWithIntl(<CockpitQuickSettings droneId="node:abc" onClose={() => {}} />);
     // The card renders, and its config writes address the bare device id.
     expect(screen.getByTestId("params").textContent).toBe("abc|com.example.follow");
   });

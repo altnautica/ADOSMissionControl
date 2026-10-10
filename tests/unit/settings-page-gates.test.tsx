@@ -28,6 +28,7 @@ function ctxWith(overrides: Partial<SettingsPageContext>): SettingsPageContext {
     config: null,
     readOnly: false,
     setValue: async () => {},
+    demoMode: false,
     ...overrides,
   };
 }

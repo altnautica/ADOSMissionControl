@@ -87,6 +87,20 @@ export interface SuggestedBinding {
 /** Highest standard-mapping gamepad button index a slot can bind. */
 const MAX_GAMEPAD_BUTTON = 15;
 
+/** Slots on a loadout's bar. The factory loadout fills the first ten with
+ * built-ins and leaves the rest free for extension skills. */
+export const LOADOUT_SLOT_COUNT = 12;
+
+/**
+ * What happened when a suggested binding was offered to a loadout:
+ *   - `bound`: the skill was slotted with every suggested input it asked for.
+ *   - `unbound`: the skill was slotted, but a suggested chord or button
+ *     collided (built-in, reserved, or held by another slot) and was dropped.
+ *   - `skipped`: nothing changed (already offered, already placed, no loadout,
+ *     or no free slot yet).
+ */
+export type SeedOutcome = "bound" | "unbound" | "skipped";
+
 export const DEFAULT_LOADOUT_ID = "default";
 
 /**
@@ -131,6 +145,8 @@ const DEFAULT_LOADOUT: Loadout = Object.freeze({
     { index: 7, skillId: "mode.althold", key: "f2", gamepadButton: null },
     { index: 8, skillId: "mode.stabilize", key: "f3", gamepadButton: null },
     { index: 9, skillId: "kill", key: null, gamepadButton: null },
+    { index: 10, skillId: null, key: null, gamepadButton: null },
+    { index: 11, skillId: null, key: null, gamepadButton: null },
   ],
   layout: DEFAULT_COCKPIT_LAYOUT,
 }) as Loadout;
@@ -148,6 +164,23 @@ export function cloneDefaultLoadout(): Loadout {
     layout: cloneDefaultCockpitLayout(),
     seededSkillIds: [],
   };
+}
+
+/** Chords and buttons the factory loadout gives built-in skills. A plugin
+ * suggestion never takes one, even when the operator has since unbound it, so
+ * a reset to defaults cannot silently collide with a plugin binding. */
+const BUILTIN_CHORDS: ReadonlySet<string> = new Set(
+  DEFAULT_LOADOUT.slots.flatMap((slot) => (slot.key ? [slot.key] : [])),
+);
+const BUILTIN_GAMEPAD_BUTTONS: ReadonlySet<number> = new Set(
+  DEFAULT_LOADOUT.slots.flatMap((slot) =>
+    slot.gamepadButton === null ? [] : [slot.gamepadButton],
+  ),
+);
+
+/** True when a chord is owned by a built-in skill or reserved by the cockpit. */
+export function isBuiltinOrReservedChord(chord: string): boolean {
+  return BUILTIN_CHORDS.has(chord) || isReservedChord(chord);
 }
 
 function cloneDefaultSlots(): HotbarSlot[] {
@@ -318,11 +351,12 @@ export const createKeybindingsActions: SettingsSliceFactory<
       };
     }),
 
-  seedSuggestedBinding: (loadoutId, skillId, binding) =>
-    set((state) => {
-      const loadout = state.loadouts[loadoutId];
-      if (!loadout || loadout.seededSkillIds.includes(skillId)) return {};
-      const markSeeded = (slots: HotbarSlot[]) => ({
+  seedSuggestedBinding: (loadoutId, skillId, binding) => {
+    const state = get();
+    const loadout = state.loadouts[loadoutId];
+    if (!loadout || loadout.seededSkillIds.includes(skillId)) return "skipped";
+    const commit = (slots: HotbarSlot[]) =>
+      set({
         loadouts: {
           ...state.loadouts,
           [loadoutId]: {
@@ -332,45 +366,58 @@ export const createKeybindingsActions: SettingsSliceFactory<
           },
         },
       });
-      // Already placed by the operator: record it and leave it where it is.
-      if (loadout.slots.some((slot) => slot.skillId === skillId)) {
-        return markSeeded(loadout.slots);
-      }
-      const empty = loadout.slots.find((slot) => slot.skillId === null);
-      // No free slot yet: offer again once one frees up.
-      if (!empty) return {};
-      // A suggestion never takes a chord or button the cockpit owns or another
-      // slot already holds; the skill is still slotted, just unbound.
-      const key =
-        typeof binding.key === "string" &&
-        binding.key !== "" &&
-        !isReservedChord(binding.key) &&
-        !loadout.slots.some((slot) => slot.key === binding.key)
-          ? binding.key
-          : null;
-      const button = binding.gamepadButton;
-      const gamepadButton =
-        typeof button === "number" &&
-        Number.isInteger(button) &&
-        button >= 0 &&
-        button <= MAX_GAMEPAD_BUTTON &&
-        !isReservedGamepadButton(button) &&
-        !loadout.slots.some((slot) => slot.gamepadButton === button)
-          ? button
-          : null;
-      return markSeeded(
-        loadout.slots.map((slot) =>
-          slot.index === empty.index
-            ? {
-                ...slot,
-                skillId,
-                key: key ?? slot.key,
-                gamepadButton: gamepadButton ?? slot.gamepadButton,
-              }
-            : slot,
-        ),
-      );
-    }),
+    // Already placed by the operator: record it and leave it where it is.
+    if (loadout.slots.some((slot) => slot.skillId === skillId)) {
+      commit(loadout.slots);
+      return "skipped";
+    }
+    // A loadout saved before the bar grew to LOADOUT_SLOT_COUNT gains the
+    // missing empty slots here, so an extension skill has somewhere to land.
+    const slots = [...loadout.slots];
+    for (let index = slots.length; index < LOADOUT_SLOT_COUNT; index++) {
+      slots.push({ index, skillId: null, key: null, gamepadButton: null });
+    }
+    const empty = slots.find((slot) => slot.skillId === null);
+    // No free slot yet: offer again once one frees up.
+    if (!empty) return "skipped";
+    // A suggestion never takes a chord or button a built-in owns, the cockpit
+    // reserves, or another slot already holds; the skill is still slotted,
+    // just unbound, and the caller tells the operator.
+    const wantsKey = typeof binding.key === "string" && binding.key !== "";
+    const key =
+      wantsKey &&
+      !isBuiltinOrReservedChord(binding.key as string) &&
+      !slots.some((slot) => slot.key === binding.key)
+        ? (binding.key as string)
+        : null;
+    const button = binding.gamepadButton;
+    const wantsButton = typeof button === "number";
+    const gamepadButton =
+      typeof button === "number" &&
+      Number.isInteger(button) &&
+      button >= 0 &&
+      button <= MAX_GAMEPAD_BUTTON &&
+      !isReservedGamepadButton(button) &&
+      !BUILTIN_GAMEPAD_BUTTONS.has(button) &&
+      !slots.some((slot) => slot.gamepadButton === button)
+        ? button
+        : null;
+    commit(
+      slots.map((slot) =>
+        slot.index === empty.index
+          ? {
+              ...slot,
+              skillId,
+              key: key ?? slot.key,
+              gamepadButton: gamepadButton ?? slot.gamepadButton,
+            }
+          : slot,
+      ),
+    );
+    return (wantsKey && key === null) || (wantsButton && gamepadButton === null)
+      ? "unbound"
+      : "bound";
+  },
 
   setLoadoutLayout: (loadoutId, partial) =>
     set((state) => {

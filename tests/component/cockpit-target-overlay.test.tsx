@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, fireEvent, act } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (k: string) => k,
+  useTranslations: () => Object.assign((k: string) => k, { has: () => false }),
 }));
 
 const toastFn = vi.fn();
@@ -156,8 +156,9 @@ describe("CockpitTargetOverlay", () => {
     expect(selected!.trackId).toBe(7);
     expect(selected!.classLabel).toBe("person");
 
-    // The popup lists the built-in Designate action.
-    expect(getByText("Designate target")).toBeTruthy();
+    // The popup lists the built-in Designate action (its label is an i18n
+    // key; the mocked translator echoes keys).
+    expect(getByText("vision.targetActions.designate")).toBeTruthy();
   });
 
   it("keeps a tracked box's element across batches, so a press spanning a frame still opens the popup", () => {

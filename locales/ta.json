@@ -1,4 +1,229 @@
 {
+  "fcToasts": {
+    "betaflight": {
+      "adjustmentsSaved": "Adjustment ranges saved to the flight controller",
+      "adjustmentsSaveFailed": "Failed to save adjustment ranges",
+      "auxModesLoaded": "Loaded auxiliary mode configuration",
+      "auxModesReadFailed": "Could not read mode ranges — nothing loaded",
+      "modeRangesSaved": "Mode ranges saved to the flight controller",
+      "modeRangesSaveFailed": "Failed to save mode ranges",
+      "maxRangesReached": "Maximum ranges reached ({max})",
+      "writtenToFlash": "Written to flash",
+      "dshotUnavailable": "DShot commands are not available on this connection",
+      "dshotDisarmFirst": "Disarm to send ESC commands",
+      "dshotRejected": "The flight controller rejected the DShot command",
+      "dshotSendFailed": "Could not send the DShot command",
+      "beaconSent": "Beacon command sent",
+      "spinDirectionReversedSent": "Spin direction reversed and save commands sent. ESCs do not confirm; check the direction with a motor test.",
+      "spinDirectionNormalSent": "Spin direction normal and save commands sent. ESCs do not confirm; check the direction with a motor test.",
+      "threeDModeOnSent": "3D mode on and save commands sent. ESCs do not confirm the change.",
+      "threeDModeOffSent": "3D mode off and save commands sent. ESCs do not confirm the change.",
+      "osdResetToDefaults": "Reset all elements to defaults",
+      "osdConfigLoaded": "OSD config loaded",
+      "osdWriteUnavailable": "This connection cannot write the Betaflight OSD configuration",
+      "osdReadBeforeSave": "Read the OSD config from the flight controller before saving",
+      "osdNoChanges": "No OSD changes to save",
+      "osdElementsSaved": "Saved {count, plural, one {# OSD element} other {# OSD elements}} to flight controller",
+      "osdSaveFailed": "Failed to save OSD config",
+      "osdFontUploadUnavailable": "Font upload is not available on this connection",
+      "osdFontUploaded": "Uploaded {count} font glyphs",
+      "osdFontUploadFailed": "Font upload failed"
+    },
+    "calibration": {
+      "rcChannelsNotCentered": "Channels {channels} not centered. Center all sticks and try again.",
+      "rcChannelsNarrowRange": "Channels {channels} have narrow range (<200). Move sticks to full extent.",
+      "notConnected": "Not connected",
+      "cancelledArmed": "Cancelled: vehicle is armed",
+      "rcBatchFailed": "{message}. Failed: {params}",
+      "rcWriteFailed": "Failed to write RC parameters",
+      "rcTrimResetFailed": "Failed to reset RC trims",
+      "compassNoSuccessfulFit": "No compass produced a successful fit; nothing was saved. Retry the calibration.",
+      "compassBatchFailed": "{message} Failed: {params}",
+      "compassOffsetsWriteFailed": "Failed to write compass offsets",
+      "compassAcceptRejected": "FC rejected accept — saving successful fits directly",
+      "compassAcceptedFlashFailed": "Compass calibration accepted. Flash commit failed; offsets may be RAM-only.",
+      "compassAcceptedFlashUnacknowledged": "Compass calibration accepted. Flash commit sent (unacknowledged).",
+      "compassAcceptedFlashed": "Compass calibration accepted. Saved to flash.",
+      "compassAcceptFailed": "Accept failed — try Force Save",
+      "compassAutoRotSet": "COMPASS_AUTO_ROT set to 3 (lenient) to prevent orientation flickering",
+      "compassAutoRotNotChanged": "COMPASS_AUTO_ROT was not changed: {reason}. Calibrating with the current setting.",
+      "noReply": "no reply",
+      "calAlreadyInProgress": "Calibration already in progress — cancel first or wait for it to finish",
+      "calFcBusy": "FC temporarily busy — wait a moment and retry",
+      "calRejected": "Calibration command rejected",
+      "calTypeFailed": "{type, select, accel {Accel} gyro {Gyro} compass {Compass} level {Level} airspeed {Airspeed} baro {Baro} rc {Rc} esc {Esc} compassmot {Compassmot} other {{type}}} calibration: {message}",
+      "calTypeStarted": "{type, select, accel {Accel} gyro {Gyro} compass {Compass} level {Level} airspeed {Airspeed} baro {Baro} rc {Rc} esc {Esc} compassmot {Compassmot} other {{type}}} calibration started",
+      "calSendFailed": "Failed to send calibration command",
+      "quickLevelRejected": "Quick level command rejected",
+      "quickLevelFailed": "Quick level calibration failed",
+      "quickLevelStarted": "Quick level calibration started",
+      "quickLevelSendFailed": "Failed to send quick level command",
+      "compassCalFailed": "Compass calibration failed",
+      "compassCalComplete": "Compass calibration complete",
+      "compassCalSendFailed": "Failed to send the compass calibration command"
+    },
+    "can": {
+      "forwardingUnavailable": "This connection cannot forward CAN frames",
+      "forwardingRefused": "FC refused CAN forwarding on bus {bus}: {message}",
+      "forwardingRequestFailed": "CAN forwarding request failed"
+    },
+    "comms": {
+      "notConnected": "Not connected to flight controller",
+      "blackboxDownloadUnavailable": "This connection cannot download blackbox logs",
+      "blackboxEmpty": "No blackbox data on the flight controller",
+      "blackboxDownloaded": "Downloaded {size} blackbox log",
+      "blackboxDownloadFailed": "Blackbox download failed: {error}",
+      "unknownError": "unknown error",
+      "blackboxEraseUnavailable": "This connection cannot erase blackbox logs",
+      "blackboxErased": "Blackbox logs erased",
+      "blackboxEraseFailed": "Failed to erase blackbox logs",
+      "shellOutputCopied": "Output copied to clipboard",
+      "rebootRefused": "Reboot refused: {message}"
+    },
+    "firmware": {
+      "connectBeforeFlash": "Connect a drone before flashing",
+      "flashFailed": "Firmware flash failed",
+      "flashFailedWithReason": "Flash failed: {reason}",
+      "backupDone": "Backed up {count} parameters",
+      "backupFailed": "Parameter backup failed",
+      "restoreNoParams": "No parameters found in that file"
+    },
+    "flightModes": {
+      "loaded": "Loaded flight mode configuration",
+      "loadFailed": "Failed to load flight modes",
+      "noPx4Slot": "{mode} has no PX4 mode slot; skipped",
+      "writeFailed": "write failed",
+      "partialSave": "Flight modes not fully saved. Failed: {failures}",
+      "saveFailed": "Failed to save flight modes",
+      "flashWritten": "Written to flash — persists after reboot",
+      "flashFailed": "Failed to write to flash"
+    },
+    "frame": {
+      "actuatorSaved": "Actuator config saved",
+      "actuatorSaveFailed": "Failed to save actuator config",
+      "airframeSaved": "Airframe saved. Reboot required to apply.",
+      "airframeSaveFailed": "Failed to save airframe",
+      "frameSaved": "Frame parameters saved to RAM",
+      "frameSaveFailed": "Failed to save frame parameters",
+      "flashWritten": "Written to flash"
+    },
+    "gimbal": {
+      "angleRefused": "Gimbal refused the angle",
+      "mountModeSet": "Mount mode set",
+      "mountModeFailed": "Failed to set mount mode",
+      "invalidLatLon": "Enter valid latitude and longitude",
+      "roiSet": "ROI set",
+      "roiFailed": "Failed to set ROI",
+      "cameraTriggered": "Camera triggered",
+      "cameraTriggerRefused": "Camera trigger refused",
+      "triggerDistanceSet": "Trigger distance set to {distance} m",
+      "intervalStopped": "Interval trigger stopped",
+      "intervalInvalid": "Enter a positive interval",
+      "intervalStarted": "Triggering every {seconds}s"
+    },
+    "misc": {
+      "servoTestDisabled": "Enable servo output test first — outputs 33-40 are motors",
+      "servoSet": "Servo {servo} set to {pwm}",
+      "servoNotSet": "Servo {servo} not set: {reason}",
+      "servoRefused": "refused by the flight controller",
+      "servoEndpointsSaved": "Servo endpoints saved",
+      "flashWritten": "Written to flash"
+    },
+    "motors": {
+      "flashWritten": "Written to flash",
+      "outputsSaved": "Output parameters saved to RAM",
+      "paramsFlashWritten": "Parameters written to flash",
+      "fixPwmWarnings": "Fix PWM warnings before saving",
+      "motorTestStarted": "Motor test started. Keep clear of props!",
+      "motorTestArmed": "Cannot test motors while armed",
+      "motorTestRunning": "Motor {motor} test started",
+      "motorTestNotRun": "Motor {motor} test did not run: {reason}",
+      "motorTestNoReason": "the FC gave no reason",
+      "motorTestFailed": "Motor test failed"
+    },
+    "osd": {
+      "pastedToScreen": "Pasted to screen {screen}",
+      "screenSaved": "OSD screen {screen} saved to flight controller",
+      "saveFailed": "Some OSD parameters failed to save",
+      "flashWritten": "Written to flash — persists after reboot",
+      "screenCopied": "Screen {screen} copied"
+    },
+    "inav": {
+      "notConnected": "Not connected to flight controller",
+      "geozonesLoaded": "Geozones loaded from FC",
+      "geozonesWritten": "Geozones written to FC",
+      "safehomesLoaded": "Safehome slots loaded from FC",
+      "safehomesWritten": "Safehome slots written to FC",
+      "logicConditionsLoaded": "Logic conditions loaded from FC",
+      "logicConditionsWritten": "Logic conditions written to FC",
+      "logicConditionsPlaced": "Placed {count} logic conditions in free slots {slots}; review and Write in the Logic Conditions tab",
+      "programmingPidsLoaded": "Programming PIDs loaded from FC",
+      "programmingPidsWritten": "Programming PIDs written to FC",
+      "gvarStatusUnsupported": "Global variable status not supported by this firmware",
+      "gvarReadFailed": "Could not read the global variables from the flight controller",
+      "gvarStatusRefreshed": "Global variable status refreshed",
+      "gvarValueRequired": "Enter a value for GVAR {index}",
+      "gvarSet": "GVAR {index} set to {value}",
+      "fontUploadUnavailable": "Font upload is not available on this connection",
+      "fontUploaded": "Uploaded {count} font glyphs",
+      "fontUploadFailed": "Font upload failed"
+    },
+    "parameters": {
+      "noParamsInFile": "No parameters found in that file",
+      "batchFailed": "{summary}. Failed: {params}",
+      "batchFailedWithMore": "{summary}. Failed: {params} and {more} more",
+      "rebootRefused": "The FC refused the reboot command",
+      "rebootFailed": "Reboot command failed"
+    },
+    "pid": {
+      "presetApplied": "Applied \"{name}\" preset — save to apply",
+      "aiApplySummary": "{applied} applied{clamped, plural, =0 {} other {, # limited}}{rejected, plural, =0 {} other {, # rejected}} (save to write to the flight controller)"
+    },
+    "px4": {
+      "actuatorTestUnavailable": "Actuator test is not available on this connection",
+      "disarmToTestActuators": "Disarm to test actuators",
+      "actuatorTestRefused": "Actuator test refused: {reason}",
+      "noAcknowledgement": "no acknowledgement from the flight controller",
+      "actuatorTestFailed": "Actuator test failed: {error}",
+      "actuatorTesting": "Testing {output} for {seconds}s — keep clear",
+      "actuatorTestStopped": "Actuator test stopped"
+    },
+    "receiver": {
+      "rcMappingSaved": "RC mapping saved to flight controller",
+      "writtenToFlash": "Written to flash",
+      "receiverParamsSaved": "Receiver parameters saved to RAM",
+      "paramsWrittenToFlash": "Parameters written to flash",
+      "trimsNoRcData": "No live RC data; trims not changed",
+      "trimsArmed": "Trims not changed: vehicle is armed",
+      "trimsFailed": "{message}. Failed: {failures}"
+    },
+    "sensors": {
+      "gpsConfigSaved": "GPS config saved",
+      "writtenToFlash": "Written to flash"
+    }
+  },
+  "plannerIo": {
+    "restoringAutosave": "Unsaved mission found — restoring",
+    "untitledPlan": "Untitled Plan",
+    "planSaved": "Plan saved",
+    "planSavedAsCopy": "Plan saved as new copy",
+    "exported": "Exported ({format})",
+    "newPlanCreated": "New plan created",
+    "downloadFailedWithError": "Mission download failed: {error}. Nothing was loaded",
+    "downloadFailed": "Mission download failed — nothing was loaded",
+    "vehicleHasNoMission": "The vehicle has no mission",
+    "droneMissionName": "Drone Mission ({time})",
+    "loadedFromDrone": "Loaded {count} waypoints from drone",
+    "connectDroneFirst": "Connect a drone first"
+  },
+  "panelCommit": {
+    "saved": "Saved to flight controller",
+    "partialSave": "Some parameters failed to save",
+    "reverted": "Reverted to FC values",
+    "flashWritten": "Written to flash — persists after reboot",
+    "flashUnacknowledged": "Flash commit sent — vehicle did not acknowledge it",
+    "flashFailed": "Failed to write to flash"
+  },
   "nodeConsole": {
     "type": {
       "drone": "Drone",
@@ -397,6 +622,7 @@
       "orange": "Orange",
       "dark": "Dark",
       "light": "Light",
+      "mono": "Mono",
       "solarizedDark": "Solarized Dark",
       "solarizedLight": "Solarized Light",
       "dracula": "Dracula",
@@ -505,7 +731,6 @@
     "docs": "Docs",
     "flashTool": "ஃப்ளாஷ் கருவி",
     "settings": "அமைப்புகள்",
-    "exitImmersive": "இம்மர்சிவ் பயன்முறையிலிருந்து வெளியேறு (Esc)",
     "account": "கணக்கு"
   },
   "configNav": {
@@ -597,6 +822,7 @@
     "orange": "Orange",
     "dark": "டார்க்",
     "light": "லைட்",
+    "mono": "Mono",
     "solarizedDark": "சோலரைஸ்ட் டார்க்",
     "solarizedLight": "சோலரைஸ்ட் லைட்",
     "dracula": "Dracula",
@@ -695,6 +921,7 @@
   },
   "dashboard": {
     "viewGrid": "கட்டம்",
+    "viewSwitchLabel": "Dashboard view",
     "viewOverview": "மேலோட்டம்",
     "viewNodes": "நோடுகள்",
     "viewSwarm": "திரள்",
@@ -1181,6 +1408,57 @@
     }
   },
   "fcNav": {
+    "apHeli": "Helicopter",
+    "vtol": "VTOL",
+    "subConfig": "Sub Config",
+    "safehome": "Safehome",
+    "geozone": "Geozones",
+    "calibrate": "Calibration",
+    "px4Thermal": "Thermal Cal",
+    "ekf3": "EKF3",
+    "apNongps": "Non-GPS Nav",
+    "airspeed": "Airspeed",
+    "payload": "Gripper / Payload",
+    "notch": "Harmonic Notch",
+    "adsb": "ADS-B & Avoidance",
+    "sailboat": "Sailboat",
+    "tecs": "TECS / L1",
+    "px4FlightBehavior": "Flight Behavior",
+    "px4FwTuning": "Fixed-Wing Tuning",
+    "px4Autotune": "Autotune",
+    "px4Vtol": "VTOL Transition",
+    "px4ControlAllocation": "Control Allocation",
+    "streamRates": "Stream Rates",
+    "bfSettings": "All Settings",
+    "signing": "MAVLink Signing",
+    "can": "DroneCAN",
+    "scripts": "Scripts",
+    "inavNavConfig": "Navigation Config",
+    "inavMission": "iNav Mission",
+    "inavMixerProfile": "Mixer Profiles",
+    "inavOutputMapping": "Output Mapping",
+    "inavServos": "Servos (iNav)",
+    "inavFailsafe": "Failsafe (iNav)",
+    "inavBatteryProfile": "Battery Profiles",
+    "inavTempSensors": "Temp Sensors",
+    "inavControlProfile": "Control Profiles",
+    "inavMcBraking": "MC Braking",
+    "inavRateDynamics": "Rate Dynamics",
+    "inavEzTune": "EZ Tune",
+    "inavFwApproach": "FW Approach",
+    "inavOsd": "OSD (iNav)",
+    "inavCustomOsd": "Custom OSD",
+    "displayportOsd": "OSD Preview",
+    "inavLogicConditions": "Logic Conditions",
+    "inavGlobalVariables": "Global Variables",
+    "inavProgrammingPid": "Programming PIDs",
+    "inavJsProgramming": "Programming (JS)",
+    "inavNavPid": "Nav PID",
+    "actuators": "Actuators",
+    "airframe": "Airframe",
+    "shell": "Shell",
+    "securitySection": "SECURITY",
+    "programmingSection": "PROGRAMMING",
     "flightController": "ஃப்ளைட் கண்ட்ரோலர்",
     "extensionsSection": "EXTENSIONS",
     "flightSection": "ஃப்ளைட்",
@@ -1311,7 +1589,7 @@
         },
         "extensions": {
           "title": "Extensions",
-          "desc": "Install signed plugins that add flight behaviors, drivers, AI models, and hardware support."
+          "desc": "Install signed extensions that add flight behaviors, drivers, AI models, and hardware support."
         },
         "blackBox": {
           "title": "Black Box",
@@ -1326,7 +1604,7 @@
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
     "surfaceErrorRetry": "Try again",
-    "openHud": "முழுத்திரை HUD ஐத் திற",
+    "openCockpit": "காக்பிட்டைத் திற",
     "nodeDetailTabs": "முனை விவரத் தாவல்கள்",
     "nodeNotFound": "“{id}” Drone கண்டறியப்படவில்லை",
     "retryConnect": "மீண்டும் முயல்",
@@ -1451,7 +1729,13 @@
     "targetActions": {
       "dismiss": "மூடு",
       "none": "இந்த இலக்குக்கு செயல்கள் இல்லை",
-      "pluginBadge": "பிளக்-இன்"
+      "pluginBadge": "பிளக்-இன்",
+      "designate": "Designate target",
+      "designated": "Target designated",
+      "designateRejected": "Designate rejected",
+      "designateFailed": "Designate failed",
+      "designateNeedsLan": "Designate needs a direct link to this drone; it is not available over the cloud relay",
+      "configWriteFailed": "Config write failed"
     },
     "cameraStreamUnknown": "unknown",
     "acceleratorNotReported": "Accelerator not reported yet — waiting for the node to report its compute.",
@@ -2020,6 +2304,7 @@
   },
   "dronePlugins": {
     "titleForDrone": "Extensions on {drone}",
+    "parametersSectionTitle": "Parameters",
     "subtitle": "Extensions installed on this drone. Each extension runs sandboxed and only does what its granted permissions allow.",
     "installOnThisDrone": "Install extension on this drone",
     "installFromFile": "Install from file",
@@ -4034,7 +4319,15 @@
     "hint": "↑↓ to move · Enter to run · Esc to close",
     "open": "Open command palette",
     "disabled": "Unavailable",
-    "empty": "No commands available for this drone"
+    "empty": "No commands available for this drone",
+    "goToSimulate": "Go to Simulate",
+    "goToMcp": "Go to MCP",
+    "openCockpit": "Open Cockpit",
+    "flight": "Flight",
+    "noDroneSelected": "No drone selected",
+    "noDronesInFleet": "No drones in fleet",
+    "noBatteryData": "No battery data available",
+    "fleetAvgBattery": "Fleet average battery: {avg}% ({count, plural, one {# drone} other {# drones}})"
   },
   "disconnectedPage": {
     "alpha": "ALPHA",
@@ -4368,8 +4661,9 @@
     },
     "controllers": "கட்டுப்படுத்திகள்",
     "peripherals": {
+      "description": "Extension-managed peripherals declared by the agent: cameras, sensors, custom hardware.",
       "title": "परिधीय",
-      "emptyState": "कोई परिधीय पंजीकृत नहीं। समर्थित डिवाइस कनेक्ट करें या परिधीय प्लगइन स्थापित करें।",
+      "emptyState": "कोई परिधीय पंजीकृत नहीं। समर्थित डिवाइस कनेक्ट करें या परिधीय एक्सटेंशन स्थापित करें।",
       "name": "नाम",
       "transport": "ट्रांसपोर्ट",
       "connected": "कनेक्टेड",
@@ -4931,6 +5225,34 @@
     "dismissError": "பிழை அறிவிப்பை மூடு"
   },
   "plugins": {
+    "updateAvailable": "Extension update available: {id} v{from} → v{to}",
+    "sectionNavLabel": "Extensions section navigation",
+    "sectionInstalled": "Installed",
+    "detail": {
+      "loading": "Loading…",
+      "notFound": "Extension not found.",
+      "back": "Back to extensions",
+      "tabsLabel": "Extension tabs",
+      "tab": {
+        "overview": "Overview",
+        "permissions": "Permissions",
+        "events": "Events"
+      },
+      "field": {
+        "status": "Status",
+        "source": "Source",
+        "signer": "Signer",
+        "halves": "Halves",
+        "installed": "Installed",
+        "enabled": "Enabled",
+        "manifestHash": "Manifest hash"
+      },
+      "noPermissions": "No permissions declared.",
+      "required": "Required",
+      "grant": "Grant",
+      "loadingEvents": "Loading events…",
+      "noEvents": "No events recorded yet."
+    },
     "revokePermission": "Revoke permission",
     "revokeConfirmTitle": "Revoke this permission?",
     "revokeConfirmMessage": "The extension will lose access to {permission}. Continue?",
@@ -4959,8 +5281,8 @@
       "groundStation": "Ground station",
       "workstation": "Workstation"
     },
-    "needsNodeAgent": "Connect to this drone's agent to change the plugin on it.",
-    "removeConfirmTitle": "Remove plugin?",
+    "needsNodeAgent": "Connect to this drone's agent to change the extension on it.",
+    "removeConfirmTitle": "Remove extension?",
     "removeConfirmMessage": "{name} is removed from the drone and from your account.",
     "removeConfirmAction": "Remove",
     "inlineLoading": "Loading {name}…",
@@ -5245,7 +5567,7 @@
       },
       "done": {
         "enabled": "Installed and enabled on {drone}.",
-        "installed": "Installed on {drone}, but not enabled yet. Enable it from the drone's Plugins tab.",
+        "installed": "Installed on {drone}, but not enabled yet. Enable it from the drone's Extensions tab.",
         "queued": "Queued for {drone} through the cloud. The drone installs it when it next checks in, and it stays disabled until you enable it.",
         "gcsOnly": "Added to Mission Control.",
         "close": "Close"
@@ -5743,7 +6065,7 @@
     "preArm": {
       "ready": "Vision navigation: ready",
       "companionBlocker": "Vision companion process is {state}. Vision navigation cannot arm.",
-      "originBlocker": "EKF origin not set. Plugin will auto-set via SET_GPS_GLOBAL_ORIGIN, retry in a few seconds.",
+      "originBlocker": "EKF origin not set. The extension will auto-set it via SET_GPS_GLOBAL_ORIGIN; retry in a few seconds.",
       "pending": "Vision navigation: status pending",
       "waitingHeartbeat": "Vision navigation: waiting for companion heartbeat"
     },
@@ -6252,6 +6574,16 @@
     "liveUnknown": "Not reported by this node yet."
   },
   "cockpit": {
+    "hud": {
+      "attFlag": "ATT", "gs": "GS", "ias": "IAS", "alt": "ALT", "vs": "V/S", "rel": "REL", "msl": "MSL",
+      "altRefToggle": "உயரக் குறிப்பு {ref}, {next} க்கு மாற்று",
+      "homeMark": "H", "cardN": "N", "cardE": "E", "cardS": "S", "cardW": "W",
+      "wind": "WIND", "eta": "ETA", "noData": "தரவு இல்லை",
+      "summary": "பிட்ச் {pitch}, ரோல் {roll}, வேகம் {speed}, உயரம் {alt}, திசை {heading}"
+    },
+    "layout": { "hiddenAtDensity": "இந்த அடர்த்தியில் மறைக்கப்பட்டது" },
+    "streams": { "switchFailed": "{name} க்கு மாற முடியவில்லை" },
+    "pip": { "reconnecting": "மீண்டும் இணைக்கிறது" },
     "noDrone": "No drone",
     "exit": "Exit",
     "enter": "Enter cockpit",
@@ -6288,7 +6620,41 @@
     "exitImmersiveTitle": "Exit immersive",
     "band": {
       "batt": "BATT",
-      "time": "TIME"
+      "time": "TIME",
+      "mode": "பயன்முறை",
+      "reachDirect": "நேரடி",
+      "reachLan": "LAN",
+      "reachRelayed": "தரை வழியாக",
+      "reachCloud": "கிளவுட்",
+      "linkAge": "HB {age}",
+      "video": "வீடியோ",
+      "videoLive": "நேரலை",
+      "videoFrozen": "உறைந்தது",
+      "videoNone": "வீடியோ இல்லை",
+      "stick": "STICK",
+      "stickOn": "இயக்கம்",
+      "stickOff": "நிறுத்தம்",
+      "stickBlocked": "தடுக்கப்பட்டது",
+      "stickNoGamepad": "ஸ்டிக் கட்டுப்பாட்டை இயக்க கேம்பேடை இணைக்கவும்",
+      "stickNoSession": "No flight controller session for this drone",
+      "stickEnableTitle": "ஸ்டிக் கட்டுப்பாட்டை இயக்கு",
+      "stickDisableTitle": "ஸ்டிக் கட்டுப்பாட்டை நிறுத்து",
+      "picHolder": "PIC {holder}",
+      "picTitle": "Pilot in command: {holder}",
+      "preflight": "பறப்பதற்கு முன் {done}/{total}",
+      "preflightTitle": "பறப்பதற்கு முந்தைய சரிபார்ப்பு பட்டியல்",
+      "preflightClose": "பட்டியலை மூடு",
+      "recStopFailed": "Could not stop the recording cleanly",
+      "more": "மேலும் நிலை",
+      "announceArmed": "வாகனம் ஆயத்தம்",
+      "announceDisarmed": "வாகனம் நிராயுதம்",
+      "announceArmUnknown": "Arm state unknown",
+      "announceBattLow": "பேட்டரி குறைவு",
+      "announceBattCritical": "பேட்டரி அபாயம்",
+      "announceBattNormal": "Battery back to normal",
+      "announceLinkStale": "Link stale",
+      "announceLinkLost": "இணைப்பு துண்டிக்கப்பட்டது",
+      "announceLinkOk": "இணைப்பு மீட்கப்பட்டது"
     },
     "mapLayer": "Map layer",
     "command": {
@@ -6298,11 +6664,84 @@
       "expiring": "ENDING SOON"
     },
     "openFlight": "பயணத்தைத் திற",
+    "mapToggle": "சிறு வரைபடத்தைக் காட்டு அல்லது மறை",
+    "confirm": {
+      "cancel": "ரத்துசெய்",
+      "holdHint": "{seconds} வினாடி அழுத்திப் பிடிக்கவும், அல்லது Enter அல்லது கேம்பேட் பொத்தானைப் பிடிக்கவும்.",
+      "slideHint": "இறுதி வரை நகர்த்தவும், அல்லது Enter அல்லது கேம்பேட் பொத்தானைப் பிடிக்கவும்.",
+      "guardArmed": "கில் தயார். மோட்டார்களை நிறுத்த {seconds} வினாடிக்குள் அழுத்திப் பிடிக்கவும்.",
+      "guardHolding": "மோட்டார்களை நிறுத்த தொடர்ந்து பிடிக்கவும்.",
+      "checklistIncomplete": "பறப்புக்கு முந்தைய சரிபார்ப்புப் பட்டியல் முழுமையில்லை ({count} மீதம்)",
+      "checklistOverride": "சரிபார்ப்புப் பட்டியலை மீறு",
+      "checklistOverrideHint": "மீறல் பாதுகாப்பு நிகழ்வாகப் பதிவு செய்யப்படும்.",
+      "altitude": "புறப்பாட்டு உயரம்",
+      "altitudeUnit": "மீ",
+      "altitudeDecrease": "உயரத்தைக் குறை",
+      "altitudeIncrease": "உயரத்தை அதிகரி"
+    },
+    "groundStation": {
+      "noDrone": "இந்த தரை நிலையத்துடன் எந்த ட்ரோனும் இணைக்கப்படவில்லை",
+      "noDroneBody": "இந்த காக்பிட், தரை நிலையம் தனது ரேடியோ இணைப்பில் கொண்டு செல்லும் ட்ரோனை இயக்குகிறது. ஒரு ட்ரோனை இணைத்து, பின் திரும்பவும்.",
+      "openCarried": "இணைக்கப்பட்ட ட்ரோன்கள்",
+      "carried": "இந்த தரை நிலையம் {name} ஐக் கொண்டு செல்கிறது",
+      "carriedBody": "அதன் காக்பிட் அந்த ட்ரோன் தேர்ந்தெடுக்கப்பட்டு, இந்த தரை நிலையம் வழியாகத் திறக்கும்.",
+      "fly": "{name} ஐ இயக்கு"
+    },
     "alerts": {
       "battCrit": "பேட்டரி ஆபத்து",
       "battLow": "பேட்டரி குறைவு",
       "fenceBreach": "எல்லை மீறல்",
-      "linkStale": "இணைப்பு பழசு"
+      "linkStale": "இணைப்பு பழசு",
+      "linkLost": "இணைப்பு துண்டிப்பு",
+      "fcCritical": "FC CRITICAL STATE",
+      "fcEmergency": "FC EMERGENCY",
+      "fcTermination": "FLIGHT TERMINATION",
+      "ekfFailsafe": "EKF FAILSAFE",
+      "gpsNo3d": "NO 3D GPS FIX",
+      "videoFrozen": "வீடியோ உறைந்தது",
+      "rcFailsafe": "RC FAILSAFE",
+      "prearm": "PREARM: {reason}",
+      "highVibration": "அதிக அதிர்வு",
+      "level": {
+        "critical": "அபாயம்",
+        "warning": "எச்சரிக்கை",
+        "advisory": "அறிவிப்பு"
+      }
+    },
+    "video": {
+      "connecting": "இணைக்கிறது...",
+      "cameraRecovering": "CAMERA RECOVERING...",
+      "noCamera": "கேமரா இல்லை",
+      "noVideoSource": "NO VIDEO SOURCE",
+      "noCameraOnNode": "NO CAMERA ON THIS NODE",
+      "noSignalGround": "NO SIGNAL FROM GROUND RELAY",
+      "noSignal": "சிக்னல் இல்லை",
+      "videoOffline": "வீடியோ ஆஃப்லைன்",
+      "sourceManual": "MANUAL",
+      "sourceDirect": "DIRECT",
+      "sourceRelayed": "VIA GROUND",
+      "sourceCloud": "VIA CLOUD",
+      "retry": "மீண்டும் முயல்க",
+      "configure": "வீடியோ மூலத்தை அமை",
+      "frozenLinkLost": "LINK LOST — PICTURE FROZEN, RECONNECTING",
+      "frozenNoFrames": "NO FRAMES — PICTURE FROZEN, RECONNECTING"
+    },
+    "topRight": {
+      "densityGroup": "தகவல் அடர்த்தி",
+      "densityMin": "Min",
+      "densityStd": "Std",
+      "densityFull": "Full",
+      "fps": "fps",
+      "video": "வீடியோ",
+      "frameAgeSeiTitle": "Measured camera-to-monitor delay (SEI timestamps in the bitstream + WebRTC presentationTime + a drone/browser clock offset estimate).",
+      "frameAgeMetadataTitle": "Sender-capture to presented frame, from the browser's frame metadata (RTCP-synchronised). Excludes the camera and encoder legs, so the true delay is higher.",
+      "frameAgeUnknownTitle": "Frame age unknown: no SEI probe and no usable frame timestamps.",
+      "netTitle": "Network round-trip plus decoder jitter-buffer wait. Not an end-to-end latency.",
+      "msNet": "ms net",
+      "linkLost": "LINK LOST",
+      "noFrames": "NO FRAMES",
+      "offline": "ஆஃப்லைன்",
+      "camera": "கேமரா · {name}"
     }
   },
   "skills": {
@@ -6357,7 +6796,12 @@
     },
     "resume": {
       "label": "Resume",
-      "effect": "Resumes the paused mission"
+      "effect": "Resumes the paused mission",
+      "confirm": {
+        "title": "பணியைத் தொடர்",
+        "message": "இடைநிறுத்திய பணியை நின்ற இடத்திலிருந்து தொடரவும்.",
+        "button": "தொடர்"
+      }
     },
     "abort": {
       "label": "Abort",
@@ -6375,12 +6819,7 @@
         "title": "Kill switch",
         "message": "This will IMMEDIATELY CUT ALL MOTORS. The drone will fall. This is an emergency-only action. Are you absolutely sure?",
         "button": "I understand, proceed"
-      },
-      "finalTitle": "FINAL CONFIRMATION - KILL MOTORS",
-      "finalMessage": "Motors will be cut immediately. The drone will fall.",
-      "finalWait": "Wait {seconds}s…",
-      "finalEnabled": "Button enabled.",
-      "finalButton": "KILL MOTORS NOW"
+      }
     },
     "modeLoiter": {
       "label": "Loiter",
@@ -6439,26 +6878,30 @@
       "announceDisabled": "{label} unavailable: {reason}",
       "announceCooldown": "{label} cooling down",
       "announceCharges": "{label}, {charges} charges",
-      "announceChargesEmpty": "{label} out of charges"
+      "announceChargesEmpty": "{label} out of charges",
+      "more": "மேலும் திறன்கள்"
     },
     "tooltip": {
       "hotkey": "Hotkey",
       "gamepad": "Button {button}",
       "none": "Unbound"
     },
-    "override": {
-      "title": "{title} with checklist incomplete",
-      "message": "The pre-flight checklist is not complete. Type OVERRIDE to proceed anyway."
+    "modeChange": {
+      "confirm": {
+        "title": "{mode} க்கு மாற்று",
+        "message": "விமானக் கட்டுப்பாட்டியை {mode} க்கு மாற்றவும்.",
+        "button": "பயன்முறை மாற்று"
+      }
     },
     "flyModeFlag": "Cockpit",
     "plugin": {
       "confirm": {
         "title": "Activate skill",
-        "message": "Activate this plugin behavior? The plugin reports its own state and the cockpit's arm and safety gates still apply.",
+        "message": "Activate this extension behavior? The extension reports its own state and the cockpit's arm and safety gates still apply.",
         "button": "Activate"
       },
       "reason": {
-        "noConfigSeam": "Plugin not reachable on this drone",
+        "noConfigSeam": "Extension not reachable on this drone",
         "unavailable": "Skill unavailable"
       }
     },
@@ -6486,7 +6929,7 @@
     "dropToClear": "Drop a slot here to clear it",
     "drawerLabel": "Available skills",
     "groupBuiltin": "Built-in",
-    "groupPlugin": "Plugin: {name}",
+    "groupPlugin": "Extension: {name}",
     "noDrone": "Select a drone to see its available skills.",
     "noSkills": "No skills available for this drone.",
     "noBindings": "No bound skills yet. Bind skills in the cockpit Skill Bar editor.",
@@ -6500,7 +6943,7 @@
     "noKey": "No key",
     "noButton": "No button",
     "buttonN": "Button {button}",
-    "unavailableOnDrone": "Plugin not installed on this drone",
+    "unavailableOnDrone": "Extension not installed on this drone",
     "captureKey": "Press a key to bind",
     "rebindKeyFrom": "Rebind from key {key}",
     "pressKey": "Press a key…",
@@ -6638,13 +7081,13 @@
   "cockpitQuickSettings": {
     "close": "Close",
     "title": "Quick settings",
-    "subtitle": "Adjust plugin parameters and the active vision model",
-    "subtitleFocused": "Adjust this plugin's parameters",
+    "subtitle": "Adjust extension parameters and the active vision model",
+    "subtitleFocused": "Adjust this extension's parameters",
     "noDrone": "No drone selected",
     "empty": "No adjustable settings for this drone",
-    "emptyFocused": "This plugin has no adjustable settings",
+    "emptyFocused": "This extension has no adjustable settings",
     "modelSection": "Vision model",
-    "pluginPanelsSection": "Plugin panels"
+    "pluginPanelsSection": "Extension panels"
   },
   "mcp": {
     "title": "Control your fleet from your AI assistant",
@@ -6652,7 +7095,7 @@
     "readTitle": "Read everything",
     "readBody": "Live status, telemetry, health, and configuration, with the meaning of every field.",
     "operateTitle": "Operate the fleet",
-    "operateBody": "Restart services, manage plugins, and adjust configuration on the node.",
+    "operateBody": "Restart services, manage extensions, and adjust configuration on the node.",
     "safeTitle": "Safe by design",
     "safeBody": "A scope on every connection, a confirmation on sensitive actions, and an audit on every call.",
     "connectTitle": "Connect in 60 seconds",
@@ -6681,7 +7124,7 @@
       },
       "operate": {
         "label": "Operate",
-        "body": "Everything in read, plus services, plugins, config, and tuning. No flight."
+        "body": "Everything in read, plus services, extensions, config, and tuning. No flight."
       },
       "full": {
         "label": "Full control",
@@ -6780,7 +7223,7 @@
     "groups": {
       "access": "Access control",
       "catalog": "Catalog",
-      "plugins": "Plugins"
+      "plugins": "Extensions"
     },
     "sidebar": {
       "label": "MCP sections",
@@ -6795,7 +7238,7 @@
       "group": {
         "read": "Live status, telemetry, parameters, and configuration. No changes to the fleet.",
         "safe_write": "Reversible writes: configuration, recording, staged mission edits, and vision designation.",
-        "admin": "Node administration: services, plugins, network configuration, and parameter writes. Includes everything in safe_write.",
+        "admin": "Node administration: services, extensions, network configuration, and parameter writes. Includes everything in safe_write.",
         "flight": "Flight actions: arm, disarm, mode, takeoff, land, RTL, and guided setpoints. Off by default; each call also confirms.",
         "destructive": "Irreversible actions: reboot, shutdown, factory reset, firmware rollback, and reset-all-parameters.",
         "secret_read": "Read secret-bearing values unredacted. A modifier on read, not a substitute for it."
@@ -6823,16 +7266,16 @@
       "capabilityNote": "A capability check, not a live call. A machine credential connects through the fleet relay, so agent-only tools are not reachable with it; reach is shown with flight enforcement off."
     },
     "plugins": {
-      "title": "Plugins",
-      "subtitle": "Installed plugins that expose tools, resources, or prompts to AI clients through MCP.",
-      "empty": "No installed plugin exposes MCP tools yet. Install a plugin that declares MCP tools on a node to see it here.",
-      "filterPlaceholder": "Filter plugins",
-      "notFound": "This plugin is no longer available.",
+      "title": "Extensions",
+      "subtitle": "Installed extensions that expose tools, resources, or prompts to AI clients through MCP.",
+      "empty": "No installed extension exposes MCP tools yet. Install an extension that declares MCP tools on a node to see it here.",
+      "filterPlaceholder": "Filter extensions",
+      "notFound": "This extension is no longer available.",
       "firstParty": "First-party",
       "untrusted": "Untrusted",
       "noExpose": "no MCP",
-      "notExposed": "This plugin does not expose tools to MCP (it does not hold the mcp.expose capability).",
-      "untrustedNote": "This plugin is not first-party. Review its tools before letting an AI client use them; flight and destructive tools always confirm at call time.",
+      "notExposed": "This extension does not expose tools to MCP (it does not hold the mcp.expose capability).",
+      "untrustedNote": "This extension is not first-party. Review its tools before letting an AI client use them; flight and destructive tools always confirm at call time.",
       "installedOn": "Installed on: {nodes}",
       "grantedCaps": "Granted capabilities",
       "toolsCount": "{count} tools",
@@ -6840,8 +7283,8 @@
       "promptsCount": "{count} prompts",
       "agentModeOnly": "agent-mode only",
       "inputSchema": "Input schema",
-      "loading": "Reading the plugins installed on your nodes...",
-      "unavailable": "Plugin tool discovery is unavailable: none of your LAN-paired nodes answered. Connect to a node on this network to see its plugins."
+      "loading": "Reading the extensions installed on your nodes...",
+      "unavailable": "Extension tool discovery is unavailable: none of your LAN-paired nodes answered. Connect to a node on this network to see its extensions."
     },
     "connect": {
       "cliLabel": "Add with the Claude Code CLI",
@@ -7002,7 +7445,7 @@
     "groups": {
       "assigned": "Assigned",
       "discovered": "Discovered",
-      "plugin": "Plugin-managed",
+      "plugin": "Extension-managed",
       "offline": "Offline"
     },
     "groupHint": {
@@ -7014,7 +7457,7 @@
     "state": {
       "assigned": "Assigned",
       "discovered_unassigned": "Discovered",
-      "plugin_owned": "Plugin",
+      "plugin_owned": "Extension",
       "offline": "Offline"
     },
     "card": {
@@ -7426,6 +7869,14 @@
     "clearAll": "Clear All Cache",
     "clearConfirm": "Clear all cached map tiles? This cannot be undone.",
     "help": "Download map tiles for offline use from the Plan tab (Download button in toolbar). Tiles are cached in your browser and available without internet."
+  },
+  "extensions": {
+    "reach": {
+      "lanOrGroundRequired": "Needs a LAN or ground-station link to this drone"
+    },
+    "bindings": {
+      "unbound": "Default keys left unbound to avoid a clash: {skills}"
+    }
   },
   "fcSigning": {
     "enrollSentNotConfirmed": "Key sent, not confirmed. The flight controller was sent the new key but was not seen signing with it. This browser keeps both keys until you confirm which one the flight controller holds.",

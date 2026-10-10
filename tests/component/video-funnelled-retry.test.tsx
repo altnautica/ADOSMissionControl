@@ -57,7 +57,9 @@ vi.mock("@/hooks/use-video-transport-cascade", async () => {
   };
 });
 
-import { VideoBackground } from "@/components/hud/VideoBackground";
+import { NextIntlClientProvider } from "next-intl";
+import messages from "../../locales/en.json";
+import { VideoCanvas } from "@/components/flight/VideoCanvas";
 import { useVideoStore } from "@/stores/video-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
@@ -67,6 +69,14 @@ const FUNNELLED_URL = "http://192.168.1.50:8080/main/whep";
 
 function lastRetryKey(): number {
   return cascade.calls[cascade.calls.length - 1]?.retryKey ?? -1;
+}
+
+function renderCanvas() {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <VideoCanvas chrome="cockpit" droneId={DRONE} />
+    </NextIntlClientProvider>,
+  );
 }
 
 beforeEach(() => {
@@ -89,7 +99,7 @@ afterEach(() => {
 
 describe("funnelled agent video recovery", () => {
   it("re-dials a failed funnelled feed on a fixed interval, indefinitely", () => {
-    render(<VideoBackground />);
+    renderCanvas();
     const first = lastRetryKey();
     expect(cascade.calls.at(-1)?.agentWhepUrl).toBe(FUNNELLED_URL);
 
@@ -111,7 +121,7 @@ describe("funnelled agent video recovery", () => {
 
   it("re-dials a frozen funnelled feed on the stall signal", () => {
     cascade.outcome = "connected";
-    render(<VideoBackground />);
+    renderCanvas();
     act(() => {
       vi.advanceTimersByTime(500);
     });

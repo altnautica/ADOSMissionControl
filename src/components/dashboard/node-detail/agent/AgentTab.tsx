@@ -39,6 +39,7 @@ import { AgentShowcase } from "./AgentShowcase";
 import { resolveAgentNav, resolveSubpage } from "./agent-nav-sections";
 import { SurfaceErrorBoundary, SurfaceBody } from "../SurfaceErrorBoundary";
 import { SegmentedPane } from "../SegmentedPane";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 
 const DEFAULT_PANEL = "system";
 
@@ -107,6 +108,7 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
   }
 
   const profile = ctx.drone.profile ?? "drone";
+  const demoMode = useDemoMode();
   const settingsCtx: SettingsPageContext = useMemo(
     () => ({
       droneId: ctx.droneId,
@@ -116,6 +118,7 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
       config,
       readOnly,
       setValue,
+      demoMode,
     }),
     [
       ctx.droneId,
@@ -125,6 +128,7 @@ export function AgentTab({ ctx }: { ctx: SurfaceContext }) {
       config,
       readOnly,
       setValue,
+      demoMode,
     ],
   );
 

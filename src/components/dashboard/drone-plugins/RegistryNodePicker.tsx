@@ -19,10 +19,13 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
-import { useFleetStore } from "@/stores/fleet-store";
+import { fleetFieldsEqual, selectFleet, useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
 import { resolveRelayReach } from "@/lib/nodes/relay-reach";
 import type { FleetDrone } from "@/lib/types";
+
+/** Eligibility reads only the node's agent identity and relay route. */
+const PICKER_FLEET_EQUAL = fleetFieldsEqual(["name", "cloudDeviceId", "reachedVia"]);
 
 export function RegistryNodePicker({
   pluginId,
@@ -33,7 +36,7 @@ export function RegistryNodePicker({
 }) {
   const t = useTranslations("pluginRegistry.browse");
   const router = useRouter();
-  const drones = useFleetStore((s) => s.drones);
+  const drones = useFleetDrones(selectFleet, PICKER_FLEET_EQUAL);
   const selectDrone = useDroneManager((s) => s.selectDrone);
 
   const eligibleNodes = useMemo<FleetDrone[]>(

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useTranslations } from "next-intl";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { confirmArmedParamWrite, describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
@@ -39,6 +40,7 @@ export function ReceiverBindingUI({
   onWritten,
 }: ReceiverBindingUIProps) {
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.receiver");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const [showTrimPreview, setShowTrimPreview] = useState(false);
@@ -60,19 +62,19 @@ export function ReceiverBindingUI({
         return { name, value: channels[ch - 1], oldValue: currentParams.get(name) ?? 0 };
       });
     if (entries.length === 0) {
-      toast("No live RC data; trims not changed", "error");
+      toast(t("trimsNoRcData"), "error");
       return;
     }
     setSettingTrims(true);
     try {
       if (!(await confirmArmedParamWrite("receiver", entries.map((e) => e.name)))) {
-        toast("Trims not changed: vehicle is armed", "error");
+        toast(t("trimsArmed"), "error");
         return;
       }
       const outcome = await writeParamBatch(protocol, entries, "receiver");
       if (outcome.written.size > 0) onWritten();
       const { message, level } = describeParamBatch(outcome);
-      if (outcome.failures.length > 0) toast(`${message}. Failed: ${outcome.failures.join(", ")}`, "error");
+      if (outcome.failures.length > 0) toast(t("trimsFailed", { message, failures: outcome.failures.join(", ") }), "error");
       else toast(message, level);
     } finally {
       setSettingTrims(false);

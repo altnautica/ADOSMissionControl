@@ -3,10 +3,11 @@
  *
  * Two independent lifecycles, deliberately kept apart:
  *
- * - `startGamepadPolling` reads `navigator.getGamepads()` at display rate,
+ * - `acquireGamepadPolling` reads `navigator.getGamepads()` at display rate,
  *   applies calibration, deadzone, and expo, and publishes axes and buttons to
  *   the input store. It transmits nothing. Any surface that needs to see a
  *   button press — binding capture, a calibration wizard — wants this one.
+ *   It is reference counted: the loop runs while any surface holds it.
  * - `startManualControlStream` transmits those sticks to the aircraft as an RC
  *   override, at the rate the connected link declares, and only while every
  *   condition in {@link manualControlAllowed} holds. Only a flying surface
@@ -22,6 +23,7 @@ import { useDroneStore } from "@/stores/drone-store";
 import { selectedDroneMqttAuthority } from "@/hooks/use-mqtt-control-authority";
 import { canPublishFcFrames } from "@/lib/nodes/mqtt-control-authority";
 import { manualControlAllowed } from "./manual-control-gate";
+import { isReservedGamepadButton } from "@/lib/skills/chord";
 
 export interface GamepadMapping {
   rollAxis: number;
@@ -150,11 +152,28 @@ function padReporting(gp: Gamepad, deflected: boolean, now: number): boolean {
   return !deflected || now - lastPadReportAt <= FROZEN_DEFLECTION_MS;
 }
 
+/** Surfaces currently holding the polling loop. */
+let pollHolders = 0;
+
 /**
- * Start reading the gamepad into the input store. Transmits nothing — call
- * {@link startManualControlStream} as well to fly with it.
+ * Hold the gamepad reading loop. The loop starts with the first holder and
+ * stops when the last releases, so a settings panel closing never stops the
+ * cockpit's reader. Transmits nothing — call {@link startManualControlStream}
+ * as well to fly with it. Returns an idempotent release.
  */
-export function startGamepadPolling(): void {
+export function acquireGamepadPolling(): () => void {
+  pollHolders += 1;
+  startPolling();
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    pollHolders -= 1;
+    if (pollHolders === 0) stopPolling();
+  };
+}
+
+function startPolling(): void {
   if (pollAnimFrame !== null) return; // Already running
 
   /**
@@ -375,11 +394,10 @@ export function manualControlTick(): number {
   const pitch = captured ? 0 : livePitch;
   const throttleAxis = captured ? input.capturedThrottle : liveThrottle;
 
-  // Convert boolean[] to bitmask
-  let bitmask = 0;
-  for (let i = 0; i < Math.min(buttons.length, 16); i++) {
-    if (buttons[i]) bitmask |= 1 << i;
-  }
+  // Convert boolean[] to bitmask. Buttons the cockpit owns (radial, stream
+  // cycling, quick settings, exit) drive the GCS, not the aircraft, so they
+  // never reach the autopilot as RC buttons.
+  const bitmask = manualControlButtonMask(buttons);
 
   // The throttle axis is bipolar (-1 stick down, +1 stick up) while the
   // protocol takes throttle as 0..1 with 0 at idle, so it is remapped here
@@ -427,11 +445,23 @@ export function stopManualControlStream(): void {
 }
 
 /**
+ * The MANUAL_CONTROL button bitmask for a button frame: the first 16 buttons,
+ * minus the ones the cockpit reserves for its own controls.
+ */
+export function manualControlButtonMask(buttons: readonly boolean[]): number {
+  let bitmask = 0;
+  for (let i = 0; i < Math.min(buttons.length, 16); i++) {
+    if (buttons[i] && !isReservedGamepadButton(i)) bitmask |= 1 << i;
+  }
+  return bitmask;
+}
+
+/**
  * Stop reading the gamepad. Also stops the manual-control stream: once the
  * axes stop updating the last frame is stale, and a stale stick frame is not
  * something to keep transmitting.
  */
-export function stopGamepadPolling(): void {
+function stopPolling(): void {
   if (pollAnimFrame !== null) {
     cancelAnimationFrame(pollAnimFrame);
     pollAnimFrame = null;

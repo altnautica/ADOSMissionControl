@@ -31,6 +31,7 @@ import { agentGateFallback } from "./shared/agent-gate-fallback";
 import { DronePluginsList } from "@/components/dashboard/drone-plugins/DronePluginsList";
 import { InstallPluginButton } from "@/components/dashboard/drone-plugins/InstallPluginButton";
 import { RegistryPluginGrid } from "@/components/dashboard/drone-plugins/RegistryPluginGrid";
+import { DronePluginParametersSection } from "@/components/plugins/DronePluginParametersSection";
 import type { FleetDrone } from "@/lib/types";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -93,6 +94,7 @@ export function PluginsTab({ ctx }: { ctx: SurfaceContext }) {
               emptyState={<InstalledEmptyState drone={activeDrone} />}
             />
           </section>
+          <DronePluginParametersSection agentId={activeDrone.id} />
           <RegistryPluginGrid
             target={{
               _id: activeDrone.cloudDeviceId ?? activeDrone.id,

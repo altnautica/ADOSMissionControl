@@ -17,7 +17,7 @@
 import { useTranslations } from "next-intl";
 import { Plane } from "lucide-react";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
-import { useFleetStore } from "@/stores/fleet-store";
+import { fleetFieldsEqual, selectFleet, useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { extractLinkedPeers } from "@/lib/agent/relayed-peers";
@@ -26,6 +26,9 @@ import { useUiStore } from "@/stores/ui-store";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { HintChip } from "@/components/hardware/HintChip";
 import { StatusDot } from "@/components/ui/status-dot";
+
+/** Carried-drone rows only resolve a peer to its node id and name. */
+const CARRIED_FLEET_EQUAL = fleetFieldsEqual(["name", "cloudDeviceId"]);
 
 /** Beyond this, a peer decode is history rather than a live link. */
 const HEARD_FRESH_MS = 60_000;
@@ -49,7 +52,7 @@ export function CarriedDronesTab({
   const status = useCommandFleetStore((s) =>
     nodeDeviceId ? s.cloudStatuses[nodeDeviceId] : undefined,
   );
-  const drones = useFleetStore((s) => s.drones);
+  const drones = useFleetDrones(selectFleet, CARRIED_FLEET_EQUAL);
   // Whether the GCS holds this ground node's LAN credentials. That, and only
   // that, is what makes the relay-proxy route usable — so it is what decides
   // the authority sentence below.

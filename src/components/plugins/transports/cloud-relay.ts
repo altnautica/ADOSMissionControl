@@ -140,7 +140,7 @@ export async function installCloudRelay(
     const detail = err instanceof Error ? err.message : String(err);
     throw new CloudRelayError(
       "verify",
-      `Archive integrity check failed — re-upload or contact the plugin author. ${detail}`,
+      `Archive integrity check failed — re-upload or contact the extension author. ${detail}`,
     );
   }
 

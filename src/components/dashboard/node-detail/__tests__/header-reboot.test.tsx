@@ -63,7 +63,11 @@ vi.mock("../surfaces", () => ({
 }));
 
 import { NodeDetailPanel } from "../NodeDetailPanel";
-import { useFleetStore } from "@/stores/fleet-store";
+import { setFixtureFleet } from "../../../../../tests/helpers/fleet-drones";
+
+vi.mock("@/stores/node-registry/use-fleet-drones", async (importOriginal) =>
+  (await import("../../../../../tests/helpers/fleet-drones")).fleetDronesModuleMock(await importOriginal()),
+);
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import type { FleetDrone } from "@/lib/types";
@@ -79,7 +83,7 @@ const reboot = vi.fn(async () => ({
 beforeEach(() => {
   reboot.mockClear();
   toast.mockClear();
-  useFleetStore.setState({
+  setFixtureFleet({
     drones: [{ id: DRONE, name: DRONE, status: "online", profile: "drone" } as unknown as FleetDrone],
   });
   const protocol = { isConnected: true, reboot } as unknown as DroneProtocol;

@@ -1,14 +1,18 @@
 /**
  * Take-off skill — arms then commands an autonomous take-off to the requested
- * altitude (default 10 m). One-shot, disarmed-only, danger confirm with the
- * checklist-aware OVERRIDE escalation. Requires autonomous nav.
+ * altitude (default 10 m). One-shot, disarmed-only, hold-to-confirm on a sheet
+ * that carries the altitude stepper, checklist-aware. Requires autonomous nav.
  *
  * @module skills/builtins/takeoff
  * @license GPL-3.0-only
  */
 
 import type { Skill, SkillActivateArgs } from "../types";
-import { disabledIfNoLink, disabledUnlessDisarmed } from "./_shared";
+import {
+  builtinConfirm,
+  disabledIfNoLink,
+  disabledUnlessDisarmed,
+} from "./_shared";
 
 /** Take-off altitude bounds and default, metres above home. */
 export const TAKEOFF_ALTITUDE_M = { min: 1, max: 120, default: 10 } as const;
@@ -38,14 +42,15 @@ export const takeoffSkill: Skill = {
   toggle: false,
   armRequirement: "disarmed",
   requiresAutonomousNav: true,
-  confirm: {
-    title: "skills.takeoff.confirm.title",
-    message: "skills.takeoff.confirm.message",
-    confirmLabel: "skills.takeoff.confirm.button",
-    variant: "danger",
-    typedPhrase: "TAKEOFF",
+  confirm: builtinConfirm("takeoff", "hold", "danger", {
     checklistAware: true,
-  },
+    altitude: {
+      defaultM: TAKEOFF_ALTITUDE_M.default,
+      minM: TAKEOFF_ALTITUDE_M.min,
+      maxM: TAKEOFF_ALTITUDE_M.max,
+      stepM: 1,
+    },
+  }),
   // The dialog names the altitude that will be commanded, so a mistyped value
   // is visible before the operator confirms.
   confirmValues: (args) => ({ altitude: takeoffAltitude(args) }),

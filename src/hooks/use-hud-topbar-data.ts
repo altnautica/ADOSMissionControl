@@ -1,27 +1,33 @@
 "use client";
 
-// Single-shot read of the four ring buffers feeding the HUD top bar and the
-// cockpit safety band.
+// Single-shot read of the four ring buffers feeding the cockpit safety band.
 //
 // Deliberately not memoized. The result depends on wall-clock time (a sample
 // that was fresh last render can be stale this one), which no dependency array
-// can express — a `useMemo` here has to list its invalidation signals without
-// referencing them, which is both a lie to the linter and a memo that saves
-// nothing, since both signals change at least once a second. Reading four
-// ring-buffer tails and comparing four timestamps is cheaper than the memo
-// bookkeeping around it.
+// can express. Reading four ring-buffer tails and comparing four timestamps is
+// cheaper than the memo bookkeeping around it.
 //
 // Two subscriptions drive the re-render, and both are load-bearing:
-//   _version  — new telemetry arrived.
-//   clock tick — time passed. On link loss no telemetry arrives, so `_version`
-//                stops changing and nothing would re-render; the stale values
-//                would stay painted on screen however the gate below is
-//                written. The tick is what makes staleness observable.
+//   telemetry version — new telemetry arrived. Throttled to 4 Hz: the raw
+//                       `_version` bumps once per frame, and a band that
+//                       repaints at the telemetry rate buys the operator
+//                       nothing a quarter-second cadence does not.
+//   clock tick        — time passed. On link loss no telemetry arrives, so
+//                       the version stops changing and nothing would
+//                       re-render; the stale values would stay painted on
+//                       screen. The tick is what makes staleness observable.
+//
+// Instruments go stale after two seconds: a safety readout older than that is
+// dimmed to the no-data glyph instead of being shown as current.
 
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useThrottledTelemetryVersion } from "@/hooks/use-throttled-telemetry-version";
 import { useClockTick } from "@/lib/agent/freshness";
-import { freshOnly } from "@/lib/telemetry/freshness";
+import { TELEMETRY_FUTURE_SKEW_MS } from "@/lib/telemetry/freshness";
 import type { RadioData, VfrData, BatteryData, GpsData } from "@/lib/types";
+
+/** A band reading older than this is shown as no data. */
+export const BAND_STALE_MS = 2_000;
 
 export interface HudTopBarData {
   /** Fresh sample, or `undefined` once the reading goes stale. */
@@ -37,8 +43,18 @@ export interface HudTopBarData {
   lastSampleAt: number | null;
 }
 
+function bandFresh<T extends { timestamp: number }>(
+  sample: T | undefined,
+  now: number,
+): T | undefined {
+  if (sample === undefined || !Number.isFinite(sample.timestamp)) return undefined;
+  const age = now - sample.timestamp;
+  if (age < 0) return -age <= TELEMETRY_FUTURE_SKEW_MS ? sample : undefined;
+  return age < BAND_STALE_MS ? sample : undefined;
+}
+
 export function useHudTopBarData(): HudTopBarData {
-  useTelemetryStore((s) => s._version);
+  useThrottledTelemetryVersion();
   useClockTick();
 
   const buffers = useTelemetryStore.getState();
@@ -58,10 +74,10 @@ export function useHudTopBarData(): HudTopBarData {
   }
 
   return {
-    radio: freshOnly(radio, now),
-    vfr: freshOnly(vfr, now),
-    battery: freshOnly(battery, now),
-    gps: freshOnly(gps, now),
+    radio: bandFresh(radio, now),
+    vfr: bandFresh(vfr, now),
+    battery: bandFresh(battery, now),
+    gps: bandFresh(gps, now),
     lastSampleAt,
   };
 }

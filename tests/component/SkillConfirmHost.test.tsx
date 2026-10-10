@@ -1,37 +1,79 @@
 /**
- * Tests for the skill confirm host + store. Verifies the confirm seam resolves
- * the dispatcher's promise on confirm and cancel, that the checklist-aware
- * OVERRIDE escalation engages when the pre-flight checklist is incomplete, and
- * that a two-stage (Kill) policy gates the final confirm behind a countdown.
+ * Tests for the skill confirm host + store: the gesture tiers. A hold
+ * completes only after the full hold time and never on an early release; the
+ * gamepad button that opened a request satisfies the gesture while held; the
+ * slide tier asks for the long hold on a key or button; the guarded (kill)
+ * tier lapses when no hold starts inside its window; an incomplete pre-flight
+ * checklist keeps the gesture inert until the explicit override is on; and a
+ * take-off sheet returns the altitude the operator set.
  *
  * @license GPL-3.0-only
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act } from "react";
-import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { renderWithIntl } from "../helpers/intl-wrapper";
 import { SkillConfirmHost } from "@/components/cockpit/SkillConfirmHost";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { useChecklistStore } from "@/stores/checklist-store";
-import type { ConfirmPolicy } from "@/lib/skills/types";
+import { useInputStore } from "@/stores/input-store";
+import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
+import { useDroneStore } from "@/stores/drone-store";
+import {
+  activate,
+  buildSkillContext,
+  registerBuiltins,
+  type ConfirmPolicy,
+  type ConfirmResult,
+} from "@/lib/skills";
+import type { ProtocolCapabilities } from "@/lib/protocol/types";
 
-function resetStores() {
-  useSkillConfirmStore.setState({ pending: null, _nextId: 1 });
-  // Mark every checklist item ready for drone-1 so the default path is the
-  // non-escalated confirm; individual tests override.
+const DRONE = "drone-1";
+
+function checklistReady(droneId: string, ready = true) {
   useChecklistStore.setState((s) => ({
-    droneId: "drone-1",
-    items: s.items.map((item) => ({ ...item, status: "skipped" as const })),
+    droneId,
+    items: s.items.map((item, i) => ({
+      ...item,
+      status: ready || i > 0 ? ("skipped" as const) : ("pending" as const),
+    })),
   }));
 }
+
+function setButton(index: number, down: boolean) {
+  const buttons = [...useInputStore.getState().buttons];
+  buttons[index] = down;
+  act(() => useInputStore.setState({ buttons }));
+}
+
+function advance(ms: number) {
+  act(() => {
+    vi.advanceTimersByTime(ms);
+  });
+}
+
+async function flush() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+const HOLD_POLICY: ConfirmPolicy = {
+  title: "skills.land.confirm.title",
+  message: "skills.land.confirm.message",
+  confirmLabel: "skills.land.confirm.button",
+  variant: "danger",
+  gesture: "hold",
+};
 
 const ARM_POLICY: ConfirmPolicy = {
   title: "skills.arm.confirm.title",
   message: "skills.arm.confirm.message",
   confirmLabel: "skills.arm.confirm.button",
   variant: "danger",
-  typedPhrase: "ARM",
+  gesture: "slide",
   checklistAware: true,
 };
 
@@ -40,13 +82,36 @@ const KILL_POLICY: ConfirmPolicy = {
   message: "skills.kill.confirm.message",
   confirmLabel: "skills.kill.confirm.button",
   variant: "danger",
-  typedPhrase: "KILL",
-  twoStageCountdownSeconds: 3,
+  gesture: "guarded",
 };
+
+function request(policy: ConfirmPolicy, droneId?: string) {
+  const outcome: { value: ConfirmResult | null } = { value: null };
+  act(() => {
+    void useSkillConfirmStore
+      .getState()
+      .request(policy, droneId)
+      .then((v) => {
+        outcome.value = v;
+      });
+  });
+  return outcome;
+}
+
+function holdControl(): HTMLElement {
+  const el = document.querySelector<HTMLElement>("[data-hold-control='true']");
+  if (!el) throw new Error("no hold control");
+  return el;
+}
 
 describe("SkillConfirmHost", () => {
   beforeEach(() => {
-    resetStores();
+    vi.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
+    });
+    useSkillConfirmStore.setState({ pending: null, _nextId: 1 });
+    useInputStore.setState({ buttons: new Array(16).fill(false) });
+    checklistReady(DRONE);
   });
 
   afterEach(() => {
@@ -58,137 +123,186 @@ describe("SkillConfirmHost", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("resolves true after the typed phrase is entered and confirmed", async () => {
+  it("confirms a hold only after the full hold time", async () => {
     renderWithIntl(<SkillConfirmHost />);
+    const outcome = request(HOLD_POLICY, DRONE);
 
-    let resolved: boolean | null = null;
-    act(() => {
-      void useSkillConfirmStore
-        .getState()
-        .request(ARM_POLICY, "drone-1")
-        .then((v) => {
-          resolved = v;
-        });
-    });
+    fireEvent.pointerDown(holdControl(), { pointerId: 1 });
+    advance(700);
+    await flush();
+    expect(outcome.value).toBeNull();
 
-    // The typed-phrase gate keeps confirm disabled until "ARM" is typed.
-    const input = await screen.findByLabelText(/type/i);
-    fireEvent.change(input, { target: { value: "ARM" } });
-
-    const confirmButton = screen.getByRole("button", { name: /^Arm$/ });
-    fireEvent.click(confirmButton);
-
-    await waitFor(() => expect(resolved).toBe(true));
+    advance(150);
+    await flush();
+    expect(outcome.value).toBe(true);
     expect(useSkillConfirmStore.getState().pending).toBeNull();
   });
 
-  it("resolves false on cancel", async () => {
+  it("drops a hold released early", async () => {
     renderWithIntl(<SkillConfirmHost />);
+    const outcome = request(HOLD_POLICY, DRONE);
 
-    let resolved: boolean | null = null;
-    act(() => {
-      void useSkillConfirmStore
-        .getState()
-        .request(ARM_POLICY, "drone-1")
-        .then((v) => {
-          resolved = v;
-        });
-    });
-
-    const cancel = await screen.findByRole("button", { name: /cancel/i });
-    fireEvent.click(cancel);
-
-    await waitFor(() => expect(resolved).toBe(false));
-    expect(useSkillConfirmStore.getState().pending).toBeNull();
+    const control = holdControl();
+    fireEvent.pointerDown(control, { pointerId: 1 });
+    advance(500);
+    fireEvent.pointerUp(control, { pointerId: 1 });
+    advance(1000);
+    await flush();
+    expect(outcome.value).toBeNull();
+    expect(useSkillConfirmStore.getState().pending).not.toBeNull();
   });
 
-  it("escalates to OVERRIDE when the checklist is incomplete", async () => {
-    // Force one checklist item to fail so the checklist is not ready.
-    useChecklistStore.setState((s) => ({
-      items: s.items.map((item, i) =>
-        i === 0 ? { ...item, status: "pending" as const } : item,
-      ),
-    }));
-
+  it("holding Enter satisfies the hold", async () => {
     renderWithIntl(<SkillConfirmHost />);
-    act(() => {
-      void useSkillConfirmStore.getState().request(ARM_POLICY, "drone-1");
-    });
+    const outcome = request(HOLD_POLICY, DRONE);
 
-    // The OVERRIDE phrase is required, not the normal ARM phrase.
-    const input = await screen.findByLabelText(/type/i);
-    expect(screen.getByText("OVERRIDE")).toBeTruthy();
-    fireEvent.change(input, { target: { value: "OVERRIDE" } });
-    expect(
-      (screen.getByRole("button", { name: /^Arm$/ }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(false);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    });
+    advance(800);
+    await flush();
+    expect(outcome.value).toBe(true);
   });
 
-  it("escalates to OVERRIDE when the checklist was completed for another drone", async () => {
+  it("resolves false on cancel and on Escape", async () => {
     renderWithIntl(<SkillConfirmHost />);
-    act(() => {
-      void useSkillConfirmStore.getState().request(ARM_POLICY, "drone-2");
-    });
+    const first = request(HOLD_POLICY, DRONE);
+    fireEvent.click(screen.getAllByRole("button", { name: /cancel/i })[0]);
+    await flush();
+    expect(first.value).toBe(false);
 
-    await screen.findByLabelText(/type/i);
-    expect(screen.getByText("OVERRIDE")).toBeTruthy();
+    const second = request(HOLD_POLICY, DRONE);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    await flush();
+    expect(second.value).toBe(false);
   });
 
-  it("gates the two-stage kill confirm behind a countdown", async () => {
-    vi.useFakeTimers();
-    try {
-      renderWithIntl(<SkillConfirmHost />);
+  it("keeps the gesture inert until the checklist override is on", async () => {
+    checklistReady(DRONE, false);
+    renderWithIntl(<SkillConfirmHost />);
+    const outcome = request({ ...ARM_POLICY, gamepadButton: 0 }, DRONE);
 
-      let resolved: boolean | null = null;
-      act(() => {
-        void useSkillConfirmStore
-          .getState()
-          .request(KILL_POLICY)
-          .then((v) => {
-            resolved = v;
-          });
-      });
+    setButton(0, true);
+    advance(2000);
+    await flush();
+    expect(outcome.value).toBeNull();
 
-      // First stage: confirm advances to the final dialog.
-      const firstConfirm = screen.getByRole("button", {
-        name: /I understand/i,
-      });
-      act(() => {
-        fireEvent.click(firstConfirm);
-      });
+    // Releasing and turning the override on: a fresh full hold now confirms.
+    setButton(0, false);
+    fireEvent.click(screen.getByRole("switch"));
+    setButton(0, true);
+    advance(1500);
+    await flush();
+    expect(outcome.value).toBe(true);
+  });
 
-      // The final-stage confirm is disabled while the countdown runs.
-      const waiting = screen.getByRole("button", { name: /Wait/i });
-      expect((waiting as HTMLButtonElement).disabled).toBe(true);
+  it("treats a checklist completed for another drone as incomplete", () => {
+    renderWithIntl(<SkillConfirmHost />);
+    request(ARM_POLICY, "drone-2");
+    expect(screen.getByRole("switch")).toBeTruthy();
+  });
 
-      // Run the 3-second countdown one tick at a time so each re-render
-      // schedules the next timer.
-      for (let i = 0; i < 3; i++) {
-        act(() => {
-          vi.advanceTimersByTime(1000);
-        });
-      }
+  it("lapses the kill guard when no hold starts inside its window", async () => {
+    renderWithIntl(<SkillConfirmHost />);
+    const outcome = request(KILL_POLICY);
+    advance(3100);
+    await flush();
+    expect(outcome.value).toBe(false);
+  });
 
-      const finalConfirm = screen.getByRole("button", {
-        name: /KILL MOTORS NOW/i,
-      });
-      expect((finalConfirm as HTMLButtonElement).disabled).toBe(true); // typed-phrase still gates
+  it("fires kill on a 1500 ms hold inside the guard window", async () => {
+    renderWithIntl(<SkillConfirmHost />);
+    const outcome = request(KILL_POLICY);
+    advance(1000);
+    fireEvent.pointerDown(holdControl(), { pointerId: 1 });
+    advance(1400);
+    await flush();
+    expect(outcome.value).toBeNull();
+    advance(100);
+    await flush();
+    expect(outcome.value).toBe(true);
+  });
 
-      // Enter the KILL phrase, then confirm.
-      const input = screen.getByLabelText(/type/i);
-      fireEvent.change(input, { target: { value: "KILL" } });
-      act(() => {
-        fireEvent.click(screen.getByRole("button", { name: /KILL MOTORS NOW/i }));
-      });
+  it("returns the altitude set on a take-off sheet", async () => {
+    renderWithIntl(<SkillConfirmHost />);
+    const outcome = request(
+      {
+        ...HOLD_POLICY,
+        altitude: { defaultM: 10, minM: 1, maxM: 120, stepM: 1 },
+      },
+      DRONE,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /increase/i }));
+    fireEvent.click(screen.getByRole("button", { name: /increase/i }));
+    fireEvent.pointerDown(holdControl(), { pointerId: 1 });
+    advance(800);
+    await flush();
+    expect(outcome.value).toEqual({ altitudeM: 12 });
+  });
+});
 
-      // The resolve runs synchronously; flush the .then microtask.
-      await act(async () => {
-        await Promise.resolve();
-      });
-      expect(resolved).toBe(true);
-    } finally {
-      vi.useRealTimers();
-    }
+describe("gamepad confirm of Arm through the dispatcher", () => {
+  const arm = vi.fn(async () => ({ success: true, resultCode: 0 }));
+
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
+    });
+    arm.mockClear();
+    registerBuiltins();
+    const drone = {
+      id: DRONE,
+      name: DRONE,
+      protocol: {
+        isConnected: true,
+        arm,
+        getCapabilities: () => ({ supportsAutonomousNav: true }) as ProtocolCapabilities,
+        getFirmwareHandler: () => null,
+      },
+    } as unknown as ManagedDrone;
+    useDroneManager.setState({ drones: new Map([[DRONE, drone]]), selectedDroneId: DRONE });
+    useDroneStore.setState({ armState: "disarmed", lastHeartbeat: Date.now() });
+    useSkillConfirmStore.setState({ pending: null, _nextId: 1 });
+    useInputStore.setState({ buttons: new Array(16).fill(false) });
+    checklistReady(DRONE);
+  });
+
+  afterEach(() => {
+    useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
+    vi.useRealTimers();
+  });
+
+  function pressArmOnGamepad() {
+    // The press that opens the sheet is the same button the pilot keeps held.
+    setButton(0, true);
+    act(() => {
+      void activate("arm", buildSkillContext(DRONE), { gamepadButton: 0 });
+    });
+  }
+
+  it("arms after button 0 is held for 1500 ms with the sheet open", async () => {
+    renderWithIntl(<SkillConfirmHost />);
+    pressArmOnGamepad();
+    expect(useSkillConfirmStore.getState().pending?.policy.gesture).toBe("slide");
+
+    // Keep the heartbeat fresh while the pilot holds.
+    advance(1500);
+    useDroneStore.setState({ lastHeartbeat: Date.now() });
+    await flush();
+    expect(arm).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not arm when button 0 is released at 1000 ms", async () => {
+    renderWithIntl(<SkillConfirmHost />);
+    pressArmOnGamepad();
+
+    advance(1000);
+    setButton(0, false);
+    advance(2000);
+    await flush();
+    expect(arm).not.toHaveBeenCalled();
+    expect(useSkillConfirmStore.getState().pending).not.toBeNull();
   });
 });

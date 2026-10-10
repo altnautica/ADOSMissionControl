@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -38,6 +39,7 @@ export function useFirmwareState() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const drone = useDroneManager(selectSelectedDrone);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.firmware");
   // Flashing reboots the FC into its bootloader: never on an armed vehicle,
   // whatever the checklist says.
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
@@ -182,12 +184,12 @@ export function useFirmwareState() {
       if (!userMessage.includes("aborted")) {
         core.setProgress({ phase: "error", percent: 0, message: userMessage });
         core.setFlashError(mapError(category));
-        toast("Firmware flash failed", "error");
+        toast(t("flashFailed"), "error");
       }
     } finally { core.setIsFlashing(false); core.flashManagerRef.current = null; }
   }, [core, ap.selectedApBoard, ap.selectedVehicleType, ap.selectedApVersion,
       bf.selectedBfTarget, bf.selectedBfRelease, bf.bfCustomBuild, bf.bfBuildStatus,
-      px4.selectedPx4Release, px4.selectedPx4Board, firmwareStack, drone, toast,
+      px4.selectedPx4Release, px4.selectedPx4Board, firmwareStack, drone, toast, t,
       flashBlockedReason]);
 
   const currentFlashMethods = firmwareStack === "px4" ? PX4_FLASH_METHODS : firmwareStack === "betaflight" ? BF_FLASH_METHODS : AP_FLASH_METHODS;

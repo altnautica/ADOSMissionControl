@@ -5,10 +5,9 @@
  *
  * Two maps carry a node's telemetry. The heartbeat row
  * (`cloudStatuses[deviceId].telemetry`) is filled by the LAN status poll; the
- * live stream (`telemetryByDeviceId`) is filled by the MQTT bridge for
- * cloud-paired nodes, whose heartbeat rows carry no telemetry at all. So a
- * consumer that reads only the heartbeat row sees nothing for exactly the
- * nodes the cloud lane exists to serve. `telemetryValue` is the single merge
+ * live stream (`telemetryByDeviceId`) is filled by the demo engine's
+ * simulated nodes. So a consumer that reads only the heartbeat row would miss
+ * streamed readings. `telemetryValue` is the single merge
  * rule — the fresher of the two, with a stream that has gone quiet treated as
  * absent — and both the display cells and the command gates read through it,
  * so the two can never disagree about whether a node's flight state is known.

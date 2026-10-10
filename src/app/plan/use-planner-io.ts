@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { usePlannerStore } from "@/stores/planner-store";
@@ -52,6 +53,7 @@ export function usePlannerIO(deps: IODeps) {
     setSelectedWaypoint, setExpandedWaypoint, setShowDownloadConfirm,
     downloadMission, toast,
   } = deps;
+  const t = useTranslations("plannerIo");
 
   // Every field `capturePlanExtras` reads, selected individually so a fence /
   // rally / POI edit re-runs the autosave and dirty effects below. Without
@@ -96,7 +98,7 @@ export function usePlannerIO(deps: IODeps) {
         // it now would silently discard the operator's current plan.
         return;
       }
-      toast("Unsaved mission found — restoring", "info");
+      toast(t("restoringAutosave"), "info");
       setWaypoints(saved.waypoints);
       if (saved.metadata.name) setMissionName(saved.metadata.name);
       if (saved.metadata.droneId) setSelectedDroneId(saved.metadata.droneId);
@@ -110,7 +112,7 @@ export function usePlannerIO(deps: IODeps) {
         usePlanPoiStore.getState().restore({ points: saved.pois, selectedId: null });
       }
     })();
-  }, [setWaypoints, toast, setMissionName, setSelectedDroneId]);
+  }, [setWaypoints, toast, t, setMissionName, setSelectedDroneId]);
 
   // Auto-save to IndexedDB on any planner change, path or geometry. Flushed on
   // unmount rather than cancelled — cancelling discarded up to the last two
@@ -181,48 +183,48 @@ export function usePlannerIO(deps: IODeps) {
         totalDistance: undefined, estimatedTime: undefined,
       }, capturePlanExtras());
     } else {
-      libStore.createPlan(missionName || "Untitled Plan", waypoints, {
+      libStore.createPlan(missionName || t("untitledPlan"), waypoints, {
         droneId: selectedDroneId || undefined,
       }, capturePlanExtras());
     }
     if (libAutoSaveTimer.current) clearTimeout(libAutoSaveTimer.current);
     useSettingsStore.getState().incrementSaveCount();
-    toast("Plan saved", "success");
-  }, [waypoints, missionName, selectedDroneId, toast, libAutoSaveTimer]);
+    toast(t("planSaved"), "success");
+  }, [waypoints, missionName, selectedDroneId, toast, t, libAutoSaveTimer]);
 
   const handleSaveAs = useCallback(() => {
     const libStore = usePlanLibraryStore.getState();
-    libStore.createPlan(missionName || "Untitled Plan", waypoints, {
+    libStore.createPlan(missionName || t("untitledPlan"), waypoints, {
       droneId: selectedDroneId || undefined,
     }, capturePlanExtras());
     useSettingsStore.getState().incrementSaveCount();
-    toast("Plan saved as new copy", "success");
-  }, [waypoints, missionName, selectedDroneId, toast]);
+    toast(t("planSavedAsCopy"), "success");
+  }, [waypoints, missionName, selectedDroneId, toast, t]);
 
   const handleExportWaypoints = useCallback(() => {
     exportWaypointsFormat(waypoints, missionName || "mission", currentExportOptions());
-    toast("Exported (.waypoints)", "success");
-  }, [waypoints, missionName, toast]);
+    toast(t("exported", { format: ".waypoints" }), "success");
+  }, [waypoints, missionName, toast, t]);
 
   const handleExportPlan = useCallback(() => {
     exportQGCPlan(waypoints, missionName || "mission", undefined, capturePlanExtras(), currentExportOptions());
-    toast("Exported (.plan)", "success");
-  }, [waypoints, missionName, toast]);
+    toast(t("exported", { format: ".plan" }), "success");
+  }, [waypoints, missionName, toast, t]);
 
   const handleExportKML = useCallback(() => {
     exportMissionKML(waypoints, missionName || "mission");
-    toast("Exported (.kml)", "success");
-  }, [waypoints, missionName, toast]);
+    toast(t("exported", { format: ".kml" }), "success");
+  }, [waypoints, missionName, toast, t]);
 
   const handleExportCSV = useCallback(() => {
     exportMissionCSV(waypoints, missionName || "mission");
-    toast("Exported (.csv)", "success");
-  }, [waypoints, missionName, toast]);
+    toast(t("exported", { format: ".csv" }), "success");
+  }, [waypoints, missionName, toast, t]);
 
   const handleExportKMZ = useCallback(async () => {
     await exportMissionKMZ(waypoints, missionName || "mission");
-    toast("Exported (.kmz)", "success");
-  }, [waypoints, missionName, toast]);
+    toast(t("exported", { format: ".kmz" }), "success");
+  }, [waypoints, missionName, toast, t]);
 
   const handleExportNative = useCallback(() => {
     // Native .altmission format — captures the whole plan (path + fence + rally),
@@ -233,8 +235,8 @@ export function usePlannerIO(deps: IODeps) {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }, capturePlanExtras());
-    toast("Exported (.altmission)", "success");
-  }, [waypoints, missionName, selectedDroneId, toast]);
+    toast(t("exported", { format: ".altmission" }), "success");
+  }, [waypoints, missionName, selectedDroneId, toast, t]);
 
   const handlePlanLoaded = useCallback(
     (plan: { name: string; droneId?: string }) => {
@@ -250,12 +252,12 @@ export function usePlannerIO(deps: IODeps) {
     const libStore = usePlanLibraryStore.getState();
     libStore.createPlan();
     clearPlanWorkspace();
-    setMissionName("Untitled Plan");
+    setMissionName(t("untitledPlan"));
     setSelectedDroneId("");
     setSelectedWaypoint(null);
     setExpandedWaypoint(null);
-    toast("New plan created", "info");
-  }, [setSelectedWaypoint, setExpandedWaypoint, toast, setMissionName, setSelectedDroneId]);
+    toast(t("newPlanCreated"), "info");
+  }, [setSelectedWaypoint, setExpandedWaypoint, toast, t, setMissionName, setSelectedDroneId]);
 
   const handleFocusSearch = useCallback(() => {
     document.dispatchEvent(new CustomEvent("plan-library:focus-search"));
@@ -273,32 +275,32 @@ export function usePlannerIO(deps: IODeps) {
     if (downloadState === "error") {
       toast(
         downloadError
-          ? `Mission download failed: ${downloadError}. Nothing was loaded`
-          : "Mission download failed — nothing was loaded",
+          ? t("downloadFailedWithError", { error: downloadError })
+          : t("downloadFailed"),
         "error",
       );
       return;
     }
     for (const warning of downloadWarnings) toast(warning, "warning");
     // The store leaves the open plan untouched when the vehicle holds nothing.
-    if (downloaded.length === 0) { toast("The vehicle has no mission", "info"); return; }
+    if (downloaded.length === 0) { toast(t("vehicleHasNoMission"), "info"); return; }
     const time = new Date().toLocaleTimeString("en-US", { hour12: false });
-    const name = `Drone Mission (${time})`;
+    const name = t("droneMissionName", { time });
     const libStore = usePlanLibraryStore.getState();
     libStore.createPlan(name, downloaded);
     setMissionName(name);
     setSelectedDroneId(selectedDroneId);
     usePlannerStore.getState().requestFit();
-    toast(`Loaded ${downloaded.length} waypoints from drone`, "success");
-  }, [downloadMission, selectedDroneId, toast, setMissionName, setSelectedDroneId]);
+    toast(t("loadedFromDrone", { count: downloaded.length }), "success");
+  }, [downloadMission, selectedDroneId, toast, t, setMissionName, setSelectedDroneId]);
 
   const handleDownloadFromDrone = useCallback(() => {
     const droneManager = useDroneManager.getState();
     const hasDrone = droneManager.selectedDroneId !== null || droneManager.drones.size > 0;
-    if (!hasDrone) { toast("Connect a drone first", "info"); return; }
+    if (!hasDrone) { toast(t("connectDroneFirst"), "info"); return; }
     if (isDirty && activePlanId) { setShowDownloadConfirm(true); return; }
     executeDownloadFromDrone();
-  }, [isDirty, activePlanId, executeDownloadFromDrone, toast, setShowDownloadConfirm]);
+  }, [isDirty, activePlanId, executeDownloadFromDrone, toast, t, setShowDownloadConfirm]);
 
   const handleSaveAndDownload = useCallback(() => {
     handleSave();

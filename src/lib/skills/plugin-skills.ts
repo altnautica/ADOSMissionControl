@@ -15,6 +15,11 @@
  */
 
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import { isDemoMode } from "@/lib/utils";
+import {
+  canWritePluginConfig,
+  PLUGIN_REACH_REQUIRED_REASON,
+} from "./plugin-config-writer";
 import type {
   ArmRequirement,
   ConfirmPolicy,
@@ -94,13 +99,15 @@ export function pluginSkillId(pluginId: string, localId: string): string {
  * Generic confirm policy for a plugin skill, built from host i18n keys so a
  * plugin does not need to ship GCS translations. The confirm host resolves
  * the keys. Plugin behaviors are not destructive built-ins, so the policy
- * uses the `primary` variant with no typed phrase.
+ * uses the `primary` variant with a hold-to-confirm gesture. Plugin target
+ * actions that flip the same config key reuse it.
  */
-const PLUGIN_CONFIRM_POLICY: ConfirmPolicy = {
+export const PLUGIN_CONFIRM_POLICY: ConfirmPolicy = {
   title: "skills.plugin.confirm.title",
   message: "skills.plugin.confirm.message",
   confirmLabel: "skills.plugin.confirm.button",
   variant: "primary",
+  gesture: "hold",
 };
 
 /**
@@ -144,7 +151,15 @@ export function buildPluginSkill(c: DroneSkillContribution): Skill {
     pluginId: c.pluginId,
     toggle: c.toggle,
     armRequirement,
-    getState: (ctx) => readPluginState(pluginDeviceId(ctx), c.stateTopic),
+    // A drone reached only through the cloud has no path for the config
+    // write that activates the skill, so it reads disabled with that reason.
+    getState: (ctx) => {
+      const deviceId = pluginDeviceId(ctx);
+      if (!isDemoMode() && !canWritePluginConfig(deviceId)) {
+        return { kind: "disabled", reason: PLUGIN_REACH_REQUIRED_REASON };
+      }
+      return readPluginState(deviceId, c.stateTopic);
+    },
     activate: async (ctx) => {
       const ok = await writePluginConfig({
         droneId: pluginDeviceId(ctx),

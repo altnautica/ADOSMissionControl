@@ -19,6 +19,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { computeRenderedRect } from "@/components/cockpit/VideoOverlayHost";
+import { useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
 import { useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import type { RenderedRect } from "@/lib/plugins/video-overlay-props";
@@ -94,7 +96,6 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
   const reducedMotion = usePrefersReducedMotion();
 
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const [now, setNow] = useState(() => Date.now());
 
   // ── Per-track box smoothing ──
   // `targetsRef` holds the latest detected box per track id; `displayed` (state,
@@ -144,16 +145,11 @@ export function CockpitTargetOverlay({ droneId }: { droneId: string }) {
     [],
   );
 
-  // Staleness clock — drop boxes once the feed stops even with no new batch.
-  // Key on whether a feed EXISTS, not the batch object (replaced every frame,
-  // ~10-15 Hz), so the 500 ms interval is created once per feed lifecycle
-  // instead of torn down + recreated on every batch.
-  const hasFeed = !!batch;
-  useEffect(() => {
-    if (!hasFeed) return;
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
-  }, [hasFeed]);
+  // Staleness clock: the shared 1 Hz tick re-renders the overlay so boxes drop
+  // once the feed stops, even when no new batch arrives.
+  useClockTick();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => useClockStore.subscribe((s) => setNow(s.now)), []);
 
   // Track the overlay's own size. Boxes are letterbox-mapped from the detection
   // FRAME (batch.frameWidth × frameHeight) into this container, which shares the

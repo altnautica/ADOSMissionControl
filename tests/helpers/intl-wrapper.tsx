@@ -3,7 +3,7 @@ import { render, type RenderOptions } from "@testing-library/react";
 import type { ReactElement } from "react";
 import messages from "../../locales/en.json";
 
-function IntlWrapper({ children }: { children: React.ReactNode }) {
+export function IntlWrapper({ children }: { children: React.ReactNode }) {
   return (
     <NextIntlClientProvider locale="en" messages={messages}>
       {children}

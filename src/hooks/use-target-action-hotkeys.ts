@@ -17,9 +17,11 @@
  */
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 import { useToast } from "@/components/ui/toast";
 import { latestForCamera } from "@/hooks/use-detection-batch";
+import { canonicalChord, isReservedChord } from "@/lib/skills/chord";
 import { resolveTargetActions } from "@/lib/skills/target-actions";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
 import {
@@ -40,12 +42,17 @@ export function useTargetActionHotkeys({
   enabled = true,
 }: { enabled?: boolean } = {}) {
   const { toast } = useToast();
+  const t = useTranslations();
 
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
       if (isTextField(e.target)) return;
+      // A chord the app owns (stream digits, PiP, palette, …) is never a
+      // target-action hotkey, whatever an action declares.
+      const chord = canonicalChord(e);
+      if (!chord || isReservedChord(chord)) return;
       const target = useSelectedTargetStore.getState().popupTarget;
       if (!target) return;
       // The popup's box came from a feed that must still be live: acting on a
@@ -58,9 +65,8 @@ export function useTargetActionHotkeys({
         useSelectedTargetStore.getState().closePopup();
         return;
       }
-      const key = e.key.toLowerCase();
       const action = resolveTargetActions(target).find(
-        (a) => a.defaultKey && a.defaultKey.toLowerCase() === key,
+        (a) => a.defaultKey && a.defaultKey.toLowerCase() === chord,
       );
       if (!action) return;
       e.preventDefault();
@@ -68,11 +74,12 @@ export function useTargetActionHotkeys({
       void Promise.resolve(
         action.activate({
           target,
-          notify: (message, status) => toast(message, status ?? "info"),
+          notify: (message, status) =>
+            toast(t.has(message) ? t(message) : message, status ?? "info"),
         }),
       ).finally(() => useSelectedTargetStore.getState().closePopup());
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [enabled, toast]);
+  }, [enabled, toast, t]);
 }

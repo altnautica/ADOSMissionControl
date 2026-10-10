@@ -1,6 +1,15 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const { toastSpy } = vi.hoisted(() => ({ toastSpy: vi.fn() }));
+vi.mock("next-intl", () => ({
+  useTranslations:
+    () =>
+    (key: string, values?: Record<string, unknown>) =>
+      `${key}:${String(values?.name ?? "")}`,
+}));
+vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: toastSpy }) }));
+
 import { useVideoStreams } from "@/hooks/use-video-streams";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { useVideoStore } from "@/stores/video-store";
@@ -169,5 +178,33 @@ describe("useVideoStreams", () => {
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe(
       "/dev/video0",
     );
+  });
+
+  it("reverts the active tab and toasts when a camera switch fails", async () => {
+    toastSpy.mockClear();
+    const spy = vi.fn(async () => {
+      throw new Error("switch refused");
+    });
+    useAgentConnectionStore.setState({
+      client: { switchCamera: spy } as unknown as AgentClient,
+    });
+    act(() => {
+      useAgentCapabilitiesStore.setState({
+        videoStreams: [],
+        cameras: [camera("USB Camera", "/dev/video0"), camera("Thermal", "/dev/video1")],
+      });
+    });
+    renderHook(() => useVideoStreams(DRONE));
+    expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("/dev/video0");
+
+    await act(async () => {
+      useVideoStreamsStore.getState().selectStream(DRONE, 2);
+    });
+    expect(spy).toHaveBeenCalledWith("/dev/video1");
+    expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("/dev/video0");
+    expect(useVideoStreamsStore.getState().switchingByDrone[DRONE]).toBeFalsy();
+    expect(toastSpy).toHaveBeenCalledWith("switchFailed:Thermal", "error");
+    // The revert is not itself a user switch: no second switchCamera fires.
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });

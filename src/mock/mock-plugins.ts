@@ -101,7 +101,9 @@ const FOLLOW_DEMO_PARAMETERS: PluginParameter[] = [
 ];
 
 const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
-  // ── Drone 1: enabled vision-nav plugin + enabled telemetry logger ──
+  // ── Drone 1: enabled vision-nav + follow-me plugins + telemetry logger ──
+  // Vision-nav declares no parameters (its manifest has none); follow-me
+  // carries the native parameter set.
   {
     installId: "demo-install-001",
     agentId: "alpha-1",
@@ -116,6 +118,21 @@ const DEMO_PLUGIN_INSTALLS: DemoPluginInstall[] = [
     droneDetailTabIcon: "compass",
     droneDetailTabOrder: 60,
     droneDetailTabPanelId: "vision-nav-tab",
+  },
+  {
+    installId: "demo-install-006",
+    agentId: "alpha-1",
+    pluginId: "com.altnautica.follow-me",
+    name: "ADOS Follow-Me",
+    version: "0.2.9",
+    status: "running",
+    signed: true,
+    firstParty: true,
+    hasDroneDetailTab: true,
+    droneDetailTabTitle: "Follow-Me",
+    droneDetailTabIcon: "crosshair",
+    droneDetailTabOrder: 70,
+    droneDetailTabPanelId: "follow-me-tab",
     parameters: FOLLOW_DEMO_PARAMETERS,
   },
   {
@@ -237,17 +254,17 @@ export function getDemoDronePluginContributions(
 const DEMO_SKILL_CONTRIBUTIONS: Record<string, DroneSkillContribution[]> = {
   "alpha-1": [
     {
-      installId: "demo-install-001",
-      pluginId: "com.altnautica.vision-nav",
+      installId: "demo-install-006",
+      pluginId: "com.altnautica.follow-me",
       localId: "follow-me",
-      label: "Follow Me",
+      label: "Follow-Me",
       icon: "Crosshair",
       category: "behavior",
       toggle: true,
-      confirm: false,
+      confirm: true,
       armRequirement: "armed",
-      configKey: "follow_me_active",
-      stateTopic: "follow_me.state",
+      configKey: "active",
+      stateTopic: "follow.state",
       defaultBinding: { key: "shift+f", gamepadButton: null },
     },
   ],

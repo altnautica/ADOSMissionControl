@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -44,6 +45,7 @@ const FRAME_CLASS_OPTIONS = Object.entries(FRAME_CLASS_NAMES).map(([value, label
 export function FramePanel() {
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.frame");
   // Frame class/type are hard-blocked in flight (structural change).
   // Save button is soft — goes through usePanelParams confirm dialog.
   const { isHardBlocked } = useArmedLock();
@@ -148,9 +150,9 @@ export function FramePanel() {
     setSaving(true);
     const ok = await saveAllToRam();
     setSaving(false);
-    if (ok) toast("Frame parameters saved to RAM", "success");
-    else toast("Failed to save frame parameters", "error");
-  }, [saveAllToRam, toast]);
+    if (ok) toast(t("frameSaved"), "success");
+    else toast(t("frameSaveFailed"), "error");
+  }, [saveAllToRam, toast, t]);
 
   const handleFlash = useCallback(async () => {
     setCommitting(true);

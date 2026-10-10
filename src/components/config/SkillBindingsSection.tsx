@@ -32,10 +32,7 @@ import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
 import type { HotbarSlot } from "@/stores/settings/keybindings-slice";
 import { SKILL_BUTTON_DEFAULTS } from "@/lib/input/skill-button-defaults";
 import { useKeyCapture, useButtonCapture } from "@/hooks/use-binding-capture";
-import {
-  startGamepadPolling,
-  stopGamepadPolling,
-} from "@/lib/input/gamepad-poller";
+import { acquireGamepadPolling } from "@/lib/input/gamepad-poller";
 import { LoadoutPresetBar } from "@/components/cockpit/LoadoutPresetBar";
 
 export function SkillBindingsSection() {
@@ -47,10 +44,7 @@ export function SkillBindingsSection() {
   // the reader for its "press a button" capture. It never starts the
   // manual-control stream: a keybinding panel must not open an RC override on
   // whatever aircraft happens to be connected.
-  useEffect(() => {
-    startGamepadPolling();
-    return () => stopGamepadPolling();
-  }, []);
+  useEffect(() => acquireGamepadPolling(), []);
 
   const selectedId = useDroneManager((s) => s.selectedDroneId);
   const loadouts = useSettingsStore((s) => s.loadouts);

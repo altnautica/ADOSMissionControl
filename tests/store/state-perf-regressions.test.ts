@@ -160,8 +160,8 @@ describe("fleet projection preserves identity", () => {
     const first = project({ nodes, cloudStatuses: {}, now: NOW });
     const second = project({ nodes, cloudStatuses: {}, now: NOW });
 
-    // Array identity is what `useFleetStore((s) => s.drones)` compares, so a
-    // fresh array on an unchanged tick re-rendered all nine consumers.
+    // Array identity is what `useFleetDrones` selectors compare, so a
+    // fresh array on an unchanged tick would re-render every consumer.
     expect(second).toBe(first);
     expect(second[0]).toBe(first[0]);
   });

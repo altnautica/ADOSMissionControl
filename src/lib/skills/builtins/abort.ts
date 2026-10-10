@@ -1,13 +1,13 @@
 /**
- * Abort skill — commands an immediate landing. One-shot, any arm state, danger
- * confirm (ABORT phrase).
+ * Abort skill — commands an immediate landing. One-shot, any arm state,
+ * hold-to-confirm.
  *
  * @module skills/builtins/abort
  * @license GPL-3.0-only
  */
 
 import type { Skill } from "../types";
-import { disabledIfNoLink } from "./_shared";
+import { builtinConfirm, disabledIfNoLink } from "./_shared";
 
 export const abortSkill: Skill = {
   id: "abort",
@@ -17,13 +17,7 @@ export const abortSkill: Skill = {
   source: "builtin",
   toggle: false,
   armRequirement: "any",
-  confirm: {
-    title: "skills.abort.confirm.title",
-    message: "skills.abort.confirm.message",
-    confirmLabel: "skills.abort.confirm.button",
-    variant: "danger",
-    typedPhrase: "ABORT",
-  },
+  confirm: builtinConfirm("abort", "hold", "danger"),
   getState: (ctx) => {
     const noLink = disabledIfNoLink(ctx);
     if (noLink) return noLink;

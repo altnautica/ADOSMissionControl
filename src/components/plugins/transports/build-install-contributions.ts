@@ -46,7 +46,7 @@ const NODE_DETAIL_TAB_SLOT = "node.detail.tab";
 export function buildGcsContributes(
   manifest: Pick<
     InstallManifestSummary,
-    "contributesSlots" | "contributesTabs"
+    "contributesSlots" | "contributesTabs" | "contributesMissionTemplates" | "contributesMapOverlays"
   >,
 ): InstallGcsContribution[] {
   const tabProfileById = new Map<string, PairedNodeProfile[]>();
@@ -65,6 +65,7 @@ export function buildGcsContributes(
     if (c.after !== undefined) row.after = c.after;
     if (c.group !== undefined) row.group = c.group;
     if (c.setupFor !== undefined) row.setupFor = c.setupFor;
+    if (c.zone !== undefined) row.zone = c.zone;
     if (c.slot === NODE_DETAIL_TAB_SLOT) {
       const profile = tabProfileById.get(c.panelId);
       if (profile) row.profile = profile;
@@ -93,6 +94,24 @@ export function buildGcsContributes(
     if (tab.profile && tab.profile.length > 0) row.profile = [...tab.profile];
     rows.push(row);
     mountedTabPanelIds.add(tab.panelId);
+  }
+
+  // Dedicated `missionTemplates[]` / `mapOverlays[]` entries mount in the
+  // `mission.template` / `map.overlay` slots like a panel naming that slot,
+  // unless a panel already covers the same id.
+  const dedicated: Array<[string, ReadonlyArray<{ id: string; title?: string; icon?: string }>]> =
+    [
+      ["mission.template", manifest.contributesMissionTemplates ?? []],
+      ["map.overlay", manifest.contributesMapOverlays ?? []],
+    ];
+  for (const [slot, entries] of dedicated) {
+    for (const entry of entries) {
+      if (rows.some((r) => r.slot === slot && r.panelId === entry.id)) continue;
+      const row: InstallGcsContribution = { slot, panelId: entry.id };
+      if (entry.title !== undefined) row.title = entry.title;
+      if (entry.icon !== undefined) row.icon = entry.icon;
+      rows.push(row);
+    }
   }
   return rows;
 }

@@ -6,7 +6,8 @@
  * (which has neither family) gets no serial or system-ID cards at all.
  */
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
+import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -52,7 +53,7 @@ afterEach(cleanup);
 describe("TelRadioPanel parameters", () => {
   it("shows unread SERIAL and SYSID parameters as not present", () => {
     params = new Map([["SERIAL1_PROTOCOL", 2]]);
-    render(<TelRadioPanel />);
+    renderWithIntl(<TelRadioPanel />);
     expect(screen.getAllByTestId("enum").map((e) => e.textContent)).toEqual(["2"]);
     expect(screen.getAllByText("not present")).toHaveLength(5);
     expect(screen.queryByDisplayValue("255")).toBeNull();
@@ -60,7 +61,7 @@ describe("TelRadioPanel parameters", () => {
 
   it("shows no serial or system-ID configuration on PX4", () => {
     firmwareType = "px4";
-    render(<TelRadioPanel />);
+    renderWithIntl(<TelRadioPanel />);
     expect(screen.queryByText("Serial Port Configuration")).toBeNull();
     expect(screen.queryByText("System Identification")).toBeNull();
   });

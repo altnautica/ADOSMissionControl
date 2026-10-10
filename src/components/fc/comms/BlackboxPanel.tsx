@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
@@ -23,9 +24,8 @@ import { downloadBlob } from "@/lib/download";
 export function BlackboxPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.comms");
   const scrollRef = usePanelScroll("blackbox");
-  const [saving, setSaving] = useState(false);
   const [erasing, setErasing] = useState(false);
   const [flashInfo, setFlashInfo] = useState<DataflashSummary | null>(null);
   const [flashLoading, setFlashLoading] = useState(false);
@@ -35,9 +35,10 @@ export function BlackboxPanel() {
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
+    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: blackboxParamNames, panelId: "blackbox", autoLoad: true });
   useUnsavedGuard(dirtyParams.size > 0);
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
@@ -70,25 +71,22 @@ export function BlackboxPanel() {
 
   useEffect(() => { if (hasLoaded && (deviceType === 1 || deviceType === 2)) loadFlashInfo(); }, [hasLoaded, deviceType, loadFlashInfo]);
 
-  async function handleSave() { setSaving(true); const ok = await saveAllToRam(); setSaving(false); if (ok) toast("Saved to flight controller", "success"); else toast("Some parameters failed to save", "warning"); }
-  async function handleFlash() { const ok = await commitToFlash(); showFlashResult(ok); }
-
   async function handleDownload() {
     const protocol = selectedProtocol;
-    if (!protocol || !protocol.isConnected) { toast("Not connected to flight controller", "error"); return; }
-    if (!protocol.downloadBlackbox) { toast("This connection cannot download blackbox logs", "error"); return; }
+    if (!protocol || !protocol.isConnected) { toast(t("notConnected"), "error"); return; }
+    if (!protocol.downloadBlackbox) { toast(t("blackboxDownloadUnavailable"), "error"); return; }
     setDownloading(true);
     setDownloadProgress(0);
     try {
       const data = await protocol.downloadBlackbox((p) => setDownloadProgress(p.percentComplete));
-      if (data.length === 0) { toast("No blackbox data on the flight controller", "warning"); return; }
+      if (data.length === 0) { toast(t("blackboxEmpty"), "warning"); return; }
       // Copy into a fresh ArrayBuffer-backed view so the Blob part is typed
       // Uint8Array<ArrayBuffer> (not the adapter's ArrayBufferLike return).
       const blob = new Blob([new Uint8Array(data)], { type: "application/octet-stream" });
       downloadBlob(blob, `blackbox-${Date.now()}.bbl`);
-      toast(`Downloaded ${formatBytes(data.length)} blackbox log`, "success");
+      toast(t("blackboxDownloaded", { size: formatBytes(data.length) }), "success");
     } catch (err) {
-      toast(`Blackbox download failed: ${err instanceof Error ? err.message : "unknown error"}`, "error");
+      toast(t("blackboxDownloadFailed", { error: err instanceof Error ? err.message : t("unknownError") }), "error");
     } finally {
       setDownloading(false);
     }
@@ -97,14 +95,14 @@ export function BlackboxPanel() {
   async function handleErase() {
     if (!window.confirm("Erase all blackbox logs? This cannot be undone.")) return;
     const protocol = selectedProtocol;
-    if (!protocol || !protocol.isConnected) { toast("Not connected to flight controller", "error"); return; }
-    if (!protocol.eraseDataflash) { toast("This connection cannot erase blackbox logs", "error"); return; }
+    if (!protocol || !protocol.isConnected) { toast(t("notConnected"), "error"); return; }
+    if (!protocol.eraseDataflash) { toast(t("blackboxEraseUnavailable"), "error"); return; }
     setErasing(true);
     try {
       await protocol.eraseDataflash();
-      toast("Blackbox logs erased", "success");
+      toast(t("blackboxErased"), "success");
       setFlashInfo((prev) => prev ? { ...prev, usedSize: 0 } : null);
-    } catch { toast("Failed to erase blackbox logs", "error"); }
+    } catch { toast(t("blackboxEraseFailed"), "error"); }
     finally { setErasing(false); }
   }
 

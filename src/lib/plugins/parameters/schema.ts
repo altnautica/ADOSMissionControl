@@ -59,6 +59,7 @@ export type ParameterWidget =
   | "string"
   | "model"
   | "model_upload"
+  | "camera"
   | "group";
 
 /** Where a parameter's committed value is written. Drives the renderer's
@@ -91,6 +92,9 @@ export interface ParameterUi {
   /** Bitmask-widget bit table (bit index → label). The value is an integer;
    * these labels are presentation only. */
   bits?: { bit: number; label: string }[];
+  /** Camera-widget filter: the roster purpose (e.g. "detect") whose cameras
+   * the picker lists first. The stored value is a camera id or "auto". */
+  purpose?: string;
 }
 
 /** One declared plugin parameter. */
@@ -125,6 +129,7 @@ const WIDGETS: ReadonlySet<string> = new Set([
   "string",
   "model",
   "model_upload",
+  "camera",
   "group",
 ]);
 

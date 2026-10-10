@@ -5,7 +5,7 @@
  * bug. A directly-connected flight controller (USB serial / WebSocket / BLE,
  * no companion agent) is registered ONLY in useDroneManager — which powers the
  * "Active Connections" list — but the dashboard fleet cards project from the
- * node registry (FleetProjectionBridge -> selectFleetDrones). The direct-FC
+ * node registry (useFleetDrones -> selectFleetDrones). The direct-FC
  * connect paths never called registry.attachFc, so the registry stayed empty
  * and the dashboard showed "No Drones Connected" while the connection was live.
  *

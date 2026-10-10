@@ -24,7 +24,7 @@ export type UnitSystem = "metric" | "imperial";
 export type CoordFormat = "dd" | "dms" | "utm" | "mgrs";
 
 export type ThemeMode =
-  | "dark" | "light" | "solarized-dark" | "solarized-light" | "nvg"
+  | "dark" | "light" | "mono" | "solarized-dark" | "solarized-light" | "nvg"
   | "dracula" | "catppuccin-mocha" | "catppuccin-frappe" | "catppuccin-latte"
   | "nord" | "gruvbox-dark" | "gruvbox-light" | "one-dark" | "tokyo-night"
   | "rose-pine" | "monokai" | "kanagawa" | "synthwave" | "github-dark"

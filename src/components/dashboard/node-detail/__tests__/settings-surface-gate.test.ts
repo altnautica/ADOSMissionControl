@@ -83,6 +83,7 @@ describe("Configuration pages in the merged Agent sidebar", () => {
       config: { swarm: {} },
       readOnly: false,
       setValue: async () => {},
+      demoMode: false,
     };
     return resolveAgentNav(c, settingsCtx, [])
       .entries.filter((e) => e.isConfigPage)

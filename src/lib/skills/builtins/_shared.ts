@@ -8,7 +8,57 @@
  * @license GPL-3.0-only
  */
 
-import type { SkillContext, SkillState } from "../types";
+import type {
+  ConfirmGesture,
+  ConfirmPolicy,
+  SkillContext,
+  SkillState,
+} from "../types";
+
+/**
+ * The confirm policy of a built-in whose sheet text lives at
+ * `skills.<key>.confirm.{title,message,button}`.
+ */
+export function builtinConfirm(
+  key: string,
+  gesture: ConfirmGesture,
+  variant: ConfirmPolicy["variant"],
+  extra?: Pick<ConfirmPolicy, "checklistAware" | "altitude">,
+): ConfirmPolicy {
+  return {
+    title: `skills.${key}.confirm.title`,
+    message: `skills.${key}.confirm.message`,
+    confirmLabel: `skills.${key}.confirm.button`,
+    variant,
+    gesture,
+    ...extra,
+  };
+}
+
+/**
+ * Hold-type recovery modes. Switching into one stops the vehicle where it is,
+ * which is what an operator reaches for when something goes wrong, so the
+ * press itself is the confirmation.
+ */
+const RECOVERY_MODES: Readonly<Record<string, true>> = {
+  LOITER: true,
+  BRAKE: true,
+  ALT_HOLD: true,
+  POSHOLD: true,
+  QLOITER: true,
+  QHOVER: true,
+  FLOWHOLD: true,
+};
+
+/**
+ * The confirm policy of a change into `mode`: none for a recovery mode, a
+ * slide for AUTO (it starts the mission), a hold naming the mode otherwise.
+ */
+export function modeChangeConfirm(mode: string): ConfirmPolicy | undefined {
+  if (RECOVERY_MODES[mode] === true) return undefined;
+  const gesture: ConfirmGesture = mode === "AUTO" ? "slide" : "hold";
+  return { ...builtinConfirm("modeChange", gesture, "primary"), values: { mode } };
+}
 
 /** i18n reason keys surfaced when a skill is disabled. */
 export const REASON = {

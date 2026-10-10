@@ -25,6 +25,7 @@ import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
+import { batchConfirmPhrase } from "@/lib/skills/batch-confirm";
 import { useSkillRegistry, type Skill } from "@/lib/skills";
 import type { NodeCommandSinkOptions } from "@/lib/nodes/command-sink";
 import { describeNodeReach } from "@/lib/nodes/node-reach";
@@ -140,9 +141,9 @@ export function BulkActionBar({
         <ConfirmDialog
           open
           variant={pending.skill.confirm?.variant ?? "danger"}
-          // The batch carries the same typed phrase a single vehicle would ask
-          // for; applying it to many nodes is not a reason to ask for less.
-          typedPhrase={pending.skill.confirm?.typedPhrase}
+          // A batch asks for a typed phrase where one vehicle asks for a
+          // gesture; applying it to many nodes is not a reason to ask for less.
+          typedPhrase={batchConfirmPhrase(pending.skill)}
           title={tNodes("bulk.confirmTitle", {
             action: skillDisplayLabel(pending.skill, t),
           })}

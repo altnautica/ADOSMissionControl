@@ -1,14 +1,19 @@
 /**
- * Cockpit skill-layer flag.
+ * Cockpit preferences that persist across sessions: the skill-layer flag and
+ * the altitude tape's reference.
  *
- * Default ON. It shipped default-off with the cockpit gated behind an opt-in
- * card parked over the boresight, on a piloting surface, with half the
- * keyboard responding (stream digits and PiP worked; the command palette and
- * quick settings did not) and no indication which half. A flight surface
- * whose controls are inert until an operator finds a prompt is not a safer
- * default, it is a surface that behaves differently in the air than it did on
- * the bench. An operator who wants it off can still turn it off, and that
- * choice persists.
+ * Skill layer: default ON. It shipped default-off with the cockpit gated
+ * behind an opt-in card parked over the boresight, on a piloting surface, with
+ * half the keyboard responding (stream digits and PiP worked; the command
+ * palette and quick settings did not) and no indication which half. A flight
+ * surface whose controls are inert until an operator finds a prompt is not a
+ * safer default, it is a surface that behaves differently in the air than it
+ * did on the bench. An operator who wants it off can still turn it off, and
+ * that choice persists.
+ *
+ * Altitude reference: the HUD altitude tape reads height above home (`rel`,
+ * GLOBAL_POSITION_INT.relative_alt) by default, or altitude above mean sea
+ * level (`msl`) when the operator switches it.
  *
  * @module cockpit-store
  * @license GPL-3.0-only
@@ -17,11 +22,17 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+/** What the altitude tape measures from. */
+export type AltitudeReference = "rel" | "msl";
+
 interface CockpitState {
   /** Whether the cockpit surfaces (Skill Bar) are enabled. */
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
   toggle: () => void;
+  /** The altitude tape's reference. */
+  altitudeRef: AltitudeReference;
+  setAltitudeRef: (ref: AltitudeReference) => void;
 }
 
 /** Current localStorage key. */
@@ -65,19 +76,26 @@ export const useCockpitStore = create<CockpitState>()(
       enabled: true,
       setEnabled: (enabled) => set({ enabled }),
       toggle: () => set({ enabled: !get().enabled }),
+      altitudeRef: "rel",
+      setAltitudeRef: (altitudeRef) => set({ altitudeRef }),
     }),
     {
       name: STORAGE_KEY,
       storage: cockpitStorage,
-      version: 3,
+      version: 4,
+      partialize: (s) => ({ enabled: s.enabled, altitudeRef: s.altitudeRef }),
       // v2 and earlier persisted the flag on every install that opened the
       // cockpit even once, so a stored `false` records the old DEFAULT rather
       // than a decision. The v3 migration drops it and adopts the new
       // default; anything the operator turns off from here is persisted
-      // normally and survives.
+      // normally and survives. v4 adds the altitude reference, defaulting to
+      // height above home.
       migrate: (persisted, version) => {
-        const state = persisted as Partial<CockpitState>;
-        if (version < 3) return { ...state, enabled: true } as CockpitState;
+        const state = { ...(persisted as Partial<CockpitState>) };
+        if (version < 3) state.enabled = true;
+        if (version < 4 || (state.altitudeRef !== "rel" && state.altitudeRef !== "msl")) {
+          state.altitudeRef = "rel";
+        }
         return state as CockpitState;
       },
     },

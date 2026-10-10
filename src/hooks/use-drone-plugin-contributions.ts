@@ -216,6 +216,50 @@ export function useDronePluginContributions(
   }, [agentId, rows, nodeProfile]);
 }
 
+/** One installed extension's parameter set for a drone, whatever slots it
+ * contributes. */
+export interface DronePluginParameters {
+  installId: string;
+  pluginId: string;
+  /** The extension's display name. */
+  title: string;
+  parameters: PluginParameter[];
+}
+
+/**
+ * Every installed extension on a drone that declares parameters, one entry per
+ * plugin id (the first install row wins), independent of whether it also
+ * contributes a tab. A parameters-only extension is configurable here too.
+ * Sorted by title. Demo mode reads the mock contribution set.
+ */
+export function useDronePluginParameters(
+  agentId: string | undefined,
+): DronePluginParameters[] {
+  const rows = useLiveInstallRows(agentId);
+  return useMemo(() => {
+    if (!agentId) return [];
+    const source: DronePluginParameters[] = isDemoMode()
+      ? getDemoDronePluginContributions(agentId).map((c) => ({
+          installId: c.installId,
+          pluginId: c.pluginId,
+          title: c.title,
+          parameters: c.parameters,
+        }))
+      : (rows ?? []).map((r) => ({
+          installId: r.installId,
+          pluginId: r.pluginId,
+          title: r.name,
+          parameters: r.gcsParameters ?? [],
+        }));
+    const byPlugin = new Map<string, DronePluginParameters>();
+    for (const entry of source) {
+      if (entry.parameters.length === 0 || byPlugin.has(entry.pluginId)) continue;
+      byPlugin.set(entry.pluginId, entry);
+    }
+    return [...byPlugin.values()].sort((a, b) => a.title.localeCompare(b.title));
+  }, [agentId, rows]);
+}
+
 /**
  * Sort by manifest order ascending, tie-break by `pluginId`
  * lexicographically. Static drone-detail tabs render before plugin

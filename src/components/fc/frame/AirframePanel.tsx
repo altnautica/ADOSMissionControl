@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -21,6 +22,7 @@ const AIRFRAME_PARAMS = ["SYS_AUTOSTART", "SYS_AUTOCONFIG"];
 export function AirframePanel() {
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.frame");
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -63,13 +65,13 @@ export function AirframePanel() {
     setSaving(true);
     const ok = await saveAllToRam();
     setSaving(false);
-    if (ok) toast("Airframe saved. Reboot required to apply.", "success");
-    else toast("Failed to save airframe", "error");
+    if (ok) toast(t("airframeSaved"), "success");
+    else toast(t("airframeSaveFailed"), "error");
   }
 
   async function handleFlash() {
     const ok = await commitToFlash();
-    showFlashResult(ok, { successMessage: "Written to flash" });
+    showFlashResult(ok, { successMessage: t("flashWritten") });
   }
 
   return (

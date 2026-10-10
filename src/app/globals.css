@@ -19,6 +19,11 @@
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/600.css";
 
+/* Brand-dark (default), light and nvg app variables plus the cockpit HUD
+   roles come from the generated design tokens. The community themes below
+   stay hand-written. */
+@import "../styles/tokens.generated.css";
+
 @theme {
   --color-bg-primary: var(--alt-bg-primary);
   --color-bg-secondary: var(--alt-bg-secondary);
@@ -63,35 +68,17 @@
   --font-display: "Space Grotesk", sans-serif;
   --font-body: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  /* Product radius scale (design tokens): sm controls, md pills and
+     popovers, lg cards, xl panels. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
 }
 
 :root {
-  /* Background */
-  --alt-bg-primary: #000000;
-  --alt-bg-secondary: #0a0a0a;
-  --alt-bg-tertiary: #141414;
-
-  /* Text */
-  --alt-text-primary: #fafafa;
-  --alt-text-secondary: #a0a0a0;
-  --alt-text-tertiary: #666666;
-
-  /* Accent */
-  --alt-accent-primary: #3a82ff;
-  --alt-accent-primary-hover: #5b9aff;
-  --alt-accent-secondary: #dff140;
-  /* Reads on --alt-accent-primary at >= 4.5:1. See the note in @theme. */
-  --alt-accent-foreground: #000000;
-
-  /* Border */
-  --alt-border-default: #1a1a1a;
-  --alt-border-strong: #2a2a2a;
-
-  /* Status */
-  --alt-status-success: #22c55e;
-  --alt-status-warning: #f59e0b;
-  --alt-status-error: #ef4444;
-  --alt-on-status: #000000;
+  /* App colour variables (--alt-*, --gcs-*, --hud-*) are generated; see the
+     import above. Only identity hues that are not theme roles live here. */
 
   /* Node profile accent hues (identity). Cool, distinct from the warm status
      palette. Blended with the live surface at use via color-mix for theme-safe
@@ -114,35 +101,35 @@
   --node-swatch-red: #ef4444;
   --node-swatch-pink: #ec4899;
   --node-swatch-purple: #a855f7;
+}
 
-  /* GCS-specific */
+/* Mono: the neutral black ramp that was the app default before brand-dark. */
+html[data-theme="mono"] {
+  --alt-bg-primary: #000000;
+  --alt-bg-secondary: #0a0a0a;
+  --alt-bg-tertiary: #141414;
+
+  --alt-text-primary: #fafafa;
+  --alt-text-secondary: #a0a0a0;
+  --alt-text-tertiary: #666666;
+
+  --alt-accent-primary: #3a82ff;
+  --alt-accent-primary-hover: #5b9aff;
+  --alt-accent-secondary: #dff140;
+  --alt-accent-foreground: #000000;
+
+  --alt-border-default: #1a1a1a;
+  --alt-border-strong: #2a2a2a;
+
+  --alt-status-success: #22c55e;
+  --alt-status-warning: #f59e0b;
+  --alt-status-error: #ef4444;
+  --alt-on-status: #000000;
+
   --gcs-hud-green: #00ff41;
   --gcs-hud-bg: rgba(0, 0, 0, 0.6);
   --gcs-armed: #ef4444;
   --gcs-disarmed: #22c55e;
-}
-
-html[data-theme="light"] {
-  --alt-bg-primary: #f7f9fc;
-  --alt-bg-secondary: #eef2f8;
-  --alt-bg-tertiary: #e2e8f2;
-
-  --alt-text-primary: #111827;
-  --alt-text-secondary: #334155;
-  --alt-text-tertiary: #64748b;
-
-  --alt-accent-primary: #2f6feb;
-  --alt-accent-primary-hover: #4b82ef;
-  --alt-accent-secondary: #8ba000;
-  --alt-accent-foreground: #000000;
-
-  --alt-border-default: #d6dce8;
-  --alt-border-strong: #bec9da;
-
-  --gcs-hud-green: #22c55e;
-  --gcs-armed: #ef4444;
-  --gcs-disarmed: #22c55e;
-  --gcs-hud-bg: rgba(255, 255, 255, 0.7);
 }
 
 html[data-theme="solarized-dark"] {
@@ -191,29 +178,6 @@ html[data-theme="solarized-light"] {
   --gcs-armed: #dc322f;
   --gcs-disarmed: #859900;
   --gcs-hud-bg: rgba(253, 246, 227, 0.85);
-}
-
-html[data-theme="nvg"] {
-  --alt-on-status: #ffffff;
-  --alt-bg-primary: #000000;
-  --alt-bg-secondary: #001100;
-  --alt-bg-tertiary: #002200;
-  --alt-text-primary: #00AA00;
-  --alt-text-secondary: #007700;
-  --alt-text-tertiary: #004400;
-  --alt-accent-primary: #00FF00;
-  --alt-accent-primary-hover: #00CC00;
-  --alt-accent-secondary: #008800;
-  --alt-accent-foreground: #000000;
-  --alt-border-default: #002200;
-  --alt-border-strong: #003300;
-  --alt-status-success: #005500;
-  --alt-status-warning: #886600;
-  --alt-status-error: #880000;
-  --gcs-hud-green: #00AA00;
-  --gcs-armed: #880000;
-  --gcs-disarmed: #005500;
-  --gcs-hud-bg: rgba(0, 17, 0, 0.8);
 }
 
 /* ── Community Dark Themes ── */
@@ -730,67 +694,53 @@ body {
 /* ══ ADOS Cockpit ══
    A committed dark, immersive piloting world. Every rule is scoped under the
    .ados-cockpit root so the cockpit's generic class names never touch app
-   styles.
-
-   The palette below is the DEFAULT-theme palette, written as literals because
-   the default cockpit has its own fixed look, independent of the app theme. It
-   is not a theme opt-out: a theme with an opinion about status colour or ink
-   overrides these under `html[data-theme=…] .ados-cockpit`, immediately after
-   this block. That override exists because the cockpit used to hardcode the
-   whole palette, so it ignored every theme — including `nvg`, whose entire
-   purpose is to preserve dark adaptation on a night flight. The one surface an
-   operator actually flies from was the one that stayed bright blue and amber
-   after they selected the night-vision theme. */
+   styles. Colours come only from the generated HUD roles (`--hud-*`), which
+   are defined per theme, so night-vision and light themes need no overrides
+   here; alpha is applied with color-mix. */
 .ados-cockpit {
-  --hud: #63b3ff;
-  --hud-dim: #4b7fb5;
-  --ink: #eaf1fc;
-  --ink-2: #a9bad6;
-  --muted: #7286a6;
-  --good: #37d99a;
-  --warn: #f5b544;
-  --crit: #ff5a52;
-  --lock: #37d99a;
-  --glass: rgba(9, 15, 28, 0.58);
-  --glass-2: rgba(9, 15, 28, 0.78);
-  --hair: rgba(120, 160, 210, 0.22);
-  --hair-2: rgba(120, 160, 210, 0.12);
-  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* One switch for every glass surface: low-power mode and minimal density
+     drop the backdrop blur (the most expensive compositing step). */
+  --cockpit-backdrop: blur(var(--hud-blur, 9px));
+  --cockpit-shadow: color-mix(in oklch, var(--color-media) 40%, transparent);
+  --cockpit-on-hud: color-mix(in oklch, var(--hud-primary) 12%, var(--color-media));
   position: relative;
   overflow: hidden;
   user-select: none;
-  color: var(--ink);
+  color: var(--hud-ink);
+  container-type: inline-size;
+  container-name: cockpit;
+}
+html[data-power="low"] .ados-cockpit,
+.ados-cockpit[data-density="minimal"] {
+  --cockpit-backdrop: none;
 }
 
-/* Night-vision: the whole reason this theme exists is dark adaptation, so the
-   cockpit follows it. Status colours come from the theme's own muted status
-   tokens and the HUD from its green, rather than the default bright blue. */
-html[data-theme="nvg"] .ados-cockpit {
-  --hud: var(--gcs-hud-green);
-  --hud-dim: var(--alt-accent-secondary);
-  --ink: var(--alt-text-primary);
-  --ink-2: var(--alt-text-secondary);
-  --muted: var(--alt-text-tertiary);
-  --good: var(--alt-status-success);
-  --warn: var(--alt-status-warning);
-  --crit: var(--alt-status-error);
-  --lock: var(--alt-status-success);
-  --glass: var(--gcs-hud-bg);
-  --glass-2: var(--gcs-hud-bg);
-  --hair: var(--alt-border-strong);
-  --hair-2: var(--alt-border-default);
+/* Glass panel language for cockpit sheets and pickers (editor, palette, quick
+   settings, radial, drawer). The app's text/border/surface roles are re-pointed
+   at the HUD roles inside the panel so utility classes stay legible on glass. */
+.ados-cockpit .glass-panel {
+  --color-text-primary: var(--hud-ink);
+  --color-text-secondary: var(--hud-ink-2);
+  --color-text-tertiary: var(--hud-muted);
+  --color-border-default: var(--hud-hair);
+  --color-border-strong: var(--hud-hair);
+  --color-bg-primary: var(--hud-glass-strong);
+  --color-bg-secondary: color-mix(in oklch, var(--hud-ink) 4%, transparent);
+  --color-bg-tertiary: color-mix(in oklch, var(--hud-ink) 8%, transparent);
+  background: var(--hud-glass-strong);
+  border: 1px solid var(--hud-hair);
+  border-radius: var(--radius-xl, 0.75rem);
+  color: var(--hud-ink);
+  -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop);
+  box-shadow: 0 12px 32px var(--cockpit-shadow);
 }
-
-/* Light themes: a glass-over-video cockpit still needs dark chrome to stay
-   readable over bright imagery, so only the status colours and the ink follow
-   the theme — the glass stays dark on purpose. */
-html[data-theme="light"] .ados-cockpit,
-html[data-theme="solarized-light"] .ados-cockpit,
-html[data-theme="catppuccin-latte"] .ados-cockpit,
-html[data-theme="gruvbox-light"] .ados-cockpit {
-  --good: var(--alt-status-success);
-  --warn: var(--alt-status-warning);
-  --crit: var(--alt-status-error);
+.ados-cockpit .glass-pill {
+  background: var(--hud-glass);
+  border: 1px solid var(--hud-hair);
+  border-radius: var(--radius-md, 0.375rem);
+  color: var(--hud-ink);
+  -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop);
 }
 
 /* overlay zones — the self-anchoring fixture cards.
@@ -813,7 +763,7 @@ html[data-theme="gruvbox-light"] .ados-cockpit {
    fixed `.zone.*` cards above so the minimap + faithful HUD are untouched. */
 .ados-cockpit .cockpit-zone { position: absolute; z-index: 20; display: flex; flex-direction: column; gap: 10px; }
 .ados-cockpit .cockpit-zone.tl { top: 205px; left: 18px; align-items: flex-start; }
-.ados-cockpit .cockpit-zone.tc { top: 52px; left: 50%; transform: translateX(-50%); align-items: center; }
+.ados-cockpit .cockpit-zone.tc { top: 104px; left: 50%; transform: translateX(-50%); align-items: center; }
 .ados-cockpit .cockpit-zone.tr { top: 96px; right: 18px; align-items: flex-end; }
 .ados-cockpit .cockpit-zone.ml { top: 50%; left: 18px; transform: translateY(-50%); align-items: flex-start; }
 .ados-cockpit .cockpit-zone.cc { top: 50%; left: 50%; transform: translate(-50%, -50%); align-items: center; }
@@ -824,108 +774,176 @@ html[data-theme="gruvbox-light"] .ados-cockpit {
 .ados-cockpit .cockpit-zone.full { inset: 0; align-items: center; justify-content: center; }
 
 .ados-cockpit .panel {
-  background: var(--glass); -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
-  border: 1px solid var(--hair); border-radius: 12px;
+  background: var(--hud-glass); -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop);
+  border: 1px solid var(--hud-hair); border-radius: 12px;
 }
-.ados-cockpit .lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-.ados-cockpit .val { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.ados-cockpit .lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--hud-muted); }
+.ados-cockpit .val { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--hud-ink); }
 
 /* safety band (top, always visible) */
 .ados-cockpit .safety {
   position: absolute; top: 0; left: 0; right: 0; height: 40px; z-index: 40;
-  display: flex; align-items: center; gap: 0; padding: 0 14px;
-  background: linear-gradient(var(--glass-2), rgba(9,15,28,.32));
-  border-bottom: 1px solid var(--hair); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  display: flex; align-items: center; gap: 0; padding: 0 14px; white-space: nowrap;
+  /* Solid glass, not a fade: the labels must read over any picture. */
+  background: var(--hud-glass-strong);
+  border-bottom: 1px solid var(--hud-hair); -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop);
 }
-.ados-cockpit .safety .brand { font-family: var(--mono); font-weight: 600; letter-spacing: .2em; font-size: 11px; color: var(--hud); margin-right: 6px; }
-.ados-cockpit .safety .node { font-family: var(--mono); font-size: 11px; color: var(--ink-2); letter-spacing: .04em; }
-.ados-cockpit .safety .spacer { flex: 1; }
-.ados-cockpit .stat { display: flex; align-items: center; gap: 7px; padding: 0 13px; height: 40px; border-left: 1px solid var(--hair-2); }
-.ados-cockpit .stat .k { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
-.ados-cockpit .stat .v { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.ados-cockpit .safety .brand { flex: none; font-family: var(--mono); font-weight: 600; letter-spacing: .2em; font-size: 11px; color: var(--hud-primary); margin-right: 6px; }
+.ados-cockpit .safety .node { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 11px; color: var(--hud-ink-2); letter-spacing: .04em; }
+.ados-cockpit .safety .spacer { flex: 1 1 0; min-width: 0; }
+.ados-cockpit .stat { flex: none; display: flex; align-items: center; gap: 7px; padding: 0 13px; height: 40px; white-space: nowrap; border-left: 1px solid var(--hud-hair-2); }
+.ados-cockpit .stat .k { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--hud-ink-2); text-transform: uppercase; }
+.ados-cockpit .stat .v { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--hud-ink); white-space: nowrap; }
+.ados-cockpit .stat .ki { display: none; flex: none; color: var(--hud-ink-2); }
+.ados-cockpit .safety .band-sec { display: contents; }
+.ados-cockpit .safety .band-more { display: none; }
+/* A narrow cockpit keeps every value: text labels become icons (the label
+   stays readable to assistive technology), then the secondary cells move
+   behind the "more" toggle, then the wordmark, node name and decoration go. */
+@container cockpit (max-width: 1480px) {
+  .ados-cockpit .safety .stat { padding: 0 9px; gap: 5px; }
+  .ados-cockpit .safety .stat .k:not(.keep),
+  .ados-cockpit .safety .stat .band-text {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .ados-cockpit .safety .stat .ki { display: block; }
+}
+@container cockpit (max-width: 1180px) {
+  .ados-cockpit .safety .brand { display: none; }
+  .ados-cockpit .safety .band-sec { display: none; }
+  .ados-cockpit .safety .band-more { display: flex; }
+  .ados-cockpit .safety[data-more="true"] .band-sec {
+    display: flex; position: absolute; top: 44px; right: 8px;
+    background: var(--hud-glass-strong); border: 1px solid var(--hud-hair); border-radius: 12px;
+    -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop);
+  }
+  .ados-cockpit .safety[data-more="true"] .band-sec .stat:first-child { border-left: 0; }
+}
+@container cockpit (max-width: 880px) {
+  .ados-cockpit .safety { padding: 0 6px; }
+  .ados-cockpit .safety .stat { padding: 0 6px; }
+  .ados-cockpit .safety .node,
+  .ados-cockpit .safety .bar,
+  .ados-cockpit .safety .v.age { display: none; }
+  .ados-cockpit .safety .kill-text {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
 .ados-cockpit .pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 10px; border-radius: 6px; font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .08em; }
 .ados-cockpit .pill .led { width: 7px; height: 7px; border-radius: 50%; }
-.ados-cockpit .pill.armed { color: #06120c; background: var(--good); }
-.ados-cockpit .pill.armed .led { background: #06120c; box-shadow: 0 0 0 2px rgba(255,255,255,.25) inset; }
-.ados-cockpit .pill.mode { color: var(--hud); border: 1px solid var(--hair); }
-.ados-cockpit .bar { width: 34px; height: 7px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+.ados-cockpit .pill.armed { color: color-mix(in oklch, var(--hud-good) 12%, var(--color-media)); background: var(--hud-good); }
+.ados-cockpit .pill.armed .led { background: color-mix(in oklch, var(--hud-good) 12%, var(--color-media)); box-shadow: 0 0 0 2px color-mix(in oklch, var(--hud-ink) 25%, transparent) inset; }
+.ados-cockpit .pill.mode { color: var(--hud-primary); border: 1px solid var(--hud-hair); }
+.ados-cockpit .bar { width: 34px; height: 7px; border-radius: 3px; background: color-mix(in oklch, var(--hud-ink) 12%, transparent); overflow: hidden; }
 .ados-cockpit .bar > i { display: block; height: 100%; }
 .ados-cockpit .sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 13px; }
-.ados-cockpit .sig > b { width: 3px; border-radius: 1px; background: var(--good); }
+.ados-cockpit .sig > b { width: 3px; border-radius: 1px; background: var(--hud-good); }
 
 /* HUD (center instruments) */
-.ados-cockpit .hud { position: absolute; inset: 0; z-index: 15; pointer-events: none; color: var(--hud); }
-.ados-cockpit .hud svg { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0 4px rgba(60,140,230,.4)); }
+.ados-cockpit .hud { position: absolute; inset: 0; z-index: 15; pointer-events: none; color: var(--hud-primary); }
+.ados-cockpit .hud svg { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0 4px color-mix(in oklch, var(--hud-primary) 40%, transparent)); }
 .ados-cockpit .hud line, .ados-cockpit .hud path, .ados-cockpit .hud circle, .ados-cockpit .hud rect, .ados-cockpit .hud polyline { vector-effect: non-scaling-stroke; }
-.ados-cockpit .hud text { font-family: var(--mono); fill: var(--hud); font-size: 12px; }
+.ados-cockpit .hud text { font-family: var(--mono); font-size: 12px; }
 
 /* speed / alt tapes */
 .ados-cockpit .tape { position: absolute; top: 50%; transform: translateY(-50%); width: 78px; z-index: 16; font-family: var(--mono); font-variant-numeric: tabular-nums; pointer-events: none; }
 .ados-cockpit .tape.l { left: 30px; } .ados-cockpit .tape.r { right: 30px; }
-.ados-cockpit .tape .rail { border: 1px solid var(--hair); background: rgba(9,15,28,.42); border-radius: 10px; -webkit-backdrop-filter: blur(8px) saturate(130%); backdrop-filter: blur(8px) saturate(130%); box-shadow: 0 8px 24px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05); overflow: hidden; }
-.ados-cockpit .tape .tick { display: flex; align-items: center; justify-content: flex-end; height: 30px; padding: 0 11px; color: var(--ink-2); font-size: 13px; opacity: .6; }
-.ados-cockpit .tape.l .tick { justify-content: flex-start; }
-.ados-cockpit .tape .now { position: relative; margin: 3px 0; padding: 8px 10px; color: #06121e; background: var(--hud); text-align: center; font-size: 20px; font-weight: 700; letter-spacing: .01em; box-shadow: 0 3px 10px rgba(0,0,0,.4); }
-.ados-cockpit .tape .now .cap { display: block; font-size: 8.5px; font-weight: 600; letter-spacing: .12em; color: rgba(6,18,30,.72); margin-bottom: 1px; }
+.ados-cockpit .tape .rail { border: 1px solid var(--hud-hair); background: color-mix(in oklch, var(--hud-glass) 72%, transparent); border-radius: 10px; -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop); box-shadow: 0 8px 24px var(--cockpit-shadow), inset 0 1px 0 color-mix(in oklch, var(--hud-ink) 5%, transparent); overflow: hidden; }
+
+/* instrument HUD layer */
+.ados-cockpit .hud-layer { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
+.ados-cockpit .hud-layer [data-stale="true"] { opacity: .45; }
+.ados-cockpit .hud-hdg svg, .ados-cockpit .tape svg, .ados-cockpit .hud-vsi svg { display: block; overflow: visible; }
+.ados-cockpit .hud-hdg { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); width: min(480px, 60%); pointer-events: none; }
+.ados-cockpit .tape-cap { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 4px; font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-muted); }
+.ados-cockpit .tape-cap small { font-size: 8.5px; letter-spacing: .04em; text-transform: none; }
+.ados-cockpit .alt-ref { pointer-events: auto; margin-top: 6px; width: 100%; height: 22px; border: 1px solid var(--hud-hair); border-radius: var(--radius-md, .375rem); background: var(--hud-glass); color: var(--hud-primary); font-family: var(--mono); font-size: 10px; letter-spacing: .12em; cursor: pointer; transition: border-color .2s ease-out; }
+.ados-cockpit .alt-ref:hover { border-color: var(--hud-primary); }
+.ados-cockpit .alt-ref:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
+.ados-cockpit .hud-vsi { position: absolute; top: 50%; right: 114px; transform: translateY(-50%); width: 34px; z-index: 16; pointer-events: none; }
+.ados-cockpit .hud-wind { position: absolute; top: 50px; left: calc(50% + min(240px, 30%) + 12px); display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; font-family: var(--mono); font-variant-numeric: tabular-nums; pointer-events: none; background: var(--hud-glass); border: 1px solid var(--hud-hair); border-radius: var(--radius-md, .375rem); }
+.ados-cockpit .hud-wind .k { font-size: 9px; letter-spacing: .12em; color: var(--hud-muted); }
+.ados-cockpit .hud-wind .v { font-size: 12px; color: var(--hud-ink); }
+.ados-cockpit .hud-wind .v small { font-size: 9px; color: var(--hud-muted); margin-left: 2px; }
+.ados-cockpit .hud-readouts { display: none; }
+.ados-cockpit .hud-readouts .ro { position: absolute; display: flex; flex-direction: column; gap: 2px; padding: 6px 9px; background: var(--hud-glass); border: 1px solid var(--hud-hair); border-radius: var(--radius-md, .375rem); font-family: var(--mono); font-variant-numeric: tabular-nums; pointer-events: none; }
+.ados-cockpit .hud-readouts .ro .k { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-muted); }
+.ados-cockpit .hud-readouts .ro .v { font-size: 16px; font-weight: 700; color: var(--hud-ink); }
+.ados-cockpit .hud-readouts .ro .v small { font-size: 9px; font-weight: 400; color: var(--hud-muted); margin-left: 2px; }
+.ados-cockpit .hud-readouts .ro.spd { left: 12px; top: 50%; transform: translateY(-50%); }
+.ados-cockpit .hud-readouts .ro.alt { right: 12px; top: 50%; transform: translateY(-50%); }
+.ados-cockpit .hud-readouts .ro.vs { right: 12px; top: calc(50% + 64px); }
+.ados-cockpit .hud-readouts .alt-ref { margin-top: 4px; height: 20px; }
+/* Zoned widget wrappers: an empty wrapper takes no space in its zone. */
+.ados-cockpit .cockpit-zone > [data-widget]:empty { display: none; }
 
 /* locked target */
-.ados-cockpit .det { position: absolute; z-index: 18; border: 1.5px solid var(--hud); border-radius: 3px; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
-.ados-cockpit .det.dim { border-color: rgba(120,170,235,.5); border-style: dashed; }
-.ados-cockpit .det .cls { position: absolute; top: -18px; left: -1px; font-family: var(--mono); font-size: 10px; padding: 1px 5px; background: rgba(120,170,235,.5); color: #06121e; border-radius: 3px; white-space: nowrap; }
-.ados-cockpit .det.lock { border-color: var(--lock); box-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 0 14px rgba(55,217,154,.35); }
-.ados-cockpit .det.lock .corner { position: absolute; width: 11px; height: 11px; border: 2px solid var(--lock); }
+.ados-cockpit .det { position: absolute; z-index: 18; border: 1.5px solid var(--hud-primary); border-radius: 3px; box-shadow: 0 0 0 1px var(--cockpit-shadow); }
+.ados-cockpit .det.dim { border-color: color-mix(in oklch, var(--hud-primary) 50%, transparent); border-style: dashed; }
+.ados-cockpit .det .cls { position: absolute; top: -18px; left: -1px; font-family: var(--mono); font-size: 10px; padding: 1px 5px; background: color-mix(in oklch, var(--hud-primary) 50%, transparent); color: var(--cockpit-on-hud); border-radius: 3px; white-space: nowrap; }
+.ados-cockpit .det.lock { border-color: var(--hud-lock); box-shadow: 0 0 0 1px var(--cockpit-shadow), 0 0 14px color-mix(in oklch, var(--hud-lock) 35%, transparent); }
+.ados-cockpit .det.lock .corner { position: absolute; width: 11px; height: 11px; border: 2px solid var(--hud-lock); }
 .ados-cockpit .det.lock .corner.a { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
 .ados-cockpit .det.lock .corner.b { top: -2px; right: -2px; border-left: 0; border-bottom: 0; }
 .ados-cockpit .det.lock .corner.c { bottom: -2px; left: -2px; border-right: 0; border-top: 0; }
 .ados-cockpit .det.lock .corner.d { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
-@keyframes ados-lockpulse { 0%,100% { box-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 0 12px rgba(55,217,154,.3); } 50% { box-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 0 20px rgba(55,217,154,.55); } }
+@keyframes ados-lockpulse { 0%,100% { box-shadow: 0 0 0 1px var(--cockpit-shadow), 0 0 12px color-mix(in oklch, var(--hud-lock) 30%, transparent); } 50% { box-shadow: 0 0 0 1px var(--cockpit-shadow), 0 0 20px color-mix(in oklch, var(--hud-lock) 55%, transparent); } }
 .ados-cockpit .det.lock { animation: ados-lockpulse 2.4s ease-in-out infinite; }
 
 /* MCP activity watch — the "watch it work" cues. GPU-composited (box-shadow +
    opacity + background) so there is no layout shift; both inherit the global
    prefers-reduced-motion collapse. */
 @keyframes ados-mcp-arrive {
-  0%   { box-shadow: inset 0 0 0 3px rgba(58,130,255,.55), inset 0 0 44px rgba(58,130,255,.22); opacity: 1; }
-  100% { box-shadow: inset 0 0 0 3px rgba(58,130,255,0),   inset 0 0 44px rgba(58,130,255,0);   opacity: 0; }
+  0%   { box-shadow: inset 0 0 0 3px color-mix(in oklch, var(--alt-accent-primary) 55%, transparent), inset 0 0 44px color-mix(in oklch, var(--alt-accent-primary) 22%, transparent); opacity: 1; }
+  100% { box-shadow: inset 0 0 0 3px transparent, inset 0 0 44px transparent; opacity: 0; }
 }
 .ados-mcp-arrive { animation: ados-mcp-arrive 1s ease-out forwards; }
 @keyframes ados-mcp-flash {
-  0%   { background-color: rgba(58,130,255,.22); }
-  100% { background-color: rgba(58,130,255,0); }
+  0%   { background-color: color-mix(in oklch, var(--alt-accent-primary) 22%, transparent); }
+  100% { background-color: transparent; }
 }
 .ados-mcp-flash { animation: ados-mcp-flash 1.4s ease-out forwards; }
+
+/* Alert stack borders: critical flashes at 4 Hz for 3 s, then holds steady;
+   warning pulses at 2 Hz. Only the border moves, never the text. */
+@keyframes ados-alert-flash { 0%, 49% { border-color: var(--hud-crit); } 50%, 100% { border-color: transparent; } }
+@keyframes ados-alert-pulse { 0%, 100% { border-color: var(--hud-warn); } 50% { border-color: color-mix(in oklch, var(--hud-warn) 25%, transparent); } }
+.ados-cockpit .cockpit-alert.crit { animation: ados-alert-flash 250ms steps(1, end) 12; }
+.ados-cockpit .cockpit-alert.warn { animation: ados-alert-pulse 500ms ease-in-out infinite; }
 .ados-cockpit .lead { position: absolute; z-index: 18; width: 16px; height: 16px; margin: -8px 0 0 -8px; }
-.ados-cockpit .lead::before, .ados-cockpit .lead::after { content:""; position: absolute; background: var(--warn); }
+.ados-cockpit .lead::before, .ados-cockpit .lead::after { content:""; position: absolute; background: var(--hud-warn); }
 .ados-cockpit .lead::before { left: 7px; top: 0; width: 2px; height: 16px; }
 .ados-cockpit .lead::after { top: 7px; left: 0; height: 2px; width: 16px; }
 
 /* "what's locked" chip */
-.ados-cockpit .lockchip { position: relative; z-index: 19; display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 10px; border-radius: 10px; background: var(--glass-2); border: 1px solid rgba(55,217,154,.5); -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px); }
-.ados-cockpit .lockchip .ic { width: 24px; height: 24px; border-radius: 6px; background: rgba(55,217,154,.16); display: grid; place-items: center; color: var(--lock); }
+.ados-cockpit .lockchip { position: relative; z-index: 19; display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 10px; border-radius: 10px; background: var(--hud-glass-strong); border: 1px solid color-mix(in oklch, var(--hud-lock) 50%, transparent); -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop); }
+.ados-cockpit .lockchip .ic { width: 24px; height: 24px; border-radius: 6px; background: color-mix(in oklch, var(--hud-lock) 16%, transparent); display: grid; place-items: center; color: var(--hud-lock); }
 .ados-cockpit .lockchip .who { font-family: var(--mono); }
-.ados-cockpit .lockchip .who b { font-size: 12px; color: var(--ink); letter-spacing: .02em; }
-.ados-cockpit .lockchip .who span { display: block; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--lock); margin-top: 1px; }
-.ados-cockpit .lockchip .rng { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink); padding-left: 10px; border-left: 1px solid var(--hair); }
-.ados-cockpit .lockchip .rng small { display: block; font-size: 8.5px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.ados-cockpit .lockchip .who b { font-size: 12px; color: var(--hud-ink); letter-spacing: .02em; }
+.ados-cockpit .lockchip .who span { display: block; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-lock); margin-top: 1px; }
+.ados-cockpit .lockchip .rng { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--hud-ink); padding-left: 10px; border-left: 1px solid var(--hud-hair); }
+.ados-cockpit .lockchip .rng small { display: block; font-size: 8.5px; letter-spacing: .1em; color: var(--hud-muted); text-transform: uppercase; }
 
 /* perception-health chip (tier + feed freshness; escalates when a live feed goes stale) */
-.ados-cockpit .perchip { position: relative; z-index: 19; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--glass-2); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px); font-family: var(--mono); }
-.ados-cockpit .perchip.warn { border-color: rgba(245,181,68,.6); }
-.ados-cockpit .perchip.crit { border-color: rgba(255,90,82,.6); }
-.ados-cockpit .perchip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted); }
-.ados-cockpit .perchip.fresh .dot { background: var(--good); box-shadow: 0 0 8px rgba(55,217,154,.5); }
-.ados-cockpit .perchip.warn .dot { background: var(--warn); box-shadow: 0 0 8px rgba(245,181,68,.5); }
-.ados-cockpit .perchip.crit .dot { background: var(--crit); box-shadow: 0 0 8px rgba(255,90,82,.55); }
+.ados-cockpit .perchip { position: relative; z-index: 19; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--hud-glass-strong); border: 1px solid var(--hud-hair); -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop); font-family: var(--mono); }
+.ados-cockpit .perchip.warn { border-color: color-mix(in oklch, var(--hud-warn) 60%, transparent); }
+.ados-cockpit .perchip.crit { border-color: color-mix(in oklch, var(--hud-crit) 60%, transparent); }
+.ados-cockpit .perchip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--hud-muted); }
+.ados-cockpit .perchip.fresh .dot { background: var(--hud-good); box-shadow: 0 0 8px color-mix(in oklch, var(--hud-good) 50%, transparent); }
+.ados-cockpit .perchip.warn .dot { background: var(--hud-warn); box-shadow: 0 0 8px color-mix(in oklch, var(--hud-warn) 50%, transparent); }
+.ados-cockpit .perchip.crit .dot { background: var(--hud-crit); box-shadow: 0 0 8px color-mix(in oklch, var(--hud-crit) 55%, transparent); }
 .ados-cockpit .perchip .body { display: flex; flex-direction: column; line-height: 1.25; }
-.ados-cockpit .perchip .tier { font-size: 11px; letter-spacing: .1em; color: var(--ink); }
-.ados-cockpit .perchip .tier .tgt { color: var(--ink-2); }
+.ados-cockpit .perchip .tier { font-size: 11px; letter-spacing: .1em; color: var(--hud-ink); }
+.ados-cockpit .perchip .tier .tgt { color: var(--hud-ink-2); }
 .ados-cockpit .perchip .reason { font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; margin-top: 1px; }
-.ados-cockpit .perchip.warn .reason { color: var(--warn); }
-.ados-cockpit .perchip.crit .reason { color: var(--crit); }
+.ados-cockpit .perchip.warn .reason { color: var(--hud-warn); }
+.ados-cockpit .perchip.crit .reason { color: var(--hud-crit); }
 
 /* minimap */
 .ados-cockpit .mmap { width: 210px; height: 145px; overflow: hidden; position: relative; }
 .ados-cockpit .mmap .cap { position: absolute; top: 6px; left: 8px; z-index: 2; }
+/* Compact minimap toggle, shown in place of the map on narrow cockpits. */
+.ados-cockpit .mmap-chip { display: none; }
 
 /* proximity radar */
 .ados-cockpit .radar { width: 120px; height: 120px; position: relative; }
@@ -935,78 +953,99 @@ html[data-theme="gruvbox-light"] .ados-cockpit {
 /* telemetry strip */
 .ados-cockpit .telem { padding: 10px 12px; display: grid; grid-template-columns: auto auto; gap: 6px 20px; }
 .ados-cockpit .telem .row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
-.ados-cockpit .telem .row .k { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
-.ados-cockpit .telem .row .v { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; color: var(--ink); }
-.ados-cockpit .telem .row .v small { font-size: 9px; color: var(--muted); }
+.ados-cockpit .telem .row .k { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--hud-muted); text-transform: uppercase; }
+.ados-cockpit .telem .row .v { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; color: var(--hud-ink); }
+.ados-cockpit .telem .row .v small { font-size: 9px; color: var(--hud-muted); }
 
 /* skill bar */
-.ados-cockpit .skillbar { display: flex; align-items: flex-end; gap: 8px; padding: 9px 11px 27px; background: var(--glass-2); border: 1px solid var(--hair); border-radius: 14px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-.ados-cockpit .skill { position: relative; width: 52px; height: 52px; border-radius: 10px; border: 1px solid var(--hair); background: rgba(255,255,255,.03); display: grid; place-items: center; }
-.ados-cockpit .skill .ic { color: var(--ink-2); }
-.ados-cockpit .skill .kbd { position: absolute; top: 3px; right: 4px; font-family: var(--mono); font-size: 8.5px; color: var(--muted); }
+.ados-cockpit .skillbar { position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 9px 11px 27px; background: var(--hud-glass-strong); border: 1px solid var(--hud-hair); border-radius: 14px; -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop); }
+.ados-cockpit .skill { position: relative; width: 52px; height: 52px; border-radius: 10px; border: 1px solid var(--hud-hair); background: color-mix(in oklch, var(--hud-ink) 3%, transparent); display: grid; place-items: center; }
+.ados-cockpit .skill .ic { color: var(--hud-ink-2); }
+.ados-cockpit .skill .kbd { position: absolute; top: 3px; right: 4px; font-family: var(--mono); font-size: 8.5px; color: var(--hud-muted); }
 /* The slot name gets its own reserved 2-line strip below the tile (housed by the
    skillbar's bottom padding), so a long label ("Return to Home", "Kill Motors")
    wraps + clamps instead of clipping at the cockpit's bottom edge or colliding
    with its neighbour. */
-.ados-cockpit .skill .nm { position: absolute; top: calc(100% + 3px); left: -3px; right: -3px; height: 20px; text-align: center; font-family: var(--mono); font-size: 8.5px; line-height: 1.02; letter-spacing: .03em; color: var(--muted); white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.ados-cockpit .skill.active { border-color: var(--good); background: rgba(55,217,154,.12); box-shadow: 0 0 14px rgba(55,217,154,.28); }
-.ados-cockpit .skill.active .ic { color: var(--good); }
-.ados-cockpit .skill.cool { color: var(--ink); }
-.ados-cockpit .skill .cd { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--mono); font-size: 15px; color: var(--ink); background: rgba(5,9,16,.6); border-radius: 10px; }
+.ados-cockpit .skill .nm { position: absolute; top: calc(100% + 3px); left: -3px; right: -3px; height: 20px; text-align: center; font-family: var(--mono); font-size: 8.5px; line-height: 1.02; letter-spacing: .03em; color: var(--hud-muted); white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ados-cockpit .skill.active { border-color: var(--hud-good); background: color-mix(in oklch, var(--hud-good) 12%, transparent); box-shadow: 0 0 14px color-mix(in oklch, var(--hud-good) 28%, transparent); }
+.ados-cockpit .skill.active .ic { color: var(--hud-good); }
+.ados-cockpit .skill.cool { color: var(--hud-ink); }
+.ados-cockpit .skill .cd { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; color: var(--hud-ink); border-radius: 10px; pointer-events: none; }
+/* Cooldown: the slot sets --cd-dur / --cd-delay (negative = already elapsed) /
+   --cd-secs inline; the sweep and the seconds countdown run on the compositor
+   with no per-frame React work. */
+@property --cd-p { syntax: '<number>'; inherits: false; initial-value: 1; }
+@property --cd-s { syntax: '<integer>'; inherits: false; initial-value: 0; }
+@keyframes cd-sweep { from { --cd-p: 1; } to { --cd-p: 0; } }
+@keyframes cd-count { from { --cd-s: var(--cd-secs); } to { --cd-s: 0; } }
+.ados-cockpit .skill.cool .cd {
+  --cd-p: 0; --cd-s: 0;
+  animation: cd-sweep var(--cd-dur) linear var(--cd-delay) forwards, cd-count var(--cd-dur) linear var(--cd-delay) forwards;
+  counter-reset: cds var(--cd-s);
+  background: conic-gradient(color-mix(in oklch, var(--hud-glass-strong) 85%, transparent) calc(var(--cd-p) * 360deg), transparent 0);
+}
+.ados-cockpit .skill.cool .cd::after { content: counter(cds); }
 .ados-cockpit .skill.dis { opacity: .42; }
-.ados-cockpit .skill.dis .ic { color: var(--muted); }
-.ados-cockpit .skdiv { width: 1px; align-self: stretch; margin: 4px 3px; background: var(--hair-2); }
+.ados-cockpit .skill.dis .ic { color: var(--hud-muted); }
+.ados-cockpit .skdiv { width: 1px; align-self: stretch; margin: 4px 3px; background: var(--hud-hair-2); }
+/* Narrow-cockpit overflow: the toggle and drawer appear only under the
+   container query below; slots past the sixth move into the drawer. */
+.ados-cockpit .skillbar-overflow { display: none; }
+/* Wide cockpit: the drawer's slots sit inline in the bar. */
+.ados-cockpit .skillbar-drawer { display: contents; }
 
 /* top-right cluster */
 .ados-cockpit .vstats { display: flex; gap: 8px; padding: 6px 10px; align-items: center; }
-.ados-cockpit .vstats .s { font-family: var(--mono); font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.ados-cockpit .vstats .s b { color: var(--ink); }
-.ados-cockpit .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--glass); border: 1px solid var(--hair); border-radius: 9px; }
-.ados-cockpit .seg button { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 5px 9px; border-radius: 6px; cursor: pointer; }
-.ados-cockpit .seg button[aria-pressed="true"] { color: #06121e; background: var(--hud); }
-.ados-cockpit .seg button:focus-visible { outline: 2px solid var(--hud); outline-offset: 2px; }
+.ados-cockpit .vstats .s { font-family: var(--mono); font-size: 11px; color: var(--hud-ink-2); font-variant-numeric: tabular-nums; }
+.ados-cockpit .vstats .s b { color: var(--hud-ink); }
+.ados-cockpit .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--hud-glass); border: 1px solid var(--hud-hair); border-radius: 9px; }
+.ados-cockpit .seg button { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--hud-muted); background: transparent; border: 0; padding: 5px 9px; border-radius: 6px; cursor: pointer; }
+.ados-cockpit .seg button[aria-pressed="true"] { color: var(--cockpit-on-hud); background: var(--hud-primary); }
+.ados-cockpit .seg button:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
 .ados-cockpit .camsel { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; max-width: 220px; }
-.ados-cockpit .camsel .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--good); flex: none; }
-.ados-cockpit .camsel.idle .dot { background: var(--muted); box-shadow: none; }
-.ados-cockpit .camsel span { font-family: var(--mono); font-size: 11px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ados-cockpit .camsel .more { color: var(--muted); flex: none; }
+.ados-cockpit .camsel .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hud-good); flex: none; }
+.ados-cockpit .camsel.idle .dot { background: var(--hud-muted); box-shadow: none; }
+.ados-cockpit .camsel span { font-family: var(--mono); font-size: 11px; color: var(--hud-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ados-cockpit .camsel .more { color: var(--hud-muted); flex: none; }
 
 /* multi-camera roster PiP: the other cameras beside the main feed */
 .ados-cockpit .camroster { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; min-width: 156px; max-width: 208px; }
-.ados-cockpit .camroster .rhead { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.ados-cockpit .camroster .rhead { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--hud-muted); }
 .ados-cockpit .camroster .crow { display: flex; align-items: center; gap: 7px; }
-.ados-cockpit .camroster .crow .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--muted); }
-.ados-cockpit .camroster .crow.live .dot { background: var(--good); box-shadow: 0 0 7px rgba(55,217,154,.5); }
+.ados-cockpit .camroster .crow .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--hud-muted); }
+.ados-cockpit .camroster .crow.live .dot { background: var(--hud-good); box-shadow: 0 0 7px color-mix(in oklch, var(--hud-good) 50%, transparent); }
 .ados-cockpit .camroster .crow .meta { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; flex: 1; }
-.ados-cockpit .camroster .crow .nm { font-family: var(--mono); font-size: 11px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ados-cockpit .camroster .crow .sub { font-family: var(--mono); font-size: 8.5px; letter-spacing: .04em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ados-cockpit .camroster .crow .badge { font-family: var(--mono); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); flex: none; }
-.ados-cockpit .camroster .crow.live .badge { color: var(--good); }
+.ados-cockpit .camroster .crow .nm { font-family: var(--mono); font-size: 11px; color: var(--hud-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ados-cockpit .camroster .crow .sub { font-family: var(--mono); font-size: 8.5px; letter-spacing: .04em; color: var(--hud-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ados-cockpit .camroster .crow .badge { font-family: var(--mono); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; color: var(--hud-muted); flex: none; }
+.ados-cockpit .camroster .crow.live .badge { color: var(--hud-good); }
 
 /* top-left stream switcher: sleek 1..N tabs that toggle the main video view */
 .ados-cockpit .strmtabs { display: inline-flex; align-items: stretch; gap: 5px; padding: 5px 6px; max-width: min(46vw, 520px); overflow-x: auto; }
-.ados-cockpit .strmtab { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 42px; padding: 4px 8px 5px; border: 1px solid var(--hair); border-radius: 9px; background: rgba(255,255,255,.03); color: var(--ink-2); cursor: pointer; font-family: var(--mono); line-height: 1; transition: color .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease; animation: ados-stream-slidein .28s ease both; }
-.ados-cockpit .strmtab .kbd { font-size: 12px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
-.ados-cockpit .strmtab .lbl { font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); max-width: 84px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ados-cockpit .strmtab:hover { color: var(--ink); background: rgba(255,255,255,.06); }
-.ados-cockpit .strmtab:focus-visible { outline: 2px solid var(--hud); outline-offset: 2px; }
-.ados-cockpit .strmtab.active { border-color: var(--hud); background: rgba(99,179,255,.14); box-shadow: 0 0 10px rgba(99,179,255,.28); }
-.ados-cockpit .strmtab.active .lbl { color: var(--hud); }
+.ados-cockpit .strmtab { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 42px; padding: 4px 8px 5px; border: 1px solid var(--hud-hair); border-radius: 9px; background: color-mix(in oklch, var(--hud-ink) 3%, transparent); color: var(--hud-ink-2); cursor: pointer; font-family: var(--mono); line-height: 1; transition: color .2s ease-out, border-color .2s ease-out, background .2s ease-out, box-shadow .2s ease-out; animation: ados-stream-slidein .2s ease-out both; }
+.ados-cockpit .strmtab .kbd { font-size: 12px; font-weight: 600; color: var(--hud-ink); font-variant-numeric: tabular-nums; }
+.ados-cockpit .strmtab .lbl { font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--hud-muted); max-width: 84px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ados-cockpit .strmtab:hover { color: var(--hud-ink); background: color-mix(in oklch, var(--hud-ink) 6%, transparent); }
+.ados-cockpit .strmtab:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
+.ados-cockpit .strmtab.active { border-color: var(--hud-primary); background: color-mix(in oklch, var(--hud-primary) 14%, transparent); box-shadow: 0 0 10px color-mix(in oklch, var(--hud-primary) 28%, transparent); }
+.ados-cockpit .strmtab.active .lbl { color: var(--hud-primary); }
 /* Optimistic "switching…" pulse while a single-encoder node restarts. A ::after
    overlay so it never fights the tab's own slide-in reveal on a class toggle. */
-.ados-cockpit .strmtab.switching::after { content: ""; position: absolute; inset: 0; border-radius: 9px; background: rgba(99,179,255,.18); pointer-events: none; animation: strm-shimmer 1s ease-in-out infinite; }
+.ados-cockpit .strmtab.switching::after { content: ""; position: absolute; inset: 0; border-radius: 9px; background: color-mix(in oklch, var(--hud-primary) 18%, transparent); pointer-events: none; animation: strm-shimmer 1s ease-in-out infinite; }
 /* Sleek left-to-right reveal when the switcher appears (staggered per tab via an
    inline animation-delay). Neutralized for reduced-motion below + globally. */
 @keyframes ados-stream-slidein { from { transform: translateX(-12px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes strm-shimmer { 0%, 100% { opacity: .25; } 50% { opacity: .7; } }
 
-/* picture-in-picture inset: a second stream over the main video, draggable */
-.ados-cockpit .pipinset { position: absolute; right: 18px; bottom: 96px; z-index: 25; width: 208px; padding: 0; overflow: hidden; }
-.ados-cockpit .pipinset .piphead { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 5px 4px 9px; cursor: move; touch-action: none; background: var(--glass-2); border-bottom: 1px solid var(--hair); }
-.ados-cockpit .pipinset .piphead .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ados-cockpit .pipinset .pipclose { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; border: 0; background: transparent; color: var(--muted); cursor: pointer; flex: none; }
-.ados-cockpit .pipinset .pipclose:hover { color: var(--ink); background: rgba(255,255,255,.06); }
-.ados-cockpit .pipinset .pipbody { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #05121e; }
+/* picture-in-picture inset: a second stream over the main video, draggable.
+   Its default anchor sits inside the bottom-right zone, stacked above the
+   proximity radar (zone bottom 92px + radar 120px + 12px gap). */
+.ados-cockpit .pipinset { position: absolute; right: 18px; bottom: 224px; z-index: 25; width: 208px; padding: 0; overflow: hidden; }
+.ados-cockpit .pipinset .piphead { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 5px 4px 9px; cursor: move; touch-action: none; background: var(--hud-glass-strong); border-bottom: 1px solid var(--hud-hair); }
+.ados-cockpit .pipinset .piphead .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--hud-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ados-cockpit .pipinset .pipclose { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; border: 0; background: transparent; color: var(--hud-muted); cursor: pointer; flex: none; }
+.ados-cockpit .pipinset .pipclose:hover { color: var(--hud-ink); background: color-mix(in oklch, var(--hud-ink) 6%, transparent); }
+.ados-cockpit .pipinset .pipbody { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--color-media); }
 
 /* density hiding */
 /* Density for the remaining CSS-positioned chrome. The registry now owns the
@@ -1019,16 +1058,50 @@ html[data-theme="gruvbox-light"] .ados-cockpit {
 
 @media (prefers-reduced-motion: reduce) {
   .ados-cockpit .det.lock { animation: none; }
+  .ados-cockpit .cockpit-alert { animation: none; }
   .ados-cockpit .strmtab,
   .ados-cockpit .strmtab.switching::after { animation: none; }
+  /* Keep the seconds countdown (information, not decoration); drop the sweep.
+     Overrides the global reduced-motion duration collapse for this one timer. */
+  .ados-cockpit .skill.cool .cd {
+    animation: cd-count var(--cd-dur) linear var(--cd-delay) forwards !important;
+    background: color-mix(in oklch, var(--hud-glass-strong) 85%, transparent);
+  }
 }
 @media (max-width: 720px) {
-  /* On a narrow viewport the tapes and the bottom-left column cost more video
-     than they return. `.zone.bl` no longer exists, so this targets the zone
-     container the telemetry strip now lives in — the previous selector had
-     silently stopped matching anything. */
-  .ados-cockpit .tape,
+  /* On a narrow viewport the bottom-left column costs more video than it
+     returns. */
   .ados-cockpit .cockpit-zone.bl { display: none; }
+}
+/* Cockpit-width layout: the cockpit can be narrower than the viewport (side
+   panels, split view), so these follow the cockpit's own inline size. */
+@container cockpit (max-width: 1024px) {
+  .ados-cockpit .mmap { display: none; }
+  .ados-cockpit .mmap-chip { display: inline-flex; }
+  /* The chip toggles the map back in as an overlay. */
+  .ados-cockpit .zone.tl[data-expanded="true"] .mmap { display: block; margin-top: 8px; }
+}
+@container cockpit (max-width: 720px) {
+  .ados-cockpit .tape, .ados-cockpit .hud-vsi { display: none; }
+  .ados-cockpit .hud-readouts { display: block; }
+  .ados-cockpit .hud-wind { left: auto; right: 12px; top: 96px; }
+  .ados-cockpit .skillbar-drawer { display: none; }
+  .ados-cockpit .skillbar-overflow { display: flex; }
+  .ados-cockpit .skillbar-drawer[data-open="true"] {
+    display: flex; gap: 8px; padding: 9px 11px 27px;
+    position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 30;
+    background: var(--hud-glass-strong); border: 1px solid var(--hud-hair); border-radius: var(--radius-xl, 0.75rem);
+    -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop);
+  }
+}
+/* Very wide cockpits leave pillarbox margins beside the picture: the telemetry
+   strip moves out of the bottom-left column into the left margin as a single
+   column so it stops covering video. */
+@container cockpit (min-width: 1800px) {
+  .ados-cockpit .cockpit-zone > [data-widget="builtin.telemetry-strip"] {
+    position: absolute; left: 0; bottom: 0;
+  }
+  .ados-cockpit .cockpit-zone > [data-widget="builtin.telemetry-strip"] .telem { grid-template-columns: auto; }
 }
 
 /* Changelog markdown body */

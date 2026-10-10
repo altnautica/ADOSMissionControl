@@ -129,6 +129,9 @@ const toast = vi.fn();
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast }),
 }));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
 
 import { MqttBridge } from "@/components/command/MqttBridge";
 

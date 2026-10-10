@@ -67,16 +67,18 @@ describe("useDronePluginContributions", () => {
     const { result } = renderHook(() =>
       useDronePluginContributions("alpha-1"),
     );
+    const followMe = result.current.find(
+      (c) => c.pluginId === "com.altnautica.follow-me",
+    );
+    expect(followMe).toBeDefined();
+    expect(followMe!.parameters.map((p) => p.key)).toContain(
+      "follow_distance_m",
+    );
+    // Vision-nav's manifest declares no parameters, and neither does its mock.
     const visionNav = result.current.find(
       (c) => c.pluginId === "com.altnautica.vision-nav",
     );
-    expect(visionNav).toBeDefined();
-    // The vision-nav demo plugin contributes a parameter set so the native
-    // panel renders above its iframe.
-    expect(visionNav!.parameters.length).toBeGreaterThan(0);
-    expect(visionNav!.parameters.map((p) => p.key)).toContain(
-      "follow_distance_m",
-    );
+    expect(visionNav!.parameters).toEqual([]);
   });
 
   it("returns an empty array for an unknown demo drone", () => {

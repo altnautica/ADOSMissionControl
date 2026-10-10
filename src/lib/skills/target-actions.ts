@@ -26,19 +26,27 @@ import {
   useSelectedTargetStore,
   type SelectedTarget,
 } from "@/stores/selected-target-store";
+import { isReservedChord } from "./chord";
+import {
+  PLUGIN_CONFIRM_POLICY,
+  type DroneSkillContribution,
+} from "./plugin-skills";
+import { buildSkillContextFor } from "./registry";
+import type { ArmRequirement, SkillContext } from "./types";
 
 export type TargetActionStatus = "success" | "warning" | "error" | "info";
 
 export interface TargetActionContext {
   target: SelectedTarget;
-  /** Best-effort UI feedback (routes to a toast). */
+  /** Best-effort UI feedback (routes to a toast). `message` is an i18n key or
+   * literal text; the host resolves a key and shows a literal as given. */
   notify: (message: string, status?: TargetActionStatus) => void;
 }
 
 export interface TargetAction {
   /** Stable id (`builtin.designate`, `<pluginId>:follow`, …). */
   id: string;
-  /** Short label. i18n TODO — hardcoded English per the cockpit convention. */
+  /** Short label: an i18n key (resolved by the popup) or a literal plugin label. */
   label: string;
   icon?: LucideIcon;
   source: "builtin" | "plugin";
@@ -113,7 +121,7 @@ export async function designateTarget(
   const agent = resolveLocalAgentForDrone(deviceId);
   if (!agent) {
     notify(
-      "Designate needs a direct link to this drone; it is not available over the cloud relay",
+      "vision.targetActions.designateNeedsLan",
       "error",
     );
     return false;
@@ -125,7 +133,7 @@ export async function designateTarget(
       confidence: target.confidence || undefined,
     });
     if (!result.designated) {
-      notify("Designate rejected", "warning");
+      notify("vision.targetActions.designateRejected", "warning");
       return false;
     }
     useSelectedTargetStore.getState().setDesignated({
@@ -134,7 +142,7 @@ export async function designateTarget(
     });
     return true;
   } catch (e) {
-    notify(e instanceof Error ? e.message : "Designate failed", "error");
+    notify(e instanceof Error ? e.message : "vision.targetActions.designateFailed", "error");
     return false;
   }
 }
@@ -142,7 +150,7 @@ export async function designateTarget(
 /** Built-in: designate the clicked box as the vision engine's tracked target. */
 const DESIGNATE_ACTION: TargetAction = {
   id: "builtin.designate",
-  label: "Designate target",
+  label: "vision.targetActions.designate",
   icon: resolveNamedIcon("designate"),
   source: "builtin",
   order: 10,
@@ -152,7 +160,7 @@ const DESIGNATE_ACTION: TargetAction = {
   appliesTo: canDesignate,
   activate: async ({ target, notify }) => {
     if (await designateTarget(target, notify)) {
-      notify("Target designated", "success");
+      notify("vision.targetActions.designated", "success");
     }
   },
 };
@@ -190,6 +198,35 @@ export interface DroneTargetActionContribution {
   configValue?: boolean;
   /** Default hotkey for the selected target. */
   defaultKey?: string;
+  /** Open the host confirm before acting. Inherited from the same plugin's
+   * skill bound to the same config key (see {@link inheritSkillGates}). */
+  confirm?: boolean;
+  /** Arm state the action requires. Inherited like `confirm`. */
+  armRequirement?: ArmRequirement;
+}
+
+/**
+ * Give each target action the confirm and arm gates of the plugin skill that
+ * writes the same config key. A target action that flips the same switch as a
+ * skill (Follow-Me's `active`) is the same behaviour reached from a different
+ * surface, so it must not bypass the gates the skill enforces.
+ */
+export function inheritSkillGates(
+  actions: readonly DroneTargetActionContribution[],
+  skills: readonly DroneSkillContribution[],
+): DroneTargetActionContribution[] {
+  return actions.map((action) => {
+    if (!action.configKey) return action;
+    const skill = skills.find(
+      (s) => s.pluginId === action.pluginId && s.configKey === action.configKey,
+    );
+    if (!skill) return action;
+    return {
+      ...action,
+      confirm: skill.confirm,
+      armRequirement: skill.armRequirement ?? "any",
+    };
+  });
 }
 
 /** The writer a plugin target-action uses to flip the plugin's per-drone config
@@ -211,7 +248,13 @@ export function buildPluginTargetAction(
   c: DroneTargetActionContribution,
   droneId: string,
   writeConfig: PluginConfigWrite,
+  contextFor: (droneId: string) => SkillContext = buildSkillContextFor,
 ): TargetAction {
+  // A target-action hotkey never shadows a chord the app owns.
+  const defaultKey =
+    c.defaultKey && !isReservedChord(c.defaultKey.toLowerCase())
+      ? c.defaultKey
+      : undefined;
   return {
     id: `${c.pluginId}:${c.localId}`,
     label: c.label,
@@ -219,11 +262,29 @@ export function buildPluginTargetAction(
     source: "plugin",
     pluginId: c.pluginId,
     order: c.order ?? 100,
-    ...(c.defaultKey ? { defaultKey: c.defaultKey } : {}),
+    ...(defaultKey ? { defaultKey } : {}),
     ...(c.appliesToClass
       ? { appliesTo: (t: SelectedTarget) => t.classLabel === c.appliesToClass }
       : {}),
     activate: async ({ target, notify }) => {
+      const armReq = c.armRequirement ?? "any";
+      if (armReq !== "any" || c.confirm) {
+        const ctx = contextFor(droneId);
+        // Same arm gate and reasons as the skill activation pipeline. An
+        // unknown arm state satisfies neither requirement.
+        if (armReq !== "any" && ctx.armState !== armReq) {
+          ctx.notify(
+            ctx.armState === "unknown"
+              ? "skills.reason.noFcLink"
+              : armReq === "armed"
+                ? "skills.reason.notArmed"
+                : "skills.reason.alreadyArmed",
+            "warning",
+          );
+          return;
+        }
+        if (c.confirm && !(await ctx.confirm(PLUGIN_CONFIRM_POLICY))) return;
+      }
       if (c.designate) {
         const ok = await designateTarget(target, notify);
         if (!ok) return;
@@ -238,7 +299,10 @@ export function buildPluginTargetAction(
             c.configValue ?? true,
           );
         } catch (e) {
-          notify(e instanceof Error ? e.message : "Config write failed", "error");
+          notify(
+            e instanceof Error ? e.message : "vision.targetActions.configWriteFailed",
+            "error",
+          );
           return;
         }
       }

@@ -64,6 +64,7 @@ function settingsCtxFor(profile: NodeProfile): SettingsPageContext {
     config: { swarm: {}, battery: {}, video: { wfb: {} } },
     readOnly: false,
     setValue: async () => {},
+    demoMode: false,
   };
 }
 

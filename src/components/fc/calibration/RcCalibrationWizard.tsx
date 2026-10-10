@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
@@ -39,6 +40,7 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
   const { firmwareType } = useFirmwareCapabilities();
   const liveRc = useFreshTelemetry("rc");
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.calibration");
 
   const [step, setStep] = useState<RcCalStep>("idle");
   const [captures, setCaptures] = useState<RcChannelCapture[]>(() => Array.from({ length: RC_CHANNEL_COUNT }, defaultCapture));
@@ -82,22 +84,22 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
       if (val === 0) continue;
       if (Math.abs(val - RC_CENTER_VALUE) > RC_CENTER_TOLERANCE) offCenter.push(i + 1);
     }
-    if (offCenter.length > 0 && latestRc[0] !== 0) { toast(`Channels ${offCenter.join(", ")} not centered. Center all sticks and try again.`, "error"); return; }
+    if (offCenter.length > 0 && latestRc[0] !== 0) { toast(t("rcChannelsNotCentered", { channels: offCenter.join(", ") }), "error"); return; }
     setCaptures((prev) => {
       const next = [...prev];
       for (let i = 0; i < RC_CHANNEL_COUNT; i++) { const val = latestRc[i] ?? RC_CENTER_VALUE; if (val === 0) continue; next[i] = { ...next[i], trim: val }; }
       return next;
     });
     setStep("move");
-  }, [latestRc, toast]);
+  }, [latestRc, toast, t]);
 
   const handleMoveComplete = useCallback(() => {
     const caps = capturesRef.current;
     const narrow: number[] = [];
     for (let i = 0; i < 4; i++) { if (caps[i].max - caps[i].min < 200) narrow.push(i + 1); }
-    if (narrow.length > 0) { toast(`Channels ${narrow.join(", ")} have narrow range (<200). Move sticks to full extent.`, "error"); return; }
+    if (narrow.length > 0) { toast(t("rcChannelsNarrowRange", { channels: narrow.join(", ") }), "error"); return; }
     setStep("confirm");
-  }, [toast]);
+  }, [toast, t]);
 
   /**
    * Write a batch after the armed guard, and report only what the vehicle
@@ -105,16 +107,16 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
    */
   const writeBatch = useCallback(async (entries: ParamBatchEntry[]): Promise<{ failed: string | null; message: string; level: "success" | "info" | "error" }> => {
     const protocol = selectedProtocol;
-    if (!protocol) return { failed: "Not connected", message: "Not connected", level: "error" };
+    if (!protocol) return { failed: t("notConnected"), message: t("notConnected"), level: "error" };
     const confirmed = await confirmArmedParamWrite("rc-calibration", entries.map((e) => e.name));
-    if (!confirmed) return { failed: "Cancelled: vehicle is armed", message: "Cancelled: vehicle is armed", level: "error" };
+    if (!confirmed) return { failed: t("cancelledArmed"), message: t("cancelledArmed"), level: "error" };
     const outcome = await writeParamBatch(protocol, entries, "rc-calibration");
     if (outcome.written.size > 0) onWritten?.();
     const { message, level } = describeParamBatch(outcome);
-    if (outcome.failures.length > 0) return { failed: `${message}. Failed: ${outcome.failures.join(", ")}`, message, level: "error" };
+    if (outcome.failures.length > 0) return { failed: t("rcBatchFailed", { message, params: outcome.failures.join(", ") }), message, level: "error" };
     if (outcome.flash === "failed") return { failed: message, message, level: "error" };
     return { failed: null, message, level };
-  }, [selectedProtocol, onWritten]);
+  }, [selectedProtocol, onWritten, t]);
 
   const handleSave = useCallback(async () => {
     const entries = rcCalibrationEntries(capturesRef.current, currentParams ?? NO_PARAMS);
@@ -127,8 +129,8 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
       const { failed, message, level } = await writeBatch(entries);
       if (failed) { setStep("error"); setErrorMsg(failed); toast(failed, "error"); return; }
       setStep("done"); setDoneMsg(message); toast(message, level);
-    } catch { setStep("error"); setErrorMsg("Failed to write RC parameters"); toast("Failed to write RC parameters", "error"); }
-  }, [currentParams, writeBatch, toast]);
+    } catch { setStep("error"); setErrorMsg(t("rcWriteFailed")); toast(t("rcWriteFailed"), "error"); }
+  }, [currentParams, writeBatch, toast, t]);
 
   const handleCancel = useCallback(() => { setStep("idle"); setCaptures(Array.from({ length: RC_CHANNEL_COUNT }, defaultCapture)); setErrorMsg(""); }, []);
 
@@ -141,9 +143,9 @@ export function RcCalibrationWizard({ connected, currentParams, onWritten }: RcC
       });
       const { failed, message, level } = await writeBatch(entries);
       toast(failed ?? message, failed ? "error" : level);
-    } catch { toast("Failed to reset RC trims", "error"); }
+    } catch { toast(t("rcTrimResetFailed"), "error"); }
     finally { setTrimResetting(false); setShowTrimReset(false); }
-  }, [currentParams, writeBatch, toast]);
+  }, [currentParams, writeBatch, toast, t]);
 
   const statusBadge = {
     idle: { label: "Ready", className: "bg-bg-tertiary text-text-tertiary" },

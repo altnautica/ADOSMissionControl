@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
@@ -34,6 +35,7 @@ export function PortsPanel() {
   const isPx4 = firmwareType === "px4";
   const [needsReboot, setNeedsReboot] = useState(false);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.comms");
   // SERIALn_PROTOCOL / SERIALn_BAUD options come from the firmware metadata
   // (verbatim ArduPilot @Values as the offline floor), never a hand table.
   const { enumValues } = useParamEnums(useParamMetadataMap());
@@ -84,7 +86,7 @@ export function PortsPanel() {
     if (!protocol) return;
     const result = await protocol.reboot();
     if (!result.success) {
-      toast(`Reboot refused: ${result.message}`, "error");
+      toast(t("rebootRefused", { message: result.message }), "error");
       return;
     }
     setNeedsReboot(false);

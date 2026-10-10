@@ -15,6 +15,7 @@ import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { Home, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
 export function SafehomePanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.inav");
 
   const safehomes = useSafehomeStore((s) => s.safehomes);
   const loading = useSafehomeStore((s) => s.loading);
@@ -45,7 +47,7 @@ export function SafehomePanel() {
   const handleRead = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     await loadFromFc(protocol);
@@ -53,14 +55,14 @@ export function SafehomePanel() {
     if (err) {
       toast(err, "error");
     } else {
-      toast("Safehome slots loaded from FC", "success");
+      toast(t("safehomesLoaded"), "success");
     }
-  }, [selectedProtocol, loadFromFc, toast]);
+  }, [selectedProtocol, loadFromFc, toast, t]);
 
   const handleWrite = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     await uploadToFc(protocol);
@@ -68,9 +70,9 @@ export function SafehomePanel() {
     if (err) {
       toast(err, "error");
     } else {
-      toast("Safehome slots written to FC", "success");
+      toast(t("safehomesWritten"), "success");
     }
-  }, [selectedProtocol, uploadToFc, toast]);
+  }, [selectedProtocol, uploadToFc, toast, t]);
 
   const formatCoord = (val: number) => val.toFixed(7);
 

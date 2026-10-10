@@ -75,7 +75,7 @@ function probeSkill(seen: string[]): Skill {
       message: "m",
       confirmLabel: "c",
       variant: "danger",
-      typedPhrase: "RTL",
+      gesture: "hold",
     },
     // Mirrors every real flight built-in: no command surface, no press.
     getState: (ctx) =>

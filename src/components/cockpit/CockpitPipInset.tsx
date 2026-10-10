@@ -21,7 +21,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCw, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { isDemoMode } from "@/lib/utils";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import { usePipVideo } from "@/hooks/use-pip-video";
 import {
   ROLE_LABEL_KEY,
@@ -55,6 +55,8 @@ export function clampToBounds(
 
 export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
   const t = useTranslations("cockpitStreams");
+  const tPip = useTranslations("cockpit.pip");
+  const demo = useDemoMode();
   const pipId = useVideoStreamsStore((s) => s.pipStreamIdByDrone[droneId]);
   const streams = useVideoStreamsStore((s) => s.streamsByDrone[droneId]);
   const setPip = useVideoStreamsStore((s) => s.setPip);
@@ -157,7 +159,7 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
     pip?.kind === "concurrent" ? (pip.address?.whepUrl ?? null) : null;
   // Only drive the isolated player for a real concurrent leg (demo uses canvas).
   const { status: pipStatus, retry: pipRetry } = usePipVideo(
-    isDemoMode() ? null : whepUrl,
+    demo ? null : whepUrl,
     videoRef,
   );
 
@@ -277,7 +279,7 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
         </button>
       </div>
       <div className="pipbody">
-        {isDemoMode() ? (
+        {demo ? (
           <CockpitDemoStream droneId={droneId} streamId={pip.id} />
         ) : (
           <>
@@ -311,8 +313,13 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
                   <Loader2
                     size={16}
                     className="animate-spin text-text-tertiary"
-                    aria-label={t("pipConnecting")}
+                    aria-label={pipStatus === "lost" ? tPip("reconnecting") : t("pipConnecting")}
                   />
+                )}
+                {pipStatus === "lost" && (
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-status-warning">
+                    {tPip("reconnecting")}
+                  </span>
                 )}
               </div>
             )}

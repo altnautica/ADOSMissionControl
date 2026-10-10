@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { AlertTriangle, X, ShieldAlert, Radio, Navigation, Cpu, Zap } from "lucide-react";
-import { useTelemetryLatest } from "@/hooks/use-telemetry-latest";
+import { useThrottledTelemetryVersion } from "@/hooks/use-throttled-telemetry-version";
+import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -60,8 +61,12 @@ const FAILSAFE_ICONS: Record<FailsafeType, React.ReactNode> = {
 };
 
 export function FailsafeAlertBanner() {
-  const sysStatus = useTelemetryLatest("sysStatus");
-  const battery = useTelemetryLatest("battery");
+  // Read the latest samples on a throttled version so the banner (mounted on
+  // every route) re-renders at most 4 Hz instead of once per telemetry frame.
+  useThrottledTelemetryVersion();
+  const telemetry = useTelemetryStore.getState();
+  const sysStatus = telemetry.sysStatus.latest();
+  const battery = telemetry.battery.latest();
   const systemStatus = useDroneStore((s) => s.systemStatus);
   const connectionState = useDroneStore((s) => s.connectionState);
   const droneId = useDroneManager((s) => s.selectedDroneId);

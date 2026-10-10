@@ -2,8 +2,9 @@
 
 import { useState, useMemo, useLayoutEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedDrone, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -34,8 +35,7 @@ export function PidTuningPanel() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const bindAnalysisDrone = usePidAnalysisStore((s) => s.bindDrone);
   const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
-  const [saving, setSaving] = useState(false);
+  const t = useTranslations("fcToasts.pid");
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
 
@@ -104,28 +104,13 @@ export function PidTuningPanel() {
     setLocalValue,
   }), [vehicleType, params, dirtyParams, setLocalValue]);
 
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    showFlashResult(await commitToFlash());
-  }
-
-  function handleRevert() {
-    revertAll();
-    toast("Reverted to FC values", "info");
-  }
+  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   function applyPreset(preset: PidPreset) {
     for (const [param, value] of Object.entries(preset.values)) {
       setLocalValue(param, value);
     }
-    toast(`Applied "${preset.name}" preset — save to apply`, "info");
+    toast(t("presetApplied", { name: preset.name }), "info");
   }
 
   const subtitle = vehicleType === "copter"

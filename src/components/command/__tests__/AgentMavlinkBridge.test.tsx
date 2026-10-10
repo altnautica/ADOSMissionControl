@@ -157,13 +157,6 @@ vi.mock("@/stores/drone-manager", () => {
   };
 });
 
-vi.mock("@/stores/fleet-store", () => {
-  const state = { drones: [] as unknown[] };
-  const hook = () => state;
-  hook.getState = () => state;
-  return { useFleetStore: hook };
-});
-
 import { AgentMavlinkBridge } from "../AgentMavlinkBridge";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { setMqttBrokerCredential } from "@/lib/mqtt-broker-credential";

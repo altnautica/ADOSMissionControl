@@ -24,8 +24,9 @@ export interface ThemeCardData {
 
 export const THEME_CARDS: ThemeCardData[] = [
   // Core
-  { value: "dark", label: "Dark", group: "dark", colors: { bg: "#000000", surface: "#0a0a0a", accent: "#3a82ff", text: "#fafafa", border: "#1a1a1a" } },
-  { value: "light", label: "Light", group: "light", colors: { bg: "#f7f9fc", surface: "#eef2f8", accent: "#2f6feb", text: "#111827", border: "#d6dce8" } },
+  { value: "dark", label: "Dark", group: "dark", colors: { bg: "#0a0a0f", surface: "#0c1120", accent: "#3a82ff", text: "#f8fafc", border: "#1e293b" } },
+  { value: "light", label: "Light", group: "light", colors: { bg: "#ffffff", surface: "#f8fafc", accent: "#2563eb", text: "#0f172a", border: "#e2e8f0" } },
+  { value: "mono", label: "Mono", group: "dark", colors: { bg: "#000000", surface: "#0a0a0a", accent: "#3a82ff", text: "#fafafa", border: "#1a1a1a" } },
   // Solarized
   { value: "solarized-dark", label: "Solarized Dark", group: "dark", colors: { bg: "#002b36", surface: "#073642", accent: "#268bd2", text: "#eee8d5", border: "#073642" } },
   { value: "solarized-light", label: "Solarized Light", group: "light", colors: { bg: "#fdf6e3", surface: "#eee8d5", accent: "#268bd2", text: "#002b36", border: "#eee8d5" } },

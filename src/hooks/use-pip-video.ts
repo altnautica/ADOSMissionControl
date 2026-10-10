@@ -36,7 +36,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   LAN_ICE_GATHER_TIMEOUT_MS,
@@ -48,8 +48,9 @@ import {
 } from "@/lib/video/webrtc/jitter-controller";
 
 /** Connection state of the isolated PiP player, so the inset can show a
- * spinner / NO SIGNAL + retry instead of a silent black rectangle. */
-export type PipVideoStatus = "idle" | "connecting" | "live" | "error";
+ * spinner / NO SIGNAL + retry instead of a silent black rectangle. `lost` is a
+ * live leg that dropped and is being re-established automatically. */
+export type PipVideoStatus = "idle" | "connecting" | "live" | "lost" | "error";
 
 export interface PipVideoState {
   status: PipVideoStatus;
@@ -57,11 +58,26 @@ export interface PipVideoState {
   retry: () => void;
 }
 
+/** Automatic reconnect attempts after a live leg drops, before giving up. */
+export const PIP_MAX_AUTO_RETRIES = 5;
+
+/** Backoff before automatic reconnect `n` (0-based): 1 s doubling, capped. */
+export function pipRetryDelayMs(n: number): number {
+  return Math.min(1000 * 2 ** n, 16_000);
+}
+
+/** Resolve a WHEP `Location` header against the URL the offer was POSTed to. */
+export function resolveWhepResource(location: string, whepUrl: string): string {
+  const base = new URL(whepUrl, globalThis.location?.href);
+  return new URL(location, base).href;
+}
+
 /**
  * Drive a `<video>` element from a WHEP endpoint with a private peer connection.
- * A null `whepUrl` (or unmount) tears the connection down. Independent of the
- * main cockpit video session. Returns the connection status + a retry so the
- * inset can surface a failure rather than swallowing it.
+ * A null `whepUrl` (or unmount) tears the connection down and releases the
+ * server-side WHEP session. A leg that was live and drops reports `lost` and
+ * reconnects with backoff; a leg that never came up, or that keeps failing,
+ * reports `error` and waits for the operator's retry.
  */
 export function usePipVideo(
   whepUrl: string | null,
@@ -69,14 +85,26 @@ export function usePipVideo(
 ): PipVideoState {
   const [status, setStatus] = useState<PipVideoStatus>("idle");
   const [attempt, setAttempt] = useState(0);
-  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  // Reconnect bookkeeping that must survive the effect re-running per attempt.
+  const autoRetriesRef = useRef(0);
+  const wasLiveRef = useRef(false);
+  const urlRef = useRef<string | null>(null);
+  const retry = useCallback(() => {
+    autoRetriesRef.current = 0;
+    setAttempt((n) => n + 1);
+  }, []);
 
   useEffect(() => {
+    if (urlRef.current !== whepUrl) {
+      urlRef.current = whepUrl;
+      autoRetriesRef.current = 0;
+      wasLiveRef.current = false;
+    }
     if (!whepUrl) {
       setStatus("idle");
       return;
     }
-    setStatus("connecting");
+    setStatus(wasLiveRef.current ? "lost" : "connecting");
     // The inset's <video> is stable for the effect's life; capture it once so
     // the async attach and the cleanup act on the same element.
     const videoEl = videoRef.current;
@@ -84,6 +112,22 @@ export function usePipVideo(
     const { signal } = controller;
     let pc: RTCPeerConnection | null = null;
     let cancelled = false;
+    let resourceUrl: string | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    // A drop after the leg was live, or a failed reconnect, schedules the next
+    // attempt with backoff; anything else (or an exhausted budget) is an error.
+    const fail = () => {
+      if (cancelled || retryTimer !== undefined) return;
+      if (wasLiveRef.current && autoRetriesRef.current < PIP_MAX_AUTO_RETRIES) {
+        const delay = pipRetryDelayMs(autoRetriesRef.current);
+        autoRetriesRef.current += 1;
+        setStatus("lost");
+        retryTimer = setTimeout(() => setAttempt((n) => n + 1), delay);
+        return;
+      }
+      setStatus("error");
+    };
 
     let trackTimeout: ReturnType<typeof setTimeout> | undefined;
     const start = async () => {
@@ -92,6 +136,12 @@ export function usePipVideo(
         pc = newPc;
         newPc.addTransceiver("video", { direction: "recvonly" });
         newPc.addTransceiver("audio", { direction: "recvonly" });
+        newPc.addEventListener("connectionstatechange", () => {
+          const state = newPc.connectionState;
+          if (state === "failed" || state === "disconnected" || state === "closed") {
+            fail();
+          }
+        });
 
         const track = Promise.withResolvers<MediaStream>();
         trackTimeout = setTimeout(
@@ -135,6 +185,8 @@ export function usePipVideo(
           signal,
         });
         if (!response.ok) throw new Error(`pip WHEP ${response.status}`);
+        const location = response.headers.get("Location");
+        if (location) resourceUrl = resolveWhepResource(location, whepUrl);
         const answerSdp = await response.text();
         if (signal.aborted) return;
         await newPc.setRemoteDescription({ type: "answer", sdp: answerSdp });
@@ -149,12 +201,14 @@ export function usePipVideo(
         const media = await stream;
         if (cancelled || signal.aborted) return;
         if (videoEl) videoEl.srcObject = media;
+        wasLiveRef.current = true;
+        autoRetriesRef.current = 0;
         setStatus("live");
       } catch {
         // A failed PiP inset is non-fatal — the main feed is unaffected — but
-        // it is surfaced (spinner → NO SIGNAL + retry) rather than swallowed.
-        // A teardown-triggered abort is not a real failure, so it is ignored.
-        if (!cancelled && !signal.aborted) setStatus("error");
+        // it is surfaced rather than swallowed. A teardown-triggered abort is
+        // not a real failure, so it is ignored.
+        if (!cancelled && !signal.aborted) fail();
       } finally {
         // Every early return above (abort, teardown, camera switch) skips
         // the clear inline, and an abandoned 10 s timer holding a rejection
@@ -166,6 +220,7 @@ export function usePipVideo(
 
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
       controller.abort();
       if (videoEl) videoEl.srcObject = null;
       if (pc) {
@@ -175,6 +230,11 @@ export function usePipVideo(
         } catch {
           // already closed
         }
+      }
+      // Release the server-side session so a dropped or hidden inset does not
+      // hold an encoder leg open until the server's own timeout.
+      if (resourceUrl) {
+        void fetch(resourceUrl, { method: "DELETE", keepalive: true }).catch(() => {});
       }
     };
   }, [whepUrl, videoRef, attempt]);

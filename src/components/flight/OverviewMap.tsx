@@ -7,7 +7,7 @@ import { knownRemainingPct } from "@/lib/battery";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useMissionStore } from "@/stores/mission-store";
-import { useFleetStore } from "@/stores/fleet-store";
+import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { projectByBearing, getLineTypeDashArray, GPS_FIX_LABELS } from "@/lib/drawing/geo-utils";
@@ -25,6 +25,7 @@ import dynamic from "next/dynamic";
 import { buildSkillContext, activate } from "@/lib/skills";
 import { MapFollower } from "@/components/map/MapFollower";
 import { MeasureToolManager } from "@/components/map/MeasureToolManager";
+import { FleetPluginSlot } from "@/components/plugins/FleetPluginSlot";
 
 const GcsMarker = dynamic(
   () => import("@/components/map/GcsMarker").then((m) => ({ default: m.GcsMarker })),
@@ -154,8 +155,15 @@ function MapResizer() {
  * leaving only the map imagery + drone marker + path, auto-follows the drone,
  * and goes non-interactive, so it reads as a clean game-like minimap. The full
  * Overview/Flight tab (default `compact=false`) keeps every control.
+ *
+ * `pluginOverlay` mounts the extension `map.overlay` slot over the map (the
+ * same non-interactive layer the planner map carries), so an installed
+ * extension's map layer shows in the cockpit minimap too.
  */
-export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
+export function OverviewMap({
+  compact = false,
+  pluginOverlay = false,
+}: { compact?: boolean; pluginOverlay?: boolean } = {}) {
   const [follow, setFollow] = useState(true);
   const [showPlannedPath, setShowPlannedPath] = useState(false);
   const [measureActive, setMeasureActive] = useState(false);
@@ -205,7 +213,7 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
   const currentWaypoint = useMissionStore((s) => s.currentWaypoint);
 
   // Fleet drones for multi-drone markers
-  const fleetDrones = useFleetStore((s) => s.drones);
+  const fleetDrones = useFleetDrones();
   const profiles = useDroneMetadataStore((s) => s.profiles);
 
   const lat = pos && pos.lat !== 0 && pos.lon !== 0 ? pos.lat : null;
@@ -390,6 +398,19 @@ export function OverviewMap({ compact = false }: { compact?: boolean } = {}) {
         <GcsMarker />
         {!compact && <LocateControl style={{ marginBottom: 40 }} />}
       </MapContainer>
+
+      {pluginOverlay && (
+        <div
+          data-map-layer="plugin-map-overlay"
+          className="absolute inset-0 z-[900] pointer-events-none"
+        >
+          <FleetPluginSlot
+            name="map.overlay"
+            className="absolute inset-0"
+            iframeClassName="absolute inset-0 w-full h-full border-0"
+          />
+        </div>
+      )}
 
       {/* Mission execution telemetry -- ETA + XTE (full map only) */}
       {!compact && <MissionExecutionOverlay />}

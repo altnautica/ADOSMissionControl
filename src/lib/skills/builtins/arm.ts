@@ -1,14 +1,18 @@
 /**
- * Arm skill — enables motor output. One-shot, disarmed-only, danger confirm
- * with the checklist-aware OVERRIDE escalation when the pre-flight checklist
- * is incomplete.
+ * Arm skill — enables motor output. One-shot, disarmed-only, slide-to-confirm
+ * (a long hold on a key or gamepad button). When the pre-flight checklist is
+ * incomplete the sheet lists the failing items and needs an explicit override.
  *
  * @module skills/builtins/arm
  * @license GPL-3.0-only
  */
 
 import type { Skill } from "../types";
-import { disabledIfNoLink, disabledUnlessDisarmed } from "./_shared";
+import {
+  builtinConfirm,
+  disabledIfNoLink,
+  disabledUnlessDisarmed,
+} from "./_shared";
 
 export const armSkill: Skill = {
   id: "arm",
@@ -18,14 +22,7 @@ export const armSkill: Skill = {
   source: "builtin",
   toggle: false,
   armRequirement: "disarmed",
-  confirm: {
-    title: "skills.arm.confirm.title",
-    message: "skills.arm.confirm.message",
-    confirmLabel: "skills.arm.confirm.button",
-    variant: "danger",
-    typedPhrase: "ARM",
-    checklistAware: true,
-  },
+  confirm: builtinConfirm("arm", "slide", "danger", { checklistAware: true }),
   getState: (ctx) => disabledIfNoLink(ctx) ?? disabledUnlessDisarmed(ctx) ?? { kind: "idle" },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal (e.g. a prearm failure) and spends nothing on it.

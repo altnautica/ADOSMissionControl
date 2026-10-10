@@ -11,7 +11,7 @@
  * asked for a fleet recall and one aircraft did not get it.
  */
 
-import { useFleetStore } from "@/stores/fleet-store";
+import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
 
 export interface FleetCommandOutcome {
@@ -33,7 +33,7 @@ export interface FleetCommandOutcome {
  * not recalled.
  */
 export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
-  const fleet = useFleetStore.getState().drones;
+  const fleet = getFleetDrones();
   const targets = fleet.filter(
     (d) => d.connectionState === "in_flight" || d.connectionState === "armed",
   );

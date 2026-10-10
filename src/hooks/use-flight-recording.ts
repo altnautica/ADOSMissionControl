@@ -15,14 +15,19 @@
  * opportunistic — recorded when a live stream is present (auto-downloads a WebM),
  * so an FC-only drone yields a telemetry-only flight recording.
  *
- * State is derived from the persistent recorders (the video store + the
- * per-drone recorder), so switching away from the Cockpit tab and back never
- * leaves the button stuck or double-starts.
+ * Start times live in stores, never in component state: the video start stamp
+ * in the video store, the button-started telemetry stamp in the small store
+ * below. Switching away from the cockpit and back therefore never resets the
+ * timer, and the hook itself never ticks — the elapsed display is `RecTimer`'s
+ * job, so a running recording does not re-render the surface that owns the
+ * button.
  *
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
+import { create } from "zustand";
+import { useTranslations } from "next-intl";
 import {
   startRecording as startVideoRecording,
   stopRecording as stopVideoRecording,
@@ -35,48 +40,64 @@ import {
 import { downloadTelemetryCSV } from "@/lib/telemetry-export";
 import { useVideoStore } from "@/stores/video-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useToast } from "@/components/ui/toast";
 
-// Drone ids whose per-drone telemetry recording was started by the REC button
-// (as opposed to the connect/arm auto-recorder). Module-level so it survives the
-// cockpit unmounting when the operator switches tabs mid-recording, and so stop
-// only tears down what the button started.
-const btnStartedTelemetry = new Set<string>();
+interface ButtonTelemetryState {
+  /** droneId → `Date.now()` when the REC button started that drone's
+   *  telemetry recording. Absent when the button did not start one (the
+   *  auto-recorder may still own the slot). */
+  startedAt: Record<string, number>;
+  mark: (droneId: string, at: number) => void;
+  clear: (droneId: string) => void;
+}
+
+/** Button-started telemetry recordings. Module scope so it outlives the cockpit. */
+export const useButtonTelemetryRecordingStore = create<ButtonTelemetryState>((set) => ({
+  startedAt: {},
+  mark: (droneId, at) => set((s) => ({ startedAt: { ...s.startedAt, [droneId]: at } })),
+  clear: (droneId) =>
+    set((s) => {
+      if (!(droneId in s.startedAt)) return s;
+      const next = { ...s.startedAt };
+      delete next[droneId];
+      return { startedAt: next };
+    }),
+}));
 
 export interface FlightRecording {
   /** True while the video or a button-started telemetry recording is active. */
   isRecording: boolean;
-  /** Recording duration in ms (0 while idle). */
-  durationMs: number;
+  /** `Date.now()` of the earliest active recording leg; `null` while idle. */
+  startedAt: number | null;
   /** Start both if idle, stop both if recording. */
   toggle: () => void;
 }
 
+/**
+ * The start stamp of the flight recording for `droneId`, or `null` when idle.
+ * A button-started telemetry stamp whose recorder has since been torn down
+ * (disconnect, auto lifecycle) does not count as recording.
+ */
+export function useFlightRecordingStartedAt(droneId: string): number | null {
+  const videoStartedAt = useVideoStore((s) => (s.isRecording ? s.recordingStartedAt : null));
+  const telemetryStamp = useButtonTelemetryRecordingStore((s) => s.startedAt[droneId] ?? null);
+  const telemetryStartedAt =
+    telemetryStamp !== null && isRecordingFor(droneId) ? telemetryStamp : null;
+  if (videoStartedAt === null) return telemetryStartedAt;
+  if (telemetryStartedAt === null) return videoStartedAt;
+  return Math.min(videoStartedAt, telemetryStartedAt);
+}
+
 export function useFlightRecording(droneId: string): FlightRecording {
+  const t = useTranslations("cockpit.band");
+  const { toast } = useToast();
   const videoRecording = useVideoStore((s) => s.isRecording);
-  // Seeded from the persistent recorder truth so a remount (tab switch) reflects
-  // reality instead of a stale idle state — the fix for a stuck REC button.
-  const [telemetryActive, setTelemetryActive] = useState(
-    () => btnStartedTelemetry.has(droneId) && isRecordingFor(droneId),
-  );
-  const [durationMs, setDurationMs] = useState(0);
-  const startedAtRef = useRef<number | null>(null);
+  const telemetryStamp = useButtonTelemetryRecordingStore((s) => s.startedAt[droneId] ?? null);
+  const startedAt = useFlightRecordingStartedAt(droneId);
+  const telemetryActive = telemetryStamp !== null && isRecordingFor(droneId);
   const isRecording = videoRecording || telemetryActive;
 
-  useEffect(() => {
-    if (!isRecording) {
-      startedAtRef.current = null;
-      return;
-    }
-    if (startedAtRef.current === null) startedAtRef.current = Date.now();
-    // Only tick inside the interval (never synchronously in the effect body).
-    const id = setInterval(() => {
-      setDurationMs(Date.now() - (startedAtRef.current ?? Date.now()));
-    }, 250);
-    return () => clearInterval(id);
-  }, [isRecording]);
-
   const start = useCallback(() => {
-    setDurationMs(0);
     // Opportunistic video: no-op when there is no live stream to record.
     try {
       startVideoRecording();
@@ -87,10 +108,9 @@ export function useFlightRecording(droneId: string): FlightRecording {
     // running (the auto-recorder owns the slot otherwise).
     if (!isRecordingFor(droneId)) {
       try {
-        const drone = useDroneManager.getState().getSelectedDrone();
+        const drone = useDroneManager.getState().drones.get(droneId);
         startRecordingFor(droneId, drone?.name);
-        btnStartedTelemetry.add(droneId);
-        setTelemetryActive(true);
+        useButtonTelemetryRecordingStore.getState().mark(droneId, Date.now());
       } catch {
         /* raced with the auto-recorder */
       }
@@ -98,31 +118,37 @@ export function useFlightRecording(droneId: string): FlightRecording {
   }, [droneId]);
 
   const stop = useCallback(async () => {
-    try {
-      stopVideoRecording(); // auto-downloads the WebM when it was recording
-    } catch {
-      /* wasn't recording video */
+    let failed = false;
+    if (useVideoStore.getState().isRecording) {
+      try {
+        await stopVideoRecording(); // auto-downloads the WebM
+      } catch {
+        failed = true;
+      }
     }
     // Only stop + export the telemetry recording if the button started it; a
     // recording owned by the auto lifecycle keeps running.
-    if (btnStartedTelemetry.has(droneId)) {
-      btnStartedTelemetry.delete(droneId);
-      setTelemetryActive(false);
-      try {
-        const recording = await stopRecordingFor(droneId);
-        if (recording && recording.frameCount > 0) {
-          await downloadTelemetryCSV(recording);
+    const store = useButtonTelemetryRecordingStore.getState();
+    if (droneId in store.startedAt) {
+      store.clear(droneId);
+      if (isRecordingFor(droneId)) {
+        try {
+          const recording = await stopRecordingFor(droneId);
+          if (recording && recording.frameCount > 0) {
+            await downloadTelemetryCSV(recording);
+          }
+        } catch {
+          failed = true;
         }
-      } catch {
-        /* recorder already torn down (e.g. disarm) */
       }
     }
-  }, [droneId]);
+    if (failed) toast(t("recStopFailed"), "error");
+  }, [droneId, t, toast]);
 
   const toggle = useCallback(() => {
     if (isRecording) void stop();
     else start();
   }, [isRecording, start, stop]);
 
-  return { isRecording, durationMs, toggle };
+  return { isRecording, startedAt, toggle };
 }

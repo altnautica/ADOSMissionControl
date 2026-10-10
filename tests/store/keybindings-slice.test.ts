@@ -205,5 +205,41 @@ describe("keybindings slice", () => {
       seed("g", 6);
       expect(slotOf()).toBeUndefined();
     });
+
+    it("reports a dropped colliding suggestion as unbound", () => {
+      expect(seed("shift+a", null)).toBe("unbound");
+      expect(slotOf()?.key).toBeNull();
+    });
+
+    it("never takes a built-in chord the operator has since unbound", () => {
+      useSettingsStore.getState().setSlotKey(DEFAULT_LOADOUT_ID, 0, null);
+      expect(seed("shift+a", null)).toBe("unbound");
+    });
+
+    it("reports a clean suggestion as bound, then skips a repeat", () => {
+      expect(seed("g", null)).toBe("bound");
+      expect(seed("g", null)).toBe("skipped");
+    });
+
+    it("lands in the free slots of the 12-slot default loadout", () => {
+      const slots = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].slots;
+      expect(slots).toHaveLength(12);
+      expect(slots.filter((s) => s.skillId !== null)).toHaveLength(10);
+      seed("g", null);
+      expect(slotOf()?.index).toBe(10);
+    });
+
+    it("pads a loadout saved with 10 slots so a plugin skill can land", () => {
+      const loadout = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID];
+      useSettingsStore.setState({
+        loadouts: {
+          [DEFAULT_LOADOUT_ID]: { ...loadout, slots: loadout.slots.slice(0, 10) },
+        },
+      });
+      expect(seed("g", null)).toBe("bound");
+      const after = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].slots;
+      expect(after).toHaveLength(12);
+      expect(slotOf()?.index).toBe(10);
+    });
   });
 });

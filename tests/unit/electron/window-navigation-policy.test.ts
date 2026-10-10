@@ -68,7 +68,7 @@ describe("window-open policy", () => {
   });
 
   it("allows a popup on the local app origin", () => {
-    expect(fakeContents().open(`${APP}/hud`)).toBe("allow");
+    expect(fakeContents().open(`${APP}/simulate`)).toBe("allow");
   });
 
   it("denies an external page and hands it to the OS browser", () => {

@@ -24,6 +24,8 @@
  */
 
 import { useEffect, useState } from "react";
+import { useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
 
 import {
   perceptionFeedState,
@@ -38,19 +40,12 @@ export function CockpitPerceptionChip({ droneId }: { droneId: string }) {
   const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
   const target = useAgentCapabilitiesStore((s) => s.perceptionOffloadTarget);
 
-  const [now, setNow] = useState(() => Date.now());
-
-  // A slow re-render tick so the feed ages from fresh → stale on its own even
-  // when no new batch arrives (the exact case this chip exists to catch). Runs
-  // only while a feed has ever started; idle costs nothing. Key on whether a
-  // feed EXISTS, not the batch object (replaced every frame, ~10-15 Hz), so the
-  // 500 ms interval is created once per feed lifecycle, not recreated per frame.
-  const hasFeed = !!batch;
-  useEffect(() => {
-    if (!hasFeed) return;
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
-  }, [hasFeed]);
+  // The shared 1 Hz tick re-renders the chip so the feed ages from fresh to
+  // stale on its own even when no new batch arrives (the exact case this chip
+  // exists to catch).
+  useClockTick();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => useClockStore.subscribe((s) => setNow(s.now)), []);
 
   const feed = perceptionFeedState(batch, now);
   const label = tierLabel(tier, feed !== "idle");

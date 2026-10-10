@@ -27,8 +27,10 @@ const CAUTION_CM = 500; // 2-5m = amber
 
 function sectorColor(distCm: number): { fill: string; stroke: string } | null {
   if (distCm > CAUTION_CM) return null;
-  if (distCm < DANGER_CM) return { fill: "rgba(255,90,82,.30)", stroke: "var(--crit)" };
-  return { fill: "rgba(245,181,68,.28)", stroke: "var(--warn)" };
+  if (distCm < DANGER_CM) {
+    return { fill: "color-mix(in oklch, var(--hud-crit) 30%, transparent)", stroke: "var(--hud-crit)" };
+  }
+  return { fill: "color-mix(in oklch, var(--hud-warn) 28%, transparent)", stroke: "var(--hud-warn)" };
 }
 
 function polarToCart(angleDeg: number, r: number): [number, number] {
@@ -85,7 +87,7 @@ export function ProximityRadar() {
   // nearest return is not a hazard and reads as clear.
   const nearest = closestCm !== null && closestCm <= CAUTION_CM ? closestCm : null;
   const labelColor =
-    nearest === null ? "var(--good)" : nearest < DANGER_CM ? "var(--crit)" : "var(--warn)";
+    nearest === null ? "var(--hud-good)" : nearest < DANGER_CM ? "var(--hud-crit)" : "var(--hud-warn)";
 
   // No positioning wrapper: the cockpit zone container places this. It used to
   // carry `zone br d-std`, anchoring it to the same bottom-right coordinates
@@ -93,20 +95,20 @@ export function ProximityRadar() {
   return (
     <div className="radar panel">
       <svg viewBox="0 0 120 120" aria-hidden="true">
-        <g fill="none" stroke="var(--hair)">
+        <g fill="none" stroke="var(--hud-hair)">
           <circle cx={CENTER} cy={CENTER} r={52} />
           <circle cx={CENTER} cy={CENTER} r={34} />
           <circle cx={CENTER} cy={CENTER} r={16} />
         </g>
-        <g stroke="var(--hair-2)">
+        <g stroke="var(--hud-hair-2)">
           <line x1={CENTER} y1={8} x2={CENTER} y2={112} />
           <line x1={8} y1={CENTER} x2={112} y2={CENTER} />
         </g>
         {sectors.map((s, i) => (
           <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={1} />
         ))}
-        <circle cx={CENTER} cy={CENTER} r={3} fill="var(--hud)" />
-        <text x={CENTER} y={18} fill="var(--muted)" fontSize={8} textAnchor="middle" fontFamily="var(--mono)">
+        <circle cx={CENTER} cy={CENTER} r={3} fill="var(--hud-primary)" />
+        <text x={CENTER} y={18} fill="var(--hud-muted)" fontSize={8} textAnchor="middle" fontFamily="var(--mono)">
           {reference === "forward" ? "FWD" : "N"}
         </text>
       </svg>

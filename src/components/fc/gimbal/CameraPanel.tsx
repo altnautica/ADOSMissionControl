@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useFcPanelState } from "@/hooks/use-fc-panel-state";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
@@ -24,16 +25,16 @@ export function CameraPanel() {
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, getProtocol,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
+    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = useFcPanelState({ paramNames: CAMERA_PARAMS, optionalParams: OPTIONAL_CAMERA_PARAMS, panelId: "camera" });
   const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.gimbal");
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
   const { label: pl } = useParamLabel();
   const metadata = useParamMetadataMap();
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
-  const [saving, setSaving] = useState(false);
   const [imageCount, setImageCount] = useState(0);
   const [intervalSec, setIntervalSec] = useState(5);
   const [intervalActive, setIntervalActive] = useState(false);
@@ -68,35 +69,22 @@ export function CameraPanel() {
     return footprint * (1 - surveyOverlap / 100);
   }, [surveyAlt, surveyFov, surveyOverlap]);
 
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok);
-  }
-
   async function handleTrigger() {
     const protocol = getProtocol();
     if (!protocol) return;
     const result = await protocol.cameraTrigger();
     if (result.success) {
       setImageCount((c) => c + 1);
-      toast("Camera triggered", "success");
+      toast(t("cameraTriggered"), "success");
     } else {
-      toast(result.message || "Camera trigger refused", "error");
+      toast(result.message || t("cameraTriggerRefused"), "error");
     }
   }
 
   function applyCalculatedDistance() {
     if (calculatedTriggerDist > 0) {
       set("CAM1_TRIGG_DIST", calculatedTriggerDist.toFixed(1));
-      toast(`Trigger distance set to ${calculatedTriggerDist.toFixed(1)} m`, "success");
+      toast(t("triggerDistanceSet", { distance: calculatedTriggerDist.toFixed(1) }), "success");
     }
   }
 
@@ -113,16 +101,16 @@ export function CameraPanel() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
       setIntervalActive(false);
-      toast("Interval trigger stopped", "success");
+      toast(t("intervalStopped"), "success");
     } else {
       if (intervalSec <= 0) {
-        toast("Enter a positive interval", "warning");
+        toast(t("intervalInvalid"), "warning");
         return;
       }
       void doIntervalTrigger();
       intervalRef.current = setInterval(() => void doIntervalTrigger(), intervalSec * 1000);
       setIntervalActive(true);
-      toast(`Triggering every ${intervalSec}s`, "success");
+      toast(t("intervalStarted", { seconds: intervalSec }), "success");
     }
   }
 

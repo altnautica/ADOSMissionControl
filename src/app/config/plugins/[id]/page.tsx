@@ -17,6 +17,7 @@ import { useNodeDirectAgent } from "@/components/command/settings/use-node-direc
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { PluginSettingsSections } from "@/components/plugins/PluginSettingsSections";
 
 type Tab = "overview" | "permissions" | "events";
 
@@ -89,14 +90,14 @@ export default function PluginDetailPage() {
   };
 
   if (data === undefined) {
-    return <p className="p-4 text-sm text-text-tertiary">Loading...</p>;
+    return <p className="p-4 text-sm text-text-tertiary">{t("detail.loading")}</p>;
   }
   if (data === null) {
     return (
       <div className="p-4 text-sm text-text-tertiary">
-        <p>Plugin not found.</p>
+        <p>{t("detail.notFound")}</p>
         <Link href="/config/plugins" className="text-accent-primary underline">
-          Back to plugins
+          {t("detail.back")}
         </Link>
       </div>
     );
@@ -110,7 +111,7 @@ export default function PluginDetailPage() {
         href="/config/plugins"
         className="inline-flex items-center gap-1 text-xs text-text-tertiary hover:text-text-primary"
       >
-        <ArrowLeft className="h-3 w-3" /> Back to plugins
+        <ArrowLeft className="h-3 w-3" /> {t("detail.back")}
       </Link>
 
       <header className="flex items-start justify-between gap-3">
@@ -129,52 +130,58 @@ export default function PluginDetailPage() {
           icon={<Trash2 className="h-3 w-3" />}
           onClick={() => setConfirmRemove(true)}
         >
-          Remove
+          {t("removeConfirmAction")}
         </Button>
       </header>
 
-      <nav className="flex gap-1 border-b border-border-default" aria-label="Plugin tabs">
-        {(["overview", "permissions", "events"] as const).map((t) => (
+      <nav className="flex gap-1 border-b border-border-default" aria-label={t("detail.tabsLabel")}>
+        {(["overview", "permissions", "events"] as const).map((id) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={id}
+            onClick={() => setTab(id)}
             className={cn(
-              "border-b-2 px-3 py-2 text-sm capitalize",
-              tab === t
+              "border-b-2 px-3 py-2 text-sm",
+              tab === id
                 ? "border-accent-primary text-text-primary"
                 : "border-transparent text-text-tertiary hover:text-text-primary",
             )}
           >
-            {t}
+            {t(`detail.tab.${id}`)}
           </button>
         ))}
       </nav>
 
       {tab === "overview" && (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-          <Field label="Status" value={install.status} capitalize />
-          <Field label="Source" value={install.source} capitalize />
-          {install.signerId && <Field label="Signer" value={install.signerId} mono />}
-          <Field label="Halves" value={install.halves.join(", ")} capitalize />
-          <Field
-            label="Installed"
-            value={new Date(install.installedAt).toLocaleString()}
-          />
-          {install.enabledAt && (
+        <>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+            <Field label={t("detail.field.status")} value={install.status} capitalize />
+            <Field label={t("detail.field.source")} value={install.source} capitalize />
+            {install.signerId && <Field label={t("detail.field.signer")} value={install.signerId} mono />}
+            <Field label={t("detail.field.halves")} value={install.halves.join(", ")} capitalize />
             <Field
-              label="Enabled"
-              value={new Date(install.enabledAt).toLocaleString()}
+              label={t("detail.field.installed")}
+              value={new Date(install.installedAt).toLocaleString()}
             />
-          )}
-          <Field label="Manifest hash" value={install.manifestHash.slice(0, 16) + "..."} mono />
-        </dl>
+            {install.enabledAt && (
+              <Field
+                label={t("detail.field.enabled")}
+                value={new Date(install.enabledAt).toLocaleString()}
+              />
+            )}
+            <Field label={t("detail.field.manifestHash")} value={install.manifestHash.slice(0, 16) + "..."} mono />
+          </dl>
+          <PluginSettingsSections
+            deviceId={installDroneId ? (deviceIdFromNodeId(installDroneId) ?? installDroneId) : null}
+            pluginId={install.pluginId}
+          />
+        </>
       )}
 
       {tab === "permissions" && (
         <ul className="divide-y divide-border-default rounded-md border border-border-default">
           {permissions.length === 0 ? (
             <li className="px-3 py-3 text-xs text-text-tertiary">
-              No permissions declared.
+              {t("detail.noPermissions")}
             </li>
           ) : (
             permissions.map((perm) => (
@@ -188,7 +195,7 @@ export default function PluginDetailPage() {
                   </code>
                   {perm.required && (
                     <span className="ml-2 rounded bg-bg-tertiary px-1.5 py-0.5 text-[10px] uppercase text-text-tertiary">
-                      Required
+                      {t("detail.required")}
                     </span>
                   )}
                 </div>
@@ -207,7 +214,7 @@ export default function PluginDetailPage() {
                     }
                   }}
                 >
-                  {perm.granted ? t("revokePermission") : "Grant"}
+                  {perm.granted ? t("revokePermission") : t("detail.grant")}
                 </Button>
               </li>
             ))
@@ -257,9 +264,9 @@ export default function PluginDetailPage() {
       {tab === "events" && (
         <ul className="space-y-1 text-xs">
           {events === undefined ? (
-            <li className="text-text-tertiary">Loading events...</li>
+            <li className="text-text-tertiary">{t("detail.loadingEvents")}</li>
           ) : events.length === 0 ? (
-            <li className="text-text-tertiary">No events recorded yet.</li>
+            <li className="text-text-tertiary">{t("detail.noEvents")}</li>
           ) : (
             events.map((evt) => (
               <li

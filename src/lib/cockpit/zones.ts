@@ -60,11 +60,3 @@ const ZONE_SUFFIX: Record<CockpitZone, string> = {
 export function zoneContainerClass(zone: CockpitZone): string {
   return `cockpit-zone ${ZONE_SUFFIX[zone]}`;
 }
-
-/** Guard an untrusted string (persisted payload / operator input) to a zone. */
-export function isCockpitZone(value: unknown): value is CockpitZone {
-  return (
-    typeof value === "string" &&
-    (COCKPIT_ZONES as readonly string[]).includes(value)
-  );
-}

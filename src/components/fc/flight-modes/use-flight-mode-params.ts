@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import type { DroneProtocol, UnifiedFlightMode } from "@/lib/protocol/types";
 import type { FirmwareHandler } from "@/lib/protocol/types/firmware";
 import { px4ModeToSlot, px4SlotToMode } from "@/lib/protocol/firmware/px4-flight-mode-slots";
@@ -63,6 +64,8 @@ export function useFlightModeParams({
   // or writing those ArduPilot-only names on PX4 times out, so they are gated
   // off for PX4 throughout this hook.
   const isPx4 = firmwareHandler?.firmwareType === "px4";
+  const t = useTranslations("fcToasts.flightModes");
+  const tCommit = useTranslations("panelCommit");
   const { channel: channelParam, slotPrefix } = modeParamNames(firmwareHandler);
 
   const [slots, setSlots] = useState<ModeSlotConfig[]>(
@@ -132,13 +135,13 @@ export function useFlightModeParams({
       baselineRef.current = newSlots.map((s) => ({ ...s }));
       setDirtySlots(new Set());
       setShowCommitButton(false);
-      toast("Loaded flight mode configuration", "success");
+      toast(t("loaded"), "success");
     } catch {
-      toast("Failed to load flight modes", "error");
+      toast(t("loadFailed"), "error");
     } finally {
       setLoading(false);
     }
-  }, [protocol, firmwareHandler, isPx4, isCopter, channelParam, slotPrefix, toast]);
+  }, [protocol, firmwareHandler, isPx4, isCopter, channelParam, slotPrefix, toast, t]);
 
   const totalDirtyCount = dirtySlots.size + (globalDirty ? 1 : 0);
   const isDirty = totalDirtyCount > 0;
@@ -173,7 +176,7 @@ export function useFlightModeParams({
             // custom_mode. Skip (with a warning) any mode that has no PX4 slot.
             const slotValue = px4ModeToSlot(slot.mode as UnifiedFlightMode);
             if (slotValue === null) {
-              toast(`${slot.mode} has no PX4 mode slot; skipped`, "warning");
+              toast(t("noPx4Slot", { mode: slot.mode }), "warning");
             } else {
               writes.push({ name: `${slotPrefix}${idx + 1}`, value: slotValue });
             }
@@ -210,10 +213,10 @@ export function useFlightModeParams({
       const failures: string[] = [];
       for (const { name, value } of writes) {
         const result = await protocol.setParameter(name, value).catch(() => null);
-        if (!result?.success) failures.push(`${name}: ${result?.message ?? "write failed"}`);
+        if (!result?.success) failures.push(`${name}: ${result?.message ?? t("writeFailed")}`);
       }
       if (failures.length > 0) {
-        toast(`Flight modes not fully saved. Failed: ${failures.join(", ")}`, "error");
+        toast(t("partialSave", { failures: failures.join(", ") }), "error");
         return;
       }
 
@@ -222,13 +225,13 @@ export function useFlightModeParams({
       setDirtySlots(new Set());
       setGlobalDirty(false);
       setShowCommitButton(true);
-      toast("Saved to flight controller", "success");
+      toast(tCommit("saved"), "success");
     } catch {
-      toast("Failed to save flight modes", "error");
+      toast(t("saveFailed"), "error");
     } finally {
       setSaving(false);
     }
-  }, [protocol, firmwareHandler, isPx4, isCopter, channelParam, slotPrefix, slots, globalConfig, isDirty, globalDirty, dirtySlots, toast]);
+  }, [protocol, firmwareHandler, isPx4, isCopter, channelParam, slotPrefix, slots, globalConfig, isDirty, globalDirty, dirtySlots, toast, t, tCommit]);
 
   const commitToFlash = useCallback(async () => {
     if (!protocol) return;
@@ -236,14 +239,14 @@ export function useFlightModeParams({
       const result = await protocol.commitParamsToFlash();
       if (result.success) {
         setShowCommitButton(false);
-        toast("Written to flash — persists after reboot", "success");
+        toast(t("flashWritten"), "success");
       } else {
-        toast("Failed to write to flash", "error");
+        toast(t("flashFailed"), "error");
       }
     } catch {
-      toast("Failed to write to flash", "error");
+      toast(t("flashFailed"), "error");
     }
-  }, [protocol, toast]);
+  }, [protocol, toast, t]);
 
   const updateSlot = useCallback((idx: number, partial: Partial<ModeSlotConfig>) => {
     setSlots((prev) => {

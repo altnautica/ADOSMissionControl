@@ -23,6 +23,7 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useClockTick } from "@/lib/agent/freshness";
+import { useThrottledTelemetryVersion } from "@/hooks/use-throttled-telemetry-version";
 import { useKnownCellCount } from "@/hooks/use-known-cell-count";
 import { useFenceUploadStatus, useMissionUploadStatus } from "@/hooks/use-upload-status";
 import { evaluateAutoChecks } from "@/lib/checklist/auto-checks";
@@ -46,9 +47,10 @@ export function ChecklistAutoRunner(): null {
   const sessionId = useChecklistStore((s) => s.sessionId);
   const applyAutoVerdicts = useChecklistStore((s) => s.applyAutoVerdicts);
 
-  // `_version` says new telemetry arrived; the clock tick says time passed,
+  // The throttled `_version` says new telemetry arrived (at most 4 Hz, so the
+  // shell does not re-render per frame); the clock tick says time passed,
   // which is the only signal left once a link goes quiet.
-  const version = useTelemetryStore((s) => s._version);
+  const version = useThrottledTelemetryVersion();
   const tick = useClockTick();
   const batteryBuf = useTelemetryStore((s) => s.battery);
   const gpsBuf = useTelemetryStore((s) => s.gps);

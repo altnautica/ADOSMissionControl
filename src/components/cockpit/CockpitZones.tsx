@@ -10,9 +10,11 @@
  *   - an ARRANGEABLE widget (the chips + plugin widgets) is grouped by its
  *     effective zone (the operator's per-loadout override, else its default)
  *     and rendered inside one anchored zone container that the operator can
- *     move it between and hide;
- *   - a non-arrangeable widget (the fixed instrument HUD, the edge tapes)
- *     self-positions and is rendered bare, unchanged.
+ *     move it between and hide. Each sits in a `data-widget="<id>"` wrapper so
+ *     the stylesheet can relocate one widget (e.g. into the pillarbox of a
+ *     very wide cockpit) without touching the others;
+ *   - a non-arrangeable widget (the instrument HUD) self-positions and is
+ *     rendered bare, unchanged.
  *
  * @license GPL-3.0-only
  */
@@ -24,8 +26,7 @@ import { TelemetryStrip } from "@/components/cockpit/TelemetryStrip";
 import { WhatsLockedChip } from "@/components/vision/WhatsLockedChip";
 import { CockpitPerceptionChip } from "@/components/vision/CockpitPerceptionChip";
 import { CockpitCameraRoster } from "@/components/vision/CockpitCameraRoster";
-import { AttitudeIndicator } from "@/components/cockpit/AttitudeIndicator";
-import { SpeedTape, AltTape } from "@/components/cockpit/Tapes";
+import { HudLayer } from "@/components/cockpit/HudLayer";
 import type { CockpitLayout } from "@/stores/settings/keybindings-slice";
 import { zoneContainerClass, type CockpitZone } from "@/lib/cockpit/zones";
 import {
@@ -47,28 +48,14 @@ import {
  */
 export const BUILTIN_WIDGETS: readonly CockpitWidget[] = [
   {
-    // The artificial horizon: pitch ladder + roll arc + boresight, over video.
-    id: "builtin.attitude",
+    // The instrument HUD: horizon, flight-path marker, heading tape, speed and
+    // altitude tapes, vertical speed, wind. One widget so the telemetry is
+    // derived once per frame for every instrument in it.
+    id: "builtin.hud",
     zone: "center",
     source: "builtin",
     order: 1,
-    render: () => <AttitudeIndicator />,
-  },
-  {
-    // Ground-speed tape, hugging the left video edge.
-    id: "builtin.speed-tape",
-    zone: "left",
-    source: "builtin",
-    order: 1,
-    render: () => <SpeedTape />,
-  },
-  {
-    // Altitude tape (rolling-digit readout), hugging the right video edge.
-    id: "builtin.alt-tape",
-    zone: "right",
-    source: "builtin",
-    order: 1,
-    render: () => <AltTape />,
+    render: () => <HudLayer />,
   },
   {
     // Arrangeable, so it shares the bottom-right zone container with any
@@ -195,7 +182,9 @@ export function CockpitZones({ droneId, layout }: CockpitZonesProps) {
       {[...zoned.entries()].map(([zone, list]) => (
         <div key={zone} className={zoneContainerClass(zone)}>
           {list.map((w) => (
-            <Fragment key={w.id}>{w.render(ctx)}</Fragment>
+            <div key={w.id} data-widget={w.id}>
+              {w.render(ctx)}
+            </div>
           ))}
         </div>
       ))}

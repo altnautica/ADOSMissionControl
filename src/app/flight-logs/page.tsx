@@ -9,18 +9,21 @@ import { LogFilter, useLogFilter } from "@/components/flight-logs/LogFilter";
 import { LogTable, useListLayout } from "@/components/flight-logs/LogTable";
 import { LogDetail, LogReplayView, useReplay } from "@/components/flight-logs/LogDetail";
 import { useHistoryStore } from "@/stores/history-store";
-import { isDemoMode } from "@/lib/utils";
+import { useDemoMode } from "@/hooks/use-demo-mode";
+import { useTranslations } from "next-intl";
 import type { FlightRecord } from "@/lib/types";
 
 export default function FlightHistoryPage() {
+  const t = useTranslations("history");
   // Stored history is loaded by the root LocalStoreHydrator. In demo mode,
   // wipe persisted history and re-seed from the curated dataset. Demo
   // records are filtered out of persistToIDB so they never reach IDB.
   const initWithSeedData = useHistoryStore((s) => s.initWithSeedData);
   const resetDemoData = useHistoryStore((s) => s.resetDemoData);
+  const demo = useDemoMode();
 
   useEffect(() => {
-    if (!isDemoMode()) return;
+    if (!demo) return;
 
     let cancelled = false;
     void (async () => {
@@ -39,7 +42,7 @@ export default function FlightHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [initWithSeedData, resetDemoData]);
+  }, [demo, initWithSeedData, resetDemoData]);
 
   const allRecords = useHistoryStore((s) => s.records);
   const filter = useLogFilter(allRecords);
@@ -81,9 +84,12 @@ export default function FlightHistoryPage() {
         filter.setShowTrash((v) => !v);
       }
       // Trash view: Restore / Delete permanently live in the bulk bar, behind
-      // a confirmation. The key only moves live flights to the trash.
+      // a confirmation. The key only moves live flights to the trash, behind
+      // the same confirmation the bulk bar's Delete uses.
       if ((e.key === "Delete" || e.key === "Backspace") && !filter.showTrash) {
         if (selectedIds.size > 0 && !e.metaKey) {
+          e.preventDefault();
+          if (!window.confirm(t("moveToTrashConfirm", { count: selectedIds.size }))) return;
           const store = useHistoryStore.getState();
           for (const id of selectedIds) store.removeRecord(id);
           void store.persistToIDB();
@@ -93,20 +99,28 @@ export default function FlightHistoryPage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selectedRecord, selectedIds, filter]);
+  }, [selectedRecord, selectedIds, filter, t]);
 
+  // Shift-click selects every visible row between the last clicked row and
+  // this one, in the table's current sort/filter order.
+  const visibleRecordsRef = useRef(filter.filteredRecords);
+  useEffect(() => {
+    visibleRecordsRef.current = filter.filteredRecords;
+  }, [filter.filteredRecords]);
   const handleToggleSelect = useCallback((id: string, range: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (range && lastClickedRef.current) {
-        // Range select between lastClickedRef.current and id within current visible page order.
-        // Simplification: just toggle the single item; full range select needs page records.
-        // (a future pass can add multi-page range selection.)
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
+      const anchor = lastClickedRef.current;
+      const order = visibleRecordsRef.current.map((r) => r.id);
+      const from = anchor ? order.indexOf(anchor) : -1;
+      const to = order.indexOf(id);
+      if (range && from >= 0 && to >= 0) {
+        const [lo, hi] = from < to ? [from, to] : [to, from];
+        for (let i = lo; i <= hi; i++) next.add(order[i]);
+      } else if (next.has(id)) {
+        next.delete(id);
       } else {
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
+        next.add(id);
       }
       lastClickedRef.current = id;
       return next;
@@ -146,7 +160,7 @@ export default function FlightHistoryPage() {
       <CloudSyncBridge />
       {/* Header */}
       <div className="px-4 py-3 border-b border-border-default shrink-0">
-        <h1 className="text-sm font-display font-semibold text-text-primary">Flight History</h1>
+        <h1 className="text-sm font-display font-semibold text-text-primary">{t("title")}</h1>
       </div>
 
       {/* Toolbar */}

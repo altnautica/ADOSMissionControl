@@ -40,6 +40,8 @@ const charges = new Map<string, ChargeState>();
 /** A monotonic recompute callback the dispatcher injects (registry recompute). */
 let onTick: (() => void) | null = null;
 let tickTimer: ReturnType<typeof setTimeout> | null = null;
+/** Epoch ms the pending tick fires at (valid while `tickTimer` is set). */
+let tickAt = 0;
 
 function key(droneId: string, skillId: string): string {
   return `${droneId}::${skillId}`;
@@ -58,27 +60,31 @@ export function setCooldownTick(fn: () => void): void {
 }
 
 /**
- * Schedule the next recompute at the earliest boundary across all live
- * cooldown sweeps and pending recharges, so the bar animates the sweep and
- * updates the charge badge without a permanent rAF loop. A single coalesced
- * timer drives every drone/skill; it re-arms itself while work remains.
+ * Schedule one recompute at the earliest boundary across all live cooldown
+ * windows and pending recharges. The sweep itself animates in CSS from the
+ * window's start and length, so the bar is recomputed only when a window ends
+ * or a charge comes back, never per frame. A single coalesced timer drives
+ * every drone/skill; a boundary earlier than the pending one re-arms it.
  */
 function scheduleTick(): void {
   if (!onTick) return;
-  if (tickTimer !== null) return;
 
   const next = nextBoundaryMs();
   if (next === null) return;
+  const at = now() + next;
+  if (tickTimer !== null) {
+    if (tickAt <= at) return;
+    clearTimeout(tickTimer);
+  }
 
-  // ~16ms floor keeps a near-complete sweep smooth without busy-spinning.
-  const delay = Math.max(16, Math.min(next, 1000));
+  tickAt = at;
   tickTimer = setTimeout(() => {
     tickTimer = null;
     reconcile();
     onTick?.();
     // Re-arm while any window or recharge is still outstanding.
     scheduleTick();
-  }, delay);
+  }, Math.max(0, next));
 }
 
 /** Ms until the soonest cooldown-end or recharge boundary, or null if idle. */
@@ -192,13 +198,18 @@ export function startCooldown(droneId: string, skill: Skill): void {
 
 /**
  * The live cooldown projection for a skill, or null when no window is active.
- * `progress` sweeps 1 -> 0 across the window so the slot's conic gradient
- * empties as the lockout clears.
+ * `progress` sweeps 1 -> 0 across the window; `startedAt`/`durationMs` let the
+ * slot animate the sweep itself.
  */
 export function getCooldownState(
   droneId: string,
   skillId: string,
-): { progress: number; remainingMs: number } | null {
+): {
+  progress: number;
+  remainingMs: number;
+  startedAt: number;
+  durationMs: number;
+} | null {
   const win = cooldowns.get(key(droneId, skillId));
   if (!win) return null;
   const elapsed = now() - win.startedAt;
@@ -208,7 +219,12 @@ export function getCooldownState(
     return null;
   }
   const progress = Math.max(0, Math.min(1, remainingMs / win.durationMs));
-  return { progress, remainingMs };
+  return {
+    progress,
+    remainingMs,
+    startedAt: win.startedAt,
+    durationMs: win.durationMs,
+  };
 }
 
 /**

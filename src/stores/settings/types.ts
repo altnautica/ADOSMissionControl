@@ -25,6 +25,7 @@ import type {
   CockpitLayout,
   CockpitWidgetPlacement,
   Loadout,
+  SeedOutcome,
   SuggestedBinding,
 } from "./keybindings-slice";
 
@@ -267,12 +268,14 @@ export interface SettingsStoreState {
   renameLoadout: (id: string, name: string) => void;
   /** Reset one loadout's slots to the factory bindings (keeps id, name, layout). */
   resetLoadoutToDefaults: (loadoutId: string) => void;
-  /** Offer a plugin skill's suggested binding to a loadout, once per skill. */
+  /** Offer a plugin skill's suggested binding to a loadout, once per skill.
+   * Returns whether the skill landed bound, landed with a colliding input
+   * dropped, or was skipped. */
   seedSuggestedBinding: (
     loadoutId: string,
     skillId: string,
     binding: SuggestedBinding,
-  ) => void;
+  ) => SeedOutcome;
   setLoadoutLayout: (
     loadoutId: string,
     partial: Partial<CockpitLayout>,

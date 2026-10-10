@@ -6,7 +6,7 @@
  * connection, a Convex cloud row, a LAN credential, a node-registry presence
  * entry). forgetNode must clear EVERY source so neither resurrection mechanism
  * fires:
- *   (1) FleetProjectionBridge re-deriving the card from the registry, and
+ *   (1) the fleet projection re-deriving the card from the registry, and
  *   (2) the reactive Convex listMyDrones re-feeding a cloud row whose Convex
  *       document was never deleted.
  *
@@ -119,7 +119,7 @@ function seedCloudNode(): void {
     .upsertCloudStatuses([{ deviceId: CLOUD_DEV, updatedAt: Date.now() }]);
 }
 
-/** Re-run the pure projection exactly as FleetProjectionBridge does. */
+/** Re-run the pure projection exactly as the fleet projection does. */
 function projectedIds(): string[] {
   const { nodes } = useNodeRegistryStore.getState();
   const { cloudStatuses } = useCommandFleetStore.getState();
@@ -149,7 +149,7 @@ describe("forgetNode", () => {
     expect(unpairLocalMock).toHaveBeenCalledTimes(1);
     expect(useNodeRegistryStore.getState().nodes[nodeId]).toBeUndefined();
 
-    // The resurrector (FleetProjectionBridge re-deriving from the registry)
+    // The resurrector (the fleet projection re-deriving from the registry)
     // finds nothing: the row does not flash back.
     expect(projectedIds()).not.toContain(nodeId);
     expect(projectedIds()).toHaveLength(0);

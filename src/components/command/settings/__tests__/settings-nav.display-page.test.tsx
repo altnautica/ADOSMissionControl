@@ -29,6 +29,7 @@ function ctxFor(profile: NodeProfile): SettingsPageContext {
     config: { ground_station: { display: { type: "auto" }, kiosk: {} } },
     readOnly: false,
     setValue: async () => {},
+    demoMode: false,
   };
 }
 

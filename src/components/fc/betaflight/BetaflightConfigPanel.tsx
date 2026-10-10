@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -24,10 +24,8 @@ import { bfConfigParamNames, featureDefsForApi, BEEPER_DEFS, BfCard as Card } fr
 
 export function BetaflightConfigPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.betaflight");
   const scrollRef = usePanelScroll("bf-config");
-  const [saving, setSaving] = useState(false);
 
   const {
     params,
@@ -41,12 +39,17 @@ export function BetaflightConfigPanel() {
     setLocalValue,
     saveAllToRam,
     commitToFlash,
+    revertAll,
   } = usePanelParams({
     paramNames: bfConfigParamNames,
     panelId: "bf-config",
     autoLoad: true,
   });
   useUnsavedGuard(dirtyParams.size > 0);
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+    { saveAllToRam, commitToFlash, revertAll },
+    { flash: { successMessage: t("writtenToFlash") } },
+  );
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
@@ -96,19 +99,6 @@ export function BetaflightConfigPanel() {
     String(params.get(name) ?? fallback);
   const set = (name: string, v: string) =>
     setLocalValue(name, Number(v) || 0);
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok, { successMessage: "Written to flash" });
-  }
 
   return (
     <ArmedWarningBanner>

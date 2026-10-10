@@ -35,6 +35,10 @@ export type PositionCallback = (data: {
   airSpeed?: number;
   /** m/s; absent when the source message carries no vertical speed (MSP GPS). */
   climbRate?: number;
+  /** m/s, NED velocity (GLOBAL_POSITION_INT vx/vy/vz); absent when the source carries no velocity vector. */
+  vn?: number;
+  ve?: number;
+  vd?: number;
 }) => void;
 
 export type BatteryCallback = (data: {

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { usePanelScroll } from "@/hooks/use-panel-scroll";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
@@ -41,15 +40,17 @@ function Card({ icon, title, description, children }: {
 
 export function BfMotorsPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.motors");
   const scrollRef = usePanelScroll("bf-motors");
-  const [saving, setSaving] = useState(false);
 
   const {
     params, loading, error, dirtyParams, hasRamWrites,
-    loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash,
+    loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: PARAM_NAMES, panelId: "bf-motors", autoLoad: true });
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+    { saveAllToRam, commitToFlash, revertAll },
+    { flash: { successMessage: t("flashWritten") } },
+  );
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -72,19 +73,6 @@ export function BfMotorsPanel() {
   const effectivePidRate = gyroRateHz ? gyroRateHz / Math.max(1, pidDenom) : undefined;
 
   const formatRate = (hz: number) => hz >= 1000 ? `${(hz / 1000).toFixed(1)}kHz` : `${Math.round(hz)}Hz`;
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok, { successMessage: "Written to flash" });
-  }
 
   return (
     <ArmedWarningBanner>

@@ -17,6 +17,7 @@ import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { GeozoneZoneEditor } from "./GeozoneZoneEditor";
 import { MapPin, Plus, Upload } from "lucide-react";
@@ -24,6 +25,7 @@ import { MapPin, Plus, Upload } from "lucide-react";
 export function GeozonePanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.inav");
   const [mapEditZoneId, setMapEditZoneId] = useState<number | null>(null);
 
   const zones = useGeozoneStore((s) => s.zones);
@@ -46,7 +48,7 @@ export function GeozonePanel() {
   const handleRead = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     await loadFromFc(protocol);
@@ -54,14 +56,14 @@ export function GeozonePanel() {
     if (err) {
       toast(err, "error");
     } else {
-      toast("Geozones loaded from FC", "success");
+      toast(t("geozonesLoaded"), "success");
     }
-  }, [selectedProtocol, loadFromFc, toast]);
+  }, [selectedProtocol, loadFromFc, toast, t]);
 
   const handleWrite = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     await uploadToFc(protocol);
@@ -69,9 +71,9 @@ export function GeozonePanel() {
     if (err) {
       toast(err, "error");
     } else {
-      toast("Geozones written to FC", "success");
+      toast(t("geozonesWritten"), "success");
     }
-  }, [selectedProtocol, uploadToFc, toast]);
+  }, [selectedProtocol, uploadToFc, toast, t]);
 
   return (
     <div className="flex-1 overflow-y-auto p-6">

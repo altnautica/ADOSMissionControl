@@ -55,6 +55,7 @@ function settingsCtxFor(profile: NodeProfile): SettingsPageContext {
     config: {},
     readOnly: false,
     setValue: async () => {},
+    demoMode: false,
   };
 }
 

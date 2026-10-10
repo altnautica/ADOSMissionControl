@@ -9,6 +9,14 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import type * as ConfigWriter from "@/lib/skills/plugin-config-writer";
+
+// The drones here are reachable over the LAN, so a plugin skill's config
+// write has a path; reach gating itself is covered by the writer's tests.
+vi.mock("@/lib/skills/plugin-config-writer", async (importOriginal) => ({
+  ...(await importOriginal<typeof ConfigWriter>()),
+  canWritePluginConfig: () => true,
+}));
 
 import { parseManifestYaml } from "@/components/plugins/transports/manifest-parse";
 import {

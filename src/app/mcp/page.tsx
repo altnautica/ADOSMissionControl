@@ -14,7 +14,7 @@ import { Loader2 } from "lucide-react";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useAuthStore } from "@/stores/auth-store";
-import { isDemoMode } from "@/lib/utils";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import { communityApi } from "@/lib/community-api";
 import { useMcpTabStore, MCP_TAB_RESET } from "@/stores/mcp-tab-store";
 import { McpLanding } from "@/components/mcp/McpLanding";
@@ -27,7 +27,8 @@ import { McpSetupWizard } from "@/components/mcp/McpSetupWizard";
 export default function McpPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const convexAvailable = useConvexAvailable();
-  const canMint = isAuthenticated && convexAvailable && !isDemoMode();
+  const demo = useDemoMode();
+  const canMint = isAuthenticated && convexAvailable && !demo;
 
   const rows = useConvexSkipQuery(communityApi.mcpTokens.listMine, {
     enabled: isAuthenticated,

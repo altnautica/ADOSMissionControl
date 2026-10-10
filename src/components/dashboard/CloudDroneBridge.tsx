@@ -5,7 +5,7 @@
  * @description Feeds cloud-paired ADOS agents into the canonical node registry
  * as `"cloud"` presence (identity, profile, role, posture). The cloud-only
  * display pills (Direct / nav / peer / camera / profile-source / …) are
- * pushed into `command-fleet-store` keyed by deviceId; the FleetProjectionBridge
+ * pushed into `command-fleet-store` keyed by deviceId; the fleet projection
  * merges them back onto the projected row. Staleness drops the cloud presence
  * source (and the pills) so an offline cloud node collapses to whatever the LAN
  * presence still anchors — never a duplicate row.

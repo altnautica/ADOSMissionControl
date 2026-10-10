@@ -69,11 +69,13 @@ export function useSkillInput(): void {
   tFlightRef.current = tFlight;
 
   // Resolve the active loadout slots fresh at dispatch time so a rebind takes
-  // effect without re-registering the listener.
-  function dispatchSkill(skillId: string): void {
+  // effect without re-registering the listener. A gamepad press names its
+  // button so the confirm sheet completes while that same button is held.
+  function dispatchSkill(skillId: string, gamepadButton?: number): void {
     const droneId = useDroneManager.getState().selectedDroneId;
     if (!droneId) return;
-    let args: SkillActivateArgs | undefined;
+    let args: SkillActivateArgs | undefined =
+      gamepadButton === undefined ? undefined : { gamepadButton };
     if (skillId === "takeoff") {
       // Take-off flies to the Flight tab's altitude; an out-of-range entry
       // there refuses it, exactly as the panel button does.
@@ -88,7 +90,7 @@ export function useSkillInput(): void {
         );
         return;
       }
-      args = { altitudeM };
+      args = { ...args, altitudeM };
     }
     const ctx: SkillContext = buildSkillContext(droneId);
     // Inject the live toast as the user-facing notifier.
@@ -149,7 +151,7 @@ export function useSkillInput(): void {
             (s) => s.gamepadButton === i && s.skillId !== null,
           );
           if (slot && slot.skillId !== null) {
-            dispatchSkill(slot.skillId);
+            dispatchSkill(slot.skillId, i);
           }
         }
         prevButtons[i] = isDown;

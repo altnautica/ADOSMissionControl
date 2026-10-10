@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Download, Upload, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import type { DroneProtocol } from "@/lib/protocol/types";
@@ -39,6 +40,7 @@ export function FirmwareBackupRestore({
   onParamBackupChecked,
 }: FirmwareBackupRestoreProps) {
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.firmware");
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const [restore, setRestore] = useState<{ fileName: string; entries: ParsedParam[] } | null>(null);
 
@@ -56,12 +58,12 @@ export function FirmwareBackupRestore({
       downloadBlob(blob, `params-backup-${Date.now()}.param`);
       onMessage(`Backed up ${params.length} parameters`);
       onParamBackupChecked();
-      toast(`Backed up ${params.length} parameters`, "success");
+      toast(t("backupDone", { count: params.length }), "success");
     } catch (err) {
       onMessage(`Backup failed: ${err instanceof Error ? err.message : "Unknown error"}`);
-      toast("Parameter backup failed", "error");
+      toast(t("backupFailed"), "error");
     }
-  }, [protocol, toast, onMessage, onParamBackupChecked]);
+  }, [protocol, toast, t, onMessage, onParamBackupChecked]);
 
   // Pick a file, then review the diff in the dialog; nothing is written here.
   const handleRestoreParams = useCallback(() => {
@@ -79,13 +81,13 @@ export function FirmwareBackupRestore({
       // (SYSID COMPID NAME VALUE TYPE) files both parse here.
       const entries = parseParamFile(await file.text());
       if (entries.length === 0) {
-        toast("No parameters found in that file", "error");
+        toast(t("restoreNoParams"), "error");
         return;
       }
       setRestore({ fileName: file.name, entries });
     };
     input.click();
-  }, [isHardBlocked, hardBlockMessage, toast]);
+  }, [isHardBlocked, hardBlockMessage, toast, t]);
 
   return (
     <div className="flex items-center gap-3">

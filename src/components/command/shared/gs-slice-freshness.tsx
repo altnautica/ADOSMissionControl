@@ -20,7 +20,7 @@
 
 import { useTranslations } from "next-intl";
 import { useClockTick } from "@/lib/agent/freshness";
-import { isDemoMode } from "@/lib/utils";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import { CLOUD_ROW_MAX_AGE_MS } from "@/components/hardware/radio/cloud-radio";
 
 export type GsSliceFreshness = "fresh" | "stale" | "unread";
@@ -31,7 +31,8 @@ export type GsSliceFreshness = "fresh" | "stale" | "unread";
  */
 export function useGsSliceFreshness(fetchedAt: number | null): GsSliceFreshness {
   useClockTick();
-  if (isDemoMode()) return "fresh";
+  const demo = useDemoMode();
+  if (demo) return "fresh";
   if (fetchedAt === null || !Number.isFinite(fetchedAt) || fetchedAt <= 0) {
     return "unread";
   }

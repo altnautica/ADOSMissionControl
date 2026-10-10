@@ -15,6 +15,7 @@ const POLICY: ConfirmPolicy = {
   message: "m",
   confirmLabel: "c",
   variant: "primary",
+  gesture: "hold",
 };
 
 describe("skill-confirm-store", () => {

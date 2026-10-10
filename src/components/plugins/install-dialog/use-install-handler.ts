@@ -217,8 +217,8 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
       if (hasGcsHalf && !localBundleSource && !convexAuthenticated) {
         throw new Error(
           hasAgentHalf
-            ? "This plugin's Mission Control half can only be kept for a drone reached on this network, or with a cloud sign-in. Connect to the drone on the LAN, or sign in, and retry."
-            : "Mission Control plugins installed from a file need a cloud sign-in to be kept. Sign in, or install it from the registry.",
+            ? "This extension's Mission Control half can only be kept for a drone reached on this network, or with a cloud sign-in. Connect to the drone on the LAN, or sign in, and retry."
+            : "Mission Control extensions installed from a file need a cloud sign-in to be kept. Sign in, or install it from the registry.",
         );
       }
 
@@ -230,7 +230,7 @@ export function useInstallHandler(args: UseInstallHandlerArgs) {
         // GCS-only plugins; a hybrid is installed from a drone's tab.
         if (!targetDevice) {
           throw new Error(
-            "This plugin installs software on a drone. Open it from a drone's Plugins tab to choose where it runs.",
+            "This extension installs software on a drone. Open it from a drone's Extensions page to choose where it runs.",
           );
         }
         // A drone reached only through its ground station's radio relay is

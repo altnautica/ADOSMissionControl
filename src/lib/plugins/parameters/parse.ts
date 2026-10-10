@@ -121,6 +121,8 @@ function readUi(raw: unknown): ParameterUi | undefined {
       ui.visible_if = { key, equals: eq };
     }
   }
+  const purpose = str(raw.purpose);
+  if (purpose !== undefined) ui.purpose = purpose;
   if (Array.isArray(raw.bits)) {
     // Bitmask labels: `{ bit: non-negative integer, label: string }`, first
     // entry wins for a repeated bit.
@@ -163,6 +165,25 @@ export function parseParameterContributions(
     }
     if (seen.has(key)) {
       warn(`Plugin parameter "${key}" dropped: duplicate key`);
+      continue;
+    }
+    // The `camera-selector` control has no `schema`: it stores a camera id from
+    // the node's roster (or "auto") in the plugin's own config, which is where
+    // the plugin reads it. Its label, purpose and default sit beside it.
+    if (str(entry.control) === "camera-selector") {
+      const fallback = str(entry.default) ?? "auto";
+      const ui: ParameterUi = { ...readUi(entry.ui), widget: "camera" };
+      const label = str(entry.label);
+      if (label !== undefined) ui.label = label;
+      const purpose = str(entry.purpose);
+      if (purpose !== undefined) ui.purpose = purpose;
+      seen.add(key);
+      out.push({
+        key,
+        schema: { type: "string", default: fallback },
+        binding: "plugin.config",
+        ui,
+      });
       continue;
     }
     const schema = readSchema(entry.schema);

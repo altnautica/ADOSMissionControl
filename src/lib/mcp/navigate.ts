@@ -10,7 +10,7 @@
  */
 
 import { useDroneManager } from "@/stores/drone-manager";
-import { useFleetStore } from "@/stores/fleet-store";
+import { getFleetDrone } from "@/stores/node-registry/use-fleet-drones";
 import { useUiStore } from "@/stores/ui-store";
 import { resolveFleetRowId } from "@/lib/nodes/fleet-row";
 import type { McpActivityRow } from "@/lib/mcp/activity";
@@ -32,7 +32,7 @@ export function nodeDisplayName(node: string): string {
   if (!node) return "local";
   const rowId = resolveFleetRowId(node);
   if (rowId) {
-    const d = useFleetStore.getState().drones.find((x) => x.id === rowId);
+    const d = getFleetDrone(rowId);
     if (d?.name) return d.name;
   }
   return node.length > 12 ? `${node.slice(0, 10)}…` : node;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
@@ -36,6 +37,7 @@ const CAL_SNAPSHOT_PARAMS: Record<string, string[]> = {
 export function useCalibrationEngine() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.calibration");
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
 
@@ -184,7 +186,7 @@ export function useCalibrationEngine() {
     // (bad radius, bad orientation) never lands in COMPASS_OFS*.
     const { entries, saved, skipped } = compassSaveEntries(compass.compassResults, calSnapshot);
     if (entries.length === 0) {
-      toast("No compass produced a successful fit; nothing was saved. Retry the calibration.", "error");
+      toast(t("compassNoSuccessfulFit"), "error");
       return;
     }
     try {
@@ -194,22 +196,22 @@ export function useCalibrationEngine() {
       if (outcome.failures.length > 0 || outcome.flash === "failed") {
         const detail = outcome.failures.length > 0 ? ` Failed: ${outcome.failures.join(", ")}` : "";
         setCompass((prev) => ({ ...prev, status: "error", waitingForConfirm: false, message: `${message}.${detail}${skippedNote}` }));
-        toast(`${message}${detail}`, "error");
+        toast(outcome.failures.length > 0 ? t("compassBatchFailed", { message, params: outcome.failures.join(", ") }) : message, "error");
         return;
       }
       const flashNote = outcome.flash === "unacknowledged" ? "Flash commit sent (unacknowledged)." : "Saved to flash.";
       const savedNote = `Compass ${saved.map((id) => id + 1).join(", ")} offsets written. ${flashNote} Reboot to apply.${skippedNote}`;
       setCompass((prev) => ({ ...prev, status: "success", waitingForConfirm: false, needsReboot: true, message: savedNote }));
       toast(message, skipped.length > 0 || outcome.flash === "unacknowledged" ? "info" : "success");
-    } catch { toast("Failed to write compass offsets", "error"); }
-  }, [selectedProtocol, compass.compassResults, calSnapshot, toast]);
+    } catch { toast(t("compassOffsetsWriteFailed"), "error"); }
+  }, [selectedProtocol, compass.compassResults, calSnapshot, toast, t]);
 
   const acceptCompass = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol?.acceptCompassCal) return;
     try {
       const result = await protocol.acceptCompassCal();
-      if (!result.success) { toast("FC rejected accept — saving successful fits directly", "info"); await forceCompassSave(); return; }
+      if (!result.success) { toast(t("compassAcceptRejected"), "info"); await forceCompassSave(); return; }
       // The FC stores accepted offsets itself; the flash commit is the
       // belt-and-braces step, and its outcome is reported, not assumed.
       const flashResult = await protocol.commitParamsToFlash();
@@ -218,9 +220,12 @@ export function useCalibrationEngine() {
         : flashResult.acknowledged === false ? "Flash commit sent (unacknowledged)." : "Saved to flash.";
       setCompass((prev) => ({ ...prev, status: "success", waitingForConfirm: false, progress: 100, needsReboot: true, message: `Compass calibration accepted. ${flashNote} Reboot to apply.` }));
       cleanupSubs(manager, "compass");
-      toast(`Compass calibration accepted. ${flashNote}`, flashResult.success ? "success" : "warning");
-    } catch { toast("Accept failed — try Force Save", "error"); }
-  }, [selectedProtocol, forceCompassSave, toast]);
+      const acceptedToast = !flashResult.success
+        ? t("compassAcceptedFlashFailed")
+        : flashResult.acknowledged === false ? t("compassAcceptedFlashUnacknowledged") : t("compassAcceptedFlashed");
+      toast(acceptedToast, flashResult.success ? "success" : "warning");
+    } catch { toast(t("compassAcceptFailed"), "error"); }
+  }, [selectedProtocol, forceCompassSave, toast, t]);
 
   const startCalibration = useCallback(async (
     type: "accel" | "gyro" | "compass" | "level" | "airspeed" | "baro" | "rc" | "esc" | "compassmot",
@@ -241,9 +246,9 @@ export function useCalibrationEngine() {
       const autoRot = await protocol.setParameter("COMPASS_AUTO_ROT", 3).catch(() => null);
       if (autoRot?.success) {
         setCompassParams((p) => ({ ...p, COMPASS_AUTO_ROT: 3 }));
-        toast("COMPASS_AUTO_ROT set to 3 (lenient) to prevent orientation flickering", "info");
+        toast(t("compassAutoRotSet"), "info");
       } else {
-        toast(`COMPASS_AUTO_ROT was not changed: ${autoRot?.message ?? "no reply"}. Calibrating with the current setting.`, "warning");
+        toast(t("compassAutoRotNotChanged", { reason: autoRot?.message ?? t("noReply") }), "warning");
       }
     }
     if (isPx4) { setPx4CalActiveType(type); px4CalCompletedSidesRef.current = new Set(); }
@@ -253,19 +258,19 @@ export function useCalibrationEngine() {
       const result = await protocol.startCalibration(type);
       if (!result.success) {
         cleanupSubs(manager, type); if (isPx4) setPx4CalActiveType(null);
-        const msg = result.resultCode === 5 ? "Calibration already in progress — cancel first or wait for it to finish" : result.resultCode === 1 ? "FC temporarily busy — wait a moment and retry" : result.message || "Calibration command rejected";
+        const msg = result.resultCode === 5 ? t("calAlreadyInProgress") : result.resultCode === 1 ? t("calFcBusy") : result.message || t("calRejected");
         setter((prev) => ({ ...prev, status: "error", message: msg }));
-        toast(`${type.charAt(0).toUpperCase() + type.slice(1)} calibration: ${msg}`, "error");
+        toast(t("calTypeFailed", { type, message: msg }), "error");
       } else {
         setter((prev) => ({ ...prev, commandAccepted: true }));
-        toast(`${type.charAt(0).toUpperCase() + type.slice(1)} calibration started`, "info");
+        toast(t("calTypeStarted", { type }), "info");
       }
     } catch {
       cleanupSubs(manager, type); if (isPx4) setPx4CalActiveType(null);
       setter((prev) => ({ ...prev, status: "error", message: "Failed to send calibration command" }));
-      toast("Failed to send calibration command", "error");
+      toast(t("calSendFailed"), "error");
     }
-  }, [selectedProtocol, toast, compassParams.COMPASS_AUTO_ROT, setCompassParams, isPx4]);
+  }, [selectedProtocol, toast, t, compassParams.COMPASS_AUTO_ROT, setCompassParams, isPx4]);
 
   const startPx4QuickLevel = useCallback(async () => {
     const protocol = selectedProtocol;
@@ -275,10 +280,10 @@ export function useCalibrationEngine() {
     subscribeToCalibrationStatus(manager, protocol, setPx4QuickLevel, 1, "level", toast, true);
     try {
       const result = await protocol.startCalibration("level");
-      if (!result.success) { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: result.message || "Quick level command rejected" })); toast("Quick level calibration failed", "error"); }
-      else toast("Quick level calibration started", "info");
-    } catch { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: "Failed to send quick level command" })); toast("Failed to send quick level command", "error"); }
-  }, [selectedProtocol, toast]);
+      if (!result.success) { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: result.message || t("quickLevelRejected") })); toast(t("quickLevelFailed"), "error"); }
+      else toast(t("quickLevelStarted"), "info");
+    } catch { cleanupSubs(manager, "level"); setPx4CalActiveType(null); setPx4QuickLevel((prev) => ({ ...prev, status: "error", message: t("quickLevelSendFailed") })); toast(t("quickLevelSendFailed"), "error"); }
+  }, [selectedProtocol, toast, t]);
 
   const startPx4GnssMagCal = useCallback(async (yawDeg: number) => {
     const protocol = selectedProtocol;
@@ -287,10 +292,10 @@ export function useCalibrationEngine() {
     setPx4GnssMagCal({ ...INITIAL_STATE, status: "in_progress", message: `Calibrating compass for a vehicle yaw of ${yawDeg}°...` });
     try {
       const result = protocol.startGnssMagCal ? await protocol.startGnssMagCal(yawDeg) : { success: false, resultCode: -1, message: "Known-heading compass calibration is not supported by this firmware" };
-      if (!result.success) { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: result.message || "Known-heading compass calibration was rejected. Ensure the vehicle has a position fix." })); toast("Compass calibration failed", "error"); }
-      else { setPx4GnssMagCal(() => ({ ...INITIAL_STATE, status: "success", progress: 100, message: `Compass calibrated against the magnetic model for a vehicle yaw of ${yawDeg}°.`, needsReboot: true })); setPx4CalActiveType(null); toast("Compass calibration complete", "success"); useDiagnosticsStore.getState().logCalibration("gnss-mag", "success"); }
-    } catch { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: "Failed to send the compass calibration command" })); toast("Failed to send the compass calibration command", "error"); }
-  }, [selectedProtocol, toast]);
+      if (!result.success) { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: result.message || "Known-heading compass calibration was rejected. Ensure the vehicle has a position fix." })); toast(t("compassCalFailed"), "error"); }
+      else { setPx4GnssMagCal(() => ({ ...INITIAL_STATE, status: "success", progress: 100, message: `Compass calibrated against the magnetic model for a vehicle yaw of ${yawDeg}°.`, needsReboot: true })); setPx4CalActiveType(null); toast(t("compassCalComplete"), "success"); useDiagnosticsStore.getState().logCalibration("gnss-mag", "success"); }
+    } catch { setPx4CalActiveType(null); setPx4GnssMagCal((prev) => ({ ...prev, status: "error", message: t("compassCalSendFailed") })); toast(t("compassCalSendFailed"), "error"); }
+  }, [selectedProtocol, toast, t]);
 
   return {
     accel, setAccel, gyro, setGyro, compass, setCompass,

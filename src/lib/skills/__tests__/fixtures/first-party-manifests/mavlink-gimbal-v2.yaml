@@ -1,0 +1,186 @@
+schema_version: 3
+id: com.altnautica.mavlink-gimbal-v2
+name: "ADOS MAVLink Gimbal v2 Controller"
+version: "1.4.1"
+description: "MAVLink Gimbal v2 control: manual sliders, ROI lock-on-target, and an 'Aim at this target' action that keeps the gimbal on a vision-locked detection."
+description_long: |
+  Drives a MAVLink gimbal-manager (component 154). Beyond manual pitch/yaw
+  control it runs an on-companion visual servo: click a detected subject in
+  the cockpit and the gimbal keeps it centred. A lock-state safety gate stops
+  commanding the instant the vision engine reports the subject uncertain or
+  lost, and it never silently re-locks onto a different subject. Cockpit
+  Skills arm the aim behaviour, recenter the gimbal, point it straight down,
+  and switch between angle and rate control; the same actions are available
+  as tools for an assistant.
+features:
+  - "MAVLink gimbal-manager control (component 154)"
+  - "Aim-at-target visual servo with a lock-state safety gate"
+  - "Angle and rate control modes"
+  - "Recenter and nadir one-touch pointing"
+hardware_requirements:
+  fc_firmware: "ArduPilot or PX4 forwarding the gimbal-manager messages"
+  optional:
+    - "A MAVLink gimbal-manager gimbal (component 154)"
+resource_impact:
+  cpu_percent_peak: 8
+  ram_mb: 48
+  pids: 2
+  output_rate_hz: 5
+  startup_time_seconds: 2
+telemetry_fields:
+  - "gimbal"
+documentation_url: "https://docs.altnautica.com/drone-agent/mavlink-gimbal-v2-overview"
+author: "Altnautica"
+homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/mavlink-gimbal-v2"
+license: "GPL-3.0-or-later"
+risk: medium
+
+compatibility:
+  ados_version: ">=0.99.125"
+  gcs_version: ">=0.56.0"
+  supported_boards: ["*"]
+
+agent:
+  runtime: python
+  entrypoint: "altnautica_gimbal_v2.plugin:GimbalV2Plugin"
+  isolation: subprocess
+  per_drone_config: true
+  permissions:
+    - id: mavlink.read
+    - id: mavlink.write
+    - id: mavlink.component.gimbal
+    - id: vision.detection.subscribe
+    - id: telemetry.extend
+    - id: event.publish
+    - id: mcp.expose
+  resources:
+    max_ram_mb: 64
+    max_cpu_percent: 15
+    max_pids: 8
+  mavlink_components:
+    - component_id: 154
+      component_kind: gimbal
+      sub_id: 0
+    # The companion's own component id: every gimbal-manager command the
+    # plugin emits is transmitted from it (see ONBOARD_COMPUTER_COMP_ID in
+    # agent/src/altnautica_gimbal_v2/ctx_router.py), and it is the component
+    # announced as holding primary control.
+    - component_id: 191
+      component_kind: generic
+      sub_id: 0
+  contributes:
+    # Tools an assistant can call. Each writes or reads through the same paths
+    # the GCS half and the cockpit Skills use; the gimbal driver clamps every
+    # commanded angle to its axis limits.
+    tools:
+      - name: status
+        title: "Gimbal status"
+        description: "Report the transport, connection, rate-mode flag, and the current aim state."
+        safety_class: read
+        inputSchema:
+          type: object
+          properties: {}
+      - name: point_at
+        title: "Point the gimbal"
+        description: "Command the gimbal to an absolute pitch and yaw in degrees. The driver clamps to its axis limits. Moves the gimbal."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties:
+            pitch_deg: { type: number }
+            yaw_deg: { type: number }
+      - name: recenter
+        title: "Recenter the gimbal"
+        description: "Return the gimbal to its centred pitch and yaw. Moves the gimbal."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties: {}
+
+gcs:
+  entrypoint: "gcs/plugin.bundle.js"
+  isolation: iframe
+  permissions:
+    - id: ui.slot.node-detail-tab
+    - id: ui.slot.settings-section
+    - id: ui.slot.flight-skill
+    - id: telemetry.subscribe.gimbal
+    - id: command.send
+  contributes:
+    tabs:
+      - id: gimbal-control
+        slot: node.detail.tab
+        profile: ["drone"]
+        title: "Gimbal"
+        icon: "gimbal"
+        order: 60
+    # A cockpit target action: click a detected object in the host overlay,
+    # pick "Aim at this target", and the gimbal keeps it centred. The host
+    # owns the overlay, the box drawing, the selection, and the designate +
+    # config write -- this plugin only declares the action. No
+    # applies_to_class: a gimbal can aim at any detected object.
+    target_actions:
+      - id: aim
+        label: "Aim at this target"
+        icon: crosshair
+        order: 30
+        designate: true
+        config_key: aim
+        config_value: true
+        default_key: "j"
+    # Cockpit Skills. `aim` and `rate-mode` are toggles (config flag + a state
+    # read-back event); `recenter` and `nadir` are one-shot commands the agent
+    # fires on the rising edge and then clears.
+    skills:
+      - id: aim
+        label: "Aim"
+        icon: crosshair
+        category: camera
+        toggle: true
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "g" }
+        activation: { via: config, config_key: aim }
+        state: { via: event, topic: "sensor.gimbal.aim" }
+      - id: recenter
+        label: "Recenter"
+        icon: locate-fixed
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "shift+c" }
+        activation: { via: config, config_key: recenter }
+        state: { via: event, topic: "sensor.gimbal.recenter" }
+      - id: nadir
+        label: "Nadir"
+        icon: arrow-down-to-line
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "shift+v" }
+        activation: { via: config, config_key: nadir }
+        state: { via: event, topic: "sensor.gimbal.nadir" }
+      - id: rate-mode
+        label: "Rate mode"
+        icon: move
+        category: camera
+        toggle: true
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "shift+g" }
+        activation: { via: config, config_key: rate_mode }
+        state: { via: event, topic: "sensor.gimbal.rate_mode" }
+    # The camera whose detections the aim servo follows. A registry picker: the
+    # operator pins a camera or leaves it on auto (the first detect camera).
+    parameters:
+      - key: designate_camera
+        control: camera-selector
+        binding: agent.config
+        label: "Camera"
+        purpose: detect
+        default: "auto"
+        ui: { group: "settings.title", order: 10 }
+  locales:
+    - en

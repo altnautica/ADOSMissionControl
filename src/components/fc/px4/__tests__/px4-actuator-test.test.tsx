@@ -6,7 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import type { CommandResult } from "@/lib/protocol/types";
 
 const toast = vi.fn();
@@ -28,7 +29,7 @@ beforeEach(() => {
 });
 
 function start() {
-  render(<Px4ActuatorTest connected />);
+  renderWithIntl(<Px4ActuatorTest connected />);
   fireEvent.click(screen.getByRole("checkbox"));
 }
 

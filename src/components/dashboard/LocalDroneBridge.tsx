@@ -6,7 +6,7 @@
  * into the canonical node registry as `"local"` presence. The cloud bridge
  * feeds `"cloud"` presence for the same `node:<deviceId>`; the registry
  * collapses both onto one row, so a node paired both ways renders once. The
- * FleetProjectionBridge turns the registry into the fleet list. This bridge no
+ * fleet projection (`useFleetDrones`) reads the registry. This bridge no
  * longer fabricates flight state (no STABILIZE / disarmed / 0% seeds) — FC
  * telemetry comes only from a real attached FC via AgentMavlinkBridge.
  * @license GPL-3.0-only

@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Plane, Save, RotateCcw, HardDrive, Wind } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -60,12 +59,9 @@ const ALL_FIELDS = [...ROLL, ...PITCH, ...YAW, ...TECS];
 
 export function Px4FwTuningPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const scrollRef = usePanelScroll("px4-fw-tuning");
-  const [saving, setSaving] = useState(false);
 
   const paramNames = useMemo(() => ALL_FIELDS.map((f) => f.param), []);
   const {
@@ -77,14 +73,7 @@ export function Px4FwTuningPanel() {
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    toast(ok ? "Saved to flight controller" : "Some parameters failed to save", ok ? "success" : "warning");
-  }
-  async function handleFlash() { showFlashResult(await commitToFlash()); }
-  function handleRevert() { revertAll(); toast("Reverted to FC values", "info"); }
+  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const renderField = (f: Field) => {
     const value = params.get(f.param) ?? 0;

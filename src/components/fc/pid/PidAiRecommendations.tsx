@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -17,13 +18,6 @@ interface PidAiRecommendationsProps {
   /** Validation context and writer for applied suggestions. */
   target: SuggestionTarget;
   aiLoading: boolean;
-}
-
-function formatApplySummary({ applied, clamped, rejected }: ApplySummary): string {
-  const parts = [`${applied + clamped} applied`];
-  if (clamped > 0) parts.push(`${clamped} limited`);
-  if (rejected > 0) parts.push(`${rejected} rejected`);
-  return `${parts.join(", ")} (save to write to the flight controller)`;
 }
 
 const PRIORITY_CONFIG = {
@@ -162,11 +156,12 @@ export function PidAiRecommendations({
   const applyRecommendation = usePidAnalysisStore((s) => s.applyRecommendation);
   const applyAllRecommended = usePidAnalysisStore((s) => s.applyAllRecommended);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.pid");
 
-  const reportApply = (summary: ApplySummary) =>
+  const reportApply = ({ applied, clamped, rejected }: ApplySummary) =>
     toast(
-      formatApplySummary(summary),
-      summary.rejected > 0 || summary.clamped > 0 ? "warning" : "success",
+      t("aiApplySummary", { applied: applied + clamped, clamped, rejected }),
+      rejected > 0 || clamped > 0 ? "warning" : "success",
     );
 
   // Loading state

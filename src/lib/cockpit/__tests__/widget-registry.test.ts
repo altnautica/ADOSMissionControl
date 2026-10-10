@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { CockpitLayout } from "@/stores/settings/keybindings-slice";
 import {
   effectiveWidgetZone,
+  isCockpitWidgetEnabled,
   isCockpitWidgetVisible,
   registerCockpitWidget,
   unregisterCockpitWidget,
   useCockpitWidgetRegistry,
+  widgetMeetsDensity,
   type CockpitWidget,
 } from "@/lib/cockpit/widget-registry";
 
@@ -136,5 +138,26 @@ describe("isCockpitWidgetVisible", () => {
         widgets: { "builtin.telemetry-strip": { hidden: false } },
       }),
     ).toBe(false);
+  });
+});
+
+describe("density and the layout toggle are separate gates", () => {
+  it("density is decided by minDensity alone", () => {
+    const w = widget({ id: "card", minDensity: "full" });
+    expect(widgetMeetsDensity(w, "standard")).toBe(false);
+    expect(widgetMeetsDensity(w, "full")).toBe(true);
+    expect(widgetMeetsDensity(widget({ id: "any" }), "minimal")).toBe(true);
+  });
+
+  it("the toggle only shows or hides, whatever the density", () => {
+    const w = widget({ id: "radar", layoutKey: "proximityRadar", minDensity: "full" });
+    // On in the layout, thinned out at standard: enabled, not visible.
+    expect(isCockpitWidgetEnabled(w, LAYOUT)).toBe(true);
+    expect(isCockpitWidgetVisible(w, LAYOUT)).toBe(false);
+    expect(isCockpitWidgetVisible(w, { ...LAYOUT, density: "full" })).toBe(true);
+    // Off in the layout: hidden at every density.
+    const off = { ...LAYOUT, proximityRadar: false, density: "full" as const };
+    expect(isCockpitWidgetEnabled(w, off)).toBe(false);
+    expect(isCockpitWidgetVisible(w, off)).toBe(false);
   });
 });

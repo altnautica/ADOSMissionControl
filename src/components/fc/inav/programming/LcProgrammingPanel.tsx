@@ -13,6 +13,7 @@ import { useProgrammingStore } from "@/stores/programming-store";
 import { compileToLogicConditions, type CompiledProgram } from "@/lib/inav/lc-transpiler";
 import { LOGIC_OPERATIONS } from "./programming-constants";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { Code, Download, Play } from "lucide-react";
 
@@ -37,6 +38,7 @@ export function LcProgrammingPanel() {
   const [result, setResult] = useState<CompiledProgram | null>(null);
   const placeProgram = useProgrammingStore((s) => s.placeProgram);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.inav");
 
   const compiled = result && !result.error ? result.conditions.filter((c) => c.enabled) : [];
 
@@ -50,7 +52,7 @@ export function LcProgrammingPanel() {
       return;
     }
     toast(
-      `Placed ${compiled.length} logic conditions in free slots ${placed.slots.join(", ")}; review and Write in the Logic Conditions tab`,
+      t("logicConditionsPlaced", { count: compiled.length, slots: placed.slots.join(", ") }),
       "success",
     );
   };

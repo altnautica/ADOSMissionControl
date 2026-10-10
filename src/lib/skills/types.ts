@@ -27,38 +27,90 @@ export type ArmRequirement = "any" | "armed" | "disarmed";
  */
 export type AutonomousNavCapability = "supported" | "unsupported" | "unknown";
 
+/**
+ * The confirm gesture tier. `tap` opens no sheet (the press is the
+ * confirmation); `hold` completes after a press-and-hold; `slide` needs a
+ * slide-to-confirm on touch/pointer or a long hold on a key/gamepad button;
+ * `guarded` is the kill tier: the first activation arms a guard and a hold
+ * inside that window fires.
+ */
+export type ConfirmGesture = "tap" | "hold" | "slide" | "guarded";
+
+/** Hold duration (ms) each tier asks for when the policy names none. */
+export const CONFIRM_HOLD_DEFAULT_MS: Record<ConfirmGesture, number> = {
+  tap: 0,
+  hold: 800,
+  slide: 1500,
+  guarded: 1500,
+};
+
+/** How long the kill guard stays armed after the first activation (ms). */
+export const GUARD_WINDOW_MS = 3000;
+
+/** The take-off altitude stepper a confirm sheet carries. */
+export interface ConfirmAltitude {
+  defaultM: number;
+  minM: number;
+  maxM: number;
+  stepM: number;
+}
+
 export interface ConfirmPolicy {
   title: string;
   message: string;
   confirmLabel: string;
-  /** Maps 1:1 to ConfirmDialog `variant`. */
+  /** Visual weight of the sheet's confirm control. */
   variant: "primary" | "danger";
-  /** Maps 1:1 to ConfirmDialog `typedPhrase`. */
-  typedPhrase?: string;
+  /** The gesture the operator performs to confirm. */
+  gesture: ConfirmGesture;
+  /** Hold duration override (ms); defaults to {@link CONFIRM_HOLD_DEFAULT_MS}. */
+  holdMs?: number;
   /**
-   * Two-stage host with a countdown before the typedPhrase enables (Kill).
-   * When set, the host runs the first confirm, then a second dialog whose
-   * confirm stays disabled until `twoStageCountdownSeconds` elapses. Built-ins
-   * set this only on `kill`. Omit for the standard single-dialog flow.
-   */
-  twoStageCountdownSeconds?: number;
-  /**
-   * When true, the confirm dialog escalates to the OVERRIDE typed-phrase when
-   * the pre-flight checklist is incomplete (Arm/Takeoff), recording a safety
-   * override exactly like the action-dialogs flow. The host resolves the live
-   * checklist + override recording; the policy only opts in.
+   * When true and the pre-flight checklist is incomplete (Arm/Takeoff), the
+   * sheet lists the failing items and keeps the gesture disabled until the
+   * operator turns on an explicit "Override checklist" switch. The override is
+   * recorded as a safety event.
    */
   checklistAware?: boolean;
+  /** When set the sheet carries an altitude stepper whose value is sent. */
+  altitude?: ConfirmAltitude;
+  /**
+   * The gamepad button whose press opened this request, set per request.
+   * Holding it satisfies the gesture, so a pilot confirms without letting go.
+   */
+  gamepadButton?: number;
   /** Interpolation values for `title` and `message`, set per request. */
   values?: Record<string, string | number>;
+}
+
+/** What the operator chose on the sheet, beyond confirming it. */
+export interface ConfirmChoice {
+  altitudeM?: number;
+}
+
+/**
+ * The confirm seam's answer: falsy = declined, `true` or a choice = confirmed.
+ * A choice carries the values the operator set on the sheet.
+ */
+export type ConfirmResult = boolean | ConfirmChoice;
+
+/** Effective hold duration for a policy. */
+export function confirmHoldMs(policy: ConfirmPolicy): number {
+  return policy.holdMs ?? CONFIRM_HOLD_DEFAULT_MS[policy.gesture];
 }
 
 export interface SkillState {
   kind: "idle" | "active" | "cooldown" | "disabled";
   /** Required when kind === "disabled". A reason string the slot surfaces. */
   reason?: string;
-  /** 0..1, optional (cooldown sweep / lock progress). */
+  /** 0..1, optional (a skill's own lock progress). */
   progress?: number;
+  /**
+   * The live cooldown window when kind === "cooldown": epoch ms it started and
+   * its length. The slot animates the sweep from these in CSS, so the bar is
+   * not recomputed per frame while a cooldown runs.
+   */
+  cooldown?: { startedAt: number; durationMs: number };
   /** <= ~4 chars overlay, optional (e.g. a locked target id). */
   badge?: string;
 }
@@ -100,7 +152,7 @@ export interface SkillContext {
    * Open a ConfirmDialog and resolve true on confirm, false on cancel.
    * Routes through the skill-confirm host.
    */
-  confirm: (policy: ConfirmPolicy) => Promise<boolean>;
+  confirm: (policy: ConfirmPolicy) => Promise<ConfirmResult>;
   /** Best-effort UI feedback for rejected/dispatched skills. */
   notify: (
     message: string,
@@ -113,6 +165,8 @@ export interface SkillActivateArgs {
   targetMode?: UnifiedFlightMode;
   /** Takeoff meters (default 10). */
   altitudeM?: number;
+  /** The gamepad button that triggered this activation, when one did. */
+  gamepadButton?: number;
   [key: string]: unknown;
 }
 
@@ -140,6 +194,12 @@ export interface Skill {
   pluginId?: string;
   toggle: boolean;
   confirm?: ConfirmPolicy;
+  /**
+   * The confirm policy for one activation, when it depends on the arguments
+   * (a mode change confirms differently for a recovery mode than for AUTO).
+   * Wins over `confirm`; returning undefined means no confirmation.
+   */
+  confirmFor?: (args?: SkillActivateArgs) => ConfirmPolicy | undefined;
   /**
    * Interpolation values for the confirm title/message, computed from the
    * activation args so the dialog names what will actually be commanded (the

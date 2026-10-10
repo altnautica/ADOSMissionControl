@@ -66,7 +66,7 @@ export async function installLanDirectFromUrl(
   if (!inputs.pairingKey) {
     throw new LanDirectError(
       "auth-missing",
-      "Drone is not paired. Pair the drone before installing a plugin.",
+      "Drone is not paired. Pair the drone before installing an extension.",
     );
   }
 

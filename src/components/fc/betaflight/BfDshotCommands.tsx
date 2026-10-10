@@ -10,6 +10,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useToast } from "@/components/ui/toast";
@@ -27,6 +28,7 @@ export function BfDshotCommands({ connected }: { connected: boolean }) {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.betaflight");
   const [propsRemoved, setPropsRemoved] = useState(false);
   const [motor, setMotor] = useState(String(DSHOT_ALL_MOTORS));
   const [busy, setBusy] = useState(false);
@@ -35,11 +37,11 @@ export function BfDshotCommands({ connected }: { connected: boolean }) {
     async (commandType: number, motorIndex: number, cmds: number[]) => {
       const protocol = selectedProtocol;
       if (!protocol?.sendDshotCommand) {
-        toast("DShot commands are not available on this connection", "error");
+        toast(t("dshotUnavailable"), "error");
         return false;
       }
       if (isHardBlocked) {
-        toast("Disarm to send ESC commands", "error");
+        toast(t("dshotDisarmFirst"), "error");
         return false;
       }
       setBusy(true);
@@ -49,40 +51,40 @@ export function BfDshotCommands({ connected }: { connected: boolean }) {
         for (const c of cmds) {
           const result = await protocol.sendDshotCommand(commandType, motorIndex, [c]);
           if (!result.success) {
-            toast(result.message || "The flight controller rejected the DShot command", "error");
+            toast(result.message || t("dshotRejected"), "error");
             return false;
           }
         }
         return true;
       } catch (err) {
-        toast(err instanceof Error ? err.message : "Could not send the DShot command", "error");
+        toast(err instanceof Error ? err.message : t("dshotSendFailed"), "error");
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [selectedProtocol, isHardBlocked, toast],
+    [selectedProtocol, isHardBlocked, toast, t],
   );
 
   const disabled = !connected || isHardBlocked || busy || !propsRemoved;
 
   const beep = async () => {
     if (await run(DSHOT_COMMAND_TYPE.INLINE, DSHOT_ALL_MOTORS, [DSHOT_CMD.BEACON1])) {
-      toast("Beacon command sent", "info");
+      toast(t("beaconSent"), "info");
     }
   };
 
   const setDirection = async (reversed: boolean) => {
     const cmd = reversed ? DSHOT_CMD.SPIN_DIRECTION_REVERSED : DSHOT_CMD.SPIN_DIRECTION_NORMAL;
     if (await run(DSHOT_COMMAND_TYPE.BLOCKING, parseInt(motor, 10), [cmd, DSHOT_CMD.SAVE_SETTINGS])) {
-      toast(`Spin direction ${reversed ? "reversed" : "normal"} and save commands sent. ESCs do not confirm; check the direction with a motor test.`, "info");
+      toast(reversed ? t("spinDirectionReversedSent") : t("spinDirectionNormalSent"), "info");
     }
   };
 
   const set3d = async (on: boolean) => {
     const cmd = on ? DSHOT_CMD.THREED_MODE_ON : DSHOT_CMD.THREED_MODE_OFF;
     if (await run(DSHOT_COMMAND_TYPE.BLOCKING, DSHOT_ALL_MOTORS, [cmd, DSHOT_CMD.SAVE_SETTINGS])) {
-      toast(`3D mode ${on ? "on" : "off"} and save commands sent. ESCs do not confirm the change.`, "info");
+      toast(on ? t("threeDModeOnSent") : t("threeDModeOffSent"), "info");
     }
   };
 

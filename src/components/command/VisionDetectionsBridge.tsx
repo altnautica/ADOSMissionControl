@@ -43,7 +43,7 @@ import { useEffect, useMemo } from "react";
 
 import { useDroneManager } from "@/stores/drone-manager";
 import { useLocalNodesStore } from "@/stores/local-nodes-store";
-import { useFleetStore } from "@/stores/fleet-store";
+import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import {
@@ -171,14 +171,14 @@ export function VisionDetectionsBridge() {
   // Minimal, primitive-valued selectors (not the whole `drones` array, which
   // gets a fresh reference on every telemetry tick) so the relay reach below
   // only recomputes when THIS drone's own relay identity actually changes.
-  const droneReachedVia = useFleetStore((s) =>
+  const droneReachedVia = useFleetDrones((drones) =>
     selectedDroneId
-      ? s.drones.find((d) => d.id === selectedDroneId)?.reachedVia
+      ? drones.find((d) => d.id === selectedDroneId)?.reachedVia
       : undefined,
   );
-  const droneCloudDeviceId = useFleetStore((s) =>
+  const droneCloudDeviceId = useFleetDrones((drones) =>
     selectedDroneId
-      ? s.drones.find((d) => d.id === selectedDroneId)?.cloudDeviceId
+      ? drones.find((d) => d.id === selectedDroneId)?.cloudDeviceId
       : undefined,
   );
 

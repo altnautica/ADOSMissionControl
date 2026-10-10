@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
@@ -27,13 +25,10 @@ const NO_PARAMS: string[] = [];
 
 export function TelRadioPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const { enumValues } = useParamEnums(paramMeta);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={paramMeta} />;
-  const [saving, setSaving] = useState(false);
 
   // Re-renders on each RADIO_STATUS and blanks once the stream goes stale.
   const latestRadio = useFreshTelemetry("radio");
@@ -43,7 +38,7 @@ export function TelRadioPanel() {
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
+    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({
     paramNames: isPx4 ? NO_PARAMS : TELRADIO_PARAMS,
     optionalParams: isPx4 ? NO_PARAMS : OPTIONAL_TELRADIO_PARAMS,
@@ -51,6 +46,7 @@ export function TelRadioPanel() {
     autoLoad: true,
   });
   useUnsavedGuard(dirtyParams.size > 0);
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
@@ -90,19 +86,6 @@ export function TelRadioPanel() {
       />
     );
   };
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok);
-  }
 
   return (
     <ArmedWarningBanner>

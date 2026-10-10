@@ -50,6 +50,7 @@ const SKILL: Skill = {
     message: "rth.confirm.message",
     confirmLabel: "rth.confirm.label",
     variant: "danger",
+    gesture: "hold",
   },
   armRequirement: "armed",
   getState: (ctx) =>

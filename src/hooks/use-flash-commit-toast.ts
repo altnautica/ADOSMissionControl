@@ -26,11 +26,8 @@
  */
 
 import { useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
-
-const DEFAULT_SUCCESS = "Written to flash — persists after reboot";
-const DEFAULT_UNACKNOWLEDGED = "Flash commit sent — vehicle did not acknowledge it";
-const DEFAULT_ERROR = "Failed to write to flash";
 
 /**
  * What a flash commit actually achieved.
@@ -63,21 +60,22 @@ export interface FlashCommitToast {
 }
 
 export function useFlashCommitToast(): FlashCommitToast {
+  const t = useTranslations("panelCommit");
   const { toast } = useToast();
 
   const showFlashResult = useCallback(
     (outcome: FlashCommitOutcome, options?: FlashResultOptions) => {
       if (!outcome.sent) {
-        toast(options?.errorMessage ?? DEFAULT_ERROR, "error");
+        toast(options?.errorMessage ?? t("flashFailed"), "error");
         return;
       }
       if (!outcome.acknowledged) {
-        toast(options?.unacknowledgedMessage ?? DEFAULT_UNACKNOWLEDGED, "warning");
+        toast(options?.unacknowledgedMessage ?? t("flashUnacknowledged"), "warning");
         return;
       }
-      toast(options?.successMessage ?? DEFAULT_SUCCESS, "success");
+      toast(options?.successMessage ?? t("flashWritten"), "success");
     },
-    [toast],
+    [t, toast],
   );
 
   return { showFlashResult };

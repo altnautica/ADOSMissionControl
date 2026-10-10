@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Wand2, Save, RotateCcw, HardDrive, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedDrone, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -44,12 +43,9 @@ const FW_FIELDS: Field[] = [
 export function Px4AutotunePanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDrone = useDroneManager(selectSelectedDrone);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const scrollRef = usePanelScroll("px4-autotune");
-  const [saving, setSaving] = useState(false);
 
   // A plane tunes its fixed-wing rates; a multicopter its MC rates; a VTOL does
   // both (multirotor hover + fixed-wing cruise).
@@ -73,14 +69,7 @@ export function Px4AutotunePanel() {
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    toast(ok ? "Saved to flight controller" : "Some parameters failed to save", ok ? "success" : "warning");
-  }
-  async function handleFlash() { showFlashResult(await commitToFlash()); }
-  function handleRevert() { revertAll(); toast("Reverted to FC values", "info"); }
+  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const renderField = (f: Field) => {
     const value = params.get(f.param) ?? 0;

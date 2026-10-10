@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -35,6 +36,7 @@ const ACTUATOR_PARAMS: string[] = [
 export function ActuatorPanel() {
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.frame");
   const [saving, setSaving] = useState(false);
 
   const {
@@ -86,13 +88,13 @@ export function ActuatorPanel() {
     setSaving(true);
     const ok = await saveAllToRam();
     setSaving(false);
-    if (ok) toast("Actuator config saved", "success");
-    else toast("Failed to save actuator config", "error");
+    if (ok) toast(t("actuatorSaved"), "success");
+    else toast(t("actuatorSaveFailed"), "error");
   }
 
   async function handleFlash() {
     const ok = await commitToFlash();
-    showFlashResult(ok, { successMessage: "Written to flash" });
+    showFlashResult(ok, { successMessage: t("flashWritten") });
   }
 
   return (

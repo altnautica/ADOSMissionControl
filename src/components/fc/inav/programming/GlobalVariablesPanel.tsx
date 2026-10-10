@@ -18,6 +18,7 @@ import { isFresh } from "@/lib/telemetry/freshness";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { Variable } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 export function GlobalVariablesPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.inav");
 
   const gvarStatus = useProgrammingStore((s) => s.gvarStatus);
   const gvarStatusAt = useProgrammingStore((s) => s.gvarStatusAt);
@@ -66,33 +68,33 @@ export function GlobalVariablesPanel() {
   const handleRead = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     if (!protocol.downloadGvarStatus) {
-      toast("Global variable status not supported by this firmware", "error");
+      toast(t("gvarStatusUnsupported"), "error");
       return;
     }
     const outcome = await pollStatus(protocol);
     if (outcome.gvars !== "ok") {
-      toast("Could not read the global variables from the flight controller", "error");
+      toast(t("gvarReadFailed"), "error");
       return;
     }
     setEdits({}); // fresh live values supersede any drafts
-    toast("Global variable status refreshed", "success");
-  }, [selectedProtocol, pollStatus, toast]);
+    toast(t("gvarStatusRefreshed"), "success");
+  }, [selectedProtocol, pollStatus, toast, t]);
 
   const handleSet = useCallback(
     async (index: number) => {
       const protocol = selectedProtocol;
       if (!protocol) {
-        toast("Not connected to flight controller", "error");
+        toast(t("notConnected"), "error");
         return;
       }
       const read = gvarStatus.values[index];
       const value = parseInt(edits[index] ?? (read === undefined ? "" : String(read)), 10);
       if (!Number.isFinite(value)) {
-        toast(`Enter a value for GVAR ${index}`, "error");
+        toast(t("gvarValueRequired", { index }), "error");
         return;
       }
       await writeGvar(protocol, index, value);
@@ -105,10 +107,10 @@ export function GlobalVariablesPanel() {
           delete next[index];
           return next;
         });
-        toast(`GVAR ${index} set to ${value}`, "success");
+        toast(t("gvarSet", { index, value }), "success");
       }
     },
-    [selectedProtocol, edits, gvarStatus, writeGvar, toast],
+    [selectedProtocol, edits, gvarStatus, writeGvar, toast, t],
   );
 
   return (

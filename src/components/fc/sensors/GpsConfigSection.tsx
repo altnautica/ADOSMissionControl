@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Save, HardDrive } from "lucide-react";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
@@ -28,35 +27,24 @@ const GPS_CONFIG_PARAMS: readonly string[] = [
 
 export function GpsConfigSection() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
-  const [saving, setSaving] = useState(false);
   const { paramName } = useParamLabel();
   const { bitmaskBits } = useParamEnums(useParamMetadataMap());
 
   const {
     params, loading, dirtyParams, hasRamWrites,
-    hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash,
+    hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: GPS_CONFIG_PARAMS, optionalParams: GPS_CONFIG_PARAMS, panelId: "gps-config", autoLoad: false });
+  const t = useTranslations("fcToasts.sensors");
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+    { saveAllToRam, commitToFlash, revertAll },
+    { saved: t("gpsConfigSaved"), flash: { successMessage: t("writtenToFlash") } },
+  );
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
 
   const gnssModeName = resolveApGpsName("gnssMode", params);
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("GPS config saved", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok, { successMessage: "Written to flash" });
-  }
 
   return (
     <div className="border border-border-default bg-bg-secondary p-4 space-y-4">

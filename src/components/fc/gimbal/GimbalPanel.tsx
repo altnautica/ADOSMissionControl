@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
@@ -8,7 +9,7 @@ import { useParamLabel } from "@/hooks/use-param-label";
 import { useParamMetadataMap } from "@/hooks/use-param-metadata";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { PanelHeader } from "../shared/PanelHeader";
 import { Input } from "@/components/ui/input";
@@ -40,13 +41,12 @@ const RC_INPUTS = [
 export function GimbalPanel() {
   const protocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.gimbal");
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
   const { label: pl } = useParamLabel();
   const metadata = useParamMetadataMap();
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
-  const [saving, setSaving] = useState(false);
   const [manualPitch, setManualPitch] = useState(0);
   const [manualYaw, setManualYaw] = useState(0);
   const [roiLat, setRoiLat] = useState("");
@@ -62,8 +62,9 @@ export function GimbalPanel() {
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
+    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: GIMBAL_PARAMS, optionalParams: OPTIONAL_GIMBAL_PARAMS, panelId: "gimbal" });
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = protocol !== null;
@@ -85,24 +86,11 @@ export function GimbalPanel() {
   const yawMin = params.get("MNT1_YAW_MIN") ?? -180;
   const yawMax = params.get("MNT1_YAW_MAX") ?? 180;
 
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    const ok = await commitToFlash();
-    showFlashResult(ok);
-  }
-
   const sendAngle = useCallback(async (pitch: number, yaw: number) => {
     if (!protocol) return;
     const result = await protocol.setGimbalAngle(pitch, 0, yaw);
-    if (!result.success) toast(result.message || "Gimbal refused the angle", "error");
-  }, [protocol, toast]);
+    if (!result.success) toast(result.message || t("angleRefused"), "error");
+  }, [protocol, toast, t]);
 
   const handleCenter = useCallback(() => {
     setManualPitch(0);
@@ -115,8 +103,8 @@ export function GimbalPanel() {
     setModeSending(true);
     const result = await protocol.setGimbalMode(Number(liveMode));
     setModeSending(false);
-    if (result.success) toast("Mount mode set", "success");
-    else toast(result.message || "Failed to set mount mode", "error");
+    if (result.success) toast(t("mountModeSet"), "success");
+    else toast(result.message || t("mountModeFailed"), "error");
   }
 
   async function handleSetROI() {
@@ -124,12 +112,12 @@ export function GimbalPanel() {
     const lat = parseFloat(roiLat);
     const lon = parseFloat(roiLon);
     const alt = parseFloat(roiAlt) || 0;
-    if (isNaN(lat) || isNaN(lon)) { toast("Enter valid latitude and longitude", "warning"); return; }
+    if (isNaN(lat) || isNaN(lon)) { toast(t("invalidLatLon"), "warning"); return; }
     setRoiSending(true);
     const result = await protocol.setGimbalROI(lat, lon, alt);
     setRoiSending(false);
-    if (result.success) toast("ROI set", "success");
-    else toast(result.message || "Failed to set ROI", "error");
+    if (result.success) toast(t("roiSet"), "success");
+    else toast(result.message || t("roiFailed"), "error");
   }
 
   return (

@@ -35,6 +35,7 @@ function ctxFor(profile: NodeProfile): SettingsPageContext {
     config: { swarm: {}, video: { wfb: {} } },
     readOnly: false,
     setValue: async () => {},
+    demoMode: false,
   };
 }
 

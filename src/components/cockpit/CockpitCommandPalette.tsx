@@ -168,7 +168,7 @@ export function CockpitCommandPalette({
         role="dialog"
         aria-modal="true"
         aria-label={t("title")}
-        className="w-full max-w-lg overflow-hidden rounded-lg border border-border-default bg-bg-secondary shadow-2xl"
+        className="glass-panel w-full max-w-lg overflow-hidden"
       >
         <div className="flex items-center gap-2 border-b border-border-default px-3 py-2">
           <Search size={15} className="flex-none text-text-tertiary" aria-hidden="true" />

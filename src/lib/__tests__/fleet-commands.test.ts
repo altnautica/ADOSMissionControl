@@ -9,7 +9,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 import { describeFleetOutcome, returnFleetToLaunch } from "@/lib/fleet-commands";
-import { useFleetStore } from "@/stores/fleet-store";
+import { setFixtureFleet } from "../../../tests/helpers/fleet-drones";
+
+vi.mock("@/stores/node-registry/use-fleet-drones", async (importOriginal) =>
+  (await import("../../../tests/helpers/fleet-drones")).fleetDronesModuleMock(await importOriginal()),
+);
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import type { FleetDrone } from "@/lib/types";
 
@@ -32,7 +36,7 @@ function managed(id: string, returnToLaunch: () => Promise<unknown>): [string, M
 }
 
 beforeEach(() => {
-  useFleetStore.setState({ drones: [] });
+  setFixtureFleet({ drones: [] });
   useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
 });
 
@@ -40,7 +44,7 @@ describe("returnFleetToLaunch", () => {
   it("recalls live armed drones and reports a link-lost drone as not recalled, without sending", async () => {
     const liveRtl = vi.fn(async () => ({ success: true, resultCode: 0, message: "" }));
     const lostRtl = vi.fn(async () => ({ success: true, resultCode: 0, message: "" }));
-    useFleetStore.setState({
+    setFixtureFleet({
       drones: [
         fleetDrone({ id: "live", armState: "armed", connectionState: "armed", status: "in_mission" }),
         fleetDrone({ id: "lost", fcLinkLost: true }),
@@ -68,7 +72,7 @@ describe("returnFleetToLaunch", () => {
     const okRtl = vi.fn(async () => ({ success: true, resultCode: 0, message: "" }));
     const deniedRtl = vi.fn(async () => ({ success: false, resultCode: 4, message: "denied" }));
     const armed = { armState: "armed", connectionState: "armed", status: "in_mission" } as const;
-    useFleetStore.setState({
+    setFixtureFleet({
       drones: [
         fleetDrone({ id: "a-silent", ...armed }),
         fleetDrone({ id: "b-ok", ...armed }),
@@ -102,7 +106,7 @@ describe("returnFleetToLaunch", () => {
   });
 
   it("with nothing armed and nothing lost, reports a warning rather than success", async () => {
-    useFleetStore.setState({ drones: [fleetDrone({ id: "parked", armState: "disarmed" })] });
+    setFixtureFleet({ drones: [fleetDrone({ id: "parked", armState: "disarmed" })] });
     const outcome = await returnFleetToLaunch();
     expect(outcome.attempted).toBe(0);
     expect(describeFleetOutcome(outcome, "RTH")).toEqual({

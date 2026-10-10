@@ -30,7 +30,7 @@ import { useLocalNodesStore } from "@/stores/local-nodes-store";
 import { resolveLanAgentUrl } from "@/lib/agent/resolve-agent";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { fleetHeroFailureReason } from "@/lib/api/ground-station/fleet";
-import { isDemoMode } from "@/lib/utils";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import { useToast } from "@/components/ui/toast";
 
 export interface FleetHero {
@@ -49,7 +49,7 @@ export function useFleetHero(): FleetHero {
     s.nodes.find((n) => n.profile === "ground-station"),
   );
   const [pendingDeviceId, setPendingDeviceId] = useState<string | null>(null);
-  const demo = isDemoMode();
+  const demo = useDemoMode();
 
   // Null on an HTTPS origin (the browser blocks a plain-HTTP LAN call) or when
   // the ground station has no reachable host: the control disables itself.

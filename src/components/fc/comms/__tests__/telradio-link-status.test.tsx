@@ -5,7 +5,8 @@
  * treats 255 as "not reported" and does not present device-scale noise as dBm.
  */
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
+import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,7 +60,7 @@ afterEach(cleanup);
 describe("TelRadioPanel link status", () => {
   it("shows a fresh report without dBm units", () => {
     pushRadio(0, 200);
-    render(<TelRadioPanel />);
+    renderWithIntl(<TelRadioPanel />);
     expect(screen.getByText("200/254")).toBeTruthy();
     expect(screen.queryByText(/dBm/)).toBeNull();
     expect(screen.getByText(/Remote noise \(device scale\): —/)).toBeTruthy();
@@ -67,14 +68,14 @@ describe("TelRadioPanel link status", () => {
 
   it("does not show a 255 RSSI as a full bar", () => {
     pushRadio(0, 255);
-    render(<TelRadioPanel />);
+    renderWithIntl(<TelRadioPanel />);
     expect(screen.getByText("Not reported")).toBeTruthy();
     expect(screen.queryByText("255/255")).toBeNull();
   });
 
   it("drops the last report once RADIO_STATUS goes stale", () => {
     pushRadio(TELEMETRY_STALE_MS + 1_000, 200);
-    render(<TelRadioPanel />);
+    renderWithIntl(<TelRadioPanel />);
     expect(screen.getByText(/RADIO_STATUS not received recently/)).toBeTruthy();
     expect(screen.queryByText("200/254")).toBeNull();
   });

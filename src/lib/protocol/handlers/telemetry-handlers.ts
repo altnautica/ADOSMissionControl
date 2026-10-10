@@ -52,6 +52,9 @@ export function handleGlobalPosition(payload: DataView, callbacks: PositionCallb
       heading: data.hdg === 0xffff ? undefined : data.hdg / 100, // cdeg → deg
       groundSpeed: Math.sqrt(data.vx * data.vx + data.vy * data.vy) / 100, // cm/s → m/s
       climbRate: -data.vz / 100,       // cm/s → m/s (NED, so negate)
+      vn: data.vx / 100,               // cm/s → m/s
+      ve: data.vy / 100,
+      vd: data.vz / 100,
     })
   }
 }

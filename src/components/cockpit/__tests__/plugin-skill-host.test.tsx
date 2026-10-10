@@ -14,6 +14,9 @@ vi.mock("@/hooks/use-drone-skill-contributions", () => ({
 vi.mock("@/hooks/use-plugin-skill-egress", () => ({
   usePluginSkillEgress: () => {},
 }));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
 vi.mock("@/lib/skills/plugin-config-writer", async () => {
   const store = await vi.importActual<typeof HostStore>(
     "@/lib/skills/plugin-skill-host-store",
@@ -24,6 +27,9 @@ vi.mock("@/lib/skills/plugin-config-writer", async () => {
     installPluginConfigWriter: () =>
       store.usePluginSkillHostStore.getState().setPluginConfigWriter(writer),
     uninstallPluginConfigWriter: () => {},
+    // The drones here are reachable over the LAN, so their skills can write.
+    canWritePluginConfig: () => true,
+    PLUGIN_REACH_REQUIRED_REASON: "extensions.reach.lanOrGroundRequired",
   };
 });
 
@@ -72,45 +78,46 @@ describe("PluginSkillHost", () => {
   });
 
   it("registers the drone's plugin skill with its live state", () => {
-    render(<PluginSkillHost />);
+    render(<PluginSkillHost droneId="drone-a" />);
     expect(useSkillRegistry.getState().skills.has(SKILL_ID)).toBe(true);
     expect(useSkillRegistry.getState().getState("drone-a", SKILL_ID).kind).toBe("active");
   });
 
   it("never stops the running skill when the operator selects another drone", () => {
-    render(<PluginSkillHost />);
+    const { rerender } = render(<PluginSkillHost droneId="drone-a" />);
     act(() => useDroneManager.setState({ selectedDroneId: "drone-b" }));
+    rerender(<PluginSkillHost droneId="drone-b" />);
     expect(useSkillRegistry.getState().skills.has(SKILL_ID)).toBe(false);
     expect(writer).not.toHaveBeenCalled();
   });
 
   it("re-registers in place when the contribution list changes identity", () => {
-    const { rerender } = render(<PluginSkillHost />);
+    const { rerender } = render(<PluginSkillHost droneId="drone-a" />);
     resolved = { ...resolved, "drone-a": [followContribution()] };
-    rerender(<PluginSkillHost />);
+    rerender(<PluginSkillHost droneId="drone-a" />);
     expect(useSkillRegistry.getState().skills.has(SKILL_ID)).toBe(true);
     expect(writer).not.toHaveBeenCalled();
   });
 
   it("keeps the registration while the same drone's source is resolving", () => {
-    const { rerender } = render(<PluginSkillHost />);
+    const { rerender } = render(<PluginSkillHost droneId="drone-a" />);
     resolved = { ...resolved, "drone-a": null };
-    rerender(<PluginSkillHost />);
+    rerender(<PluginSkillHost droneId="drone-a" />);
     expect(useSkillRegistry.getState().skills.has(SKILL_ID)).toBe(true);
     expect(writer).not.toHaveBeenCalled();
   });
 
   it("never stops the running skill on host unmount", () => {
-    const { unmount } = render(<PluginSkillHost />);
+    const { unmount } = render(<PluginSkillHost droneId="drone-a" />);
     unmount();
     expect(useSkillRegistry.getState().skills.has(SKILL_ID)).toBe(false);
     expect(writer).not.toHaveBeenCalled();
   });
 
   it("stops the skill on its drone when it is uninstalled from that drone", () => {
-    const { rerender } = render(<PluginSkillHost />);
+    const { rerender } = render(<PluginSkillHost droneId="drone-a" />);
     resolved = { ...resolved, "drone-a": [] };
-    rerender(<PluginSkillHost />);
+    rerender(<PluginSkillHost droneId="drone-a" />);
     expect(useSkillRegistry.getState().skills.has(SKILL_ID)).toBe(false);
     expect(writer).toHaveBeenCalledTimes(1);
     expect(writer).toHaveBeenCalledWith({

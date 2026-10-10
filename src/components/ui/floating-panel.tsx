@@ -53,7 +53,7 @@ export const FloatingPanel = forwardRef<HTMLDivElement, FloatingPanelProps>(
         ref={ref}
         style={{ zIndex: MAP_OVERLAY_Z[layer], ...style }}
         className={cn(
-          "absolute rounded-lg border border-border-default bg-bg-primary/80 backdrop-blur-md shadow-lg",
+          "absolute rounded-xl border border-border-default bg-bg-primary/80 backdrop-blur-md shadow-lg",
           corner && CORNER_CLASS[corner],
           padded && "p-2",
           className,

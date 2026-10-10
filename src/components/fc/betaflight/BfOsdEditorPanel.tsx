@@ -11,6 +11,7 @@
  */
 
 import { useState, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager, selectSelectedDrone } from "@/stores/drone-manager";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -39,6 +40,7 @@ export function BfOsdEditorPanel() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const selectedDrone = useDroneManager(selectSelectedDrone);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.betaflight");
 
   const [elements, setElements] = useState<BfOsdElement[]>(() => buildDefaultElements());
   const [videoSystem, setVideoSystem] = useState<VideoSystem>("PAL");
@@ -81,8 +83,8 @@ export function BfOsdEditorPanel() {
   const resetAll = useCallback(() => {
     setElements((prev) => buildDefaultElements(prev.length));
     setSelectedId(null);
-    toast("Reset all elements to defaults", "info");
-  }, [toast]);
+    toast(t("osdResetToDefaults"), "info");
+  }, [toast, t]);
 
   // ── Read from FC ────────────────────────────────────────────
 
@@ -106,25 +108,25 @@ export function BfOsdEditorPanel() {
       fcConfig.current = cfg;
       setBaseline(layoutSnapshot(loaded, loadedVideo));
       setHasLoaded(true);
-      toast("OSD config loaded", "success");
+      toast(t("osdConfigLoaded"), "success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to read OSD config");
     } finally {
       setLoading(false);
     }
-  }, [selectedDrone, toast]);
+  }, [selectedDrone, toast, t]);
 
   // ── Save to FC ──────────────────────────────────────────────
 
   const handleSave = useCallback(async () => {
     const protocol = selectedDrone?.protocol;
     if (!protocol?.writeOsdLayout) {
-      toast("This connection cannot write the Betaflight OSD configuration", "error");
+      toast(t("osdWriteUnavailable"), "error");
       return;
     }
     const fc = fcConfig.current;
     if (!fc) {
-      toast("Read the OSD config from the flight controller before saving", "error");
+      toast(t("osdReadBeforeSave"), "error");
       return;
     }
     const items = elements
@@ -138,7 +140,7 @@ export function BfOsdEditorPanel() {
       }
       : undefined;
     if (items.length === 0 && !general) {
-      toast("No OSD changes to save", "info");
+      toast(t("osdNoChanges"), "info");
       return;
     }
     setSaving(true);
@@ -149,36 +151,36 @@ export function BfOsdEditorPanel() {
         for (const it of items) nextItems[it.index] = { position: it.position };
         fcConfig.current = { ...fc, items: nextItems, videoSystem: videoCode };
         setBaseline(layoutSnapshot(elements, videoSystem));
-        toast(`Saved ${items.length} OSD element${items.length === 1 ? "" : "s"} to flight controller`, "success");
+        toast(t("osdElementsSaved", { count: items.length }), "success");
       } else {
         toast(r.message, "error");
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to save OSD config", "error");
+      toast(err instanceof Error ? err.message : t("osdSaveFailed"), "error");
     } finally {
       setSaving(false);
     }
-  }, [selectedDrone, elements, videoSystem, toast]);
+  }, [selectedDrone, elements, videoSystem, toast, t]);
 
   // ── Font upload (.mcm) ──────────────────────────────────────
 
   const handleFontFile = useCallback(async (file: File) => {
     const protocol = selectedDrone?.protocol;
     if (!protocol?.uploadOsdFont) {
-      toast("Font upload is not available on this connection", "error");
+      toast(t("osdFontUploadUnavailable"), "error");
       return;
     }
     try {
       const { glyphs } = parseMcmFont(await file.text());
       setFontProgress({ done: 0, total: glyphs.length });
       const r = await protocol.uploadOsdFont(glyphs, (done, total) => setFontProgress({ done, total }));
-      toast(r.success ? `Uploaded ${glyphs.length} font glyphs` : r.message, r.success ? "success" : "error");
+      toast(r.success ? t("osdFontUploaded", { count: glyphs.length }) : r.message, r.success ? "success" : "error");
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Font upload failed", "error");
+      toast(err instanceof Error ? err.message : t("osdFontUploadFailed"), "error");
     } finally {
       setFontProgress(null);
     }
-  }, [selectedDrone, toast]);
+  }, [selectedDrone, toast, t]);
 
   // ── Render ────────────────────────────────────────────────
 

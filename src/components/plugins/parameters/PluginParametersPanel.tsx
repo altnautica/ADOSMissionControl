@@ -17,19 +17,18 @@
  * optimistically and rolled back if the agent write does not land, so the
  * surface never shows a value the agent did not accept.
  *
- * Status honesty: the agent exposes a config WRITE
- * (`PUT /api/plugins/{id}/config`) but no config READ, so the GCS cannot fetch
- * a plugin's persisted per-drone config back. When the caller has no confirmed
- * live value for a `plugin.config` parameter, the control seeds from the schema
- * default but is badged "Default — not read from drone" so the operator is
- * never shown a default presented as the drone's live setting. A value the
- * caller passed in `values` (a confirmed source), or one committed this
- * session, is treated as confirmed and the badge clears.
+ * Status honesty: on mount the panel reads the plugin's live config back
+ * (`GET /api/plugins/{id}/config`, the same store the plugin reads) over the
+ * node's LAN or ground-station reach. A `plugin.config` key the read returned
+ * (or a value the caller passed in `values`, or one committed this session) is
+ * confirmed. Until then, or when the read cannot reach the node, the control
+ * seeds from the schema default and is badged "Default — not read from drone"
+ * so a default is never presented as the drone's live setting.
  *
  * @license GPL-3.0-only
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useToast } from "@/components/ui/toast";
 import {
@@ -37,7 +36,12 @@ import {
   resolveBinding,
 } from "@/lib/plugins/parameters/schema";
 import type { ParsedParameterContribution } from "@/lib/plugins/parameters/parse";
+import {
+  pluginClientForReach,
+  resolveNodeAgentReach,
+} from "@/lib/plugins/node-agent-reach";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
+import { isDemoMode } from "@/lib/utils";
 
 import { ParameterControl } from "./ParameterControl";
 
@@ -96,6 +100,45 @@ export function PluginParametersPanel({
     }
     return seed;
   });
+
+  // Keys committed this session: a late read-back never overwrites them.
+  const touchedRef = useRef<Set<string>>(new Set());
+
+  // Read the plugin's live config back once per drone/plugin. Only keys the
+  // operator has not touched this session take the read value; a key the read
+  // does not return keeps its default badge.
+  useEffect(() => {
+    if (isDemoMode()) return;
+    const reach = resolveNodeAgentReach(droneId);
+    if (!reach) return;
+    let alive = true;
+    pluginClientForReach(reach)
+      .getConfig(pluginId)
+      .then((live) => {
+        if (!alive) return;
+        const read: Record<string, ParameterValue> = {};
+        for (const param of parameters) {
+          if (resolveBinding(param) !== "plugin.config") continue;
+          if (touchedRef.current.has(param.key)) continue;
+          const v = live[param.key];
+          if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+            read[param.key] = v;
+          }
+        }
+        if (Object.keys(read).length === 0) return;
+        setState((s) => ({ ...s, ...read }));
+        setConfirmed((c) => ({
+          ...c,
+          ...Object.fromEntries(Object.keys(read).map((k) => [k, true])),
+        }));
+      })
+      .catch(() => {
+        // Unreadable: the defaults stay badged as unconfirmed.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [droneId, pluginId, parameters]);
 
   // Group parameters by `ui.group`; order groups by first appearance and
   // controls within a group by `ui.order` then declaration order.
@@ -160,6 +203,7 @@ export function PluginParametersPanel({
       // unconfirmed default) must not overwrite the drone's setting.
       if (value === previous) return;
       const wasConfirmed = confirmed[param.key] ?? false;
+      touchedRef.current.add(param.key);
       setState((s) => ({ ...s, [param.key]: value }));
       // Optimistically treat the value as confirmed: we just wrote it to the
       // agent, so on success it IS the live value (clearing the default badge).

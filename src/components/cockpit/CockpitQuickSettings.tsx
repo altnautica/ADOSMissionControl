@@ -1,7 +1,7 @@
 /**
  * The in-cockpit quick-settings drawer: a right-side slide-in surface that lets
  * the operator adjust an installed plugin's parameters AND switch the active
- * vision model without leaving the immersive `/fly` cockpit.
+ * vision model without leaving the immersive cockpit.
  *
  * It is an ASSEMBLY of surfaces that already exist and are tested:
  *   - `<PluginParametersPanel>` (compact, schema-driven) per installed plugin
@@ -35,9 +35,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
-import { useDroneManager } from "@/stores/drone-manager";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
-import { useDronePluginContributions } from "@/hooks/use-drone-plugin-contributions";
+import { useDronePluginParameters } from "@/hooks/use-drone-plugin-contributions";
 import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import {
   PluginHostProvider,
@@ -46,9 +45,11 @@ import {
 import { PluginSlot } from "@/components/plugins/PluginSlot";
 import { PluginParametersPanel } from "@/components/plugins/parameters/PluginParametersPanel";
 import { ModelPicker } from "@/components/vision/ModelPicker";
-import type { DronePluginContribution } from "@/hooks/use-drone-plugin-contributions";
+import type { DronePluginParameters } from "@/hooks/use-drone-plugin-contributions";
 
 interface CockpitQuickSettingsProps {
+  /** The drone whose plugins and detector the drawer configures. */
+  droneId: string | null;
   /** Close the drawer (the cockpit owns the open flag). */
   onClose: () => void;
   /**
@@ -68,16 +69,14 @@ function PluginQuickCard({
   contribution,
 }: {
   droneId: string;
-  contribution: DronePluginContribution;
+  contribution: DronePluginParameters;
 }) {
   return (
     <section className="flex flex-col gap-2 border border-border-default bg-bg-secondary/60 p-3">
       <h4 className="text-xs font-semibold text-text-primary">
         {contribution.title}
       </h4>
-      {/* No confirmed-values source today (the agent exposes a config write but
-          no read-back); the panel seeds from schema defaults and badges each
-          unconfirmed value as a default rather than a live reading. */}
+      {/* The panel reads back the node's current values itself. */}
       <PluginParametersPanel
         droneId={droneId}
         pluginId={contribution.pluginId}
@@ -88,6 +87,7 @@ function PluginQuickCard({
 }
 
 export function CockpitQuickSettings({
+  droneId,
   onClose,
   focusPluginId,
 }: CockpitQuickSettingsProps) {
@@ -95,22 +95,16 @@ export function CockpitQuickSettings({
   const tVision = useTranslations("vision");
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  const droneId = useDroneManager((s) => s.selectedDroneId);
   // Plugin install rows, the LAN plugin client and the config writer are keyed
   // by the node's bare device id, not the `node:<deviceId>` selection id.
   const pluginDeviceId = droneId ? (deviceIdFromNodeId(droneId) ?? droneId) : null;
 
-  // The per-drone plugin contributions carry each plugin's declarative
-  // parameters (the same source the per-drone tab body reads). We render a
-  // card for each plugin that contributes at least one parameter.
-  const contributions = useDronePluginContributions(pluginDeviceId ?? undefined);
-
+  // Every extension on this drone that declares parameters, narrowed to the
+  // focused extension when opened from a per-skill affordance.
+  const allParamPlugins = useDronePluginParameters(pluginDeviceId ?? undefined);
   const paramPlugins = useMemo(
-    () =>
-      contributions
-        .filter((c) => c.parameters.length > 0)
-        .filter((c) => !focusPluginId || c.pluginId === focusPluginId),
-    [contributions, focusPluginId],
+    () => allParamPlugins.filter((c) => !focusPluginId || c.pluginId === focusPluginId),
+    [allParamPlugins, focusPluginId],
   );
 
   // Plugin-contributed cockpit.panel iframes for the active drone. Narrowed to
@@ -174,7 +168,7 @@ export function CockpitQuickSettings({
         aria-modal="true"
         aria-label={t("title")}
         tabIndex={-1}
-        className="relative flex h-full w-[360px] max-w-[90vw] flex-col border-l border-border-default bg-bg-primary shadow-2xl outline-none"
+        className="glass-panel relative flex h-full w-[360px] max-w-[90vw] flex-col outline-none"
       >
         <header className="flex items-center justify-between border-b border-border-default px-4 py-3">
           <div className="flex flex-col">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
@@ -33,6 +34,7 @@ interface ParamCompareProps {
 
 export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProps) {
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.parameters");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [diffs, setDiffs] = useState<ParamDiff[]>([]);
@@ -72,7 +74,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
       const text = reader.result as string;
       const parsed = parseParamFile(text);
       if (parsed.length === 0) {
-        toast("No parameters found in that file", "error");
+        toast(t("noParamsInFile"), "error");
         setDiffs([]);
         setFileName(file.name);
         setSelected(new Set());
@@ -92,7 +94,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
     };
     reader.readAsText(file);
     e.target.value = "";
-  }, [fcParams, toast]);
+  }, [fcParams, toast, t]);
 
   const selectableCount = useMemo(
     () => diffs.filter((d) => d.status === "changed" || d.status === "added").length,
@@ -146,9 +148,13 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
 
     const summary = describeParamBatch(outcome);
     const shown = outcome.failures.slice(0, 5).join(", ");
-    const more = outcome.failures.length > 5 ? ` and ${outcome.failures.length - 5} more` : "";
-    const failed = outcome.failures.length > 0 ? `. Failed: ${shown}${more}` : "";
-    toast(`${summary.message}${failed}`, summary.level);
+    const extra = outcome.failures.length - 5;
+    const message = outcome.failures.length === 0
+      ? summary.message
+      : extra > 0
+        ? t("batchFailedWithMore", { summary: summary.message, params: shown, more: extra })
+        : t("batchFailed", { summary: summary.message, params: shown });
+    toast(message, summary.level);
 
     if (outcome.written.size > 0) {
       // What landed now matches the file; what failed stays selected so the
@@ -162,7 +168,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
 
     setApplying(false);
     setApplyProgress({ current: 0, total: 0 });
-  }, [diffs, selected, metadata, toast, onApplied]);
+  }, [diffs, selected, metadata, toast, t, onApplied]);
 
   return (
     <div className="flex flex-col gap-4 max-h-[70vh]">

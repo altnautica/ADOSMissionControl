@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useFleetStore } from "@/stores/fleet-store";
+import { fleetSummaryEqual, selectFleet, useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { selectFleetSummary } from "@/stores/node-registry/fleet-summary";
 import { useBatteryThresholds } from "@/lib/battery-bands";
 import { Card } from "@/components/ui/card";
@@ -20,7 +20,7 @@ const statusDotMap: Record<DroneStatus, StatusLevel> = {
 
 export function FleetStatusCard() {
   const t = useTranslations("dashboard");
-  const drones = useFleetStore((s) => s.drones);
+  const drones = useFleetDrones(selectFleet, fleetSummaryEqual);
 
   const statusLabels: Record<DroneStatus, string> = {
     online: t("fleetStatus.statuses.online"),

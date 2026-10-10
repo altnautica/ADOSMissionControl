@@ -24,6 +24,10 @@ export interface PositionData {
   groundSpeed: number; // m/s
   airSpeed?: number;   // m/s; absent when the source carries no airspeed (VFR_HUD owns it on MAVLink)
   climbRate?: number;  // m/s; absent when the source carries no vertical speed (MSP GPS)
+  // m/s, NED velocity (GLOBAL_POSITION_INT vx/vy/vz); absent when the source carries no velocity vector
+  vn?: number;
+  ve?: number;
+  vd?: number;
 }
 
 export interface BatteryData {

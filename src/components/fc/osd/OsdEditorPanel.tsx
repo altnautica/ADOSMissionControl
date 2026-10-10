@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
@@ -67,6 +68,7 @@ function ScreenEditor({ screen, onScreenChange, videoFormat, onFormatChange, cli
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { toast } = useToast();
   const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.osd");
   const [saving, setSaving] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [livePreview, setLivePreview] = useState(false);
@@ -112,7 +114,7 @@ function ScreenEditor({ screen, onScreenChange, videoFormat, onFormatChange, cli
     if (!clipboard) return;
     const maxRow = FORMAT_ROWS[videoFormat] - 1;
     for (const el of clipboard) place(el.id, { enabled: el.enabled, col: el.col, row: Math.min(el.row, maxRow) });
-    toast(`Pasted to screen ${screen}`, "success");
+    toast(t("pastedToScreen", { screen }), "success");
   };
 
   const handleReset = () => {
@@ -123,12 +125,12 @@ function ScreenEditor({ screen, onScreenChange, videoFormat, onFormatChange, cli
     setSaving(true);
     const ok = await saveAllToRam();
     setSaving(false);
-    if (ok) toast(`OSD screen ${screen} saved to flight controller`, "success");
-    else toast("Some OSD parameters failed to save", "error");
+    if (ok) toast(t("screenSaved", { screen }), "success");
+    else toast(t("saveFailed"), "error");
   };
 
   const handleFlash = async () => {
-    showFlashResult(await commitToFlash(), { successMessage: "Written to flash — persists after reboot" });
+    showFlashResult(await commitToFlash(), { successMessage: t("flashWritten") });
   };
 
   const handleElementMove = useCallback((id: string, row: number, col: number) => {
@@ -152,7 +154,7 @@ function ScreenEditor({ screen, onScreenChange, videoFormat, onFormatChange, cli
         onToggleElement={toggleElement}
         onScreenChange={onScreenChange}
         onLoadPreset={loadPreset}
-        onCopyScreen={() => { onCopy(elements.map((el) => ({ ...el }))); toast(`Screen ${screen} copied`, "info"); }}
+        onCopyScreen={() => { onCopy(elements.map((el) => ({ ...el }))); toast(t("screenCopied", { screen }), "info"); }}
         onPasteScreen={pasteScreen}
         onFormatChange={onFormatChange}
         onSave={handleSave}

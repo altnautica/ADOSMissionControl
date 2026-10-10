@@ -9,8 +9,11 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import { startGamepadPolling, stopGamepadPolling } from "../gamepad-poller";
+import { acquireGamepadPolling } from "../gamepad-poller";
 import { useInputStore } from "@/stores/input-store";
+
+/** Releases for every hold a test took, dropped in `afterEach`. */
+const releases: Array<() => void> = [];
 
 describe("gamepad reader", () => {
   let frame: (() => void) | null = null;
@@ -53,7 +56,7 @@ describe("gamepad reader", () => {
   });
 
   afterEach(() => {
-    stopGamepadPolling();
+    releases.splice(0).forEach((release) => release());
     vi.unstubAllGlobals();
     vi.useRealTimers();
     useInputStore.setState({ txMode: 2, calibrations: {} });
@@ -61,7 +64,7 @@ describe("gamepad reader", () => {
   });
 
   it("revokes stick control when the pad drops, and a returning pad does not restore it", () => {
-    startGamepadPolling();
+    releases.push(acquireGamepadPolling());
     step();
     useInputStore.getState().setManualControlEnabled(true);
 
@@ -77,7 +80,7 @@ describe("gamepad reader", () => {
 
   it("stops refreshing the liveness stamp when a deflected pad stops reporting", () => {
     axes = [0.8, 0, 0, 0];
-    startGamepadPolling();
+    releases.push(acquireGamepadPolling());
     step();
     const reportedAt = useInputStore.getState().axesAt;
     expect(reportedAt).toBe(10_000);
@@ -95,7 +98,7 @@ describe("gamepad reader", () => {
   });
 
   it("keeps a centred pad live when its timestamp does not move", () => {
-    startGamepadPolling();
+    releases.push(acquireGamepadPolling());
     step();
     vi.setSystemTime(12_000);
     step();
@@ -106,7 +109,7 @@ describe("gamepad reader", () => {
     // Right stick pushed fully up (standard axis 3 reads -1 when up).
     axes = [0, 0, 0, -1];
     useInputStore.setState({ txMode: 1 });
-    startGamepadPolling();
+    releases.push(acquireGamepadPolling());
     step();
     expect(useInputStore.getState().axes[2]).toBeCloseTo(1);
     expect(useInputStore.getState().axes[1]).toBe(0);
@@ -120,7 +123,7 @@ describe("gamepad reader", () => {
       },
     });
     axes = [0, 0.2, 0, 0];
-    startGamepadPolling();
+    releases.push(acquireGamepadPolling());
     step();
     // Mode 2: the left vertical axis is throttle, and it reads centred.
     expect(useInputStore.getState().axes[2]).toBe(0);

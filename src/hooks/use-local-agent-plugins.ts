@@ -150,6 +150,7 @@ function mapSlotEntry(raw: unknown): LocalAgentGcsContribution | null {
     title: str(raw.title),
     icon: str(raw.icon),
     order: typeof raw.order === "number" ? raw.order : undefined,
+    zone: str(raw.zone),
   };
 }
 
@@ -360,6 +361,20 @@ export function useLocalAgentPlugins(
             }
           }
           slotEntries.push(...parseNodePageContributions(gcs?.contributes));
+          // Dedicated mission templates / map overlays mount in their slots
+          // like a panel naming that slot, unless a panel covers the same id.
+          for (const [slot, list] of [
+            ["mission.template", gcs?.contributes.mission_templates],
+            ["map.overlay", gcs?.contributes.map_overlays],
+          ] as const) {
+            for (const raw of list ?? []) {
+              if (!isObj(raw)) continue;
+              const panelId = str(raw.id);
+              if (!panelId) continue;
+              if (slotEntries.some((e) => e.slot === slot && e.panelId === panelId)) continue;
+              slotEntries.push({ slot, panelId, title: str(raw.title), icon: str(raw.icon) });
+            }
+          }
           const skills: LocalAgentSkillRow[] = [];
           for (const raw of gcs?.contributes.skills ?? []) {
             const m = mapSkill(raw);

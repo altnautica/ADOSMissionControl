@@ -3,8 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LayoutGrid, LayoutDashboard, Network, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Tabs, tabButtonId } from "@/components/ui/tabs";
 import { useDroneManager } from "@/stores/drone-manager";
 import { resolveFleetRowId } from "@/lib/nodes/fleet-row";
 import { useUiStore } from "@/stores/ui-store";
@@ -38,6 +37,9 @@ function PreselectHandoff() {
   }, [preselect, router]);
   return null;
 }
+
+const DASHBOARD_VIEWS = ["grid", "overview", "nodes", "swarm"] as const;
+const DASHBOARD_VIEW_PANEL = "dashboard-view-panel";
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
@@ -95,64 +97,29 @@ export default function DashboardPage() {
         <NodeDetailPanel droneId={selectedDroneId} onClose={() => selectDrone(null)} />
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* View toggle: node grid (live video tiles) vs map + status cards */}
-          <div className="flex items-center justify-end px-3 py-2 border-b border-border-default bg-bg-secondary shrink-0">
-            <div className="inline-flex rounded border border-border-default overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setDashboardView("grid")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors",
-                  dashboardView === "grid"
-                    ? "bg-accent-primary text-accent-foreground"
-                    : "bg-bg-secondary text-text-secondary hover:text-text-primary",
-                )}
-              >
-                <LayoutGrid size={13} />
-                {t("viewGrid")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDashboardView("overview")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors border-l border-border-default",
-                  dashboardView === "overview"
-                    ? "bg-accent-primary text-accent-foreground"
-                    : "bg-bg-secondary text-text-secondary hover:text-text-primary",
-                )}
-              >
-                <LayoutDashboard size={13} />
-                {t("viewOverview")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDashboardView("nodes")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors border-l border-border-default",
-                  dashboardView === "nodes"
-                    ? "bg-accent-primary text-accent-foreground"
-                    : "bg-bg-secondary text-text-secondary hover:text-text-primary",
-                )}
-              >
-                <Network size={13} />
-                {t("viewNodes")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDashboardView("swarm")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors border-l border-border-default",
-                  dashboardView === "swarm"
-                    ? "bg-accent-primary text-accent-foreground"
-                    : "bg-bg-secondary text-text-secondary hover:text-text-primary",
-                )}
-              >
-                <Users size={13} />
-                {t("viewSwarm")}
-              </button>
-            </div>
-          </div>
-
+          {/* View switch: node grid (live video tiles), map + status cards,
+              node table, swarm. */}
+          <Tabs
+            label={t("viewSwitchLabel")}
+            activeTab={dashboardView}
+            onChange={(id) => {
+              const view = DASHBOARD_VIEWS.find((v) => v === id);
+              if (view) setDashboardView(view);
+            }}
+            tabs={[
+              { id: "grid", label: t("viewGrid"), panelId: DASHBOARD_VIEW_PANEL },
+              { id: "overview", label: t("viewOverview"), panelId: DASHBOARD_VIEW_PANEL },
+              { id: "nodes", label: t("viewNodes"), panelId: DASHBOARD_VIEW_PANEL },
+              { id: "swarm", label: t("viewSwarm"), panelId: DASHBOARD_VIEW_PANEL },
+            ]}
+            className="justify-end px-3 bg-bg-secondary"
+          />
+          <div
+            role="tabpanel"
+            id={DASHBOARD_VIEW_PANEL}
+            aria-labelledby={tabButtonId(dashboardView)}
+            className="flex-1 flex flex-col overflow-hidden min-h-0"
+          >
           {dashboardView === "grid" && (
             <CommandFleetOverview
               fleetNodes={fleetNodes}
@@ -175,6 +142,7 @@ export default function DashboardPage() {
               onOpenPairing={handleOpenPairing}
             />
           )}
+          </div>
         </div>
       )}
     </div>

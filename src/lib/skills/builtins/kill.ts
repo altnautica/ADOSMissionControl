@@ -1,14 +1,15 @@
 /**
  * Kill skill — emergency motor cut. One-shot, any arm state. The highest-
- * consequence built-in: a two-stage confirm with a 3-second countdown before
- * the KILL typed-phrase enables. No arm requirement (kill must work anytime).
+ * consequence built-in: the guarded tier — the first activation arms a guard
+ * and only a hold inside the guard window fires. No arm requirement (kill
+ * must work anytime).
  *
  * @module skills/builtins/kill
  * @license GPL-3.0-only
  */
 
 import type { Skill } from "../types";
-import { disabledIfNoLink } from "./_shared";
+import { builtinConfirm, disabledIfNoLink } from "./_shared";
 
 export const killSkill: Skill = {
   id: "kill",
@@ -18,14 +19,7 @@ export const killSkill: Skill = {
   source: "builtin",
   toggle: false,
   armRequirement: "any",
-  confirm: {
-    title: "skills.kill.confirm.title",
-    message: "skills.kill.confirm.message",
-    confirmLabel: "skills.kill.confirm.button",
-    variant: "danger",
-    typedPhrase: "KILL",
-    twoStageCountdownSeconds: 3,
-  },
+  confirm: builtinConfirm("kill", "guarded", "danger"),
   getState: (ctx) => {
     const noLink = disabledIfNoLink(ctx);
     if (noLink) return noLink;
@@ -34,6 +28,6 @@ export const killSkill: Skill = {
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and spends nothing on it.
   // `true` is the confirm block above: the dispatcher only reaches activate
-  // after the two-stage countdown and the typed KILL phrase.
+  // after the guard was armed and the hold inside its window completed.
   activate: async (ctx) => ctx.protocol?.killSwitch(true),
 };

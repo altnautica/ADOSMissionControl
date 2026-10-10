@@ -28,6 +28,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
+
+import { useToast } from "@/components/ui/toast";
 
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -86,6 +89,16 @@ export function useVideoStreams(droneId: string): void {
   const activeId = useVideoStreamsStore(
     (s) => s.activeStreamIdByDrone[droneId] ?? null,
   );
+  // The toast + translator live in refs so the selection effect can reach the
+  // current ones without re-running on every render.
+  const { toast } = useToast();
+  const t = useTranslations("cockpit.streams");
+  const toastRef = useRef(toast);
+  const tRef = useRef(t);
+  useEffect(() => {
+    toastRef.current = toast;
+    tRef.current = t;
+  });
 
   // Guards, re-armed when the drone changes:
   //  - appliedRef  = the last active id the side effect applied (dedup + the
@@ -160,7 +173,8 @@ export function useVideoStreams(droneId: string): void {
       return;
     }
     if (appliedRef.current === activeId) return;
-    const first = appliedRef.current === null;
+    const previousId = appliedRef.current;
+    const first = previousId === null;
     appliedRef.current = activeId;
 
     const streams = useVideoStreamsStore.getState().streamsByDrone[droneId] ?? [];
@@ -203,19 +217,33 @@ export function useVideoStreams(droneId: string): void {
       // across the restart), so the timer is the clear mechanism, with the tabs
       // disabled meanwhile to keep restarts from stacking.
       useVideoStreamsStore.getState().setSwitching(droneId, true);
-      Promise.resolve(client.switchCamera(target.devicePath))
-        .catch(() => {
-          // Leave the population effect to reconcile the roster on the next poll.
-        })
-        .finally(() => {
-          if (switchTimerRef.current != null) {
-            clearTimeout(switchTimerRef.current);
-          }
+      const clearSwitchTimer = () => {
+        if (switchTimerRef.current != null) {
+          clearTimeout(switchTimerRef.current);
+          switchTimerRef.current = null;
+        }
+      };
+      Promise.resolve(client.switchCamera(target.devicePath)).then(
+        () => {
+          clearSwitchTimer();
           switchTimerRef.current = window.setTimeout(() => {
             switchTimerRef.current = null;
             useVideoStreamsStore.getState().setSwitching(droneId, false);
           }, STREAM_RESTART_MS);
-        });
+        },
+        () => {
+          // The encoder stayed on the previous camera: put the tab back on it
+          // so the switcher never claims a stream the video is not showing.
+          clearSwitchTimer();
+          const streamsStore = useVideoStreamsStore.getState();
+          streamsStore.setSwitching(droneId, false);
+          if (streamsStore.activeStreamIdByDrone[droneId] === activeId && previousId) {
+            appliedRef.current = previousId;
+            streamsStore.selectStream(droneId, previousId);
+          }
+          toastRef.current(tRef.current("switchFailed", { name: target.label }), "error");
+        },
+      );
     }
   }, [droneId, activeId, client]);
 }

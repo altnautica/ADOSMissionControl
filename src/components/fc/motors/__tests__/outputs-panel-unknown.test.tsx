@@ -5,7 +5,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
 let params = new Map<string, number>();
@@ -50,20 +51,20 @@ beforeEach(() => {
 
 describe("OutputsPanel", () => {
   it("marks unread outputs instead of inventing their limits", () => {
-    render(<OutputsPanel />);
+    renderWithIntl(<OutputsPanel />);
     expect(screen.getAllByTestId("fn")).toHaveLength(1);
     expect(screen.getAllByText(/not read from the FC/)).toHaveLength(15);
   });
 
   it("does not show a servo sample that stopped arriving as current", () => {
     useTelemetryStore.getState().pushServoOutput({ timestamp: Date.now() - 60_000, port: 0, servos: [1733] });
-    render(<OutputsPanel />);
+    renderWithIntl(<OutputsPanel />);
     expect(screen.queryByText("1733")).toBeNull();
   });
 
   it("shows a fresh servo sample", () => {
     useTelemetryStore.getState().pushServoOutput({ timestamp: Date.now(), port: 0, servos: [1733] });
-    render(<OutputsPanel />);
+    renderWithIntl(<OutputsPanel />);
     expect(screen.getByText("1733")).toBeTruthy();
   });
 });

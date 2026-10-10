@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { Save, HardDrive, Play, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
@@ -211,15 +212,18 @@ function ServoRow({ index, min, max, trim, func, livePwm, onSetLocal, onTest, co
 export function ServoCalibrationSection() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
-  const [saving, setSaving] = useState(false);
+  const t = useTranslations("fcToasts.misc");
   const servoBuffer = useTelemetryStore((s) => s.servoOutput);
   const telVersion = useTelemetryStore((s) => s._version);
 
   const {
     params, loading, dirtyParams, hasRamWrites,
-    hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash,
+    hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: SERVO_PARAMS, panelId: "servo-cal", autoLoad: false });
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit(
+    { saveAllToRam, commitToFlash, revertAll },
+    { saved: t("servoEndpointsSaved"), flash: { successMessage: t("flashWritten") } },
+  );
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -252,31 +256,19 @@ export function ServoCalibrationSection() {
       return;
     }
     if (!testEnabled) {
-      toast("Enable servo output test first — outputs 33-40 are motors", "warning");
+      toast(t("servoTestDisabled"), "warning");
       return;
     }
     const protocol = selectedProtocol;
     if (!protocol) return;
     try {
       const result = await protocol.setServo(servo, pwm);
-      if (result.success) toast(`Servo ${servo} set to ${pwm}`, "info");
-      else toast(`Servo ${servo} not set: ${result.message || "refused by the flight controller"}`, "error");
+      if (result.success) toast(t("servoSet", { servo, pwm }), "info");
+      else toast(t("servoNotSet", { servo, reason: result.message || t("servoRefused") }), "error");
     } catch (err) {
-      toast(`Servo ${servo} not set: ${err instanceof Error ? err.message : String(err)}`, "error");
+      toast(t("servoNotSet", { servo, reason: err instanceof Error ? err.message : String(err) }), "error");
     }
-  }, [selectedProtocol, toast, isHardBlocked, hardBlockMessage, testEnabled]);
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Servo endpoints saved", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    showFlashResult(await commitToFlash(), { successMessage: "Written to flash" });
-  }
+  }, [selectedProtocol, toast, isHardBlocked, hardBlockMessage, testEnabled, t]);
 
   return (
     <div className="border border-border-default bg-bg-secondary p-4">

@@ -19,7 +19,10 @@
  * (Convex query, blob lifecycle, handler lifecycle) to the existing
  * `usePluginContributions(null, slot)` producer, which already accepts a null
  * deviceId (the Convex query passes `deviceId: undefined`, the local-first hook
- * returns null for a null device). The ONLY thing it adds is the demo-mode
+ * reads GCS-level installs from the local install store). Plugins installed on
+ * a LAN-paired node reach the fleet slots through `FleetPluginSlot`, which
+ * mounts each paired node's contributions beside these. The ONLY thing this
+ * hook adds is the demo-mode
  * fleet mock set, because the live producer intentionally returns `[]` in demo
  * mode (it never mounts real iframes there). So `npm run demo` shows each
  * fleet slot lit by a demo plugin while production stays driven by real

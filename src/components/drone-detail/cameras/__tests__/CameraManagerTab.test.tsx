@@ -56,9 +56,9 @@ vi.mock("@/stores/agent-capabilities-store", () => ({
     id: string | null,
   ) => (id ? (s.byDevice[id] ?? null) : null),
 }));
-vi.mock("@/stores/fleet-store", () => ({
-  useFleetStore: (sel: (s: unknown) => unknown) =>
-    sel({ drones: [{ id: "d1", cloudDeviceId: "dev-1" }] }),
+vi.mock("@/stores/node-registry/use-fleet-drones", () => ({
+  useFleetDrones: (sel: (drones: unknown[]) => unknown) =>
+    sel([{ id: "d1", cloudDeviceId: "dev-1" }]),
 }));
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),

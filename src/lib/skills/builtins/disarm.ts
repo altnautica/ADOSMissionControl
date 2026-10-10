@@ -6,7 +6,7 @@
  */
 
 import type { Skill } from "../types";
-import { disabledIfNoLink, REASON } from "./_shared";
+import { builtinConfirm, disabledIfNoLink, REASON } from "./_shared";
 
 export const disarmSkill: Skill = {
   id: "disarm",
@@ -16,13 +16,7 @@ export const disarmSkill: Skill = {
   source: "builtin",
   toggle: false,
   armRequirement: "armed",
-  confirm: {
-    title: "skills.disarm.confirm.title",
-    message: "skills.disarm.confirm.message",
-    confirmLabel: "skills.disarm.confirm.button",
-    variant: "danger",
-    typedPhrase: "DISARM",
-  },
+  confirm: builtinConfirm("disarm", "hold", "danger"),
   getState: (ctx) => {
     const noLink = disabledIfNoLink(ctx);
     if (noLink) return noLink;

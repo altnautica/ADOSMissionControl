@@ -1,0 +1,265 @@
+schema_version: 3
+id: com.altnautica.follow-me
+name: "ADOS Follow-Me"
+version: "0.2.9"
+description: "Lock onto an operator-designated subject and fly a fixed-distance standoff follow from the companion. A flight Skill in the cockpit Skill Bar, a click-a-target Follow action, and a per-drone settings tab."
+description_long: |
+  Click a subject in the live video and the drone follows it at a fixed
+  distance and height. A generic person/object detector on the companion
+  produces detections; the operator designates one; the companion locks
+  onto that track, projects its image position onto the ground, and feeds
+  the flight controller guided position setpoints at a steady rate.
+
+  A lock-state safety gate stops commanding the instant the tracker reports
+  the subject uncertain or lost, and never silently re-locks onto a
+  different subject. The Follow-Me Skill in the cockpit Skill Bar arms and
+  disarms the behavior; click a detected subject in the cockpit and pick
+  Follow to designate it; the follow settings render as native controls; the
+  node-detail tab carries a live read-back.
+
+  Requires a flight controller in a guided position-hold mode (ArduPilot
+  Guided, PX4 Offboard/position). Works with a forward or downward camera;
+  point a gimbal at the subject when one is present.
+features:
+  - "Click a detected subject in the cockpit and pick Follow to designate it"
+  - "Fixed-distance, fixed-height standoff follow via guided setpoints"
+  - "Lock-state safety gate: stops commanding on uncertain or lost"
+  - "Optional gimbal point-at-subject when a gimbal is present"
+  - "Live read-back: lock state, commanding flag, range, setpoints"
+hardware_requirements:
+  cameras: "USB UVC or CSI camera bound to the vision pipeline"
+  fc_firmware: "ArduPilot or PX4 in a guided position-hold mode"
+  boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "cubie-a7s", "a733", "sun60iw2"]
+resource_impact:
+  output_rate_hz: 6
+  cpu_percent_peak: 25
+  ram_mb: 128
+  pids: 4
+  startup_time_seconds: 3
+telemetry_fields:
+  - "follow.state"
+documentation_url: "https://docs.altnautica.com/drone-agent/follow-me-overview"
+author: "Altnautica"
+homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/follow-me"
+license: "GPL-3.0-or-later"
+risk: high
+
+compatibility:
+  ados_version: ">=0.99.180"
+  gcs_version: ">=0.56.0"
+  supported_boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "cubie-a7s", "a733", "sun60iw2"]
+
+agent:
+  runtime: python
+  entrypoint: "follow_me:FollowMePlugin"
+  isolation: subprocess
+  per_drone_config: true
+  permissions:
+    - id: vision.detection.subscribe
+    - id: mavlink.read
+    - id: mavlink.write
+    - id: flight.guided_setpoint
+    - id: event.publish
+    - id: mcp.expose
+  mavlink_components:
+    # The companion's own component id: the guided setpoints and the gimbal
+    # pitch/yaw frames are transmitted from it (ONBOARD_COMPUTER_COMP_ID in
+    # agent/follow_me/mavlink_frames.py).
+    - component_id: 191
+      component_kind: generic
+      sub_id: 0
+  resources:
+    max_ram_mb: 128
+    max_cpu_percent: 25
+    max_pids: 4
+  contributes:
+    # Conservative tools for an assistant: read the follow read-back, and stop
+    # a follow. There is deliberately no start tool — a follow begins only when
+    # an operator designates a subject in the cockpit.
+    tools:
+      - name: follow_status
+        title: "Follow status"
+        description: "Report the follow read-back: lock state, whether it is commanding, range, and setpoints."
+        safety_class: read
+        inputSchema:
+          type: object
+          properties: {}
+      - name: stop_follow
+        title: "Stop following"
+        description: "Disarm the follow behaviour. Only ever stops; a follow is started by an operator designating a subject, never by a tool."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties: {}
+
+gcs:
+  entrypoint: "gcs/plugin.bundle.js"
+  isolation: iframe
+  permissions:
+    - id: ui.slot.flight-skill
+    - id: ui.slot.node-detail-tab
+  contributes:
+    skills:
+      - id: follow-me
+        label: "Follow-Me"
+        icon: "crosshair"
+        category: behavior
+        toggle: true
+        # Arming streams guided setpoints to the flight controller, so the
+        # Skill Bar toggle confirms before it arms rather than firing on a
+        # single keypress.
+        confirm: true
+        arm_requirement: armed
+        # The Skill Bar toggle is a distinct chord from the click-a-target
+        # Follow action below so the two never share one key.
+        default_binding:
+          key: "shift+f"
+        activation:
+          via: config
+          config_key: active
+        state:
+          via: event
+          topic: "follow.state"
+    # Cockpit target actions: click a detected subject in the host overlay and
+    # pick Follow (or Stop following). The host owns the overlay, the box
+    # drawing, the selection, and the designate + config write — this plugin
+    # only declares the actions. "Follow this target" is bound to `f` on the
+    # selected target and "Stop following" to `x`; both differ from the Skill
+    # Bar toggle's shift+f.
+    target_actions:
+      - id: follow
+        label: "Follow this target"
+        icon: crosshair
+        order: 20
+        applies_to_class: person
+        designate: true
+        config_key: active
+        config_value: true
+        default_key: "f"
+      - id: stop-follow
+        label: "Stop following"
+        icon: circle-stop
+        order: 21
+        applies_to_class: person
+        designate: false
+        config_key: active
+        config_value: false
+        default_key: "x"
+    # The settings + live read-back tab on the drone's detail panel.
+    tabs:
+      - id: follow-me-tab
+        slot: node.detail.tab
+        profile: ["drone"]
+        title: "Follow-Me"
+        icon: "crosshair"
+        order: 70
+    # Native, declarative follow settings. The GCS renders these controls;
+    # the agent reads the same per-drone keys live each loop. `active` is not
+    # here — it is the skill toggle, not an operator setting.
+    parameters:
+      - key: follow_distance_m
+        binding: plugin.config
+        schema:
+          type: number
+          minimum: 3
+          maximum: 30
+          step: 0.5
+          default: 8
+        ui:
+          widget: range
+          label: "settings.followDistance"
+          group: "settings.title"
+          order: 10
+      - key: follow_height_m
+        binding: plugin.config
+        schema:
+          type: number
+          minimum: 0
+          maximum: 20
+          step: 0.5
+          default: 4
+        ui:
+          widget: range
+          label: "settings.followHeight"
+          group: "settings.title"
+          order: 20
+      - key: gimbal_point
+        binding: plugin.config
+        schema:
+          type: boolean
+          default: true
+        ui:
+          widget: boolean
+          label: "settings.gimbalPoint"
+          group: "settings.title"
+          order: 30
+      - key: camera_hfov_deg
+        binding: plugin.config
+        schema:
+          type: number
+          minimum: 30
+          maximum: 160
+          step: 1
+          default: 70
+        ui:
+          widget: number
+          label: "settings.cameraHfov"
+          group: "settings.title"
+          order: 40
+      # Fixed downward tilt of the designate camera below the horizon. A
+      # forward camera needs a positive tilt for the image-to-ground
+      # projection to intersect; 90 is straight down. The default is a modest
+      # forward-down angle so a fresh install can resolve a ground point.
+      - key: mount_pitch_deg
+        binding: plugin.config
+        schema:
+          type: number
+          minimum: 0
+          maximum: 90
+          step: 1
+          default: 30
+        ui:
+          widget: range
+          label: "settings.mountPitch"
+          group: "settings.title"
+          order: 42
+      # The camera whose detections the follow loop consumes. A registry
+      # picker: the operator pins a camera or leaves it on auto (the first
+      # detect camera → any camera for the detection filter).
+      - key: designate_camera
+        control: camera-selector
+        binding: agent.config
+        label: "settings.designateCamera"
+        purpose: detect
+        default: "auto"
+        ui:
+          group: "settings.title"
+          order: 45
+      # The detection model the follow loop consumes. A model picker bound to
+      # the shared vision detector; it lists every registered detection model,
+      # including the generic person model this plugin contributes.
+      - key: detector
+        binding: engine.detector
+        schema:
+          type: string
+          default: "coco-person"
+        ui:
+          widget: model
+          task: detection
+          label: "settings.detector"
+          group: "settings.title"
+          order: 50
+    # The generic person/COCO detection model the picker offers.
+    models:
+      - id: coco-person
+        task: detection
+        board_variants:
+          - board_match: rk3588
+            runtime: rknn
+            input: "640x640"
+            min_tops: 6
+          - board_match: cpu
+            runtime: onnx
+            input: "640x640"
+  locales:
+    - en

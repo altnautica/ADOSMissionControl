@@ -40,6 +40,8 @@ export interface PluginSlotContribution {
   iframeClassName?: string;
   /** Title attribute for assistive tech. Defaults to pluginId/panelId. */
   title?: string;
+  /** Cockpit zone a `cockpit.widget` contribution mounts in. */
+  zone?: string;
   /**
    * Stable install id for this plugin record, so revoke/install cycles
    * map to a single entry. Falls back to `pluginId` if the caller omits it.

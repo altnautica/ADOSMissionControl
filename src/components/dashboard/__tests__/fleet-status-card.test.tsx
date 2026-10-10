@@ -13,7 +13,11 @@ vi.mock("next-intl", () => ({
 }));
 
 import { FleetStatusCard } from "../FleetStatusCard";
-import { useFleetStore } from "@/stores/fleet-store";
+import { setFixtureFleet } from "../../../../tests/helpers/fleet-drones";
+
+vi.mock("@/stores/node-registry/use-fleet-drones", async (importOriginal) =>
+  (await import("../../../../tests/helpers/fleet-drones")).fleetDronesModuleMock(await importOriginal()),
+);
 import type { FleetDrone } from "@/lib/types";
 
 function row(id: string, status: string, navigationGpsDenied: boolean): FleetDrone {
@@ -22,12 +26,12 @@ function row(id: string, status: string, navigationGpsDenied: boolean): FleetDro
 
 afterEach(() => {
   cleanup();
-  useFleetStore.setState({ drones: [] });
+  setFixtureFleet({ drones: [] });
 });
 
 describe("FleetStatusCard GPS-denied count", () => {
   it("counts only nodes that are not offline", () => {
-    useFleetStore.setState({
+    setFixtureFleet({
       drones: [
         row("a", "online", true),
         row("b", "offline", true),
@@ -40,7 +44,7 @@ describe("FleetStatusCard GPS-denied count", () => {
   });
 
   it("hides the row when every GPS-denied node is offline", () => {
-    useFleetStore.setState({ drones: [row("b", "offline", true)] });
+    setFixtureFleet({ drones: [row("b", "offline", true)] });
     render(<FleetStatusCard />);
     expect(screen.queryByText("GPS-denied")).toBeNull();
   });

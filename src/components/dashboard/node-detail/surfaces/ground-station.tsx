@@ -22,21 +22,54 @@
  * @license GPL-3.0-only
  */
 
-import { GroundStationOverview } from "@/components/command/overview/GroundStationOverview";
-import { CockpitView } from "@/components/cockpit/CockpitView";
-import { RadioTab } from "@/components/command/nodes/ground-station/RadioTab";
-import { NetworkTab } from "@/components/command/nodes/ground-station/NetworkTab";
-import { DisplayTab } from "@/components/command/nodes/ground-station/DisplayTab";
-import { PhysicalUiTab } from "@/components/command/nodes/ground-station/PhysicalUiTab";
-import { PeripheralsTab } from "@/components/command/nodes/ground-station/PeripheralsTab";
-import { MeshTab } from "@/components/command/nodes/ground-station/MeshTab";
-import { CarriedDronesTab } from "@/components/command/nodes/ground-station/CarriedDronesTab";
-import { RcElrsLinkTab } from "@/components/command/nodes/RcElrsLinkTab";
-import { LogsTab } from "@/components/drone-detail/LogsTab";
+import dynamic from "next/dynamic";
 import type { SurfaceSpec } from "../surface-types";
 import { surfaceNodeDeviceId } from "../surface-types";
 import { STATUS_GROUP, LINK_GROUP, DEVICE_GROUP } from "../surface-groups";
 import { AGENT_SURFACE } from "../agent/agent-surface";
+
+// Every tab body loads on first open: the panel renders one at a time.
+const GroundStationOverview = dynamic(() =>
+  import("@/components/command/overview/GroundStationOverview").then(
+    (m) => m.GroundStationOverview,
+  ),
+);
+const GroundStationCockpit = dynamic(() =>
+  import("@/components/cockpit/GroundStationCockpit").then((m) => m.GroundStationCockpit),
+);
+const CarriedDronesTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/CarriedDronesTab").then(
+    (m) => m.CarriedDronesTab,
+  ),
+);
+const RadioTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/RadioTab").then((m) => m.RadioTab),
+);
+const NetworkTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/NetworkTab").then((m) => m.NetworkTab),
+);
+const MeshTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/MeshTab").then((m) => m.MeshTab),
+);
+const RcElrsLinkTab = dynamic(() =>
+  import("@/components/command/nodes/RcElrsLinkTab").then((m) => m.RcElrsLinkTab),
+);
+const DisplayTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/DisplayTab").then((m) => m.DisplayTab),
+);
+const PhysicalUiTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/PhysicalUiTab").then(
+    (m) => m.PhysicalUiTab,
+  ),
+);
+const PeripheralsTab = dynamic(() =>
+  import("@/components/command/nodes/ground-station/PeripheralsTab").then(
+    (m) => m.PeripheralsTab,
+  ),
+);
+const LogsTab = dynamic(() =>
+  import("@/components/drone-detail/LogsTab").then((m) => m.LogsTab),
+);
 
 export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
   {
@@ -46,14 +79,13 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     render: (ctx) => <GroundStationOverview name={ctx.displayName} />,
   },
   {
-    // The immersive piloting cockpit (received video + HUD + skill bar). A
-    // ground station has no local video/detections, so it degrades to a clean
-    // no-signal state rather than fabricating boxes. Shown for every ground
+    // A ground station flies the drone it carries: its cockpit hands over to
+    // that drone's cockpit, or says no drone is linked. Shown for every ground
     // node (no role gate).
     id: "cockpit",
     labelKey: "dronePanel.cockpit",
     group: STATUS_GROUP,
-    render: (ctx) => <CockpitView droneId={ctx.droneId} />,
+    render: (ctx) => <GroundStationCockpit groundDeviceId={surfaceNodeDeviceId(ctx)} />,
   },
   {
     // The aircraft this box is relaying, and the authority it holds over

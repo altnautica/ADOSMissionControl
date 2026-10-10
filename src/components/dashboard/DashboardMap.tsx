@@ -1,11 +1,12 @@
 "use client";
 
-import { useFleetStore } from "@/stores/fleet-store";
+import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
 import { FleetMap } from "@/components/shared/fleet-map";
 
 export function DashboardMap() {
-  const drones = useFleetStore((s) => s.drones);
+  // The map draws positions, so it follows every row change.
+  const drones = useFleetDrones();
   const selectDrone = useDroneManager((s) => s.selectDrone);
 
   return (

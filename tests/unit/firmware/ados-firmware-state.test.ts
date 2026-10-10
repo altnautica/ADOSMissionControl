@@ -10,6 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { IntlWrapper } from "../../helpers/intl-wrapper";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ describe("useFirmwareState — stack-aware checklist", () => {
   });
 
   it("starts on the ardupilot stack with the FC checklist items", () => {
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
 
     expect(result.current.firmwareStack).toBe("ardupilot");
     const keys = result.current.checklistItems.map((c) => c.key).sort();
@@ -117,7 +118,7 @@ describe("useFirmwareState — stack-aware checklist", () => {
   });
 
   it("swaps to ADOS items when the stack switches to ados-drone-agent", () => {
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
 
     act(() => {
       result.current.setFirmwareStack("ados-drone-agent");
@@ -128,7 +129,7 @@ describe("useFirmwareState — stack-aware checklist", () => {
   });
 
   it("uses the ADOS items for the ground-agent stack as well", () => {
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
 
     act(() => {
       result.current.setFirmwareStack("ados-ground-agent");
@@ -139,12 +140,12 @@ describe("useFirmwareState — stack-aware checklist", () => {
   });
 
   it("reports allChecked=false when no items are checked", () => {
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
     expect(result.current.allChecked).toBe(false);
   });
 
   it("reports allChecked=true when every FC item key has been checked", () => {
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
 
     act(() => {
       result.current.setChecked("paramBackup", true);
@@ -160,7 +161,7 @@ describe("useFirmwareState — stack-aware checklist", () => {
   });
 
   it("resets allChecked to false when the stack moves from FC to ADOS", () => {
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
 
     act(() => {
       result.current.setChecked("paramBackup", true);
@@ -183,7 +184,7 @@ describe("useFirmwareState — stack-aware checklist", () => {
   });
 
   it("reaches allChecked=true on the ADOS stack after flagging the ADOS items", () => {
-    const { result } = renderHook(() => useFirmwareState());
+    const { result } = renderHook(() => useFirmwareState(), { wrapper: IntlWrapper });
 
     act(() => {
       result.current.setFirmwareStack("ados-drone-agent");

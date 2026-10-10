@@ -6,7 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import type { CommandResult } from "@/lib/protocol/types";
 
 const toast = vi.fn();
@@ -40,7 +41,7 @@ beforeEach(() => {
 });
 
 async function testServo3() {
-  render(<ServoCalibrationSection />);
+  renderWithIntl(<ServoCalibrationSection />);
   fireEvent.click(screen.getByRole("switch"));
   fireEvent.click(screen.getByText("SERVO3"));
   fireEvent.click(screen.getByRole("button", { name: /Test/ }));

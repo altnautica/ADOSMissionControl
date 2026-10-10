@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedDrone, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
@@ -47,14 +46,11 @@ const EMPTY: string[] = [];
 export function FailsafePanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDrone = useDroneManager(selectSelectedDrone);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
   const { label: pl } = useParamLabel();
   const metadata = useParamMetadataMap();
   const { enumValues } = useParamEnums(metadata);
   const lbl = (raw: string) => <ParamFieldLabel raw={pl(raw)} metadata={metadata} />;
   const scrollRef = usePanelScroll("failsafe");
-  const [saving, setSaving] = useState(false);
 
   const drone = selectedDrone;
   const isPlane = useMemo(() => {
@@ -78,8 +74,9 @@ export function FailsafePanel() {
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, missingOptional,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
+    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames, optionalParams, panelId: "failsafe", autoLoad: true });
+  const { saving, save: handleSave, flash: handleFlash } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
@@ -93,18 +90,6 @@ export function FailsafePanel() {
         value={params.get(name) ?? 0} onChange={(v) => setLocalValue(name, v)} />
     </StarredParam>
   );
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Saved to flight controller", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    showFlashResult(await commitToFlash());
-  }
 
   return (
     <ArmedWarningBanner>

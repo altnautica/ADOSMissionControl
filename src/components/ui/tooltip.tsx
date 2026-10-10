@@ -256,7 +256,7 @@ export function Tooltip({
         role="tooltip"
         style={{ top: pos.top, left: pos.left, position: "fixed" }}
         className={cn(
-          "z-[2000] min-w-[16rem] max-w-[24rem] rounded-lg border border-border-default bg-bg-tertiary px-4 py-3 text-sm leading-relaxed text-text-primary shadow-xl",
+          "z-[2000] min-w-[16rem] max-w-[24rem] rounded-md border border-border-default bg-bg-tertiary px-4 py-3 text-sm leading-relaxed text-text-primary shadow-xl",
           multiline ? "whitespace-normal break-words" : "whitespace-nowrap",
           className,
         )}

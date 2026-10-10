@@ -1,6 +1,6 @@
 /**
- * Registers plugin-contributed flight skills for the active drone into the
- * cockpit Skill Bar registry, and seeds each skill's suggested default binding
+ * Registers extension-contributed flight skills for the cockpit's drone into
+ * the Skill Bar registry, and seeds each skill's suggested default binding
  * into the first empty hotbar slot of the active loadout.
  *
  * The host is a render-null effect sibling of the Skill Bar. It reads the
@@ -15,44 +15,47 @@
  * Default-binding seeding is "first empty slot, once": the skill drops into the
  * lowest-index empty slot of the active loadout, taking the suggested key /
  * gamepad button only when the cockpit does not reserve it and no other slot
- * holds it. Each loadout records the skills it was offered, so a slot the
- * operator later clears stays cleared (see `seedSuggestedBinding`).
+ * holds it. A suggested binding that collides is left unbound and the operator
+ * is told which skills need a binding. Each loadout records the skills it was
+ * offered, so a slot the operator later clears stays cleared (see
+ * `seedSuggestedBinding`).
  *
- * @module fly/PluginSkillHost
+ * @module cockpit/PluginSkillHost
  * @license GPL-3.0-only
  */
 
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
-import { useDroneManager } from "@/stores/drone-manager";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useSkillRegistry } from "@/lib/skills";
 import { buildPluginSkill } from "@/lib/skills/plugin-skills";
+import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import {
   installPluginConfigWriter,
   uninstallPluginConfigWriter,
 } from "@/lib/skills/plugin-config-writer";
 import { useDroneSkillContributions } from "@/hooks/use-drone-skill-contributions";
 import { usePluginSkillEgress } from "@/hooks/use-plugin-skill-egress";
+import { useToast } from "@/components/ui/toast";
 
-export function PluginSkillHost() {
-  const selectedId = useDroneManager((s) => s.selectedDroneId);
+export function PluginSkillHost({ droneId }: { droneId: string }) {
+  const t = useTranslations();
+  const { toast } = useToast();
   // Plugin install rows and the LAN plugin client are keyed by the node's
-  // bare device id, not the `node:<deviceId>` selection id.
-  const pluginDeviceId = selectedId
-    ? (deviceIdFromNodeId(selectedId) ?? selectedId)
-    : null;
+  // bare device id, not the `node:<deviceId>` node id.
+  const pluginDeviceId = droneId ? (deviceIdFromNodeId(droneId) ?? droneId) : null;
   const contributions = useDroneSkillContributions(pluginDeviceId ?? undefined);
 
-  // Poll the selected drone's plugins for their published state over the LAN
-  // and feed it to the Skill Bar store + the plugin event bus (live state ring).
+  // Poll the drone's extensions for their published state over the LAN and
+  // feed it to the Skill Bar store + the extension event bus (live state ring).
   usePluginSkillEgress(pluginDeviceId);
 
   // Wire the live config writer for the whole skill surface: a skill toggle's
-  // activate/deactivate flips the plugin's per-drone `active` through the LAN
+  // activate/deactivate flips the extension's per-drone `active` through the
   // agent. Installed once while the cockpit is mounted (it resolves the drone
   // per call), cleared on unmount so a skill then no-ops gracefully.
   useEffect(() => {
@@ -67,38 +70,57 @@ export function PluginSkillHost() {
     ids: new Set(),
   });
 
+  // The latest translator + toast, read inside the registration effect without
+  // making a locale or provider change re-run it.
+  const feedbackRef = useRef({ t, toast });
+  useEffect(() => {
+    feedbackRef.current = { t, toast };
+  }, [t, toast]);
+
   useEffect(() => {
     const registry = useSkillRegistry.getState();
     const prev = registeredRef.current;
-    const droneId = selectedId ?? null;
-    const sameDrone = droneId !== null && prev.droneId === droneId;
+    const target = droneId || null;
+    const sameDrone = target !== null && prev.droneId === target;
 
     // Same drone, source still resolving: keep what is registered.
     if (sameDrone && contributions === null) return;
 
     const next = new Set<string>();
-    if (droneId !== null && contributions !== null) {
+    const unbound: string[] = [];
+    if (target !== null && contributions !== null) {
       for (const contribution of contributions) {
         const skill = buildPluginSkill(contribution);
         registry.register(skill);
         next.add(skill.id);
         if (contribution.defaultBinding) {
           const settings = useSettingsStore.getState();
-          settings.seedSuggestedBinding(
+          const outcome = settings.seedSuggestedBinding(
             settings.activeLoadoutId,
             skill.id,
             contribution.defaultBinding,
           );
+          if (outcome === "unbound") {
+            unbound.push(skillDisplayLabel(skill, feedbackRef.current.t));
+          }
         }
       }
     }
 
     for (const id of prev.ids) {
       if (next.has(id)) continue;
-      registry.unregister(id, sameDrone ? { deactivateOn: droneId } : undefined);
+      registry.unregister(id, sameDrone ? { deactivateOn: target } : undefined);
     }
-    registeredRef.current = { droneId, ids: next };
-  }, [selectedId, contributions]);
+    registeredRef.current = { droneId: target, ids: next };
+
+    if (unbound.length > 0) {
+      const { t: translate, toast: notify } = feedbackRef.current;
+      notify(
+        translate("extensions.bindings.unbound", { skills: unbound.join(", ") }),
+        "warning",
+      );
+    }
+  }, [droneId, contributions]);
 
   // Host teardown drops the registrations without commanding any vehicle.
   useEffect(

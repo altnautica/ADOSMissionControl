@@ -116,23 +116,41 @@ export function effectiveWidgetZone(
 }
 
 /**
- * Whether a widget shows under the current loadout layout. Precedence:
+ * Whether the operator's layout toggles a widget ON. Toggles only show/hide;
+ * density is a separate question ({@link widgetMeetsDensity}). Precedence:
  *  1. a widget bound to a `CockpitLayout` chrome flag follows that toggle;
  *  2. else a per-widget `hidden` override (the chips + plugin widgets) wins;
  *  3. else its own `defaultVisible` (default true).
+ */
+export function isCockpitWidgetEnabled(
+  widget: CockpitWidget,
+  layout: CockpitLayout,
+): boolean {
+  if (widget.layoutKey) return layout[widget.layoutKey];
+  const hidden = layout.widgets?.[widget.id]?.hidden;
+  if (hidden !== undefined) return !hidden;
+  return widget.defaultVisible ?? true;
+}
+
+/** Whether the active density admits a widget. Decided by `minDensity` alone. */
+export function widgetMeetsDensity(
+  widget: CockpitWidget,
+  density: CockpitDensity,
+): boolean {
+  return !widget.minDensity || meetsDensity(widget.minDensity, density);
+}
+
+/**
+ * Whether a widget renders: toggled on AND admitted by the active density.
+ * The layout editor reads the two halves separately so it can say "hidden at
+ * this density" for a widget that is on but thinned out.
  */
 export function isCockpitWidgetVisible(
   widget: CockpitWidget,
   layout: CockpitLayout,
 ): boolean {
-  // Density is a hard floor: a widget the operator has thinned out of the
-  // cockpit is hidden regardless of the flags below, which is what the CSS
-  // rules it replaces did.
-  if (widget.minDensity && !meetsDensity(widget.minDensity, layout.density)) {
-    return false;
-  }
-  if (widget.layoutKey) return layout[widget.layoutKey];
-  const hidden = layout.widgets?.[widget.id]?.hidden;
-  if (hidden !== undefined) return !hidden;
-  return widget.defaultVisible ?? true;
+  return (
+    isCockpitWidgetEnabled(widget, layout) &&
+    widgetMeetsDensity(widget, layout.density)
+  );
 }

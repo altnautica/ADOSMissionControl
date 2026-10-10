@@ -19,8 +19,11 @@
  * The `<PluginSlot>` capability-gate (`ui.slot.<id>`) still applies, so a
  * contribution missing its slot cap is dropped with a one-shot toast.
  *
- * The per-drone path (`usePluginContributions(deviceId, slot)` + the keyed
- * per-drone `<PluginHostProvider>`) is untouched.
+ * For a LAN-only operator (signed out) the GCS has no fleet-wide install
+ * record of a node-installed plugin, so the slot also mounts the same slot's
+ * contributions from every LAN-paired node, one keyed per-node host each. A
+ * plugin installed on a node therefore lights its fleet surfaces (a map
+ * overlay, a settings section) without a cloud account.
  *
  * @license GPL-3.0-only
  */
@@ -28,11 +31,16 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { PluginSlot } from "@/components/plugins/PluginSlot";
 import { PluginHostProvider } from "@/components/plugins/PluginHostProvider";
 import { useFleetPluginContributions } from "@/hooks/use-fleet-plugin-contributions";
+import { usePluginContributions } from "@/hooks/use-plugin-contributions";
 import type { PluginSlotName } from "@/lib/plugins/types";
+import { isDemoMode } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth-store";
+import { useLocalNodesStore } from "@/stores/local-nodes-store";
 
 interface FleetPluginSlotProps {
   /** Which fleet slot to host. */
@@ -47,7 +55,8 @@ interface FleetPluginSlotProps {
 
 /**
  * Host one fleet slot. Resolves the fleet contributions for `name`, mounts a
- * fleet-scoped provider, and renders a `<PluginSlot>` over them. Renders the
+ * fleet-scoped provider, and renders a `<PluginSlot>` over them, plus one
+ * per-node host for each LAN-paired node when signed out. Renders the
  * `emptyState` (or nothing) when no plugin contributes.
  */
 export function FleetPluginSlot({
@@ -57,14 +66,57 @@ export function FleetPluginSlot({
   iframeClassName,
 }: FleetPluginSlotProps) {
   const contributions = useFleetPluginContributions(name);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const lanNodeIds = useLocalNodesStore(
+    useShallow((s) => s.nodes.filter((n) => n.hostname && n.apiKey).map((n) => n.deviceId)),
+  );
+  const lanNodes = !isAuthenticated && !isDemoMode() ? lanNodeIds : [];
 
-  // No fleet contribution for this slot — stay mute (or show the host's empty
-  // copy). Mounting the provider with an empty list is harmless, but skipping
-  // it keeps a non-contributing surface free of an idle host.
-  if (contributions.length === 0) return <>{emptyState}</>;
+  // No fleet contribution and no node to ask — stay mute (or show the host's
+  // empty copy).
+  if (contributions.length === 0 && lanNodes.length === 0) return <>{emptyState}</>;
 
   return (
-    <PluginHostProvider deviceId={null} contributions={contributions}>
+    <>
+      {contributions.length > 0 ? (
+        <PluginHostProvider deviceId={null} contributions={contributions}>
+          <PluginSlot
+            name={name}
+            contributions={contributions}
+            className={className}
+            iframeClassName={iframeClassName}
+          />
+        </PluginHostProvider>
+      ) : null}
+      {lanNodes.map((deviceId) => (
+        <LanNodeSlot
+          key={deviceId}
+          deviceId={deviceId}
+          name={name}
+          className={className}
+          iframeClassName={iframeClassName}
+        />
+      ))}
+    </>
+  );
+}
+
+/** One LAN-paired node's contributions to a fleet slot. */
+function LanNodeSlot({
+  deviceId,
+  name,
+  className,
+  iframeClassName,
+}: {
+  deviceId: string;
+  name: PluginSlotName;
+  className?: string;
+  iframeClassName?: string;
+}) {
+  const contributions = usePluginContributions(deviceId, name);
+  if (contributions.length === 0) return null;
+  return (
+    <PluginHostProvider deviceId={deviceId} contributions={contributions}>
       <PluginSlot
         name={name}
         contributions={contributions}

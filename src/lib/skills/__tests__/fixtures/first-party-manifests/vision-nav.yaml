@@ -1,0 +1,136 @@
+schema_version: 2
+id: com.altnautica.vision-nav
+name: "ADOS Vision Navigation"
+version: "0.4.1"
+description: "GPS-denied navigation. Optical flow from a downward camera. Supports ArduPilot, PX4, and iNav 7.0+ on USB UVC or CSI cameras."
+description_long: |
+  Lets the drone hold position when GPS is unreliable — indoors, under bridges, in urban canyons. A downward camera and the flight controller's gyro feed a 30 Hz angular-flow measurement over MAVLink, so position-hold, loiter, and missions keep working unchanged.
+
+  Three modes: optical flow with a rangefinder (low altitude on textured ground), optical flow without one (barometer or GPS height for scale, drifts above 5 m), or Off.
+
+  Every tick it checks itself. If flow quality drops or the scale source goes unhealthy it steps down the scale ladder and warns the GCS at each step; a sustained degraded streak flips the companion node to CRITICAL.
+
+  Works with ArduPilot 4.5+, PX4 1.14+, and iNav 7.0+. Rolling-shutter USB or CSI cameras are fine. Watch flow quality and the camera-IMU sync offset on the Vision Nav panel.
+features:
+  - "Optical flow with or without rangefinder (Lucas-Kanade tracker)"
+  - "Rangefinder-free scale ladder (baro, GPS altitude, static fallback)"
+  - "Auto-detect ArduPilot, PX4, or iNav and emit appropriate MAVLink"
+  - "Per-mode pre-arm checks with degradation fallback ladder"
+  - "Live telemetry: flow quality, flow rate, scale source, sync offset, mode state"
+hardware_requirements:
+  cameras: "USB UVC global-shutter or rolling-shutter, or CSI via V4L2"
+  fc_firmware: "ArduPilot 4.5+, PX4 1.14+, iNav 7.0+"
+  boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "pi-zero-2w"]
+  optional:
+    - "Rangefinder (TF-Luna, Garmin LIDAR-Lite, ST VL53L1X) for the optical-flow mode"
+resource_impact:
+  output_rate_hz: 30
+  cpu_percent_peak: 80
+  ram_mb: 512
+  pids: 24
+  startup_time_seconds: 5
+required_fc_parameters:
+  ardupilot:
+    - param: "FLOW_TYPE"
+      value: "5"
+      note: "Accept OPTICAL_FLOW_RAD over MAVLink"
+    - param: "EK3_SRC_OPTIONS"
+      note: "Select the optical-flow velocity source for the active EKF lane"
+  px4:
+    - param: "EKF2_OF_CTRL"
+      note: "Enable optical-flow fusion"
+  inav:
+    - param: "opflow_hardware"
+      value: "MAVLINK"
+    - param: "nav_use_optflow_for_poshold"
+      value: "ON"
+telemetry_fields:
+  - "navigation.mode"
+  - "navigation.estimatorState"
+  - "navigation.companionState"
+  - "navigation.flowQuality"
+  - "navigation.flowRateHz"
+  - "navigation.flowDistanceM"
+  - "navigation.flowScaleSource"
+  - "navigation.rangefinderTopology"
+  - "navigation.imuSource"
+  - "navigation.imuRateHz"
+  - "navigation.cameraIntrinsicsLoaded"
+  - "navigation.cameraImuSyncOffsetMs"
+  - "navigation.preArmReport"
+documentation_url: "https://docs.altnautica.com/drone-agent/vision-nav-overview"
+author: "Altnautica"
+homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/vision-nav"
+license: "GPL-3.0-or-later"
+risk: high
+
+compatibility:
+  ados_version: ">=0.99.125"
+  gcs_version: ">=0.56.0"
+  supported_boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "pi-zero-2w"]
+
+agent:
+  # The agent half is a compiled Rust binary. The plugin host execs it
+  # directly under systemd (not through the Python runner), passing the
+  # per-plugin socket on the command line and the capability token +
+  # agent id through the unit environment. The pack step places the
+  # cross-compiled aarch64 binary at the entrypoint path in the archive.
+  runtime: rust
+  entrypoint: "bin/vision-nav"
+  isolation: subprocess
+  per_drone_config: true
+  permissions:
+    # Every grant below has a call site in agent/src; a grant with no
+    # call site is not requested. The plugin does not open a camera: it
+    # reads normalized frames from the shared vision frame bus, so
+    # vision.frame.read replaces the camera / UVC / CSI / depth grants.
+    - id: vision.frame.read
+    - id: hardware.uart
+    - id: hardware.i2c
+    - id: telemetry.extend
+    - id: event.publish
+    - id: mavlink.read
+    - id: mavlink.write
+    - id: mavlink.component.peripheral
+  resources:
+    max_ram_mb: 512
+    max_cpu_percent: 80
+    max_pids: 24
+  mavlink_components:
+    - component_id: 198
+      component_kind: peripheral
+      sub_id: 1
+
+gcs:
+  entrypoint: "gcs/plugin.bundle.js"
+  isolation: iframe
+  permissions:
+    - id: ui.slot.node-detail-tab
+    - id: ui.slot.flight-skill
+    - id: telemetry.subscribe.navigation
+  contributes:
+    tabs:
+      - id: vision-nav-tab
+        slot: node.detail.tab
+        title: "Vision Nav"
+        icon: "compass"
+        order: 60
+        profile: ["drone"]
+    # A cockpit Skill that engages / disengages the estimator. Arming it feeds
+    # the flight controller a flow measurement over MAVLink, so the toggle
+    # confirms before it engages rather than firing on a single keypress. The
+    # agent reads the `active` per-drone key live and idles vision navigation
+    # (effective mode off, nothing emitted) when disengaged.
+    skills:
+      - id: engage
+        label: "Engage"
+        icon: navigation
+        category: navigation
+        toggle: true
+        confirm: true
+        arm_requirement: any
+        default_binding: { key: "shift+n" }
+        activation: { via: config, config_key: active }
+        state: { via: event, topic: "navigation.engage" }
+  locales:
+    - en

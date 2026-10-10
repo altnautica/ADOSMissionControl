@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import type { DroneProtocol } from "@/lib/protocol/types";
@@ -31,6 +32,7 @@ export function MavlinkShellPanel() {
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const connectionState = useDroneStore((s) => s.connectionState);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.comms");
 
   const [lines, setLines] = useState<string[]>([]);
   /**
@@ -126,7 +128,7 @@ export function MavlinkShellPanel() {
 
   function copyOutput() {
     navigator.clipboard.writeText(lines.join('\n'));
-    toast("Output copied to clipboard", "success");
+    toast(t("shellOutputCopied"), "success");
   }
 
   function downloadOutput() {

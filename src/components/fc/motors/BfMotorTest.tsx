@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { useMotorTestController } from "./use-motor-test-controller";
  */
 export function BfMotorTest({ connected }: { connected: boolean }) {
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.motors");
   const { isHardBlocked } = useArmedLock();
   const test = useMotorTestController();
   const [propsRemoved, setPropsRemoved] = useState(false);
@@ -23,8 +25,8 @@ export function BfMotorTest({ connected }: { connected: boolean }) {
   }, [test.error, toast]);
 
   function handleEnable() {
-    if (test.enable()) toast("Motor test started. Keep clear of props!", "warning");
-    else toast("Cannot test motors while armed", "error");
+    if (test.enable()) toast(t("motorTestStarted"), "warning");
+    else toast(t("motorTestArmed"), "error");
   }
 
   const count = test.motorCount ?? 0;

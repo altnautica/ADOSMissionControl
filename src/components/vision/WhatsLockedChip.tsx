@@ -18,6 +18,8 @@
  */
 
 import { useEffect, useState } from "react";
+import { useClockTick } from "@/lib/agent/freshness";
+import { useClockStore } from "@/stores/clock-store";
 import { Crosshair, X } from "lucide-react";
 
 import { useCameraDetectionBatch } from "@/hooks/use-detection-batch";
@@ -47,18 +49,11 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
   const batch = useCameraDetectionBatch(droneId, here?.cameraId ?? null);
   const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
 
-  const [now, setNow] = useState(() => Date.now());
-
-  // Age the feed on its own so the chip flips to "feed stale" when the stream
-  // stops, not only when a fresh batch happens to arrive. Keyed on whether a
-  // feed EXISTS, not the batch object (replaced every frame), so the interval
-  // is created once per feed lifecycle. Hooks stay above the early return.
-  const hasFeed = !!batch;
-  useEffect(() => {
-    if (!hasFeed) return;
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
-  }, [hasFeed]);
+  // Age the feed on the shared 1 Hz clock so the chip flips to "feed stale"
+  // when the stream stops, not only when a fresh batch happens to arrive.
+  useClockTick();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => useClockStore.subscribe((s) => setNow(s.now)), []);
 
   if (!here) return null;
 
@@ -78,7 +73,7 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
   else if (live) label = lockLabel(live.lockState);
   else label = feed === "fresh" ? "Not in view" : "Waiting for feed";
 
-  const warnColor = stale && tier === "offload" ? "var(--crit)" : "var(--warn)";
+  const warnColor = stale && tier === "offload" ? "var(--hud-crit)" : "var(--hud-warn)";
   const warn = stale || notInView;
   const who =
     here.trackId != null

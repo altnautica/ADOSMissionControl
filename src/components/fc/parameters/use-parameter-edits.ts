@@ -46,6 +46,7 @@ export interface ParameterEditsState extends Omit<ParameterListState, "applyWrit
 
 export function useParameterEdits(): ParameterEditsState {
   const t = useTranslations("parameters");
+  const tToast = useTranslations("fcToasts.parameters");
   const { toast } = useToast();
   const [modified, setModified] = useState<Map<string, number>>(new Map());
   const resetModified = useCallback(() => setModified(new Map()), []);
@@ -151,14 +152,14 @@ export function useParameterEdits(): ParameterEditsState {
     try {
       const result = await protocol.reboot();
       if (!result.success) {
-        toast(result.message || "The FC refused the reboot command", "error");
+        toast(result.message || tToast("rebootRefused"), "error");
       }
     } catch {
-      toast("Reboot command failed", "error");
+      toast(tToast("rebootFailed"), "error");
     } finally {
       setShowRebootPrompt(false);
     }
-  }, [toast]);
+  }, [toast, tToast]);
 
   const resetToDefaults = useCallback(async () => {
     const protocol = useDroneManager.getState().getSelectedProtocol();

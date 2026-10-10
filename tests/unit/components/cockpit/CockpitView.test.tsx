@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, cleanup, fireEvent } from "@testing-library/react";
+import { render, cleanup, fireEvent, act } from "@testing-library/react";
 
 // Real translations resolved against the en bundle so the cockpit's i18n strings
 // render exactly as a user would see them.
@@ -24,10 +24,9 @@ vi.mock("@/components/flight/VideoCanvas", () => ({
 }));
 
 // The gamepad poller touches navigator.getGamepads + rAF; the cockpit only needs
-// it to be start/stoppable.
+// to hold and release it.
 vi.mock("@/lib/input/gamepad-poller", () => ({
-  startGamepadPolling: vi.fn(),
-  stopGamepadPolling: vi.fn(),
+  acquireGamepadPolling: () => () => {},
   startManualControlStream: vi.fn(),
   stopManualControlStream: vi.fn(),
 }));
@@ -35,26 +34,41 @@ vi.mock("@/lib/input/gamepad-poller", () => ({
 // Unified flight recording drives MediaRecorder + the telemetry recorder; stub
 // it to a controllable object so REC is observable without media APIs.
 const recToggle = vi.fn();
+const rec = vi.hoisted(() => ({ isRecording: false, startedAt: null as number | null }));
 vi.mock("@/hooks/use-flight-recording", () => ({
   useFlightRecording: () => ({
-    isRecording: false,
-    durationMs: 0,
+    isRecording: rec.isRecording,
+    startedAt: rec.startedAt,
     toggle: recToggle,
   }),
+  useFlightRecordingStartedAt: () => rec.startedAt,
+}));
+
+// Only the cockpit root calls this hook, once per render, so its call count is
+// the root's render count.
+const rootRenders = vi.hoisted(() => ({ count: 0 }));
+vi.mock("@/hooks/use-video-streams", () => ({
+  useVideoStreams: () => {
+    rootRenders.count += 1;
+  },
 }));
 
 // The Cockpit flag store persists to window.localStorage; replace it with an
-// equivalent non-persisted store (identical enabled/setEnabled/toggle contract).
+// equivalent non-persisted store (same enabled / altitude-reference contract).
 vi.mock("@/stores/cockpit-store", async () => {
   const { create } = await vi.importActual<typeof import("zustand")>("zustand");
   const useCockpitStore = create<{
     enabled: boolean;
     setEnabled: (enabled: boolean) => void;
     toggle: () => void;
+    altitudeRef: "rel" | "msl";
+    setAltitudeRef: (ref: "rel" | "msl") => void;
   }>((set, get) => ({
     enabled: false,
     setEnabled: (enabled) => set({ enabled }),
     toggle: () => set({ enabled: !get().enabled }),
+    altitudeRef: "rel",
+    setAltitudeRef: (altitudeRef) => set({ altitudeRef }),
   }));
   return { useCockpitStore };
 });
@@ -157,5 +171,27 @@ describe("CockpitView", () => {
     const rec = getByRole("button", { name: messages.cockpit.rec });
     fireEvent.click(rec);
     expect(recToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not re-render the cockpit root while a recording runs", () => {
+    vi.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
+    });
+    rec.isRecording = true;
+    rec.startedAt = Date.now();
+    try {
+      rootRenders.count = 0;
+      renderCockpit();
+      for (let i = 0; i < 12; i++) {
+        act(() => {
+          vi.advanceTimersByTime(250);
+        });
+      }
+      expect(rootRenders.count).toBeLessThanOrEqual(2);
+    } finally {
+      rec.isRecording = false;
+      rec.startedAt = null;
+      vi.useRealTimers();
+    }
   });
 });

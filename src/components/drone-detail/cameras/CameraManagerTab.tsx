@@ -22,7 +22,7 @@ import {
   useAgentCapabilitiesStore,
   selectDeviceCapabilities,
 } from "@/stores/agent-capabilities-store";
-import { useFleetStore } from "@/stores/fleet-store";
+import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { useCameraManagerStore } from "@/stores/camera-manager-store";
 import { useToast } from "@/components/ui/toast";
@@ -58,8 +58,8 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
   const { toast } = useToast();
   // The node's own agent identity: a node page never borrows the attached
   // connection of another node.
-  const nodeDeviceId = useFleetStore(
-    (s) => s.drones.find((d) => d.id === droneId)?.cloudDeviceId ?? null,
+  const nodeDeviceId = useFleetDrones(
+    (drones) => drones.find((d) => d.id === droneId)?.cloudDeviceId ?? null,
   );
   const direct = useNodeDirectAgent(nodeDeviceId);
   const client = direct?.client ?? null;

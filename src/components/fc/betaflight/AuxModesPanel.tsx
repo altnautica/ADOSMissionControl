@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
@@ -48,6 +49,7 @@ function AuxCard({ icon, title, description, children }: {
 export function AuxModesPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.betaflight");
   const scrollRef = usePanelScroll("aux-modes");
 
   // Modes the FC offers, keyed by permanent box id (MSP_BOXNAMES + MSP_BOXIDS).
@@ -90,14 +92,14 @@ export function AuxModesPanel() {
       setRanges(loaded);
       setOriginalRanges(loaded.map((r) => ({ ...r })));
       setHasLoaded(true);
-      toast("Loaded auxiliary mode configuration", "success");
+      toast(t("auxModesLoaded"), "success");
     } catch {
       // A read failure leaves the panel empty and unloaded; nothing is
       // adopted as the vehicle's configuration.
       setError("Could not read mode ranges from the flight controller");
-      toast("Could not read mode ranges — nothing loaded", "error");
+      toast(t("auxModesReadFailed"), "error");
     } finally { setLoading(false); }
-  }, [selectedProtocol, toast]);
+  }, [selectedProtocol, toast, t]);
 
   const readRef = useRef(readFromFc);
   readRef.current = readFromFc;
@@ -111,19 +113,19 @@ export function AuxModesPanel() {
       const result = await protocol.setModeRanges(ranges);
       if (result.success) {
         setOriginalRanges(ranges.map((r) => ({ ...r })));
-        toast("Mode ranges saved to the flight controller", "success");
+        toast(t("modeRangesSaved"), "success");
       } else {
-        toast(result.message || "Failed to save mode ranges", "error");
+        toast(result.message || t("modeRangesSaveFailed"), "error");
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to save mode ranges", "error");
+      toast(err instanceof Error ? err.message : t("modeRangesSaveFailed"), "error");
     } finally { setSaving(false); }
-  }, [selectedProtocol, ranges, toast]);
+  }, [selectedProtocol, ranges, toast, t]);
 
   const addRange = useCallback((boxId: number) => {
-    if (ranges.length >= MAX_RANGES) { toast(`Maximum ranges reached (${MAX_RANGES})`, "warning"); return; }
+    if (ranges.length >= MAX_RANGES) { toast(t("maxRangesReached", { max: MAX_RANGES }), "warning"); return; }
     setRanges((prev) => [...prev, { boxId, auxChannel: 0, rangeStart: 1700, rangeEnd: 2100, modeLogic: 0, linkedTo: 0 }]);
-  }, [ranges.length, toast]);
+  }, [ranges.length, toast, t]);
 
   const removeRange = useCallback((index: number) => { setRanges((prev) => prev.filter((_, i) => i !== index)); }, []);
 

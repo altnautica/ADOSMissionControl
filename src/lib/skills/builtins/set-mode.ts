@@ -17,7 +17,7 @@
  */
 
 import type { Skill } from "../types";
-import { disabledIfNoLink, REASON } from "./_shared";
+import { disabledIfNoLink, modeChangeConfirm, REASON } from "./_shared";
 
 export const setModeSkill: Skill = {
   id: "set-mode",
@@ -28,6 +28,9 @@ export const setModeSkill: Skill = {
   toggle: false,
   bindable: false,
   armRequirement: "any",
+  // A missing target is refused by activate below; there is nothing to confirm.
+  confirmFor: (args) =>
+    args?.targetMode ? modeChangeConfirm(args.targetMode) : undefined,
   getState: (ctx) => disabledIfNoLink(ctx) ?? { kind: "idle" },
   activate: async (ctx, args) => {
     const target = args?.targetMode;

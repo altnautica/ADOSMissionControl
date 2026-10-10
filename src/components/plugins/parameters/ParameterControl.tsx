@@ -35,6 +35,7 @@ import {
 } from "@/lib/plugins/parameters/schema";
 import type { ParsedParameterContribution } from "@/lib/plugins/parameters/parse";
 import { ModelPicker } from "@/components/vision/ModelPicker";
+import { useCameraRoster } from "@/lib/plugins/parameters/use-camera-roster";
 
 type ParameterValue = string | number | boolean;
 
@@ -207,6 +208,20 @@ export function ParameterControl({
     );
   }
 
+  if (widget === "camera") {
+    return (
+      <CameraParameterControl
+        label={label}
+        help={help}
+        purpose={ui?.purpose}
+        value={String(value)}
+        disabled={disabled}
+        droneId={droneId}
+        onCommit={onCommit}
+      />
+    );
+  }
+
   if (widget === "boolean") {
     return (
       <div className="flex flex-col gap-1">
@@ -357,5 +372,64 @@ export function ParameterControl({
         )}
       />
     </FieldShell>
+  );
+}
+
+/**
+ * A camera picker over the node's roster. The value is a roster camera id or
+ * "auto" (the plugin picks the first camera with the declared purpose).
+ * Cameras with the declared purpose list first. When the roster cannot be
+ * read the picker keeps "auto" and the current value and says why, rather
+ * than presenting an empty roster as the node's real camera set.
+ */
+function CameraParameterControl({
+  label,
+  help,
+  purpose,
+  value,
+  disabled,
+  droneId,
+  onCommit,
+}: {
+  label: string;
+  help?: string;
+  purpose?: string;
+  value: string;
+  disabled: boolean;
+  droneId?: string;
+  onCommit: (value: ParameterValue) => void;
+}) {
+  const roster = useCameraRoster(droneId);
+  const cameras = [...(roster ?? [])].sort((a, b) => {
+    const am = purpose && a.purpose.includes(purpose) ? 0 : 1;
+    const bm = purpose && b.purpose.includes(purpose) ? 0 : 1;
+    return am - bm;
+  });
+  const options = [
+    { value: "auto", label: purpose ? `Auto (first ${purpose} camera)` : "Auto" },
+    ...cameras.map((c) => ({ value: c.id, label: c.name ? `${c.name} (${c.id})` : c.id })),
+  ];
+  if (!options.some((o) => o.value === value)) {
+    options.push({ value, label: value });
+  }
+  const note =
+    roster === null
+      ? "Camera list unavailable: this node's roster could not be read"
+      : roster === undefined
+        ? "Loading cameras…"
+        : help;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs text-text-secondary">{label}</span>
+      <Select
+        options={options}
+        value={value}
+        onChange={(next) => {
+          if (next !== value) onCommit(next);
+        }}
+        disabled={disabled}
+      />
+      {note ? <span className={HELP_CLASS}>{note}</span> : null}
+    </div>
   );
 }

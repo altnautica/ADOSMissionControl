@@ -3,47 +3,43 @@
 /**
  * @module hooks/use-hud-instruments
  * @description Freshness-gated, FRAME-ALIGNED telemetry read for the
- * glass-cockpit instruments (attitude indicator, speed/alt tapes, flight-path
- * marker, heading). The derivation itself lives in `@/lib/hud-readings`,
- * shared with the canvas HUDs' rAF loop, so a DOM instrument and the canvas
- * beside it cannot disagree about whether a reading is known. A stale/absent
- * sample yields `null`, so an instrument shows "—" rather than a fabricated 0
- * (no fabricated reading).
+ * glass-cockpit instruments (attitude indicator, flight-path marker, heading
+ * tape, speed/alt tapes, vertical speed, wind). The derivation itself lives in
+ * `@/lib/hud-readings`, shared with the canvas HUDs' rAF loop, so a DOM
+ * instrument and the canvas beside it cannot disagree about whether a reading
+ * is known. A stale/absent sample yields `null`, so an instrument shows "—"
+ * rather than a fabricated 0.
  *
- * Re-renders are driven by TWO signals, and both are load-bearing:
- * the store's `_version` (new telemetry arrived) and the shared 1 Hz clock tick
- * (time passed). `deriveHudInstruments` gates every reading against
- * `Date.now()` at CALL time, so without the tick a silent link stops bumping
- * `_version`, this memo never re-runs, and the last attitude/speed/altitude
- * stays painted forever — while the canvas HUD, which reads inside a rAF loop,
- * decays correctly and disagrees with the DOM instruments beside it.
- * Ring-buffer refs are stable.
+ * ## Once per animation frame
+ *
+ * The hook takes no subscription to the telemetry store's `_version`. It runs
+ * one `requestAnimationFrame` loop, derives the instruments once per frame,
+ * and commits a new reading to React only when a value actually changed. So:
+ *
+ * - a burst of telemetry between two frames costs one derivation, not one per
+ *   sample;
+ * - a silent link still decays on time: every reading is gated against
+ *   `Date.now()` at derivation time, and the loop keeps deriving, so a sample
+ *   crossing the freshness threshold blanks its instrument on the next frame;
+ * - only the component that calls this hook re-renders. Call it ONCE per
+ *   instrument cluster (the cockpit `HudLayer`) and pass the reading down.
  *
  * ## Frame alignment
  *
  * Every consumer of this hook is composited OVER the video. Feeding it
  * `latest()` paints the newest telemetry onto a frame captured 180-240 ms
  * earlier, so through a manoeuvre the horizon, speed and altitude an operator
- * reads are ahead of the picture they are read against — at 15 m/s that is
- * ~3.5 m of position error and a visibly out-of-phase horizon through a roll,
- * the FPV desync that induces pilot-induced oscillation. Each channel is
+ * reads are ahead of the picture they are read against. Each channel is
  * therefore sampled at `now - frameAgeMs` through the ring buffers'
- * nearest-timestamp lookup, so an instrument travels with its frame.
- *
- * The derivation is untouched: it still receives one sample per channel and
- * still owns every freshness verdict. Only WHICH sample it receives changed.
- *
- * When no estimator knows the frame age (`useVideoFrameAge` returns null) the
- * offset is zero and the lookup collapses to the newest sample — the prior
- * behaviour, and the only honest default. The cockpit states that the age is
- * unknown rather than implying an alignment it did not achieve.
+ * nearest-timestamp lookup, so an instrument travels with its frame. When no
+ * estimator knows the frame age (`useVideoFrameAge` returns null) the offset
+ * is zero and the lookup collapses to the newest sample.
  *
  * @license GPL-3.0-only
  */
 
-import { useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useClockTick } from "@/lib/agent/freshness";
 import { useVideoFrameAge } from "@/hooks/use-video-frame-age";
 import { deriveHudInstruments, type HudInstruments } from "@/lib/hud-readings";
 import type { Timestamped } from "@/lib/telemetry/freshness";
@@ -53,22 +49,62 @@ const sampleTs = (s: Timestamped): number => s.timestamp;
 
 export type { HudInstruments } from "@/lib/hud-readings";
 
-export function useHudInstruments(): HudInstruments {
-  const version = useTelemetryStore((s) => s._version);
-  const attitudeBuf = useTelemetryStore((s) => s.attitude);
-  const positionBuf = useTelemetryStore((s) => s.position);
-  const vfrBuf = useTelemetryStore((s) => s.vfr);
-  const frameAgeMs = useVideoFrameAge()?.ms ?? 0;
-  const tick = useClockTick();
+/** Derive the instruments for the frame being shown `frameAgeMs` ago. */
+export function readHudInstruments(frameAgeMs: number): HudInstruments {
+  const t = useTelemetryStore.getState();
+  const at = Date.now() - frameAgeMs;
+  return deriveHudInstruments({
+    attitude: t.attitude.nearest(at, sampleTs),
+    position: t.position.nearest(at, sampleTs),
+    vfr: t.vfr.nearest(at, sampleTs),
+    wind: t.wind.nearest(at, sampleTs),
+    // Home is latched, not a time series: the newest one is the one in force.
+    home: t.homePosition.latest(),
+  });
+}
 
-  return useMemo<HudInstruments>(() => {
-    const at = Date.now() - frameAgeMs;
-    return deriveHudInstruments({
-      attitude: attitudeBuf.nearest(at, sampleTs),
-      position: positionBuf.nearest(at, sampleTs),
-      vfr: vfrBuf.nearest(at, sampleTs),
-    });
-    // version and tick are the freshness triggers; buffer refs are stable.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, tick, attitudeBuf, positionBuf, vfrBuf, frameAgeMs]);
+/** Whether two readings would draw identically. */
+export function sameHudInstruments(a: HudInstruments, b: HudInstruments): boolean {
+  return (
+    a.pitch === b.pitch &&
+    a.roll === b.roll &&
+    a.alt === b.alt &&
+    a.altMsl === b.altMsl &&
+    a.speedMps === b.speedMps &&
+    a.airspeed === b.airspeed &&
+    a.heading === b.heading &&
+    a.climb === b.climb &&
+    a.homeBearing === b.homeBearing &&
+    a.flightPath?.gammaDeg === b.flightPath?.gammaDeg &&
+    a.flightPath?.driftDeg === b.flightPath?.driftDeg &&
+    a.wind?.fromDeg === b.wind?.fromDeg &&
+    a.wind?.speedMps === b.wind?.speedMps
+  );
+}
+
+export function useHudInstruments(): HudInstruments {
+  const frameAgeMs = useVideoFrameAge()?.ms ?? 0;
+  const frameAgeRef = useRef(frameAgeMs);
+  const [reading, setReading] = useState<HudInstruments>(() =>
+    readHudInstruments(frameAgeMs),
+  );
+
+  useEffect(() => {
+    frameAgeRef.current = frameAgeMs;
+  }, [frameAgeMs]);
+
+  useEffect(() => {
+    let raf = 0;
+    const frame = () => {
+      const next = readHudInstruments(frameAgeRef.current);
+      // Functional update keeps the previous object when nothing changed, so
+      // React bails out of the render entirely.
+      setReading((prev) => (sameHudInstruments(prev, next) ? prev : next));
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return reading;
 }

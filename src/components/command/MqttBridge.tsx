@@ -22,6 +22,7 @@ import {
   type PluginUpdateReason,
 } from "@/stores/plugin-update-store";
 import { useToast } from "@/components/ui/toast";
+import { useTranslations } from "next-intl";
 import { getMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 
@@ -80,6 +81,9 @@ export function MqttBridge({
   const { toast } = useToast();
   const toastRef = useRef(toast);
   toastRef.current = toast;
+  const t = useTranslations("plugins");
+  const tRef = useRef(t);
+  tRef.current = t;
   const clientRef = useRef<unknown>(null);
   // Set once the client exists; releases subscriptions, listeners and socket.
   const teardownRef = useRef<(() => void) | null>(null);
@@ -267,7 +271,11 @@ export function MqttBridge({
                     : Date.now(),
               });
               toastRef.current(
-                `Plugin update available: ${data.plugin_id} v${data.current_version} -> v${data.latest_version}`,
+                tRef.current("updateAvailable", {
+                  id: String(data.plugin_id),
+                  from: String(data.current_version),
+                  to: String(data.latest_version),
+                }),
                 "info",
               );
             } catch (e) {

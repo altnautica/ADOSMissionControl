@@ -77,7 +77,9 @@ export interface PluginAgentManifestDetail {
      * agent-only plugin. Lets a LAN GCS build the contribution set and
      * locate the module to fetch from this agent. Older agents omit it. */
     gcs?: {
-      entrypoint: string;
+      /** Null for a GCS half with no iframe or inline module (parameters,
+       * skills or settings only). */
+      entrypoint: string | null;
       /** How the GCS half mounts; older agents omit it (= iframe). */
       isolation?: GcsIsolation;
       contributes: {
@@ -99,6 +101,12 @@ export interface PluginAgentManifestDetail {
         /** Agent-sidebar pages and node surfaces; older agents omit them. */
         agent_pages?: unknown[];
         node_surfaces?: unknown[];
+        /** Native settings sections, models, mission templates and map
+         * overlays; older agents omit them. */
+        settings?: unknown[];
+        models?: unknown[];
+        mission_templates?: unknown[];
+        map_overlays?: unknown[];
       };
       locales: string[];
     } | null;

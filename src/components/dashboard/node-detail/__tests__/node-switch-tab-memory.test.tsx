@@ -85,7 +85,11 @@ vi.mock("../surfaces", () => ({
 }));
 
 import { NodeDetailPanel } from "../NodeDetailPanel";
-import { useFleetStore } from "@/stores/fleet-store";
+import { setFixtureFleet } from "../../../../../tests/helpers/fleet-drones";
+
+vi.mock("@/stores/node-registry/use-fleet-drones", async (importOriginal) =>
+  (await import("../../../../../tests/helpers/fleet-drones")).fleetDronesModuleMock(await importOriginal()),
+);
 import { useUiPrefsStore } from "@/stores/ui-prefs-store";
 import type { FleetDrone } from "@/lib/types";
 
@@ -99,7 +103,7 @@ const WS = "node:ws-1";
 
 beforeEach(() => {
   cleanup();
-  useFleetStore.setState({
+  setFixtureFleet({
     drones: [node(DRONE, "drone"), node(GS, "ground-station"), node(WS, "workstation")],
   });
   useUiPrefsStore.setState({ lastTabByNode: {}, lastAgentPanelByNode: {} });

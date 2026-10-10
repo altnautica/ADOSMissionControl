@@ -154,7 +154,6 @@ export function DemoProvider() {
       // can't silently re-introduce a stale mock status on the screen.
       useAgentSystemStore.getState().clear();
       useDroneManager.getState().clear();
-      useFleetStore.getState().setDrones([]);
       useFleetStore.getState().clearAlerts();
       usePairingStore.getState().clear();
       // Surgical: drop only the demo LAN nodes, never a real fleet's.
@@ -163,7 +162,7 @@ export function DemoProvider() {
       useCommandFleetStore.getState().clear();
       // The demo seeds the node registry (the single fleet write target);
       // clear it too so toggling demo off leaves no ghost rows for the
-      // FleetProjectionBridge to re-project.
+      // fleet projection to show.
       useNodeRegistryStore.getState().clear();
       // Reset the profile-specific stores so demo leaves no residue in real mode.
       useGroundStationStore.getState().resetAll();

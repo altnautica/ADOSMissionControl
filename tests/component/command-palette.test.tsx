@@ -1,8 +1,8 @@
 /**
- * The global command palette's flight commands go through the same gates as
- * every other surface: Arm opens the skill dispatcher's typed confirm (and
- * never reaches the protocol on its own), and Return to Home All asks before
- * recalling the fleet.
+ * The global command palette's flight commands come from the skill registry
+ * and go through the same gates as every other surface: Arm opens the skill
+ * dispatcher's confirm (and never reaches the protocol on its own), and Return
+ * to Home All asks before recalling the fleet.
  *
  * @license GPL-3.0-only
  */
@@ -76,14 +76,22 @@ describe("CommandPalette flight commands", () => {
     useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
   });
 
-  it("Arm Drone opens the arm skill's confirm and never arms on its own", async () => {
+  it("lists the selected drone's flight skills from the registry", () => {
+    openPalette();
+    expect(screen.getByText(messages.skills.arm.label)).toBeTruthy();
+    expect(screen.getByText(messages.commandPalette.openCockpit)).toBeTruthy();
+    expect(screen.getByText(messages.commandPalette.goToSimulate)).toBeTruthy();
+    expect(screen.getByText(messages.commandPalette.goToMcp)).toBeTruthy();
+  });
+
+  it("Arm opens the arm skill's confirm and never arms on its own", async () => {
     openPalette();
     await act(async () => {
-      fireEvent.click(screen.getByText(messages.commandPalette.armVehicle));
+      fireEvent.click(screen.getByText(messages.skills.arm.label));
     });
 
     const pending = useSkillConfirmStore.getState().pending;
-    expect(pending?.policy.typedPhrase).toBe("ARM");
+    expect(pending?.droneId).toBe(DRONE);
     expect(arm).not.toHaveBeenCalled();
 
     // Declining the dialog leaves the vehicle disarmed.

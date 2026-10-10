@@ -20,10 +20,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const CSS = readFileSync(
-  join(process.cwd(), "src/app/globals.css"),
-  "utf8",
-);
+// The brand themes (default `:root`, `light`, `nvg`) are generated into
+// `src/styles/tokens.generated.css`; the community themes are hand-written in
+// `globals.css`. Both files are read so every palette is measured.
+const CSS = ["src/styles/tokens.generated.css", "src/app/globals.css"]
+  .map((file) => readFileSync(join(process.cwd(), file), "utf8"))
+  .join("\n");
 
 /** WCAG 2.x relative luminance. */
 function luminance(hex: string): number {

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * @module fly/cockpit/CockpitTopRight
+ * @module cockpit/CockpitTopRight
  * @description The top-right cockpit cluster: the density segmented control
  * (Min / Std / Full), the live video stats (resolution · fps · frame age),
  * and a camera pill.
@@ -15,29 +15,28 @@
  *
  * ## The latency figure
  *
- * This cluster used to render `latencyMs` — network RTT plus decoder buffer
- * wait, typically 10-30 ms — with a bare `ms` suffix, on a path whose real
- * camera-to-monitor delay is around 200 ms. An operator glancing at "18 ms"
- * flies as if the picture were current. It now shows the FRAME AGE from
- * `useVideoFrameAge`, always with a suffix naming which estimator produced
- * it, and `—` when neither can answer. No figure here is ever an unqualified
- * `ms`, and the roll-up is labelled `net` so it cannot be misread as
- * end-to-end.
+ * Network RTT plus decoder buffer wait is typically 10-30 ms on a path whose
+ * real camera-to-monitor delay is around 200 ms. The cluster therefore leads
+ * with the FRAME AGE from `useVideoFrameAge`, always suffixed with the
+ * estimator that produced it and `—` when neither can answer, and labels the
+ * network roll-up `net` so it cannot be misread as end-to-end.
  *
  * @license GPL-3.0-only
  */
 
+import { useTranslations } from "next-intl";
 import { useVideoStore } from "@/stores/video-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { useVideoFrameAge } from "@/hooks/use-video-frame-age";
 import { frameAgeLabel } from "@/lib/video/frame-age";
 import type { CockpitDensity } from "@/lib/cockpit/density";
+import { useDemoFeedActive } from "./CockpitDemoStream";
 
-const MODES: { id: CockpitDensity; label: string }[] = [
-  { id: "minimal", label: "Min" },
-  { id: "standard", label: "Std" },
-  { id: "full", label: "Full" },
+const MODES: { id: CockpitDensity; key: "densityMin" | "densityStd" | "densityFull" }[] = [
+  { id: "minimal", key: "densityMin" },
+  { id: "standard", key: "densityStd" },
+  { id: "full", key: "densityFull" },
 ];
 
 interface Props {
@@ -49,6 +48,9 @@ interface Props {
 }
 
 export function CockpitTopRight({ density, onDensity, droneId }: Props) {
+  const t = useTranslations("cockpit.topRight");
+  const tBand = useTranslations("cockpit.band");
+  const demoFeed = useDemoFeedActive(droneId);
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
@@ -61,9 +63,6 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
   );
 
   // The primary camera = the first streaming one, else the first advertised.
-  // Never fabricate a "main" — with no roster the pill is simply absent. On a
-  // multi-stream node the top-left switcher owns the active-stream indication,
-  // so the pill is suppressed there to avoid duplicating it.
   const active =
     streamCount > 1
       ? null
@@ -72,7 +71,7 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
 
   return (
     <div className="zone tr">
-      <div className="seg" role="group" aria-label="Information density">
+      <div className="seg" role="group" aria-label={t("densityGroup")}>
         {MODES.map((m) => (
           <button
             key={m.id}
@@ -80,54 +79,49 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
             aria-pressed={density === m.id}
             onClick={() => onDensity(m.id)}
           >
-            {m.label}
+            {t(m.key)}
           </button>
         ))}
       </div>
 
       <div className="vstats panel d-std">
-        {isStreaming ? (
+        {demoFeed ? (
+          // The synthetic demo feed is playing; it has no stream statistics.
+          <span className="s">{tBand("videoLive")}</span>
+        ) : isStreaming ? (
           <>
             <span className="s">
               <b>{resolution || "—"}</b>
             </span>
             <span className="s">
-              <b>{fps === null ? "—" : Math.round(fps)}</b>fps
+              <b>{fps === null ? "—" : Math.round(fps)}</b>
+              {t("fps")}
             </span>
-            {/* Frame age: how far behind the live world the picture is. The
-                suffix names the estimator, and `—` is shown when neither can
-                answer — an operator must never read an unqualified number
-                here and take it for glass-to-glass. */}
             <span
               className="s"
               data-frame-age-source={frameAge?.source ?? "unknown"}
               title={
                 frameAge?.source === "sei-g2g"
-                  ? "Measured camera-to-monitor delay (SEI timestamps in the bitstream + WebRTC presentationTime + a drone/browser clock offset estimate)."
+                  ? t("frameAgeSeiTitle")
                   : frameAge?.source === "frame-metadata"
-                    ? "Sender-capture to presented frame, from the browser's frame metadata (RTCP-synchronised). Excludes the camera and encoder legs, so the true delay is higher."
-                    : "Frame age unknown: no SEI probe and no usable frame timestamps."
+                    ? t("frameAgeMetadataTitle")
+                    : t("frameAgeUnknownTitle")
               }
             >
-              VIDEO <b>{frameAge ? `+${frameAgeLabel(frameAge)}` : "—"}</b>
+              {t("video")} <b>{frameAge ? `+${frameAgeLabel(frameAge)}` : "—"}</b>
             </span>
-            {/* The network roll-up, explicitly labelled. It is RTT plus
-                decoder buffer wait, which is not an end-to-end quantity. */}
-            <span className="s" title="Network round-trip plus decoder jitter-buffer wait. Not an end-to-end latency.">
-              <b>{latencyMs === null ? "—" : Math.round(latencyMs)}</b>ms net
+            <span className="s" title={t("netTitle")}>
+              <b>{latencyMs === null ? "—" : Math.round(latencyMs)}</b>
+              {t("msNet")}
             </span>
             {degradedReason && (
               <span className="s" data-video-degraded={degradedReason}>
-                <b>
-                  {degradedReason === "ice-disconnect"
-                    ? "LINK LOST"
-                    : "NO FRAMES"}
-                </b>
+                <b>{degradedReason === "ice-disconnect" ? t("linkLost") : t("noFrames")}</b>
               </span>
             )}
           </>
         ) : (
-          <span className="s">OFFLINE</span>
+          <span className="s">{t("offline")}</span>
         )}
       </div>
 
@@ -137,7 +131,7 @@ export function CockpitTopRight({ density, onDensity, droneId }: Props) {
           data-camera-streaming={active.streaming}
         >
           <i className="dot" />
-          <span title={active.name}>CAM · {active.name}</span>
+          <span title={active.name}>{t("camera", { name: active.name })}</span>
           {extra > 0 && <span className="more">+{extra}</span>}
         </div>
       )}

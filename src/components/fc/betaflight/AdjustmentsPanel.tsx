@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
@@ -23,6 +24,8 @@ const clampPwm = (pwm: number) => Math.max(900, Math.min(2100, pwm));
 export function AdjustmentsPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.betaflight");
+  const tCommit = useTranslations("panelCommit");
   const scrollRef = usePanelScroll("adjustments");
 
   const [ranges, setRanges] = useState<MspAdjustmentRange[]>([]);
@@ -71,12 +74,12 @@ export function AdjustmentsPanel() {
       const result = await protocol.setAdjustmentRanges(ranges);
       if (result.success) {
         setOriginal(ranges.map((r) => ({ ...r })));
-        toast("Adjustment ranges saved to the flight controller", "success");
+        toast(t("adjustmentsSaved"), "success");
       } else {
-        toast(result.message || "Failed to save adjustment ranges", "error");
+        toast(result.message || t("adjustmentsSaveFailed"), "error");
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to save adjustment ranges", "error");
+      toast(err instanceof Error ? err.message : t("adjustmentsSaveFailed"), "error");
     } finally {
       setSaving(false);
     }
@@ -84,7 +87,7 @@ export function AdjustmentsPanel() {
 
   function handleRevert() {
     setRanges(original.map((r) => ({ ...r })));
-    toast("Reverted to FC values", "info");
+    toast(tCommit("reverted"), "info");
   }
 
   const update = (index: number, patch: Partial<MspAdjustmentRange>) =>

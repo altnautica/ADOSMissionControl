@@ -3,15 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, LayoutDashboard, Route, History, Settings, Zap, Battery, Home, Plug, SlidersHorizontal } from "lucide-react";
-import { useFleetStore } from "@/stores/fleet-store";
+import { Search, LayoutDashboard, Route, History, Settings, Battery, Home, Plug, SlidersHorizontal, Play, Bot, Gauge } from "lucide-react";
+import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useToast } from "@/components/ui/toast";
 import { getRegisteredCommands } from "@/lib/command-palette-registry";
 import { cn } from "@/lib/utils";
-import { activate, buildSkillContext } from "@/lib/skills";
+import { knownRemainingPct } from "@/lib/battery";
+import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
+import { skillDisplayLabel } from "@/lib/skills/skill-label";
+import { resolveSkillIcon } from "@/lib/skills/skill-icon";
 import { RthAllConfirmDialog } from "./rth-all-confirm-dialog";
 
 
@@ -25,6 +28,7 @@ interface CommandAction {
 
 export function CommandPalette() {
   const t = useTranslations("commandPalette");
+  const tRoot = useTranslations();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -41,8 +45,21 @@ export function CommandPalette() {
   const actions: CommandAction[] = [
     { id: "nav-dashboard", label: t("goToDashboard"), category: t("navigation"), icon: <LayoutDashboard size={14} />, action: () => router.push("/") },
     { id: "nav-plan", label: t("goToPlan"), category: t("navigation"), icon: <Route size={14} />, action: () => router.push("/plan") },
+    { id: "nav-simulate", label: t("goToSimulate"), category: t("navigation"), icon: <Play size={14} />, action: () => router.push("/simulate") },
     { id: "nav-history", label: t("goToHistory"), category: t("navigation"), icon: <History size={14} />, action: () => router.push("/flight-logs") },
+    { id: "nav-mcp", label: t("goToMcp"), category: t("navigation"), icon: <Bot size={14} />, action: () => router.push("/mcp") },
     { id: "nav-config", label: t("goToConfig"), category: t("navigation"), icon: <Settings size={14} />, action: () => router.push("/config") },
+    {
+      // The selected node's Cockpit tab, full screen.
+      id: "nav-cockpit", label: t("openCockpit"), category: t("navigation"), icon: <Gauge size={14} />,
+      action: () => {
+        if (!useDroneManager.getState().selectedDroneId) { toast(t("noDroneSelected"), "error"); return; }
+        const ui = useUiStore.getState();
+        ui.setPendingDetailTab("cockpit");
+        router.push("/");
+        ui.enterImmersiveMode();
+      },
+    },
     {
       id: "cmd-connect", label: t("connectDrone"), category: t("commands"), icon: <Plug size={14} />,
       action: () => useConnectDialogStore.getState().openDialog(),
@@ -54,28 +71,43 @@ export function CommandPalette() {
       action: () => setRthConfirmOpen(true),
     },
     {
-      // The arm skill owns the typed ARM confirmation, the pre-flight
-      // checklist gate and the already-armed / no-link refusals; calling the
-      // protocol from here skipped all of them.
-      id: "cmd-arm", label: t("armVehicle"), category: t("commands"), icon: <Zap size={14} />,
-      action: () => {
-        const droneId = useDroneManager.getState().selectedDroneId;
-        if (!droneId) { toast("No drone selected", "error"); return; }
-        void activate("arm", buildSkillContext(droneId));
-      },
-    },
-    {
       id: "cmd-bat", label: t("checkBattery"), category: t("commands"), icon: <Battery size={14} />,
       action: () => {
-        const drones = useFleetStore.getState().drones;
-        if (drones.length === 0) { toast("No drones in fleet"); return; }
-        const withBattery = drones.filter((d) => d.battery?.remaining != null);
-        if (withBattery.length === 0) { toast("No battery data available"); return; }
-        const avg = Math.round(withBattery.reduce((sum, d) => sum + d.battery!.remaining, 0) / withBattery.length);
-        toast(`Fleet avg battery: ${avg}% (${withBattery.length} drone${withBattery.length > 1 ? "s" : ""})`);
+        const drones = getFleetDrones();
+        if (drones.length === 0) { toast(t("noDronesInFleet")); return; }
+        const packs = drones.flatMap((d) => {
+          const pct = knownRemainingPct(d.battery?.remaining);
+          return pct === null ? [] : [pct];
+        });
+        if (packs.length === 0) { toast(t("noBatteryData")); return; }
+        const avg = Math.round(packs.reduce((sum, pct) => sum + pct, 0) / packs.length);
+        toast(t("fleetAvgBattery", { avg, count: packs.length }));
       },
     },
   ];
+
+  // Flight actions for the selected drone come from the skill registry, the
+  // same list the cockpit's palette and Skill Bar show. Each runs through the
+  // shared `activate` pipeline, so confirm tiers, the pre-flight checklist
+  // gate, arm requirements and the disabled-reason toast all apply here too.
+  const selectedDroneId = useDroneManager.getState().selectedDroneId;
+  const skillActions: CommandAction[] =
+    open && selectedDroneId
+      ? useSkillRegistry
+          .getState()
+          .resolveForDrone(selectedDroneId)
+          .filter((skill) => skill.category === "flight" || skill.category === "safety")
+          .map((skill) => {
+            const Icon = resolveSkillIcon(skill.icon);
+            return {
+              id: `skill-${skill.id}`,
+              label: skillDisplayLabel(skill, tRoot),
+              category: t("flight"),
+              icon: <Icon size={14} />,
+              action: () => void activate(skill.id, buildSkillContext(selectedDroneId)),
+            };
+          })
+      : [];
 
   // Build parameter search results from all cached FC params when connected
   const paramActions: CommandAction[] = (() => {
@@ -104,8 +136,8 @@ export function CommandPalette() {
   })();
 
   const filteredActions = query
-    ? actions.filter((a) => a.label.toLowerCase().includes(query.toLowerCase()))
-    : actions;
+    ? [...actions, ...skillActions].filter((a) => a.label.toLowerCase().includes(query.toLowerCase()))
+    : [...actions, ...skillActions];
   // Route-contributed commands (e.g. planner verbs) — providers receive the
   // query + path and return already-relevant commands, so they are not
   // re-filtered here (same contract as the param actions below).

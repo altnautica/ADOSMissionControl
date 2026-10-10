@@ -12,6 +12,7 @@
  */
 
 import { useMemo, useEffect, useRef, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Activity, Power, Trash2, Cpu } from "lucide-react";
 import { cn, isDemoMode } from "@/lib/utils";
 import { useCanMonitorStore } from "@/stores/can-monitor-store";
@@ -59,6 +60,7 @@ export function CanMonitorPanel() {
   const lastTallyAt = useCanMonitorStore((s) => s._lastTallyAt);
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.can");
   const [bus, setBus] = useState("1");
   const [starting, setStarting] = useState(false);
   // True while this panel holds CAN forwarding open on the FC, so Stop and
@@ -89,24 +91,24 @@ export function CanMonitorPanel() {
     if (isDemoMode()) { setEnabled(true); return; }
     const protocol = selectedProtocol;
     if (!protocol?.enableCanForward) {
-      toast("This connection cannot forward CAN frames", "error");
+      toast(t("forwardingUnavailable"), "error");
       return;
     }
     setStarting(true);
     try {
       const result = await protocol.enableCanForward(Number(bus));
       if (!result.success) {
-        toast(`FC refused CAN forwarding on bus ${bus}: ${result.message}`, "error");
+        toast(t("forwardingRefused", { bus, message: result.message }), "error");
         return;
       }
       forwardingRef.current = true;
       setEnabled(true);
     } catch {
-      toast("CAN forwarding request failed", "error");
+      toast(t("forwardingRequestFailed"), "error");
     } finally {
       setStarting(false);
     }
-  }, [enabled, bus, selectedProtocol, setEnabled, stopForwarding, toast]);
+  }, [enabled, bus, selectedProtocol, setEnabled, stopForwarding, toast, t]);
 
   // ArduPilot drops forwarding once 5 s pass without a fresh
   // MAV_CMD_CAN_FORWARD from the client, so the request is repeated while

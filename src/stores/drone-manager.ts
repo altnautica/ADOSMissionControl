@@ -201,8 +201,8 @@ export const useDroneManager = create<DroneManagerState>((set, get) => ({
     useDiagnosticsStore.getState().logConnection("connect", name + " connected");
 
     // The node registry is the single fleet-identity write target;
-    // FleetProjectionBridge projects it into the fleet store. The FC was
-    // attached to the registry above; no bare fleet-store row is written here —
+    // the fleet projection reads it. The FC was
+    // attached to the registry above; no bare fleet row is written here —
     // that was the source of the FC bare-row race that locked the agent tabs.
 
     // Background bulk param download — seeds paramCache for instant panel reads

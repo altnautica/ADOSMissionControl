@@ -1,6 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { NextIntlClientProvider } from "next-intl";
+import type { ReactElement } from "react";
 
+import messages from "../../../../locales/en.json";
 import { CockpitTopRight } from "@/components/cockpit/CockpitTopRight";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
@@ -28,8 +31,16 @@ const CSI_IDLE: CameraCapability = {
   streaming: false,
 };
 
+function renderIntl(ui: ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
+
 function renderTopRight() {
-  return render(<CockpitTopRight density="standard" onDensity={vi.fn()} />);
+  return renderIntl(<CockpitTopRight density="standard" onDensity={vi.fn()} />);
 }
 
 describe("CockpitTopRight CAM pill", () => {
@@ -79,7 +90,7 @@ describe("CockpitTopRight CAM pill", () => {
       { id: "eo", index: 1, label: "eo", kind: "concurrent" },
       { id: "ir", index: 2, label: "ir", kind: "concurrent" },
     ]);
-    render(
+    renderIntl(
       <CockpitTopRight density="standard" onDensity={vi.fn()} droneId="node:d1" />,
     );
     expect(pill()).toBeNull();

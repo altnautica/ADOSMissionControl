@@ -6,7 +6,8 @@
  * made-up storage gauge.
  */
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
+import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DroneProtocol } from "@/lib/protocol/types";
@@ -41,7 +42,7 @@ afterEach(cleanup);
 
 describe("BlackboxPanel storage", () => {
   it("does not invent a storage gauge when the connection cannot read flash", async () => {
-    render(<BlackboxPanel />);
+    renderWithIntl(<BlackboxPanel />);
     await waitFor(() => expect(screen.getByText("This connection cannot read onboard log storage.")).toBeTruthy());
     expect(screen.queryByText(/Used:/)).toBeNull();
   });
@@ -51,7 +52,7 @@ describe("BlackboxPanel storage", () => {
       isConnected: true,
       getDataflashSummary: async () => ({ totalSize: 4 * 1024 * 1024, usedSize: 1024 * 1024, ready: true }),
     };
-    render(<BlackboxPanel />);
+    renderWithIntl(<BlackboxPanel />);
     await waitFor(() => expect(screen.getByText(/Used: 1\.0 MB/)).toBeTruthy());
   });
 });

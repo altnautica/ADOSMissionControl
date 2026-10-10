@@ -6,8 +6,7 @@ import { Gauge, Save, RotateCcw, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import type { SelectOption } from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -32,12 +31,9 @@ const CHANNELS: SelectOption[] = [1, 2, 3, 4, 5, 6].map((n) => ({
 
 export function StreamRatesPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const scrollRef = usePanelScroll("stream-rates");
-  const [saving, setSaving] = useState(false);
   const [channel, setChannel] = useState(1);
 
   // Both the MAVn_* and SRn_* names are read for the channel; the vehicle has
@@ -48,20 +44,12 @@ export function StreamRatesPanel() {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames, optionalParams: paramNames, panelId: "stream-rates", autoLoad: true });
+  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
   const hasDirty = dirtyParams.size > 0;
   const family = detectStreamFamily(params, channel);
-
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    toast(ok ? "Saved to flight controller" : "Some parameters failed to save", ok ? "success" : "warning");
-  }
-  async function handleFlash() { showFlashResult(await commitToFlash()); }
-  function handleRevert() { revertAll(); toast("Reverted to FC values", "info"); }
 
   return (
     <ArmedWarningBanner>

@@ -27,12 +27,6 @@ vi.mock('@/stores/drone-store', () => ({
     setState: vi.fn(),
   },
 }));
-vi.mock('@/stores/fleet-store', () => ({
-  useFleetStore: {
-    getState: () => ({ addDrone: vi.fn(), removeDrone: vi.fn() }),
-    setState: vi.fn(),
-  },
-}));
 vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: {
     getState: () => ({ autoRecordOnConnect: false }),

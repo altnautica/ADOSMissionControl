@@ -70,6 +70,9 @@ interface SingletonAgentVideoOpts {
    *  running — used for a manual override (e.g. a SITL/Gazebo URL) that has no
    *  agent video state but must still connect. */
   forceEnabled?: boolean;
+  /** Keep every transport idle: something else (the demo feed) is the
+   *  picture, so nothing real is dialled behind it. */
+  suspended?: boolean;
 }
 
 export interface SingletonAgentVideoResult {
@@ -89,6 +92,7 @@ export function useSingletonAgentVideo({
   videoEl,
   agentVideoState,
   forceEnabled = false,
+  suspended = false,
 }: SingletonAgentVideoOpts): SingletonAgentVideoResult {
   const videoStallSignal = useVideoStore((s) => s.videoStallSignal);
 
@@ -123,7 +127,7 @@ export function useSingletonAgentVideo({
     transportMode,
     videoEl,
     retryKey,
-    enabled: stableEnabled,
+    enabled: stableEnabled && !suspended,
   });
 
   // A healthy connect stops any pending countdown display.

@@ -12,7 +12,14 @@
 
 "use client";
 
-import { useId, useMemo, useRef, type KeyboardEvent } from "react";
+import {
+  memo,
+  useId,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
 import { useTranslations } from "next-intl";
 import type { LucideIcon } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -35,28 +42,32 @@ interface SkillSlotProps {
   /** Whether this skill is destructive (danger treatment). */
   danger: boolean;
   /** Fire the slot's skill through the dispatcher. */
-  onActivate: () => void;
+  onActivate: (skill: Skill) => void;
   /**
    * Open this skill's quick settings (a PLUGIN skill only). When present, a
    * long-press / right-click / settings gamepad chord on the slot calls this
    * instead of activating; built-in skills (no settings) leave it undefined and
    * keep activate-only behaviour. The primary tap always activates.
    */
-  onOpenSettings?: () => void;
+  onOpenSettings?: (skill: Skill) => void;
   /**
    * Roving-tabindex value for the toolbar's arrow-key navigation: 0 for the one
    * focusable slot, -1 for the rest. Defaults to 0 when the bar is not managing
    * roving focus.
    */
   tabIndex?: number;
+  /** The slot's position in the bar (arrow-key navigation, overflow). */
+  position?: number;
   /** Arrow-key handler so the toolbar can move focus between slots. */
-  onKeyDown?: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLButtonElement>, position: number) => void;
+  /** True when a narrow cockpit moves this slot into the overflow drawer. */
+  overflow?: boolean;
 }
 
 /** How long a press is held before it opens settings instead of activating. */
 const LONG_PRESS_MS = 500;
 
-export function SkillSlot({
+export const SkillSlot = memo(function SkillSlot({
   index,
   skill,
   state,
@@ -66,7 +77,9 @@ export function SkillSlot({
   onActivate,
   onOpenSettings,
   tabIndex = 0,
+  position = 0,
   onKeyDown,
+  overflow = false,
 }: SkillSlotProps) {
   const t = useTranslations();
   const descId = useId();
@@ -105,6 +118,21 @@ export function SkillSlot({
     isCooldown && typeof state.progress === "number"
       ? Math.max(0, Math.min(1, state.progress))
       : 0;
+
+  // The cooldown sweep runs in CSS: the window's length, how far into it the
+  // slot already is (a negative delay), and the whole seconds to count down.
+  const slotStyle = useMemo<CSSProperties | undefined>(() => {
+    const style: Record<string, string> = {};
+    if (danger && !isDisabled) style.borderColor = "var(--hud-crit)";
+    const cd = isCooldown ? state.cooldown : undefined;
+    if (cd) {
+      const elapsed = cd.durationMs * (1 - cooldownPct);
+      style["--cd-dur"] = `${cd.durationMs}ms`;
+      style["--cd-delay"] = `${-Math.round(elapsed)}ms`;
+      style["--cd-secs"] = String(Math.ceil(cd.durationMs / 1000));
+    }
+    return Object.keys(style).length > 0 ? (style as CSSProperties) : undefined;
+  }, [danger, isDisabled, isCooldown, state.cooldown, cooldownPct]);
 
   // Charge badge (a small integer string) is surfaced separately so the
   // accessible name can announce the remaining count alongside the state.
@@ -190,8 +218,8 @@ export function SkillSlot({
             longPressFired.current = false;
             return;
           }
-          if (isDisabled) return;
-          onActivate();
+          if (isDisabled || !skill) return;
+          onActivate(skill);
         }}
         // Long-press opens settings (plugin skills only). Disabled slots and
         // built-ins (no onOpenSettings) keep activate-only behaviour; a
@@ -203,7 +231,7 @@ export function SkillSlot({
           clearLongPress();
           longPressTimer.current = setTimeout(() => {
             longPressFired.current = true;
-            onOpenSettings?.();
+            if (skill) onOpenSettings?.(skill);
           }, LONG_PRESS_MS);
         }}
         onPointerUp={clearLongPress}
@@ -214,9 +242,9 @@ export function SkillSlot({
         onContextMenu={(e) => {
           if (!hasSettings) return;
           e.preventDefault();
-          onOpenSettings?.();
+          if (skill) onOpenSettings?.(skill);
         }}
-        onKeyDown={onKeyDown}
+        onKeyDown={onKeyDown ? (e) => onKeyDown(e, position) : undefined}
         // Roving tabindex: the toolbar keeps exactly one slot tabbable and moves
         // focus with the arrow keys; Enter/Space fire the focused slot natively.
         tabIndex={tabIndex}
@@ -226,17 +254,18 @@ export function SkillSlot({
         aria-disabled={isDisabled}
         data-skill-id={skill?.id}
         data-slot-index={index}
+        data-overflow={overflow ? "true" : undefined}
         className={cn(
           "skill",
           isActive && "active",
           isCooldown && "cool",
           isDisabled && "dis",
         )}
-        style={danger && !isDisabled ? { borderColor: "var(--crit)" } : undefined}
+        style={slotStyle}
       >
         {/* icon */}
         {Icon ? (
-          <span className="ic" style={danger ? { color: "var(--crit)" } : undefined}>
+          <span className="ic" style={danger ? { color: "var(--hud-crit)" } : undefined}>
             <Icon size={20} />
           </span>
         ) : (
@@ -251,16 +280,13 @@ export function SkillSlot({
         {/* name label (below the slot) */}
         {skill ? <span className="nm">{label}</span> : null}
 
-        {/* cooldown countdown overlay */}
-        {isCooldown ? (
-          <span className="cd">
-            {Math.max(1, Math.ceil(((skill?.cooldownMs ?? 0) * cooldownPct) / 1000))}
-          </span>
-        ) : null}
+        {/* cooldown overlay: the sweep and the seconds count down in CSS from
+            the slot's --cd-* properties, so a cooldown re-renders nothing. */}
+        {isCooldown ? <span className="cd" aria-hidden="true" /> : null}
 
         {/* optional state badge (e.g. a locked target id), bottom-right */}
         {state.badge ? (
-          <span className="kbd" style={{ top: "auto", bottom: 3, color: "var(--hud)" }}>
+          <span className="kbd" style={{ top: "auto", bottom: 3, color: "var(--hud-primary)" }}>
             {state.badge}
           </span>
         ) : null}
@@ -274,7 +300,7 @@ export function SkillSlot({
       </button>
     </Tooltip>
   );
-}
+});
 
 /**
  * A disabled reason is a fully-qualified i18n key under "skills"

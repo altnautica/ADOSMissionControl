@@ -9,8 +9,7 @@
  * the connect effect when it changes.
  *
  * What must hold: nothing dials before the configured URL arrives (never a
- * built-in default broker), the fleet bridge never dials anonymously and
- * listens for client errors, and a renewed credential reconnects. The agent's
+ * built-in default broker), and a renewed credential reconnects. The agent's
  * status document overlays only the FC-link fields it carries.
  */
 
@@ -38,15 +37,16 @@ vi.mock("mqtt", () => ({
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
 
 import { MqttBridge, applyMqttStatusDoc } from "../MqttBridge";
-import { CommandFleetMqttBridge } from "../CommandFleetMqttBridge";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useMqttControlGrantStore } from "@/stores/mqtt-control-grant-store";
 import { setMqttBrokerCredential } from "@/lib/mqtt-broker-credential";
 import type { AgentStatus } from "@/lib/agent/types";
-import type { PairedDrone } from "@/stores/pairing-store";
 
 const BROKER = "wss://broker.example/mqtt";
 
@@ -109,39 +109,6 @@ describe("MqttBridge — broker and credentials arrive late", () => {
     expect(h.connect.mock.calls[1][1].username).toBe("gcs-op-second");
     expect(h.connect.mock.calls[1][1].password).toBe("pw2");
     expect(clients[0].end).toHaveBeenCalled();
-  });
-});
-
-describe("CommandFleetMqttBridge", () => {
-  const paired = [{ _id: "row_1", deviceId: "cloud-1" } as PairedDrone];
-
-  it("never dials anonymously or to an unconfigured broker", async () => {
-    const { rerender } = render(
-      <CommandFleetMqttBridge pairedDrones={paired} mqttBrokerUrl={undefined} />,
-    );
-    setMqttBrokerCredential({ username: "gcs-op-abc", password: "pw" });
-    useMqttControlGrantStore.setState({ credentialEpoch: 1 });
-    rerender(<CommandFleetMqttBridge pairedDrones={paired} mqttBrokerUrl={null} />);
-    await act(async () => {});
-    expect(h.connect).not.toHaveBeenCalled();
-
-    setMqttBrokerCredential(null);
-    useMqttControlGrantStore.setState({ credentialEpoch: 2 });
-    rerender(<CommandFleetMqttBridge pairedDrones={paired} mqttBrokerUrl={BROKER} />);
-    await act(async () => {});
-    expect(h.connect).not.toHaveBeenCalled();
-  });
-
-  it("dials the configured broker as the operator and handles client errors", async () => {
-    setMqttBrokerCredential({ username: "gcs-op-abc", password: "pw" });
-    useMqttControlGrantStore.setState({ credentialEpoch: 1 });
-    render(<CommandFleetMqttBridge pairedDrones={paired} mqttBrokerUrl={BROKER} />);
-    await waitFor(() => expect(h.connect).toHaveBeenCalledTimes(1));
-    const [url, opts] = h.connect.mock.calls[0];
-    expect(url).toBe(BROKER);
-    expect(opts.username).toBe("gcs-op-abc");
-    const events = clients[0].on.mock.calls.map((c) => c[0]);
-    expect(events).toEqual(expect.arrayContaining(["error", "offline", "close"]));
   });
 });
 

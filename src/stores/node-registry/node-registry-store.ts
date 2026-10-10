@@ -133,7 +133,7 @@ function applyToEntry(
  * HEARTBEAT frame per connected drone. Each call used to clone the whole
  * `nodes` map and stamp a fresh `lastUpdate`, and the fleet projection has
  * both in its memo deps — so one position packet re-projected the entire
- * fleet, replaced `fleet-store.drones` wholesale, and re-rendered the
+ * fleet, replaced the projected fleet array wholesale, and re-rendered the
  * dashboard cards, the dashboard map, the overview map, node detail and the
  * planner. The row is now mutated in place and the store notification is
  * capped at one per animation frame.

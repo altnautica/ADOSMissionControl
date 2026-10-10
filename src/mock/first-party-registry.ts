@@ -183,15 +183,6 @@ gcs:
         default_binding: { key: "r" }
         activation: { via: config, config_key: recording }
         state: { via: event, topic: "siyi.pod.state" }
-    target_actions:
-      - id: siyi-designate
-        label: "Track with pod"
-        icon: crosshair
-        order: 25
-        designate: true
-        config_key: track_designate
-        config_value: true
-        default_key: "t"
     parameters:
       - key: zoom
         binding: plugin.config

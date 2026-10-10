@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Settings, AlertTriangle, LogOut, CloudOff, Zap, Minimize2, X, Star, BookOpen } from "lucide-react";
+import { Settings, AlertTriangle, LogOut, CloudOff, Zap, X, Star, BookOpen } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CommandNav } from "./CommandNav";
 import { RightRail } from "./RightRail";
@@ -111,24 +111,6 @@ function ConvexUserMenu() {
 }
 
 export function CommandShell({ children }: { children: React.ReactNode }) {
-  // The HDMI kiosk HUD route opts out of the full GCS chrome (navbar, sidebar,
-  // global dialogs) and renders its own full-bleed layer stack. It still needs
-  // the headless connection bridges, or its stores never fill. Root providers
-  // (Convex, Locale, Toast) wrap both branches via app/layout.tsx.
-  const pathname = usePathname();
-  const isChromeless = pathname?.startsWith("/hud") ?? false;
-  if (isChromeless) {
-    return (
-      <>
-        <ShellBridges />
-        {children}
-      </>
-    );
-  }
-  return <CommandShellInner>{children}</CommandShellInner>;
-}
-
-function CommandShellInner({ children }: { children: React.ReactNode }) {
   useGcsLocation();
 
   // Register the built-in skills + start the registry subscriptions once.
@@ -218,17 +200,6 @@ function CommandShellInner({ children }: { children: React.ReactNode }) {
 
       {/* Armed-state parameter write confirmation dialog */}
       <ArmedWriteConfirmDialog />
-
-      {/* Immersive mode exit button */}
-      {immersiveMode && (
-        <button
-          onClick={exitImmersiveMode}
-          className="fixed top-3 right-3 z-50 p-1.5 bg-bg-secondary/80 border border-border-default text-text-tertiary hover:text-text-primary transition-colors backdrop-blur-sm"
-          title={t("exitImmersive")}
-        >
-          <Minimize2 size={14} />
-        </button>
-      )}
 
       {/* Top bar */}
       {!immersiveMode && <header className={cn(

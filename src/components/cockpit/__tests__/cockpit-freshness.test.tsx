@@ -7,8 +7,8 @@
  *
  * - Every ring buffer keeps its last sample forever, so the band read
  *   `latest()` and painted the last battery percentage, GPS fix, and signal
- *   bars for as long as the tab stayed open after a link loss. Its own module
- *   doc claimed the values were freshness-gated; nothing gated them.
+ *   bars for as long as the tab stayed open after a link loss. Band readings
+ *   now go dark two seconds after their last sample.
  * - The flight clock captured `Date.now()` inside a `useEffect`, so it
  *   restarted at 0:00 on remount. Switching to the map and back reset the
  *   flight timer mid-flight.
@@ -24,13 +24,13 @@ import messages from "../../../../locales/en.json";
 import { CockpitTopBar } from "@/components/cockpit/CockpitTopBar";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
-import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
+import { BAND_STALE_MS } from "@/hooks/use-hud-topbar-data";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 
 function renderBand() {
   return render(
     <NextIntlClientProvider locale="en" messages={messages}>
-      <CockpitTopBar />
+      <CockpitTopBar droneId="drone-fresh" lean={false} />
     </NextIntlClientProvider>,
   );
 }
@@ -82,7 +82,7 @@ describe("cockpit safety band freshness", () => {
   });
 
   it("blanks the same readings once they age past the staleness window", () => {
-    seedTelemetry(TELEMETRY_STALE_MS + 1_000);
+    seedTelemetry(BAND_STALE_MS + 1_000);
     renderBand();
 
     // The values are still sitting in the ring buffers; the band must not
@@ -119,8 +119,8 @@ describe("cockpit safety band freshness", () => {
     expect(screen.getByText(/RTK/)).toBeTruthy();
   });
 
-  it("treats a sample exactly at the threshold as stale", () => {
-    seedTelemetry(TELEMETRY_STALE_MS);
+  it("treats a sample exactly at the band threshold as stale", () => {
+    seedTelemetry(BAND_STALE_MS);
     renderBand();
     expect(screen.queryByText(/76/)).toBeNull();
   });
@@ -138,8 +138,9 @@ describe("cockpit safety band freshness", () => {
     });
     renderBand();
     expect(screen.queryByText("-1%")).toBeNull();
-    const value = screen.getByText("--%");
-    expect(value.getAttribute("style") ?? "").not.toContain("--crit");
+    const value = screen.getByTestId("cockpit-battery").querySelector(".v");
+    expect(value?.textContent).toBe(NO_DATA_GLYPH);
+    expect(value?.getAttribute("style") ?? "").not.toContain("--hud-crit");
   });
 });
 

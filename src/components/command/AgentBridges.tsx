@@ -23,7 +23,6 @@ import { useConvexAvailable } from "@/hooks/use-convex-available";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { communityApi } from "@/lib/community-api";
 import { isDemoMode } from "@/lib/utils";
-import { CommandFleetMqttBridge } from "./CommandFleetMqttBridge";
 import { MqttControlGrantBridge } from "./MqttControlGrantBridge";
 import { CommandFleetStatusBridge } from "./CommandFleetStatusBridge";
 import { CommandFleetLocalBridge } from "./CommandFleetLocalBridge";
@@ -70,10 +69,6 @@ export function AgentBridges() {
       {/* Opens the selected drone's detection WS local-first (host+key from
           local-nodes-store), so bounding boxes flow on any tab. */}
       <VisionDetectionsBridge />
-      <CommandFleetMqttBridge
-        pairedDrones={pairedDrones}
-        mqttBrokerUrl={clientConfig?.mqttBrokerUrl}
-      />
       {/* The cloud bridges read the signed-in Convex session, which exists
           only when the cloud backend is configured. The cloud MQTT stream
           needs that backend too: its broker URL comes from the backend's

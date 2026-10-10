@@ -55,7 +55,7 @@ const TRUST_PRESET: Record<
     classes:
       "border-status-warning/40 bg-status-warning/10 text-status-warning",
     tooltip:
-      "Plugin ships at least one closed-source vendor binary. Operator approval required.",
+      "Extension ships at least one closed-source vendor binary. Operator approval required.",
   },
   unsigned: {
     label: "Unsigned",

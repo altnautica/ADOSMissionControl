@@ -91,6 +91,8 @@ export const gcsContributesValidator = v.array(
     ),
     // Page id (same plugin) this `node.agent.page` renders as the Setup pane of.
     setupFor: v.optional(v.string()),
+    // Cockpit zone a `cockpit.widget` mounts in.
+    zone: v.optional(v.string()),
   }),
 );
 

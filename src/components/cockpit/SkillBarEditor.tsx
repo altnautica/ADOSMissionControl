@@ -237,7 +237,7 @@ export function SkillBarEditor({ onClose }: SkillBarEditorProps) {
   const trashRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="pointer-events-auto flex max-h-[60vh] w-[min(880px,92vw)] flex-col gap-3 overflow-y-auto border border-border-default bg-bg-secondary/95 p-3 backdrop-blur-sm">
+    <div className="glass-panel pointer-events-auto flex max-h-[60vh] w-[min(880px,92vw)] flex-col gap-3 overflow-y-auto p-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-text-primary">
           {t("editorTitle")}

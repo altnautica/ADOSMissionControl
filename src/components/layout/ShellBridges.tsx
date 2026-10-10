@@ -7,10 +7,8 @@
  * the node-presence bridges that write the node registry, the fleet
  * projector, and the demo engine. All of it renders null.
  *
- * Mounted by CommandShell in both branches: the full GCS chrome and the
- * chromeless kiosk HUD. A HUD opened in a fresh tab (or loaded by the SBC
- * kiosk) starts with empty stores, so without these it would never see a
- * vehicle.
+ * Mounted once by CommandShell. A page opened in a fresh tab starts with
+ * empty stores, so without these it would never see a vehicle.
  *
  * @license GPL-3.0-only
  */
@@ -25,7 +23,6 @@ import { CloudDroneBridge } from "@/components/dashboard/CloudDroneBridge";
 import { LocalDroneBridge } from "@/components/dashboard/LocalDroneBridge";
 import { RelayedDroneBridge } from "@/components/dashboard/RelayedDroneBridge";
 import { RelayedMavlinkBridge } from "@/components/dashboard/RelayedMavlinkBridge";
-import { FleetProjectionBridge } from "@/components/dashboard/FleetProjectionBridge";
 
 /**
  * Demo mode pulls in the whole 11.8k-LOC `src/mock/` tree — the mock
@@ -54,8 +51,8 @@ export function ShellBridges() {
       <AgentBridges />
       {/* The presence bridges WRITE the node registry (local + cloud
           presence, plus relayed presence for a WFB-linked drone reached
-          through a directly-paired ground node); FleetProjectionBridge
-          projects the registry into the fleet store, so a node seen on any
+          through a directly-paired ground node); the fleet projection
+          (`useFleetDrones`) reads the registry, so a node seen on any
           transport renders once and an FC-less node never shows fabricated
           telemetry. */}
       <CloudDroneBridge />
@@ -64,7 +61,6 @@ export function ShellBridges() {
       {/* Opens the actual MAVLink session for a relay-only drone against its
           ground station's republish endpoint. */}
       <RelayedMavlinkBridge />
-      <FleetProjectionBridge />
     </>
   );
 }

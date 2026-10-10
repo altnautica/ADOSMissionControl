@@ -1,7 +1,9 @@
 /**
- * The cockpit telemetry strip, styled by `.ados-cockpit .zone.bl .telem`: a
- * 2-col grid of Dist / Home / V·S / Hdg / Thr / ETA. Full
- * density only. Read-only, pointer-events-none, null-honest ("—").
+ * The cockpit telemetry strip, styled by `.ados-cockpit .telem`: a 2-column
+ * grid of DIST (to home) / HOME (bearing to home) / V/S / THR / ETA (to the
+ * next waypoint) / GPS (satellites · HDOP). Placed by its cockpit zone
+ * container; shown from full density. Read-only, pointer-events-none, and
+ * null-honest: a reading without a fresh source shows "—".
  *
  * @module fly/TelemetryStrip
  * @license GPL-3.0-only
@@ -14,21 +16,20 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import { haversineDistance } from "@/lib/geo/distance";
+import { bearing } from "@/lib/telemetry-utils";
+import { NO_DATA_GLYPH } from "@/lib/hud-draw";
+import { formatHeading, formatHud, formatSigned } from "@/components/cockpit/hud/format";
 
-function fmt(n: number | undefined | null, digits = 0): string {
-  if (n === undefined || n === null || !Number.isFinite(n)) return "--";
-  return n.toFixed(digits);
-}
+/** Below this ground speed an ETA would be a division by hover noise. */
+const ETA_MIN_SPEED_MPS = 0.5;
 
-/** Initial bearing from (lat1,lon1) to (lat2,lon2) in degrees 0-360. */
-function bearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const φ1 = toRad(lat1);
-  const φ2 = toRad(lat2);
-  const Δλ = toRad(lon2 - lon1);
-  const y = Math.sin(Δλ) * Math.cos(φ2);
-  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-  return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360;
+/** Seconds as `m:ss`, or `h:mm:ss` past an hour. */
+function formatEta(seconds: number): string {
+  const s = Math.round(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
 
 interface RowProps {
@@ -50,7 +51,7 @@ export function TelemetryStrip() {
   useTelemetryStore((s) => s._version);
   // Subscribed for its re-render, like the _version read above. Without a
   // time-passing signal a link loss stops `_version` changing, so the strip
-  // would keep the last distance, heading, and climb rate on screen forever,
+  // would keep the last distance, climb rate, and ETA on screen forever,
   // reading as current.
   useClockTick();
 
@@ -58,11 +59,13 @@ export function TelemetryStrip() {
   const now = Date.now();
   const vfr = freshOnly(tState.vfr.latest(), now);
   const pos = freshOnly(tState.position.latest(), now);
+  const gps = freshOnly(tState.gps.latest(), now);
+  const nav = freshOnly(tState.navController.latest(), now);
 
   // Home is the FC's own HOME_POSITION: the point RTL returns to. It is latched
   // (the FC sends it rarely and it only changes on a new arm or a set-home),
   // so it is not age-gated; the ring is cleared on selection change and
-  // disconnect. Until one arrives DIST/HOME read "--" rather than measuring
+  // disconnect. Until one arrives DIST/HOME read "—" rather than measuring
   // from some other point — the oldest trail sample walks along the track once
   // the trail ring fills, and restarts wherever this GCS first saw the drone.
   const home = tState.homePosition.latest() ?? null;
@@ -71,9 +74,19 @@ export function TelemetryStrip() {
     home && hasPos ? haversineDistance(home.lat, home.lon, pos.lat, pos.lon) : null;
   const homeBrg = home && hasPos ? bearing(pos.lat, pos.lon, home.lat, home.lon) : null;
 
-  const heading = pos?.heading ?? vfr?.heading;
-  const vspd = vfr?.climb ?? pos?.climbRate;
+  const vspd = vfr?.climb ?? pos?.climbRate ?? null;
   const throttle = typeof vfr?.throttle === "number" ? vfr.throttle : null;
+
+  // NAV_CONTROLLER_OUTPUT reports 0 m to go when the vehicle is not flying to
+  // a waypoint, so only a positive distance yields an ETA.
+  const groundSpeed = vfr?.groundspeed ?? pos?.groundSpeed ?? null;
+  const etaSec =
+    nav && nav.wpDist > 0 && groundSpeed !== null && groundSpeed >= ETA_MIN_SPEED_MPS
+      ? nav.wpDist / groundSpeed
+      : null;
+
+  const sats = typeof gps?.satellites === "number" ? gps.satellites : null;
+  const hdop = typeof gps?.hdop === "number" ? gps.hdop : null;
 
   // No positioning wrapper: the cockpit zone container places this. It used to
   // carry `zone bl d-full`, which anchored it to the same bottom-left
@@ -81,23 +94,23 @@ export function TelemetryStrip() {
   // widget the operator moved into that corner painted straight over it.
   return (
     <div className="telem panel">
-        <Row label={t("strip.dist")}>
-          {homeDist === null ? "--" : fmt(homeDist, 0)} <small>m</small>
-        </Row>
-        <Row label={t("strip.home")}>
-          {homeBrg === null ? "--" : `${fmt(homeBrg, 0)}°`} <small>·</small>{" "}
-          {homeDist === null ? "--" : fmt(homeDist, 0)}
-          <small>m</small>
-        </Row>
-        <Row label={t("strip.vspd")}>
-          {vspd === undefined || vspd === null ? "--" : `${vspd >= 0 ? "+" : ""}${fmt(vspd, 1)}`}{" "}
-          <small>m/s</small>
-        </Row>
-        <Row label={t("strip.hdg")}>{`${fmt(heading, 0)}°`}</Row>
-        <Row label={t("strip.thr")}>
-          {throttle === null ? "--" : fmt(throttle, 0)}
-          <small>%</small>
-        </Row>
+      <Row label={t("strip.dist")}>
+        {formatHud(homeDist, 0)} <small>m</small>
+      </Row>
+      <Row label={t("strip.home")}>
+        {homeBrg === null ? NO_DATA_GLYPH : `${formatHeading(homeBrg)}°`}
+      </Row>
+      <Row label={t("strip.vspd")}>
+        {formatSigned(vspd, 1)} <small>m/s</small>
+      </Row>
+      <Row label={t("strip.thr")}>
+        {formatHud(throttle, 0)}
+        <small>%</small>
+      </Row>
+      <Row label={t("hud.eta")}>{etaSec === null ? NO_DATA_GLYPH : formatEta(etaSec)}</Row>
+      <Row label={t("strip.gps")}>
+        {formatHud(sats, 0)} <small>·</small> {formatHud(hdop, 1)}
+      </Row>
     </div>
   );
 }

@@ -1,0 +1,178 @@
+schema_version: 3
+id: com.altnautica.world-engine
+name: "ADOS World Engine"
+version: "1.0.1"
+description: "3D world model from drone flights, reconstructed on a LAN compute node, plus perception offload for drones without an NPU."
+description_long: |
+  A drone captures pose-tagged keyframes from one camera up to an all-sides rig and streams them to a compute node on the same network (a workstation or a dedicated compute box). The node reconstructs a Gaussian splat, point cloud, mesh and occupancy grid, and serves them to Mission Control as a live world model you can orbit, measure and replay.
+
+  The same compute node runs perception offload: a drone without an on-board accelerator streams its camera to the node, the node runs the detector, and detections return to the drone's own detection bus, so Follow-Me, the gimbal and the cockpit overlay work unchanged. A stale or link-lost detection is treated as lost, never extrapolated.
+
+  Keyframes ride the LAN first, fall back to the radio link's auxiliary stream through a ground station (pose and status only), then to the cloud relay. The ground station relays the radio lane onto the LAN when no shared network reaches the drone.
+features:
+  - "Pose-tagged keyframe capture, one camera up to an all-sides rig"
+  - "Gaussian splat, point cloud, mesh and occupancy reconstruction on a LAN compute node"
+  - "Live world-model streaming and Rerun recordings in Mission Control"
+  - "Perception offload for NPU-less drones with a freshness and link-loss safety gate"
+  - "LAN, radio-relay and cloud bearers with automatic failover"
+hardware_requirements:
+  cameras: "Any camera the vision engine publishes frames for"
+  optional:
+    - "A workstation or compute node on the drone's LAN; an NVIDIA or Apple Silicon GPU speeds reconstruction"
+    - "COLMAP and a splat trainer on the compute node for full reconstructions"
+    - "ffmpeg on the compute node for perception offload"
+documentation_url: "https://docs.altnautica.com/drone-agent/extensions/world-engine"
+author: "Altnautica"
+homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/world-engine"
+license: "GPL-3.0-or-later"
+risk: high
+
+compatibility:
+  ados_version: ">=0.102.0"
+  gcs_version: ">=0.58.0"
+  supported_boards: ["*"]
+
+agent:
+  # Every process is a compiled Rust binary shipped per architecture as a
+  # release payload. The main process (`world-engine-link`) runs on every
+  # profile and picks its mode from the node profile the host passes in
+  # ADOS_NODE_PROFILE; the capture and node services run only where their
+  # profile matches.
+  runtime: rust
+  isolation: subprocess
+  entrypoint: "bin:world-engine-link"
+  target_profiles: [drone, ground-station, workstation, compute]
+  resources:
+    class: heavy
+    max_ram_mb: 16384
+    max_cpu_percent: 800
+    max_pids: 1024
+  # The processes serve the extension's HTTP API on the host-created socket
+  # and meet each other on private sockets in the same directory.
+  http: true
+  binaries:
+    world-engine-link:
+      aarch64-linux: bin/aarch64-linux/world-engine-link
+      x86_64-linux: bin/x86_64-linux/world-engine-link
+      aarch64-macos: bin/aarch64-macos/world-engine-link
+    world-engine-capture:
+      aarch64-linux: bin/aarch64-linux/world-engine-capture
+    world-engine-node:
+      aarch64-linux: bin/aarch64-linux/world-engine-node
+      x86_64-linux: bin/x86_64-linux/world-engine-node
+      aarch64-macos: bin/aarch64-macos/world-engine-node
+  # Fetched at install, verified against sha256 and size, and covered by the
+  # archive signature because they are declared here. Only the entries that
+  # apply to the node's profile and architecture are downloaded. The release
+  # workflow writes the real source, sha256 and size_bytes.
+  payloads:
+    - path: bin/aarch64-linux/world-engine-link
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/world-engine-v1.0.1/world-engine-link-aarch64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: aarch64-linux
+    - path: bin/x86_64-linux/world-engine-link
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/world-engine-v1.0.1/world-engine-link-x86_64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: x86_64-linux
+    - path: bin/aarch64-macos/world-engine-link
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/world-engine-v1.0.1/world-engine-link-aarch64-macos"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: aarch64-macos
+    - path: bin/aarch64-linux/world-engine-capture
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/world-engine-v1.0.1/world-engine-capture-aarch64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: aarch64-linux
+      profiles: [drone]
+    - path: bin/aarch64-linux/world-engine-node
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/world-engine-v1.0.1/world-engine-node-aarch64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: aarch64-linux
+      profiles: [workstation, compute]
+    - path: bin/x86_64-linux/world-engine-node
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/world-engine-v1.0.1/world-engine-node-x86_64-linux"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: x86_64-linux
+      profiles: [workstation, compute]
+    - path: bin/aarch64-macos/world-engine-node
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/world-engine-v1.0.1/world-engine-node-aarch64-macos"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+      arch_os: aarch64-macos
+      profiles: [workstation, compute]
+    # The Rerun web viewer's wasm, served to the GCS half as a plugin asset.
+    # Every profile serves the GCS module, so every profile fetches it.
+    - path: gcs/assets/re_viewer_bg.wasm
+      source: "https://github.com/altnautica/ADOSExtensions/releases/download/world-engine-v1.0.1/re_viewer_bg.wasm"
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+  declared_capabilities:
+    - id: plugin.world-engine.world.read
+      risk: low
+      description: "Read the world-model descriptors (point cloud, occupancy, splat and mesh) this drone's reconstructions publish."
+  permissions:
+    # link: pose/state republish, status telemetry, radio relay lane, the LAN
+    # bearer and mDNS, cloud bearer and detection tee, offload return and
+    # advertisement, config writes from the Atlas API.
+    # capture: engine frames and the flight-controller pose.
+    # node: the :8092 listener, GPU access, job records.
+    - id: telemetry.extend
+    - id: event.publish
+    - id: telemetry.read
+    - id: node.info.read
+    - id: vision.frame.read
+    - id: vision.detection.publish
+    - id: vision.offload.advertise
+    - id: radio.aux_stream
+    - id: network.outbound
+    - id: network.listen
+    - id: hardware.gpu
+    - id: cloud.publish
+    - id: cloud.records
+  contributes:
+    services:
+      - name: capture
+        command: "bin:world-engine-capture com.altnautica.world-engine"
+        profiles: [drone]
+      - name: node
+        command: "bin:world-engine-node com.altnautica.world-engine"
+        profiles: [workstation, compute]
+        listen_ports: [8092]
+    shared_topics:
+      - topic: plugin.world-engine.pose
+        subscribe_capability: telemetry.read
+      - topic: plugin.world-engine.pointcloud
+        subscribe_capability: plugin.world-engine.world.read
+      - topic: plugin.world-engine.occupancy
+        subscribe_capability: plugin.world-engine.world.read
+      - topic: plugin.world-engine.splat
+        subscribe_capability: plugin.world-engine.world.read
+      - topic: plugin.world-engine.mesh
+        subscribe_capability: plugin.world-engine.world.read
+
+gcs:
+  entrypoint: "gcs/world-engine.mjs"
+  isolation: inline
+  permissions:
+    - id: ui.slot.node-agent-page
+    - id: ui.slot.node-surface
+    - id: cloud.records
+    - id: perception.read
+    - id: telemetry.subscribe.status
+  contributes:
+    agent_pages:
+      - { id: world-model, title: "World Model", section: videoVision, profile: [drone] }
+      - { id: world-model-setup, title: "World Model setup", setup_for: world-model, profile: [drone] }
+      - { id: live-world, title: "Live World", section: videoVision, after: world-model, profile: [drone] }
+      - { id: offload, title: "Perception offload", section: videoVision, after: vision, profile: [drone, workstation, compute] }
+      - { id: atlas-relay, title: "Atlas relay", section: radioLink, profile: [ground-station] }
+    node_surfaces:
+      - { id: overview, title: "Compute", profile: [workstation, compute], group: status, order: 10 }
+      - { id: compute, title: "Jobs & outputs", profile: [workstation, compute], group: compute, order: 20 }
+  locales:
+    - en

@@ -68,7 +68,7 @@ export function SkillRadial({ enabled }: SkillRadialProps) {
     >
       {/* Center hint: the highlighted skill name, or a "release to fire" prompt. */}
       <div className="flex flex-col items-center gap-1 text-center">
-        <span className="panel rounded-lg px-3 py-1 text-sm font-semibold text-text-primary">
+        <span className="glass-pill px-3 py-1 text-sm font-semibold">
           {highlightedLabel || t("skills.radial.aimPrompt")}
         </span>
         <span className="text-[11px] uppercase tracking-wide text-text-tertiary">
@@ -101,10 +101,10 @@ export function SkillRadial({ enabled }: SkillRadialProps) {
               className={cn(
                 "panel relative flex h-16 w-16 items-center justify-center rounded-xl transition-all",
                 isActive &&
-                  "border-status-success bg-status-success/10 shadow-[0_0_14px_var(--good)]",
+                  "border-status-success bg-status-success/10 shadow-[0_0_14px_var(--hud-good)]",
                 isDisabled && "opacity-40",
                 isHighlighted &&
-                  "border-accent-primary ring-2 ring-accent-primary shadow-[0_0_16px_var(--hud)] motion-safe:animate-pulse",
+                  "border-accent-primary ring-2 ring-accent-primary shadow-[0_0_16px_var(--hud-primary)] motion-safe:animate-pulse",
               )}
             >
               <Icon

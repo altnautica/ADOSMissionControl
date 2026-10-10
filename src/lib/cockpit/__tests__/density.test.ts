@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   COCKPIT_DENSITIES,
   DEFAULT_DENSITY,
-  isCockpitDensity,
+  meetsDensity,
 } from "@/lib/cockpit/density";
 
 describe("cockpit density", () => {
@@ -13,17 +13,16 @@ describe("cockpit density", () => {
     expect(COCKPIT_DENSITIES).toContain(DEFAULT_DENSITY);
   });
 
-  it("accepts only the known density modes", () => {
-    expect(isCockpitDensity("minimal")).toBe(true);
-    expect(isCockpitDensity("standard")).toBe(true);
-    expect(isCockpitDensity("full")).toBe(true);
+  it("admits a widget at its own density and every denser one", () => {
+    expect(meetsDensity("standard", "standard")).toBe(true);
+    expect(meetsDensity("standard", "full")).toBe(true);
+    expect(meetsDensity("minimal", "minimal")).toBe(true);
+    expect(meetsDensity("minimal", "full")).toBe(true);
   });
 
-  it("rejects unknown, wrong-type, and nullish values", () => {
-    expect(isCockpitDensity("dense")).toBe(false);
-    expect(isCockpitDensity("")).toBe(false);
-    expect(isCockpitDensity(2)).toBe(false);
-    expect(isCockpitDensity(null)).toBe(false);
-    expect(isCockpitDensity(undefined)).toBe(false);
+  it("thins a widget out below its density", () => {
+    expect(meetsDensity("standard", "minimal")).toBe(false);
+    expect(meetsDensity("full", "standard")).toBe(false);
+    expect(meetsDensity("full", "minimal")).toBe(false);
   });
 });

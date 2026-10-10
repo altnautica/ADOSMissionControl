@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useVideoStore } from "@/stores/video-store";
-import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { CAMERA_RECOVERY_ACTIVE_STATES } from "@/lib/agent/camera-recovery";
+import { useClockTick } from "@/lib/agent/freshness";
 import {
   setVideoElement,
   startRecording as startVideoRecording,
@@ -17,57 +18,62 @@ import {
 import { useSingletonAgentVideo } from "@/hooks/use-singleton-agent-video";
 import { useResolvedAgentVideo } from "@/hooks/use-resolved-agent-video";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { formatElapsed, msSince } from "@/components/cockpit/band/format";
 import { cn } from "@/lib/utils";
-import { Camera, RefreshCw, Settings2, X } from "lucide-react";
+import { Camera, RefreshCw, Settings2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { VideoSourceConfigPanel } from "./VideoSourceConfigPanel";
+import { useDemoFeedActive } from "@/components/cockpit/CockpitDemoStream";
 
 interface VideoCanvasProps {
   children?: ReactNode;
   className?: string;
-  /** Hide the built-in video REC button. The cockpit provides a single unified
-   *  flight-recording control (video + telemetry), so the per-pane video-only
-   *  REC would be a duplicate there; the screenshot control is kept. */
-  hideRecordButton?: boolean;
-  /** The focused drone's canonical device id. Optional so existing direct-node
-   *  callers (e.g. DroneVisionTab) are unaffected; when present it unlocks the
-   *  relayed-node WHEP fallback below (Cockpit passes it). */
+  /**
+   * `panel` (default) draws the pane's own chrome: stats, source badge,
+   * settings gear, REC control and indicator, and the frozen-picture band.
+   * `cockpit` draws only the picture and its placeholder: the cockpit's
+   * safety band, top-right cluster and frozen banner already carry every one
+   * of those, and drawing them twice puts two answers on screen.
+   */
+  chrome?: "panel" | "cockpit";
+  /** The drone whose feed this is. Keys the per-drone manual source override
+   *  and unlocks the relayed-node WHEP fallback. Without it the pane plays the
+   *  auto-discovered agent feed and offers no manual override. */
   droneId?: string;
 }
 
-const WHEP_PRESETS = [
-  { label: "Gazebo SITL", url: "http://localhost:8889/gazebo-cam/whep" },
-  // A genuinely local example. The second entry used to be a fixed private
-  // LAN address on mediamtx's port, presented to operators as "Agent
-  // (local)" — a preset that works for nobody but the developer whose
-  // network it was, and one that teaches the wrong port: the agent's own
-  // front is :8080, not :8889.
-  { label: "Agent (this host)", url: "http://localhost:8080/whep" },
-];
-
 /**
  * Which node is actually producing the picture, derived from which URL won
- * the resolution order below.
- *
- * The placeholder used to collapse to the single string "NO SIGNAL" for three
- * different conditions, and `agentPresent` folded direct, cloud and
- * ground-relayed reachability into one boolean — so on a ground station an
- * operator could not tell whether the radio link was down, the drone was not
- * streaming, or this node simply has no camera. Worse, a relayed feed (decoded
- * by a ground station and republished, with materially higher latency) was
- * indistinguishable from a direct one.
+ * the resolution order below. A relayed feed (decoded by a ground station and
+ * republished, with materially higher latency) must be distinguishable from a
+ * direct one, and a missing feed must say whose camera is missing.
  */
 type VideoSource = "manual" | "direct" | "relayed" | "cloud" | "none";
 
-const SOURCE_BADGE: Record<VideoSource, string | null> = {
-  manual: "MANUAL",
-  direct: "DIRECT",
-  relayed: "VIA GROUND",
-  cloud: "VIA CLOUD",
+const SOURCE_KEY: Record<VideoSource, string | null> = {
+  manual: "sourceManual",
+  direct: "sourceDirect",
+  relayed: "sourceRelayed",
+  cloud: "sourceCloud",
   none: null,
 };
 
-export function VideoCanvas({ children, className, hideRecordButton = false, droneId }: VideoCanvasProps) {
+/** Elapsed time of the video-only recording, ticking on the shared clock. */
+function VideoRecElapsed({ startedAt }: { startedAt: number }) {
+  useClockTick();
+  return (
+    <span className="text-[10px] font-mono text-status-error/80">
+      {formatElapsed(msSince(startedAt))}
+    </span>
+  );
+}
+
+export function VideoCanvas({ children, className, chrome = "panel", droneId }: VideoCanvasProps) {
+  const t = useTranslations("cockpit.video");
+  const panelChrome = chrome === "panel";
+  // In the cockpit a demo node's synthetic feed (a child of this pane) is the
+  // picture: no placeholder over it and no real transport dialled behind it.
+  const demoFeed = useDemoFeedActive(panelChrome ? undefined : droneId);
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const isRecording = useVideoStore((s) => s.isRecording);
   const recordingStartedAt = useVideoStore((s) => s.recordingStartedAt);
@@ -75,12 +81,8 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
   const latencyMs = useVideoStore((s) => s.latencyMs);
   const resolution = useVideoStore((s) => s.resolution);
 
-  // Auto-discovered agent video. The LAN poll (/api/status/full) and the
-  // cloud heartbeat (cmd_droneStatus) both populate the singleton video store
-  // via setAgentVideoStatus, so the focused drone's stream URL is already
-  // known here — no manual configuration needed.
-  // The stream switcher's active concurrent leg (wins over the poller-owned
-  // default agent URL so a leg selection survives status polls).
+  // The stream switcher's active concurrent leg wins over the poller-owned
+  // default agent URL so a leg selection survives status polls.
   const whepUrlOverride = useVideoStore((s) => s.whepUrlOverride);
   const cloudDeviceId = useAgentConnectionStore((s) => s.cloudDeviceId);
   // A relayed-only drone (reached through a ground station's WFB link, no
@@ -95,44 +97,29 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
   const singletonWhepUrl = useVideoStore((s) => s.agentWhepUrl);
   const agentConnected = useAgentConnectionStore((s) => s.connected);
   const transportMode = useSettingsStore((s) => s.videoTransportMode);
-  // Live air-side camera state for the focused drone (distinct from the
-  // static capability catalog): "missing" = the agent's pipeline found no
+  // Live air-side camera state: "missing" = the agent's pipeline found no
   // primary camera right now; an active recovery means a self-heal is in
   // flight.
   const liveCameraState = useAgentCapabilitiesStore((s) => s.cameraState);
-  const cameraUsbRecovery = useAgentCapabilitiesStore(
-    (s) => s.cameraUsbRecovery,
-  );
-  // Whether this node advertises ANY camera. A node with an empty roster has
-  // no video to be missing, so it gets "NO CAMERA ON THIS NODE" rather than
-  // a NO SIGNAL that implies a broken link — the common case on a ground
-  // station, where the cockpit surface is registered regardless.
-  const hasCameraCapability = useAgentCapabilitiesStore(
-    (s) => s.cameras.length > 0,
-  );
+  const cameraUsbRecovery = useAgentCapabilitiesStore((s) => s.cameraUsbRecovery);
+  // A node with an empty camera roster has no video to be missing, so it gets
+  // "no camera on this node" rather than a NO SIGNAL that implies a broken
+  // link — the common case on a ground station.
+  const hasCameraCapability = useAgentCapabilitiesStore((s) => s.cameras.length > 0);
   const degradedReason = useVideoStore((s) => s.degradedReason);
 
   // Per-drone manual override (SITL / Gazebo / forced URL), persisted in
   // drone metadata. When set it wins over the auto-discovered agent URL.
-  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
-  const droneProfile = useDroneMetadataStore((s) =>
-    selectedDroneId ? s.profiles[selectedDroneId] : undefined,
+  const manualUrl = useDroneMetadataStore((s) =>
+    droneId ? (s.profiles[droneId]?.videoWhepUrl ?? "") : "",
   );
   const upsertProfile = useDroneMetadataStore((s) => s.upsertProfile);
-  const manualUrl = droneProfile?.videoWhepUrl ?? "";
-  const setVideoWhepUrl = (url: string) => {
-    if (selectedDroneId) {
-      upsertProfile(selectedDroneId, { videoWhepUrl: url });
-    }
-  };
 
   // Manual override wins, then the stream switcher's selected concurrent leg,
-  // then the auto-discovered default agent URL, then a ground station's
-  // funneled republish of this drone's downlink.
+  // then the auto-discovered default agent URL (which itself falls back to a
+  // ground station's funnelled republish of this drone's downlink).
   const effectiveWhepUrl = manualUrl || whepUrlOverride || agentWhepUrl;
 
-  // Which of those won, so the surface can NAME the producer instead of
-  // implying every feed is equivalent. Same precedence, one branch per rung.
   const videoSource: VideoSource = manualUrl
     ? "manual"
     : whepUrlOverride || singletonWhepUrl
@@ -143,9 +130,8 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
         ? "relayed"
         : "none";
 
-  // Callback ref so the cascade hook re-runs once the <video> element mounts.
-  // A plain useRef never triggers a re-render, so the cascade would see
-  // videoEl: null forever (see VideoFeedCard for the same pattern).
+  // Callback ref so the cascade hook re-runs once the <video> element mounts;
+  // a plain useRef never triggers a re-render.
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const setVideoRef = useCallback((el: HTMLVideoElement | null) => {
     setVideoEl(el);
@@ -154,9 +140,6 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
   const [showConfig, setShowConfig] = useState(false);
   const [configUrl, setConfigUrl] = useState(manualUrl);
 
-  // Recording timer
-  const [recElapsed, setRecElapsed] = useState("");
-
   // Bind the element to the webrtc-client singleton so screenshot / recording
   // and the stats loop (fps / latency / resolution) operate on it.
   useEffect(() => {
@@ -164,29 +147,9 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
     return () => setVideoElement(null);
   }, [videoEl]);
 
-  // The recorder lives in the webrtc singleton and survives this pane's
-  // remounts, so the elapsed time counts from the store's start stamp rather
-  // than from whenever this component mounted.
-  useEffect(() => {
-    if (!isRecording || recordingStartedAt === null) {
-      setRecElapsed("");
-      return;
-    }
-    const render = () => {
-      const sec = Math.max(0, Math.floor((Date.now() - recordingStartedAt) / 1000));
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      setRecElapsed(`${m}:${String(s).padStart(2, "0")}`);
-    };
-    render();
-    const timer = setInterval(render, 1000);
-    return () => clearInterval(timer);
-  }, [isRecording, recordingStartedAt]);
-
   // The shared singleton-video brain owns the enable gate + transport cascade
-  // + retry + stall recovery — identical to the Agent-tab feed, so the Fly
-  // pane can never diverge from it. A manual override URL (SITL/Gazebo) forces
-  // a connect even when the agent reports no running video.
+  // + retry + stall recovery. A manual override URL forces a connect even when
+  // the agent reports no running video.
   const {
     state: cascadeState,
     error: hookError,
@@ -197,98 +160,70 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
     transportMode,
     videoEl,
     forceEnabled: Boolean(manualUrl),
+    suspended: demoFeed,
     agentVideoState,
   });
 
   const handleRecordToggle = useCallback(() => {
-    if (isRecording) {
-      stopVideoRecording();
-    } else {
-      startVideoRecording();
-    }
+    if (isRecording) void stopVideoRecording();
+    else startVideoRecording();
   }, [isRecording]);
 
-  const handleScreenshot = useCallback(() => {
-    captureScreenshot();
-  }, []);
-
   const handleSaveConfig = () => {
-    setVideoWhepUrl(configUrl);
+    if (droneId) upsertProfile(droneId, { videoWhepUrl: configUrl });
     setShowConfig(false);
   };
 
   const hasVideo = isStreaming;
-  const showConnecting =
-    cascadeState === "connecting" || agentVideoState === "starting";
+  const showConnecting = cascadeState === "connecting" || agentVideoState === "starting";
   const cascadeError = cascadeState === "failed" ? hookError : null;
   const airCameraRecovering =
-    cameraUsbRecovery != null &&
-    CAMERA_RECOVERY_ACTIVE_STATES.has(cameraUsbRecovery.state);
+    cameraUsbRecovery != null && CAMERA_RECOVERY_ACTIVE_STATES.has(cameraUsbRecovery.state);
   const airCameraMissing = liveCameraState === "missing";
 
-  // An agent is present when the focused drone's companion is connected
-  // LAN-direct, reachable over the cloud relay, or — for a WFB-relayed drone
-  // with no direct/cloud pairing at all — the ground station is already
-  // funneling its downlink (funneledWhepUrl). When an agent is present the
-  // video is ITS job — so we never fall back to the manual "Configure
-  // Video Source" prompt; we auto-render its stream, or show its real state
-  // (camera recovery / missing / offline) instead. The manual prompt only
-  // appears for a drone with no agent at all (FC-only / SITL).
-  const agentPresent =
-    agentConnected || Boolean(cloudDeviceId) || Boolean(funneledWhepUrl);
-  const offerManualConfig = !agentPresent && !effectiveWhepUrl;
+  // An agent is present when the drone's companion is connected LAN-direct,
+  // reachable over the cloud relay, or a ground station is funnelling its
+  // downlink. Then the video is the agent's job and the manual prompt never
+  // appears; it is only for a drone with no agent at all (FC-only / SITL).
+  const agentPresent = agentConnected || Boolean(cloudDeviceId) || Boolean(funneledWhepUrl);
+  const offerManualConfig = Boolean(droneId) && !agentPresent && !effectiveWhepUrl;
 
-  // Placeholder label. Each branch names a DISTINCT condition; the three
-  // different situations that used to share the bare string "NO SIGNAL" are
-  // now separated, because on a ground station an operator has to be able to
-  // tell a down radio link from a drone that is not streaming from a node
-  // that has no camera at all.
-  const placeholderLabel = showConnecting
-    ? "CONNECTING..."
+  // Each branch names a distinct condition: a down radio link, a drone that
+  // is not streaming, and a node with no camera are different situations.
+  const placeholderKey = showConnecting
+    ? "connecting"
     : airCameraRecovering
-      ? "CAMERA RECOVERING..."
+      ? "cameraRecovering"
       : airCameraMissing
-        ? "NO CAMERA"
+        ? "noCamera"
         : videoSource === "none"
           ? hasCameraCapability
-            ? "NO VIDEO SOURCE"
-            : "NO CAMERA ON THIS NODE"
+            ? "noVideoSource"
+            : "noCameraOnNode"
           : cascadeError
             ? videoSource === "relayed"
-              ? "NO SIGNAL FROM GROUND RELAY"
-              : "NO SIGNAL"
+              ? "noSignalGround"
+              : "noSignal"
             : agentVideoState === "running"
-              ? "NO SIGNAL"
+              ? "noSignal"
               : agentPresent
-                ? "VIDEO OFFLINE"
-                : "NO SIGNAL";
+                ? "videoOffline"
+                : "noSignal";
 
-  // Which node owns the picture, shown under the placeholder and beside the
-  // stats while streaming. `VIA GROUND` and `DIRECT` have materially
-  // different latency, so conflating them is a piloting-relevant omission.
-  const sourceBadge = SOURCE_BADGE[videoSource];
+  const sourceKey = SOURCE_KEY[videoSource];
+  const sourceBadge = sourceKey ? t(sourceKey) : null;
 
   return (
-    <div
-      className={cn(
-        "relative w-full h-full bg-bg-primary overflow-hidden",
-        className
-      )}
-    >
-      {/* Video element (always rendered, hidden when not streaming) */}
+    <div className={cn("relative w-full h-full bg-bg-primary overflow-hidden", className)}>
       <video
         ref={setVideoRef}
         autoPlay
         muted
         playsInline
-        className={cn(
-          "absolute inset-0 w-full h-full object-contain",
-          !hasVideo && "hidden"
-        )}
+        className={cn("absolute inset-0 w-full h-full object-contain", !hasVideo && "hidden")}
       />
 
-      {/* Placeholder (no live signal) */}
-      {!hasVideo && (
+      {!hasVideo && !demoFeed && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="w-16 h-16 border border-border-default flex items-center justify-center">
@@ -306,11 +241,9 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
               </svg>
             </div>
             <span className="text-sm font-mono text-text-tertiary tracking-wider">
-              {placeholderLabel}
+              {t(placeholderKey)}
             </span>
-            {/* Which node the absent video belongs to. Without it, a NO
-                SIGNAL on a ground station says nothing about whose camera
-                is missing. */}
+            {/* Which node the absent video belongs to. */}
             {sourceBadge && (
               <span
                 className="text-[10px] font-mono tracking-wider text-text-tertiary"
@@ -327,104 +260,58 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
             {cascadeError && !showConfig && (
               <button
                 onClick={handleRetry}
-                className="mt-1 flex items-center gap-1 px-3 py-1.5 text-[10px] font-mono text-text-secondary border border-border-default hover:border-accent-primary hover:text-accent-primary transition-colors cursor-pointer"
+                className="pointer-events-auto mt-1 flex items-center gap-1 px-3 py-1.5 text-[10px] font-mono text-text-secondary border border-border-default hover:border-accent-primary hover:text-accent-primary transition-colors cursor-pointer"
               >
                 <RefreshCw size={11} />
-                RETRY
+                {t("retry")}
               </button>
             )}
             {offerManualConfig && !showConfig && (
               <button
                 onClick={() => { setConfigUrl(""); setShowConfig(true); }}
-                className="mt-2 px-3 py-1.5 text-[10px] font-mono text-text-secondary border border-border-default hover:border-accent-primary hover:text-accent-primary transition-colors cursor-pointer"
+                className="pointer-events-auto mt-2 px-3 py-1.5 text-[10px] font-mono text-text-secondary border border-border-default hover:border-accent-primary hover:text-accent-primary transition-colors cursor-pointer"
               >
-                Configure Video Source
+                {t("configure")}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Degraded band. The receive path is still installed and the last
-          decoded frame is still on screen, but nothing is arriving. Without
-          this the operator saw a frozen picture with a green transport badge
-          and stale-but-nonzero stats — a paused feed reading as healthy. */}
-      {hasVideo && degradedReason && (
+      {/* The receive path is still installed and the last frame is still on
+          screen, but nothing is arriving. The cockpit draws its own banner. */}
+      {panelChrome && hasVideo && degradedReason && (
         <div
           className="absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-2 bg-status-error/85 px-2 py-1"
           data-video-degraded={degradedReason}
           role="status"
         >
           <span className="text-[11px] font-mono font-semibold tracking-wider text-on-status">
-            {degradedReason === "ice-disconnect"
-              ? "LINK LOST — PICTURE FROZEN, RECONNECTING"
-              : "NO FRAMES — PICTURE FROZEN, RECONNECTING"}
+            {degradedReason === "ice-disconnect" ? t("frozenLinkLost") : t("frozenNoFrames")}
           </span>
         </div>
       )}
 
-      {/* Video source config panel (manual override) */}
       {showConfig && (
-        <div className="absolute inset-0 z-20 bg-bg-primary/95 flex items-center justify-center">
-          <div className="w-80 space-y-3 p-4 border border-border-default bg-bg-primary">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-text-primary">Video Source (WHEP)</span>
-              <button onClick={() => setShowConfig(false)} className="text-text-tertiary hover:text-text-primary cursor-pointer">
-                <X size={14} />
-              </button>
-            </div>
-            <Input
-              value={configUrl}
-              onChange={(e) => setConfigUrl(e.target.value)}
-              placeholder="http://localhost:8889/gazebo-cam/whep"
-              label="WHEP Endpoint URL"
-            />
-            <p className="text-[10px] text-text-tertiary leading-relaxed">
-              Leave empty to use the paired agent&apos;s camera automatically.
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {WHEP_PRESETS.map((p) => (
-                <button
-                  key={p.url}
-                  onClick={() => setConfigUrl(p.url)}
-                  className={cn(
-                    "px-2 py-0.5 text-[9px] font-mono border transition-colors cursor-pointer",
-                    configUrl === p.url
-                      ? "border-accent-primary text-accent-primary bg-accent-primary/10"
-                      : "border-border-default text-text-tertiary hover:text-text-secondary"
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={handleSaveConfig}
-              className="w-full py-1.5 text-xs font-semibold bg-accent-primary text-accent-foreground hover:bg-accent-primary/90 transition-colors cursor-pointer"
-            >
-              {configUrl ? "Connect" : "Use Agent Camera"}
-            </button>
-          </div>
-        </div>
+        <VideoSourceConfigPanel
+          url={configUrl}
+          onUrlChange={setConfigUrl}
+          onSave={handleSaveConfig}
+          onClose={() => setShowConfig(false)}
+        />
       )}
 
-      {/* Top-left: REC indicator */}
-      {isRecording && (
+      {panelChrome && isRecording && (
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 bg-status-error animate-pulse" />
-          <span className="text-xs font-mono font-semibold text-status-error tracking-wider">
-            REC
-          </span>
-          {recElapsed && (
-            <span className="text-[10px] font-mono text-status-error/80">{recElapsed}</span>
-          )}
+          <span className="w-2.5 h-2.5 bg-status-error motion-safe:animate-pulse" />
+          <span className="text-xs font-mono font-semibold text-status-error tracking-wider">REC</span>
+          {recordingStartedAt !== null && <VideoRecElapsed startedAt={recordingStartedAt} />}
         </div>
       )}
 
-      {/* Bottom-left: Video controls */}
       {hasVideo && (
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1">
-          {!hideRecordButton && (
+          {panelChrome && (
             <button
               onClick={handleRecordToggle}
               className={cn(
@@ -435,13 +322,13 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
               )}
               title={isRecording ? "Stop recording video" : "Record video"}
             >
-              <span className={cn("w-2 h-2 rounded-full", isRecording ? "bg-status-error animate-pulse" : "bg-status-error/60")} />
+              <span className={cn("w-2 h-2 rounded-full", isRecording ? "bg-status-error motion-safe:animate-pulse" : "bg-status-error/60")} />
               {isRecording ? "STOP" : "REC"}
             </button>
           )}
           <button
-            onClick={handleScreenshot}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono text-text-secondary bg-bg-primary/80 border border-border-default rounded hover:text-text-primary hover:bg-bg-primary transition-colors cursor-pointer"
+            onClick={() => captureScreenshot()}
+            className="pointer-events-auto flex items-center gap-1 px-2 py-1 text-[10px] font-mono text-text-secondary bg-bg-primary/80 border border-border-default rounded hover:text-text-primary hover:bg-bg-primary transition-colors cursor-pointer"
             title="Capture screenshot"
           >
             <Camera size={10} />
@@ -449,44 +336,39 @@ export function VideoCanvas({ children, className, hideRecordButton = false, dro
         </div>
       )}
 
-      {/* Top-right: Video stats + config gear */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-        {/* The live source, beside the stats, for the same reason it appears
-            under the placeholder: DIRECT and VIA GROUND are different
-            latencies and an operator must be able to tell which they have. */}
-        {hasVideo && sourceBadge && (
-          <Badge variant="neutral" size="sm" data-video-source={videoSource}>
-            {sourceBadge}
+      {panelChrome && (
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+          {/* DIRECT and VIA GROUND are different latencies; name the source. */}
+          {hasVideo && sourceBadge && (
+            <Badge variant="neutral" size="sm" data-video-source={videoSource}>
+              {sourceBadge}
+            </Badge>
+          )}
+          <Badge variant="neutral" size="sm">
+            {resolution || "—"}
           </Badge>
-        )}
-        <Badge variant="neutral" size="sm">
-          {resolution || "—"}
-        </Badge>
-        <Badge
-          variant={fps !== null && fps > 0 ? "success" : "neutral"}
-          size="sm"
-        >
-          {fps === null ? "—" : fps} FPS
-        </Badge>
-        {/* Explicitly `net`: this is RTT plus decoder buffer wait, not a
-            glass-to-glass figure. An unqualified "ms" here read as
-            end-to-end and understated the real delay by roughly 10x. */}
-        <Badge
-          variant={latencyMs === null ? "neutral" : latencyMs > 200 ? "warning" : "success"}
-          size="sm"
-        >
-          {latencyMs === null ? "—" : latencyMs}ms net
-        </Badge>
-        <button
-          onClick={() => { setConfigUrl(manualUrl); setShowConfig(!showConfig); }}
-          className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-          title="Video source settings"
-        >
-          <Settings2 size={14} />
-        </button>
-      </div>
+          <Badge variant={fps !== null && fps > 0 ? "success" : "neutral"} size="sm">
+            {fps === null ? "—" : fps} FPS
+          </Badge>
+          {/* Explicitly `net`: RTT plus decoder buffer wait, not glass-to-glass. */}
+          <Badge
+            variant={latencyMs === null ? "neutral" : latencyMs > 200 ? "warning" : "success"}
+            size="sm"
+          >
+            {latencyMs === null ? "—" : latencyMs}ms net
+          </Badge>
+          {droneId && (
+            <button
+              onClick={() => { setConfigUrl(manualUrl); setShowConfig(!showConfig); }}
+              className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+              title="Video source settings"
+            >
+              <Settings2 size={14} />
+            </button>
+          )}
+        </div>
+      )}
 
-      {/* OSD overlay and other children */}
       {children}
     </div>
   );

@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import type { CommandResult, DroneProtocol } from "@/lib/protocol/types";
 import type { OutputRow } from "../../misc/ServoMappingTable";
 
@@ -32,7 +33,7 @@ describe("MotorTestSection", () => {
         success: false, resultCode: 2, message: "Command denied",
       })),
     } as Partial<DroneProtocol> as DroneProtocol;
-    render(<MotorTestSection protocol={protocol} isHardBlocked={false} hardBlockMessage="" />);
+    renderWithIntl(<MotorTestSection protocol={protocol} isHardBlocked={false} hardBlockMessage="" />);
     fireEvent.click(screen.getByRole("switch"));
     fireEvent.click(screen.getByRole("button", { name: /Test Motor 1/ }));
     await waitFor(() => expect(toast).toHaveBeenCalled());

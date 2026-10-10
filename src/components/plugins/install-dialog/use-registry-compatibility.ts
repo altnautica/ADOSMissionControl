@@ -102,7 +102,7 @@ export function useRegistryCompatibility(
       detail:
         options?.surface === "settings"
           ? "Select a node to install on."
-          : "Connect to a drone to install plugins.",
+          : "Connect to a drone to install extensions.",
     };
   }
 

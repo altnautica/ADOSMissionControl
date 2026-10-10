@@ -17,14 +17,8 @@
  * @license GPL-3.0-only
  */
 
-import { DroneOverviewTab } from "@/components/drone-detail/DroneOverviewTab";
-import { CockpitView } from "@/components/cockpit/CockpitView";
-import { DroneOverview } from "@/components/command/overview/DroneOverview";
-import { DroneConfigureTab } from "@/components/drone-detail/DroneConfigureTab";
-import { LogsTab } from "@/components/drone-detail/LogsTab";
-import { ParametersPanel } from "@/components/fc/parameters/ParametersPanel";
+import dynamic from "next/dynamic";
 import { FcDisconnectedPlaceholder } from "@/components/fc/shared/FcDisconnectedPlaceholder";
-import { RcElrsLinkTab } from "@/components/command/nodes/RcElrsLinkTab";
 import type { SurfaceSpec } from "../surface-types";
 import { surfaceNodeDeviceId } from "../surface-types";
 import {
@@ -32,6 +26,30 @@ import {
   VEHICLE_GROUP,
 } from "../surface-groups";
 import { AGENT_SURFACE } from "../agent/agent-surface";
+
+// Every tab body loads on first open: the panel renders one at a time, and the
+// cockpit, parameter table and configure pages are each heavy.
+const DroneOverview = dynamic(() =>
+  import("@/components/command/overview/DroneOverview").then((m) => m.DroneOverview),
+);
+const DroneOverviewTab = dynamic(() =>
+  import("@/components/drone-detail/DroneOverviewTab").then((m) => m.DroneOverviewTab),
+);
+const CockpitView = dynamic(() =>
+  import("@/components/cockpit/CockpitView").then((m) => m.CockpitView),
+);
+const DroneConfigureTab = dynamic(() =>
+  import("@/components/drone-detail/DroneConfigureTab").then((m) => m.DroneConfigureTab),
+);
+const ParametersPanel = dynamic(() =>
+  import("@/components/fc/parameters/ParametersPanel").then((m) => m.ParametersPanel),
+);
+const RcElrsLinkTab = dynamic(() =>
+  import("@/components/command/nodes/RcElrsLinkTab").then((m) => m.RcElrsLinkTab),
+);
+const LogsTab = dynamic(() =>
+  import("@/components/drone-detail/LogsTab").then((m) => m.LogsTab),
+);
 
 export const DRONE_SURFACES: SurfaceSpec[] = [
   {

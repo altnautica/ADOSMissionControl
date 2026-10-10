@@ -66,67 +66,9 @@ export function DroneConfigureTab({
     Tuning: t("tuningSection"),
     Display: t("displaySection"),
     System: t("systemSection"),
-    Security: "Security",
+    Security: t("securitySection"),
     Debug: t("debugSection"),
-    Programming: "Programming",
-  };
-
-  const navLabels: Record<string, string> = {
-    outputs: t("outputs"),
-    receiver: t("receiver"),
-    modes: t("flightModes"),
-    "aux-modes": t("auxModes"),
-    "bf-motors": t("motorsEsc"),
-    frame: t("frameSetup"),
-    failsafe: t("failsafe"),
-    geofence: t("geofence"),
-    health: t("healthCheck"),
-    sensors: t("sensors"),
-    power: t("power"),
-    "gps-config": t("gpsConfig"),
-    gimbal: t("gimbal"),
-    camera: t("camera"),
-    pid: t("pidTuning"),
-    "rate-profiles": t("rateProfiles"),
-    adjustments: t("adjustments"),
-    "sensor-graphs": t("sensorGraphs"),
-    osd: t("osdEditor"),
-    led: t("ledStrip"),
-    vtx: t("vtx"),
-    ports: t("ports"),
-    "fc-source": t("fcSource"),
-    radio: t("radioConfig"),
-    "bf-config": t("configuration"),
-    firmware: t("firmwarePanel"),
-    cli: t("cli"),
-    mavlink: t("mavlinkInspector"),
-    blackbox: t("blackbox"),
-    debug: t("debugPanel"),
-    diagnostics: t("diagnostics"),
-    logs: t("logAnalysis"),
-    can: "DroneCAN",
-    signing: "MAVLink Signing",
-    safehome: "Safehome",
-    geozone: "Geozones",
-    "inav-nav-config": "Navigation Config",
-    "inav-mission": "iNav Mission",
-    "inav-mixer-profile": "Mixer Profiles",
-    "inav-output-mapping": "Output Mapping",
-    "inav-servos": "Servos (iNav)",
-    "inav-failsafe": "Failsafe (iNav)",
-    "inav-battery-profile": "Battery Profiles",
-    "inav-temp-sensors": "Temp Sensors",
-    "inav-control-profile": "Control Profiles",
-    "inav-mc-braking": "MC Braking",
-    "inav-rate-dynamics": "Rate Dynamics",
-    "inav-ez-tune": "EZ Tune",
-    "inav-fw-approach": "FW Approach",
-    "inav-osd": "OSD (iNav)",
-    "inav-custom-osd": "Custom OSD",
-    "inav-logic-conditions": "Logic Conditions",
-    "inav-global-variables": "Global Variables",
-    "inav-programming-pid": "Programming PIDs",
-    "inav-nav-pid": "Nav PID",
+    Programming: t("programmingSection"),
   };
 
   // Persist only while the FC link is up. `supports()` returns all-false the
@@ -283,9 +225,7 @@ export function DroneConfigureTab({
                     )}
                   >
                     {item.icon}
-                    {(firmwareType && item.labelOverride?.[firmwareType]) ??
-                      navLabels[item.id] ??
-                      item.label}
+                    {t((firmwareType && item.labelOverride?.[firmwareType]) ?? item.labelKey)}
                   </button>
                 );
               })}

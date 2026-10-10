@@ -20,7 +20,7 @@
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
-import { useFleetStore } from "@/stores/fleet-store";
+import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
@@ -75,7 +75,7 @@ export function NodeDetailPanel({ droneId, onClose }: NodeDetailPanelProps) {
 
   // Only this node's row: the projector keeps a row's identity until the row
   // itself changes, so another drone's telemetry does not re-render the panel.
-  const drone = useFleetStore((s) => s.drones.find((d) => d.id === droneId));
+  const drone = useFleetDrones((drones) => drones.find((d) => d.id === droneId));
   // This drone is backed by a companion-computer agent when the fleet row
   // carries the agent's device id (cloud-paired or LAN-paired projector).
   const agentDeviceId = drone?.cloudDeviceId ?? null;

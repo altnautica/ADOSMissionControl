@@ -23,6 +23,7 @@ export function FirmwarePanel() {
   const isAdos = isAdosStack(fw.firmwareStack);
   const isPeripheral = isPeripheralStack(fw.firmwareStack);
   const t = useTranslations("flashTool.ados");
+  const tToast = useTranslations("fcToasts.firmware");
   const { toast } = useToast();
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
@@ -59,7 +60,7 @@ export function FirmwarePanel() {
     }) => {
       const protocol = selectedProtocol;
       if (!protocol) {
-        toast("Connect a drone before flashing", "warning");
+        toast(tToast("connectBeforeFlash"), "warning");
         return;
       }
       // Ground truth, not self-attestation. The only disarm guard was an
@@ -85,11 +86,13 @@ export function FirmwarePanel() {
         });
         flashDisposerRef.current = handle.dispose;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Flash failed";
-        toast(`Flash failed: ${msg}`, "error");
+        toast(
+          err instanceof Error ? tToast("flashFailedWithReason", { reason: err.message }) : tToast("flashFailed"),
+          "error",
+        );
       }
     },
-    [selectedProtocol, toast, isHardBlocked, hardBlockMessage],
+    [selectedProtocol, toast, tToast, isHardBlocked, hardBlockMessage],
   );
 
   return (

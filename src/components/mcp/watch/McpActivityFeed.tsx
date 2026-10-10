@@ -15,7 +15,7 @@
 
 import { useEffect } from "react";
 import { useMcpActivityStore } from "@/stores/mcp-activity-store";
-import { useFleetStore } from "@/stores/fleet-store";
+import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { isDemoMode } from "@/lib/utils";
 import type { McpActivityWire, McpChannelFrame } from "@/lib/mcp/activity";
@@ -44,7 +44,7 @@ export function McpActivityFeed() {
       setChannelState("live");
       let i = 0;
       const tick = () => {
-        const drones = useFleetStore.getState().drones;
+        const drones = getFleetDrones();
         const target = drones[i % Math.max(1, drones.length)];
         const node = target ? (deviceIdFromNodeId(target.id) ?? target.id) : "local";
         const step = DEMO_SCRIPT[i % DEMO_SCRIPT.length];

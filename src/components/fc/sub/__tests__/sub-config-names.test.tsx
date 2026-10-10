@@ -12,6 +12,7 @@ import { SubConfigPanel } from "../SubConfigPanel";
 
 let params = new Map<string, number>();
 
+vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("@/hooks/use-flash-commit-toast", () => ({ useFlashCommitToast: () => ({ showFlashResult: vi.fn() }) }));
 vi.mock("@/hooks/use-panel-scroll", () => ({ usePanelScroll: () => null }));

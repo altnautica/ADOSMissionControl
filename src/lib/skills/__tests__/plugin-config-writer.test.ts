@@ -118,6 +118,6 @@ describe("plugin-config-writer", () => {
         configKey: "active",
         value: true,
       }),
-    ).rejects.toThrow(/no local agent seam/);
+    ).rejects.toThrow(/no LAN or ground-station path/);
   });
 });

@@ -6,9 +6,9 @@
  * `local-nodes-store` credential, and a node-registry presence entry — and a
  * removal that only clears some of them lets the others resurrect the card:
  *
- *   1. `fleet-store.removeDrone` is COSMETIC. `FleetProjectionBridge` re-derives
- *      the whole array from the node registry on the next tick (≤1s), so the
- *      row flashes straight back. We never touch it here.
+ *   1. The fleet list is derived from the node registry on read, so a node
+ *      is gone from it only once every registry presence source is dropped
+ *      (step 5).
  *   2. A cloud-paired drone re-feeds from the reactive Convex `listMyDrones`
  *      query (`CloudDroneBridge` + `useFleetSync`) until the Convex row is
  *      deleted. The panel delete used to miss this for cloud-only drones (it
@@ -140,7 +140,7 @@ export async function forgetNode(
   }
 
   // 5. Registry: drop BOTH presence sources + the command-fleet status row NOW,
-  // so the FleetProjectionBridge re-run finds nothing and the card does not
+  // so the fleet projection finds nothing and the card does not
   // flash back. dropPresence GCs the registry entry once it has no presence
   // source and no attached FC (already detached in step 3).
   const registry = useNodeRegistryStore.getState();

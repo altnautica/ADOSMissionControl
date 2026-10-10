@@ -1,0 +1,128 @@
+schema_version: 2
+id: com.altnautica.thermal-flir-lepton-usb
+name: "ADOS Thermal Camera FLIR Lepton USB UVC"
+version: "1.3.2"
+description: "FLIR Lepton 3.5 radiometric thermal driver, palettes and spot-meter overlay for a PureThermal 2 USB UVC dongle. Capture requires a UVC backend supplied by the agent; without one the extension reports the camera as unavailable."
+description_long: |
+  Driver and cockpit surfaces for a FLIR Lepton 3.5 on a PureThermal 2 USB UVC
+  dongle. The driver discovers and opens the device, locks the radiometric
+  linear resolution so Y16 counts convert to known temperatures, converts
+  counts to degrees Celsius, meters a centre-reticle spot plus the frame
+  extrema, and colorizes the Y16 feed with a selectable palette. A control
+  loop applies palette and high/low gain from per-drone config and fires a
+  one-touch flat field correction. The video overlay draws the spot reading
+  and palette over the video pane.
+
+  Reaching the dongle needs a native libuvc backend, which this package does
+  not contain: the agent injects one. With no backend, no device on the bus,
+  or a failed open, the extension publishes an explicit unavailable state with
+  the reason and captures nothing — it never synthesises a temperature. When a
+  colorized stream endpoint is configured the thermal feed is also offered to
+  the video pipeline as its own selectable stream leg.
+features:
+  - "Radiometric Y16 to degrees Celsius conversion with a locked linear resolution"
+  - "Three colour palettes matched between the agent and the cockpit overlay"
+  - "Centre-reticle spot metering plus per-frame extrema"
+  - "High / low gain (temperature sensitivity vs range)"
+  - "One-touch flat field correction"
+  - "Cockpit Skills to cycle the palette and run an FFC"
+  - "Video overlay showing the spot reading, or an explicit unavailable state when there is no sensor"
+  - "Requires a UVC backend supplied by the agent; fails closed without one"
+hardware_requirements:
+  cameras: "FLIR Lepton 3.5 on a PureThermal 2 USB UVC dongle (firmware 1.2.2 or newer)"
+  boards: ["cm4", "cm5", "rk3582", "rk3576", "rk3566", "x86"]
+resource_impact:
+  cpu_percent_peak: 30
+  ram_mb: 160
+  pids: 4
+  output_rate_hz: 9
+  startup_time_seconds: 3
+telemetry_fields:
+  - "thermal"
+documentation_url: "https://docs.altnautica.com/drone-agent/thermal-camera-overview"
+author: "Altnautica"
+homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/thermal-camera-flir-lepton-usb"
+license: "GPL-3.0-or-later"
+risk: medium
+
+compatibility:
+  ados_version: ">=0.99.125"
+  gcs_version: ">=0.56.0"
+  supported_boards: ["cm4", "cm5", "rk3582", "rk3576", "rk3566", "x86"]
+
+agent:
+  runtime: python
+  entrypoint: "altnautica_thermal_camera.plugin:ThermalUsbPlugin"
+  isolation: subprocess
+  per_drone_config: true
+  permissions:
+    # hardware.usb.uvc: the injected UVC backend reaches the dongle on the bus.
+    - id: hardware.usb.uvc
+    # video.source.set: plugin.py _maybe_declare_source -> ctx.video.set_source.
+    - id: video.source.set
+    # telemetry.extend: plugin.py publishes the thermal state and frame read-back.
+    - id: telemetry.extend
+    # event.publish: plugin.py publishes each Skill's declared state topic.
+    - id: event.publish
+  resources:
+    max_ram_mb: 192
+    max_cpu_percent: 35
+    max_pids: 16
+
+gcs:
+  entrypoint: "gcs/plugin.bundle.js"
+  isolation: iframe
+  permissions:
+    # ui.slot.video-overlay: the only surface the bundle mounts.
+    - id: ui.slot.video-overlay
+    # ui.slot.settings-section: the parameters contributions below.
+    - id: ui.slot.settings-section
+    # ui.slot.flight-skill: the skills contributions below.
+    - id: ui.slot.flight-skill
+    # The two topics plugin.ts subscribes to; the host checks one capability
+    # per topic, so both must be declared.
+    - id: telemetry.subscribe.thermal
+    - id: telemetry.subscribe.camera.thermal.frame
+  contributes:
+    panels:
+      - id: thermal-overlay
+        slot: video.overlay
+        title: "Thermal"
+        icon: "thermometer"
+    # One-shot cockpit Skills the agent fires on the rising edge and then
+    # clears: advance the colour palette and trigger a flat field correction.
+    # Each Skill's state topic is published by the agent's control loop, and
+    # reports disabled with a reason while there is no open session.
+    skills:
+      - id: cycle-palette
+        label: "Cycle palette"
+        icon: palette
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "shift+o" }
+        activation: { via: config, config_key: palette_cycle }
+        state: { via: event, topic: "camera.thermal.palette" }
+      - id: ffc
+        label: "Flat field correction"
+        icon: refresh-cw
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "shift+i" }
+        activation: { via: config, config_key: ffc }
+        state: { via: event, topic: "camera.thermal.ffc" }
+    # Native settings the agent reads live each control tick.
+    parameters:
+      - key: palette
+        binding: plugin.config
+        schema: { type: string, enum: ["ironbow", "rainbow", "grayscale"], default: "ironbow" }
+        ui: { widget: enum, label: "settings.palette", group: "settings.title", order: 10 }
+      - key: gain
+        binding: plugin.config
+        schema: { type: boolean, default: true }
+        ui: { widget: boolean, label: "settings.gain", help: "settings.gainHelp", group: "settings.title", order: 20 }
+  locales:
+    - en

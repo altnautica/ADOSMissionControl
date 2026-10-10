@@ -34,10 +34,11 @@ export type PluginSource =
  * The well-known UI slots a plugin can mount into.
  * `node.detail.tab` is the per-node tab a plugin mounts on any node
  * profile (drone / ground-station / workstation / compute); `cockpit.panel` is
- * the in-`/fly` quick-settings surface; `flight.skill` is the cockpit Skill
+ * the cockpit quick-settings surface; `cockpit.widget` is an iframe hosted in
+ * one of the cockpit's widget zones; `flight.skill` is the cockpit Skill
  * Bar contribution; `node.agent.page` is a page in a node's Agent sidebar and
  * `node.surface` a top-level node-detail surface for the profiles it declares.
- * The first set is fleet-scoped; the `node.*`, `cockpit.panel` and
+ * The first set is fleet-scoped; the `node.*`, `cockpit.*` and
  * `flight.skill` slots are per-drone scoped.
  *
  * Each slot id maps 1-to-1 to a `ui.slot.<kebab-id>` capability string
@@ -53,6 +54,7 @@ export const PLUGIN_SLOTS = [
   "settings.section",
   "node.detail.tab",
   "cockpit.panel",
+  "cockpit.widget",
   "flight.skill",
   "node.agent.page",
   "node.surface",
@@ -76,6 +78,7 @@ export type PluginSlotName = (typeof PLUGIN_SLOTS)[number];
 export const PER_DRONE_SLOTS: ReadonlyArray<PluginSlotName> = [
   "node.detail.tab",
   "cockpit.panel",
+  "cockpit.widget",
   "flight.skill",
   "node.agent.page",
   "node.surface",
@@ -204,7 +207,8 @@ export type NodeSurfaceGroup = (typeof NODE_SURFACE_GROUPS)[number];
  *
  * `section` / `after` / `setupFor` place a `node.agent.page` in the Agent
  * sidebar; `group` places a `node.surface` in the tab strip; `profile` narrows
- * any per-node page slot to the node profiles it names.
+ * any per-node page slot to the node profiles it names; `zone` places a
+ * `cockpit.widget` in a cockpit widget zone.
  */
 export interface GcsContributeRow {
   slot: string;
@@ -217,6 +221,9 @@ export interface GcsContributeRow {
   after?: string;
   group?: NodeSurfaceGroup;
   setupFor?: string;
+  /** Cockpit zone a `cockpit.widget` mounts in (`top-left` | `top-right` |
+   * `bottom-left` | `bottom-right`). Absent = `bottom-left`. */
+  zone?: string;
 }
 
 /**

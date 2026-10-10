@@ -8,13 +8,16 @@ import { useState, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useMissionStore } from "@/stores/mission-store";
 import { usePlannerStore } from "@/stores/planner-store";
-import { useFleetStore } from "@/stores/fleet-store";
+import { fleetFieldsEqual, selectFleet, useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { usePlanLibraryStore } from "@/stores/plan-library-store";
 import { useToast } from "@/components/ui/toast";
 import { useDrawingStore } from "@/stores/drawing-store";
 import { useRallyStore } from "@/stores/rally-store";
 import { usePlannerHistoryStore } from "@/stores/planner-history-store";
 import type { ContextMenuItem } from "@/components/planner/MapContextMenu";
+
+/** The mission editor's drone picker shows name, status and battery. */
+const PLANNER_FLEET_EQUAL = fleetFieldsEqual(["name", "status", "battery", "fcAttached"]);
 
 export interface ContextMenuState {
   x: number;
@@ -101,7 +104,7 @@ export function usePlannerState() {
     })),
   );
 
-  const drones = useFleetStore((s) => s.drones);
+  const drones = useFleetDrones(selectFleet, PLANNER_FLEET_EQUAL);
   const { toast } = useToast();
 
   // Mission setup state

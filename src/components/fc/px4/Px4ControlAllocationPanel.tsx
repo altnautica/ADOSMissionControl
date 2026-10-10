@@ -13,8 +13,7 @@ import { useMemo, useState } from "react";
 import { Save, RotateCcw, HardDrive, Sliders } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { usePanelParams } from "@/hooks/use-panel-params";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -46,12 +45,9 @@ const AIRFRAME_FIELDS: CaField[] = [
 
 export function Px4ControlAllocationPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
-  const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const scrollRef = usePanelScroll("px4-control-allocation");
-  const [saving, setSaving] = useState(false);
   const [revEditor, setRevEditor] = useState(false);
 
   const paramNames = useMemo(() => CA_ALL_PARAM_NAMES, []);
@@ -69,14 +65,7 @@ export function Px4ControlAllocationPanel() {
   const tiltCount = Math.min(CA_MAX_TILTS, Math.max(0, Math.trunc(params.get("CA_SV_TL_COUNT") ?? 0)));
   const revValue = Math.trunc(params.get("CA_R_REV") ?? 0);
 
-  async function handleSave() {
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    toast(ok ? "Saved to flight controller" : "Some parameters failed to save", ok ? "success" : "warning");
-  }
-  async function handleFlash() { showFlashResult(await commitToFlash()); }
-  function handleRevert() { revertAll(); toast("Reverted to FC values", "info"); }
+  const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const renderField = (f: CaField) => {
     const value = params.get(f.param) ?? 0;

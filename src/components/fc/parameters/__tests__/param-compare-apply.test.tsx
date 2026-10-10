@@ -10,6 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 import type { CommandResult } from "@/lib/protocol/types";
 import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import { useDroneStore } from "@/stores/drone-store";
@@ -56,6 +57,7 @@ const META = new Map<string, ParamMetadata>([
 async function loadFileAndApply(onApplied = vi.fn()) {
   const { container } = render(
     <ParamCompare fcParams={FC} metadata={META} onApplied={onApplied} />,
+    { wrapper: IntlWrapper },
   );
   const input = container.querySelector("input[type=file]") as HTMLInputElement;
   const file = new File(["ATC_RAT_PIT_P,11\nWPNAV_SPEED,510\n"], "other.param");

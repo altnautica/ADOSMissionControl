@@ -1,14 +1,20 @@
 "use client";
 
 /**
- * @module fly/CockpitDemoStream
+ * @module cockpit/CockpitDemoStream
  * @description Demo-only synthetic video for the cockpit stream switcher. In
  * demo mode there is no live WebRTC, so this paints a distinct, labeled,
  * gently-animated canvas per stream — so switching the `1..N` tabs and the PiP
- * inset visibly change the picture without any hardware. It is strictly
- * `isDemoMode()`-gated and clearly tagged "DEMO FEED"; it never renders for a
- * real node (whose true video comes over WHEP) and never fabricates a live feed
- * on a real surface (no fabricated reading).
+ * inset visibly change the picture without any hardware. It renders only in
+ * demo mode, is clearly tagged "DEMO FEED", and never renders for a real node.
+ *
+ * {@link useDemoFeedActive} is the one answer to "is the demo feed the
+ * picture": the video pane, the safety band's video cell and the top-right
+ * stats all read it, so none of them reports NO VIDEO over a feed that is
+ * visibly playing, and the pane does not dial real transports behind it.
+ *
+ * The palette comes from the cockpit's `--hud-*` roles, so the feed follows
+ * the active theme (night vision included).
  *
  * Reused for both the main view (the active stream) and the PiP inset (a
  * specific stream id).
@@ -18,34 +24,75 @@
 
 import { useEffect, useRef } from "react";
 
-import { isDemoMode } from "@/lib/utils";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import {
   useVideoStreamsStore,
   type StreamRole,
 } from "@/stores/video-streams-store";
 
-/** A distinct hue per stream so each feed reads differently. Thermal (ir) runs
- * a warm palette; the EO variants sit in the blue/cyan range. */
+/**
+ * True when the cockpit for `droneId` shows the synthetic demo feed: demo
+ * mode on and a multi-stream demo node. False for an absent drone.
+ */
+export function useDemoFeedActive(droneId: string | undefined): boolean {
+  const demo = useDemoMode();
+  const count = useVideoStreamsStore((s) =>
+    droneId ? (s.streamsByDrone[droneId]?.length ?? 0) : 0,
+  );
+  return demo && count > 1;
+}
+
+interface FeedPalette {
+  a: string;
+  b: string;
+  grid: string;
+  ink: string;
+  inkDim: string;
+}
+
+/** A theme colour, read off the canvas's cockpit ancestor. */
+function hudColour(style: CSSStyleDeclaration, role: string): string {
+  return style.getPropertyValue(`--hud-${role}`).trim();
+}
+
+/**
+ * A distinct tint per stream from the theme's HUD roles, so each feed reads
+ * differently: thermal warm (the warn role), wide EO the good role, EO the
+ * primary role. Mixed into the glass role so the picture stays dark.
+ */
 function paletteFor(
+  el: HTMLElement,
   role: StreamRole | undefined,
   index: number,
-): { a: string; b: string; grid: string } {
-  switch (role) {
-    case "ir":
-      return { a: "#2a1005", b: "#7a2f0a", grid: "rgba(255,150,60,0.16)" };
-    case "eo_wide":
-      return { a: "#04212a", b: "#0a5a6e", grid: "rgba(80,220,240,0.14)" };
-    case "split":
-      return { a: "#150a26", b: "#3a1f6e", grid: "rgba(170,130,255,0.15)" };
-    case "eo":
-      return { a: "#04121e", b: "#0a4a7a", grid: "rgba(99,179,255,0.15)" };
-    default: {
-      // Vary by index so unlabeled cameras still read distinctly.
-      const hues = ["#0a2233", "#0a3325", "#33240a", "#2a0a2a"];
-      const b = hues[(index - 1 + hues.length) % hues.length];
-      return { a: "#05121e", b, grid: "rgba(160,190,220,0.12)" };
-    }
-  }
+): FeedPalette {
+  const style = getComputedStyle(el);
+  const accents = ["primary", "good", "warn", "lock"];
+  const accentRole =
+    role === "ir"
+      ? "warn"
+      : role === "eo_wide"
+        ? "good"
+        : role === "eo"
+          ? "primary"
+          : accents[(index - 1 + accents.length) % accents.length];
+  const accent = hudColour(style, accentRole);
+  const ink = hudColour(style, "ink");
+  return {
+    a: "black",
+    b: `color-mix(in oklch, ${accent} 30%, black)`,
+    grid: `color-mix(in oklch, ${accent} 16%, transparent)`,
+    ink: `color-mix(in oklch, ${ink} 92%, transparent)`,
+    inkDim: `color-mix(in oklch, ${ink} 55%, transparent)`,
+  };
+}
+
+/**
+ * Canvas 2D does not parse `color-mix()`. Resolve a CSS colour through an
+ * element's computed style, which serialises it as an rgb()/color() value.
+ */
+function resolveColour(probe: HTMLElement, css: string): string {
+  probe.style.color = css;
+  return getComputedStyle(probe).color;
 }
 
 interface CockpitDemoStreamProps {
@@ -55,6 +102,7 @@ interface CockpitDemoStreamProps {
 }
 
 export function CockpitDemoStream({ droneId, streamId }: CockpitDemoStreamProps) {
+  const active = useDemoFeedActive(droneId);
   const streams = useVideoStreamsStore((s) => s.streamsByDrone[droneId]);
   const activeId = useVideoStreamsStore((s) => s.activeStreamIdByDrone[droneId]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -74,20 +122,33 @@ export function CockpitDemoStream({ droneId, streamId }: CockpitDemoStreamProps)
   const targetRole = target?.role;
 
   useEffect(() => {
-    // Only a multi-stream demo node paints synthetic feeds.
-    if (!isDemoMode() || count <= 1 || targetId == null) return;
+    if (!active || targetId == null) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const pal = paletteFor(targetRole, targetIndex);
     const label = targetLabel.toUpperCase();
     const tag = `DEMO FEED · ${targetIndex}/${count}`;
     let raf = 0;
     let start: number | null = null;
+    let theme: string | null = null;
+    let pal: FeedPalette | null = null;
 
     const draw = (ts: number) => {
+      // Re-read the palette when the theme changes under a running feed.
+      const current = document.documentElement.dataset.theme ?? "";
+      if (pal === null || current !== theme) {
+        theme = current;
+        const raw = paletteFor(canvas, targetRole, targetIndex);
+        pal = {
+          a: resolveColour(canvas, raw.a),
+          b: resolveColour(canvas, raw.b),
+          grid: resolveColour(canvas, raw.grid),
+          ink: resolveColour(canvas, raw.ink),
+          inkDim: resolveColour(canvas, raw.inkDim),
+        };
+      }
       if (start == null) start = ts;
       const t = (ts - start) / 1000;
       const w = (canvas.width = canvas.clientWidth || 640);
@@ -115,21 +176,12 @@ export function CockpitDemoStream({ droneId, streamId }: CockpitDemoStreamProps)
       }
       ctx.stroke();
 
-      // A moving scanline sweep.
-      const sy = (h + 80) * (((t * 0.18) % 1 + 1) % 1) - 40;
-      const sweep = ctx.createLinearGradient(0, sy - 40, 0, sy + 40);
-      sweep.addColorStop(0, "rgba(255,255,255,0)");
-      sweep.addColorStop(0.5, "rgba(255,255,255,0.06)");
-      sweep.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = sweep;
-      ctx.fillRect(0, sy - 40, w, 80);
-
       // Centered stream label + demo tag.
       ctx.textAlign = "center";
-      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillStyle = pal.ink;
       ctx.font = `700 ${Math.max(18, Math.round(w / 20))}px ui-monospace, monospace`;
       ctx.fillText(label, w / 2, h / 2);
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.fillStyle = pal.inkDim;
       ctx.font = "600 12px ui-monospace, monospace";
       ctx.fillText(tag, w / 2, h / 2 + 26);
 
@@ -137,9 +189,9 @@ export function CockpitDemoStream({ droneId, streamId }: CockpitDemoStreamProps)
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [targetId, targetIndex, targetLabel, targetRole, count]);
+  }, [active, targetId, targetIndex, targetLabel, targetRole, count]);
 
-  if (!isDemoMode() || list.length <= 1 || !target) return null;
+  if (!active || !target) return null;
 
   return (
     <canvas

@@ -1,0 +1,271 @@
+schema_version: 3
+id: com.altnautica.siyi-pod
+name: "ADOS SIYI Optical Pod"
+version: "0.5.1"
+description: "Native driver for the SIYI optical-pod line (A2 mini, A8 mini, ZR10, ZR30, ZT6, ZT30) with per-model capability negotiation: gimbal, zoom, focus, photo/record, thermal palette and gain, and a laser rangefinder with subject geolocation."
+description_long: |
+  Speaks the SIYI Gimbal Camera External SDK over UDP, TCP, or a TTL serial port
+  directly, so the agent drives the features a stock autopilot mount cannot:
+  thermal palette and gain, the laser rangefinder, and subject geolocation. On
+  start the plugin queries firmware and the hardware id, resolves the exact
+  model's capability profile, and exposes only the controls that model supports.
+  Until the pod answers that identity query it is sent nothing at all, and the
+  negotiation is retried on a fixed interval with no attempt cap, so a pod that
+  is unpowered at boot comes online without a restart. The laser range plus the
+  gimbal angles and the flight controller pose resolve a subject latitude and
+  longitude, which the geolocate tool reports. Gimbal attitude and the laser range
+  are mirrored up to the flight controller as standard MAVLink so the built-in
+  gimbal panel lights up too.
+features:
+  - "Auto-detects A2 mini / A8 mini / ZR10 / ZR30 / ZT6 / ZT30 and negotiates capabilities"
+  - "Gimbal aim, rate, recenter, and lock/follow/FPV modes"
+  - "Optical and absolute zoom, autofocus (zoom models)"
+  - "Thermal palette and gain (thermal models)"
+  - "Laser rangefinder with subject geolocation (laser models)"
+  - "Sends nothing to a pod that has not identified itself"
+hardware_requirements:
+  cameras: "A SIYI optical pod (A2 mini, A8 mini, ZR10, ZR30, ZT6, or ZT30) on the pod network (192.168.144.x) or a TTL serial port"
+  boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "x86"]
+resource_impact:
+  cpu_percent_peak: 12
+  ram_mb: 96
+  pids: 4
+  output_rate_hz: 5
+  startup_time_seconds: 3
+telemetry_fields:
+  - "siyi"
+documentation_url: "https://docs.altnautica.com/drone-agent/siyi-pod-overview"
+author: "Altnautica"
+homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/siyi-pod"
+license: "GPL-3.0-or-later"
+risk: high
+
+compatibility:
+  ados_version: ">=0.99.179"
+  gcs_version: ">=0.56.0"
+  supported_boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "x86"]
+
+agent:
+  runtime: python
+  entrypoint: "altnautica_siyi_pod.plugin:SiyiPodPlugin"
+  isolation: subprocess
+  per_drone_config: true
+  permissions:
+    - id: network.outbound
+    - id: hardware.uart
+    - id: mavlink.read
+    - id: mavlink.write
+    - id: mavlink.component.gimbal
+    - id: mavlink.component.camera
+    - id: telemetry.extend
+    - id: video.source.set
+    - id: event.publish
+    - id: mcp.expose
+  resources:
+    max_ram_mb: 128
+    max_cpu_percent: 25
+    max_pids: 4
+  mavlink_components:
+    - component_id: 154
+      component_kind: gimbal
+      sub_id: 0
+    - component_id: 100
+      component_kind: camera
+      sub_id: 1
+  contributes:
+    # Tools an assistant can call. Each writes the same per-drone config key or
+    # command nonce the GCS half writes, so a tool and a control share one path;
+    # every command is gated on the negotiated model, so an unsupported control
+    # (zoom on an A2 mini) is a safe no-op.
+    tools:
+      - name: status
+        title: "Pod status"
+        description: "Report the pod model, capabilities, attitude, zoom, palette, range, and link health."
+        safety_class: read
+        inputSchema:
+          type: object
+          properties: {}
+      - name: set_zoom
+        title: "Set zoom"
+        description: "Set the absolute optical/hybrid zoom (zoom models). Clamped to the model's maximum."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties:
+            zoom: { type: number, minimum: 1, maximum: 180 }
+      - name: set_palette
+        title: "Set thermal palette"
+        description: "Set the thermal colour palette by code (thermal models)."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties:
+            palette: { type: integer, minimum: 0, maximum: 7 }
+      - name: capture_photo
+        title: "Capture a photo"
+        description: "Take a still on the pod."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties: {}
+      - name: record
+        title: "Toggle recording"
+        description: "Start or stop recording on the pod."
+        safety_class: safe_write
+        inputSchema:
+          type: object
+          properties: {}
+      - name: laser_range
+        title: "Measure range"
+        description: "Fire the laser rangefinder and report the slant range in metres (laser models). Fires the laser."
+        # Firing the laser is an operator-present, confirmed action (matching the
+        # human fire-rangefinder Skill's confirm), so it carries the flight class.
+        safety_class: flight
+        inputSchema:
+          type: object
+          properties: {}
+      - name: geolocate_target
+        title: "Geolocate the subject"
+        description: "Fire the rangefinder and resolve the pointed subject's latitude and longitude from the gimbal angles and vehicle pose (laser models). Fires the laser."
+        # Fires the laser to range the subject, so it too carries the flight class.
+        safety_class: flight
+        inputSchema:
+          type: object
+          properties: {}
+
+gcs:
+  entrypoint: "gcs/plugin.bundle.js"
+  isolation: iframe
+  permissions:
+    - id: ui.slot.node-detail-tab
+    - id: ui.slot.cockpit-panel
+    - id: ui.slot.video-overlay
+    - id: ui.slot.flight-skill
+    - id: ui.slot.settings-section
+    - id: telemetry.subscribe.siyi
+    - id: command.send
+  contributes:
+    tabs:
+      - id: siyi-console
+        slot: node.detail.tab
+        profile: ["drone"]
+        title: "SIYI Pod"
+        icon: "camera"
+        order: 55
+    panels:
+      - id: siyi-cockpit
+        slot: cockpit.panel
+        title: "Pod"
+        icon: "camera"
+        order: 40
+      - id: siyi-overlay
+        slot: video.overlay
+        title: "SIYI pod HUD"
+        icon: "crosshair"
+    skills:
+      - id: siyi-record
+        label: "skill.record"
+        icon: "video"
+        category: camera
+        toggle: true
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "r" }
+        activation: { via: config, config_key: recording }
+        state: { via: event, topic: "siyi.pod.record" }
+      # One-shot Skills the agent fires on the rising edge and clears. Each is
+      # declared for every model; the agent gates on the negotiated capability
+      # profile, so a Skill for a control the model lacks is a safe no-op.
+      - id: cycle-palette
+        label: "skill.cyclePalette"
+        icon: "palette"
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "o" }
+        activation: { via: config, config_key: palette_cycle }
+        state: { via: event, topic: "siyi.pod.palette" }
+      - id: fire-lrf
+        label: "skill.fireRangefinder"
+        icon: "scan-line"
+        category: camera
+        toggle: false
+        confirm: true
+        arm_requirement: any
+        default_binding: { key: "l" }
+        activation: { via: config, config_key: laser_fire }
+        state: { via: event, topic: "siyi.pod.laser" }
+      - id: center
+        label: "skill.centerGimbal"
+        icon: "locate-fixed"
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "c" }
+        activation: { via: config, config_key: center }
+        state: { via: event, topic: "siyi.pod.gimbal" }
+      - id: nadir
+        label: "skill.nadir"
+        icon: "arrow-down-to-line"
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "v" }
+        activation: { via: config, config_key: nadir }
+        state: { via: event, topic: "siyi.pod.gimbal" }
+      - id: zoom-in
+        label: "skill.zoomIn"
+        icon: "zoom-in"
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "]" }
+        activation: { via: config, config_key: zoom_in }
+        state: { via: event, topic: "siyi.pod.zoom" }
+      - id: zoom-out
+        label: "skill.zoomOut"
+        icon: "zoom-out"
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "[" }
+        activation: { via: config, config_key: zoom_out }
+        state: { via: event, topic: "siyi.pod.zoom" }
+      - id: photo
+        label: "skill.photo"
+        icon: "camera"
+        category: camera
+        toggle: false
+        confirm: false
+        arm_requirement: any
+        default_binding: { key: "k" }
+        activation: { via: config, config_key: photo }
+        state: { via: event, topic: "siyi.pod.photo" }
+    parameters:
+      - key: zoom
+        binding: plugin.config
+        schema: { type: number, minimum: 1, maximum: 180, step: 0.1, default: 1 }
+        ui: { widget: range, label: "settings.zoom", group: "settings.optics", order: 10 }
+      - key: gimbal_mode
+        binding: plugin.config
+        schema: { type: string, enum: ["lock", "follow", "fpv"], default: "follow" }
+        ui: { widget: enum, label: "settings.gimbalMode", group: "settings.gimbal", order: 30 }
+      - key: palette
+        binding: plugin.config
+        schema: { type: integer, minimum: 0, maximum: 7, default: 0 }
+        ui: { widget: number, label: "settings.palette", group: "settings.thermal", order: 40 }
+      - key: thermal_gain
+        binding: plugin.config
+        schema: { type: boolean, default: true }
+        ui: { widget: boolean, label: "settings.gain", group: "settings.thermal", order: 50 }
+      - key: laser_enabled
+        binding: plugin.config
+        schema: { type: boolean, default: false }
+        ui: { widget: boolean, label: "settings.laser", help: "settings.laserHelp", group: "settings.laser", order: 60 }
+  locales:
+    - en

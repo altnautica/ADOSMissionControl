@@ -463,6 +463,7 @@ export function usePluginContributions(
             pluginId: row.pluginId,
             panelId: entry.panelId,
             title: entry.title ?? row.name,
+            ...(entry.zone !== undefined ? { zone: entry.zone } : {}),
             bundleUrl: view?.kind === "frame" ? view.blobUrl : "",
             ...(inlineState ? { isolation: "inline" as const, inline: inlineState } : {}),
             grantedCapabilities,

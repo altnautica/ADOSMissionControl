@@ -30,6 +30,10 @@ export function TargetActionPopup({
 }) {
   const { toast } = useToast();
   const t = useTranslations("vision");
+  const tRoot = useTranslations();
+  // Labels and messages are i18n keys for host actions and literal text for
+  // plugin-contributed ones.
+  const text = (s: string) => (tRoot.has(s) ? tRoot(s) : s);
   const [busy, setBusy] = useState<string | null>(null);
   const actions = resolveTargetActions(target);
 
@@ -39,7 +43,7 @@ export function TargetActionPopup({
     try {
       await action.activate({
         target,
-        notify: (message, status) => toast(message, status ?? "info"),
+        notify: (message, status) => toast(text(message), status ?? "info"),
       });
     } finally {
       setBusy(null);
@@ -88,7 +92,7 @@ export function TargetActionPopup({
               {a.icon ? (
                 <a.icon className="h-3.5 w-3.5 shrink-0 text-accent-primary" />
               ) : null}
-              <span className="flex-1 truncate">{a.label}</span>
+              <span className="flex-1 truncate">{text(a.label)}</span>
               {a.source === "plugin" ? (
                 <span className="rounded bg-bg-tertiary px-1 text-[9px] uppercase tracking-wide text-text-tertiary">
                   {t("targetActions.pluginBadge")}

@@ -58,7 +58,8 @@ import {
 
 export interface FcNavItem {
   id: string;
-  label: string;
+  /** Key under the `fcNav` locale namespace. */
+  labelKey: string;
   icon: ReactNode;
   requiredCapability?: keyof ProtocolCapabilities;
   /** Restrict the item to specific vehicle classes. Firmware capabilities are
@@ -83,104 +84,105 @@ export interface FcNavItem {
    *  rather than a connected FC. */
   agentSide?: boolean;
   section?: string;
-  labelOverride?: Partial<Record<string, string>>;
+  /** Per-firmware `fcNav` label key, replacing `labelKey` on that firmware. */
+  labelOverride?: Partial<Record<FirmwareType, string>>;
 }
 
 export const FC_NAV_ITEMS: FcNavItem[] = [
   // Flight
-  { id: "outputs", label: "Outputs", icon: <Cpu size={14} />, section: "Flight", labelOverride: { px4: "Actuators" } },
-  { id: "receiver", label: "Receiver", icon: <Radio size={14} />, requiredCapability: "supportsReceiver", section: "Flight" },
-  { id: "modes", label: "Flight Modes", icon: <SlidersHorizontal size={14} />, requiredCapability: "supportsFlightModes", section: "Flight" },
-  { id: "aux-modes", label: "Aux Modes", icon: <ToggleLeft size={14} />, requiredCapability: "supportsAuxModes", section: "Flight" },
-  { id: "bf-motors", label: "Motors & ESC", icon: <Cpu size={14} />, requiredCapability: "supportsMspMotors", section: "Flight" },
-  { id: "frame", label: "Frame", icon: <Box size={14} />, section: "Flight", labelOverride: { px4: "Airframe" } },
-  { id: "ap-heli", label: "Helicopter", icon: <Fan size={14} />, requiredCapability: "supportsEkfConfig", requiredVehicleType: 4, section: "Flight" },
-  { id: "vtol", label: "VTOL", icon: <Plane size={14} />, requiredCapability: "supportsVtolConfig", vehicleClasses: ["plane", "vtol"], section: "Flight" },
-  { id: "sub-config", label: "Sub Config", icon: <Waves size={14} />, requiredCapability: "supportsSubConfig", vehicleClasses: ["sub"], section: "Flight" },
+  { id: "outputs", labelKey: "outputs", icon: <Cpu size={14} />, section: "Flight", labelOverride: { px4: "actuators" } },
+  { id: "receiver", labelKey: "receiver", icon: <Radio size={14} />, requiredCapability: "supportsReceiver", section: "Flight" },
+  { id: "modes", labelKey: "flightModes", icon: <SlidersHorizontal size={14} />, requiredCapability: "supportsFlightModes", section: "Flight" },
+  { id: "aux-modes", labelKey: "auxModes", icon: <ToggleLeft size={14} />, requiredCapability: "supportsAuxModes", section: "Flight" },
+  { id: "bf-motors", labelKey: "motorsEsc", icon: <Cpu size={14} />, requiredCapability: "supportsMspMotors", section: "Flight" },
+  { id: "frame", labelKey: "frameSetup", icon: <Box size={14} />, section: "Flight", labelOverride: { px4: "airframe" } },
+  { id: "ap-heli", labelKey: "apHeli", icon: <Fan size={14} />, requiredCapability: "supportsEkfConfig", requiredVehicleType: 4, section: "Flight" },
+  { id: "vtol", labelKey: "vtol", icon: <Plane size={14} />, requiredCapability: "supportsVtolConfig", vehicleClasses: ["plane", "vtol"], section: "Flight" },
+  { id: "sub-config", labelKey: "subConfig", icon: <Waves size={14} />, requiredCapability: "supportsSubConfig", vehicleClasses: ["sub"], section: "Flight" },
   // Safety
-  { id: "failsafe", label: "Failsafe", icon: <ShieldAlert size={14} />, requiredCapability: "supportsFailsafe", excludeFirmware: ["betaflight", "inav"], section: "Safety" },
-  { id: "geofence", label: "Geofence", icon: <Shield size={14} />, requiredCapability: "supportsGeoFence", excludeFirmware: ["inav"], section: "Safety" },
-  { id: "safehome", label: "Safehome", icon: <Home size={14} />, requiredCapability: "supportsSafehome", section: "Safety" },
-  { id: "geozone", label: "Geozones", icon: <MapPin size={14} />, requiredCapability: "supportsGeozone", section: "Safety" },
-  { id: "health", label: "Health Check", icon: <HeartPulse size={14} />, section: "Safety" },
+  { id: "failsafe", labelKey: "failsafe", icon: <ShieldAlert size={14} />, requiredCapability: "supportsFailsafe", excludeFirmware: ["betaflight", "inav"], section: "Safety" },
+  { id: "geofence", labelKey: "geofence", icon: <Shield size={14} />, requiredCapability: "supportsGeoFence", excludeFirmware: ["inav"], section: "Safety" },
+  { id: "safehome", labelKey: "safehome", icon: <Home size={14} />, requiredCapability: "supportsSafehome", section: "Safety" },
+  { id: "geozone", labelKey: "geozone", icon: <MapPin size={14} />, requiredCapability: "supportsGeozone", section: "Safety" },
+  { id: "health", labelKey: "healthCheck", icon: <HeartPulse size={14} />, section: "Safety" },
   // Sensors
-  { id: "calibrate", label: "Calibration", icon: <Move3d size={14} />, section: "Sensors" },
-  { id: "sensors", label: "Sensors", icon: <Gauge size={14} />, section: "Sensors" },
-  { id: "px4-thermal", label: "Thermal Cal", icon: <Thermometer size={14} />, requiredCapability: "supportsPx4Tuning", section: "Sensors" },
+  { id: "calibrate", labelKey: "calibrate", icon: <Move3d size={14} />, section: "Sensors" },
+  { id: "sensors", labelKey: "sensors", icon: <Gauge size={14} />, section: "Sensors" },
+  { id: "px4-thermal", labelKey: "px4Thermal", icon: <Thermometer size={14} />, requiredCapability: "supportsPx4Tuning", section: "Sensors" },
   // iNav has neither the ArduPilot BATT_* params nor Betaflight's GPS Rescue
   // (MSP_GPS_RESCUE); its battery lives under "Battery Profiles".
-  { id: "power", label: "Power", icon: <Battery size={14} />, requiredCapability: "supportsPowerConfig", excludeFirmware: ["inav"], section: "Sensors" },
-  { id: "gps-config", label: "GPS", icon: <MapPin size={14} />, requiredCapability: "supportsGpsConfig", excludeFirmware: ["inav"], section: "Sensors" },
-  { id: "ekf3", label: "EKF3", icon: <Compass size={14} />, requiredCapability: "supportsEkfConfig", section: "Sensors" },
-  { id: "ap-nongps", label: "Non-GPS Nav", icon: <Navigation size={14} />, requiredCapability: "supportsEkfConfig", section: "Sensors" },
-  { id: "gimbal", label: "Gimbal", icon: <Move3d size={14} />, requiredCapability: "supportsGimbal", section: "Sensors" },
-  { id: "camera", label: "Camera", icon: <Camera size={14} />, requiredCapability: "supportsCamera", section: "Sensors" },
-  { id: "airspeed", label: "Airspeed", icon: <Wind size={14} />, requiredCapability: "supportsEkfConfig", vehicleClasses: ["plane", "vtol"], section: "Sensors" },
-  { id: "payload", label: "Gripper / Payload", icon: <Grab size={14} />, requiredCapability: "supportsEkfConfig", section: "Sensors" },
-  { id: "notch", label: "Harmonic Notch", icon: <Activity size={14} />, requiredCapability: "supportsEkfConfig", section: "Tuning" },
-  { id: "adsb", label: "ADS-B & Avoidance", icon: <Radar size={14} />, requiredCapability: "supportsEkfConfig", vehicleClasses: ["copter", "plane", "vtol"], section: "Safety" },
-  { id: "sailboat", label: "Sailboat", icon: <Sailboat size={14} />, requiredCapability: "supportsEkfConfig", vehicleClasses: ["rover"], section: "Flight" },
+  { id: "power", labelKey: "power", icon: <Battery size={14} />, requiredCapability: "supportsPowerConfig", excludeFirmware: ["inav"], section: "Sensors" },
+  { id: "gps-config", labelKey: "gpsConfig", icon: <MapPin size={14} />, requiredCapability: "supportsGpsConfig", excludeFirmware: ["inav"], section: "Sensors" },
+  { id: "ekf3", labelKey: "ekf3", icon: <Compass size={14} />, requiredCapability: "supportsEkfConfig", section: "Sensors" },
+  { id: "ap-nongps", labelKey: "apNongps", icon: <Navigation size={14} />, requiredCapability: "supportsEkfConfig", section: "Sensors" },
+  { id: "gimbal", labelKey: "gimbal", icon: <Move3d size={14} />, requiredCapability: "supportsGimbal", section: "Sensors" },
+  { id: "camera", labelKey: "camera", icon: <Camera size={14} />, requiredCapability: "supportsCamera", section: "Sensors" },
+  { id: "airspeed", labelKey: "airspeed", icon: <Wind size={14} />, requiredCapability: "supportsEkfConfig", vehicleClasses: ["plane", "vtol"], section: "Sensors" },
+  { id: "payload", labelKey: "payload", icon: <Grab size={14} />, requiredCapability: "supportsEkfConfig", section: "Sensors" },
+  { id: "notch", labelKey: "notch", icon: <Activity size={14} />, requiredCapability: "supportsEkfConfig", section: "Tuning" },
+  { id: "adsb", labelKey: "adsb", icon: <Radar size={14} />, requiredCapability: "supportsEkfConfig", vehicleClasses: ["copter", "plane", "vtol"], section: "Safety" },
+  { id: "sailboat", labelKey: "sailboat", icon: <Sailboat size={14} />, requiredCapability: "supportsEkfConfig", vehicleClasses: ["rover"], section: "Flight" },
   // Tuning
-  { id: "pid", label: "PID Tuning", icon: <Activity size={14} />, requiredCapability: "supportsPidTuning", excludeFirmware: ["betaflight", "inav"], section: "Tuning" },
-  { id: "tecs", label: "TECS / L1", icon: <Wind size={14} />, requiredCapability: "supportsTecsConfig", vehicleClasses: ["plane", "vtol"], section: "Tuning" },
-  { id: "px4-flight-behavior", label: "Flight Behavior", icon: <Gauge size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["copter", "vtol"], section: "Tuning" },
-  { id: "px4-fw-tuning", label: "Fixed-Wing Tuning", icon: <Plane size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["plane", "vtol"], section: "Tuning" },
-  { id: "px4-autotune", label: "Autotune", icon: <Wand2 size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["copter", "plane", "vtol"], section: "Tuning" },
-  { id: "px4-vtol", label: "VTOL Transition", icon: <ArrowLeftRight size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["vtol"], section: "Flight" },
-  { id: "px4-control-allocation", label: "Control Allocation", icon: <Sliders size={14} />, requiredCapability: "supportsPx4Tuning", section: "Tuning" },
-  { id: "rate-profiles", label: "Rate Profiles", icon: <Activity size={14} />, requiredCapability: "supportsRateProfiles", section: "Tuning" },
-  { id: "adjustments", label: "Adjustments", icon: <Sliders size={14} />, requiredCapability: "supportsAdjustments", section: "Tuning" },
-  { id: "sensor-graphs", label: "Sensor Graphs", icon: <BarChart3 size={14} />, section: "Tuning" },
+  { id: "pid", labelKey: "pidTuning", icon: <Activity size={14} />, requiredCapability: "supportsPidTuning", excludeFirmware: ["betaflight", "inav"], section: "Tuning" },
+  { id: "tecs", labelKey: "tecs", icon: <Wind size={14} />, requiredCapability: "supportsTecsConfig", vehicleClasses: ["plane", "vtol"], section: "Tuning" },
+  { id: "px4-flight-behavior", labelKey: "px4FlightBehavior", icon: <Gauge size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["copter", "vtol"], section: "Tuning" },
+  { id: "px4-fw-tuning", labelKey: "px4FwTuning", icon: <Plane size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["plane", "vtol"], section: "Tuning" },
+  { id: "px4-autotune", labelKey: "px4Autotune", icon: <Wand2 size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["copter", "plane", "vtol"], section: "Tuning" },
+  { id: "px4-vtol", labelKey: "px4Vtol", icon: <ArrowLeftRight size={14} />, requiredCapability: "supportsPx4Tuning", vehicleClasses: ["vtol"], section: "Flight" },
+  { id: "px4-control-allocation", labelKey: "px4ControlAllocation", icon: <Sliders size={14} />, requiredCapability: "supportsPx4Tuning", section: "Tuning" },
+  { id: "rate-profiles", labelKey: "rateProfiles", icon: <Activity size={14} />, requiredCapability: "supportsRateProfiles", section: "Tuning" },
+  { id: "adjustments", labelKey: "adjustments", icon: <Sliders size={14} />, requiredCapability: "supportsAdjustments", section: "Tuning" },
+  { id: "sensor-graphs", labelKey: "sensorGraphs", icon: <BarChart3 size={14} />, section: "Tuning" },
   // Display
-  { id: "osd", label: "OSD Editor", icon: <Layers size={14} />, requiredCapability: "supportsOsd", excludeFirmware: ["inav"], section: "Display" },
-  { id: "led", label: "LED Strip", icon: <Lightbulb size={14} />, requiredCapability: "supportsLed", excludeFirmware: ["inav"], section: "Display" },
-  { id: "vtx", label: "VTX", icon: <Radio size={14} />, requiredCapability: "supportsVtx", section: "Display" },
+  { id: "osd", labelKey: "osdEditor", icon: <Layers size={14} />, requiredCapability: "supportsOsd", excludeFirmware: ["inav"], section: "Display" },
+  { id: "led", labelKey: "ledStrip", icon: <Lightbulb size={14} />, requiredCapability: "supportsLed", excludeFirmware: ["inav"], section: "Display" },
+  { id: "vtx", labelKey: "vtx", icon: <Radio size={14} />, requiredCapability: "supportsVtx", section: "Display" },
   // System
   // The agent-side MAVLink source (auto / serial / udp / tcp + port + baud).
   // This is the control that fixes "the companion can't find my flight
   // controller", so it lives on the same tab as the placeholder that reports
   // the problem, and it is reachable while the FC link is down.
-  { id: "fc-source", label: "FC Source", icon: <Cable size={14} />, agentSide: true, section: "System" },
-  { id: "ports", label: "Ports", icon: <Cable size={14} />, requiredCapability: "supportsPorts", section: "System" },
-  { id: "stream-rates", label: "Stream Rates", icon: <Gauge size={14} />, requiredCapability: "supportsStreamRates", section: "System" },
-  { id: "radio", label: "Radio Config", icon: <Wifi size={14} />, excludeFirmware: ["betaflight", "inav"], section: "System" },
-  { id: "bf-config", label: "Configuration", icon: <Settings size={14} />, requiredCapability: "supportsBetaflightConfig", section: "System" },
-  { id: "bf-settings", label: "All Settings", icon: <Sliders size={14} />, requiredCapability: "supportsCliSettings", section: "System" },
-  { id: "signing", label: "MAVLink Signing", icon: <Shield size={14} />, requiredCapability: "supportsMavlinkSigning", section: "Security" },
-  { id: "firmware", label: "Firmware", icon: <Zap size={14} />, requiredCapability: "supportsFirmwareFlash", section: "System" },
-  { id: "cli", label: "CLI", icon: <Terminal size={14} />, requiredCapability: "supportsCliShell", section: "System", labelOverride: { px4: "Shell" } },
+  { id: "fc-source", labelKey: "fcSource", icon: <Cable size={14} />, agentSide: true, section: "System" },
+  { id: "ports", labelKey: "ports", icon: <Cable size={14} />, requiredCapability: "supportsPorts", section: "System" },
+  { id: "stream-rates", labelKey: "streamRates", icon: <Gauge size={14} />, requiredCapability: "supportsStreamRates", section: "System" },
+  { id: "radio", labelKey: "radioConfig", icon: <Wifi size={14} />, excludeFirmware: ["betaflight", "inav"], section: "System" },
+  { id: "bf-config", labelKey: "configuration", icon: <Settings size={14} />, requiredCapability: "supportsBetaflightConfig", section: "System" },
+  { id: "bf-settings", labelKey: "bfSettings", icon: <Sliders size={14} />, requiredCapability: "supportsCliSettings", section: "System" },
+  { id: "signing", labelKey: "signing", icon: <Shield size={14} />, requiredCapability: "supportsMavlinkSigning", section: "Security" },
+  { id: "firmware", labelKey: "firmwarePanel", icon: <Zap size={14} />, requiredCapability: "supportsFirmwareFlash", section: "System" },
+  { id: "cli", labelKey: "cli", icon: <Terminal size={14} />, requiredCapability: "supportsCliShell", section: "System", labelOverride: { px4: "shell" } },
   // Debug
-  { id: "mavlink", label: "MAVLink Inspector", icon: <Monitor size={14} />, requiredCapability: "supportsMavlinkInspector", section: "Debug" },
-  { id: "blackbox", label: "Blackbox", icon: <HardDrive size={14} />, requiredCapability: "supportsBlackbox", section: "Debug" },
-  { id: "debug", label: "Debug", icon: <Bug size={14} />, requiredCapability: "supportsDebugValues", section: "Debug" },
-  { id: "diagnostics", label: "Diagnostics", icon: <Stethoscope size={14} />, section: "Debug" },
-  { id: "logs", label: "Log Analysis", icon: <BarChart3 size={14} />, section: "Debug" },
-  { id: "can", label: "DroneCAN", icon: <Network size={14} />, requiredCapability: "supportsCanFrame", section: "Debug" },
+  { id: "mavlink", labelKey: "mavlinkInspector", icon: <Monitor size={14} />, requiredCapability: "supportsMavlinkInspector", section: "Debug" },
+  { id: "blackbox", labelKey: "blackbox", icon: <HardDrive size={14} />, requiredCapability: "supportsBlackbox", section: "Debug" },
+  { id: "debug", labelKey: "debugPanel", icon: <Bug size={14} />, requiredCapability: "supportsDebugValues", section: "Debug" },
+  { id: "diagnostics", labelKey: "diagnostics", icon: <Stethoscope size={14} />, section: "Debug" },
+  { id: "logs", labelKey: "logAnalysis", icon: <BarChart3 size={14} />, section: "Debug" },
+  { id: "can", labelKey: "can", icon: <Network size={14} />, requiredCapability: "supportsCanFrame", section: "Debug" },
   // Programming — ArduPilot onboard Lua scripting (APM/scripts/ over MAVLink
   // FTP). ArduPilot-only; Betaflight/iNav have no Lua VM and PX4's scripting is
   // separate. Excluded by firmware (not a capability) so it stays forward-
   // compatible if another firmware gains scripting.
-  { id: "scripts", label: "Scripts", icon: <ScrollText size={14} />, excludeFirmware: ["px4", "betaflight", "inav"], section: "Programming" },
+  { id: "scripts", labelKey: "scripts", icon: <ScrollText size={14} />, excludeFirmware: ["px4", "betaflight", "inav"], section: "Programming" },
   // iNav-specific
-  { id: "inav-nav-config", label: "Navigation Config", icon: <MapPin size={14} />, requiredCapability: "supportsSettings", section: "Flight" },
-  { id: "inav-mission", label: "iNav Mission", icon: <MapPin size={14} />, requiredCapability: "supportsMultiMission", section: "Flight" },
-  { id: "inav-mixer-profile", label: "Mixer Profiles", icon: <Cpu size={14} />, requiredCapability: "supportsMixerProfile", section: "Flight" },
-  { id: "inav-output-mapping", label: "Output Mapping", icon: <Cpu size={14} />, requiredCapability: "supportsOutputMappingExt", section: "Flight" },
-  { id: "inav-servos", label: "Servos (iNav)", icon: <Sliders size={14} />, requiredCapability: "supportsServoMixer", section: "Flight" },
-  { id: "inav-failsafe", label: "Failsafe (iNav)", icon: <ShieldAlert size={14} />, requiredCapability: "supportsSettings", section: "Safety" },
-  { id: "inav-battery-profile", label: "Battery Profiles", icon: <Battery size={14} />, requiredCapability: "supportsBatteryProfile", section: "Sensors" },
-  { id: "inav-temp-sensors", label: "Temp Sensors", icon: <Gauge size={14} />, requiredCapability: "supportsTempSensors", section: "Sensors" },
-  { id: "inav-control-profile", label: "Control Profiles", icon: <Activity size={14} />, requiredCapability: "supportsSettings", section: "Tuning" },
-  { id: "inav-mc-braking", label: "MC Braking", icon: <Activity size={14} />, requiredCapability: "supportsMcBraking", section: "Tuning" },
-  { id: "inav-rate-dynamics", label: "Rate Dynamics", icon: <Activity size={14} />, requiredCapability: "supportsRateDynamics", section: "Tuning" },
-  { id: "inav-ez-tune", label: "EZ Tune", icon: <Sliders size={14} />, requiredCapability: "supportsEzTune", section: "Tuning" },
-  { id: "inav-fw-approach", label: "FW Approach", icon: <MapPin size={14} />, requiredCapability: "supportsFwApproach", section: "Flight" },
-  { id: "inav-osd", label: "OSD (iNav)", icon: <Layers size={14} />, requiredCapability: "supportsCustomOsd", section: "Display" },
-  { id: "inav-custom-osd", label: "Custom OSD", icon: <Monitor size={14} />, requiredCapability: "supportsCustomOsd", section: "Display" },
-  { id: "displayport-osd", label: "OSD Preview", icon: <Monitor size={14} />, requiredCapability: "supportsDisplayPort", section: "Display" },
-  { id: "inav-logic-conditions", label: "Logic Conditions", icon: <Zap size={14} />, requiredCapability: "supportsLogicConditions", section: "Programming" },
-  { id: "inav-global-variables", label: "Global Variables", icon: <Activity size={14} />, requiredCapability: "supportsGlobalVariables", section: "Programming" },
-  { id: "inav-programming-pid", label: "Programming PIDs", icon: <Sliders size={14} />, requiredCapability: "supportsProgrammingPid", section: "Programming" },
-  { id: "inav-js-programming", label: "Programming (JS)", icon: <Braces size={14} />, requiredCapability: "supportsLogicConditions", section: "Programming" },
-  { id: "inav-nav-pid", label: "Nav PID", icon: <Activity size={14} />, requiredCapability: "supportsSettings", section: "Tuning" },
+  { id: "inav-nav-config", labelKey: "inavNavConfig", icon: <MapPin size={14} />, requiredCapability: "supportsSettings", section: "Flight" },
+  { id: "inav-mission", labelKey: "inavMission", icon: <MapPin size={14} />, requiredCapability: "supportsMultiMission", section: "Flight" },
+  { id: "inav-mixer-profile", labelKey: "inavMixerProfile", icon: <Cpu size={14} />, requiredCapability: "supportsMixerProfile", section: "Flight" },
+  { id: "inav-output-mapping", labelKey: "inavOutputMapping", icon: <Cpu size={14} />, requiredCapability: "supportsOutputMappingExt", section: "Flight" },
+  { id: "inav-servos", labelKey: "inavServos", icon: <Sliders size={14} />, requiredCapability: "supportsServoMixer", section: "Flight" },
+  { id: "inav-failsafe", labelKey: "inavFailsafe", icon: <ShieldAlert size={14} />, requiredCapability: "supportsSettings", section: "Safety" },
+  { id: "inav-battery-profile", labelKey: "inavBatteryProfile", icon: <Battery size={14} />, requiredCapability: "supportsBatteryProfile", section: "Sensors" },
+  { id: "inav-temp-sensors", labelKey: "inavTempSensors", icon: <Gauge size={14} />, requiredCapability: "supportsTempSensors", section: "Sensors" },
+  { id: "inav-control-profile", labelKey: "inavControlProfile", icon: <Activity size={14} />, requiredCapability: "supportsSettings", section: "Tuning" },
+  { id: "inav-mc-braking", labelKey: "inavMcBraking", icon: <Activity size={14} />, requiredCapability: "supportsMcBraking", section: "Tuning" },
+  { id: "inav-rate-dynamics", labelKey: "inavRateDynamics", icon: <Activity size={14} />, requiredCapability: "supportsRateDynamics", section: "Tuning" },
+  { id: "inav-ez-tune", labelKey: "inavEzTune", icon: <Sliders size={14} />, requiredCapability: "supportsEzTune", section: "Tuning" },
+  { id: "inav-fw-approach", labelKey: "inavFwApproach", icon: <MapPin size={14} />, requiredCapability: "supportsFwApproach", section: "Flight" },
+  { id: "inav-osd", labelKey: "inavOsd", icon: <Layers size={14} />, requiredCapability: "supportsCustomOsd", section: "Display" },
+  { id: "inav-custom-osd", labelKey: "inavCustomOsd", icon: <Monitor size={14} />, requiredCapability: "supportsCustomOsd", section: "Display" },
+  { id: "displayport-osd", labelKey: "displayportOsd", icon: <Monitor size={14} />, requiredCapability: "supportsDisplayPort", section: "Display" },
+  { id: "inav-logic-conditions", labelKey: "inavLogicConditions", icon: <Zap size={14} />, requiredCapability: "supportsLogicConditions", section: "Programming" },
+  { id: "inav-global-variables", labelKey: "inavGlobalVariables", icon: <Activity size={14} />, requiredCapability: "supportsGlobalVariables", section: "Programming" },
+  { id: "inav-programming-pid", labelKey: "inavProgrammingPid", icon: <Sliders size={14} />, requiredCapability: "supportsProgrammingPid", section: "Programming" },
+  { id: "inav-js-programming", labelKey: "inavJsProgramming", icon: <Braces size={14} />, requiredCapability: "supportsLogicConditions", section: "Programming" },
+  { id: "inav-nav-pid", labelKey: "inavNavPid", icon: <Activity size={14} />, requiredCapability: "supportsSettings", section: "Tuning" },
 ];

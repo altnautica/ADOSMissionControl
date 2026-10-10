@@ -119,8 +119,8 @@ export function PeripheralsTab({ nodeDeviceId }: PeripheralsTabProps) {
   return (
     <div className="flex flex-col">
       <PageIntro
-        title="Peripherals"
-        description="Plugin-managed peripherals declared by the agent: cameras, sensors, custom hardware."
+        title={t("peripherals.title")}
+        description={t("peripherals.description")}
         trailing={
           onCloudOnly ? null : (
             <Button

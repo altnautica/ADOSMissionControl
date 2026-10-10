@@ -10,11 +10,17 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import { startGamepadPolling, stopGamepadPolling } from "../gamepad-poller";
+import {
+  acquireGamepadPolling,
+  isPolling,
+  manualControlButtonMask,
+} from "../gamepad-poller";
+import { COCKPIT_GAMEPAD_BUTTON } from "@/lib/skills/chord";
 import { useInputStore } from "@/stores/input-store";
 
 describe("published buttons array", () => {
   let frame: (() => void) | null = null;
+  let release: (() => void) | null = null;
   let pressed: boolean[] = [];
 
   function pad(): Gamepad {
@@ -43,13 +49,14 @@ describe("published buttons array", () => {
   });
 
   afterEach(() => {
-    stopGamepadPolling();
+    release?.();
+    release = null;
     vi.unstubAllGlobals();
     useInputStore.getState().resetInput();
   });
 
   it("publishes a distinct array each frame so a change is observable", () => {
-    startGamepadPolling();
+    release = acquireGamepadPolling();
 
     pressed[0] = true;
     step();
@@ -68,7 +75,7 @@ describe("published buttons array", () => {
   });
 
   it("does not rewrite an already-published frame when the next one arrives", () => {
-    startGamepadPolling();
+    release = acquireGamepadPolling();
 
     pressed[3] = true;
     step();
@@ -84,13 +91,13 @@ describe("published buttons array", () => {
   });
 
   it("publishes all sixteen button slots", () => {
-    startGamepadPolling();
+    release = acquireGamepadPolling();
     step();
     expect(useInputStore.getState().buttons).toHaveLength(16);
   });
 
   it("keeps the published array when no button changed, and notifies once per frame", () => {
-    startGamepadPolling();
+    release = acquireGamepadPolling();
     pressed[2] = true;
     step();
     const first = useInputStore.getState().buttons;
@@ -104,5 +111,53 @@ describe("published buttons array", () => {
 
     expect(useInputStore.getState().buttons).toBe(first);
     expect(notifications).toBe(1);
+  });
+});
+
+describe("acquireGamepadPolling", () => {
+  beforeEach(() => {
+    vi.stubGlobal("requestAnimationFrame", () => 1);
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    vi.stubGlobal("navigator", { getGamepads: () => [] });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("keeps polling until the last holder releases", () => {
+    const a = acquireGamepadPolling();
+    const b = acquireGamepadPolling();
+    expect(isPolling()).toBe(true);
+    a();
+    expect(isPolling()).toBe(true);
+    b();
+    expect(isPolling()).toBe(false);
+  });
+
+  it("treats a repeated release as a no-op", () => {
+    const a = acquireGamepadPolling();
+    const b = acquireGamepadPolling();
+    a();
+    a();
+    expect(isPolling()).toBe(true);
+    b();
+    expect(isPolling()).toBe(false);
+  });
+});
+
+describe("manualControlButtonMask", () => {
+  it("passes free buttons and masks the cockpit's reserved ones", () => {
+    const buttons = new Array(16).fill(true);
+    const mask = manualControlButtonMask(buttons);
+    for (const reserved of Object.values(COCKPIT_GAMEPAD_BUTTON)) {
+      expect(mask & (1 << reserved)).toBe(0);
+    }
+    for (const free of [0, 1, 2, 3, 6, 7, 10, 11]) {
+      expect(mask & (1 << free)).not.toBe(0);
+    }
+  });
+
+  it("ignores buttons past the sixteenth", () => {
+    const buttons = new Array(20).fill(false);
+    buttons[17] = true;
+    expect(manualControlButtonMask(buttons)).toBe(0);
   });
 });

@@ -6,18 +6,27 @@
  * fires through the single dispatch pipeline so confirm / arm-gating /
  * idempotency are uniform with the keyboard and gamepad paths.
  *
- * Surfaced only when Cockpit is enabled (default off).
+ * Surfaced while the cockpit's skill layer is enabled (on by default; the
+ * operator can turn it off). On a narrow cockpit the slots past the sixth move
+ * into an overflow drawer behind a "more" toggle.
  *
- * @module fly/SkillBar
+ * @module cockpit/SkillBar
  * @license GPL-3.0-only
  */
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { useTranslations } from "next-intl";
+import { MoreHorizontal } from "lucide-react";
 import { safeTranslate } from "@/hooks/use-skill-toast-bridge";
-import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
@@ -35,30 +44,43 @@ import { SkillSlot } from "./SkillSlot";
 const IDLE: SkillState = { kind: "idle" };
 
 /** Skills whose press is destructive enough to warrant the danger treatment. */
-const DANGER_SKILL_IDS = new Set(["arm", "disarm", "kill", "abort"]);
+const DANGER_SKILL_IDS: Readonly<Record<string, true>> = {
+  arm: true,
+  disarm: true,
+  kill: true,
+  abort: true,
+};
 
-export function SkillBar() {
+/** Slots shown in the bar itself on a narrow cockpit; the rest overflow. */
+const NARROW_VISIBLE_SLOTS = 6;
+
+interface SlotView {
+  slot: HotbarSlot;
+  skill: Skill | null;
+  state: SkillState;
+}
+
+export function SkillBar({ droneId }: { droneId: string }) {
   const enabled = useCockpitStore((s) => s.enabled);
   const t = useTranslations();
-  const selectedId = useDroneManager((s) => s.selectedDroneId);
 
   const activeLoadoutId = useSettingsStore((s) => s.activeLoadoutId);
   const loadouts = useSettingsStore((s) => s.loadouts);
   const loadout = loadouts[activeLoadoutId] ?? loadouts.default ?? null;
 
   // Subscribe to the registry so the bar re-renders when skills register/unregister
-  // or the per-drone state cache changes.
+  // or this drone's state cache changes.
   const registrySkills = useSkillRegistry((s) => s.skills);
-  const registryStates = useSkillRegistry((s) => s.states);
+  const stateMap = useSkillRegistry((s) => s.states.get(droneId));
   const resolveForDrone = useSkillRegistry((s) => s.resolveForDrone);
 
   // The ordered, firmware-/install-filtered skills available for this drone.
   const resolved = useMemo<Skill[]>(() => {
-    if (!selectedId) return [];
-    return resolveForDrone(selectedId);
+    if (!droneId) return [];
+    return resolveForDrone(droneId);
     // registrySkills is a dependency so a register/unregister re-resolves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, resolveForDrone, registrySkills]);
+  }, [droneId, resolveForDrone, registrySkills]);
 
   const resolvedById = useMemo(() => {
     const map = new Map<string, Skill>();
@@ -67,18 +89,16 @@ export function SkillBar() {
   }, [resolved]);
 
   // Build the projected slot views: bound skill (if available on this drone) +
-  // its live state. A slot bound to a skill not available on the selected drone
-  // renders empty (the operator's loadout is per-operator; availability is
-  // per-drone).
-  const slotViews = useMemo(() => {
+  // its live state. A slot bound to a skill not available on this drone renders
+  // empty (the loadout is per-operator; availability is per-drone).
+  const slotViews = useMemo<SlotView[]>(() => {
     const slots: HotbarSlot[] = loadout?.slots ?? [];
-    const stateMap = selectedId ? registryStates.get(selectedId) : undefined;
     return slots.map((slot) => {
       const skill = slot.skillId ? resolvedById.get(slot.skillId) ?? null : null;
       const state = skill ? stateMap?.get(skill.id) ?? IDLE : IDLE;
       return { slot, skill, state };
     });
-  }, [loadout, resolvedById, registryStates, selectedId]);
+  }, [loadout, resolvedById, stateMap]);
 
   // A polite live region announces active/disabled/cooldown transitions so a
   // screen-reader pilot hears state changes without watching the rings. Charge
@@ -135,27 +155,32 @@ export function SkillBar() {
     if (message) setAnnouncement(message);
   }, [slotViews, enabled, t]);
 
-  if (!enabled || !loadout) return null;
+  // Stable across renders so a memoized slot re-renders only when its own
+  // skill or state changes.
+  const fireSkill = useCallback(
+    (skill: Skill) => {
+      void activate(skill.id, buildSkillContext(droneId));
+    },
+    [droneId],
+  );
 
-  const fireSlot = (skillId: string | null) => {
-    if (!skillId || !selectedId) return;
-    void activate(skillId, buildSkillContext(selectedId));
-  };
+  if (!enabled || !loadout) return null;
 
   return (
     <SkillBarToolbar
       slotViews={slotViews}
-      fireSlot={fireSlot}
+      fireSkill={fireSkill}
       label={t("skills.bar.label")}
+      moreLabel={t("skills.bar.more")}
       announcement={announcement}
     />
   );
 }
 
-interface SlotView {
-  slot: HotbarSlot;
-  skill: Skill | null;
-  state: SkillState;
+function openSkillSettings(skill: Skill): void {
+  if (skill.pluginId) {
+    useFlyQuickSettingsStore.getState().openFocused(skill.pluginId);
+  }
 }
 
 /**
@@ -166,17 +191,20 @@ interface SlotView {
  */
 function SkillBarToolbar({
   slotViews,
-  fireSlot,
+  fireSkill,
   label,
+  moreLabel,
   announcement,
 }: {
   slotViews: SlotView[];
-  fireSlot: (skillId: string | null) => void;
+  fireSkill: (skill: Skill) => void;
   label: string;
+  moreLabel: string;
   announcement: string;
 }) {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [rovingIndex, setRovingIndex] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // The slot set can shrink (a drone with fewer skills), so clamp the roving
   // index during render rather than mutating state in an effect — exactly one
@@ -186,40 +214,59 @@ function SkillBarToolbar({
       ? Math.min(rovingIndex, slotViews.length - 1)
       : 0;
 
-  const focusSlotAt = (pos: number) => {
-    const clamped = Math.max(0, Math.min(slotViews.length - 1, pos));
-    setRovingIndex(clamped);
-    const el = toolbarRef.current?.querySelector<HTMLButtonElement>(
-      `button[data-slot-index="${slotViews[clamped]?.slot.index}"]`,
-    );
-    el?.focus();
-  };
-
-  const onSlotKeyDown =
-    (pos: number) => (e: KeyboardEvent<HTMLButtonElement>) => {
+  const count = slotViews.length;
+  const onSlotKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLButtonElement>, pos: number) => {
+      let next: number | null = null;
       switch (e.key) {
         case "ArrowRight":
         case "ArrowDown":
-          e.preventDefault();
-          focusSlotAt((pos + 1) % slotViews.length);
+          next = (pos + 1) % count;
           break;
         case "ArrowLeft":
         case "ArrowUp":
-          e.preventDefault();
-          focusSlotAt((pos - 1 + slotViews.length) % slotViews.length);
+          next = (pos - 1 + count) % count;
           break;
         case "Home":
-          e.preventDefault();
-          focusSlotAt(0);
+          next = 0;
           break;
         case "End":
-          e.preventDefault();
-          focusSlotAt(slotViews.length - 1);
+          next = count - 1;
           break;
         default:
-          break;
+          return;
       }
-    };
+      e.preventDefault();
+      setRovingIndex(next);
+      toolbarRef.current
+        ?.querySelectorAll<HTMLButtonElement>("button[data-slot-index]")
+        [next]?.focus();
+    },
+    [count],
+  );
+
+  const renderSlot = ({ slot, skill, state }: SlotView, pos: number) => (
+    <SkillSlot
+      key={slot.index}
+      index={slot.index}
+      skill={skill}
+      state={state}
+      hotkey={slot.key}
+      gamepadButton={slot.gamepadButton}
+      danger={skill ? DANGER_SKILL_IDS[skill.id] === true : false}
+      onActivate={fireSkill}
+      onOpenSettings={
+        skill?.source === "plugin" && skill.pluginId ? openSkillSettings : undefined
+      }
+      tabIndex={pos === effectiveRoving ? 0 : -1}
+      position={pos}
+      onKeyDown={onSlotKeyDown}
+      overflow={pos >= NARROW_VISIBLE_SLOTS}
+    />
+  );
+
+  const inline = slotViews.slice(0, NARROW_VISIBLE_SLOTS);
+  const overflow = slotViews.slice(NARROW_VISIBLE_SLOTS);
 
   return (
     <div
@@ -228,28 +275,30 @@ function SkillBarToolbar({
       aria-label={label}
       className="skillbar pointer-events-auto"
     >
-      {slotViews.map(({ slot, skill, state }, pos) => (
-        <SkillSlot
-          key={slot.index}
-          index={slot.index}
-          skill={skill}
-          state={state}
-          hotkey={slot.key}
-          gamepadButton={slot.gamepadButton}
-          danger={skill ? DANGER_SKILL_IDS.has(skill.id) : false}
-          onActivate={() => fireSlot(skill?.id ?? null)}
-          onOpenSettings={
-            skill?.source === "plugin" && skill.pluginId
-              ? () => {
-                  const pluginId = skill.pluginId;
-                  if (pluginId) useFlyQuickSettingsStore.getState().openFocused(pluginId);
-                }
-              : undefined
-          }
-          tabIndex={pos === effectiveRoving ? 0 : -1}
-          onKeyDown={onSlotKeyDown(pos)}
-        />
-      ))}
+      {inline.map((view, pos) => renderSlot(view, pos))}
+      {overflow.length > 0 && (
+        <>
+          <div
+            id="skillbar-drawer"
+            className="skillbar-drawer"
+            data-open={drawerOpen ? "true" : "false"}
+          >
+            {overflow.map((view, i) => renderSlot(view, i + NARROW_VISIBLE_SLOTS))}
+          </div>
+          <button
+            type="button"
+            className="skillbar-overflow skill"
+            aria-label={moreLabel}
+            aria-expanded={drawerOpen}
+            aria-controls="skillbar-drawer"
+            onClick={() => setDrawerOpen((open) => !open)}
+          >
+            <span className="ic">
+              <MoreHorizontal size={20} aria-hidden="true" />
+            </span>
+          </button>
+        </>
+      )}
       <span className="sr-only" role="status" aria-live="polite">
         {announcement}
       </span>

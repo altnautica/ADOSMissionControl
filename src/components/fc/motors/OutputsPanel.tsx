@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { useFlashCommitToast } from "@/hooks/use-flash-commit-toast";
+import { usePanelCommit } from "@/hooks/use-panel-commit";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useBoardId } from "@/hooks/use-board-id";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
@@ -68,15 +69,18 @@ function validateOutputs(rows: (OutputRow | null)[]): { pwmWarnings: PwmWarning[
 export function OutputsPanel() {
   const protocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
-  const { showFlashResult } = useFlashCommitToast();
+  const t = useTranslations("fcToasts.motors");
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
-  const [saving, setSaving] = useState(false);
 
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded,
-    refresh, setLocalValue, saveAllToRam, commitToFlash,
+    refresh, setLocalValue, saveAllToRam, commitToFlash, revertAll,
   } = usePanelParams({ paramNames: OUTPUT_PARAMS, optionalParams: OPTIONAL_OUTPUT_PARAMS, panelId: "outputs", autoLoad: true });
+  const { saving, save, flash: handleFlash } = usePanelCommit(
+    { saveAllToRam, commitToFlash, revertAll },
+    { saved: t("outputsSaved"), flash: { successMessage: t("paramsFlashWritten") } },
+  );
   useUnsavedGuard(dirtyParams.size > 0);
 
   const gpioOutputs = useMemo(() => {
@@ -134,16 +138,8 @@ export function OutputsPanel() {
   const hasDirty = dirtyParams.size > 0;
 
   async function handleSave() {
-    if (pwmWarnings.length > 0) { toast("Fix PWM warnings before saving", "warning"); return; }
-    setSaving(true);
-    const ok = await saveAllToRam();
-    setSaving(false);
-    if (ok) toast("Output parameters saved to RAM", "success");
-    else toast("Some parameters failed to save", "warning");
-  }
-
-  async function handleFlash() {
-    showFlashResult(await commitToFlash(), { successMessage: "Parameters written to flash" });
+    if (pwmWarnings.length > 0) { toast(t("fixPwmWarnings"), "warning"); return; }
+    await save();
   }
 
   if (!protocol) {

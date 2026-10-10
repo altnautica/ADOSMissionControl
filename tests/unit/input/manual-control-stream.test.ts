@@ -34,13 +34,15 @@ vi.mock('@/stores/drone-manager', () => ({
 }));
 
 import {
-  startGamepadPolling,
-  stopGamepadPolling,
+  acquireGamepadPolling,
   startManualControlStream,
   stopManualControlStream,
 } from '@/lib/input/gamepad-poller';
 import { useInputStore } from '@/stores/input-store';
 import { useDroneStore } from '@/stores/drone-store';
+
+/** Releases for every hold a test took, dropped in `afterEach`. */
+const releases: Array<() => void> = [];
 
 function fakePad(axes: number[] = [0, 0, 0, 0]): Gamepad {
   return {
@@ -82,12 +84,12 @@ describe('manual-control stream gating', () => {
 
   afterEach(() => {
     stopManualControlStream();
-    stopGamepadPolling();
+    releases.splice(0).forEach((release) => release());
     vi.useRealTimers();
   });
 
   it('reading a gamepad does not transmit one', () => {
-    startGamepadPolling();
+    releases.push(acquireGamepadPolling());
     allowEverything();
     vi.advanceTimersByTime(500);
     expect(sendManualControl).not.toHaveBeenCalled();
@@ -169,14 +171,14 @@ describe('manual-control stream gating', () => {
   });
 
   it('stops transmitting when the gamepad reader stops', () => {
-    startGamepadPolling();
+    releases.push(acquireGamepadPolling());
     startManualControlStream();
     allowEverything();
     vi.advanceTimersByTime(100);
     expect(sendManualControl).toHaveBeenCalled();
 
     sendManualControl.mockClear();
-    stopGamepadPolling();
+    releases.splice(0).forEach((release) => release());
     vi.advanceTimersByTime(200);
     expect(sendManualControl).not.toHaveBeenCalled();
   });

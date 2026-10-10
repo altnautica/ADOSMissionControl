@@ -5,9 +5,13 @@
  * dispatch time. The dispatcher and the capture overlay both import from here.
  *
  * A chord is "ctrl+alt+shift+meta+<base>" with the present modifiers in that
- * fixed order. The base is the lower-cased printable key, a digit ("0".."9"),
- * or a function key ("f1".."f24"), derived from e.code so a held Shift or a
- * keyboard layout difference never changes the chord.
+ * fixed order. Digits ("0".."9", top row or numpad) and function keys
+ * ("f1".."f24") come from `e.code`, so a held Shift never changes them. Every
+ * other printable base (letters, punctuation) is the lower-cased `e.key`, so it
+ * follows the keyboard layout and modifiers that rewrite the character: Shift
+ * on punctuation ("shift+<" for Shift+comma on US layouts) and Option on macOS
+ * (Option+letter types a different character). Default bindings therefore
+ * never use `alt+` with a letter.
  *
  * @module skills/chord
  * @license GPL-3.0-only

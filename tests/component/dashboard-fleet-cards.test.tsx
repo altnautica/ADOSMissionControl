@@ -31,7 +31,11 @@ vi.hoisted(() => {
 import { renderWithIntl } from "../helpers/intl-wrapper";
 import { AvgBatteryCard } from "@/components/dashboard/AvgBatteryCard";
 import { FleetTelemetryCard } from "@/components/dashboard/FleetTelemetryCard";
-import { useFleetStore } from "@/stores/fleet-store";
+import { setFixtureFleet } from "../helpers/fleet-drones";
+
+vi.mock("@/stores/node-registry/use-fleet-drones", async (importOriginal) =>
+  (await import("../helpers/fleet-drones")).fleetDronesModuleMock(await importOriginal()),
+);
 import { useSettingsStore } from "@/stores/settings-store";
 import type { FleetDrone } from "@/lib/types";
 
@@ -59,12 +63,12 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  useFleetStore.setState({ drones: [] });
+  setFixtureFleet({ drones: [] });
 });
 
 describe("AvgBatteryCard", () => {
   it("leaves unknown, offline and FC-less packs out of the average and the minimum", () => {
-    useFleetStore.setState({
+    setFixtureFleet({
       drones: [
         drone({ name: "Arducopter", battery: battery(12, 14.2) }),
         drone({ name: "Betaflight", battery: battery(-1, 16.4) }),
@@ -82,7 +86,7 @@ describe("AvgBatteryCard", () => {
   });
 
   it("shows a placeholder, not 0% / 0.0V, when nothing reports", () => {
-    useFleetStore.setState({
+    setFixtureFleet({
       drones: [drone({ name: "Betaflight", battery: battery(-1, 16.4) })],
     });
     renderWithIntl(<AvgBatteryCard />);
@@ -94,7 +98,7 @@ describe("AvgBatteryCard", () => {
 
 describe("FleetTelemetryCard", () => {
   it("does not list nodes without a linked FC", () => {
-    useFleetStore.setState({
+    setFixtureFleet({
       drones: [
         drone({ name: "Ground", profile: "ground-station", fcAttached: false, flightMode: "STABILIZE", armState: "unknown" }),
         drone({ name: "Companion", fcAttached: false, flightMode: "STABILIZE", armState: "unknown" }),
@@ -108,7 +112,7 @@ describe("FleetTelemetryCard", () => {
   });
 
   it("renders missing FC fields as dashes, never 0sat / 0.0V / a default mode", () => {
-    useFleetStore.setState({
+    setFixtureFleet({
       drones: [
         drone({ name: "Fresh", flightMode: "STABILIZE", armState: "unknown" }),
       ],
@@ -122,7 +126,7 @@ describe("FleetTelemetryCard", () => {
   });
 
   it("shows a heard FC's readings", () => {
-    useFleetStore.setState({
+    setFixtureFleet({
       drones: [
         drone({
           name: "Heard",

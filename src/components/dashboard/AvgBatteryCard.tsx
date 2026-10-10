@@ -12,7 +12,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { useFleetStore } from "@/stores/fleet-store";
+import { fleetSummaryEqual, selectFleet, useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { selectFleetSummary } from "@/stores/node-registry/fleet-summary";
 import { batteryBand, useBatteryThresholds } from "@/lib/battery-bands";
@@ -21,7 +21,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 
 export function AvgBatteryCard() {
   const t = useTranslations("dashboard");
-  const drones = useFleetStore((s) => s.drones);
+  const drones = useFleetDrones(selectFleet, fleetSummaryEqual);
   const profiles = useDroneMetadataStore((s) => s.profiles);
   const thresholds = useBatteryThresholds();
 

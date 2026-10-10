@@ -2,8 +2,9 @@
  * Mode-preset skills — one-press shortcuts to the common flight modes. Each
  * preset is its own Skill with a baked target mode (not one parameterized
  * skill), so it binds to its own slot/key. A preset reports disabled when the
- * connected firmware does not offer its mode. One-shot, any arm state, no
- * confirm.
+ * connected firmware does not offer its mode. One-shot, any arm state. A
+ * recovery mode (loiter, alt-hold) fires on the press; any other mode asks for
+ * a hold-to-confirm.
  *
  * @module skills/builtins/modes
  * @license GPL-3.0-only
@@ -11,7 +12,7 @@
 
 import type { Skill } from "../types";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
-import { disabledIfNoLink, REASON } from "./_shared";
+import { disabledIfNoLink, modeChangeConfirm, REASON } from "./_shared";
 
 interface ModePreset {
   id: string;
@@ -37,6 +38,7 @@ function makeModeSkill(preset: ModePreset): Skill {
     source: "builtin",
     toggle: false,
     armRequirement: "any",
+    confirmFor: (args) => modeChangeConfirm(args?.targetMode ?? preset.mode),
     getState: (ctx) => {
       const noLink = disabledIfNoLink(ctx);
       if (noLink) return noLink;

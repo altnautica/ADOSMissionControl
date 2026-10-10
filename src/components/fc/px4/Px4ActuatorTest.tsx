@@ -10,6 +10,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useToast } from "@/components/ui/toast";
@@ -32,6 +33,7 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { isHardBlocked } = useArmedLock();
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.px4");
   const [propsRemoved, setPropsRemoved] = useState(false);
   const [fn, setFn] = useState("1");
   const [pct, setPct] = useState(0);
@@ -47,28 +49,28 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
     async (value: number, timeoutS: number) => {
       const protocol = selectedProtocol;
       if (!protocol?.actuatorTest) {
-        toast("Actuator test is not available on this connection", "error");
+        toast(t("actuatorTestUnavailable"), "error");
         return false;
       }
       if (isHardBlocked) {
-        toast("Disarm to test actuators", "error");
+        toast(t("disarmToTestActuators"), "error");
         return false;
       }
       setBusy(true);
       try {
         const result = await protocol.actuatorTest(func, value, timeoutS);
         if (!result.success) {
-          toast(`Actuator test refused: ${result.message || "no acknowledgement from the flight controller"}`, "error");
+          toast(t("actuatorTestRefused", { reason: result.message || t("noAcknowledgement") }), "error");
         }
         return result.success;
       } catch (err) {
-        toast(`Actuator test failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+        toast(t("actuatorTestFailed", { error: err instanceof Error ? err.message : String(err) }), "error");
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [selectedProtocol, isHardBlocked, toast, func],
+    [selectedProtocol, isHardBlocked, toast, t, func],
   );
 
   const selectFn = (v: string) => {
@@ -79,13 +81,13 @@ export function Px4ActuatorTest({ connected }: { connected: boolean }) {
   const run = async () => {
     const value = Math.max(min, Math.min(100, pct)) / 100;
     if (await send(value, TEST_TIMEOUT_S)) {
-      toast(`Testing ${OUTPUT_OPTIONS.find((o) => o.value === fn)?.label} for ${TEST_TIMEOUT_S}s — keep clear`, "warning");
+      toast(t("actuatorTesting", { output: OUTPUT_OPTIONS.find((o) => o.value === fn)?.label ?? fn, seconds: TEST_TIMEOUT_S }), "warning");
     }
   };
   // NaN stops the output immediately. The FC restores it after the timeout
   // anyway, but a refused Stop must still be visible.
   const stop = async () => {
-    if (await send(NaN, 0)) toast("Actuator test stopped", "info");
+    if (await send(NaN, 0)) toast(t("actuatorTestStopped"), "info");
   };
 
   const disabled = !connected || isHardBlocked || busy || !propsRemoved;

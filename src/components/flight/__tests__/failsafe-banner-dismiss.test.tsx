@@ -6,7 +6,7 @@
  * alerts, or an emergency for longer than a short snooze.
  */
 
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FailsafeAlertBanner } from "@/components/flight/FailsafeAlertBanner";
@@ -64,11 +64,12 @@ describe("FailsafeAlertBanner dismissal", () => {
     expect(screen.getByText("EMERGENCY STATE")).toBeTruthy();
   });
 
-  it("re-shows at once when a dismissed condition escalates", () => {
+  it("re-shows within one throttle window when a dismissed condition escalates", async () => {
     render(<FailsafeAlertBanner />);
     dismiss();
     act(() => seedBattery(12));
-    expect(screen.getByText("Battery Critical: 12%")).toBeTruthy();
+    // Telemetry reaches the banner through the 250 ms throttled version.
+    await waitFor(() => expect(screen.getByText("Battery Critical: 12%")).toBeTruthy());
   });
 
   it("shows another drone's alerts after a dismissal on the first drone", () => {

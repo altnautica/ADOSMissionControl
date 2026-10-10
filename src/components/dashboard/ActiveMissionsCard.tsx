@@ -1,14 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useFleetStore } from "@/stores/fleet-store";
+import { fleetSummaryEqual, selectFleet, useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { selectFleetSummary } from "@/stores/node-registry/fleet-summary";
 import { useBatteryThresholds } from "@/lib/battery-bands";
 import { Card } from "@/components/ui/card";
 
 export function ActiveMissionsCard() {
   const t = useTranslations("dashboard");
-  const drones = useFleetStore((s) => s.drones);
+  const drones = useFleetDrones(selectFleet, fleetSummaryEqual);
   // An FC that stopped talking is not known to be in a mission, but it is not
   // known to be down either: it is listed as link lost rather than dropped.
   const { inFlight, linkLost } = selectFleetSummary(drones, useBatteryThresholds());

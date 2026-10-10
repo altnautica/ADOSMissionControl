@@ -22,6 +22,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
+import { batchConfirmPhrase } from "@/lib/skills/batch-confirm";
 import { useSkillRegistry } from "@/lib/skills";
 import type { NodeCommandSinkOptions } from "@/lib/nodes/command-sink";
 import type { NodeRowModel } from "@/lib/nodes/node-rows";
@@ -76,7 +77,7 @@ export function FleetActionConfirm({
     <ConfirmDialog
       open
       variant={skill.confirm?.variant ?? "danger"}
-      typedPhrase={skill.confirm?.typedPhrase}
+      typedPhrase={batchConfirmPhrase(skill)}
       title={tNodes("fleet.confirmTitle", { action })}
       message={tNodes("fleet.confirmMessage", {
         action,

@@ -119,10 +119,8 @@ class MockFlightEngine {
     this.tickRate = intervalMs;
     this.running = true;
 
-    // Seed the canonical node registry (the single fleet-identity write
-    // target) instead of writing the fleet store directly — the
-    // FleetProjectionBridge projects the registry into the fleet list, so a
-    // direct fleet write would be clobbered. Each demo drone gets `"local"`
+    // Seed the canonical node registry: it is the fleet's single write target
+    // and the fleet projection reads it. Each demo drone gets `"local"`
     // presence + an attached FC + an initial telemetry seed so it renders once
     // with its configured arm/mode/battery/position. The flying drones then
     // receive live telemetry through `bridgeTelemetry` (also into the registry).
@@ -353,8 +351,8 @@ class MockFlightEngine {
 
   tick(): void {
     const registry = useNodeRegistryStore.getState();
-    // The fleet store still owns alerts (registry holds only identity + FC
-    // telemetry); keep a reference for addAlert / touch.
+    // The fleet store owns alerts (the registry holds identity + FC
+    // telemetry); keep a reference for addAlert.
     const fleetStore = useFleetStore.getState();
     const selectedId = useDroneManager.getState().selectedDroneId;
     const now = Date.now();
@@ -455,6 +453,10 @@ class MockFlightEngine {
           alt: pos.alt, relativeAlt: pos.alt, heading: pos.heading,
           groundSpeed: wp.speed, airSpeed: wp.speed * 1.05,
           climbRate: (nextWp.alt - wp.alt) * progressStep,
+          // Velocity along the course, NED: the track the drone is flying.
+          vn: wp.speed * Math.cos((pos.heading * Math.PI) / 180),
+          ve: wp.speed * Math.sin((pos.heading * Math.PI) / 180),
+          vd: -(nextWp.alt - wp.alt) * progressStep,
         },
         battery: (() => {
           const cellBase = (22.2 * (state.battery / 100)) / 6;
@@ -474,7 +476,7 @@ class MockFlightEngine {
         },
       };
       // Mirror the simulated flight into the registry FC sub-state (the single
-      // fleet write target); FleetProjectionBridge turns it into the live row.
+      // fleet write target); the fleet projection reads it as the live row.
       registry.updateFcTelemetry(nid(cfg.id), {
         lastHeartbeat: droneUpdate.lastHeartbeat,
         position: droneUpdate.position,
@@ -520,8 +522,6 @@ class MockFlightEngine {
         state.lastAlertTick = state.tickCount;
       }
     }
-
-    fleetStore.touch();
   }
 
   isRunning(): boolean {

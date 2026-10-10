@@ -17,6 +17,7 @@ import { useProgrammingStore, PROGRAMMING_PID_MAX } from "@/stores/programming-s
 import { PanelHeader } from "../../shared/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/toast";
 import { useArmedLock } from "@/hooks/use-armed-lock";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -32,6 +33,7 @@ const OPERAND_TYPE_OPTIONS = LOGIC_OPERAND_TYPE_OPTIONS;
 export function ProgrammingPidPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const { toast } = useToast();
+  const t = useTranslations("fcToasts.inav");
   const { isArmed } = useArmedLock();
 
   const pids = useProgrammingStore((s) => s.pids);
@@ -62,7 +64,7 @@ export function ProgrammingPidPanel() {
   const handleRead = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     await loadFromFc(protocol);
@@ -70,14 +72,14 @@ export function ProgrammingPidPanel() {
     if (err) {
       toast(err, "error");
     } else {
-      toast("Programming PIDs loaded from FC", "success");
+      toast(t("programmingPidsLoaded"), "success");
     }
-  }, [selectedProtocol, loadFromFc, toast]);
+  }, [selectedProtocol, loadFromFc, toast, t]);
 
   const handleWrite = useCallback(async () => {
     const protocol = selectedProtocol;
     if (!protocol) {
-      toast("Not connected to flight controller", "error");
+      toast(t("notConnected"), "error");
       return;
     }
     await uploadPids(protocol);
@@ -85,9 +87,9 @@ export function ProgrammingPidPanel() {
     if (err) {
       toast(err, "error");
     } else {
-      toast("Programming PIDs written to FC", "success");
+      toast(t("programmingPidsWritten"), "success");
     }
-  }, [selectedProtocol, uploadPids, toast]);
+  }, [selectedProtocol, uploadPids, toast, t]);
 
   // An output is live only while the last status read is recent; a failed or
   // stopped poll leaves the old outputs, which must not read as current.
