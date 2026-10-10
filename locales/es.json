@@ -4865,6 +4865,7 @@
         "title": "Receptores de teléfono",
         "description": "Teléfonos con radio propia que solicitaron las claves de recepción de esta flota. Aprueba solo si la huella coincide con la del teléfono. Los teléfonos solo reciben; nunca transmiten.",
         "loading": "Cargando…",
+        "unreachable": "La estación de tierra no responde. La lista puede estar desactualizada; las decisiones quedan en pausa hasta que responda.",
         "empty": "Ningún teléfono espera aprobación.",
         "fingerprint": "Huella",
         "approve": "Aprobar",

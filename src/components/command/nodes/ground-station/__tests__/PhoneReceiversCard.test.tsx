@@ -108,4 +108,42 @@ describe("PhoneReceiversCard", () => {
     expect(screen.queryByText(first.label)).toBeNull();
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/reject"))).toBe(false);
   });
+
+  it("hides itself when the agent has no invite route", async () => {
+    fetchMock.mockImplementation(async () => jsonResponse({ detail: "Not Found" }, 404));
+    const { container } = renderCard();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await vi.waitFor(() => expect(container.querySelector("section")).toBeNull());
+  });
+
+  it("keeps the last list but pauses decisions when a poll fails", async () => {
+    vi.useFakeTimers();
+    try {
+      const ok = fetchMock.getMockImplementation()!;
+      let polls = 0;
+      fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+        if (url.endsWith("/wfb/invite") && ++polls > 1) {
+          return jsonResponse({ detail: "boom" }, 500);
+        }
+        return ok(url, init);
+      });
+      renderCard();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(screen.getByText("Pilot phone")).toBeTruthy();
+      expect(screen.queryByText(M.unreachable)).toBeNull();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2100);
+      });
+      expect(polls).toBe(2);
+      expect(screen.getByText(M.unreachable)).toBeTruthy();
+      expect(screen.getByText("Pilot phone")).toBeTruthy();
+      const approve = screen.getByRole("button", { name: "Approve Pilot phone" });
+      expect((approve as HTMLButtonElement).disabled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

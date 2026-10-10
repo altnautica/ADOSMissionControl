@@ -4865,6 +4865,7 @@
         "title": "Récepteurs téléphone",
         "description": "Téléphones dotés de leur propre radio qui ont demandé les clés de réception de cette flotte. N'approuvez que si l'empreinte correspond à celle du téléphone. Les téléphones reçoivent uniquement ; ils n'émettent jamais.",
         "loading": "Chargement…",
+        "unreachable": "La station sol ne répond pas. La liste peut être obsolète ; les décisions sont suspendues jusqu'à sa réponse.",
         "empty": "Aucun téléphone n'attend d'approbation.",
         "fingerprint": "Empreinte",
         "approve": "Approuver",

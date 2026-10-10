@@ -4865,6 +4865,7 @@
         "title": "Penerima ponsel",
         "description": "Ponsel dengan radio sendiri yang meminta kunci penerimaan armada ini. Setujui hanya jika sidik jari cocok dengan yang ada di ponsel. Ponsel hanya menerima; tidak pernah memancar.",
         "loading": "Memuat…",
+        "unreachable": "Stasiun darat tidak merespons. Daftar mungkin sudah usang; keputusan dijeda sampai stasiun merespons lagi.",
         "empty": "Tidak ada ponsel yang menunggu persetujuan.",
         "fingerprint": "Sidik jari",
         "approve": "Setujui",

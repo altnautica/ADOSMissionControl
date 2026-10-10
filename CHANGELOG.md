@@ -17,6 +17,28 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Cockpit.** One cockpit standard shared with the agent's HDMI cockpit and
+  the Android app: a safety band (reach, arm, mode, battery with time to
+  reserve, GPS, link, video, stick control, preflight, recording and flight
+  timers, guarded Kill), alerts by level, and rebuilt HUD instruments (5°
+  pitch ladder, roll scale, flight-path marker, heading tape with home caret,
+  scrolling speed and altitude tapes with REL/MSL, vertical speed, wind).
+  Confirmations are gesture tiers (tap, hold, slide, guarded) that work from
+  touch, pointer, keyboard and gamepad; typed-phrase confirms are gone from
+  flight skills. Command skills turn off with a reason as soon as the flight
+  controller heartbeat is older than 3 s. The cockpit adapts to its width
+  with container queries and stays still under telemetry load.
+- **Brand theme.** The default theme is the brand navy and blue palette,
+  generated from the shared design tokens; the previous neutral look is the
+  new "Mono" theme. Night vision overrides the chosen accent.
+- **Extensions.** Extension skills and target actions inherit their confirm
+  and arm gates, write their config over the LAN or a ground station's relay,
+  and are disabled with a reason on cloud-only reach. Parameters for every
+  installed extension appear on the node's Extensions page and in cockpit
+  quick settings, including a camera picker. New `cockpit.widget` slot.
+  Default skill keys no longer collide with built-in or reserved keys.
+- **Ground station.** The Radio tab lists phones asking to receive the link
+  directly, with their key fingerprint, for approval.
 - **Armed actions ask first.** When a node refuses an action because the
   vehicle is armed, Mission Control asks whether to continue and retries with
   an explicit override.

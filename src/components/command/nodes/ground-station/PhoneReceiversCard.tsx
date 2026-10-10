@@ -15,7 +15,7 @@ import { Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
-import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { GroundStationApiError, groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import type { PhoneInvite } from "@/lib/api/ground-station/types";
 import { DEMO_PHONE_INVITES } from "@/mock/demo-seed/ground-station";
 import { useGroundStationPoll } from "./use-gs-poll";
@@ -35,10 +35,18 @@ export function PhoneReceiversCard({ agentUrl, apiKey }: PhoneReceiversCardProps
   const [live, setLive] = useState<PhoneInvite[] | null>(null);
   const [demoPending, setDemoPending] = useState<readonly PhoneInvite[]>(DEMO_PHONE_INVITES);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [poll, setPoll] = useState<"ok" | "absent" | "failed">("ok");
 
   useGroundStationPoll(agentUrl, apiKey, POLL_MS, async (api) => {
-    const list = await api.listPhoneInvites();
-    setLive(list.pending);
+    try {
+      const list = await api.listPhoneInvites();
+      setLive(list.pending);
+      setPoll("ok");
+    } catch (err) {
+      const absent =
+        err instanceof GroundStationApiError && (err.status === 404 || err.status === 501);
+      setPoll(absent ? "absent" : "failed");
+    }
   });
 
   const pending = demo ? demoPending : live;
@@ -66,6 +74,11 @@ export function PhoneReceiversCard({ agentUrl, apiKey }: PhoneReceiversCardProps
     }
   };
 
+  // An agent that predates phone invites (or answers as a non-ground-station)
+  // has nothing to approve here, so the card is not shown at all.
+  if (!demo && poll === "absent") return null;
+  const pollFailed = !demo && poll === "failed";
+
   return (
     <section
       aria-labelledby="phone-receivers-title"
@@ -78,8 +91,13 @@ export function PhoneReceiversCard({ agentUrl, apiKey }: PhoneReceiversCardProps
         </h3>
       </div>
       <p className="mb-3 text-xs text-text-secondary">{t("description")}</p>
+      {pollFailed ? (
+        <p role="status" className="mb-2 text-xs text-status-warning">
+          {t("unreachable")}
+        </p>
+      ) : null}
       {pending === null ? (
-        <p className="text-xs text-text-tertiary">{t("loading")}</p>
+        pollFailed ? null : <p className="text-xs text-text-tertiary">{t("loading")}</p>
       ) : pending.length === 0 ? (
         <p className="text-xs text-text-tertiary">{t("empty")}</p>
       ) : (
@@ -102,7 +120,7 @@ export function PhoneReceiversCard({ agentUrl, apiKey }: PhoneReceiversCardProps
                 <Button
                   size="sm"
                   variant="secondary"
-                  disabled={busyId !== null}
+                  disabled={busyId !== null || pollFailed}
                   onClick={() => void decide(invite, "reject")}
                   aria-label={t("rejectLabel", { label: invite.label })}
                 >
@@ -111,7 +129,7 @@ export function PhoneReceiversCard({ agentUrl, apiKey }: PhoneReceiversCardProps
                 <Button
                   size="sm"
                   loading={busyId === invite.invite_id}
-                  disabled={busyId !== null}
+                  disabled={busyId !== null || pollFailed}
                   onClick={() => void decide(invite, "approve")}
                   aria-label={t("approveLabel", { label: invite.label })}
                 >

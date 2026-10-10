@@ -4865,6 +4865,7 @@
         "title": "Telefon-Empfänger",
         "description": "Telefone mit eigenem Funkmodul, die die Empfangsschlüssel dieser Flotte angefordert haben. Nur freigeben, wenn der Fingerabdruck mit dem auf dem Telefon übereinstimmt. Telefone empfangen nur, sie senden nie.",
         "loading": "Wird geladen…",
+        "unreachable": "Die Bodenstation antwortet nicht. Die Liste ist möglicherweise veraltet; Entscheidungen sind bis zur nächsten Antwort gesperrt.",
         "empty": "Kein Telefon wartet auf Freigabe.",
         "fingerprint": "Fingerabdruck",
         "approve": "Freigeben",

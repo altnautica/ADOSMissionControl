@@ -4865,6 +4865,7 @@
         "title": "Phone receivers",
         "description": "Phones with their own radio that asked for this fleet's receive keys. Approve only when the fingerprint matches the one on the phone. Phones only receive; they never transmit.",
         "loading": "Loading…",
+        "unreachable": "The ground station did not answer. The list may be out of date; decisions are paused until it answers again.",
         "empty": "No phone is waiting for approval.",
         "fingerprint": "Fingerprint",
         "approve": "Approve",
