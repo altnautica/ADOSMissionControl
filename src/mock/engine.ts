@@ -48,6 +48,9 @@ import { haversineDistance } from "@/lib/geo/distance";
 /** Demo node id for a config id (the canonical `node:<id>`). */
 const nid = (id: string): string => resolveNodeId(id);
 
+/** Elevation of the demo flying site above mean sea level, metres. */
+const DEMO_SITE_ELEVATION_M = 920;
+
 /**
  * A directly-connected flight controller (a USB/serial FC plugged into this
  * laptop, no companion agent behind it): it owns its own fleet row and has no
@@ -445,18 +448,22 @@ class MockFlightEngine {
       const headingDelta = pos.heading - prevHeading;
       const roll = Math.max(-30, Math.min(30, headingDelta * 0.5));
       const pitch = (nextWp.alt - wp.alt) > 0 ? -5 : (nextWp.alt - wp.alt) < 0 ? 5 : -2;
+      // Climb in m/s: the segment's height change over the time it takes to
+      // fly at the waypoint's speed.
+      const climbRate =
+        segmentDist > 0 ? ((nextWp.alt - wp.alt) * wp.speed) / segmentDist : 0;
 
       const droneUpdate: Partial<FleetDrone> = {
         lastHeartbeat: now,
         position: {
           timestamp: now, lat: pos.lat + jitterLat, lon: pos.lon + jitterLon,
-          alt: pos.alt, relativeAlt: pos.alt, heading: pos.heading,
+          alt: DEMO_SITE_ELEVATION_M + pos.alt, relativeAlt: pos.alt, heading: pos.heading,
           groundSpeed: wp.speed, airSpeed: wp.speed * 1.05,
-          climbRate: (nextWp.alt - wp.alt) * progressStep,
+          climbRate,
           // Velocity along the course, NED: the track the drone is flying.
           vn: wp.speed * Math.cos((pos.heading * Math.PI) / 180),
           ve: wp.speed * Math.sin((pos.heading * Math.PI) / 180),
-          vd: -(nextWp.alt - wp.alt) * progressStep,
+          vd: -climbRate,
         },
         battery: (() => {
           const cellBase = (22.2 * (state.battery / 100)) / 6;
@@ -472,7 +479,7 @@ class MockFlightEngine {
           timestamp: now, fixType: 3,
           satellites: 14 + Math.floor(Math.random() * 6),
           hdop: 0.8 + Math.random() * 0.4,
-          lat: pos.lat + jitterLat, lon: pos.lon + jitterLon, alt: 920 + pos.alt,
+          lat: pos.lat + jitterLat, lon: pos.lon + jitterLon, alt: DEMO_SITE_ELEVATION_M + pos.alt,
         },
       };
       // Mirror the simulated flight into the registry FC sub-state (the single

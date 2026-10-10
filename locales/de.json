@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "Telefon-Empfänger",
+        "description": "Telefone mit eigenem Funkmodul, die die Empfangsschlüssel dieser Flotte angefordert haben. Nur freigeben, wenn der Fingerabdruck mit dem auf dem Telefon übereinstimmt. Telefone empfangen nur, sie senden nie.",
+        "loading": "Wird geladen…",
+        "empty": "Kein Telefon wartet auf Freigabe.",
+        "fingerprint": "Fingerabdruck",
+        "approve": "Freigeben",
+        "reject": "Ablehnen",
+        "approveLabel": "{label} freigeben",
+        "rejectLabel": "{label} ablehnen",
+        "approved": "{label} freigegeben",
+        "rejected": "{label} abgelehnt",
+        "decideFailed": "Die Bodenstation hat die Entscheidung nicht angenommen. Die Einladung ist möglicherweise abgelaufen."
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "Vorflug-Checkliste",
       "preflightClose": "Checkliste schließen",
       "recStopFailed": "Aufzeichnung konnte nicht sauber beendet werden",
+      "reserve": "RES {eta}",
+      "reserveTitle": "Zeit bis zur Akkureserve, laut Akku-Engine des Knotens",
       "more": "Weitere Statusanzeigen",
       "announceArmed": "Fahrzeug scharf",
       "announceDisarmed": "Fahrzeug entschärft",

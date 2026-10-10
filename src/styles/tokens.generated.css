@@ -45,7 +45,7 @@ html[data-theme="light"] {
   --alt-bg-tertiary: #F1F5F9;
   --alt-text-primary: #0F172A;
   --alt-text-secondary: #475569;
-  --alt-text-tertiary: #94A3B8;
+  --alt-text-tertiary: #64748B;
   --alt-accent-primary: #2563EB;
   --alt-accent-primary-hover: #1D4ED8;
   --alt-accent-secondary: #84CC16;
@@ -80,8 +80,8 @@ html[data-theme="nvg"] {
   --alt-bg-secondary: #001100;
   --alt-bg-tertiary: #002200;
   --alt-text-primary: #00AA00;
-  --alt-text-secondary: #007700;
-  --alt-text-tertiary: #004400;
+  --alt-text-secondary: #009900;
+  --alt-text-tertiary: #008800;
   --alt-accent-primary: #00FF00;
   --alt-accent-primary-hover: #00CC00;
   --alt-accent-secondary: #008800;

@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "फ़ोन रिसीवर",
+        "description": "अपने रेडियो वाले फ़ोन जिन्होंने इस फ़्लीट की रिसीव कुंजियाँ माँगी हैं। तभी स्वीकृत करें जब फ़िंगरप्रिंट फ़ोन पर दिखे फ़िंगरप्रिंट से मेल खाए। फ़ोन केवल प्राप्त करते हैं, कभी प्रसारित नहीं करते।",
+        "loading": "लोड हो रहा है…",
+        "empty": "कोई फ़ोन स्वीकृति की प्रतीक्षा में नहीं है।",
+        "fingerprint": "फ़िंगरप्रिंट",
+        "approve": "स्वीकृत करें",
+        "reject": "अस्वीकार करें",
+        "approveLabel": "{label} स्वीकृत करें",
+        "rejectLabel": "{label} अस्वीकार करें",
+        "approved": "{label} स्वीकृत",
+        "rejected": "{label} अस्वीकृत",
+        "decideFailed": "ग्राउंड स्टेशन ने यह निर्णय स्वीकार नहीं किया। आमंत्रण की अवधि समाप्त हो गई होगी।"
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "उड़ान-पूर्व चेकलिस्ट",
       "preflightClose": "चेकलिस्ट बंद करें",
       "recStopFailed": "रिकॉर्डिंग ठीक से बंद नहीं हो सकी",
+      "reserve": "रिज़र्व {eta}",
+      "reserveTitle": "नोड बैटरी इंजन के अनुसार बैटरी रिज़र्व तक का समय",
       "more": "और स्थिति",
       "announceArmed": "वाहन आर्म्ड",
       "announceDisarmed": "वाहन डिसआर्म्ड",

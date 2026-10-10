@@ -17,6 +17,7 @@ import { RadioPanel } from "@/components/hardware/radio/RadioPanel";
 import { VideoLinkPanel } from "@/components/hardware/VideoLinkPanel";
 import { CloudModeLimitedNotice } from "@/components/command/shared/CloudModeLimitedNotice";
 import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
+import { PhoneReceiversCard } from "./PhoneReceiversCard";
 
 export interface RadioTabProps {
   /** The node this tab is rendered for. */
@@ -39,6 +40,7 @@ export function RadioTab({ nodeDeviceId }: RadioTabProps) {
         <>
           <RadioPanel />
           <VideoLinkPanel />
+          <PhoneReceiversCard agentUrl={direct.agentUrl} apiKey={direct.apiKey} />
         </>
       )}
     </div>

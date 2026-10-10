@@ -180,7 +180,10 @@ describe("band reach badge", () => {
     expect(resolveBandReach("serial", [])).toBe("direct");
     expect(resolveBandReach("mqtt-mavlink", ["local"])).toBe("cloud");
     expect(resolveBandReach("websocket", ["local", "relayed"])).toBe("lan");
-    expect(resolveBandReach("websocket", ["cloud"])).toBe("cloud");
+    // A WebSocket session is never the cloud path.
+    expect(resolveBandReach("websocket", ["cloud"])).toBe("direct");
+    expect(resolveBandReach("websocket", ["cloud", "relayed"])).toBe("relayed");
+    expect(resolveBandReach(null, ["cloud"])).toBe("cloud");
     expect(resolveBandReach("websocket", ["relayed"])).toBe("relayed");
     expect(resolveBandReach("websocket", [])).toBe("direct");
   });

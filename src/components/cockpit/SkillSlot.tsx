@@ -17,6 +17,7 @@ import {
   useId,
   useMemo,
   useRef,
+  useState,
   type CSSProperties,
   type KeyboardEvent,
 } from "react";
@@ -120,19 +121,31 @@ export const SkillSlot = memo(function SkillSlot({
       : 0;
 
   // The cooldown sweep runs in CSS: the window's length, how far into it the
-  // slot already is (a negative delay), and the whole seconds to count down.
+  // slot already was when it first saw the window (a negative delay), and the
+  // whole seconds to count down. The delay is fixed once per window: changing
+  // it on a running animation re-times it against its original start, which
+  // would count the elapsed time twice on every later recompute.
+  const cd = isCooldown ? state.cooldown : undefined;
+  const [cdWindow, setCdWindow] = useState<{ startedAt: number; delayMs: number } | null>(null);
+  if (cd && cdWindow?.startedAt !== cd.startedAt) {
+    setCdWindow({
+      startedAt: cd.startedAt,
+      delayMs: Math.round(cd.durationMs * (1 - cooldownPct)),
+    });
+  }
+  const cdStartedAt = cd?.startedAt;
+  const cdDurationMs = cd?.durationMs;
+  const cdDelayMs = cdWindow && cdWindow.startedAt === cdStartedAt ? cdWindow.delayMs : 0;
   const slotStyle = useMemo<CSSProperties | undefined>(() => {
     const style: Record<string, string> = {};
     if (danger && !isDisabled) style.borderColor = "var(--hud-crit)";
-    const cd = isCooldown ? state.cooldown : undefined;
-    if (cd) {
-      const elapsed = cd.durationMs * (1 - cooldownPct);
-      style["--cd-dur"] = `${cd.durationMs}ms`;
-      style["--cd-delay"] = `${-Math.round(elapsed)}ms`;
-      style["--cd-secs"] = String(Math.ceil(cd.durationMs / 1000));
+    if (cdStartedAt !== undefined && cdDurationMs !== undefined) {
+      style["--cd-dur"] = `${cdDurationMs}ms`;
+      style["--cd-delay"] = `${-cdDelayMs}ms`;
+      style["--cd-secs"] = String(Math.ceil(cdDurationMs / 1000));
     }
     return Object.keys(style).length > 0 ? (style as CSSProperties) : undefined;
-  }, [danger, isDisabled, isCooldown, state.cooldown, cooldownPct]);
+  }, [danger, isDisabled, cdStartedAt, cdDurationMs, cdDelayMs]);
 
   // Charge badge (a small integer string) is surfaced separately so the
   // accessible name can announce the remaining count alongside the state.

@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "スマートフォン受信機",
+        "description": "専用無線を持つスマートフォンがこのフリートの受信鍵を要求しています。フィンガープリントがスマートフォンの表示と一致する場合のみ承認してください。スマートフォンは受信のみで、送信はしません。",
+        "loading": "読み込み中…",
+        "empty": "承認待ちのスマートフォンはありません。",
+        "fingerprint": "フィンガープリント",
+        "approve": "承認",
+        "reject": "拒否",
+        "approveLabel": "{label} を承認",
+        "rejectLabel": "{label} を拒否",
+        "approved": "{label} を承認しました",
+        "rejected": "{label} を拒否しました",
+        "decideFailed": "地上局がこの操作を受け付けませんでした。招待の期限が切れた可能性があります。"
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "飛行前チェックリスト",
       "preflightClose": "チェックリストを閉じる",
       "recStopFailed": "録画を正常に停止できませんでした",
+      "reserve": "予備 {eta}",
+      "reserveTitle": "ノードのバッテリーエンジンによる予備残量までの時間",
       "more": "その他のステータス",
       "announceArmed": "機体がアームされました",
       "announceDisarmed": "機体がディスアームされました",

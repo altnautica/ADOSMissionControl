@@ -8,6 +8,8 @@ import type {
   SetTxPowerResult,
   UnpairResult,
   VideoConfigResponse,
+  PhoneInviteDecision,
+  PhoneInviteList,
   WfbConfig,
   WfbReceiverCombined,
   WfbReceiverRelay,
@@ -216,4 +218,26 @@ export function setAutoPair(
     method: "PUT",
     body: JSON.stringify({ enabled }),
   });
+}
+
+// ─── Phone receivers ────────────────────────────────────────────
+// A phone with its own radio asks the ground station for the fleet receive
+// keys; nothing is shared until an operator approves it here.
+
+/** The phone receivers waiting for approval. */
+export function listPhoneInvites(ctx: RequestContext): Promise<PhoneInviteList> {
+  return gsRequest<PhoneInviteList>(ctx, "/api/v1/ground-station/wfb/invite");
+}
+
+/** Approve or reject one waiting phone receiver. */
+export function decidePhoneInvite(
+  ctx: RequestContext,
+  inviteId: string,
+  decision: "approve" | "reject",
+): Promise<PhoneInviteDecision> {
+  return gsRequest<PhoneInviteDecision>(
+    ctx,
+    `/api/v1/ground-station/wfb/invite/${encodeURIComponent(inviteId)}/${decision}`,
+    { method: "POST" },
+  );
 }

@@ -27,6 +27,29 @@ import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { useBatteryBand, type BatteryBand } from "@/lib/battery-bands";
 import { linkStateFromHeartbeat, type LinkState } from "./link-state";
 import { formatElapsed, msSince } from "./format";
+import { useBandReserve } from "./use-band-reserve";
+
+/**
+ * Time to reserve after the battery percentage, when the node's battery
+ * engine is readable; the no-data glyph when it has no fresh prediction.
+ * Its own component so the engine poll re-renders this span alone.
+ */
+function BandReserve({ droneId }: { droneId: string }) {
+  const t = useTranslations("cockpit.band");
+  const reserve = useBandReserve(droneId);
+  if (!reserve) return null;
+  const eta = reserve.etaS === null ? NO_DATA_GLYPH : formatElapsed(reserve.etaS * 1000);
+  return (
+    <span
+      className={reserve.etaS === null ? `v age ${DIM}` : "v age"}
+      data-testid="cockpit-reserve"
+      title={t("reserveTitle")}
+      style={{ fontSize: 11, color: reserve.past ? "var(--hud-crit)" : "var(--hud-ink-2)" }}
+    >
+      {t("reserve", { eta })}
+    </span>
+  );
+}
 
 const BATTERY_BAND_COLOR: Record<BatteryBand, string> = {
   good: "var(--hud-good)",
@@ -51,7 +74,7 @@ interface Announced {
   link: LinkState;
 }
 
-export function BandFlightStats() {
+export function BandFlightStats({ droneId }: { droneId: string }) {
   const t = useTranslations("cockpit");
   const { radio, battery, gps } = useHudTopBarData();
   const rawMode = useDroneStore((s) => s.flightMode);
@@ -172,6 +195,7 @@ export function BandFlightStats() {
         >
           {batteryPct === null ? NO_DATA_GLYPH : `${Math.round(batteryPct)}%`}
         </span>
+        <BandReserve droneId={droneId} />
       </div>
 
       <div className="stat" data-testid="cockpit-gps">

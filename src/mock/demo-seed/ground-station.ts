@@ -5,6 +5,24 @@
  */
 
 import { useGroundStationStore } from "@/stores/ground-station-store";
+import type { PhoneInvite } from "@/lib/api/ground-station/types";
+
+/** Phone receivers waiting for approval on the demo ground station. The expiry
+ * is a far-future constant: the demo has no agent to lapse it. */
+export const DEMO_PHONE_INVITES: readonly PhoneInvite[] = [
+  {
+    invite_id: "demo-invite-1",
+    label: "Pilot tablet",
+    phone_fingerprint: "6668-7AAD-F862-BD77",
+    expires_at_ms: 4_102_444_800_000,
+  },
+  {
+    invite_id: "demo-invite-2",
+    label: "Observer phone",
+    phone_fingerprint: "3B9C-01E4-A7D2-5F60",
+    expires_at_ms: 4_102_444_800_000,
+  },
+];
 
 /** Seed every ground-station store slice the node-detail GS tabs read — the
  * Overview cards (link health, uplink, paired drone, mesh role/health) plus the

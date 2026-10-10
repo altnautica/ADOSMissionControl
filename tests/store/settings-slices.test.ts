@@ -123,7 +123,6 @@ describe("settings store slices", () => {
       const s = useSettingsStore.getState();
       expect(s.videoWhepUrl).toBe("");
       expect(s.videoTransportMode).toBe("auto");
-      expect(s.hudAutoClaimPicOnFirstButton).toBe(false);
     });
 
     it("setVideoTransportMode flips between auto, lan-whep, p2p-mqtt, off", () => {

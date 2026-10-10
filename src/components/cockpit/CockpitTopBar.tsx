@@ -88,7 +88,7 @@ function CockpitTopBarInner({ droneId, lean }: CockpitTopBarProps) {
       {!lean && <span className="brand">ADOS</span>}
       <NodeLabel droneId={droneId} />
       <span className="spacer" />
-      <BandFlightStats />
+      <BandFlightStats droneId={droneId} />
       <BandVideoStat droneId={droneId} />
       <div id="cockpit-band-secondary" className="band-sec">
         <StickControlChip droneId={droneId} />

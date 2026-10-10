@@ -70,6 +70,7 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 import {
   acquireGamepadPolling,
   startManualControlStream,
+  stopManualControlStream,
 } from "@/lib/input/gamepad-poller";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { useSkillInputStore } from "@/stores/skill-input-store";
@@ -155,12 +156,16 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   const closePalette = useCallback(() => setPaletteOpen(false), [setPaletteOpen]);
 
   // The cockpit is a flying surface, so it holds the gamepad and opens the
-  // stick stream (gated frame by frame on the stick-control switch). The last
-  // holder's release stops both.
+  // stick stream (gated frame by frame on the stick-control switch). Leaving
+  // the cockpit always stops the stick stream, even while another surface
+  // still holds the gamepad: no surface on screen flies the vehicle.
   useEffect(() => {
     const release = acquireGamepadPolling();
     startManualControlStream();
-    return release;
+    return () => {
+      stopManualControlStream();
+      release();
+    };
   }, []);
 
   // Focus the container on mount so window-level keyboard skills fire without a

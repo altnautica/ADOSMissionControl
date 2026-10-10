@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "Receptores de teléfono",
+        "description": "Teléfonos con radio propia que solicitaron las claves de recepción de esta flota. Aprueba solo si la huella coincide con la del teléfono. Los teléfonos solo reciben; nunca transmiten.",
+        "loading": "Cargando…",
+        "empty": "Ningún teléfono espera aprobación.",
+        "fingerprint": "Huella",
+        "approve": "Aprobar",
+        "reject": "Rechazar",
+        "approveLabel": "Aprobar {label}",
+        "rejectLabel": "Rechazar {label}",
+        "approved": "{label} aprobado",
+        "rejected": "{label} rechazado",
+        "decideFailed": "La estación de tierra no aceptó la decisión. Es posible que la invitación haya caducado."
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "Lista de verificación prevuelo",
       "preflightClose": "Cerrar lista",
       "recStopFailed": "No se pudo detener la grabación correctamente",
+      "reserve": "RES {eta}",
+      "reserveTitle": "Tiempo hasta la reserva de batería, según el motor de batería del nodo",
       "more": "Más estado",
       "announceArmed": "Vehículo armado",
       "announceDisarmed": "Vehículo desarmado",

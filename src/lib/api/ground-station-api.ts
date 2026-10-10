@@ -47,6 +47,8 @@ export class GroundStationApi {
   getWfbRelayStatus = () => wfb.getWfbRelayStatus(this.ctx);
   getWfbReceiverRelays = () => wfb.getWfbReceiverRelays(this.ctx);
   getWfbReceiverCombined = () => wfb.getWfbReceiverCombined(this.ctx);
+  listPhoneInvites = () => wfb.listPhoneInvites(this.ctx);
+  decidePhoneInvite = (inviteId: string, decision: "approve" | "reject") => wfb.decidePhoneInvite(this.ctx, inviteId, decision);
   getNetwork = () => net.getNetwork(this.ctx);
   setAp = (update: ApUpdate) => net.setAp(this.ctx, update);
   getEthernetConfig = () => net.getEthernetConfig(this.ctx);

@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { Search, LayoutDashboard, Route, History, Settings, Battery, Home, Plug, SlidersHorizontal, Play, Bot, Gauge } from "lucide-react";
-import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
+import { getFleetDrones, useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
+import { requestImmersiveCockpit } from "@/lib/cockpit/immersive-request";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -37,6 +38,10 @@ export function CommandPalette() {
   const pathname = usePathname();
   const { toast } = useToast();
   const [rthConfirmOpen, setRthConfirmOpen] = useState(false);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
+  const selectedIsDrone = useFleetDrones(
+    (drones) => drones.find((d) => d.id === selectedDroneId)?.profile === "drone",
+  );
 
   // `/analytics` and `/wizard` had entries here and neither route exists under
   // `src/app`, so two localised palette items navigated straight to a 404 from
@@ -49,17 +54,18 @@ export function CommandPalette() {
     { id: "nav-history", label: t("goToHistory"), category: t("navigation"), icon: <History size={14} />, action: () => router.push("/flight-logs") },
     { id: "nav-mcp", label: t("goToMcp"), category: t("navigation"), icon: <Bot size={14} />, action: () => router.push("/mcp") },
     { id: "nav-config", label: t("goToConfig"), category: t("navigation"), icon: <Settings size={14} />, action: () => router.push("/config") },
-    {
-      // The selected node's Cockpit tab, full screen.
-      id: "nav-cockpit", label: t("openCockpit"), category: t("navigation"), icon: <Gauge size={14} />,
-      action: () => {
-        if (!useDroneManager.getState().selectedDroneId) { toast(t("noDroneSelected"), "error"); return; }
-        const ui = useUiStore.getState();
-        ui.setPendingDetailTab("cockpit");
-        router.push("/");
-        ui.enterImmersiveMode();
-      },
-    },
+    // The selected node's Cockpit tab, taken full screen once it is showing.
+    // Only a drone has a cockpit, as in the node header.
+    ...(selectedIsDrone
+      ? [{
+          id: "nav-cockpit", label: t("openCockpit"), category: t("navigation"), icon: <Gauge size={14} />,
+          action: () => {
+            useUiStore.getState().setPendingDetailTab("cockpit");
+            router.push("/");
+            requestImmersiveCockpit();
+          },
+        }]
+      : []),
     {
       id: "cmd-connect", label: t("connectDrone"), category: t("commands"), icon: <Plug size={14} />,
       action: () => useConnectDialogStore.getState().openDialog(),
@@ -90,7 +96,6 @@ export function CommandPalette() {
   // same list the cockpit's palette and Skill Bar show. Each runs through the
   // shared `activate` pipeline, so confirm tiers, the pre-flight checklist
   // gate, arm requirements and the disabled-reason toast all apply here too.
-  const selectedDroneId = useDroneManager.getState().selectedDroneId;
   const skillActions: CommandAction[] =
     open && selectedDroneId
       ? useSkillRegistry

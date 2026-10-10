@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "Récepteurs téléphone",
+        "description": "Téléphones dotés de leur propre radio qui ont demandé les clés de réception de cette flotte. N'approuvez que si l'empreinte correspond à celle du téléphone. Les téléphones reçoivent uniquement ; ils n'émettent jamais.",
+        "loading": "Chargement…",
+        "empty": "Aucun téléphone n'attend d'approbation.",
+        "fingerprint": "Empreinte",
+        "approve": "Approuver",
+        "reject": "Refuser",
+        "approveLabel": "Approuver {label}",
+        "rejectLabel": "Refuser {label}",
+        "approved": "{label} approuvé",
+        "rejected": "{label} refusé",
+        "decideFailed": "La station sol n'a pas accepté cette décision. L'invitation a peut-être expiré."
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "Check-list prévol",
       "preflightClose": "Fermer la check-list",
       "recStopFailed": "Impossible d'arrêter proprement l'enregistrement",
+      "reserve": "RÉS {eta}",
+      "reserveTitle": "Temps avant la réserve batterie, selon le moteur batterie du nœud",
       "more": "Plus d'état",
       "announceArmed": "Véhicule armé",
       "announceDisarmed": "Véhicule désarmé",

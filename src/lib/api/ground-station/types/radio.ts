@@ -245,3 +245,22 @@ export interface VideoConfigResponse {
   link?: Record<string, unknown>;
   warnings?: string[];
 }
+
+/** One phone receiver waiting for operator approval
+ *  (`GET /api/v1/ground-station/wfb/invite`). */
+export interface PhoneInvite {
+  invite_id: string;
+  label: string;
+  /** SHA-256 prefix of the phone's key, shown on the phone too, e.g. `1A2B-3C4D-5E6F-7081`. */
+  phone_fingerprint: string;
+  expires_at_ms: number;
+}
+
+export interface PhoneInviteList {
+  pending: PhoneInvite[];
+}
+
+export interface PhoneInviteDecision {
+  invite_id: string;
+  state: "approved" | "rejected";
+}

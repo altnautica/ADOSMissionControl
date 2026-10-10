@@ -12,7 +12,8 @@
  *                BLE, TCP, a UDP proxy, or a WebSocket with no agent presence)
  *   LAN        — the node's agent is reached on the local network
  *   VIA GROUND — the node is only reached through a ground station's radio
- *   CLOUD      — MAVLink rides the cloud relay, or cloud is the only presence
+ *   CLOUD      — MAVLink rides the cloud relay. A WebSocket session is never
+ *                the cloud path, whatever presence the node also has.
  *
  * `null` when no managed session exists for the drone: the band hides the
  * badge rather than naming a reach nothing is using.
@@ -35,8 +36,10 @@ export function resolveBandReach(
   if (transport === "mqtt-mavlink") return "cloud";
   if (transport !== null && transport !== "websocket") return "direct";
   if (sources.includes("local")) return "lan";
-  if (sources.includes("cloud")) return "cloud";
   if (sources.includes("relayed")) return "relayed";
+  // Cloud presence names the reach only when the session's transport is not
+  // known; a WebSocket carries no cloud traffic.
+  if (transport === null && sources.includes("cloud")) return "cloud";
   return "direct";
 }
 

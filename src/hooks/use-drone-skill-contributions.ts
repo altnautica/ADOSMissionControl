@@ -83,16 +83,11 @@ interface InstallRowForDevice {
 }
 
 /**
- * Per-drone `flight.skill` contributions for `agentId`. Returns a stable,
- * memoized array once the source has resolved: empty when `agentId` is falsy,
- * in demo mode without matching mock data, or when no install contributes a
- * flight skill. Returns `null` while the active source (the Convex query when
- * signed in, the LAN agent detail when signed out) has not resolved, so the
- * host can tell "not loaded yet" from "nothing installed".
+ * The live install rows for `agentId` from the active source (the Convex
+ * query when signed in, the LAN agent detail when signed out), or null while
+ * that source has not resolved. Not used in demo mode.
  */
-export function useDroneSkillContributions(
-  agentId: string | undefined,
-): DroneSkillContribution[] | null {
+function useSkillInstallRows(agentId: string | undefined): InstallRowForDevice[] | null {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const installs = useConvexSkipQuery(api.cmdPlugins.listForDevice, {
@@ -106,16 +101,9 @@ export function useDroneSkillContributions(
   const localDetail = useLocalAgentPlugins(agentId ?? null);
 
   return useMemo(() => {
-    if (!agentId) return [];
-
-    if (isDemoMode()) {
-      return sortSkills(getDemoDroneSkillContributions(agentId));
-    }
-
     if (isAuthenticated ? !installs : !localDetail) return null;
-
     // Both sources land in the same row shape so the projection is shared.
-    const rows: InstallRowForDevice[] = isAuthenticated
+    return isAuthenticated
       ? (installs ?? [])
       : (localDetail ?? []).map((r) => ({
           _id: r.installId,
@@ -126,6 +114,86 @@ export function useDroneSkillContributions(
           grantedCapabilities: r.grantedCaps,
           flightSkills: r.flightSkills,
         }));
+  }, [isAuthenticated, installs, localDetail]);
+}
+
+function armRequirementOf(
+  s: SkillContributionRow,
+): DroneSkillContribution["armRequirement"] {
+  return s.armRequirement === "armed" ||
+    s.armRequirement === "disarmed" ||
+    s.armRequirement === "any"
+    ? s.armRequirement
+    : null;
+}
+
+/** The confirm and arm gates a plugin's manifest skill declares for the
+ * config key it activates. */
+export interface PluginSkillGate {
+  pluginId: string;
+  configKey: string;
+  confirm: boolean;
+  armRequirement: DroneSkillContribution["armRequirement"];
+}
+
+/**
+ * Every manifest skill's gates on the drone, straight from the install rows:
+ * not filtered by the `ui.slot.flight-skill` grant or by missing state wiring,
+ * because a target action that writes the same config key must keep those
+ * gates even when the skill itself cannot surface on the Skill Bar. Null while
+ * the source is loading, so a caller can hold off rather than act ungated.
+ */
+export function useDroneSkillGates(agentId: string | undefined): PluginSkillGate[] | null {
+  const rows = useSkillInstallRows(agentId);
+  return useMemo(() => {
+    if (!agentId) return [];
+    if (isDemoMode()) {
+      return getDemoDroneSkillContributions(agentId).map((c) => ({
+        pluginId: c.pluginId,
+        configKey: c.configKey,
+        confirm: c.confirm,
+        armRequirement: c.armRequirement,
+      }));
+    }
+    if (!rows) return null;
+    const out: PluginSkillGate[] = [];
+    for (const row of rows) {
+      if (row.status === "removed") continue;
+      for (const s of Array.isArray(row.flightSkills) ? row.flightSkills : []) {
+        if (typeof s.configKey !== "string" || !s.configKey) continue;
+        out.push({
+          pluginId: row.pluginId,
+          configKey: s.configKey,
+          confirm: s.confirm === true,
+          armRequirement: armRequirementOf(s),
+        });
+      }
+    }
+    return out;
+  }, [agentId, rows]);
+}
+
+/**
+ * Per-drone `flight.skill` contributions for `agentId`. Returns a stable,
+ * memoized array once the source has resolved: empty when `agentId` is falsy,
+ * in demo mode without matching mock data, or when no install contributes a
+ * flight skill. Returns `null` while the active source (the Convex query when
+ * signed in, the LAN agent detail when signed out) has not resolved, so the
+ * host can tell "not loaded yet" from "nothing installed".
+ */
+export function useDroneSkillContributions(
+  agentId: string | undefined,
+): DroneSkillContribution[] | null {
+  const rows = useSkillInstallRows(agentId);
+
+  return useMemo(() => {
+    if (!agentId) return [];
+
+    if (isDemoMode()) {
+      return sortSkills(getDemoDroneSkillContributions(agentId));
+    }
+
+    if (!rows) return null;
 
     const out: DroneSkillContribution[] = [];
     for (const row of rows) {
@@ -149,12 +217,7 @@ export function useDroneSkillContributions(
           category: s.category ?? "behavior",
           toggle: s.toggle === true,
           confirm: s.confirm === true,
-          armRequirement:
-            s.armRequirement === "armed" ||
-            s.armRequirement === "disarmed" ||
-            s.armRequirement === "any"
-              ? s.armRequirement
-              : null,
+          armRequirement: armRequirementOf(s),
           configKey,
           stateTopic,
           defaultBinding: s.defaultBinding,
@@ -163,7 +226,7 @@ export function useDroneSkillContributions(
     }
 
     return sortSkills(out);
-  }, [agentId, isAuthenticated, installs, localDetail]);
+  }, [agentId, rows]);
 }
 
 /**

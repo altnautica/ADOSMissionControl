@@ -19,7 +19,7 @@ import { useEffect, useMemo } from "react";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { isDemoMode } from "@/lib/utils";
 import { useDroneTargetActions } from "@/hooks/use-drone-target-actions";
-import { useDroneSkillContributions } from "@/hooks/use-drone-skill-contributions";
+import { useDroneSkillGates } from "@/hooks/use-drone-skill-contributions";
 import {
   PLUGIN_REACH_REQUIRED_REASON,
   writePluginConfigValue,
@@ -52,12 +52,14 @@ const writeConfig: PluginConfigWrite = async (
 export function PluginTargetActionHost({ droneId }: { droneId: string }) {
   const deviceId = deviceIdFromNodeId(droneId) ?? droneId;
   const rawContributions = useDroneTargetActions(deviceId);
-  const skills = useDroneSkillContributions(deviceId);
-  // An action that flips the same config key as one of the plugin's skills
-  // runs behind that skill's confirm and arm gates.
+  const gates = useDroneSkillGates(deviceId);
+  // An action that switches on the same config key as one of the plugin's
+  // manifest skills runs behind that skill's confirm and arm gates. Nothing
+  // registers while those gates are still loading, so no action is ever
+  // offered ungated.
   const contributions = useMemo(
-    () => inheritSkillGates(rawContributions, skills ?? []),
-    [rawContributions, skills],
+    () => (gates === null ? [] : inheritSkillGates(rawContributions, gates)),
+    [rawContributions, gates],
   );
   const register = useTargetActionRegistry((s) => s.register);
   const unregister = useTargetActionRegistry((s) => s.unregister);

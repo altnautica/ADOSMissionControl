@@ -52,6 +52,13 @@ function mergeMessages(
   return merged;
 }
 
+/** The accent variables the operator's accent choice writes inline on the root. */
+const ACCENT_VARS = [
+  "--alt-accent-primary",
+  "--alt-accent-primary-hover",
+  "--alt-accent-secondary",
+] as const;
+
 export function LocaleProvider({ children }: LocaleProviderProps) {
   const locale = useSettingsStore((s) => s.locale);
   const themeMode = useSettingsStore((s) => s.themeMode);
@@ -91,20 +98,20 @@ export function LocaleProvider({ children }: LocaleProviderProps) {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
+    const root = document.documentElement.style;
+    // Night vision always wins: the operator's accent is a bright hue that
+    // would override the nvg theme's own accent (badges, chips, buttons) and
+    // break dark adaptation. Drop the override while nvg is active; the
+    // accent comes back when the theme changes.
+    if (themeMode === "nvg") {
+      for (const name of ACCENT_VARS) root.removeProperty(name);
+      return;
+    }
     const preset = ACCENT_PRESETS[accentColor] || ACCENT_PRESETS.blue;
-    document.documentElement.style.setProperty(
-      "--alt-accent-primary",
-      preset.primary
-    );
-    document.documentElement.style.setProperty(
-      "--alt-accent-primary-hover",
-      preset.hover
-    );
-    document.documentElement.style.setProperty(
-      "--alt-accent-secondary",
-      preset.secondary
-    );
-  }, [accentColor]);
+    root.setProperty("--alt-accent-primary", preset.primary);
+    root.setProperty("--alt-accent-primary-hover", preset.hover);
+    root.setProperty("--alt-accent-secondary", preset.secondary);
+  }, [accentColor, themeMode]);
 
   /* UTC is deterministic across server + client render boundaries, which
    * avoids the next-intl ENVIRONMENT_FALLBACK hydration crash. Times

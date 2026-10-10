@@ -25,6 +25,7 @@ import type { LucideIcon } from "lucide-react";
 export const SLOT_KIND_KEY: Record<string, string> = {
   "node.detail.tab": "detailTab",
   "cockpit.panel": "cockpitPanel",
+  "cockpit.widget": "cockpitWidget",
   "fc.tab": "fcTab",
   "hardware.tab": "hardwareTab",
   "video.overlay": "videoOverlay",

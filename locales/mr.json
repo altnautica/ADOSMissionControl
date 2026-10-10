@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "Phone receivers",
+        "description": "Phones with their own radio that asked for this fleet's receive keys. Approve only when the fingerprint matches the one on the phone. Phones only receive; they never transmit.",
+        "loading": "Loading…",
+        "empty": "No phone is waiting for approval.",
+        "fingerprint": "Fingerprint",
+        "approve": "Approve",
+        "reject": "Reject",
+        "approveLabel": "Approve {label}",
+        "rejectLabel": "Reject {label}",
+        "approved": "{label} approved",
+        "rejected": "{label} rejected",
+        "decideFailed": "The ground station did not accept that decision. The invite may have expired."
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "उड्डाणपूर्व तपासणी यादी",
       "preflightClose": "यादी बंद करा",
       "recStopFailed": "Could not stop the recording cleanly",
+      "reserve": "राखीव {eta}",
+      "reserveTitle": "नोड बॅटरी इंजिननुसार बॅटरी राखीव पातळीपर्यंतचा वेळ",
       "more": "अधिक स्थिती",
       "announceArmed": "वाहन आर्म्ड",
       "announceDisarmed": "वाहन डिसआर्म्ड",

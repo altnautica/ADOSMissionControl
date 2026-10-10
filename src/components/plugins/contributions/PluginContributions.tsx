@@ -27,6 +27,7 @@ import { MapMissionSection } from "./MapMissionSection";
 const TAB_SLOTS: ReadonlySet<string> = new Set([
   "node.detail.tab",
   "cockpit.panel",
+  "cockpit.widget",
   "fc.tab",
   "hardware.tab",
   "settings.section",

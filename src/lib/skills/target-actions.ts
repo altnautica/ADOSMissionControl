@@ -205,26 +205,38 @@ export interface DroneTargetActionContribution {
   armRequirement?: ArmRequirement;
 }
 
+/** A plugin skill's gates for the config key it activates. */
+export type PluginSkillGates = Pick<
+  DroneSkillContribution,
+  "pluginId" | "configKey" | "confirm" | "armRequirement"
+>;
+
 /**
- * Give each target action the confirm and arm gates of the plugin skill that
- * writes the same config key. A target action that flips the same switch as a
- * skill (Follow-Me's `active`) is the same behaviour reached from a different
- * surface, so it must not bypass the gates the skill enforces.
+ * Give each target action the confirm and arm gates of the plugin skills that
+ * activate the same config key. A target action that switches on what a skill
+ * switches on (Follow-Me's `active`) is the same behaviour reached from a
+ * different surface, so it must not bypass the gates the skill enforces. When
+ * several skills write the key, the strictest gates win. An action that writes
+ * `false` is a stop, which the skill pipeline also runs ungated (toggle-off),
+ * so it inherits nothing.
  */
 export function inheritSkillGates(
   actions: readonly DroneTargetActionContribution[],
-  skills: readonly DroneSkillContribution[],
+  skills: readonly PluginSkillGates[],
 ): DroneTargetActionContribution[] {
   return actions.map((action) => {
-    if (!action.configKey) return action;
-    const skill = skills.find(
+    if (!action.configKey || action.configValue === false) return action;
+    const matching = skills.filter(
       (s) => s.pluginId === action.pluginId && s.configKey === action.configKey,
     );
-    if (!skill) return action;
+    if (matching.length === 0) return action;
+    const armed = matching.find(
+      (s) => s.armRequirement === "armed" || s.armRequirement === "disarmed",
+    );
     return {
       ...action,
-      confirm: skill.confirm,
-      armRequirement: skill.armRequirement ?? "any",
+      confirm: matching.some((s) => s.confirm),
+      armRequirement: armed?.armRequirement ?? "any",
     };
   });
 }

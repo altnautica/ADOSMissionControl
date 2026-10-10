@@ -17,7 +17,6 @@ import { SkillBindingsSection } from "@/components/config/SkillBindingsSection";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { HintChip } from "@/components/hardware/HintChip";
 import { Button } from "@/components/ui/button";
-import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
@@ -41,9 +40,6 @@ export default function InputDevicesPage() {
 
   const { toast } = useToast();
   const [pairOpen, setPairOpen] = useState(false);
-
-  const autoClaim = useSettingsStore((s) => s.hudAutoClaimPicOnFirstButton);
-  const setAutoClaim = useSettingsStore((s) => s.setHudAutoClaimPicOnFirstButton);
 
   const agentUrlRef = useRef(agentUrl);
   const apiKeyRef = useRef(apiKey);
@@ -220,23 +216,6 @@ export default function InputDevicesPage() {
                   </div>
                 </div>
               )}
-            </section>
-
-            <section className="rounded border border-border-default bg-bg-secondary p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-medium text-text-primary">HDMI kiosk auto-claim</h2>
-                  <p className="mt-1 text-xs text-text-secondary">
-                    Auto-claim PIC on first button press from the HDMI kiosk. Off by default
-                    so that standalone kiosks do not silently take control.
-                  </p>
-                </div>
-                <Toggle
-                  label={autoClaim ? "Enabled" : "Disabled"}
-                  checked={autoClaim}
-                  onChange={setAutoClaim}
-                />
-              </div>
             </section>
 
             <section className="rounded border border-border-default bg-bg-secondary p-5">

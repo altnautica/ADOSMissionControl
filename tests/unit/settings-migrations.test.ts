@@ -59,7 +59,6 @@ describe("migrateSettings", () => {
     expect(result.disclaimerVersion).toBe(0);
     expect(result.autoRecordOnArm).toBe(true);
     expect(result.videoTransportMode).toBe("auto");
-    expect(result.hudAutoClaimPicOnFirstButton).toBe(false);
   });
 
   it("v17 forces demoMode to false even when v2 set it to true", () => {
@@ -117,9 +116,9 @@ describe("migrateSettings", () => {
     expect(result.videoTransportMode).toBe("auto");
   });
 
-  it("v32 defaults hudAutoClaimPicOnFirstButton to false for users coming from v31", () => {
-    const result = migrateSettings({}, 31);
-    expect(result.hudAutoClaimPicOnFirstButton).toBe(false);
+  it("v50 drops the retired kiosk auto-claim flag", () => {
+    const result = migrateSettings({ hudAutoClaimPicOnFirstButton: true }, 49);
+    expect("hudAutoClaimPicOnFirstButton" in result).toBe(false);
   });
 
   it("v11 is a no-op slot and preserves the existing jurisdiction value", () => {

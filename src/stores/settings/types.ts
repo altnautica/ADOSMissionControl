@@ -142,7 +142,6 @@ export interface SettingsStoreState {
   // video preferences
   videoWhepUrl: string;
   videoTransportMode: "auto" | "lan-whep" | "p2p-mqtt" | "off";
-  hudAutoClaimPicOnFirstButton: boolean;
 
   // keybindings / hotbar (Cockpit loadouts)
   loadouts: Record<string, Loadout>;
@@ -248,7 +247,6 @@ export interface SettingsStoreState {
   setVideoTransportMode: (
     mode: "auto" | "lan-whep" | "p2p-mqtt" | "off",
   ) => void;
-  setHudAutoClaimPicOnFirstButton: (enabled: boolean) => void;
 
   // keybindings / hotbar actions
   setActiveLoadout: (id: string) => void;

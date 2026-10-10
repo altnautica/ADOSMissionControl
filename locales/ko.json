@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "휴대폰 수신기",
+        "description": "자체 무선 장치를 가진 휴대폰이 이 편대의 수신 키를 요청했습니다. 지문이 휴대폰에 표시된 것과 일치할 때만 승인하세요. 휴대폰은 수신만 하며 송신하지 않습니다.",
+        "loading": "불러오는 중…",
+        "empty": "승인을 기다리는 휴대폰이 없습니다.",
+        "fingerprint": "지문",
+        "approve": "승인",
+        "reject": "거부",
+        "approveLabel": "{label} 승인",
+        "rejectLabel": "{label} 거부",
+        "approved": "{label} 승인됨",
+        "rejected": "{label} 거부됨",
+        "decideFailed": "지상국이 이 결정을 받아들이지 않았습니다. 초대가 만료되었을 수 있습니다."
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "비행 전 점검표",
       "preflightClose": "점검표 닫기",
       "recStopFailed": "녹화를 정상적으로 중지하지 못했습니다",
+      "reserve": "예비 {eta}",
+      "reserveTitle": "노드 배터리 엔진 기준 예비 용량까지 남은 시간",
       "more": "상태 더 보기",
       "announceArmed": "기체 시동",
       "announceDisarmed": "기체 시동 해제",

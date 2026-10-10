@@ -130,3 +130,36 @@ describe("theme accent contrast", () => {
     );
   });
 });
+
+describe("brand theme tertiary text contrast", () => {
+  const GENERATED = readFileSync(
+    join(process.cwd(), "src/styles/tokens.generated.css"),
+    "utf8",
+  );
+
+  /** One generated block's value for a variable. */
+  function tokenIn(selector: string, name: string): string {
+    const start = GENERATED.indexOf(`${selector} {`);
+    expect(start, `generated block ${selector}`).toBeGreaterThanOrEqual(0);
+    const body = GENERATED.slice(start, GENERATED.indexOf("\n}", start));
+    const m = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(body);
+    expect(m, `${selector} ${name}`).not.toBeNull();
+    return m![1]!;
+  }
+
+  // Tertiary text (hints, captions, timestamps) still has to be read, so it
+  // clears WCAG AA against the page background in every brand theme.
+  for (const [name, selector] of [
+    ["brand-dark", ":root"],
+    ["light", 'html[data-theme="light"]'],
+    ["nvg", 'html[data-theme="nvg"]'],
+  ] as const) {
+    it(`${name}: text-tertiary on bg-primary is at least 4.5:1`, () => {
+      const ratio = contrast(
+        tokenIn(selector, "alt-text-tertiary"),
+        tokenIn(selector, "alt-bg-primary"),
+      );
+      expect(ratio).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});

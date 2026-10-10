@@ -149,6 +149,10 @@ export const gcsParametersValidator = v.array(
             equals: v.union(v.string(), v.number(), v.boolean()),
           }),
         ),
+        // Bitmask-widget bit table (bit index → label).
+        bits: v.optional(v.array(v.object({ bit: v.number(), label: v.string() }))),
+        // Camera-widget roster purpose filter (e.g. "detect").
+        purpose: v.optional(v.string()),
       }),
     ),
   }),

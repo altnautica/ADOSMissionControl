@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "Penerima ponsel",
+        "description": "Ponsel dengan radio sendiri yang meminta kunci penerimaan armada ini. Setujui hanya jika sidik jari cocok dengan yang ada di ponsel. Ponsel hanya menerima; tidak pernah memancar.",
+        "loading": "Memuat…",
+        "empty": "Tidak ada ponsel yang menunggu persetujuan.",
+        "fingerprint": "Sidik jari",
+        "approve": "Setujui",
+        "reject": "Tolak",
+        "approveLabel": "Setujui {label}",
+        "rejectLabel": "Tolak {label}",
+        "approved": "{label} disetujui",
+        "rejected": "{label} ditolak",
+        "decideFailed": "Stasiun darat tidak menerima keputusan itu. Undangan mungkin sudah kedaluwarsa."
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "Daftar periksa pra-terbang",
       "preflightClose": "Tutup daftar periksa",
       "recStopFailed": "Perekaman tidak dapat dihentikan dengan bersih",
+      "reserve": "CDG {eta}",
+      "reserveTitle": "Waktu hingga baterai mencapai cadangan, dari mesin baterai node",
       "more": "Status lainnya",
       "announceArmed": "Wahana aktif",
       "announceDisarmed": "Wahana nonaktif",

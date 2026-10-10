@@ -27,6 +27,9 @@ vi.mock("@/lib/fleet-commands", async () => {
   );
   return { ...actual, returnFleetToLaunch: () => returnFleetToLaunch() };
 });
+vi.mock("@/stores/node-registry/use-fleet-drones", async (importOriginal: () => Promise<typeof import("@/stores/node-registry/use-fleet-drones")>) =>
+  (await import("../helpers/fleet-drones")).fleetDronesModuleMock(await importOriginal()),
+);
 
 import { CommandPalette } from "@/components/shared/command-palette";
 import { registerBuiltins } from "@/lib/skills";
@@ -35,6 +38,10 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import type { FleetCommandOutcome } from "@/lib/fleet-commands";
+import type { FleetDrone } from "@/lib/types";
+import { useUiStore } from "@/stores/ui-store";
+import { consumeImmersiveRequest } from "@/lib/cockpit/immersive-request";
+import { setFixtureFleet } from "../helpers/fleet-drones";
 
 const DRONE = "drone-1";
 const arm = vi.fn(async () => ({ success: true, resultCode: 0, message: "" }));
@@ -52,6 +59,10 @@ function seedDrone(): void {
   useDroneStore.setState({ armState: "disarmed", lastHeartbeat: Date.now() });
 }
 
+function fleetRow(profile: FleetDrone["profile"]): FleetDrone {
+  return { id: DRONE, name: "Alpha", status: "online", profile } as unknown as FleetDrone;
+}
+
 function openPalette(): void {
   render(
     <NextIntlClientProvider locale="en" messages={messages}>
@@ -67,6 +78,7 @@ describe("CommandPalette flight commands", () => {
   beforeEach(() => {
     registerBuiltins();
     seedDrone();
+    setFixtureFleet({ drones: [fleetRow("drone")] });
     arm.mockClear();
     returnFleetToLaunch.mockClear();
   });
@@ -74,14 +86,32 @@ describe("CommandPalette flight commands", () => {
     act(() => useSkillConfirmStore.getState().resolvePending(false));
     cleanup();
     useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
+    useUiStore.setState({ pendingDetailTab: null, immersiveMode: false });
+    consumeImmersiveRequest();
   });
 
   it("lists the selected drone's flight skills from the registry", () => {
     openPalette();
     expect(screen.getByText(messages.skills.arm.label)).toBeTruthy();
-    expect(screen.getByText(messages.commandPalette.openCockpit)).toBeTruthy();
     expect(screen.getByText(messages.commandPalette.goToSimulate)).toBeTruthy();
     expect(screen.getByText(messages.commandPalette.goToMcp)).toBeTruthy();
+  });
+
+  it("Open Cockpit shows the cockpit tab and parks an immersive request", () => {
+    openPalette();
+    act(() => {
+      fireEvent.click(screen.getByText(messages.commandPalette.openCockpit));
+    });
+    expect(useUiStore.getState().pendingDetailTab).toBe("cockpit");
+    // Immersive is entered by the cockpit once it shows, never directly here.
+    expect(useUiStore.getState().immersiveMode).toBe(false);
+    expect(consumeImmersiveRequest()).toBe(true);
+  });
+
+  it("does not offer Open Cockpit for a node that is not a drone", () => {
+    setFixtureFleet({ drones: [fleetRow("ground-station")] });
+    openPalette();
+    expect(screen.queryByText(messages.commandPalette.openCockpit)).toBeNull();
   });
 
   it("Arm opens the arm skill's confirm and never arms on its own", async () => {

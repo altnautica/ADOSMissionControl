@@ -24,7 +24,7 @@
 import { useTranslations } from "next-intl";
 
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
-import { batchConfirmPhrase } from "@/lib/skills/batch-confirm";
+import { batchConfirmPhrase, batchConfirmPolicy } from "@/lib/skills/batch-confirm";
 import type { Skill } from "@/lib/skills";
 import type { NodeRowModel } from "@/lib/nodes/node-rows";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -51,7 +51,7 @@ export function SwarmSkillConfirm({
   return (
     <ConfirmDialog
       open
-      variant={skill.confirm?.variant ?? "danger"}
+      variant={batchConfirmPolicy(skill)?.variant ?? "danger"}
       typedPhrase={batchConfirmPhrase(skill)}
       title={tSwarm("bulk.confirmTitle", { action })}
       message={tSwarm("bulk.confirmMessage", {

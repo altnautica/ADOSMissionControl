@@ -185,10 +185,8 @@ export function migrateSettings(
     // Default to "auto" cascade (LAN, then P2P MQTT) for existing users.
     state.videoTransportMode = "auto";
   }
-  if (version < 32) {
-    // v32: HDMI kiosk PIC auto-claim flag (default off).
-    state.hudAutoClaimPicOnFirstButton = false;
-  }
+  // v32 added an HDMI kiosk PIC auto-claim flag; v50 removes it. The branch is
+  // gone, the version fence stays.
   if (version < 33) {
     // v33: theme broadcast at end of onboarding (default on).
     state.pushThemeToAgents = true;
@@ -316,6 +314,11 @@ export function migrateSettings(
           .filter((id): id is string => id !== null && id !== undefined && id.includes(":"));
       }
     }
+  }
+  if (version < 50) {
+    // v50: the in-app kiosk HUD that read the auto-claim flag is retired (the
+    // kiosk now shows the agent's own cockpit), so the stored flag goes too.
+    delete (state as Record<string, unknown>).hudAutoClaimPicOnFirstButton;
   }
   return state as Partial<SettingsStoreState>;
 }

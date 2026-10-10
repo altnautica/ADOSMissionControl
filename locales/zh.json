@@ -4724,7 +4724,7 @@
       "pathAuto": "Auto-detect",
       "pathUnknown": "Unknown",
       "urlLabel": "Kiosk page",
-      "urlPlaceholder": "http://localhost:4000/hud",
+      "urlPlaceholder": "http://localhost:8080/cockpit/?kiosk=1",
       "urlSave": "Save",
       "urlNote": "The page the kiosk loads on the HDMI panel. Leave blank to use the agent's built-in cockpit page.",
       "urlSaved": "Kiosk page saved.",
@@ -4861,6 +4861,20 @@
       "connectGroundStation": "Connect ground station"
     },
     "radio": {
+      "phoneReceivers": {
+        "title": "手机接收端",
+        "description": "带有独立无线电的手机请求了该机队的接收密钥。仅在指纹与手机上显示的一致时批准。手机只接收，从不发射。",
+        "loading": "加载中…",
+        "empty": "没有等待批准的手机。",
+        "fingerprint": "指纹",
+        "approve": "批准",
+        "reject": "拒绝",
+        "approveLabel": "批准 {label}",
+        "rejectLabel": "拒绝 {label}",
+        "approved": "已批准 {label}",
+        "rejected": "已拒绝 {label}",
+        "decideFailed": "地面站未接受该操作，邀请可能已过期。"
+      },
       "title": "Radio",
       "description": "WFB-ng video radio link, TX power, and channel control.",
       "txPower": "TX power",
@@ -5516,6 +5530,7 @@
         "slotKind": {
           "detailTab": "Detail tab",
           "cockpitPanel": "Cockpit panel",
+          "cockpitWidget": "Cockpit widget",
           "fcTab": "FC tab",
           "hardwareTab": "Hardware tab",
           "videoOverlay": "Video overlay",
@@ -6645,6 +6660,8 @@
       "preflightTitle": "飞行前检查单",
       "preflightClose": "关闭检查单",
       "recStopFailed": "无法正常停止录制",
+      "reserve": "储备 {eta}",
+      "reserveTitle": "据节点电池引擎估算的距电池储备时间",
       "more": "更多状态",
       "announceArmed": "飞行器已解锁",
       "announceDisarmed": "飞行器已上锁",

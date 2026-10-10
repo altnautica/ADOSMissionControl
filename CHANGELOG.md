@@ -48,6 +48,14 @@ the project follows [Semantic Versioning](https://semver.org/).
   logs support live tail and export.
 - Node capabilities come from what the agent declares, not from a SoC table.
 
+### Removed
+
+- **The `/hud` kiosk page.** The node cockpit is the one in-app piloting
+  surface; the node header's "Open cockpit" opens it full-screen. An HDMI
+  kiosk shows the ground station agent's own cockpit
+  (`http://localhost:8080/cockpit/?kiosk=1`). The kiosk PIC auto-claim switch
+  under Controllers is gone with it, and its stored value is dropped.
+
 ### Fixed
 
 - Many smaller fixes across hardware pages, input calibration, replay,
