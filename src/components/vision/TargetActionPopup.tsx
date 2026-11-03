@@ -30,6 +30,7 @@ export function TargetActionPopup({
 }) {
   const { toast } = useToast();
   const t = useTranslations("vision");
+  const tHud = useTranslations("hud");
   const tRoot = useTranslations();
   // Labels and messages are i18n keys for host actions and literal text for
   // plugin-contributed ones.
@@ -51,10 +52,8 @@ export function TargetActionPopup({
     }
   };
 
-  const title =
-    target.trackId != null
-      ? `${target.classLabel || "target"} #${target.trackId}`
-      : target.classLabel || "target";
+  const cls = target.classLabel || tHud("lock.targetFallback");
+  const title = target.trackId != null ? `${cls} #${target.trackId}` : cls;
 
   return (
     <div

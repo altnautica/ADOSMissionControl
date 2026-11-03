@@ -16,6 +16,9 @@
  * to keep a second path to it: this thumbnail also had no stall recovery and
  * no backoff, which the shared hook has.
  *
+ * Detections for the shown camera draw over the thumbnail through the shared
+ * HUD target layer (`DetectionOverlay`, cropped like the `object-cover` video).
+ *
  * @license GPL-3.0-only
  */
 
@@ -30,6 +33,8 @@ import { cmdVideoRelayTokensApi } from "@/lib/community-api-drones";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useSingletonAgentVideo } from "@/hooks/use-singleton-agent-video";
 import { useResolvedAgentVideo } from "@/hooks/use-resolved-agent-video";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
+import { DetectionOverlay } from "@/components/vision/DetectionOverlay";
 
 export function MiniVideoView() {
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
@@ -166,6 +171,7 @@ export function MiniVideoView() {
           playsInline
           className="w-full h-[112px] object-cover bg-media"
         />
+        <DetectionOverlay droneId={nodeIdForDevice(cloudDeviceId)} fit="cover" />
         {!cloudStreaming && !directStreaming && (
           <div className="absolute inset-0 flex items-center justify-center p-1 text-text-tertiary">
             <div className="flex flex-col items-center gap-1 text-center">
@@ -198,6 +204,7 @@ export function MiniVideoView() {
           playsInline
           className="w-full h-[112px] object-cover bg-media"
         />
+        {cloudDeviceId && <DetectionOverlay droneId={nodeIdForDevice(cloudDeviceId)} fit="cover" />}
         {!directStreaming && (
           <div className="absolute inset-0 flex items-center justify-center text-text-tertiary">
             <div className="flex flex-col items-center gap-1">

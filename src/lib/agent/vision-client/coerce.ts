@@ -5,6 +5,7 @@
  */
 
 import type {
+  EngineBackendState,
   EngineModel,
   VisionCacheUsage,
   VisionCustomModel,
@@ -37,6 +38,12 @@ export function strArray(v: unknown): string[] {
   return v.filter((e): e is string => typeof e === "string");
 }
 
+/** The engine backend state. Anything unrecognised (or absent) reads as
+ * `unavailable`: a status that cannot say it is ready is not ready. */
+export function coerceBackendState(v: unknown): EngineBackendState {
+  return v === "ready" || v === "mock" ? v : "unavailable";
+}
+
 export function coerceRegistry(raw: unknown): VisionRegistryModel[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((entry) => {
@@ -51,6 +58,7 @@ export function coerceRegistry(raw: unknown): VisionRegistryModel[] {
         variants: Array.isArray(e.variants)
           ? (e.variants as Array<Record<string, unknown>>)
           : [],
+        benchmarkOnly: e.benchmark_only === true,
       },
     ];
   });

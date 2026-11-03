@@ -1,7 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import messages from "../../../../locales/en.json";
 import { WhatsLockedChip } from "@/components/vision/WhatsLockedChip";
+import { parseFollowState } from "@/lib/agent/nav-types";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
 import {
@@ -11,6 +16,20 @@ import {
 } from "@/stores/vision-detections-store";
 
 const DRONE = "node:d1";
+
+function render(node: ReactElement) {
+  return rtlRender(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {node}
+    </NextIntlClientProvider>,
+  );
+}
+
+function setFollow(raw: Record<string, unknown>, ageMs = 0) {
+  act(() => {
+    useNavStreamStore.getState().setFollow(DRONE, parseFollowState(raw)!, Date.now() - ageMs);
+  });
+}
 
 function batch(
   cameraId: string,
@@ -68,6 +87,7 @@ describe("WhatsLockedChip", () => {
   beforeEach(() => {
     useSelectedTargetStore.getState().reset();
     useVisionDetectionsStore.getState().clear();
+    useNavStreamStore.getState().clear(DRONE);
     useAgentCapabilitiesStore.setState({
       perceptionTier: undefined,
       perceptionOffloadTarget: undefined,
@@ -90,7 +110,7 @@ describe("WhatsLockedChip", () => {
     seedBatch(7, "locked");
     designateTrack7();
     render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText(/person · trk 7/)).toBeTruthy();
+    expect(screen.getByText("PERSON · #7")).toBeTruthy();
     expect(screen.getByText("Locked")).toBeTruthy();
     // Confidence comes from the LIVE detection (0.8), not the click-time copy.
     expect(screen.getByText("80%")).toBeTruthy();
@@ -150,5 +170,54 @@ describe("WhatsLockedChip", () => {
     render(<WhatsLockedChip droneId={DRONE} />);
     fireEvent.click(screen.getByRole("button", { name: "Release target" }));
     expect(useSelectedTargetStore.getState().designated).toBeNull();
+  });
+
+  it("reads the fresh follow-me phase before the lock words", () => {
+    seedBatch(7, "locked");
+    designateTrack7();
+    setFollow({ phase: "following", track_id: 7 });
+    render(<WhatsLockedChip droneId={DRONE} />);
+    expect(screen.getByText("Following")).toBeTruthy();
+    expect(screen.queryByText("Locked")).toBeNull();
+  });
+
+  it("words coasting and holding phases with their detail", () => {
+    seedBatch(7, "locked");
+    designateTrack7();
+    setFollow({ phase: "coasting", track_id: 7, coast_remaining_s: 1.43 });
+    const { unmount } = render(<WhatsLockedChip droneId={DRONE} />);
+    expect(screen.getByText("Coasting 1.4 s")).toBeTruthy();
+    unmount();
+    setFollow({ phase: "holding", track_id: 7, hold_reason: "HOLD_NO_RANGE" });
+    render(<WhatsLockedChip droneId={DRONE} />);
+    expect(screen.getByText("Holding · No range")).toBeTruthy();
+  });
+
+  it("ignores a stale follow state", () => {
+    seedBatch(7, "locked");
+    designateTrack7();
+    setFollow({ phase: "following", track_id: 7 }, 2500);
+    render(<WhatsLockedChip droneId={DRONE} />);
+    expect(screen.getByText("Locked")).toBeTruthy();
+  });
+
+  it("reads Re-acquired with the similarity for 4 s after the event", () => {
+    seedBatch(7, "locked");
+    designateTrack7();
+    act(() => {
+      useNavStreamStore
+        .getState()
+        .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 7, similarity: 0.862, gapS: 1.8 });
+    });
+    render(<WhatsLockedChip droneId={DRONE} />);
+    expect(screen.getByText("Re-acquired · 0.86")).toBeTruthy();
+  });
+
+  it("keeps the stale-feed reason above every follow word", () => {
+    seedBatch(7, "locked", 5000);
+    designateTrack7();
+    setFollow({ phase: "following", track_id: 7 });
+    render(<WhatsLockedChip droneId={DRONE} />);
+    expect(screen.getByText("Perception feed stale")).toBeTruthy();
   });
 });

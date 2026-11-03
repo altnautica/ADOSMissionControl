@@ -14,6 +14,10 @@ export interface VisionRegistryModel {
   /** Per-variant descriptors (input size, formats, min TOPS). Kept
    * opaque here; the tab renders the variant count, not the internals. */
   variants: Array<Record<string, unknown>>;
+  /** True when the registry marks the model for benchmarks and explicit
+   * operator installs only: the agent never installs it by default. Absent
+   * reads as false. */
+  benchmarkOnly?: boolean;
 }
 
 /** One model file already present in the agent's models directory. */
@@ -169,6 +173,14 @@ export interface EngineModel {
 }
 
 /**
+ * What the engine's inference backend can do: `ready` (a real backend that can
+ * run inference), `mock` (the explicitly configured bench mock: nothing it
+ * reports is measured) or `unavailable` (the requested backend cannot run on
+ * this build or board; the engine produces no detections).
+ */
+export type EngineBackendState = "ready" | "mock" | "unavailable";
+
+/**
  * The engine's `/api/vision/status` read-back: the registered models plus
  * node-level perception telemetry. `npuUtilizationPct` is null when the node
  * reports no real sampler value — the hub HIDES the bar rather than show a
@@ -185,6 +197,13 @@ export type EngineStatus =
       models: EngineModel[];
       npuUtilizationPct: number | null;
       modelCount: number;
+      /** Backend name (`onnx`, `rknn`, `hailo`, `mock`); null when not reported. */
+      backend: string | null;
+      /** The backend's state. A reply that omits it reads `unavailable`, never
+       * a claimed `ready`. */
+      backendState: EngineBackendState;
+      /** Why the backend is unavailable, when the engine says; else null. */
+      backendReason: string | null;
     };
 
 /** The engine status when there is no read-back (older agent / unreachable). */

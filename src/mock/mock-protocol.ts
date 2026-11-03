@@ -10,7 +10,7 @@ import type {
   LogEntry, LogDownloadProgressCallback, FtpDownloadProgressCallback, AccelCalPosition,
   SysStatusCallback, RadioCallback, EkfCallback, VibrationCallback,
   ServoOutputCallback, WindCallback, TerrainCallback, ScaledImuCallback,
-  ScaledPressureCallback, HomePositionCallback, PowerStatusCallback,
+  ScaledPressureCallback, HomePositionCallback, GpsOriginCallback, PowerStatusCallback,
   DistanceSensorCallback, FenceStatusCallback, EstimatorStatusCallback,
   CameraTriggerCallback, NavControllerCallback, LocalPositionCallback,
   DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback,
@@ -28,6 +28,7 @@ import { MOCK_PARAMS, ARDUPLANE_MOCK_PARAMS, HELI_MOCK_PARAMS, PX4_MOCK_PARAMS, 
 import { BETAFLIGHT_MOCK_PARAMS } from "./mock-params-betaflight";
 import { createCallbackArrays, bindOnMethods } from "./mock-protocol-callbacks";
 import type { ManualControlSample } from "./mock-control-samples";
+import { setMockEkfSourceSet } from "./mock-ekf-source";
 import * as E from "./mock-protocol-emitters";
 import { mockStartCalibration, type CalibrationContext, type CalTimer } from "./mock-protocol-calibration";
 import { MockFlightState } from "./mock-protocol-flight";
@@ -133,6 +134,7 @@ export class MockProtocol implements DroneProtocol {
   emitScaledImu(d: Parameters<ScaledImuCallback>[0]): void { E.emitScaledImu(this.cbs, d); }
   emitScaledPressure(d: Parameters<ScaledPressureCallback>[0]): void { E.emitScaledPressure(this.cbs, d); }
   emitHomePosition(d: Parameters<HomePositionCallback>[0]): void { E.emitHomePosition(this.cbs, d); }
+  emitGpsOrigin(d: Parameters<GpsOriginCallback>[0]): void { E.emitGpsOrigin(this.cbs, d); }
   emitPowerStatus(d: Parameters<PowerStatusCallback>[0]): void { E.emitPowerStatus(this.cbs, d); }
   emitDistanceSensor(d: Parameters<DistanceSensorCallback>[0]): void { E.emitDistanceSensor(this.cbs, d); }
   emitFenceStatus(d: Parameters<FenceStatusCallback>[0]): void { E.emitFenceStatus(this.cbs, d); }
@@ -207,6 +209,7 @@ export class MockProtocol implements DroneProtocol {
       throw new TypeError(`setEkfSourceSet: sourceSet must be 1, 2, or 3 (received ${String(sourceSet)})`);
     }
     await new Promise((r) => setTimeout(r, 200));
+    setMockEkfSourceSet(sourceSet);
     return { ok: true };
   }
   async enableFence(): Promise<CommandResult> { return ok("Fence updated"); }
@@ -459,7 +462,7 @@ export class MockProtocol implements DroneProtocol {
   onVibration = this._on.onVibration; onServoOutput = this._on.onServoOutput;
   onWind = this._on.onWind; onTerrain = this._on.onTerrain;
   onMagCalProgress = this._on.onMagCalProgress; onMagCalReport = this._on.onMagCalReport;
-  onAccelCalPos = this._on.onAccelCalPos; onHomePosition = this._on.onHomePosition;
+  onAccelCalPos = this._on.onAccelCalPos; onHomePosition = this._on.onHomePosition; onGpsOrigin = this._on.onGpsOrigin;
   onAutopilotVersion = this._on.onAutopilotVersion; onPowerStatus = this._on.onPowerStatus;
   onDistanceSensor = this._on.onDistanceSensor; onFenceStatus = this._on.onFenceStatus;
   onNavController = this._on.onNavController; onScaledImu = this._on.onScaledImu;

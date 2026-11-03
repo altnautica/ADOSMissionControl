@@ -48,10 +48,10 @@ export class GroundStationApi {
   getStatus = () => getStatus(this.ctx);
   getWfb = () => wfb.getWfb(this.ctx);
   setTxPower = (dbm: number, opts?: ArmedOverrideOptions) => wfb.setTxPower(this.ctx, dbm, opts);
-  setFec = (fecK: number, fecN: number) => wfb.setFec(this.ctx, fecK, fecN);
-  setMcs = (mcs: number) => wfb.setMcs(this.ctx, mcs);
-  setPreset = (preset: wfb.LinkPreset) => wfb.setPreset(this.ctx, preset);
-  setAdaptive = (enabled: boolean) => wfb.setAdaptive(this.ctx, enabled);
+  setFec = (fecK: number, fecN: number, opts?: ArmedOverrideOptions) => wfb.setFec(this.ctx, fecK, fecN, opts);
+  setMcs = (mcs: number, opts?: ArmedOverrideOptions) => wfb.setMcs(this.ctx, mcs, opts);
+  setPreset = (preset: wfb.LinkPreset, opts?: ArmedOverrideOptions) => wfb.setPreset(this.ctx, preset, opts);
+  setAdaptive = (enabled: boolean, opts?: ArmedOverrideOptions) => wfb.setAdaptive(this.ctx, enabled, opts);
   pairDrone = (pairKey: string, droneId?: string) => wfb.pairDrone(this.ctx, pairKey, droneId);
   unpairDrone = (opts?: ArmedOverrideOptions) => wfb.unpairDrone(this.ctx, opts);
   getWfbRelayStatus = () => wfb.getWfbRelayStatus(this.ctx);

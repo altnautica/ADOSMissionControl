@@ -31,7 +31,7 @@ import {
 } from './handlers/telemetry-handlers'
 import {
   handleEkfStatus, handleVibration, handleServoOutput,
-  handleWind, handleTerrainReport, handleHomePosition,
+  handleWind, handleTerrainReport, handleHomePosition, handleGpsGlobalOrigin,
   handleDistanceSensor, handleFenceStatus, handleNavControllerOutput,
   handleFencePoint, handleMissionCurrent, handleMissionItemReached,
   handleWindCov, handleMissionItemLegacy, handleAdsbVehicle,
@@ -194,6 +194,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 231: handleWindCov(p, c.windCovCallbacks); break
     case 241: handleVibration(p, c.vibrationCallbacks); break
     case 242: s.homeAltitudeAmsl = handleHomePosition(p, c.homePositionCallbacks); break
+    case 49:  handleGpsGlobalOrigin(p, c.gpsOriginCallbacks); break
     case 193: handleEkfStatus(p, c.ekfCallbacks); break
     case 230: handleEstimatorStatus(p, c.estimatorStatusCallbacks); break
     case 76:  handleIncomingCommandLong(p, c.accelCalPosCallbacks); break

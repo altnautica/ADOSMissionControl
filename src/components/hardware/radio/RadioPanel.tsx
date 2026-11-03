@@ -139,20 +139,21 @@ export function RadioPanel() {
 
   // Radio link-tuning callbacks. Each builds the agent API client fresh (the
   // agent URL / key can change) and drives POST /api/video/config; the card
-  // owns the success / warning / error toasts.
+  // owns the success / warning / error toasts. An armed refusal asks the
+  // operator before resending with the override.
   const requireApi = () => {
     const api = groundStationApiFromAgent(agentUrl, apiKey);
     if (!api) throw new Error("agent not connected");
     return api;
   };
   const onApplyPreset = (preset: LinkPreset): Promise<VideoConfigResponse> =>
-    requireApi().setPreset(preset);
+    withArmedOverride((force) => requireApi().setPreset(preset, { force }));
   const onApplyFec = (k: number, n: number): Promise<VideoConfigResponse> =>
-    requireApi().setFec(k, n);
+    withArmedOverride((force) => requireApi().setFec(k, n, { force }));
   const onApplyMcs = (mcs: number): Promise<VideoConfigResponse> =>
-    requireApi().setMcs(mcs);
+    withArmedOverride((force) => requireApi().setMcs(mcs, { force }));
   const onToggleAdaptive = (enabled: boolean): Promise<VideoConfigResponse> =>
-    requireApi().setAdaptive(enabled);
+    withArmedOverride((force) => requireApi().setAdaptive(enabled, { force }));
 
   return (
     <div className="flex flex-col gap-4">

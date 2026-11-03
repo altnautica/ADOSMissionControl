@@ -25,6 +25,9 @@ describe("VisionAgentClient.getEngineStatus", () => {
       jsonResponse({
         npu_utilization_pct: 63.5,
         model_count: 2,
+        backend: "onnx",
+        backend_state: "ready",
+        backend_reason: null,
         models: [
           {
             id: "yolov8n",
@@ -54,6 +57,9 @@ describe("VisionAgentClient.getEngineStatus", () => {
       known: true,
       npuUtilizationPct: 63.5,
       modelCount: 2,
+      backend: "onnx",
+      backendState: "ready",
+      backendReason: null,
       models: [
         {
           id: "yolov8n",
@@ -100,6 +106,31 @@ describe("VisionAgentClient.getEngineStatus", () => {
     const client = new VisionAgentClient("http://drone.local:8080");
     const status = await client.getEngineStatus();
     expect(status).toMatchObject({ known: true, npuUtilizationPct: null, modelCount: 1 });
+  });
+
+  it("reports an unavailable backend with its reason, and never claims ready by default", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        models: [],
+        model_count: 0,
+        backend: "onnx",
+        backend_state: "unavailable",
+        backend_reason: "this build does not include the onnx inference runtime",
+      }),
+    );
+    const client = new VisionAgentClient("http://drone.local:8080");
+    const status = await client.getEngineStatus();
+    expect(status).toMatchObject({
+      known: true,
+      backend: "onnx",
+      backendState: "unavailable",
+      backendReason: "this build does not include the onnx inference runtime",
+    });
+
+    // A reply that omits the state (or carries an unknown one) is not ready.
+    fetchMock.mockResolvedValueOnce(jsonResponse({ models: [], backend_state: "warming" }));
+    const unknown = await client.getEngineStatus();
+    expect(unknown).toMatchObject({ known: true, backend: null, backendState: "unavailable" });
   });
 
   it("returns the unknown status on a 404 (older agent, no engine read-back)", async () => {

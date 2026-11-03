@@ -66,6 +66,17 @@ function seedTelemetry(ageMs: number) {
     fixed: 0,
     sourceSystemId: 51,
   });
+  // The EKF navigating on an absolute horizontal position: the nav chip
+  // derives a GPS source from it and the fix above.
+  s.pushEkf({
+    timestamp,
+    velocityVariance: 0.1,
+    posHorizVariance: 0.1,
+    posVertVariance: 0.1,
+    compassVariance: 0.1,
+    terrainAltVariance: 0,
+    flags: 2 | 16,
+  });
 }
 
 describe("cockpit safety band freshness", () => {
@@ -78,7 +89,7 @@ describe("cockpit safety band freshness", () => {
     seedTelemetry(0);
     renderBand();
     expect(screen.getByText(/76/)).toBeTruthy();
-    expect(screen.getByText(/3D \/ 14/)).toBeTruthy();
+    expect(screen.getByTestId("cockpit-nav").textContent).toContain("GPS 3D·14");
   });
 
   it("blanks the same readings once they age past the staleness window", () => {
@@ -90,11 +101,12 @@ describe("cockpit safety band freshness", () => {
     expect(useTelemetryStore.getState().battery.latest()?.remaining).toBe(76);
     expect(screen.queryByText(/76/)).toBeNull();
 
-    // The no-data glyph rather than a stale 3D lock or a fabricated "NO FIX".
-    expect(screen.queryByText(/3D \/ 14/)).toBeNull();
-    expect(screen.queryByText(messages.cockpit.strip.gpsNoFix)).toBeNull();
-    const gpsValue = screen.getByTestId("cockpit-gps").querySelector(".v");
-    expect(gpsValue?.textContent).toBe(NO_DATA_GLYPH);
+    // The muted NAV glyph rather than a stale 3D lock or a fabricated "NO FIX".
+    const nav = screen.getByTestId("cockpit-nav");
+    expect(nav.textContent).not.toContain("3D");
+    expect(nav.textContent).not.toContain(messages.hud.nav.fix.none);
+    expect(nav.querySelector(".v")?.textContent).toBe(messages.hud.nav.stale);
+    expect(nav.getAttribute("data-tone")).toBe("muted");
   });
 
   it("labels only fix types 5 and 6 as RTK", () => {
@@ -109,14 +121,14 @@ describe("cockpit safety band freshness", () => {
         lon: 77.5946,
         alt: 920,
       });
-    push(8);
+    push(4);
     const { unmount } = renderBand();
     expect(screen.queryByText(/RTK/)).toBeNull();
-    expect(screen.getByText(/3D \/ 14/)).toBeTruthy();
+    expect(screen.getByTestId("cockpit-nav").textContent).toContain("GPS DGPS·14");
     unmount();
     push(6);
     renderBand();
-    expect(screen.getByText(/RTK/)).toBeTruthy();
+    expect(screen.getByTestId("cockpit-nav").textContent).toContain("GPS RTK FIX·14");
   });
 
   it("treats a sample exactly at the band threshold as stale", () => {

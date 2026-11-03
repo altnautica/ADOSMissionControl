@@ -5,8 +5,9 @@
  * @description The cockpit picture-in-picture inset: a small draggable corner
  * window over the main video showing a SECOND stream (e.g. thermal over EO)
  * while the main view stays on the active stream. Shown only when a PiP stream
- * is set (the operator toggles it with `P` or a tab affordance). Overlays follow
- * the MAIN active stream, not this inset.
+ * is set (the operator toggles it with `P` or a tab affordance). The inset
+ * draws its own target layer for its camera's detections (PiP tag rules,
+ * interactive); the main overlays follow the active stream.
  *
  * The inset uses an isolated WHEP player (`usePipVideo`) because the main feed
  * is the one *shared* receive session, and a PiP leg is a different stream —
@@ -31,6 +32,7 @@ import {
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
 import { CockpitDemoStream } from "@/components/cockpit/CockpitDemoStream";
+import { CockpitTargetOverlay } from "@/components/vision/CockpitTargetOverlay";
 
 interface CockpitPipInsetProps {
   droneId: string;
@@ -73,7 +75,7 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   // Drag position (px from the container's top-left). Null → the default
-  // bottom-right corner via CSS. Seeded from the persisted per-loadout value.
+  // bottom-left corner via CSS. Seeded from the persisted per-loadout value.
   const [pos, setPos] = useState<{ x: number; y: number } | null>(savedPos);
   const dragRef = useRef<{ ox: number; oy: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -328,6 +330,15 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
             )}
           </>
         )}
+        <CockpitTargetOverlay
+          droneId={droneId}
+          pip={{
+            cameraId: pip.id,
+            role: pip.role,
+            videoLost: !demo && pipStatus !== "live",
+            fit: "cover",
+          }}
+        />
       </div>
     </div>
   );

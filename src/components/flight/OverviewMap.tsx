@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { useFreshTelemetry, useTelemetryLatest } from "@/hooks/use-telemetry-latest";
 import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
 import { knownRemainingPct } from "@/lib/battery";
@@ -81,14 +81,18 @@ const GuidanceSettingsMenu = dynamic(
 
 // ── Drone marker colors per status ──────────────────────────
 
+/** Marker fill per fleet status, as theme tokens (the icon is HTML, so the
+ * colour is applied through a style attribute and resolves per theme). */
 const STATUS_COLORS: Record<string, string> = {
-  online: "#22c55e",
-  in_mission: "#3a82ff",
-  idle: "#a0a0a0",
-  returning: "#f59e0b",
-  maintenance: "#ef4444",
-  offline: "#666666",
+  online: "var(--alt-status-success)",
+  in_mission: "var(--alt-accent-primary)",
+  idle: "var(--alt-text-secondary)",
+  returning: "var(--alt-status-warning)",
+  maintenance: "var(--alt-status-error)",
+  offline: "var(--alt-text-tertiary)",
 };
+const STATUS_COLOR_UNKNOWN = STATUS_COLORS.idle;
+const SELECTED_DRONE_COLOR = "var(--gcs-hud-green)";
 
 /** Heading step the marker icons are cached at; finer turns are not visible. */
 const ICON_HEADING_STEP_DEG = 5;
@@ -98,8 +102,9 @@ const droneIconCache = new Map<string, L.DivIcon>();
  * SVG arrow icon for a drone marker, rotated by heading. Cached per heading
  * step, colour and size: a new icon object makes react-leaflet rebuild the
  * marker's DOM, which at telemetry rate across a fleet is the whole cost.
+ * `color` is any CSS colour, including a `var(--token)`.
  */
-function droneIcon(heading: number, color = "#00ff41", size = 24): L.DivIcon {
+function droneIcon(heading: number, color: string, size: number): L.DivIcon {
   const step = Math.round(heading / ICON_HEADING_STEP_DEG) * ICON_HEADING_STEP_DEG;
   const bucket = ((step % 360) + 360) % 360;
   const key = `${bucket}|${color}|${size}`;
@@ -110,7 +115,7 @@ function droneIcon(heading: number, color = "#00ff41", size = 24): L.DivIcon {
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
       html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="transform:rotate(${bucket}deg)">
-      <polygon points="12,2 20,20 12,16 4,20" fill="${color}" fill-opacity="0.9" stroke="${color}" stroke-width="1"/>
+      <polygon points="12,2 20,20 12,16 4,20" style="fill:${color};stroke:${color}" fill-opacity="0.9" stroke-width="1"/>
     </svg>`,
     });
     droneIconCache.set(key, icon);
@@ -146,12 +151,14 @@ function MapResizer() {
  *
  * `pluginOverlay` mounts the extension `map.overlay` slot over the map (the
  * same non-interactive layer the planner map carries), so an installed
- * extension's map layer shows in the cockpit minimap too.
+ * extension's map layer shows in the cockpit minimap too. `children` are
+ * extra Leaflet layers rendered inside the map (the minimap's follow target).
  */
 export function OverviewMap({
   compact = false,
   pluginOverlay = false,
-}: { compact?: boolean; pluginOverlay?: boolean } = {}) {
+  children,
+}: { compact?: boolean; pluginOverlay?: boolean; children?: ReactNode } = {}) {
   const [follow, setFollow] = useState(true);
   const [showPlannedPath, setShowPlannedPath] = useState(false);
   const [measureActive, setMeasureActive] = useState(false);
@@ -202,7 +209,7 @@ export function OverviewMap({
 
   const heading = pos?.heading ?? 0;
   const headingDeg = Math.round(heading);
-  const selectedIcon = useMemo(() => droneIcon(headingDeg, "#00ff41", 24), [headingDeg]);
+  const selectedIcon = useMemo(() => droneIcon(headingDeg, SELECTED_DRONE_COLOR, 24), [headingDeg]);
 
   // The FC's own home, the point RTL returns to. Hidden until one arrives: the
   // oldest trail point is not home, it walks along the track once the trail
@@ -294,7 +301,7 @@ export function OverviewMap({
         touchZoom={!compact}
         boxZoom={!compact}
         keyboard={!compact}
-        style={{ background: "#0a0a0a" }}
+        style={{ background: "var(--alt-bg-secondary)" }}
         whenReady={() => { mapReadyRef.current = true; }}
       >
         <TileLayerSwitcher showControls={!compact} />
@@ -339,7 +346,7 @@ export function OverviewMap({
         {/* Other fleet drone markers (smaller, status-colored) */}
         {otherDrones.map((drone) => {
           if (!drone.position) return null;
-          const dColor = STATUS_COLORS[drone.status] ?? "#a0a0a0";
+          const dColor = STATUS_COLORS[drone.status] ?? STATUS_COLOR_UNKNOWN;
           const icon = droneIcon(drone.position.heading ?? 0, dColor, 18);
           const remaining = knownRemainingPct(drone.battery?.remaining);
           const displayName = profiles[drone.id]?.displayName ?? drone.name;
@@ -353,8 +360,8 @@ export function OverviewMap({
                 <div
                   className="text-xs font-mono"
                   style={{
-                    color: "#fafafa",
-                    background: "#0a0a0a",
+                    color: "var(--alt-text-primary)",
+                    background: "var(--alt-bg-secondary)",
                     padding: "4px 8px",
                     margin: "-8px -12px",
                   }}
@@ -374,6 +381,7 @@ export function OverviewMap({
 
         <PoiMarkerOverlay />
         <GcsMarker />
+        {children}
         {!compact && <LocateControl style={{ marginBottom: 40 }} />}
       </MapContainer>
 

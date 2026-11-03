@@ -271,9 +271,9 @@ describe("filterModelsForBoard", () => {
   });
 
   it("keeps the Pi-4B CPU/ONNX 320 INT8 variant fit on a no-NPU Pi 4B (array board_match)", () => {
-    // Mirrors the real coco_yolov8n_v1 catalog entry: a CPU ONNX 320 variant
-    // (board_match ["rpi4b","generic-arm64"], min_tops 0) alongside the NPU
-    // RKNN 640 variants. A no-NPU Pi 4B must see the model as fit via the CPU
+    // A catalog entry shaped like a detector with a CPU ONNX 320 variant
+    // (board_match ["rpi4b","generic-arm64"], min_tops 0) alongside NPU RKNN
+    // 640 variants. A no-NPU Pi 4B must see the model as fit via the CPU
     // variant.
     const res = filterModelsForBoard(
       models({
@@ -417,5 +417,33 @@ describe("filterModelsForBoard", () => {
     );
     // Unknown NPU runtime (not explicitly null) → permissive → fits.
     expect(res[0].fits).toBe(true);
+  });
+
+  it("carries the registry benchmark-only flag, false everywhere else", () => {
+    const res = filterModelsForBoard(
+      models({
+        registry: [
+          {
+            id: "reid-bench",
+            name: "Re-ID",
+            description: "",
+            task: "reid",
+            variants: [{ runtime: "onnx", min_tops: 0 }],
+            benchmarkOnly: true,
+          },
+          {
+            id: "det",
+            name: "Det",
+            description: "",
+            task: "detection",
+            variants: [{ runtime: "onnx", min_tops: 0 }],
+          },
+        ],
+        installed: [{ id: "local", filename: "local.onnx", sizeBytes: 1, format: "onnx" }],
+      }),
+      PI4B,
+    );
+    const byId = Object.fromEntries(res.map((m) => [m.id, m.benchmarkOnly]));
+    expect(byId).toEqual({ "reid-bench": true, det: false, local: false });
   });
 });

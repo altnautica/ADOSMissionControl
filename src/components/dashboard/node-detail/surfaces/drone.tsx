@@ -4,7 +4,8 @@
  *
  * A **Status** band answers "how is this node" — Overview (the node home:
  * identity, reach, health, the companion band, per-node actions), Flight (the
- * single live-telemetry + map surface) and Cockpit (full-bleed piloting).
+ * single live-telemetry + map surface), Cockpit (full-bleed piloting) and,
+ * with a companion agent, Map (the companion's local map and its status).
  * A **Vehicle** band answers "how is this aircraft set up" — Setup, Parameters
  * and, when the node advertises a CRSF lane, RC/ELRS. Logs and the Agent page
  * follow ungrouped.
@@ -50,6 +51,9 @@ const RcElrsLinkTab = dynamic(() =>
 const LogsTab = dynamic(() =>
   import("@/components/drone-detail/LogsTab").then((m) => m.LogsTab),
 );
+const DroneMapTab = dynamic(() =>
+  import("@/components/drone-detail/map/DroneMapTab").then((m) => m.DroneMapTab),
+);
 
 export const DRONE_SURFACES: SurfaceSpec[] = [
   {
@@ -82,6 +86,16 @@ export const DRONE_SURFACES: SurfaceSpec[] = [
     labelKey: "dronePanel.cockpit",
     group: STATUS_GROUP,
     render: (ctx) => <CockpitView droneId={ctx.droneId} />,
+  },
+  {
+    // The companion's local map: world-engine status, the 3D viewer launch
+    // and the live local-frame map. Needs a companion agent; a bare flight
+    // controller has no map source.
+    id: "map",
+    labelKey: "hud.mapTab.title",
+    group: STATUS_GROUP,
+    when: (ctx) => ctx.agentIdentityKnown,
+    render: (ctx) => <DroneMapTab droneId={ctx.droneId} pluginAgentPages={ctx.pluginAgentPages} />,
   },
   {
     id: "configure",

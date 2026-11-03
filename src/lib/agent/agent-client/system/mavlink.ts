@@ -7,7 +7,7 @@
 import type { z } from "zod";
 import type { FcSource, MavlinkPort } from "../../types";
 import { MavlinkPortsResponseSchema, PingResponseSchema } from "../../schemas";
-import { agentRequest, type RequestContext } from "../transport";
+import { agentRequest, type ArmedOverrideOptions, type RequestContext } from "../transport";
 import { configWriteFailure } from "@/lib/agent/config-write";
 import { setConfigValue } from "./config";
 
@@ -49,14 +49,20 @@ export async function getMavlinkPorts(
  * reports an applied FC source the node never stored. The
  * first failure stops the sequence: writing a serial port for a source the
  * node never accepted would leave a half-applied configuration.
+ *
+ * While the vehicle is armed the agent refuses `mavlink.source` with
+ * `AgentArmedRefusal` before anything lands; the caller asks the operator
+ * once and calls again with `force`, which carries the override on every key
+ * so the whole sequence is resent as a unit.
  */
 export async function setMavlinkSource(
   ctx: RequestContext,
   source: FcSource,
-  opts?: { serialPort?: string; baudRate?: number },
+  opts?: { serialPort?: string; baudRate?: number } & ArmedOverrideOptions,
 ): Promise<void> {
+  const armed: ArmedOverrideOptions | undefined = opts?.force ? { force: true } : undefined;
   const write = async (key: string, value: string): Promise<void> => {
-    const failure = configWriteFailure(await setConfigValue(ctx, key, value));
+    const failure = configWriteFailure(await setConfigValue(ctx, key, value, armed));
     if (failure) throw new Error(failure);
   };
   await write("mavlink.source", source);

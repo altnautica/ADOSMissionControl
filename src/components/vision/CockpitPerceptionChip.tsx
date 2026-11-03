@@ -78,7 +78,6 @@ export function CockpitPerceptionChip({ droneId }: { droneId: string }) {
   return (
     <div
       className={`perchip ${stateClass}`.trim()}
-      style={{ left: 18, top: 176 }}
       data-cockpit-widget="perception-health"
       data-feed-state={notRunning ? "not-running" : feed}
     >

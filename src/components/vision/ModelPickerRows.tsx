@@ -88,6 +88,13 @@ export function ModelPickerRows({
                   {t("unverifiedBadge")}
                 </Badge>
               ) : null}
+              {model.benchmarkOnly ? (
+                <span title={t("benchmarkOnlyHint")}>
+                  <Badge variant="neutral" size="sm">
+                    {t("benchmarkOnly")}
+                  </Badge>
+                </span>
+              ) : null}
             </div>
             {mode === "full" && model.description ? (
               <p className="truncate text-[11px] text-text-tertiary">

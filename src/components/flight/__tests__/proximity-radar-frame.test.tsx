@@ -14,7 +14,9 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { cleanup, render } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 
+import messages from "../../../../locales/en.json";
 import { ProximityRadar } from "@/components/flight/ProximityRadar";
 import { buildFrame } from "@/lib/protocol/encoders/frame";
 import { MAVLinkParser, type MAVLinkFrame } from "@/lib/protocol/mavlink-parser";
@@ -58,11 +60,20 @@ function receive(payload: Uint8Array): ObstacleData {
   return out[0];
 }
 
-/** The y coordinate an arc path starts at (its outer-ring start point). */
-function arcStartY(d: string): number {
+/** The point an arc path starts at. */
+function arcStart(d: string): { x: number; y: number } {
   const m = /^M (\S+) (\S+)/.exec(d);
   if (!m) throw new Error(`not an arc path: ${d}`);
-  return Number(m[2]);
+  return { x: Number(m[1]), y: Number(m[2]) };
+}
+
+/** Dial size 120: centre (60, 60). */
+function renderRadar() {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <ProximityRadar size={120} />
+    </NextIntlClientProvider>,
+  );
 }
 
 describe("ProximityRadar geometry from OBSTACLE_DISTANCE", () => {
@@ -92,14 +103,16 @@ describe("ProximityRadar geometry from OBSTACLE_DISTANCE", () => {
     expect(sample.frame).toBe(MAV_FRAME_BODY_FRD);
 
     useTelemetryStore.getState().obstacle.push({ ...sample, timestamp: Date.now() });
-    const { container } = render(<ProximityRadar />);
+    const { container } = renderRadar();
 
-    expect(container.querySelector("text")?.textContent).toBe("FWD");
-    const arcs = Array.from(container.querySelectorAll("path"));
-    expect(arcs).toHaveLength(1);
-    // Straight ahead is the top of the dial (centre y = 60, outer radius 52).
-    expect(arcStartY(arcs[0].getAttribute("d") ?? "")).toBeLessThan(15);
-    expect(container.textContent).toContain("nearest 1.5 m");
+    expect(container.querySelector("[data-ref]")?.textContent).toBe("FWD");
+    expect(container.querySelectorAll("[data-sector]")).toHaveLength(1);
+    // Straight ahead is the top of the dial: the measured-distance arc starts
+    // above the centre, within a degree or so of the vertical.
+    const start = arcStart(container.querySelector("[data-arc]")?.getAttribute("d") ?? "");
+    expect(start.y).toBeLessThan(60);
+    expect(Math.abs(start.x - 60)).toBeLessThan(1);
+    expect(container.textContent).toContain("1.5 m DANGER");
   });
 
   it("labels north-aligned data N and treats beyond-max readings as clear", () => {
@@ -108,10 +121,10 @@ describe("ProximityRadar geometry from OBSTACLE_DISTANCE", () => {
       obstaclePayload({ distances, increment: 5, incrementF: 0, angleOffset: 0, frame: 0 }),
     );
     useTelemetryStore.getState().obstacle.push({ ...sample, timestamp: Date.now() });
-    const { container } = render(<ProximityRadar />);
+    const { container } = renderRadar();
 
-    expect(container.querySelector("text")?.textContent).toBe("N");
-    expect(container.querySelectorAll("path")).toHaveLength(0);
-    expect(container.textContent).toContain("clear");
+    expect(container.querySelector("[data-ref]")?.textContent).toBe("N");
+    expect(container.querySelectorAll("[data-sector]")).toHaveLength(0);
+    expect(container.textContent).toContain("CLEAR");
   });
 });

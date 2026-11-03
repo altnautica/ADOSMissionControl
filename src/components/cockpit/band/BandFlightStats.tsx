@@ -2,9 +2,10 @@
 
 /**
  * The vehicle-state cells of the safety band: arm state, flight mode,
- * battery, GPS, link, and (only while authority is limited) command
- * authority. Every value is gated: battery, GPS and radio by the band's two
- * second freshness window, arm and mode by heartbeat age. A reading the GCS
+ * battery, the nav-source chip, link, and (only while authority is limited)
+ * command authority. Every value is gated: battery, nav source and radio by
+ * the band's two second freshness window, arm and mode by heartbeat age. A
+ * reading the GCS
  * no longer has renders the no-data glyph, never a remembered value and never
  * a store default.
  *
@@ -16,7 +17,7 @@
  */
 
 import { useState } from "react";
-import { BatteryMedium, Navigation, Radio, Satellite } from "lucide-react";
+import { BatteryMedium, Navigation, Radio } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useDroneStore } from "@/stores/drone-store";
 import { useHudTopBarData } from "@/hooks/use-hud-topbar-data";
@@ -28,6 +29,7 @@ import { useBatteryBand, type BatteryBand } from "@/lib/battery-bands";
 import { linkStateFromHeartbeat, type LinkState } from "./link-state";
 import { formatElapsed, msSince } from "./format";
 import { useBandReserve } from "./use-band-reserve";
+import { NavSourceChip } from "../NavSourceChip";
 
 /**
  * Time to reserve after the battery percentage, when the node's battery
@@ -119,20 +121,6 @@ export function BandFlightStats({ droneId }: { droneId: string }) {
     if (parts.length > 0) setAnnouncement(parts.join(". "));
   }
 
-  const fix = gps?.fixType;
-  const sats = gps?.satellites === undefined ? NO_DATA_GLYPH : String(gps.satellites);
-  const rtk = fix === 5 || fix === 6;
-  const gpsLabel =
-    fix === undefined
-      ? NO_DATA_GLYPH
-      : rtk
-        ? t("strip.gpsRtk", { sats })
-        : fix >= 3
-          ? t("strip.gps3d", { sats })
-          : fix >= 2
-            ? t("strip.gps2d", { sats })
-            : t("strip.gpsNoFix");
-
   // Signal bars when a radio reports; otherwise the heartbeat age is the only
   // honest link figure the GCS has.
   const level = signalBars ?? 0;
@@ -198,16 +186,8 @@ export function BandFlightStats({ droneId }: { droneId: string }) {
         <BandReserve droneId={droneId} />
       </div>
 
-      <div className="stat" data-testid="cockpit-gps">
-        <Satellite size={12} className="ki" aria-hidden="true" />
-        <span className="k">{t("strip.gps")}</span>
-        <span
-          className={fix === undefined ? `v ${DIM}` : "v"}
-          style={rtk ? { color: "var(--hud-good)" } : undefined}
-        >
-          {gpsLabel}
-        </span>
-      </div>
+      {/* Item 6: what the EKF navigates on (replaces the bare GPS cell). */}
+      <NavSourceChip droneId={droneId} />
 
       <div className="stat" data-testid="cockpit-link" data-link-state={link}>
         {!radio && <Radio size={12} className="ki" aria-hidden="true" />}

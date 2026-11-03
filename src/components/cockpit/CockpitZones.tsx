@@ -72,7 +72,7 @@ export const BUILTIN_WIDGETS: readonly CockpitWidget[] = [
     // a shared container has nowhere to put.
     minDensity: "standard",
     order: 10,
-    render: () => <ProximityRadar />,
+    render: (ctx) => <ProximityRadar droneId={ctx.droneId} />,
   },
   {
     // Same, for the bottom-left container it shared with the camera roster.

@@ -10,9 +10,19 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 
+import messages from "../../../locales/en.json";
 import { DetectionOverlay } from "@/components/vision/DetectionOverlay";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
+
+function renderOverlay() {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <DetectionOverlay droneId="drone-1" />
+    </NextIntlClientProvider>,
+  );
+}
 
 const PANE_W = 800;
 const PANE_H = 600; // 4:3 pane
@@ -83,24 +93,28 @@ describe("DetectionOverlay geometry", () => {
   });
 
   it("places a box inside the letterboxed video rect, not the pane", () => {
-    render(<DetectionOverlay droneId="drone-1" />);
+    const { container } = renderOverlay();
 
-    const box = screen.getByText(/person/).parentElement!;
-    const style = box.style;
+    const [left, top, width, height] = container
+      .querySelector('[data-kind="CANDIDATE"]')!
+      .getAttribute("data-box")!
+      .split(",")
+      .map(Number);
 
     // Centre of a 16:9 frame letterboxed into a 4:3 pane.
-    expect(parseFloat(style.left)).toBeCloseTo(PANE_W * 0.375, 1);
-    expect(parseFloat(style.width)).toBeCloseTo(PANE_W * 0.25, 1);
+    expect(left).toBeCloseTo(PANE_W * 0.375, 1);
+    expect(width).toBeCloseTo(PANE_W * 0.25, 1);
 
     // The vertical axis is the one the old percentage maths got wrong: it
     // must be offset by the letterbox bar and scaled to the video height,
     // not to the pane height.
-    expect(parseFloat(style.top)).toBeCloseTo(BAR + RENDERED_H * 0.375, 1);
-    expect(parseFloat(style.height)).toBeCloseTo(RENDERED_H * 0.25, 1);
+    expect(top).toBeCloseTo(BAR + RENDERED_H * 0.375, 1);
+    expect(height).toBeCloseTo(RENDERED_H * 0.25, 1);
 
     // Sanity: the pane-relative answer (which is what shipped) is a
     // materially different, wrong place.
-    expect(parseFloat(style.top)).not.toBeCloseTo(PANE_H * 0.375, 1);
+    expect(top).not.toBeCloseTo(PANE_H * 0.375, 1);
+    expect(screen.getByText("PERSON 90%")).toBeTruthy();
   });
 
   it("drops boxes once the batch goes stale", () => {
@@ -112,7 +126,7 @@ describe("DetectionOverlay geometry", () => {
         },
       },
     }));
-    render(<DetectionOverlay droneId="drone-1" />);
-    expect(screen.queryByText(/person/)).toBeNull();
+    renderOverlay();
+    expect(screen.queryByText(/PERSON/)).toBeNull();
   });
 });

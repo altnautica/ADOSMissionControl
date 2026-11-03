@@ -45,6 +45,7 @@ import {
   type ConfigAccess,
 } from "@/lib/agent/config-access";
 import { configWriteFailure } from "@/lib/agent/config-write";
+import type { ArmedOverrideOptions } from "@/lib/agent/agent-client/transport";
 import type { RelayReach } from "@/lib/nodes/relay-reach";
 import { useStableRelayReach } from "@/hooks/use-stable-relay-reach";
 
@@ -122,7 +123,7 @@ export interface NodeConfig {
    * the agent rejects the value, and when it could not write its config file
    * (`persisted: false`), naming the node's reason. Re-reads the config on
    * success. */
-  setValue: (key: string, value: string) => Promise<void>;
+  setValue: (key: string, value: string, opts?: ArmedOverrideOptions) => Promise<void>;
 }
 
 /**
@@ -245,8 +246,8 @@ export function useNodeConfig(
   }, [refresh, nodeDeviceId]);
 
   const setValue = useCallback(
-    async (key: string, value: string) => {
-      const res = await setConfigValueViaAccess(access, key, value);
+    async (key: string, value: string, opts?: ArmedOverrideOptions) => {
+      const res = await setConfigValueViaAccess(access, key, value, opts);
       // Covers both failure answers of the write route: a rejected value
       // (`{error}`) and a config file the node could not write (`persisted:
       // false`). Throwing routes into the same error toast + optimistic-

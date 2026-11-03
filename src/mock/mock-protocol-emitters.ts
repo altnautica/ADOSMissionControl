@@ -19,6 +19,7 @@ import type {
   ScaledImuCallback,
   ScaledPressureCallback,
   HomePositionCallback,
+  GpsOriginCallback,
   PowerStatusCallback,
   DistanceSensorCallback,
   FenceStatusCallback,
@@ -67,6 +68,7 @@ export function emitTerrain(cbs: MockCallbackArrays, data: Parameters<TerrainCal
 export function emitScaledImu(cbs: MockCallbackArrays, data: Parameters<ScaledImuCallback>[0]): void { for (const cb of cbs.scaledImuCbs) cb(data); }
 export function emitScaledPressure(cbs: MockCallbackArrays, data: Parameters<ScaledPressureCallback>[0]): void { for (const cb of cbs.scaledPressureCbs) cb(data); }
 export function emitHomePosition(cbs: MockCallbackArrays, data: Parameters<HomePositionCallback>[0]): void { for (const cb of cbs.homePositionCbs) cb(data); }
+export function emitGpsOrigin(cbs: MockCallbackArrays, data: Parameters<GpsOriginCallback>[0]): void { for (const cb of cbs.gpsOriginCbs) cb(data); }
 export function emitPowerStatus(cbs: MockCallbackArrays, data: Parameters<PowerStatusCallback>[0]): void { for (const cb of cbs.powerStatusCbs) cb(data); }
 export function emitDistanceSensor(cbs: MockCallbackArrays, data: Parameters<DistanceSensorCallback>[0]): void { for (const cb of cbs.distanceSensorCbs) cb(data); }
 export function emitFenceStatus(cbs: MockCallbackArrays, data: Parameters<FenceStatusCallback>[0]): void { for (const cb of cbs.fenceStatusCbs) cb(data); }

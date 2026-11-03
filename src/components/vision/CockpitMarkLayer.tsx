@@ -69,8 +69,8 @@ export function CockpitMarkLayer({ droneId }: { droneId: string }) {
     };
   }, [size, batch]);
 
-  // Every source's marks. The designated-target lock brackets are drawn by the
-  // `.det.lock` box itself (CockpitTargetOverlay), so this layer is now purely
+  // Every source's marks. The designated-target brackets are drawn by the
+  // host target layer (CockpitTargetOverlay), so this layer is now purely
   // the composited plugin/built-in draw-layer (reticles, blobs, trajectories).
   const marks = useMemo(() => {
     const list: CockpitMark[] = [];

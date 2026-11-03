@@ -41,6 +41,8 @@ import { useBoundSkillResolver } from "@/lib/skills/use-skill-chord";
 import type { HotbarSlot } from "@/stores/settings/keybindings-slice";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { SkillSlot } from "./SkillSlot";
+import { FollowSkillPopover } from "./FollowSkillPopover";
+import { FOLLOW_SKILL_ID } from "@/hooks/use-following-mode";
 
 const IDLE: SkillState = { kind: "idle" };
 
@@ -175,6 +177,7 @@ export function SkillBar({ droneId }: { droneId: string }) {
 
   return (
     <SkillBarToolbar
+      droneId={droneId}
       slotViews={slotViews}
       fireSkill={fireSkill}
       label={t("skills.bar.label")}
@@ -197,12 +200,14 @@ function openSkillSettings(skill: Skill): void {
  * roving index follows the last focused slot.
  */
 function SkillBarToolbar({
+  droneId,
   slotViews,
   fireSkill,
   label,
   moreLabel,
   announcement,
 }: {
+  droneId: string;
   slotViews: SlotView[];
   fireSkill: (skill: Skill) => void;
   label: string;
@@ -252,25 +257,35 @@ function SkillBarToolbar({
     [count],
   );
 
-  const renderSlot = ({ slot, skill, state }: SlotView, pos: number) => (
-    <SkillSlot
-      key={slot.index}
-      index={slot.index}
-      skill={skill}
-      state={state}
-      hotkey={slot.key}
-      gamepadButton={slot.gamepadButton}
-      danger={skill ? DANGER_SKILL_IDS[skill.id] === true : false}
-      onActivate={fireSkill}
-      onOpenSettings={
-        skill?.source === "plugin" && skill.pluginId ? openSkillSettings : undefined
-      }
-      tabIndex={pos === effectiveRoving ? 0 : -1}
-      position={pos}
-      onKeyDown={onSlotKeyDown}
-      overflow={pos >= NARROW_VISIBLE_SLOTS}
-    />
-  );
+  const renderSlot = ({ slot, skill, state }: SlotView, pos: number) => {
+    const node = (
+      <SkillSlot
+        key={slot.index}
+        index={slot.index}
+        skill={skill}
+        state={state}
+        hotkey={slot.key}
+        gamepadButton={slot.gamepadButton}
+        danger={skill ? DANGER_SKILL_IDS[skill.id] === true : false}
+        onActivate={fireSkill}
+        onOpenSettings={
+          skill?.source === "plugin" && skill.pluginId ? openSkillSettings : undefined
+        }
+        tabIndex={pos === effectiveRoving ? 0 : -1}
+        position={pos}
+        onKeyDown={onSlotKeyDown}
+        overflow={pos >= NARROW_VISIBLE_SLOTS}
+      />
+    );
+    // The follow skill carries a caret that opens its phase + re-acquire popover.
+    if (skill?.id !== FOLLOW_SKILL_ID) return node;
+    return (
+      <div key={slot.index} className="skill-wrap">
+        {node}
+        <FollowSkillPopover droneId={droneId} />
+      </div>
+    );
+  };
 
   const inline = slotViews.slice(0, NARROW_VISIBLE_SLOTS);
   const overflow = slotViews.slice(NARROW_VISIBLE_SLOTS);

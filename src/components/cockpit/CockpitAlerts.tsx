@@ -8,6 +8,7 @@
  * announced assertively), `warning` (amber border pulse; announced politely)
  * and `advisory` (no motion). The text itself never flashes, and reduced
  * motion stops every animation. The rules live in `band/cockpit-alert-rules`.
+ * A follow-me re-acquisition adds a 4 s advisory naming the new track.
  *
  * The drone and telemetry stores are scoped to the selected drone, so the
  * stack only speaks while this cockpit's drone is the selected one; another
@@ -34,6 +35,9 @@ import {
   type CockpitAlertLevel,
   type ReceivedText,
 } from "./band/cockpit-alert-rules";
+import { useHudCopy } from "@/hooks/use-hud-copy";
+import { reacquiredToast } from "@/lib/vision/target-state";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 /** MAV_SEVERITY_CRITICAL; lower values are more severe. */
 const MAV_SEVERITY_CRITICAL = 2;
@@ -68,6 +72,29 @@ function useFcTexts(droneId: string) {
   return { critical, prearm };
 }
 
+/** How long the re-acquired advisory stays up. */
+export const REACQUIRED_ADVISORY_MS = 4000;
+
+/** The re-acquired advisory text while the latest `follow.reacquired` event
+ * is under 4 s old; shown once per event, never re-raised. */
+function useReacquiredAdvisory(droneId: string): string | null {
+  const event = useNavStreamStore((s) => s.byDrone[droneId]?.followEvent);
+  const copy = useHudCopy();
+  const [now, setNow] = useState(Date.now);
+  const until =
+    event && event.data.topic === "follow.reacquired" ? event.receivedAt + REACQUIRED_ADVISORY_MS : 0;
+  // Re-render when the advisory expires; until then the event's own arrival
+  // time stands in for the clock.
+  useEffect(() => {
+    if (until === 0) return;
+    const id = window.setTimeout(() => setNow(Date.now()), Math.max(0, until - Date.now()) + 5);
+    return () => window.clearTimeout(id);
+  }, [until]);
+  if (!event || event.data.topic !== "follow.reacquired") return null;
+  const age = Math.max(now, event.receivedAt) - event.receivedAt;
+  return age < REACQUIRED_ADVISORY_MS ? reacquiredToast(event.data, copy) : null;
+}
+
 export function CockpitAlerts({ droneId }: { droneId: string }) {
   const t = useTranslations("cockpit.alerts");
   useThrottledTelemetryVersion();
@@ -81,6 +108,7 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
   const flightMode = useDroneStore((s) => s.flightMode);
   const videoFrozen = useVideoStore((s) => s.isStreaming && s.degradedReason !== null);
   const { critical, prearm } = useFcTexts(droneId);
+  const reacquired = useReacquiredAdvisory(droneId);
 
   const buffers = useTelemetryStore.getState();
   const battery = buffers.battery.latest();
@@ -147,6 +175,22 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
       </div>
       <div aria-live="polite" className="flex flex-col items-center gap-1.5">
         {render(alerts.filter((a) => a.level !== "critical"))}
+        {reacquired && (
+          <div
+            data-testid="cockpit-alert-reacquired"
+            data-level="advisory"
+            className={`${LEVEL_CLASS.advisory} flex max-w-[28rem] items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-xs`}
+            style={{
+              color: "var(--hud-ink)",
+              background: `color-mix(in oklch, ${LEVEL_STYLE.advisory.color} 18%, var(--hud-glass-strong))`,
+              border: `1px solid ${LEVEL_STYLE.advisory.color}`,
+            }}
+          >
+            <Info size={14} style={{ color: LEVEL_STYLE.advisory.color, flex: "none" }} aria-hidden="true" />
+            <span className="sr-only">{t("level.advisory")}: </span>
+            <span className="truncate">{reacquired}</span>
+          </div>
+        )}
       </div>
     </div>
   );

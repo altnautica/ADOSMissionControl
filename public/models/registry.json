@@ -3,6 +3,7 @@
   "models": [
     {
       "id": "person_v1",
+      "task": "detection",
       "name": "Person Detector",
       "description": "Detect people for Follow Me, SAR, and security",
       "license": "Apache-2.0",
@@ -14,6 +15,7 @@
     },
     {
       "id": "depth_midas_v3",
+      "task": "depth",
       "name": "Depth Estimator",
       "description": "Monocular depth estimation for obstacle avoidance",
       "license": "MIT",
@@ -24,6 +26,7 @@
     },
     {
       "id": "landing_pad_v1",
+      "task": "detection",
       "name": "Landing Pad Detector",
       "description": "Detect AprilTag and H-markers for precision landing",
       "license": "Apache-2.0",
@@ -34,6 +37,7 @@
     },
     {
       "id": "vehicle_v1",
+      "task": "detection",
       "name": "Vehicle Detector",
       "description": "Detect vehicles for security and traffic monitoring",
       "license": "Apache-2.0",
@@ -44,6 +48,7 @@
     },
     {
       "id": "crop_health_v1",
+      "task": "detection",
       "name": "Crop Health Detector",
       "description": "Detect crop health, weeds, and bare soil for agriculture",
       "license": "Apache-2.0",
@@ -54,6 +59,7 @@
     },
     {
       "id": "defect_v1",
+      "task": "detection",
       "name": "Defect Detector",
       "description": "Detect cracks, corrosion, and spalling for inspection",
       "license": "Apache-2.0",
@@ -64,6 +70,7 @@
     },
     {
       "id": "thermal_person_v1",
+      "task": "detection",
       "name": "Thermal Person Detector",
       "description": "Detect people in thermal imagery for SAR and night ops",
       "license": "Apache-2.0",
@@ -74,6 +81,7 @@
     },
     {
       "id": "gesture_v1",
+      "task": "classification",
       "name": "Gesture Recognizer",
       "description": "Recognize hand gestures for drone control",
       "license": "Apache-2.0",
@@ -84,25 +92,50 @@
     },
     {
       "id": "coco_yolov8n_v1",
+      "task": "detection",
       "name": "COCO Object Detector (YOLOv8n)",
       "description": "Generic 80-class COCO detector (person, vehicles, common objects) for Follow Me and general detection",
       "license": "AGPL-3.0",
       "classes": ["person", "bicycle", "car", "motorcycle", "bus", "truck", "boat", "backpack", "bottle", "chair", "and 70 more COCO classes"],
       "variants": [
-        { "variant": "cpu_int8_320", "input_size": "320x320", "min_tops": 0, "runtime": "onnx", "board_match": ["rpi4b", "generic-arm64"], "filename": "coco_yolov8n_320_int8.onnx", "size_bytes": 0, "sha256": "", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/coco_yolov8n_320_int8.onnx" },
         { "variant": "int8", "input_size": "640x640", "min_tops": 1.0, "runtime": "rknn", "board_match": "rk3588", "filename": "coco_yolov8n_640_int8.rknn", "size_bytes": 5242880, "sha256": "9714918d7be60bc903adda871197f3f830c8fbdf60e8358fd5206eea3473167e", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/coco_yolov8n_640_int8.rknn" },
         { "variant": "fp16", "input_size": "640x640", "min_tops": 2.0, "runtime": "rknn", "board_match": "rk3588", "filename": "coco_yolov8n_640_fp16.rknn", "size_bytes": 8704000, "sha256": "2da05d61f396d368566f7920b5cded2693c3a296457897bd3eebf69988a097c6", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/coco_yolov8n_640_fp16.rknn" }
       ]
     },
     {
+      "id": "person_yolox_tiny_v1",
+      "task": "detection",
+      "name": "Person Detector (YOLOX-Tiny)",
+      "description": "Person-only detector for Follow Me on boards without an NPU. YOLOX-Tiny exported to ONNX with in-graph box decoding; reproducible with scripts/models/export_yolox_person.py in the drone agent repository",
+      "license": "Apache-2.0",
+      "classes": ["person"],
+      "variants": [
+        { "variant": "cpu_fp32_640", "input_size": "640x640", "min_tops": 0, "runtime": "onnx", "head": "yolo5", "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"], "filename": "yolox_tiny_person_640.onnx", "size_bytes": 20344089, "sha256": "ec126ff2786d394e02730181e5a97ede16c173e0625b39cd18661d507e06da32", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v2/yolox_tiny_person_640.onnx" }
+      ]
+    },
+    {
       "id": "reid_osnet_v1",
+      "task": "reid",
+      "benchmark_only": true,
       "name": "Person Re-ID (OSNet x0.5)",
-      "description": "Appearance embedding that keeps a tracked subject's identity across an occlusion or a distractor crossing",
-      "license": "MIT",
+      "description": "Appearance embedding that keeps a tracked subject's identity across an occlusion or a distractor crossing. Benchmark and explicit install only: the weights were trained on a research-use dataset, so the shipped default re-id is the model-free colour histogram",
+      "license": "MIT (code); weights trained on Market-1501, research-use terms",
       "classes": [],
       "variants": [
         { "variant": "int8", "input_size": "128x256", "min_tops": 0.8, "runtime": "rknn", "board_match": "rk3588", "filename": "osnet_x0_5_reid_int8.rknn", "size_bytes": 3145728, "sha256": "31c7101c503d514019c91d7df436526d28a4a04b071adbd8c87882aaa4f4a637", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/osnet_x0_5_reid_int8.rknn" },
         { "variant": "fp16", "input_size": "128x256", "min_tops": 1.5, "runtime": "rknn", "board_match": "rk3588", "filename": "osnet_x0_5_reid_fp16.rknn", "size_bytes": 3774873, "sha256": "a29f23f2659525965fbb3306fa170db0141d524a266479bc9acfe1ec21084784", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v1/osnet_x0_5_reid_fp16.rknn" }
+      ]
+    },
+    {
+      "id": "reid_osnet_x0_25_v1",
+      "task": "reid",
+      "benchmark_only": true,
+      "name": "Person Re-ID (OSNet x0.25)",
+      "description": "Appearance embedding for boards without an NPU: keeps a tracked subject's identity across an occlusion. 512-d output, ImageNet-normalized 256x128 input; reproducible with scripts/models/export_osnet_reid.py in the drone agent repository. Benchmark and explicit install only: the weights were trained on a research-use dataset, so the shipped default re-id is the model-free colour histogram",
+      "license": "MIT (code); weights trained on MSMT17, research-use terms",
+      "classes": [],
+      "variants": [
+        { "variant": "cpu_fp32", "input_size": "128x256", "min_tops": 0, "runtime": "onnx", "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"], "filename": "osnet_x0_25_reid_256x128.onnx", "size_bytes": 891052, "sha256": "0ff8a48fad13e789e439539c86454b8f23cd7908a2a41a818ac9d39f2e6448da", "url": "https://github.com/altnautica/ADOSExtensions/releases/download/vision-models-v2/osnet_x0_25_reid_256x128.onnx" }
       ]
     }
   ]

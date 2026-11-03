@@ -46,13 +46,22 @@ const SURFACES: ReadonlyArray<
   },
 ];
 
-/** The demo install row carrying the Visor surfaces. */
+/** The extension manifest's drone Agent page that hosts the live 3D viewer. */
+export const LIVE_WORLD_PAGE: GcsContributeRow & { slot: "node.agent.page" } = {
+  slot: "node.agent.page",
+  panelId: "live-world",
+  title: "Live World",
+  section: "videoVision",
+  profile: ["drone"],
+};
+
+/** The demo install row carrying the Visor surfaces and the drone viewer page. */
 export const DEMO_CAPTURE_INSTALL_ROW: InstallDetailRow = {
   installId: DEMO_CAPTURE_PLUGIN_ID,
   pluginId: DEMO_CAPTURE_PLUGIN_ID,
   version: VERSION,
   name: "World Engine",
-  gcsContributes: SURFACES.map((s) => ({ ...s })),
+  gcsContributes: [...SURFACES.map((s) => ({ ...s })), { ...LIVE_WORLD_PAGE }],
 };
 
 const MODULE: InlinePluginModule = {

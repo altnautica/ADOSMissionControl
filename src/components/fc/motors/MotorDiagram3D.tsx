@@ -9,7 +9,7 @@ import type { FrameLayout } from "@/lib/motor-layouts";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { isFresh } from "@/lib/telemetry/freshness";
 import {
-  COLOR_CW, COLOR_BODY, SCALE,
+  SCALE, useMotorPalette,
   buildCoaxialOffsets,
   MotorAssembly, ServoAssembly, Arm, ForwardChevron, ShadowDisc,
   AttitudeHUD, WebGLErrorBoundary,
@@ -55,20 +55,21 @@ function DroneScene({ layout }: { layout: FrameLayout }) {
 
   const handleHover = useCallback((n: number) => setHoveredMotor(n), []);
   const handleUnhover = useCallback(() => setHoveredMotor(null), []);
+  const palette = useMotorPalette();
 
   return (
     <>
       <ambientLight intensity={0.4} />
       <directionalLight position={[5, 8, 5]} intensity={0.7} />
       <directionalLight position={[-3, 4, -3]} intensity={0.25} />
-      <pointLight position={[0, 3, 0]} intensity={0.15} color={COLOR_CW} />
+      <pointLight position={[0, 3, 0]} intensity={0.15} color={palette.cw} />
       <Environment preset="night" background={false} />
       <ShadowDisc />
 
       <group ref={droneGroupRef}>
         <mesh position={[0, 0, 0]}>
           <cylinderGeometry args={[0.5, 0.48, 0.08, 32]} />
-          <meshStandardMaterial color={COLOR_BODY} metalness={0.7} roughness={0.3} />
+          <meshStandardMaterial color={palette.body} metalness={0.7} roughness={0.3} />
         </mesh>
         <mesh position={[0, 0.035, 0]}>
           <torusGeometry args={[0.46, 0.008, 8, 32]} />

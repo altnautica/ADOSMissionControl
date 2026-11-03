@@ -119,13 +119,15 @@ export class AgentClient {
   /**
    * Write a single config value via PUT /api/config. Dot-separated
    * key paths are supported (e.g. `ground_station.display.type`). The
-   * agent coerces the string value to the underlying field type.
+   * agent coerces the string value to the underlying field type. A
+   * flight-affecting key is refused while armed unless `opts.force` is set.
    */
   setConfigValue(
     key: string,
     value: string,
+    opts?: ArmedOverrideOptions,
   ): Promise<{ status?: string; key?: string; value?: unknown; error?: string }> {
-    return system.setConfigValue(this.ctx, key, value);
+    return system.setConfigValue(this.ctx, key, value, opts);
   }
 
   restartService(name: string, opts?: ArmedOverrideOptions): Promise<system.ServiceRestartResult> {
@@ -152,10 +154,11 @@ export class AgentClient {
     return system.getMavlinkPorts(this.ctx);
   }
 
-  /** Point the MAVLink router at a chosen FC source via PUT /api/config. */
+  /** Point the MAVLink router at a chosen FC source via PUT /api/config.
+   * Refused while armed unless `opts.force` is set. */
   setMavlinkSource(
     source: FcSource,
-    opts?: { serialPort?: string; baudRate?: number },
+    opts?: { serialPort?: string; baudRate?: number } & ArmedOverrideOptions,
   ): Promise<void> {
     return system.setMavlinkSource(this.ctx, source, opts);
   }
@@ -288,8 +291,9 @@ export class AgentClient {
       auto: boolean;
       tier_idx: number;
     }>,
+    opts?: ArmedOverrideOptions,
   ): Promise<unknown | null> {
-    return extras.setVideoConfig(this.ctx, body);
+    return extras.setVideoConfig(this.ctx, body, opts);
   }
 
   getVideoLatency(): Promise<unknown | null> {

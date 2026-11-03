@@ -224,6 +224,15 @@ export interface HomePositionData {
   alt: number;
 }
 
+/** GPS_GLOBAL_ORIGIN: the EKF origin, the geodetic point LOCAL_POSITION_NED
+ * measures from. */
+export interface GpsOriginData {
+  timestamp: number;
+  lat: number;   // degrees
+  lon: number;   // degrees
+  alt: number;   // metres AMSL
+}
+
 // ── Power Status ──────────────────────────────────────────
 
 export interface PowerStatusData {

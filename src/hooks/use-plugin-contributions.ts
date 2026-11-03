@@ -78,6 +78,7 @@ import {
 } from "@/mock/inline-fixture-plugin";
 import { getDemoVisionNavContribution } from "@/mock/mock-vision-nav";
 import { DEMO_CAPTURE_SURFACES } from "@/mock/mock-visor-surfaces";
+import { DEMO_LIVE_WORLD_CONTRIBUTION } from "@/mock/mock-live-world";
 
 /** Slot fallback sort hint, matching the slot-13 contract default. */
 const DEFAULT_ORDER = 60;
@@ -135,9 +136,10 @@ function entryMounts(
   );
 }
 
-/** The demo's inline mounts on a drone: the fixture's Agent page, plus the
- * Vision Nav tab body on the demo drone running that extension. In-memory
- * modules handed straight to the host (no trust gate, no agent). */
+/** The demo's inline mounts on a drone: the fixture's Agent page, the Vision
+ * Nav tab body on the demo drone running that extension, and the live 3D
+ * viewer stand-in. In-memory modules handed straight to the host (no trust
+ * gate, no agent). */
 function demoInlineContributions(
   deviceId: string | null,
   slot: PluginSlotName | undefined,
@@ -153,6 +155,9 @@ function demoInlineContributions(
     for (const surface of DEMO_CAPTURE_SURFACES) {
       if (entryMounts(surface.entry, slot, nodeProfile)) out.push(surface.contribution);
     }
+  }
+  if (entryMounts(DEMO_LIVE_WORLD_CONTRIBUTION.entry, slot, nodeProfile)) {
+    out.push(DEMO_LIVE_WORLD_CONTRIBUTION.contribution);
   }
   const entry: GcsContributeRow = {
     slot: "node.agent.page",

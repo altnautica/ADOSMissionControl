@@ -191,6 +191,9 @@ export class MAVLinkAdapter implements DroneProtocol {
     this.st.lastVehicleHeartbeat = Date.now(); this.st.linkIsLost = false
     this.linkLostCheckInterval = setInterval(() => checkLinkState(this.st), 1000)
     this.sendCommandLong(512, [242, 0, 0, 0, 0, 0, 0]).catch(() => {})
+    // The EKF origin is sent when it is set; ask once in case that happened
+    // before this connection.
+    this.sendCommandLong(512, [49, 0, 0, 0, 0, 0, 0]).catch(() => {})
     this.sendCommandLong(512, [148, 0, 0, 0, 0, 0, 0]).catch(() => {})
     // COMPONENT_METADATA (397) is a PX4-only "component information" message;
     // ArduPilot does not implement it, so only request it for PX4 vehicles.
@@ -420,7 +423,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   onVibration = this.cbm.onVibration; onServoOutput = this.cbm.onServoOutput
   onWind = this.cbm.onWind; onTerrain = this.cbm.onTerrain
   onMagCalProgress = this.cbm.onMagCalProgress; onMagCalReport = this.cbm.onMagCalReport
-  onAccelCalPos = this.cbm.onAccelCalPos; onHomePosition = this.cbm.onHomePosition
+  onAccelCalPos = this.cbm.onAccelCalPos; onHomePosition = this.cbm.onHomePosition; onGpsOrigin = this.cbm.onGpsOrigin
   onAutopilotVersion = this.cbm.onAutopilotVersion; onPowerStatus = this.cbm.onPowerStatus
   onDistanceSensor = this.cbm.onDistanceSensor; onFenceStatus = this.cbm.onFenceStatus
   onNavController = this.cbm.onNavController; onScaledImu = this.cbm.onScaledImu

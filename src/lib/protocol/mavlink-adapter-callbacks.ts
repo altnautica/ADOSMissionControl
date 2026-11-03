@@ -16,7 +16,7 @@ import type {
   EkfCallback, VibrationCallback, ServoOutputCallback,
   WindCallback, TerrainCallback,
   MagCalProgressCallback, MagCalReportCallback, AccelCalPosCallback,
-  HomePositionCallback, AutopilotVersionCallback,
+  HomePositionCallback, GpsOriginCallback, AutopilotVersionCallback,
   PowerStatusCallback, DistanceSensorCallback, FenceStatusCallback,
   NavControllerCallback, ScaledImuCallback, ScaledPressureCallback,
   EstimatorStatusCallback, CameraTriggerCallback, LinkStateCallback,
@@ -56,6 +56,7 @@ export interface CallbackStore {
   magCalReportCallbacks: MagCalReportCallback[]
   accelCalPosCallbacks: AccelCalPosCallback[]
   homePositionCallbacks: HomePositionCallback[]
+  gpsOriginCallbacks: GpsOriginCallback[]
   autopilotVersionCallbacks: AutopilotVersionCallback[]
   powerStatusCallbacks: PowerStatusCallback[]
   distanceSensorCallbacks: DistanceSensorCallback[]
@@ -120,6 +121,7 @@ export function createCallbackStore(): CallbackStore {
     magCalReportCallbacks: [],
     accelCalPosCallbacks: [],
     homePositionCallbacks: [],
+    gpsOriginCallbacks: [],
     autopilotVersionCallbacks: [],
     powerStatusCallbacks: [],
     distanceSensorCallbacks: [],
@@ -194,6 +196,7 @@ export function bindCallbackMethods(cbs: CallbackStore) {
     onMagCalReport: (cb: MagCalReportCallback) => sub(cbs.magCalReportCallbacks, cb),
     onAccelCalPos: (cb: AccelCalPosCallback) => sub(cbs.accelCalPosCallbacks, cb),
     onHomePosition: (cb: HomePositionCallback) => sub(cbs.homePositionCallbacks, cb),
+    onGpsOrigin: (cb: GpsOriginCallback) => sub(cbs.gpsOriginCallbacks, cb),
     onAutopilotVersion: (cb: AutopilotVersionCallback) => sub(cbs.autopilotVersionCallbacks, cb),
     onPowerStatus: (cb: PowerStatusCallback) => sub(cbs.powerStatusCallbacks, cb),
     onDistanceSensor: (cb: DistanceSensorCallback) => sub(cbs.distanceSensorCallbacks, cb),

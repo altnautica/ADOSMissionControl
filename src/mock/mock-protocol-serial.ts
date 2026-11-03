@@ -7,6 +7,7 @@
  */
 
 import type { SerialDataCallback } from "@/lib/protocol/types";
+import { demoLoopAt, obstacleSectorsCm } from "./mock-nav-world";
 
 // ── Serial Passthrough ──────────────────────────────────────
 
@@ -139,15 +140,14 @@ export function startTelemetryTick(
     }, 500),
   );
 
-  // Obstacle distances: 12 sectors, mostly far, 2 closer, every 1 second
+  // Obstacle distances: 12 sectors ray-cast from the demo loop pose against
+  // the synthetic room, every 1 second (matches the nav-stream scan).
   timers.push(
     setInterval(() => {
-      const distances = new Array(12).fill(1000);
-      distances[3] = 200 + Math.random() * 600;
-      distances[9] = 200 + Math.random() * 600;
+      const loop = demoLoopAt(Date.now() / 1000);
       ctx.emitObstacleDistance({
         timestamp: Date.now(),
-        distances,
+        distances: obstacleSectorsCm(loop.x, loop.y, loop.yawRad, 12, 1200),
         minDistance: 20,
         maxDistance: 1200,
         increment: 30,
@@ -158,20 +158,18 @@ export function startTelemetryTick(
     }, 1000),
   );
 
-  // Local position NED: derived from mock home, every 200ms
-  let localTick = 0;
+  // Local position NED: the demo loop the nav-stream pose flies, every 200ms
   timers.push(
     setInterval(() => {
-      localTick++;
-      const t = localTick * 0.1;
+      const loop = demoLoopAt(Date.now() / 1000);
       ctx.emitLocalPosition({
         timestamp: Date.now(),
-        x: 10 * Math.sin(t * 0.3),
-        y: 10 * Math.cos(t * 0.2),
-        z: -(10 + Math.sin(t * 0.15)),
-        vx: 0.3 * Math.cos(t * 0.3),
-        vy: -0.2 * Math.sin(t * 0.2),
-        vz: -0.1 * Math.cos(t * 0.15),
+        x: loop.x,
+        y: loop.y,
+        z: loop.z,
+        vx: loop.vx,
+        vy: loop.vy,
+        vz: loop.vz,
       });
     }, 200),
   );

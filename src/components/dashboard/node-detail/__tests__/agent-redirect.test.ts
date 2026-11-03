@@ -10,6 +10,7 @@ const DRONE_IDS = [
   "overview",
   "flight",
   "cockpit",
+  "map",
   "configure",
   "parameters",
   "logs",

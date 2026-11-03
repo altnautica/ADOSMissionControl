@@ -99,7 +99,10 @@ export class MockAgentClientExtras {
     return null;
   }
 
-  async setVideoConfig(_body: Record<string, number | boolean>): Promise<unknown | null> {
+  async setVideoConfig(
+    _body: Record<string, number | boolean>,
+    _opts?: { force?: boolean },
+  ): Promise<unknown | null> {
     await delay(DEMO_LATENCY_MS);
     return null;
   }

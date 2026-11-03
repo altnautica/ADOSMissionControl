@@ -7,6 +7,8 @@ import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { isDemoMode } from "@/lib/utils";
 import { nextPollDelay } from "@/stores/agent-connection/poll-backoff";
 import { AgentClient } from "@/lib/agent/client";
+import { AgentArmedRefusal } from "@/lib/agent/agent-client/transport";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
 import {
   ChannelHistoryChart,
   type HoppingState,
@@ -191,18 +193,23 @@ export function VideoLinkPanel() {
   const telemetryStale =
     lastUpdatedAt != null && now - lastUpdatedAt > TELEMETRY_STALE_MS;
 
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
+
   const onSetAuto = useCallback(
     async (next: boolean) => {
       if (!client) return;
       setBusy(true);
       try {
-        await client.setVideoConfig({ auto: next });
+        await withArmedOverride((force) => client.setVideoConfig({ auto: next }, { force }));
         await refresh();
+      } catch (err) {
+        // A declined armed prompt leaves the link as it was.
+        if (!(err instanceof AgentArmedRefusal)) throw err;
       } finally {
         setBusy(false);
       }
     },
-    [client, refresh],
+    [client, refresh, withArmedOverride],
   );
 
   const onPinTier = useCallback(
@@ -210,13 +217,15 @@ export function VideoLinkPanel() {
       if (!client) return;
       setBusy(true);
       try {
-        await client.setVideoConfig({ tier_idx: idx });
+        await withArmedOverride((force) => client.setVideoConfig({ tier_idx: idx }, { force }));
         await refresh();
+      } catch (err) {
+        if (!(err instanceof AgentArmedRefusal)) throw err;
       } finally {
         setBusy(false);
       }
     },
-    [client, refresh],
+    [client, refresh, withArmedOverride],
   );
 
   if (!client || !config) {
@@ -398,6 +407,7 @@ export function VideoLinkPanel() {
         </div>
       ) : null}
     </section>
+    {armedOverrideDialog}
     <ChannelHistoryChart
       hopping={config.hopping}
       currentChannel={radio.channel}

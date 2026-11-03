@@ -188,9 +188,9 @@ export function LedPanel() {
                       key={i}
                       className="w-4 h-4 rounded-full border border-border-default transition-colors"
                       style={{
-                        backgroundColor: brightness === 0 ? "#1a1a1a" : "#3A82FF",
+                        backgroundColor: brightness === 0 ? "var(--alt-bg-tertiary)" : "var(--alt-accent-primary)",
                         opacity: brightness === 0 ? 0.2 : brightness === 1 ? 0.4 : brightness === 2 ? 0.7 : 1,
-                        boxShadow: brightness > 0 ? `0 0 ${brightness * 3}px #3A82FF` : "none",
+                        boxShadow: brightness > 0 ? `0 0 ${brightness * 3}px var(--alt-accent-primary)` : "none",
                       }}
                     />
                   ))}

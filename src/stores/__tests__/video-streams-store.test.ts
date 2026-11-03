@@ -206,6 +206,7 @@ describe("video-streams-store", () => {
   it("maps known roles to a localized label key", () => {
     expect(ROLE_LABEL_KEY.eo).toBe("roleEo");
     expect(ROLE_LABEL_KEY.ir).toBe("roleIr");
+    expect(ROLE_LABEL_KEY.down).toBe("roleDown");
     expect(ROLE_LABEL_KEY.unknownRole).toBeUndefined();
   });
 });

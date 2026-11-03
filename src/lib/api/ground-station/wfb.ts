@@ -44,16 +44,25 @@ export function setTxPower(
 // applies the knob to the live data plane and persists it). Each returns the
 // agent's response with a `warnings` array so a partial apply is visible. The
 // card reads the resulting live values back from the per-drone radio snapshot.
+// The agent refuses a knob while the vehicle is armed (409 `E_ARMED`, thrown
+// as `AgentArmedRefusal`); the caller resends it with `force` only after the
+// operator confirms (`useArmedOverrideConfirm`).
+
+/** A link-tuning body, carrying the armed override when the operator chose it. */
+export function linkTuningBody(knobs: Record<string, unknown>, opts?: ArmedOverrideOptions): string {
+  return JSON.stringify(opts?.force ? { ...knobs, force: true } : knobs);
+}
 
 /** Set the Reed-Solomon FEC ratio (k data shards, n total). Requires n > k. */
 export function setFec(
   ctx: RequestContext,
   fecK: number,
   fecN: number,
+  opts?: ArmedOverrideOptions,
 ): Promise<VideoConfigResponse> {
   return gsRequest<VideoConfigResponse>(ctx, "/api/video/config", {
     method: "POST",
-    body: JSON.stringify({ fec_k: fecK, fec_n: fecN }),
+    body: linkTuningBody({ fec_k: fecK, fec_n: fecN }, opts),
   });
 }
 
@@ -61,10 +70,11 @@ export function setFec(
 export function setMcs(
   ctx: RequestContext,
   mcs: number,
+  opts?: ArmedOverrideOptions,
 ): Promise<VideoConfigResponse> {
   return gsRequest<VideoConfigResponse>(ctx, "/api/video/config", {
     method: "POST",
-    body: JSON.stringify({ mcs }),
+    body: linkTuningBody({ mcs }, opts),
   });
 }
 
@@ -72,10 +82,11 @@ export function setMcs(
 export function setPreset(
   ctx: RequestContext,
   preset: LinkPreset,
+  opts?: ArmedOverrideOptions,
 ): Promise<VideoConfigResponse> {
   return gsRequest<VideoConfigResponse>(ctx, "/api/video/config", {
     method: "POST",
-    body: JSON.stringify({ preset }),
+    body: linkTuningBody({ preset }, opts),
   });
 }
 
@@ -83,10 +94,11 @@ export function setPreset(
 export function setAdaptive(
   ctx: RequestContext,
   enabled: boolean,
+  opts?: ArmedOverrideOptions,
 ): Promise<VideoConfigResponse> {
   return gsRequest<VideoConfigResponse>(ctx, "/api/video/config", {
     method: "POST",
-    body: JSON.stringify({ auto: enabled }),
+    body: linkTuningBody({ auto: enabled }, opts),
   });
 }
 

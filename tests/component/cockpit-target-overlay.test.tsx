@@ -1,8 +1,9 @@
 /**
- * Tests for the host-owned cockpit target overlay: it draws a clickable box for
- * each live detection (letterbox-mapped from the detection frame into the
- * measured container), selecting a box populates the shared selected-target
- * store, and the target-action popup then lists the built-in Designate action.
+ * Tests for the host-owned cockpit target overlay: it draws a clickable target
+ * for each live detection (letterbox-mapped from the detection frame into the
+ * measured container), clicking a target (after the double-click interval)
+ * populates the shared selected-target store, and the target-action popup then
+ * lists the built-in Designate action.
  *
  * @license GPL-3.0-only
  */
@@ -35,6 +36,13 @@ import {
   registerBuiltinTargetActions,
   useTargetActionRegistry,
 } from "@/lib/skills/target-actions";
+import { DOUBLE_CLICK_MS } from "@/lib/vision/target-interaction";
+
+/** A single click opens the popup once the double-click interval has passed. */
+async function clickTarget(el: Element) {
+  fireEvent.click(el, { detail: 1 });
+  await act(() => new Promise<void>((r) => setTimeout(r, DOUBLE_CLICK_MS + 30)));
+}
 
 /** The same designate flow the built-in action runs (the built-ins register
  * once per module, and each test resets the registry). */
@@ -137,7 +145,7 @@ describe("CockpitTargetOverlay", () => {
     expect(boxes.length).toBe(1);
   });
 
-  it("clicking a box opens its action popup for that target", () => {
+  it("clicking a box opens its action popup for that target", async () => {
     registerBuiltinTargetActions();
     seedBatch("drone-1");
     const { container, getByText } = render(
@@ -148,7 +156,7 @@ describe("CockpitTargetOverlay", () => {
     ) as HTMLElement;
     expect(box).not.toBeNull();
 
-    fireEvent.click(box);
+    await clickTarget(box);
 
     const selected = useSelectedTargetStore.getState().popupTarget;
     expect(selected).not.toBeNull();
@@ -161,7 +169,7 @@ describe("CockpitTargetOverlay", () => {
     expect(getByText("vision.targetActions.designate")).toBeTruthy();
   });
 
-  it("keeps a tracked box's element across batches, so a press spanning a frame still opens the popup", () => {
+  it("keeps a tracked box's element across batches, so a press spanning a frame still opens the popup", async () => {
     seedBatch("drone-1", 1);
     const { container } = render(<CockpitTargetOverlay droneId="drone-1" />);
     const box = container.querySelector("button[data-target-interactive]") as HTMLElement;
@@ -171,7 +179,7 @@ describe("CockpitTargetOverlay", () => {
     seedBatch("drone-1", 2, 104);
     expect(box.isConnected).toBe(true);
     fireEvent.mouseUp(box);
-    fireEvent.click(box);
+    await clickTarget(box);
 
     expect(useSelectedTargetStore.getState().popupTarget?.trackId).toBe(7);
   });
@@ -253,7 +261,8 @@ describe("CockpitTargetOverlay", () => {
       container.querySelectorAll("button[data-target-interactive]").length,
     ).toBe(0);
   });
-  it("draws only the displayed camera's boxes when another camera's batch is newer", () => {
+
+  it("draws only the displayed camera's boxes when another camera's batch is newer", async () => {
     useVideoStreamsStore.setState({
       streamsByDrone: { "drone-1": [{ id: "cam0", index: 1, label: "cam0", kind: "concurrent" }] },
     });
@@ -261,16 +270,16 @@ describe("CockpitTargetOverlay", () => {
     // A second camera's tracker publishes after; its track 7 is a different subject.
     seedBatch("drone-1", 2, 400, "cam1");
     const { container } = render(<CockpitTargetOverlay droneId="drone-1" />);
-    fireEvent.click(container.querySelector("button[data-target-interactive]") as HTMLElement);
+    await clickTarget(container.querySelector("button[data-target-interactive]") as HTMLElement);
     expect(useSelectedTargetStore.getState().popupTarget?.cameraId).toBe("cam0");
     expect(useSelectedTargetStore.getState().popupTarget?.bbox.x).toBe(100);
   });
 
-  it("closes the action popup when the feed goes stale", () => {
+  it("closes the action popup when the feed goes stale", async () => {
     registerDesignate();
     seedBatch("drone-1");
     const { container, queryByText } = render(<CockpitTargetOverlay droneId="drone-1" />);
-    fireEvent.click(container.querySelector("button[data-target-interactive]") as HTMLElement);
+    await clickTarget(container.querySelector("button[data-target-interactive]") as HTMLElement);
     expect(queryByText("Designate target")).not.toBeNull();
 
     ageStreams("drone-1");
@@ -291,7 +300,7 @@ describe("CockpitTargetOverlay", () => {
         <WhatsLockedChip droneId="drone-1" />
       </>,
     );
-    fireEvent.click(container.querySelector("button[data-target-interactive]") as HTMLElement);
+    await clickTarget(container.querySelector("button[data-target-interactive]") as HTMLElement);
     await act(async () => {
       fireEvent.click(getByText("Designate target"));
       await Promise.resolve();
@@ -300,7 +309,7 @@ describe("CockpitTargetOverlay", () => {
     expect(designate).toHaveBeenCalledTimes(1);
     expect(useSelectedTargetStore.getState().popupTarget).toBeNull();
     expect(useSelectedTargetStore.getState().designated?.trackId).toBe(7);
-    expect(container.querySelector("button.det.lock")).not.toBeNull();
+    expect(container.querySelector('[data-kind="LOCKED"] .tgt-brackets')).not.toBeNull();
     expect(container.querySelector('[data-cockpit-widget="whats-locked"]')).not.toBeNull();
     designate.mockRestore();
   });

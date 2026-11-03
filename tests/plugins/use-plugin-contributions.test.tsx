@@ -129,12 +129,13 @@ describe("usePluginContributions", () => {
     expect(opts.enabled).toBe(false);
   });
 
-  it("mounts no installed plugin in demo mode, only the inline fixture page", () => {
+  it("mounts no installed plugin in demo mode, only the demo inline pages", () => {
     useSettingsStore.setState({ demoMode: true });
     useConvexSkipQueryMock.mockReturnValue(ROWS);
     const { result } = renderHook(() => usePluginContributions("drone-1"));
-    expect(result.current.map((c) => [c.pluginId, c.slot, c.isolation])).toEqual([
-      [DEMO_INLINE_FIXTURE_PLUGIN_ID, "node.agent.page", "inline"],
+    expect(result.current.map((c) => [c.pluginId, c.slot, c.panelId, c.isolation])).toEqual([
+      ["com.altnautica.world-engine", "node.agent.page", "live-world", "inline"],
+      [DEMO_INLINE_FIXTURE_PLUGIN_ID, "node.agent.page", "hello", "inline"],
     ]);
   });
 
@@ -144,6 +145,7 @@ describe("usePluginContributions", () => {
     const { result } = renderHook(() => usePluginContributions("alpha-1", undefined, "drone"));
     expect(result.current.map((c) => [c.pluginId, c.slot, c.panelId, c.isolation])).toEqual([
       [VISION_NAV_PLUGIN_ID, "node.detail.tab", "vision-nav-tab", "inline"],
+      ["com.altnautica.world-engine", "node.agent.page", "live-world", "inline"],
       [DEMO_INLINE_FIXTURE_PLUGIN_ID, "node.agent.page", "hello", "inline"],
     ]);
     const narrowed = renderHook(() =>

@@ -23,7 +23,13 @@ import {
   PeripheralListSchema,
   VideoStatusSchema,
 } from "../schemas";
-import { AgentHttpError, agentRequest, type RequestContext } from "./transport";
+import {
+  AgentArmedRefusal,
+  AgentHttpError,
+  agentRequest,
+  type ArmedOverrideOptions,
+  type RequestContext,
+} from "./transport";
 import type {
   CameraListResponse,
   RecordingControlResponse,
@@ -93,7 +99,10 @@ export async function getVideoConfig(
   }
 }
 
-/** Apply zero or more video / radio tuning knobs. */
+/** Apply zero or more video / radio tuning knobs. A radio knob is refused
+ * while the vehicle is armed: that refusal is rethrown as `AgentArmedRefusal`
+ * so the caller can ask the operator and resend with `force`; any other
+ * failure reads as null. */
 export async function setVideoConfig(
   ctx: RequestContext,
   body: Partial<{
@@ -104,13 +113,15 @@ export async function setVideoConfig(
     auto: boolean;
     tier_idx: number;
   }>,
+  opts?: ArmedOverrideOptions,
 ): Promise<unknown | null> {
   try {
     return await agentRequest<unknown>(ctx, "/api/video/config", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify(opts?.force ? { ...body, force: true } : body),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof AgentArmedRefusal) throw err;
     return null;
   }
 }

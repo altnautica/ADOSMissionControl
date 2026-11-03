@@ -51,6 +51,10 @@ import {
 } from "@/lib/agent/config-write";
 import { timedFetch } from "@/lib/agent/agent-client/timeout";
 import {
+  armedRefusalFrom,
+  type ArmedOverrideOptions,
+} from "@/lib/agent/agent-client/transport";
+import {
   CONFIG_PROXY_CLIENT_MARGIN_MS,
   CONFIG_PROXY_RELAY_UPSTREAM_TIMEOUT_MS,
   CONFIG_PROXY_UPSTREAM_TIMEOUT_MS,
@@ -62,7 +66,11 @@ import type { SetupApplyResponse } from "@/lib/agent/agent-client/setup";
  * class. */
 export interface AgentConfigClient {
   getConfig(): Promise<Record<string, unknown>>;
-  setConfigValue(key: string, value: string): Promise<ConfigWriteResult>;
+  setConfigValue(
+    key: string,
+    value: string,
+    opts?: ArmedOverrideOptions,
+  ): Promise<ConfigWriteResult>;
   applySetup(update: Record<string, unknown>): Promise<SetupApplyResponse>;
 }
 
@@ -292,6 +300,10 @@ async function proxyConfigRequest(
     json = null;
   }
   if (!res.ok) {
+    // An armed refusal (409 `E_ARMED`) reads exactly as on the direct lane,
+    // so the caller can ask the operator and resend with the override.
+    const armed = armedRefusalFrom(res.status, text);
+    if (armed) throw armed;
     // The write route's own refusals (500 `persisted: false`, 422 `E_INVALID`
     // / `E_VALIDATION`) are results, so `configWriteFailure` names the
     // node's reason.
@@ -343,16 +355,23 @@ export async function getConfigViaAccess(
 
 /** Write a single dot-path config key over whichever transport resolved.
  * Returns the agent's response body so callers keep their `{error}` check
- * and read-back-confirm loop identical across transports. */
+ * and read-back-confirm loop identical across transports. A flight-affecting
+ * key is refused with `AgentArmedRefusal` while armed unless `opts.force`. */
 export async function setConfigValueViaAccess(
   access: ConfigAccess,
   key: string,
   value: string,
+  opts?: ArmedOverrideOptions,
 ): Promise<ConfigWriteResult> {
-  if (access.mode === "direct") return access.client.setConfigValue(key, value);
+  if (access.mode === "direct") {
+    return opts?.force
+      ? access.client.setConfigValue(key, value, opts)
+      : access.client.setConfigValue(key, value);
+  }
   const envelope = proxyEnvelopeFor(access);
   if (envelope) {
-    const json = await proxyConfigRequest(envelope, "PUT", { key, value });
+    const body = opts?.force ? { key, value, force: true } : { key, value };
+    const json = await proxyConfigRequest(envelope, "PUT", body);
     return (
       json && typeof json === "object" && !Array.isArray(json) ? json : {}
     ) as ConfigWriteResult;

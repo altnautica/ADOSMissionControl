@@ -709,14 +709,18 @@ html[data-power="low"] .ados-cockpit,
 .ados-cockpit .zone.tl { top: 52px; left: 18px; }
 .ados-cockpit .zone.tr { top: 52px; right: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .ados-cockpit .zone.bc { left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 30; }
-.ados-cockpit .zone.tls { top: 52px; left: 238px; }
+/* Stream tabs sit to the right of the minimap inset (18 px + its width + 10 px). */
+.ados-cockpit .zone.tls { top: 52px; left: calc(28px + clamp(160px, 26cqi, 280px)); }
+.ados-cockpit[data-width-class="tv"] .zone.tls { left: calc(28px + clamp(200px, 26cqi, 360px)); }
 
 /* Arrangeable-widget zone containers (the registry composes the chips + plugin
    widgets into these; the operator can move a widget between zones). One
    anchored flex column per zone stacks that zone's widgets. Distinct from the
    fixed `.zone.*` cards above so the minimap + faithful HUD are untouched. */
 .ados-cockpit .cockpit-zone { position: absolute; z-index: 20; display: flex; flex-direction: column; gap: 10px; }
-.ados-cockpit .cockpit-zone.tl { top: 205px; left: 18px; align-items: flex-start; }
+/* Below the minimap inset (52 px top + its 16:10 height + a 10 px gap). */
+.ados-cockpit .cockpit-zone.tl { top: calc(62px + clamp(160px, 26cqi, 280px) * 10 / 16); left: 18px; align-items: flex-start; }
+.ados-cockpit[data-width-class="tv"] .cockpit-zone.tl { top: calc(62px + clamp(200px, 26cqi, 360px) * 10 / 16); }
 .ados-cockpit .cockpit-zone.tc { top: 104px; left: 50%; transform: translateX(-50%); align-items: center; }
 .ados-cockpit .cockpit-zone.tr { top: 96px; right: 18px; align-items: flex-end; }
 .ados-cockpit .cockpit-zone.ml { top: 50%; left: 18px; transform: translateY(-50%); align-items: flex-start; }
@@ -831,18 +835,89 @@ html[data-power="low"] .ados-cockpit,
 /* Zoned widget wrappers: an empty wrapper takes no space in its zone. */
 .ados-cockpit .cockpit-zone > [data-widget]:empty { display: none; }
 
-/* locked target */
-.ados-cockpit .det { position: absolute; z-index: 18; border: 1.5px solid var(--hud-primary); border-radius: 3px; box-shadow: 0 0 0 1px var(--cockpit-shadow); }
-.ados-cockpit .det.dim { border-color: color-mix(in oklch, var(--hud-primary) 50%, transparent); border-style: dashed; }
-.ados-cockpit .det .cls { position: absolute; top: -18px; left: -1px; font-family: var(--mono); font-size: 10px; padding: 1px 5px; background: color-mix(in oklch, var(--hud-primary) 50%, transparent); color: var(--cockpit-on-hud); border-radius: 3px; white-space: nowrap; }
-.ados-cockpit .det.lock { border-color: var(--hud-lock); box-shadow: 0 0 0 1px var(--cockpit-shadow), 0 0 14px color-mix(in oklch, var(--hud-lock) 35%, transparent); }
-.ados-cockpit .det.lock .corner { position: absolute; width: 11px; height: 11px; border: 2px solid var(--hud-lock); }
-.ados-cockpit .det.lock .corner.a { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
-.ados-cockpit .det.lock .corner.b { top: -2px; right: -2px; border-left: 0; border-bottom: 0; }
-.ados-cockpit .det.lock .corner.c { bottom: -2px; left: -2px; border-right: 0; border-top: 0; }
-.ados-cockpit .det.lock .corner.d { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
-@keyframes ados-lockpulse { 0%,100% { box-shadow: 0 0 0 1px var(--cockpit-shadow), 0 0 12px color-mix(in oklch, var(--hud-lock) 30%, transparent); } 50% { box-shadow: 0 0 0 1px var(--cockpit-shadow), 0 0 20px color-mix(in oklch, var(--hud-lock) 55%, transparent); } }
-.ados-cockpit .det.lock { animation: ados-lockpulse 2.4s ease-in-out infinite; }
+/* ══ HUD target layer ══
+   Host target marks over every video surface: cockpit main video, PiP and
+   the node-detail previews, so the rules are scoped under `.tgt-layer`, not
+   `.ados-cockpit`. A state is carried by shape and word; colour only
+   reinforces it. Every line is painted twice: `.tgt-o` (outline colour at
+   stroke + 2·outline) under `.tgt-s` (state colour at stroke). Marks move
+   only with data: there is no idle pulse. */
+.tgt-layer { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
+.tgt-layer .tgt { position: absolute; inset: 0; pointer-events: none; color: var(--hud-ink); }
+.tgt-layer .tgt-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.tgt-layer .tgt-svg path, .tgt-layer .tgt-svg rect, .tgt-layer .tgt-svg circle, .tgt-layer .tgt-svg polyline { fill: none; stroke-linecap: butt; stroke-linejoin: miter; }
+.tgt-layer .tgt-o { stroke: var(--hud-target-outline-color); stroke-width: calc(var(--hud-target-stroke) + 2 * var(--hud-target-outline)); }
+.tgt-layer .tgt-s { stroke: currentColor; stroke-width: var(--hud-target-stroke); }
+.tgt-layer .tgt[data-kind="TRACKED"] { color: var(--hud-primary); }
+.tgt-layer .tgt[data-kind="LOCKED"], .tgt-layer .tgt[data-kind="ACQUIRING"], .tgt-layer .tgt[data-kind="FOLLOWING"], .tgt-layer .tgt[data-kind="HOLDING"] { color: var(--hud-track); }
+.tgt-layer .tgt[data-kind="COASTING"], .tgt-layer .tgt[data-kind="SEARCHING"], .tgt-layer .tgt[data-kind="SEARCHING_OFFFRAME"] { color: var(--hud-coast); }
+.tgt-layer .tgt[data-kind="LOST"] { color: var(--hud-crit); animation: tgt-fade 900ms linear forwards; }
+.tgt-layer .tgt[data-kind="LOST"][data-reduced-motion] { animation: none; }
+.tgt-layer .tgt[data-kind="GT"] { color: var(--hud-gt); }
+/* Hairline (candidate, ground truth): 1 px with a 1 px outline. */
+.tgt-layer .tgt-hairline .tgt-o { stroke-width: calc(1px + 2 * var(--hud-target-outline)); }
+.tgt-layer .tgt-hairline .tgt-s { stroke-width: 1px; }
+.tgt-layer .tgt[data-kind="CANDIDATE"] .tgt-hairline { opacity: .7; }
+.tgt-layer .tgt[data-kind="GT"] .tgt-hairline path, .tgt-layer .tgt[data-kind="GT"] .tgt-hairline rect { stroke-dasharray: 1.5 3; stroke-linecap: round; }
+.tgt-layer .tgt[data-kind="GT"] .tgt-hairline .tgt-s { stroke-width: 1.5px; }
+.tgt-layer .tgt[data-kind="COASTING"] .tgt-brackets path { stroke-dasharray: 4 3; }
+.tgt-layer .tgt[data-uncertain] .tgt-brackets { opacity: .55; }
+/* Re-acquired: the new track's brackets settle from 1.15× to 1×. */
+.tgt-layer .tgt-snap { transform-box: fill-box; transform-origin: center; animation: tgt-snap 320ms ease-out both; }
+/* Centre reticle: 2 px ink, 1 px outline. Feet tick: outlined track stroke. */
+.tgt-layer .tgt-reticle { color: var(--hud-ink); }
+.tgt-layer .tgt-reticle .tgt-o { stroke-width: calc(2px + 2 * var(--hud-target-outline)); }
+.tgt-layer .tgt-reticle .tgt-s { stroke-width: 2px; }
+/* Search ring: 1.5 px outlined, 90° sweep at 1.2 s; dashed and still under
+   reduced motion. */
+.tgt-layer .tgt-ring .tgt-o { stroke-width: calc(1.5px + 2 * var(--hud-target-outline)); }
+.tgt-layer .tgt-ring .tgt-s { stroke-width: 1.5px; }
+.tgt-layer .tgt-ring[data-static] circle { stroke-dasharray: 4 3; }
+.tgt-layer .tgt-sweep { transform-box: view-box; animation: tgt-sweep 1.2s linear infinite; }
+.tgt-layer .tgt-sweep .tgt-s { stroke-width: var(--hud-target-stroke); }
+.tgt-layer .tgt-svg .tgt-arrow { fill: currentColor; stroke: var(--hud-target-outline-color); stroke-width: calc(2 * var(--hud-target-outline)); paint-order: stroke; }
+/* Ghost path: 1.5 px dotted at 60 %; dropped in minimal density and low power. */
+.tgt-layer .tgt-svg .tgt-ghost { stroke: currentColor; stroke-width: 1.5px; stroke-dasharray: 1.5 3; stroke-linecap: round; opacity: .6; }
+/* Keyboard focus ring: 2 px dashed ink, 3 px outside the box. */
+.tgt-layer .tgt-focus { stroke: var(--hud-ink); stroke-width: 2px; stroke-dasharray: 4 3; }
+/* Tags: mono plates on glass; filled TRACK and HOLD plates use black text.
+   Tag copy arrives in its canonical case (state and class words uppercase,
+   units `m` / `s` lowercase), so no text-transform is applied here. */
+.tgt-layer .tgt-tag {
+  position: absolute; box-sizing: border-box; display: inline-flex; align-items: center; white-space: nowrap;
+  padding: calc(var(--hud-target-tag-pad) / 2) var(--hud-target-tag-pad); border-radius: var(--radius-sm, 4px);
+  font-family: var(--hud-target-tag-font); font-weight: var(--hud-target-tag-weight); text-transform: none;
+  letter-spacing: var(--hud-target-tag-tracking); font-size: var(--tgt-font, 11px); line-height: 1; font-variant-numeric: tabular-nums;
+  background: var(--hud-glass); color: var(--hud-ink);
+  -webkit-backdrop-filter: blur(var(--hud-blur)); backdrop-filter: blur(var(--hud-blur));
+}
+.tgt-layer .tgt-tag[data-tone="primary"] { color: var(--hud-primary); }
+.tgt-layer .tgt-tag[data-tone="track"] { color: var(--hud-track); }
+.tgt-layer .tgt-tag[data-tone="coast"] { color: var(--hud-coast); }
+.tgt-layer .tgt-tag[data-tone="crit"] { color: var(--hud-crit); }
+.tgt-layer .tgt-tag[data-tone="warn"] { color: var(--hud-warn); }
+.tgt-layer .tgt-tag[data-tone="muted"] { color: var(--hud-muted); }
+.tgt-layer .tgt-tag[data-tone="gt"] { color: var(--hud-gt); }
+.tgt-layer .tgt-tag[data-tone="trackFilled"] { background: var(--hud-track); color: var(--color-media); }
+.tgt-layer .tgt-tag[data-tone="warnFilled"] { background: color-mix(in oklch, var(--hud-warn) 85%, transparent); color: var(--color-media); }
+html[data-power="low"] .tgt-layer .tgt-tag,
+.ados-cockpit[data-density="minimal"] .tgt-layer .tgt-tag { -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-power="low"] .tgt-layer .tgt-tag:not([data-tone$="Filled"]),
+.ados-cockpit[data-density="minimal"] .tgt-layer .tgt-tag:not([data-tone$="Filled"]) { background: var(--hud-glass-strong); }
+html[data-power="low"] .tgt-layer .tgt-ghost,
+.ados-cockpit[data-density="minimal"] .tgt-layer .tgt-ghost { display: none; }
+/* Hit areas: transparent buttons, at least 44 px square. */
+.tgt-layer .tgt-hit { position: absolute; pointer-events: auto; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.tgt-layer .tgt-hit:focus-visible { outline: none; }
+/* Drag-to-designate selection: 1 px dashed ink with a 12 % ink fill. */
+.tgt-layer .tgt-select { position: absolute; border: 1px dashed var(--hud-ink); background: color-mix(in oklch, var(--hud-ink) 12%, transparent); }
+@keyframes tgt-fade { from { opacity: 1; } to { opacity: 0; } }
+@keyframes tgt-snap { from { transform: scale(1.15); } to { transform: scale(1); } }
+@keyframes tgt-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .tgt-layer .tgt[data-kind="LOST"], .tgt-layer .tgt-snap, .tgt-layer .tgt-sweep { animation: none; }
+}
+/* ══ end HUD target layer ══ */
 
 /* MCP activity watch — the "watch it work" cues. GPU-composited (box-shadow +
    opacity + background) so there is no layout shift; both inherit the global
@@ -869,12 +944,12 @@ html[data-power="low"] .ados-cockpit,
 .ados-cockpit .lead::before { left: 7px; top: 0; width: 2px; height: 16px; }
 .ados-cockpit .lead::after { top: 7px; left: 0; height: 2px; width: 16px; }
 
-/* "what's locked" chip */
-.ados-cockpit .lockchip { position: relative; z-index: 19; display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 10px; border-radius: 10px; background: var(--hud-glass-strong); border: 1px solid color-mix(in oklch, var(--hud-lock) 50%, transparent); -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop); }
-.ados-cockpit .lockchip .ic { width: 24px; height: 24px; border-radius: 6px; background: color-mix(in oklch, var(--hud-lock) 16%, transparent); display: grid; place-items: center; color: var(--hud-lock); }
+/* "what's locked" chip: border, icon and state word in the track colour. */
+.ados-cockpit .lockchip { position: relative; z-index: 19; display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 10px; border-radius: 10px; background: var(--hud-glass-strong); border: 1px solid color-mix(in oklch, var(--hud-track) 50%, transparent); -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop); }
+.ados-cockpit .lockchip .ic { width: 24px; height: 24px; border-radius: 6px; background: color-mix(in oklch, var(--hud-track) 16%, transparent); display: grid; place-items: center; color: var(--hud-track); }
 .ados-cockpit .lockchip .who { font-family: var(--mono); }
 .ados-cockpit .lockchip .who b { font-size: 12px; color: var(--hud-ink); letter-spacing: .02em; }
-.ados-cockpit .lockchip .who span { display: block; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-lock); margin-top: 1px; }
+.ados-cockpit .lockchip .who span { display: block; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-track); margin-top: 1px; }
 .ados-cockpit .lockchip .rng { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--hud-ink); padding-left: 10px; border-left: 1px solid var(--hud-hair); }
 .ados-cockpit .lockchip .rng small { display: block; font-size: 8.5px; letter-spacing: .1em; color: var(--hud-muted); text-transform: uppercase; }
 
@@ -893,16 +968,48 @@ html[data-power="low"] .ados-cockpit,
 .ados-cockpit .perchip.warn .reason { color: var(--hud-warn); }
 .ados-cockpit .perchip.crit .reason { color: var(--hud-crit); }
 
-/* minimap */
-.ados-cockpit .mmap { width: 210px; height: 145px; overflow: hidden; position: relative; }
+/* minimap + local frame + proximity radar.
+   Inset: clamp(0.26w, 160, 280) x 10/16 of the cockpit width; tv class
+   clamp(0.26w, 200, 360). Compact (< 600 px) collapses to a chip. */
+.ados-cockpit .mmap { width: clamp(160px, 26cqi, 280px); aspect-ratio: 16 / 10; overflow: hidden; position: relative; }
+.ados-cockpit[data-width-class="tv"] .mmap { width: clamp(200px, 26cqi, 360px); }
 .ados-cockpit .mmap .cap { position: absolute; top: 6px; left: 8px; z-index: 2; }
+.ados-cockpit .mmap .seg button { padding: 3px 6px; font-size: 9px; }
 /* Compact minimap toggle, shown in place of the map on narrow cockpits. */
 .ados-cockpit .mmap-chip { display: none; }
+/* Follow target on the tile minimap: outlined diamond + 1 s velocity tick,
+   dashed in the coast colour while coasting or searching. */
+.ados-cockpit .mmap .mmap-tgt path { fill: none; }
+.ados-cockpit .mmap .mmap-tgt .halo { stroke: var(--hud-glass-strong); stroke-width: 3.5; }
+.ados-cockpit .mmap .mmap-tgt .mark { stroke: var(--hud-track); stroke-width: 1.5; }
+.ados-cockpit .mmap .mmap-tgt.coast .mark { stroke: var(--hud-coast); stroke-dasharray: 3 2; }
+.ados-cockpit .mmap .mmap-tgt-tick { stroke: var(--hud-track); }
+.ados-cockpit .mmap .mmap-tgt-tick.coast { stroke: var(--hud-coast); }
 
-/* proximity radar */
-.ados-cockpit .radar { width: 120px; height: 120px; position: relative; }
-.ados-cockpit .radar svg { width: 100%; height: 100%; }
-.ados-cockpit .radar .rlabel { position: absolute; bottom: 6px; left: 0; right: 0; text-align: center; }
+/* local-frame map (cockpit minimap local mode and the node-detail Map tab);
+   not cockpit-scoped, so it carries its own type rules. */
+.lfmap { overflow: hidden; touch-action: none; }
+.lfmap .lfmap-canvas { position: absolute; inset: 0; display: block; cursor: grab; }
+.lfmap .lfmap-canvas:active { cursor: grabbing; }
+.lfmap .lfmap-head { position: absolute; top: 5px; left: 7px; right: 5px; display: flex; align-items: center; gap: 6px; pointer-events: none; }
+.lfmap .lfmap-head > * { pointer-events: auto; }
+.lfmap .lfmap-title, .lfmap .lfmap-fcpos, .lfmap .lfmap-scale { font-family: var(--mono, ui-monospace, monospace); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-muted); }
+.lfmap .lfmap-title { color: var(--hud-ink-2); }
+.lfmap .lfmap-fcpos { color: var(--hud-warn); border: 1px solid color-mix(in oklch, var(--hud-warn) 50%, transparent); border-radius: 4px; padding: 0 4px; }
+.lfmap .lfmap-spacer { flex: 1; pointer-events: none; }
+.lfmap .lfmap-zoom { position: absolute; right: 5px; bottom: 5px; display: flex; flex-direction: column; gap: 2px; }
+.lfmap .lfmap-zoom button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--hud-hair); background: var(--hud-glass); color: var(--hud-ink-2); cursor: pointer; }
+.lfmap .lfmap-zoom button:hover { color: var(--hud-ink); }
+.lfmap .lfmap-zoom button:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 1px; }
+.lfmap .lfmap-scale { position: absolute; left: 7px; bottom: 6px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.lfmap .lfmap-scale .bar { display: block; height: 4px; border: 1px solid var(--hud-ink-2); border-top: 0; }
+
+/* proximity radar: the dial size follows the width class (88/100/140/176). */
+.ados-cockpit .radar { position: relative; display: flex; flex-direction: column; align-items: center; padding: 4px 0 5px; cursor: pointer; }
+.ados-cockpit .radar:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
+.ados-cockpit .radar[data-stale="true"] svg { opacity: .5; }
+.ados-cockpit .radar .rhead, .ados-cockpit .radar .rscale { font-size: 8.5px; letter-spacing: .1em; }
+.ados-cockpit .radar .rlabel { text-align: center; font-variant-numeric: tabular-nums; }
 
 /* telemetry strip */
 .ados-cockpit .telem { padding: 10px 12px; display: grid; grid-template-columns: auto auto; gap: 6px 20px; }
@@ -992,9 +1099,10 @@ html[data-power="low"] .ados-cockpit,
 @keyframes strm-shimmer { 0%, 100% { opacity: .25; } 50% { opacity: .7; } }
 
 /* picture-in-picture inset: a second stream over the main video, draggable.
-   Its default anchor sits inside the bottom-right zone, stacked above the
-   proximity radar (zone bottom 92px + radar 120px + 12px gap). */
-.ados-cockpit .pipinset { position: absolute; right: 18px; bottom: 224px; z-index: 25; width: 208px; padding: 0; overflow: hidden; }
+   Default corner: bottom-left, above the camera roster (zone bottom 92px +
+   roster + 12px gap), clear of the radar and the right rail. A drag stores an
+   explicit left/top instead. */
+.ados-cockpit .pipinset { position: absolute; left: 18px; bottom: 224px; z-index: 25; width: 208px; padding: 0; overflow: hidden; }
 .ados-cockpit .pipinset .piphead { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 5px 4px 9px; cursor: move; touch-action: none; background: var(--hud-glass-strong); border-bottom: 1px solid var(--hud-hair); }
 .ados-cockpit .pipinset .piphead .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--hud-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ados-cockpit .pipinset .pipclose { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; border: 0; background: transparent; color: var(--hud-muted); cursor: pointer; flex: none; }
@@ -1011,7 +1119,6 @@ html[data-power="low"] .ados-cockpit,
 .ados-cockpit[data-density="standard"] .d-full { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ados-cockpit .det.lock { animation: none; }
   .ados-cockpit .cockpit-alert { animation: none; }
   .ados-cockpit .strmtab,
   .ados-cockpit .strmtab.switching::after { animation: none; }
@@ -1029,11 +1136,11 @@ html[data-power="low"] .ados-cockpit,
 }
 /* Cockpit-width layout: the cockpit can be narrower than the viewport (side
    panels, split view), so these follow the cockpit's own inline size. */
-@container cockpit (max-width: 1024px) {
+@container cockpit (max-width: 599px) {
   .ados-cockpit .mmap { display: none; }
   .ados-cockpit .mmap-chip { display: inline-flex; }
-  /* The chip toggles the map back in as an overlay. */
-  .ados-cockpit .zone.tl[data-expanded="true"] .mmap { display: block; margin-top: 8px; }
+  /* The chip opens the map as a sheet at 90 % of the cockpit width. */
+  .ados-cockpit .zone.tl[data-expanded="true"] .mmap { display: block; margin-top: 8px; width: 90cqi; }
 }
 @container cockpit (max-width: 720px) {
   .ados-cockpit .tape, .ados-cockpit .hud-vsi { display: none; }
@@ -1083,3 +1190,122 @@ html[data-power="low"] .ados-cockpit,
   font-size: 9px;
 }
 .cesium-viewer .cesium-widget-credits:hover { opacity: 1; }
+
+/* ══ Following-mode chrome: range panel, right rail, re-acquire toggle,
+   follow skill popover, nav-source chip + popover ══
+   Rail button size per width class (48 / 48 / 56 / 64 px). While the rail is
+   on screen the right-anchored zones and instruments step left by its width,
+   so it never sits over the radar, the alt tape or a right-zone widget. */
+.ados-cockpit { --rail-btn: 56px; --rail-w: calc(var(--rail-btn) + 22px); }
+.ados-cockpit[data-width-class="compact"],
+.ados-cockpit[data-width-class="medium"] { --rail-btn: 48px; }
+.ados-cockpit[data-width-class="tv"] { --rail-btn: 64px; }
+.ados-cockpit:has(> .frail) .cockpit-zone.tr,
+.ados-cockpit:has(> .frail) .cockpit-zone.mr,
+.ados-cockpit:has(> .frail) .cockpit-zone.br { right: calc(18px + var(--rail-w)); }
+.ados-cockpit:has(> .frail) .tape.r { right: calc(30px + var(--rail-w)); }
+.ados-cockpit:has(> .frail) .hud-vsi { right: calc(114px + var(--rail-w)); }
+.ados-cockpit:has(> .frail) .hud-readouts .ro.alt,
+.ados-cockpit:has(> .frail) .hud-readouts .ro.vs { right: calc(12px + var(--rail-w)); }
+
+/* range panel (instrument layer, read-only) */
+.ados-cockpit .frp {
+  position: absolute; left: 50%; bottom: calc(var(--skillbar-clear, 112px) + 12px); transform: translateX(-50%);
+  z-index: 15; pointer-events: none; display: flex; flex-direction: column; gap: 5px; width: 280px; padding: 8px 12px;
+  background: var(--hud-glass-strong); border: 1px solid var(--hud-hair); border-radius: 8px;
+  -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop);
+  font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums; color: var(--hud-ink-2);
+}
+.ados-cockpit .frp[data-width-class="compact"] { width: auto; max-width: calc(100% - 24px); padding: 6px 10px; }
+.ados-cockpit .frp[data-width-class="expanded"] { width: 320px; }
+.ados-cockpit .frp[data-width-class="tv"] { width: 400px; font-size: 13px; }
+.ados-cockpit .frp[data-stale="true"] { opacity: .5; }
+.ados-cockpit .frp-row, .ados-cockpit .frp-line { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ados-cockpit .frp-head { align-items: baseline; }
+.ados-cockpit .frp-range { font-size: 28px; font-weight: 600; line-height: 1; color: var(--hud-ink); }
+.ados-cockpit .frp[data-width-class="tv"] .frp-range { font-size: 34px; }
+.ados-cockpit .frp[data-width-class="compact"] .frp-range { font-size: 20px; }
+.ados-cockpit .frp-phase { margin-left: auto; padding-left: 8px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.ados-cockpit .frp-sep { color: var(--hud-muted); }
+.ados-cockpit .frp-track { position: relative; flex: none; width: 160px; height: 6px; border-radius: 3px; background: var(--hud-hair); }
+.ados-cockpit .frp-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: color-mix(in oklch, var(--hud-track) 55%, transparent); }
+.ados-cockpit .frp-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--hud-ink); }
+.ados-cockpit .frp-cue { padding: 1px 5px; border: 1px solid var(--hud-hair); border-radius: 4px; font-size: 9.5px; letter-spacing: .1em; }
+.ados-cockpit .frp-cue[data-lit="true"] { color: var(--hud-ink); background: var(--hud-glass); }
+.ados-cockpit .frp-cue[data-lit="false"] { color: var(--hud-muted); text-decoration: line-through; }
+
+/* right rail (widget layer) */
+.ados-cockpit .frail {
+  position: absolute; right: 12px; z-index: 20; pointer-events: auto;
+  top: calc(40px + (100% - 40px - var(--skillbar-clear, 112px)) / 2); transform: translateY(-50%);
+  max-height: calc(100% - 56px - var(--skillbar-clear, 112px)); overflow-y: auto; scrollbar-width: none;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px;
+  background: var(--hud-glass); border: 1px solid var(--hud-hair); border-radius: 12px;
+  -webkit-backdrop-filter: var(--cockpit-backdrop); backdrop-filter: var(--cockpit-backdrop);
+}
+.ados-cockpit .frail-btn {
+  flex: none; width: var(--rail-btn); height: var(--rail-btn); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border: 1px solid var(--hud-hair); border-radius: 8px; background: color-mix(in oklch, var(--hud-ink) 3%, transparent);
+  color: var(--hud-ink-2); cursor: pointer; transition: border-color .2s ease-out, color .2s ease-out;
+}
+.ados-cockpit .frail-btn:hover { border-color: var(--hud-primary); color: var(--hud-ink); }
+.ados-cockpit .frail-btn:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
+.ados-cockpit .frail-btn[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }
+.ados-cockpit .frail-btn.tone-track { border-color: var(--hud-track); color: var(--hud-track); }
+.ados-cockpit .frail-btn.tone-crit { color: var(--hud-crit); }
+.ados-cockpit .frail-word {
+  max-width: calc(var(--rail-btn) - 4px); font-family: var(--mono); font-size: 9px; line-height: 1.05; letter-spacing: .06em;
+  text-align: center; text-transform: uppercase; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.ados-cockpit .frail-div { width: 70%; margin: 2px 0; border: 0; border-top: 1px solid var(--hud-hair-2); }
+.ados-cockpit .frail-fold { display: flex; flex-direction: column; gap: 6px; }
+
+/* STRICT | SMART (rail and follow skill popover). Pending = 1 px dashed outline. */
+.ados-cockpit .reacq { display: inline-flex; gap: 2px; padding: 3px; background: var(--hud-glass); border: 1px solid var(--hud-hair); border-radius: 8px; }
+.ados-cockpit .reacq-v { flex-direction: column; width: var(--rail-btn); }
+.ados-cockpit .reacq button {
+  padding: 5px 6px; border: 0; border-radius: 6px; background: transparent; cursor: pointer;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--hud-muted);
+}
+.ados-cockpit .reacq button[aria-pressed="true"] { color: var(--cockpit-on-hud); background: var(--hud-primary); }
+.ados-cockpit .reacq button[data-pending="true"] { outline: 1px dashed var(--hud-primary); outline-offset: 1px; }
+.ados-cockpit .reacq button:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
+
+/* follow skill caret + popover on the Skill Bar */
+.ados-cockpit .skill-wrap { position: relative; flex: none; }
+.ados-cockpit .fskill-caret {
+  position: absolute; top: -9px; left: 50%; transform: translateX(-50%); z-index: 1; width: 20px; height: 14px;
+  display: grid; place-items: center; border: 1px solid var(--hud-hair); border-radius: 5px;
+  background: var(--hud-glass-strong); color: var(--hud-ink-2); cursor: pointer;
+}
+.ados-cockpit .fskill-caret:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
+.ados-cockpit .fskill-pop {
+  position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); z-index: 50; width: 240px;
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; font-family: var(--mono); font-size: 11px; white-space: normal;
+}
+.ados-cockpit .fskill-row { display: flex; align-items: baseline; justify-content: space-between; }
+.ados-cockpit .fskill-k, .ados-cockpit .navpop-k { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-muted); }
+.ados-cockpit .fskill-phase { font-weight: 600; letter-spacing: .12em; }
+.ados-cockpit .fskill-hint { font-size: 10px; line-height: 1.35; color: var(--hud-ink-2); }
+
+/* nav-source chip (safety band item 6) + its popover (modal layer) */
+.ados-cockpit .navchip-btn { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; pointer-events: auto; }
+.ados-cockpit .navchip-btn:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 3px; border-radius: 3px; }
+.ados-cockpit .navchip-q { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .12em; }
+.ados-cockpit .navpop {
+  position: absolute; z-index: 50; pointer-events: auto; user-select: text;
+  display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; font-family: var(--mono); font-size: 11px;
+}
+.ados-cockpit .navpop-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--hud-ink-2); }
+.ados-cockpit .navpop-x { border: 0; background: none; color: var(--hud-muted); cursor: pointer; }
+.ados-cockpit .navpop-sets { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.ados-cockpit .navpop-sets th, .ados-cockpit .navpop-sets td { padding: 3px 4px; text-align: left; font-weight: 400; }
+.ados-cockpit .navpop-sets thead th { font-size: 9px; letter-spacing: .12em; color: var(--hud-muted); }
+.ados-cockpit .navpop-sets tr[data-active="true"] { background: color-mix(in oklch, var(--hud-good) 10%, transparent); }
+.ados-cockpit .navpop-active { font-size: 9.5px; font-weight: 600; letter-spacing: .12em; color: var(--hud-good); }
+.ados-cockpit .navpop-use { padding: 2px 6px; border: 1px solid var(--hud-hair); border-radius: 5px; background: transparent; color: var(--hud-ink-2); font: inherit; font-size: 9.5px; white-space: nowrap; cursor: pointer; }
+.ados-cockpit .navpop-use[aria-pressed="true"] { border-color: var(--hud-primary); color: var(--hud-primary); }
+.ados-cockpit .navpop-readouts { display: flex; flex-direction: column; gap: 3px; color: var(--hud-ink); }
+.ados-cockpit .navpop-readouts > div { display: flex; gap: 8px; }
+.ados-cockpit .navpop-note { font-size: 10px; line-height: 1.35; color: var(--hud-warn); }
+/* ══ end following-mode chrome ══ */

@@ -6,19 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import type { SelectOptionGroup } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useSettingsStore, type ThemeMode, type AccentColor } from "@/stores/settings-store";
-
-const ACCENT_COLORS = [
-  { nameKey: "blue", value: "blue", swatchClass: "bg-[#3a82ff]" },
-  { nameKey: "green", value: "green", swatchClass: "bg-[#22c55e]" },
-  { nameKey: "amber", value: "amber", swatchClass: "bg-[#f59e0b]" },
-  { nameKey: "red", value: "red", swatchClass: "bg-[#ef4444]" },
-  { nameKey: "lime", value: "lime", swatchClass: "bg-[#84cc16]" },
-  { nameKey: "purple", value: "purple", swatchClass: "bg-[#a855f7]" },
-  { nameKey: "pink", value: "pink", swatchClass: "bg-[#ec4899]" },
-  { nameKey: "cyan", value: "cyan", swatchClass: "bg-[#06b6d4]" },
-  { nameKey: "orange", value: "orange", swatchClass: "bg-[#f97316]" },
-] as const;
+import { useSettingsStore, type ThemeMode } from "@/stores/settings-store";
+import { ACCENT_COLORS } from "@/components/onboarding/constants";
 
 export function ThemeSection(): React.ReactNode {
   const t = useTranslations("settings.theme");
@@ -100,22 +89,24 @@ export function ThemeSection(): React.ReactNode {
             <button
               key={color.value}
               type="button"
-              onClick={() => setAccentColor(color.value as AccentColor)}
+              onClick={() => setAccentColor(color.value)}
               className={cn(
                 "w-8 h-8 border-2 transition-all cursor-pointer",
-                color.swatchClass,
                 accentColor === color.value
                   ? "border-text-primary scale-110"
                   : "border-transparent hover:border-border-default",
               )}
-              title={t(color.nameKey)}
+              // The swatch previews the accent itself, so it is the preset
+              // hue, not the current theme's accent token.
+              style={{ backgroundColor: color.hex }}
+              title={t(color.value)}
             />
           ))}
         </div>
         <p className="text-[10px] text-text-tertiary mt-2">
           {t("selected", {
             name: t(
-              ACCENT_COLORS.find((c) => c.value === accentColor)?.nameKey ?? "blue",
+              ACCENT_COLORS.find((c) => c.value === accentColor)?.value ?? "blue",
             ),
           })}
         </p>

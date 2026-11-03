@@ -19,6 +19,7 @@ import { knownRemainingPct } from "@/lib/battery";
 import { useDiagnosticsStore } from "./diagnostics-store";
 import { useGeofenceStore } from "./geofence-store";
 import { useCanMonitorStore } from "./can-monitor-store";
+import { useGpsOriginStore } from "./gps-origin-store";
 import { recordFrameFor } from "@/lib/telemetry-recorder";
 import { notifyArmed } from "@/lib/flight-lifecycle";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
@@ -392,5 +393,12 @@ export function bridgeTelemetry(
       useDiagnosticsStore.getState().logEvent("link_restored", `Link restored: ${droneName}`);
       alerts.linkRestored();
     })] : []),
+
+    // The EKF origin is kept per drone (it is sent rarely, so a drone selected
+    // later still needs it) and dropped with this bridge.
+    ...(protocol.onGpsOrigin ? [
+      protocol.onGpsOrigin((data) => useGpsOriginStore.getState().setOrigin(droneId, data)),
+      () => useGpsOriginStore.getState().clear(droneId),
+    ] : []),
   ];
 }

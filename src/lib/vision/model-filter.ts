@@ -77,6 +77,9 @@ export interface FilteredModel {
   fitReason: ModelFitReason;
   /** The custom-model metadata when this row is custom; null otherwise. */
   customMeta: VisionCustomModel | null;
+  /** True when the registry marks the model for benchmarks and explicit
+   * installs only (its weights carry research-use terms); never a default. */
+  benchmarkOnly: boolean;
 }
 
 /** Pull a `min_tops` number out of a registry variant's opaque descriptor. */
@@ -253,6 +256,7 @@ export function filterModelsForBoard(
       fits: reason === null,
       fitReason: reason,
       customMeta: customById.get(m.id) ?? null,
+      benchmarkOnly: m.benchmarkOnly === true,
     });
   }
 
@@ -272,6 +276,7 @@ export function filterModelsForBoard(
       fits: true,
       fitReason: null,
       customMeta: null,
+      benchmarkOnly: false,
     });
   }
 
@@ -292,6 +297,7 @@ export function filterModelsForBoard(
       fits: reason === null,
       fitReason: reason,
       customMeta: m,
+      benchmarkOnly: false,
     });
   }
 

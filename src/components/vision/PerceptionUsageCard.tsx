@@ -12,7 +12,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Activity, Cpu } from "lucide-react";
+import { Activity, AlertTriangle, Cpu } from "lucide-react";
 
 import {
   ResourceBar,
@@ -42,6 +42,14 @@ export function PerceptionUsageCard() {
   }, [connected, fetchResources]);
 
   const npuUtil = status.known ? status.npuUtilizationPct : null;
+  // A detector backend that is not running a real model is said so, never
+  // shown as a working detector.
+  const backendNotice =
+    status.known && status.backendState === "unavailable"
+      ? tv("backendUnavailable", { reason: status.backendReason ?? tv("backendReasonUnknown") })
+      : status.known && status.backendState === "mock"
+        ? tv("backendMock")
+        : null;
 
   return (
     <section className="rounded border border-border-default bg-bg-secondary p-3 space-y-3">
@@ -49,6 +57,15 @@ export function PerceptionUsageCard() {
         <Cpu size={13} aria-hidden="true" />
         {tv("usageTitle")}
       </h3>
+      {backendNotice && (
+        <div
+          role="status"
+          className="flex items-start gap-1.5 rounded border border-status-warning/40 px-2 py-1.5 text-[11px] text-status-warning"
+        >
+          <AlertTriangle size={12} className="mt-px flex-shrink-0" aria-hidden="true" />
+          <span>{backendNotice}</span>
+        </div>
+      )}
 
       {resources ? (
         <SystemResourceGauges resources={resources} />

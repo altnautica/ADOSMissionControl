@@ -5,7 +5,7 @@
  */
 
 import type { CommandResult } from '../core';
-import type { AttitudeCallback, PositionCallback, BatteryCallback, GpsCallback, VfrCallback, RcCallback, StatusTextCallback, EventCallback, HeartbeatCallback, ParameterCallback, SerialDataCallback, SysStatusCallback, RadioCallback, MissionProgressCallback, EkfCallback, VibrationCallback, ServoOutputCallback, WindCallback, TerrainCallback, MagCalProgressCallback, MagCalReportCallback, AccelCalPosCallback, HomePositionCallback, AutopilotVersionCallback, PowerStatusCallback, DistanceSensorCallback, FenceStatusCallback, NavControllerCallback, ScaledImuCallback, ScaledPressureCallback, EstimatorStatusCallback, CameraTriggerCallback, LinkStateCallback, LocalPositionCallback, DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback, AdsbVehicleCallback, CameraImageCapturedCallback, ExtendedSysStateCallback, FencePointCallback, SystemTimeCallback, RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback, MissionItemCallback, AltitudeCallback, WindCovCallback, AisVesselCallback, GimbalManagerInfoCallback, GimbalManagerStatusCallback, CanFrameCallback, CanFdFrameCallback, OpticalFlowCallback, OpticalFlowRadCallback, OdometryCallback, VisionPositionEstimateCallback, VisionPositionDeltaCallback } from '../callbacks';
+import type { AttitudeCallback, PositionCallback, BatteryCallback, GpsCallback, VfrCallback, RcCallback, StatusTextCallback, EventCallback, HeartbeatCallback, ParameterCallback, SerialDataCallback, SysStatusCallback, RadioCallback, MissionProgressCallback, EkfCallback, VibrationCallback, ServoOutputCallback, WindCallback, TerrainCallback, MagCalProgressCallback, MagCalReportCallback, AccelCalPosCallback, HomePositionCallback, GpsOriginCallback, AutopilotVersionCallback, PowerStatusCallback, DistanceSensorCallback, FenceStatusCallback, NavControllerCallback, ScaledImuCallback, ScaledPressureCallback, EstimatorStatusCallback, CameraTriggerCallback, LinkStateCallback, LocalPositionCallback, DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback, AdsbVehicleCallback, CameraImageCapturedCallback, ExtendedSysStateCallback, FencePointCallback, SystemTimeCallback, RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback, MissionItemCallback, AltitudeCallback, WindCovCallback, AisVesselCallback, GimbalManagerInfoCallback, GimbalManagerStatusCallback, CanFrameCallback, CanFdFrameCallback, OpticalFlowCallback, OpticalFlowRadCallback, OdometryCallback, VisionPositionEstimateCallback, VisionPositionDeltaCallback } from '../callbacks';
 
 /** Telemetry subscription members of {@link DroneProtocol}. */
 export interface DroneProtocolSubscriptions {
@@ -37,6 +37,8 @@ export interface DroneProtocolSubscriptions {
   onMagCalReport?(callback: MagCalReportCallback): () => void;
   onAccelCalPos?(callback: AccelCalPosCallback): () => void;
   onHomePosition?(callback: HomePositionCallback): () => void;
+  /** GPS_GLOBAL_ORIGIN: the EKF origin, sent when it is set and on request. */
+  onGpsOrigin?(callback: GpsOriginCallback): () => void;
   onAutopilotVersion?(callback: AutopilotVersionCallback): () => void;
   onPowerStatus?(callback: PowerStatusCallback): () => void;
   onDistanceSensor?(callback: DistanceSensorCallback): () => void;

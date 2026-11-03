@@ -7,14 +7,14 @@
 
 import type {
   EkfCallback, VibrationCallback, ServoOutputCallback,
-  WindCallback, TerrainCallback, HomePositionCallback,
+  WindCallback, TerrainCallback, HomePositionCallback, GpsOriginCallback,
   DistanceSensorCallback, FenceStatusCallback, NavControllerCallback,
   FencePointCallback, MissionProgressCallback,
   WindCovCallback, MissionItemCallback, AdsbVehicleCallback,
 } from '../types'
 import {
   decodeEkfStatusReport, decodeVibration, decodeServoOutputRaw,
-  decodeWind, decodeTerrainReport, decodeHomePosition,
+  decodeWind, decodeTerrainReport, decodeHomePosition, decodeGpsGlobalOrigin,
   decodeDistanceSensor, decodeFenceStatus, decodeNavControllerOutput,
   decodeFencePoint, decodeMissionCurrent, decodeMissionItemReached,
   decodeWindCov, decodeMissionItem, decodeAdsbVehicle,
@@ -103,6 +103,19 @@ export function handleHomePosition(payload: DataView, callbacks: HomePositionCal
     })
   }
   return alt
+}
+
+/** Dispatch GPS_GLOBAL_ORIGIN (the EKF origin) in degrees and metres AMSL. */
+export function handleGpsGlobalOrigin(payload: DataView, callbacks: GpsOriginCallback[]): void {
+  const data = decodeGpsGlobalOrigin(payload)
+  for (const cb of callbacks) {
+    cb({
+      timestamp: Date.now(),
+      lat: data.lat / 1e7,
+      lon: data.lon / 1e7,
+      alt: data.alt / 1000,
+    })
+  }
 }
 
 export function handleDistanceSensor(payload: DataView, callbacks: DistanceSensorCallback[]): void {

@@ -30,6 +30,12 @@ import type {
   SigningCounters,
 } from "@/lib/agent/agent-client/types";
 import { formatLogTime } from "../shared/LogViewer";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
+import {
+  AgentArmedRefusal,
+  armedRefusalReason,
+  type ArmedOverrideOptions,
+} from "@/lib/agent/agent-client/transport";
 import { ConfigIntField, ConfigReadonlyRow } from "./ConfigFields";
 import { readConfigPath } from "./use-node-config";
 import { useNodeDirectAgent } from "./use-node-direct-agent";
@@ -47,7 +53,7 @@ interface SectionProps {
   profile: NodeProfile;
   config: Record<string, unknown> | null;
   readOnly: boolean;
-  setValue: (key: string, value: string) => Promise<void>;
+  setValue: (key: string, value: string, opts?: ArmedOverrideOptions) => Promise<void>;
 }
 
 /** One configured MAVLink endpoint, as the agent's config carries it. Reads
@@ -124,6 +130,24 @@ export function MavlinkRoutingSection({
 }: SectionProps) {
   const t = useTranslations("nodeSettings.mavlinkRouting");
   const client = useNodeDirectAgent(nodeDeviceId)?.client ?? null;
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
+
+  // The router identity keys are refused while armed. Ask once and resend the
+  // same write with the override; a declined prompt writes nothing and the
+  // field reports the agent's reason.
+  const armedSetValue = useCallback(
+    async (key: string, value: string) => {
+      try {
+        await withArmedOverride((force) =>
+          force ? setValue(key, value, { force: true }) : setValue(key, value),
+        );
+      } catch (err) {
+        if (err instanceof AgentArmedRefusal) throw new Error(armedRefusalReason(err));
+        throw err;
+      }
+    },
+    [withArmedOverride, setValue],
+  );
 
   const isDrone = profile === "drone";
 
@@ -233,7 +257,7 @@ export function MavlinkRoutingSection({
           max={255}
           config={config}
           readOnly={readOnly}
-          setValue={setValue}
+          setValue={armedSetValue}
         />
         <ConfigIntField
           configKey="mavlink.component_id"
@@ -243,7 +267,7 @@ export function MavlinkRoutingSection({
           max={255}
           config={config}
           readOnly={readOnly}
-          setValue={setValue}
+          setValue={armedSetValue}
         />
       </div>
 
@@ -331,6 +355,7 @@ export function MavlinkRoutingSection({
         </div>
       ) : null}
 
+      {armedOverrideDialog}
     </Section>
   );
 }

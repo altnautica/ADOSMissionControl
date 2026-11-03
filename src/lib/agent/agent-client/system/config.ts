@@ -30,17 +30,20 @@ export function getConfig(ctx: RequestContext): Promise<Record<string, unknown>>
  * value to the underlying field type, so the caller hands in a plain string.
  * Returns the agent's answer, including its refusal bodies (the 500 persist
  * failure, the 422 `E_INVALID` / `E_VALIDATION`), so `configWriteFailure`
- * names the node's own reason.
+ * names the node's own reason. A flight-affecting key (the `mavlink.*`
+ * transport and identity) is refused with `AgentArmedRefusal` while armed
+ * unless `opts.force` is set.
  */
 export async function setConfigValue(
   ctx: RequestContext,
   key: string,
   value: string,
+  opts?: ArmedOverrideOptions,
 ): Promise<ConfigWriteResult> {
   try {
     return await agentRequest<ConfigWriteResult>(ctx, "/api/config", {
       method: "PUT",
-      body: JSON.stringify({ key, value }),
+      body: JSON.stringify(opts?.force ? { key, value, force: true } : { key, value }),
     });
   } catch (err) {
     if (err instanceof AgentHttpError) {

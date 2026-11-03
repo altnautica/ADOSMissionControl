@@ -114,6 +114,48 @@ describe("mapReportedState", () => {
     expect(mapReportedState(42)).toEqual({ state: "idle" });
     expect(mapReportedState({ foo: "bar" })).toEqual({ state: "idle" });
   });
+
+  it("maps the follow phase, ahead of the legacy lock fields", () => {
+    expect(mapReportedState({ active: false, phase: "idle" })).toEqual({ state: "idle" });
+    expect(mapReportedState({ active: true, phase: "following" })).toEqual({ state: "active" });
+    expect(mapReportedState({ active: true, phase: "acquiring" })).toEqual({
+      state: "active",
+      badge: "ACQ",
+    });
+    expect(mapReportedState({ active: true, phase: "coasting" })).toEqual({
+      state: "active",
+      badge: "CST",
+    });
+    expect(mapReportedState({ active: true, phase: "searching" })).toEqual({
+      state: "active",
+      badge: "SRCH",
+    });
+    // A phase wins over the older fields that would read as plain active.
+    expect(
+      mapReportedState({ active: true, commanding: true, lock_state: "locked", phase: "coasting" }),
+    ).toEqual({ state: "active", badge: "CST" });
+  });
+
+  it("carries the hold reason and maps lost by the active flag", () => {
+    expect(
+      mapReportedState({ active: true, phase: "holding", hold_reason: "HOLD_NO_RANGE" }),
+    ).toEqual({ state: "active", badge: "HOLD", reason: "NO RANGE" });
+    expect(mapReportedState({ active: true, phase: "holding" })).toEqual({
+      state: "active",
+      badge: "HOLD",
+    });
+    expect(mapReportedState({ active: true, phase: "lost" })).toEqual({
+      state: "active",
+      badge: "!",
+    });
+    expect(mapReportedState({ active: false, phase: "lost" })).toEqual({ state: "idle" });
+  });
+
+  it("falls back to the legacy mapping for an unknown phase", () => {
+    expect(mapReportedState({ active: true, commanding: true, phase: "warp" })).toEqual({
+      state: "active",
+    });
+  });
 });
 
 describe("usePluginSkillEgress", () => {

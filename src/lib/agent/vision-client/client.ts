@@ -38,6 +38,7 @@ import {
   type VisionUploadResult,
 } from "./types";
 import {
+  coerceBackendState,
   coerceCache,
   coerceCustom,
   coerceEngineModels,
@@ -321,6 +322,9 @@ export class VisionAgentClient implements VisionClient {
       // Prefer the engine's own count; fall back to the length of the models
       // it actually returned (a real derived figure, never fabricated).
       modelCount: numOpt(e.model_count) ?? models.length,
+      backend: typeof e.backend === "string" ? e.backend : null,
+      backendState: coerceBackendState(e.backend_state),
+      backendReason: typeof e.backend_reason === "string" ? e.backend_reason : null,
     };
   }
 

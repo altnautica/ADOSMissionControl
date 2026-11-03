@@ -6,8 +6,73 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **HUD v2 target symbology.** One resolver (`lib/vision/target-state.ts`)
+  decides every target state on every video surface: candidate hairline,
+  tracked brackets, locked, acquiring, following (filled `TRACK` tag, range and
+  ±2σ tags, centre reticle, feet tick), holding, coasting (dashed brackets at the
+  prediction, ghost path), searching (ring sweep, or an edge arrow with the
+  bearing when the prediction is off-frame), re-acquired (snap plus toast) and
+  lost (900 ms fade). States carry a word, not only a colour. The PiP and every
+  other video preview draw their own camera's targets; reduced motion and the
+  minimal layer drop animation and blur.
+- **Following chrome.** A range panel (range, ±2σ interval, AGL with its
+  source, depression, bearing, target speed, range cues, pipeline latency), a
+  right rail (follow / stop, STRICT | SMART re-acquire toggle written to the
+  follow-me config, front ⇄ belly swap, record, and mirrors of the hold, RTL and
+  land skills), and the re-acquire toggle on the follow skill.
+- **Nav-source chip.** Replaces the band's GPS item with what the EKF navigates
+  on (`DR`, `EXT NAV`, `GPS 3D·14`, `FLOW`) and a quality word, from
+  EKF_STATUS_REPORT, the GPS fix, the EK3 source-set parameters and the
+  vision-nav state. Its popover decodes source sets 1-3 and switches the active
+  set with hold-to-confirm.
+- **Navigation feed.** `lib/agent/nav-stream.ts` opens the agent's
+  `/api/v1/nav/stream` (ticketed like the detection stream) and polls
+  `/api/v1/map/live` for changed occupancy tiles; the follow, nav, pose, scan
+  and map-status frames land in `nav-stream-store`.
+- **Local-frame minimap and lidar radar.** Without a GNSS position (or when the
+  active source is external nav) the minimap switches to a north/east metre
+  frame with live occupancy tiles, the SLAM trail, scan returns, the follow
+  target and the drone; an `AUTO | LOCAL | MAP` toggle pins it. The proximity
+  radar adds scan dots, 3/6/12 m scales with auto-select, and a `LIDAR` rate
+  header.
+- **Node Map tab.** Mapping status (session, points, area, pose health, compute
+  placement, memory against budget, voxel size, keyframes dropped, upload or
+  stream progress), the live local map and a launcher for the mapping
+  extension's 3D viewer.
+- Demo mode cycles every target state with matching follow, nav, pose, scan,
+  occupancy and map-status data, gives the PiP camera its own boxes, and opens
+  a labelled demo viewer (occupancy and a synthetic point cloud) from the Map
+  tab's "Open 3D viewer".
+- `GPS_GLOBAL_ORIGIN` (49) is decoded and requested on connect, so the
+  minimap's map mode places the follow target from its local position.
+- The Perception hub says when the detector backend is unavailable or a test
+  stand-in instead of showing it as a working detector.
+
 ### Changed
 
+- A designated or followed target is drawn in the tracking colour instead of
+  the green lock colour, and the lock brackets no longer pulse; the what's-locked
+  chip reports the follow phase (following, coasting, searching, holding, lost,
+  re-acquired).
+- `[` and `]` cycle a focus ring over drawn targets and preempt a Skill Bar
+  binding on the same key while targets are drawn; Enter opens the target menu.
+  A drag on empty video designates a box.
+- The Skill Bar follow slot shows the follow phase as a badge (acquiring,
+  coasting, searching, holding with its reason, lost).
+- The demo flight controller reports an external-nav source set with optical
+  flow and GPS fallback sets, and its EKF flags follow the commanded set.
+- The error page, LED panel, 3D motor view, mission route, overview map and
+  theme swatches read design tokens instead of literal colours.
+- The default picture-in-picture corner is bottom-left, clear of the radar and
+  the follow rail; the stream tabs and the top-left widget column sit beside
+  and below the larger minimap.
+- Writes of `mavlink.source`, `serial_port`, `baud_rate`, `system_id` and
+  `component_id` that the agent refuses while armed ask the operator and, on
+  confirm, resend with the force override; the FC-source port and baud are
+  resent with the source as one change.
+- The what's-locked chip words are translated.
 - The stack deployer (`tools/deploy`, 0.1.1) now builds on the shared
   `ados-term` crate for its theme, terminal backend, progress renderers,
   widgets and command runner instead of carrying its own copy.
@@ -23,6 +88,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The perception chip carried a leftover inline offset that pushed it onto the
+  speed tape; it now stacks in its zone.
 - **Setting the operating region could leave a half-written posture.** The
   region panel now sends one setup apply (`regulatory: {mode, region}`), so the
   agent writes both fields together and records the operator acknowledgement.

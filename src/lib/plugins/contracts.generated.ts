@@ -19,6 +19,7 @@ export const CONTRACT_VERSIONS = {
   "ws_ticket": 1,
   "cloud-publish": 1,
   "sensor.v1": 1,
+  "plugin.events": 1,
 } as const;
 
 export const SIDECAR_VERSIONS = {
@@ -210,6 +211,13 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     transport: "unix-stream",
     status: "active",
     description: "The sensor bus (seam J): length-prefixed msgpack frames {v, kind, src, origin, payload} brokered by ados-clock on sensors.sock. clock/imu/gnss/trigger payloads are the capture contract ados.capture.v1 protobuf messages, with every t_ns on the host monotonic clock; baro, mag and sync are msgpack; rtcm is raw RTCM3 bytes toward the receivers.",
+  },
+  "plugin.events": {
+    version: 1,
+    wire: "newline-json",
+    transport: "unix-stream",
+    status: "active",
+    description: "The plugin event-bus export (seam K): a host service opens the plugin host's root-only _events.sock, writes one {v, op: subscribe, topics: [exact topic names]} line, and reads one {v, topic, publisher, ts_ms, payload} line per bus event on those topics. Every event already passed the host's publish check; the publisher id is host-stamped. The native control front reads the navigation, mapping and follow topics through it.",
   },
 };
 

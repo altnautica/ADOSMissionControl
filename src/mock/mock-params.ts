@@ -77,21 +77,21 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "EK3_ENABLE", value: 1, type: 9 },
   { name: "EK3_IMU_MASK", value: 3, type: 9 },
   { name: "EK3_PRIMARY", value: 0, type: 9 },
-  { name: "EK3_SRC1_POSXY", value: 3, type: 9 },
-  { name: "EK3_SRC1_VELXY", value: 3, type: 9 },
+  { name: "EK3_SRC1_POSXY", value: 6, type: 9 },
+  { name: "EK3_SRC1_VELXY", value: 6, type: 9 },
   { name: "EK3_SRC1_POSZ", value: 1, type: 9 },
-  { name: "EK3_SRC1_VELZ", value: 0, type: 9 },
-  { name: "EK3_SRC1_YAW", value: 1, type: 9 },
+  { name: "EK3_SRC1_VELZ", value: 6, type: 9 },
+  { name: "EK3_SRC1_YAW", value: 6, type: 9 },
   { name: "EK3_SRC2_POSXY", value: 0, type: 9 },
-  { name: "EK3_SRC2_VELXY", value: 0, type: 9 },
+  { name: "EK3_SRC2_VELXY", value: 5, type: 9 },
   { name: "EK3_SRC2_POSZ", value: 1, type: 9 },
   { name: "EK3_SRC2_VELZ", value: 0, type: 9 },
-  { name: "EK3_SRC2_YAW", value: 0, type: 9 },
-  { name: "EK3_SRC3_POSXY", value: 0, type: 9 },
-  { name: "EK3_SRC3_VELXY", value: 0, type: 9 },
+  { name: "EK3_SRC2_YAW", value: 1, type: 9 },
+  { name: "EK3_SRC3_POSXY", value: 3, type: 9 },
+  { name: "EK3_SRC3_VELXY", value: 3, type: 9 },
   { name: "EK3_SRC3_POSZ", value: 1, type: 9 },
-  { name: "EK3_SRC3_VELZ", value: 0, type: 9 },
-  { name: "EK3_SRC3_YAW", value: 0, type: 9 },
+  { name: "EK3_SRC3_VELZ", value: 3, type: 9 },
+  { name: "EK3_SRC3_YAW", value: 1, type: 9 },
   { name: "EK3_SRC_OPTIONS", value: 0, type: 9 },
   { name: "EK3_POSNE_M_NSE", value: 0.5, type: 9 },
   { name: "EK3_ALT_M_NSE", value: 2.0, type: 9 },
@@ -528,20 +528,20 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "EK3_ENABLE", value: 1, type: 9 },
   { name: "EK3_GPS_TYPE", value: 0, type: 9 },
   { name: "EK3_IMU_MASK", value: 3, type: 9 },
-  { name: "EK3_SRC1_POSXY", value: 3, type: 9 },
+  { name: "EK3_SRC1_POSXY", value: 6, type: 9 },       // ExternalNav-primary set
   { name: "EK3_SRC1_POSZ", value: 1, type: 9 },
-  { name: "EK3_SRC1_VELXY", value: 3, type: 9 },
-  { name: "EK3_SRC1_VELZ", value: 3, type: 9 },
-  { name: "EK3_SRC1_YAW", value: 1, type: 9 },         // 1 = Compass
-  { name: "EK3_SRC2_POSXY", value: 6, type: 9 },       // VIO-primary set
-  { name: "EK3_SRC2_VELXY", value: 6, type: 9 },
+  { name: "EK3_SRC1_VELXY", value: 6, type: 9 },
+  { name: "EK3_SRC1_VELZ", value: 6, type: 9 },
+  { name: "EK3_SRC1_YAW", value: 6, type: 9 },
+  { name: "EK3_SRC2_POSXY", value: 0, type: 9 },       // OF-primary set
+  { name: "EK3_SRC2_VELXY", value: 5, type: 9 },
   { name: "EK3_SRC2_POSZ", value: 1, type: 9 },
-  { name: "EK3_SRC2_VELZ", value: 6, type: 9 },
-  { name: "EK3_SRC2_YAW", value: 6, type: 9 },
-  { name: "EK3_SRC3_POSXY", value: 0, type: 9 },       // OF-primary set
-  { name: "EK3_SRC3_VELXY", value: 5, type: 9 },
+  { name: "EK3_SRC2_VELZ", value: 0, type: 9 },
+  { name: "EK3_SRC2_YAW", value: 1, type: 9 },         // 1 = Compass
+  { name: "EK3_SRC3_POSXY", value: 3, type: 9 },       // GPS set
+  { name: "EK3_SRC3_VELXY", value: 3, type: 9 },
   { name: "EK3_SRC3_POSZ", value: 1, type: 9 },
-  { name: "EK3_SRC3_VELZ", value: 0, type: 9 },
+  { name: "EK3_SRC3_VELZ", value: 3, type: 9 },
   { name: "EK3_SRC3_YAW", value: 1, type: 9 },
   { name: "EK3_SRC_OPTIONS", value: 2, type: 9 },      // bit 1 = AlignExtNavPosWhenUsingOptFlow
   { name: "EK3_FLOW_DELAY", value: 10, type: 9 },
@@ -549,7 +549,7 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "AHRS_EKF_TYPE", value: 3, type: 9 },
 
   // ── Visual Odometry (VISO) ───────────────────────────
-  { name: "VISO_TYPE", value: 0, type: 9 },           // 0 = None, 1 = MAVLink
+  { name: "VISO_TYPE", value: 1, type: 9 },           // 0 = None, 1 = MAVLink
   { name: "VISO_POS_X", value: 0.0, type: 9 },        // camera mount offset, body FRD, meters
   { name: "VISO_POS_Y", value: 0.0, type: 9 },
   { name: "VISO_POS_Z", value: 0.0, type: 9 },
@@ -750,7 +750,7 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "FRAME_TYPE", value: 1, type: 9 },       // X
 
   // ── Rangefinder ────────────────────────────────────
-  { name: "RNGFND1_TYPE", value: 0, type: 9 },     // None
+  { name: "RNGFND1_TYPE", value: 10, type: 9 },    // MAVLink
   { name: "RNGFND1_PIN", value: -1, type: 9 },
   { name: "RNGFND1_MIN_CM", value: 20, type: 9 },
   { name: "RNGFND1_MAX_CM", value: 700, type: 9 },
@@ -763,24 +763,24 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "RNGFND2_ORIENT", value: 0, type: 9 },   // Forward
 
   // ── EKF3 source sets (non-GPS positioning) ────────────
-  { name: "EK3_SRC1_POSXY", value: 3, type: 9 },   // GPS
-  { name: "EK3_SRC1_VELXY", value: 3, type: 9 },   // GPS
+  { name: "EK3_SRC1_POSXY", value: 6, type: 9 },   // ExternalNav
+  { name: "EK3_SRC1_VELXY", value: 6, type: 9 },   // ExternalNav
   { name: "EK3_SRC1_POSZ", value: 1, type: 9 },    // Baro
-  { name: "EK3_SRC1_VELZ", value: 3, type: 9 },    // GPS
-  { name: "EK3_SRC1_YAW", value: 1, type: 9 },     // Compass
+  { name: "EK3_SRC1_VELZ", value: 6, type: 9 },    // ExternalNav
+  { name: "EK3_SRC1_YAW", value: 6, type: 9 },     // ExternalNav
   { name: "EK3_SRC2_POSXY", value: 0, type: 9 },
   { name: "EK3_SRC2_VELXY", value: 5, type: 9 },   // OpticalFlow
   { name: "EK3_SRC2_POSZ", value: 1, type: 9 },
   { name: "EK3_SRC2_VELZ", value: 0, type: 9 },
-  { name: "EK3_SRC2_YAW", value: 1, type: 9 },
-  { name: "EK3_SRC3_POSXY", value: 0, type: 9 },
-  { name: "EK3_SRC3_VELXY", value: 0, type: 9 },
+  { name: "EK3_SRC2_YAW", value: 1, type: 9 },     // Compass
+  { name: "EK3_SRC3_POSXY", value: 3, type: 9 },   // GPS
+  { name: "EK3_SRC3_VELXY", value: 3, type: 9 },   // GPS
   { name: "EK3_SRC3_POSZ", value: 1, type: 9 },
-  { name: "EK3_SRC3_VELZ", value: 0, type: 9 },
-  { name: "EK3_SRC3_YAW", value: 1, type: 9 },
+  { name: "EK3_SRC3_VELZ", value: 3, type: 9 },    // GPS
+  { name: "EK3_SRC3_YAW", value: 1, type: 9 },     // Compass
   { name: "EK3_SRC_OPTIONS", value: 0, type: 9 },
   // External nav + beacon backends
-  { name: "VISO_TYPE", value: 0, type: 9 },
+  { name: "VISO_TYPE", value: 1, type: 9 },        // MAVLink
   { name: "VISO_DELAY_MS", value: 10, type: 9 },
   { name: "VISO_POS_M_NSE", value: 0.2, type: 9 },
   { name: "VISO_YAW_M_NSE", value: 0.2, type: 9 },
@@ -793,7 +793,7 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "BCN_ORIENT_YAW", value: 0, type: 9 },
 
   // ── Optical Flow ───────────────────────────────────
-  { name: "FLOW_TYPE", value: 0, type: 9 },
+  { name: "FLOW_TYPE", value: 5, type: 9 },        // MAVLink
   { name: "FLOW_FXSCALER", value: 0, type: 9 },
   { name: "FLOW_FYSCALER", value: 0, type: 9 },
   { name: "FLOW_ORIENT_YAW", value: 0, type: 9 },
@@ -921,6 +921,7 @@ export const MOCK_PARAMS: MockParam[] = [
   { name: "AVD_F_DIST_XY", value: 300, type: 9 },
   { name: "AVD_F_DIST_Z", value: 100, type: 9 },
   { name: "AVOID_ENABLE", value: 7, type: 9 },
+  { name: "PRX1_TYPE", value: 2, type: 9 },        // MAVLink
   { name: "AVOID_MARGIN", value: 2, type: 9 },
   { name: "AVOID_BEHAVE", value: 0, type: 9 },
 

@@ -27,6 +27,7 @@ import { MqttControlGrantBridge } from "./MqttControlGrantBridge";
 import { CommandFleetStatusBridge } from "./CommandFleetStatusBridge";
 import { CommandFleetLocalBridge } from "./CommandFleetLocalBridge";
 import { VisionDetectionsBridge } from "./VisionDetectionsBridge";
+import { NavStreamBridge } from "./NavStreamBridge";
 
 const CloudStatusBridge = dynamic(
   () => import("./CloudStatusBridge").then((m) => ({ default: m.CloudStatusBridge })),
@@ -69,6 +70,8 @@ export function AgentBridges() {
       {/* Opens the selected drone's detection WS local-first (host+key from
           local-nodes-store), so bounding boxes flow on any tab. */}
       <VisionDetectionsBridge />
+      {/* The selected drone's follow / nav / pose / scan / map feed. */}
+      <NavStreamBridge />
       {/* The cloud bridges read the signed-in Convex session, which exists
           only when the cloud backend is configured. The cloud MQTT stream
           needs that backend too: its broker URL comes from the backend's

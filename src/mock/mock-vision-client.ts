@@ -57,6 +57,8 @@ const REGISTRY: VisionRegistryModel[] = [
     variants: [
       { runtime: "onnx", min_tops: 0, board_match: ["generic-arm64"] },
     ],
+    // Mirrors the real registry: learned re-id weights are benchmark-only.
+    benchmarkOnly: true,
   },
 ];
 
@@ -197,7 +199,15 @@ class DemoVisionClient implements VisionClient {
         isInferenceCapable: true,
       },
     ];
-    return { known: true, models, npuUtilizationPct: 41.5, modelCount: models.length };
+    return {
+      known: true,
+      models,
+      npuUtilizationPct: 41.5,
+      modelCount: models.length,
+      backend: "rknn",
+      backendState: "ready",
+      backendReason: null,
+    };
   }
 }
 

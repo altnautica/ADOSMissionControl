@@ -1,6 +1,6 @@
 /**
  * The cockpit SAFETY BAND. Left to right: exit control, node name + reach
- * badge, arm state, flight mode, battery, GPS, link, video, stick control,
+ * badge, arm state, flight mode, battery, nav source, link, video, stick control,
  * pre-flight, REC, flight timer, and Kill. Styling lives in
  * `.ados-cockpit .safety`; this component only composes cells.
  *
@@ -9,7 +9,7 @@
  * {@link CockpitTopBarProps.lean}. Values never wrap. As the cockpit narrows
  * (container queries in the cockpit styles) text labels give way to icons,
  * then the secondary cells (stick, pre-flight, REC, flight time) move behind
- * a "more" toggle; exit, reach, arm, mode, battery, GPS, link, video and Kill
+ * a "more" toggle; exit, reach, arm, mode, battery, nav source, link, video and Kill
  * stay on the band at every width.
  *
  * Every cell subscribes to its own source, so a telemetry tick re-renders

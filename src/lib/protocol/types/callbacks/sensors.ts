@@ -8,7 +8,7 @@
  */
 
 import type { AccelCalPosition } from '../enums';
-import type { CameraTriggerData, DebugData, DistanceSensorData, EkfData, EstimatorStatusData, FenceStatusData, GimbalData, HomePositionData, LocalPositionData, NavControllerData, ObstacleData, PowerStatusData, ScaledImuData, ServoOutputData, TerrainData, VibrationData, WindData } from '../../../types/telemetry';
+import type { CameraTriggerData, DebugData, DistanceSensorData, EkfData, EstimatorStatusData, FenceStatusData, GimbalData, GpsOriginData, HomePositionData, LocalPositionData, NavControllerData, ObstacleData, PowerStatusData, ScaledImuData, ServoOutputData, TerrainData, VibrationData, WindData } from '../../../types/telemetry';
 
 export type EkfCallback = (data: EkfData) => void;
 
@@ -53,6 +53,9 @@ export type MagCalReportCallback = (data: {
 export type AccelCalPosCallback = (data: { position: AccelCalPosition }) => void;
 
 export type HomePositionCallback = (data: HomePositionData) => void;
+
+/** GPS_GLOBAL_ORIGIN (msg 49): the EKF origin. */
+export type GpsOriginCallback = (data: GpsOriginData) => void;
 
 /** AUTOPILOT_VERSION (msg 148) as delivered to subscribers. */
 export interface AutopilotVersionData {

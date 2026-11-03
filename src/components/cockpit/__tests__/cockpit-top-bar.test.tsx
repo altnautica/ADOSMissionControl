@@ -50,13 +50,13 @@ describe("CockpitTopBar (always-on safety band)", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("always renders the safety stats (arm pill + battery/GPS/link)", () => {
+  it("always renders the safety stats (arm pill + battery/nav source/link)", () => {
     const { container } = renderBand();
     expect(container.querySelector(".safety")).not.toBeNull();
     expect(screen.queryByText(messages.cockpit.disarmed.toUpperCase())).toBeNull();
     expect(screen.getAllByText(NO_DATA_GLYPH).length).toBeGreaterThan(0);
     expect(screen.getByText(messages.cockpit.band.batt)).toBeTruthy();
-    expect(screen.getByText(messages.cockpit.strip.gps)).toBeTruthy();
+    expect(screen.getByText(messages.hud.nav.stale)).toBeTruthy();
     expect(screen.getByText(messages.cockpit.strip.link)).toBeTruthy();
   });
 
@@ -70,7 +70,7 @@ describe("CockpitTopBar (always-on safety band)", () => {
       "cockpit-arm",
       "cockpit-mode",
       "cockpit-battery",
-      "cockpit-gps",
+      "cockpit-nav",
       "cockpit-link",
       "cockpit-video",
       "cockpit-stick",
@@ -100,7 +100,7 @@ describe("CockpitTopBar (always-on safety band)", () => {
     const { container } = renderBand({ lean: true });
     expect(screen.queryByText("ADOS")).toBeNull();
     expect(container.querySelector(".safety")).not.toBeNull();
-    expect(screen.getByText(messages.cockpit.strip.gps)).toBeTruthy();
+    expect(screen.getByText(messages.hud.nav.stale)).toBeTruthy();
   });
 
   it("offers Immersive when embedded and exit when immersive", () => {

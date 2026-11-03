@@ -28,6 +28,10 @@ vi.mock("@/lib/video/mse-player", () => ({
     stop() {}
   },
 }));
+// The detection overlay formats its tags through next-intl.
+vi.mock("next-intl", () => ({
+  useTranslations: () => Object.assign((k: string) => k, { has: () => false }),
+}));
 
 import { MiniVideoView } from "../MiniVideoView";
 import { useVideoStore } from "@/stores/video-store";

@@ -96,6 +96,7 @@ const KEY_ALIASES: Record<string, Record<string, string>> = {
   SERVO_OUTPUT_RAW: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`servo${i + 1}`, `servo${i + 1}_raw`])),
   FENCE_POINT: { lon: "lng" },
   HOME_POSITION: { lat: "latitude", lon: "longitude", alt: "altitude" },
+  GPS_GLOBAL_ORIGIN: { lat: "latitude", lon: "longitude", alt: "altitude" },
   AIS_VESSEL: { MMSI: "MMSI", COG: "COG" },
   CAMERA_IMAGE_CAPTURED: { timeUtcUs: "time_utc" },
 };

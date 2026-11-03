@@ -36,8 +36,9 @@ import { create } from "zustand";
 export type StreamSwitchKind = "concurrent" | "switchable";
 
 /** Logical sensor role, drives the tab label + glyph. Open string so a novel
- * role from a future source still renders (falls back to the camera name). */
-export type StreamRole = "eo" | "eo_wide" | "ir" | "split" | (string & {});
+ * role from a future source still renders (falls back to the camera name).
+ * `down` is a downward-facing (belly) camera. */
+export type StreamRole = "eo" | "eo_wide" | "ir" | "split" | "down" | (string & {});
 
 /** i18n key suffix (namespace `cockpitStreams`) for a known role's short tab
  * label. An unknown role has no entry → the tab renders the descriptor's raw
@@ -47,6 +48,7 @@ export const ROLE_LABEL_KEY: Readonly<Record<string, string>> = {
   eo_wide: "roleEoWide",
   ir: "roleIr",
   split: "roleSplit",
+  down: "roleDown",
 };
 
 /** One selectable video stream a node exposes. */

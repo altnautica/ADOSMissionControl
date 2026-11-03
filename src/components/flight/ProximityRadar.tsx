@@ -2,118 +2,163 @@
 
 /**
  * @module ProximityRadar
- * @description Proximity radar — rings + cardinal lines + a top reference
- * label + a nearest-range label, with live OBSTACLE_DISTANCE sectors painted
- * over it (amber caution / red danger).
- * Sectors are placed with the sample's own angular step and offset, and the
- * top of the dial is labelled with what the sample's frame puts there: N for
- * north-aligned data, FWD for body-aligned data (the vehicle's nose).
- * The frame is always shown when the sensor has data; hidden when there is no
- * proximity sensor (an empty ring would falsely read as "all clear").
+ * @description Proximity radar: OBSTACLE_DISTANCE wedges (caution / danger)
+ * with an outlined arc at each sector's measured distance, the companion's
+ * planar scan as dots, range rings at 1/3, 2/3 and the full display range
+ * (3 / 6 / 12 m, auto or pinned by tapping the dial or `+` / `−`), and the
+ * nearest-obstacle readout. The top of the dial is FWD for body-frame data
+ * and N for north-aligned OBSTACLE_DISTANCE. Hidden until either source has
+ * ever reported (an empty dial would read as "all clear"); dimmed with a `—`
+ * readout once both are older than 2 s.
  * @license GPL-3.0-only
  */
 
-import { useMemo } from "react";
+import { useState, type KeyboardEvent } from "react";
+import { useTranslations } from "next-intl";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
+import { useNavStateEntry } from "@/hooks/use-nav-feed";
+import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useClockTick } from "@/lib/agent/freshness";
 import { freshOnly } from "@/lib/telemetry/freshness";
-import { obstacleSweep } from "@/lib/telemetry/obstacle-sweep";
+import { cycleRadarScale, type RadarScaleSetting } from "@/lib/nav/radar-geometry";
+import {
+  RADAR_SIZE_BY_CLASS,
+  buildRadarModel,
+  keyRadarScale,
+  radarDial,
+  radarLowPower,
+} from "@/components/flight/proximity-radar-model";
 
-const CENTER = 60;
-const OUTER_R = 52;
-const INNER_R = 16;
-const DANGER_CM = 200; // <2m = red
-const CAUTION_CM = 500; // 2-5m = amber
+const TONE_VAR = { crit: "var(--hud-crit)", warn: "var(--hud-warn)" } as const;
+const BAND_VAR = { danger: "var(--hud-crit)", caution: "var(--hud-warn)", clear: "var(--hud-good)" } as const;
 
-function sectorColor(distCm: number): { fill: string; stroke: string } | null {
-  if (distCm > CAUTION_CM) return null;
-  if (distCm < DANGER_CM) {
-    return { fill: "color-mix(in oklch, var(--hud-crit) 30%, transparent)", stroke: "var(--hud-crit)" };
-  }
-  return { fill: "color-mix(in oklch, var(--hud-warn) 28%, transparent)", stroke: "var(--hud-warn)" };
+interface ProximityRadarProps {
+  /** Cockpit drone id; the scan and nav state come from its nav feed. */
+  droneId?: string | null;
+  /** Dial size in px; defaults to the cockpit width class size. */
+  size?: number;
 }
 
-function polarToCart(angleDeg: number, r: number): [number, number] {
-  const rad = ((angleDeg - 90) * Math.PI) / 180;
-  return [CENTER + r * Math.cos(rad), CENTER + r * Math.sin(rad)];
-}
-
-function arcPath(startDeg: number, endDeg: number): string {
-  const [ox1, oy1] = polarToCart(startDeg, OUTER_R);
-  const [ox2, oy2] = polarToCart(endDeg, OUTER_R);
-  const [ix2, iy2] = polarToCart(endDeg, INNER_R);
-  const [ix1, iy1] = polarToCart(startDeg, INNER_R);
-  const large = endDeg - startDeg > 180 ? 1 : 0;
-  return [
-    `M ${ox1} ${oy1}`,
-    `A ${OUTER_R} ${OUTER_R} 0 ${large} 1 ${ox2} ${oy2}`,
-    `L ${ix2} ${iy2}`,
-    `A ${INNER_R} ${INNER_R} 0 ${large} 0 ${ix1} ${iy1}`,
-    `Z`,
-  ].join(" ");
-}
-
-export function ProximityRadar() {
-  // The ring keeps its last OBSTACLE_DISTANCE forever, so reading `latest()`
-  // raw left the radar painting red DANGER arcs from a dead link — the one
-  // reading an operator must never see fabricated. Both subscriptions are
-  // load-bearing: `_version` says new data arrived, and the clock tick says
-  // time passed, which is the only signal that arrives after a link loss.
+export function ProximityRadar({ droneId = null, size }: ProximityRadarProps) {
+  const t = useTranslations("hud.radar");
+  // The OBSTACLE_DISTANCE ring keeps its last sample forever: `_version` says
+  // new data arrived and the clock tick says time passed, which is the only
+  // signal after a link loss. Both re-run the freshness checks below.
   useTelemetryStore((s) => s._version);
   useClockTick();
-  const obstacleBuffer = useTelemetryStore.getState().obstacle;
-  const latest = freshOnly(obstacleBuffer.latest(), Date.now());
+  const widthClass = useCockpitWidthClass();
+  const scan = useNavStreamStore((s) => (droneId ? s.byDrone[droneId]?.scan : undefined));
+  const nav = useNavStateEntry(droneId);
+  const [setting, setSetting] = useState<RadarScaleSetting>("auto");
 
-  const view = useMemo(() => {
-    const sweep = latest ? obstacleSweep(latest) : null;
-    if (!sweep) return null;
-    const sectors: { d: string; fill: string; stroke: string }[] = [];
-    for (const s of sweep.sectors) {
-      const c = sectorColor(s.distanceCm);
-      if (c) sectors.push({ d: arcPath(s.startDeg, s.endDeg), fill: c.fill, stroke: c.stroke });
-    }
-    return { reference: sweep.reference, sectors, closestCm: sweep.closestCm };
-    // `latest` is the whole dependency: it is a stable object reference while
-    // the sample stands, and becomes `undefined` the moment it goes stale, so
-    // the memo recomputes exactly when the answer changes. The version and
-    // clock subscriptions above are what re-run this component; they are not
-    // inputs to the arc geometry.
-  }, [latest]);
+  const dialSize = size ?? RADAR_SIZE_BY_CLASS[widthClass];
+  const telemetry = useTelemetryStore.getState();
+  const obstacle = telemetry.obstacle.latest();
+  const now = Date.now();
+  const yawDeg = freshOnly(telemetry.attitude.latest(), now)?.yaw ?? null;
+  const lowPower =
+    typeof window !== "undefined" &&
+    radarLowPower(window.location.search, document.documentElement.dataset.power);
 
-  if (!view) return null;
+  const model = buildRadarModel({ size: dialSize, now, obstacle, scan, nav, yawDeg, setting, lowPower });
 
-  const { reference, sectors, closestCm } = view;
-  // The label uses the same bands as the sectors: beyond the caution range the
-  // nearest return is not a hazard and reads as clear.
-  const nearest = closestCm !== null && closestCm <= CAUTION_CM ? closestCm : null;
-  const labelColor =
-    nearest === null ? "var(--hud-good)" : nearest < DANGER_CM ? "var(--hud-crit)" : "var(--hud-warn)";
+  if (model.hidden) return null;
 
-  // No positioning wrapper: the cockpit zone container places this. It used to
-  // carry `zone br d-std`, anchoring it to the same bottom-right coordinates
-  // as the arrangeable-widget container at the same z-index.
+  const { c, R, inner } = radarDial(dialSize);
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "+" || e.key === "=") setSetting(keyRadarScale(model.displayM, "+"));
+    else if (e.key === "-" || e.key === "_") setSetting(keyRadarScale(model.displayM, "-"));
+    else if (e.key === "Enter" || e.key === " ") setSetting(cycleRadarScale(setting));
+    else return;
+    e.preventDefault();
+  };
+  const scaleLabel =
+    setting === "auto" ? t("scaleAuto", { m: model.displayM }) : t("scale", { m: model.displayM });
+  const readout =
+    model.nearestM === null
+      ? model.stale
+        ? "—"
+        : t("clear")
+      : `${model.nearestM.toFixed(1)} m ${t(model.band)}`;
+
   return (
-    <div className="radar panel">
-      <svg viewBox="0 0 120 120" aria-hidden="true">
+    <div
+      className="radar panel"
+      data-stale={model.stale ? "true" : "false"}
+      style={{ width: dialSize }}
+      role="button"
+      tabIndex={0}
+      aria-label={t("cycleScale")}
+      title={t("cycleScale")}
+      onClick={() => setSetting(cycleRadarScale(setting))}
+      onKeyDown={onKey}
+    >
+      <div className="rhead lbl">
+        {model.rateHz !== null ? t("header", { hz: Math.round(model.rateHz) }) : t("noScan")}
+      </div>
+      <svg viewBox={`0 0 ${dialSize} ${dialSize}`} width={dialSize} height={dialSize} aria-hidden="true">
         <g fill="none" stroke="var(--hud-hair)">
-          <circle cx={CENTER} cy={CENTER} r={52} />
-          <circle cx={CENTER} cy={CENTER} r={34} />
-          <circle cx={CENTER} cy={CENTER} r={16} />
+          {model.rings.map((ring) => (
+            <circle key={ring.label} cx={c} cy={c} r={ring.r} />
+          ))}
         </g>
         <g stroke="var(--hud-hair-2)">
-          <line x1={CENTER} y1={8} x2={CENTER} y2={112} />
-          <line x1={8} y1={CENTER} x2={112} y2={CENTER} />
+          <line x1={c} y1={c - R} x2={c} y2={c + R} />
+          <line x1={c - R} y1={c} x2={c + R} y2={c} />
         </g>
-        {sectors.map((s, i) => (
-          <path key={i} d={s.d} fill={s.fill} stroke={s.stroke} strokeWidth={1} />
+        {model.sectors.map((s, i) => (
+          <g key={i} data-sector={s.tone}>
+            <path
+              d={s.wedge}
+              fill={`color-mix(in oklch, ${TONE_VAR[s.tone]} 28%, transparent)`}
+              stroke="none"
+            />
+            {s.arc && (
+              <>
+                <path d={s.arc} fill="none" stroke="var(--hud-glass-strong)" strokeWidth={4} />
+                <path d={s.arc} fill="none" stroke={TONE_VAR[s.tone]} strokeWidth={2} data-arc="" />
+              </>
+            )}
+          </g>
         ))}
-        <circle cx={CENTER} cy={CENTER} r={3} fill="var(--hud-primary)" />
-        <text x={CENTER} y={18} fill="var(--hud-muted)" fontSize={8} textAnchor="middle" fontFamily="var(--mono)">
-          {reference === "forward" ? "FWD" : "N"}
+        <g fill="var(--hud-ink)" fillOpacity={0.75}>
+          {model.dots.map((d, i) => (
+            <circle key={i} cx={d.x} cy={d.y} r={1.5} data-dot="" />
+          ))}
+        </g>
+        <circle cx={c} cy={c} r={Math.max(2, inner / 5)} fill="var(--hud-primary)" />
+        {model.rings.map((ring) => (
+          <text
+            key={ring.label}
+            x={ring.lx + 2}
+            y={ring.ly - 2}
+            fill="var(--hud-muted)"
+            fontSize={9}
+            fontFamily="var(--mono)"
+            data-ring=""
+          >
+            {ring.label}
+          </text>
+        ))}
+        <text
+          x={c}
+          y={c - R + 9}
+          fill="var(--hud-muted)"
+          fontSize={9}
+          textAnchor="middle"
+          fontFamily="var(--mono)"
+          data-ref=""
+        >
+          {model.reference === "forward" ? "FWD" : "N"}
         </text>
       </svg>
-      <div className="rlabel lbl" style={{ color: labelColor }}>
-        {nearest === null ? "clear" : `nearest ${(nearest / 100).toFixed(1)} m`}
+      <div className="rscale lbl">{scaleLabel}</div>
+      <div
+        className="rlabel lbl"
+        style={{ color: model.nearestM === null && model.stale ? "var(--hud-muted)" : BAND_VAR[model.band] }}
+      >
+        {readout}
       </div>
     </div>
   );

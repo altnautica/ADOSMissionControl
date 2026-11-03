@@ -8,25 +8,53 @@ import type { Group } from "three";
 import type { MotorPosition } from "@/lib/motor-layouts";
 import { BODY_PLANE_ROTATION, motorScenePosition } from "./motor-scene-frame";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
+import { useCssVarColors } from "@/hooks/use-css-var-colors";
 
-// ── Brand colors ──────────────────────────────────────────────
+// ── Scene palette ─────────────────────────────────────────────
 
-export const COLOR_CW = "#3A82FF";
-export const COLOR_CCW = "#EAB308";
-const COLOR_UNKNOWN = "#444444";
-export const COLOR_ARM = "#333333";
-export const COLOR_BODY = "#2a2a2a";
-export const COLOR_SERVO = "#f59e0b";
-export const COLOR_GRID = "#0a0a0a";
+/** Theme tokens behind each scene role. three.js materials need a literal
+ * colour, so the tokens are resolved at runtime and follow theme changes. */
+const MOTOR_TOKENS = [
+  "--alt-accent-primary", // cw
+  "--alt-status-warning", // ccw
+  "--alt-text-tertiary", // unknown
+  "--alt-border-strong", // arm
+  "--alt-border-default", // body
+  "--node-swatch-amber", // servo
+  "--alt-text-primary", // servo horn
+  "--alt-bg-tertiary", // motor shaft cap
+  "--alt-bg-secondary", // ground disc
+] as const;
+
+export interface MotorPalette {
+  cw: string;
+  ccw: string;
+  unknown: string;
+  arm: string;
+  body: string;
+  servo: string;
+  horn: string;
+  shaft: string;
+  ground: string;
+}
+
+/** The motor scene's colours for the current theme. */
+export function useMotorPalette(): MotorPalette {
+  const [cw, ccw, unknown, arm, body, servo, horn, shaft, ground] = useCssVarColors(MOTOR_TOKENS);
+  return useMemo(
+    () => ({ cw, ccw, unknown, arm, body, servo, horn, shaft, ground }),
+    [cw, ccw, unknown, arm, body, servo, horn, shaft, ground],
+  );
+}
 
 export const SCALE = 2.5;
 
 // ── Helpers ──────────────────────────────────────────────────
 
-export function rotationColor(rotation: "CW" | "CCW" | "?"): string {
-  if (rotation === "CW") return COLOR_CW;
-  if (rotation === "CCW") return COLOR_CCW;
-  return COLOR_UNKNOWN;
+export function rotationColor(rotation: "CW" | "CCW" | "?", palette: MotorPalette): string {
+  if (rotation === "CW") return palette.cw;
+  if (rotation === "CCW") return palette.ccw;
+  return palette.unknown;
 }
 
 export function buildCoaxialOffsets(motors: MotorPosition[]): Map<number, number> {
@@ -113,6 +141,7 @@ export const BellMotor = memo(function BellMotor({
   color: string;
   isUnknown: boolean;
 }) {
+  const palette = useMotorPalette();
   return (
     <group>
       <mesh position={[0, -0.02, 0]}>
@@ -138,7 +167,7 @@ export const BellMotor = memo(function BellMotor({
       <mesh position={[0, 0.08, 0]}>
         <cylinderGeometry args={[0.06, 0.06, 0.02, 12]} />
         <meshStandardMaterial
-          color="#222"
+          color={palette.shaft}
           metalness={0.9}
           roughness={0.1}
         />
@@ -163,7 +192,8 @@ export const MotorAssembly = memo(function MotorAssembly({
   isHovered: boolean;
 }) {
   const [x, y, z] = motorScenePosition(motor, SCALE, yOffset);
-  const color = rotationColor(motor.rotation);
+  const palette = useMotorPalette();
+  const color = rotationColor(motor.rotation, palette);
   const isUnknown = motor.rotation === "?";
 
   return (
@@ -206,20 +236,21 @@ export const ServoAssembly = memo(function ServoAssembly({
   yOffset: number;
 }) {
   const [x, y, z] = motorScenePosition(motor, SCALE, yOffset);
+  const palette = useMotorPalette();
 
   return (
     <group position={[x, y, z]}>
       <mesh>
         <boxGeometry args={[0.28, 0.12, 0.18]} />
-        <meshStandardMaterial color={COLOR_SERVO} metalness={0.5} roughness={0.5} wireframe={false} />
+        <meshStandardMaterial color={palette.servo} metalness={0.5} roughness={0.5} wireframe={false} />
       </mesh>
       <mesh position={[0, 0.08, 0]}>
         <cylinderGeometry args={[0.02, 0.02, 0.06, 8]} />
-        <meshStandardMaterial color="#fff" metalness={0.3} roughness={0.6} />
+        <meshStandardMaterial color={palette.horn} metalness={0.3} roughness={0.6} />
       </mesh>
       <mesh position={[0, 0.11, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.08, 6]} />
-        <meshStandardMaterial color="#ddd" metalness={0.2} roughness={0.5} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={palette.horn} metalness={0.2} roughness={0.5} side={THREE.DoubleSide} />
       </mesh>
 
       <Html position={[0, 0.3, 0]} center distanceFactor={6} style={{ pointerEvents: "none" }}>
@@ -241,6 +272,7 @@ export const Arm = memo(function Arm({
   yOffset: number;
 }) {
   const [x, y, z] = motorScenePosition(motor, SCALE, yOffset);
+  const palette = useMotorPalette();
 
   const length = Math.sqrt(x * x + z * z);
   if (length < 0.01) return null;
@@ -253,7 +285,7 @@ export const Arm = memo(function Arm({
     <group position={[midX, y, midZ]} rotation={[0, angle, 0]}>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.025, 0.03, length, 8]} />
-        <meshStandardMaterial color={COLOR_ARM} metalness={0.6} roughness={0.4} />
+        <meshStandardMaterial color={palette.arm} metalness={0.6} roughness={0.4} />
       </mesh>
     </group>
   );
@@ -262,6 +294,7 @@ export const Arm = memo(function Arm({
 // ── Forward chevron on body ──────────────────────────────────
 
 export function ForwardChevron() {
+  const palette = useMotorPalette();
   // Drawn in the body plane (x = right, y = forward) with the tip at the nose.
   const shape = useMemo(() => {
     const s = new THREE.Shape();
@@ -276,7 +309,7 @@ export function ForwardChevron() {
   return (
     <mesh rotation={BODY_PLANE_ROTATION} position={[0, 0.042, 0]}>
       <shapeGeometry args={[shape]} />
-      <meshStandardMaterial color={COLOR_CW} metalness={0.5} roughness={0.4} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={palette.cw} metalness={0.5} roughness={0.4} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -284,10 +317,11 @@ export function ForwardChevron() {
 // ── Shadow disc ──────────────────────────────────────────────
 
 export function ShadowDisc() {
+  const palette = useMotorPalette();
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.15, 0]}>
       <circleGeometry args={[4, 48]} />
-      <meshBasicMaterial color={COLOR_GRID} transparent opacity={0.6} />
+      <meshBasicMaterial color={palette.ground} transparent opacity={0.6} />
     </mesh>
   );
 }

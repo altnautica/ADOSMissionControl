@@ -92,6 +92,23 @@ export function armedRefusalFrom(status: number, body: string): AgentArmedRefusa
   return null;
 }
 
+/** The agent's own reason on an armed refusal ("Vehicle is armed"), read at
+ * the top level or under `detail`, so a declined prompt reports it rather
+ * than the raw HTTP body. Falls back to the transport message. */
+export function armedRefusalReason(err: AgentArmedRefusal): string {
+  try {
+    const parsed = JSON.parse(err.body) as {
+      message?: unknown;
+      detail?: { message?: unknown };
+    };
+    const message = parsed.message ?? parsed.detail?.message;
+    if (typeof message === "string" && message) return message;
+  } catch {
+    // Not JSON; fall through to the transport's message.
+  }
+  return err.message;
+}
+
 /** The armed-override options every flight-affecting client call accepts. */
 export interface ArmedOverrideOptions {
   force?: boolean;

@@ -37,9 +37,21 @@ import {
   usePluginSkillHostStore,
   type PluginSkillReportedState,
 } from "@/lib/skills/plugin-skill-host-store";
+import { holdReasonWord } from "@/lib/vision/target-state";
 
 /** How often to poll each plugin's published state, in ms. */
 export const POLL_INTERVAL_MS = 750;
+
+/** Skill Bar badge per follow phase; empty = no badge. */
+const PHASE_BADGE = {
+  idle: "",
+  acquiring: "ACQ",
+  following: "",
+  coasting: "CST",
+  searching: "SRCH",
+  holding: "HOLD",
+  lost: "!",
+} as const;
 
 /** A mapped state plus the optional badge / reason the bar overlays. */
 interface MappedState {
@@ -53,7 +65,13 @@ interface MappedState {
  * Skill Bar reads. Honest by construction: a skill is "active" only when the
  * plugin reports it is actively engaged.
  *
- * A Follow-Me-style payload (`{ active, lock_state, commanding }`) maps:
+ * A Follow-Me payload with a `phase` maps: `idle` -> idle; `following` ->
+ * active; `acquiring` / `coasting` / `searching` / `holding` -> active with a
+ * badge (`ACQ`, `CST`, `SRCH`, `HOLD`, the hold reason carried as `reason`);
+ * `lost` -> active with `!`, or idle once `active` is false.
+ *
+ * An older Follow-Me payload (`{ active, lock_state, commanding }`, no
+ * `phase`) maps:
  *   - `active: false`                       -> idle
  *   - `active: true` + `commanding: true`   -> active (locked + emitting)
  *   - `active: true`, not commanding        -> active with a badge naming the
@@ -81,7 +99,26 @@ export function mapReportedState(payload: unknown): MappedState {
     return { state: p.state, badge, reason };
   }
 
-  // Follow-Me-style active/commanding/lock_state shape.
+  // Follow-Me phase (`follow.state.phase`): the authoritative verdict when
+  // present. Following steers with no badge; every other engaged phase is
+  // active with a short badge naming it.
+  if (typeof p.phase === "string" && Object.hasOwn(PHASE_BADGE, p.phase)) {
+    const phase = p.phase as keyof typeof PHASE_BADGE;
+    if (phase === "idle") return { state: "idle" };
+    if (phase === "lost" && p.active === false) return { state: "idle" };
+    const badge = PHASE_BADGE[phase];
+    const reason =
+      phase === "holding"
+        ? holdReasonWord(typeof p.hold_reason === "string" ? p.hold_reason : null)
+        : null;
+    return {
+      state: "active",
+      ...(badge ? { badge } : {}),
+      ...(reason ? { reason } : {}),
+    };
+  }
+
+  // Legacy Follow-Me-style active/commanding/lock_state shape (no phase).
   if (typeof p.active === "boolean") {
     if (!p.active) return { state: "idle" };
     if (p.commanding === true) return { state: "active" };

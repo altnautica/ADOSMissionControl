@@ -1,6 +1,8 @@
 import { act, cleanup, render } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import messages from "../../../../locales/en.json";
 import { DetectionOverlay } from "@/components/vision/DetectionOverlay";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
@@ -36,6 +38,14 @@ function showLegs(ids: string[], active: string) {
   });
 }
 
+function renderOverlay() {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <DetectionOverlay droneId={DRONE} />
+    </NextIntlClientProvider>,
+  );
+}
+
 describe("DetectionOverlay camera pinning", () => {
   beforeAll(() => {
     vi.stubGlobal(
@@ -47,32 +57,38 @@ describe("DetectionOverlay camera pinning", () => {
     );
   });
   beforeEach(() => {
+    // A 4:3 pane the size of the frame, so tags are laid out.
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(640);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
     useVisionDetectionsStore.getState().clear();
   });
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("draws only the active stream's camera boxes", () => {
     showLegs(["a", "b"], "b");
-    const { container } = render(<DetectionOverlay droneId={DRONE} />);
+    const { container } = renderOverlay();
     push("b", "bravo");
     push("a", "alpha");
-    expect(container.textContent).toContain("bravo");
-    expect(container.textContent).not.toContain("alpha");
+    expect(container.textContent).toContain("BRAVO");
+    expect(container.textContent).not.toContain("ALPHA");
   });
 
   it("draws nothing when the active camera has no batch", () => {
     showLegs(["a", "b"], "b");
-    const { container } = render(<DetectionOverlay droneId={DRONE} />);
+    const { container } = renderOverlay();
     push("a", "alpha");
     expect(container.textContent).toBe("");
   });
 
   it("never paints another camera's boxes behind a single leg", () => {
     showLegs(["b"], "b");
-    const { container } = render(<DetectionOverlay droneId={DRONE} />);
+    const { container } = renderOverlay();
     push("b", "bravo");
     push("a", "alpha");
-    expect(container.textContent).toContain("bravo");
-    expect(container.textContent).not.toContain("alpha");
+    expect(container.textContent).toContain("BRAVO");
+    expect(container.textContent).not.toContain("ALPHA");
   });
 });

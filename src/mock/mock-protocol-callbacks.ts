@@ -32,6 +32,7 @@ import type {
   MagCalReportCallback,
   AccelCalPosCallback,
   HomePositionCallback,
+  GpsOriginCallback,
   AutopilotVersionCallback,
   PowerStatusCallback,
   DistanceSensorCallback,
@@ -100,6 +101,7 @@ export interface MockCallbackArrays {
   magCalReportCbs: MagCalReportCallback[];
   accelCalPosCbs: AccelCalPosCallback[];
   homePositionCbs: HomePositionCallback[];
+  gpsOriginCbs: GpsOriginCallback[];
   autopilotVersionCbs: AutopilotVersionCallback[];
   powerStatusCbs: PowerStatusCallback[];
   distanceSensorCbs: DistanceSensorCallback[];
@@ -144,7 +146,7 @@ export function createCallbackArrays(): MockCallbackArrays {
     parameterCbs: [], serialDataCbs: [], sysStatusCbs: [], radioCbs: [],
     missionProgressCbs: [], ekfCbs: [], vibrationCbs: [], servoOutputCbs: [],
     windCbs: [], terrainCbs: [], magCalProgressCbs: [], magCalReportCbs: [],
-    accelCalPosCbs: [], homePositionCbs: [], autopilotVersionCbs: [],
+    accelCalPosCbs: [], homePositionCbs: [], gpsOriginCbs: [], autopilotVersionCbs: [],
     powerStatusCbs: [], distanceSensorCbs: [], fenceStatusCbs: [],
     navControllerCbs: [], scaledImuCbs: [], scaledPressureCbs: [],
     estimatorStatusCbs: [], cameraTriggerCbs: [], linkLostCbs: [],
@@ -186,6 +188,7 @@ export function bindOnMethods(cbs: MockCallbackArrays) {
     onMagCalReport: (cb: MagCalReportCallback) => sub(cbs.magCalReportCbs, cb),
     onAccelCalPos: (cb: AccelCalPosCallback) => sub(cbs.accelCalPosCbs, cb),
     onHomePosition: (cb: HomePositionCallback) => sub(cbs.homePositionCbs, cb),
+    onGpsOrigin: (cb: GpsOriginCallback) => sub(cbs.gpsOriginCbs, cb),
     onAutopilotVersion: (cb: AutopilotVersionCallback) => sub(cbs.autopilotVersionCbs, cb),
     onPowerStatus: (cb: PowerStatusCallback) => sub(cbs.powerStatusCbs, cb),
     onDistanceSensor: (cb: DistanceSensorCallback) => sub(cbs.distanceSensorCbs, cb),

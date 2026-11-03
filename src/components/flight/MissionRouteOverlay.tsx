@@ -13,13 +13,16 @@
 import { useMemo } from "react";
 import { CircleMarker, Polyline, Tooltip } from "react-leaflet";
 import { useMissionStore } from "@/stores/mission-store";
+import { useCssVarColors } from "@/hooks/use-css-var-colors";
 
-const ROUTE_COLOR = "#3A82FF";
-const ACTIVE_COLOR = "#f59e0b";
+/** Route in the accent, the waypoint being flown to in the warning hue.
+ * Leaflet writes colours into SVG attributes, which cannot hold var(). */
+const ROUTE_TOKENS = ["--alt-accent-primary", "--alt-status-warning"] as const;
 
 export function MissionRouteOverlay() {
   const waypoints = useMissionStore((s) => s.waypoints);
   const current = useMissionStore((s) => s.currentWaypoint);
+  const [routeColor, activeColor] = useCssVarColors(ROUTE_TOKENS);
 
   // Waypoints with a position, keeping their mission index for the readout.
   const points = useMemo(
@@ -40,7 +43,7 @@ export function MissionRouteOverlay() {
         <Polyline
           positions={route}
           interactive={false}
-          pathOptions={{ color: ROUTE_COLOR, weight: 3, opacity: 0.9 }}
+          pathOptions={{ color: routeColor, weight: 3, opacity: 0.9 }}
         />
       )}
       {points.map((p) =>
@@ -50,7 +53,7 @@ export function MissionRouteOverlay() {
             center={p.pos}
             radius={4}
             interactive={false}
-            pathOptions={{ color: ROUTE_COLOR, fillColor: ROUTE_COLOR, fillOpacity: 0.9, weight: 1 }}
+            pathOptions={{ color: routeColor, fillColor: routeColor, fillOpacity: 0.9, weight: 1 }}
           />
         ),
       )}
@@ -59,7 +62,7 @@ export function MissionRouteOverlay() {
           center={active.pos}
           radius={8}
           interactive={false}
-          pathOptions={{ color: ACTIVE_COLOR, fillColor: ACTIVE_COLOR, fillOpacity: 0.85, weight: 2 }}
+          pathOptions={{ color: activeColor, fillColor: activeColor, fillOpacity: 0.85, weight: 2 }}
         >
           <Tooltip direction="top" offset={[0, -8]} permanent>
             <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10 }}>

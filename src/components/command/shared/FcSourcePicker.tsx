@@ -29,6 +29,8 @@ import { useFreshness } from "@/lib/agent/freshness";
 import { resolveLocalAgentForDrone } from "@/lib/agent/resolve-agent";
 import { describeFcSourceReadOnly } from "./fc-source-availability";
 import type { FcSource, MavlinkPort } from "@/lib/agent/types";
+import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
+import { AgentArmedRefusal, armedRefusalReason } from "@/lib/agent/agent-client/transport";
 
 const SOURCE_OPTIONS: SelectOption[] = [
   { value: "auto", label: "Auto", description: "Probe ports and pick a live FC" },
@@ -94,6 +96,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
     at: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
   const [loadingPorts, setLoadingPorts] = useState(false);
   const [portsError, setPortsError] = useState<string | null>(null);
   // Bumped on every enumeration and on a node/client change, so a late
@@ -178,10 +181,16 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
     try {
       // Throws when the agent rejected a value or could not write it to disk,
       // so "applied" below is never claimed for a change that did not land.
-      await client.setMavlinkSource(source, {
-        serialPort: source === "serial" ? serialPort || undefined : undefined,
-        baudRate: source === "serial" ? Number(baud) : undefined,
-      });
+      // While armed the agent refuses the first key before anything lands; the
+      // operator confirms once and the whole source/port/baud sequence is
+      // resent with the override, so it never applies half-way.
+      await withArmedOverride((force) =>
+        client.setMavlinkSource(source, {
+          serialPort: source === "serial" ? serialPort || undefined : undefined,
+          baudRate: source === "serial" ? Number(baud) : undefined,
+          ...(force ? { force: true } : {}),
+        }),
+      );
       setAppliedChoice({
         source,
         port: source === "serial" ? serialPort || null : null,
@@ -190,11 +199,17 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
       // The router re-binds asynchronously; the live indicator below reads the
       // status poll, so no manual refresh is needed.
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to set FC source");
+      setError(
+        err instanceof AgentArmedRefusal
+          ? armedRefusalReason(err)
+          : err instanceof Error
+            ? err.message
+            : "Failed to set FC source",
+      );
     } finally {
       setApplying(false);
     }
-  }, [client, source, serialPort, baud]);
+  }, [client, source, serialPort, baud, withArmedOverride]);
 
   const link = deriveMavlinkLink(status);
   // The status must be live, and after an Apply it must be a poll received
@@ -374,6 +389,7 @@ export function FcSourcePicker({ nodeDeviceId }: FcSourcePickerProps) {
           </button>
         </p>
       )}
+      {armedOverrideDialog}
     </div>
   );
 }

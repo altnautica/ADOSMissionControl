@@ -1,7 +1,7 @@
 /**
  * Navigation and safety MAVLink v2 message decoders (extended): FencePoint,
- * FenceFetchPoint, FenceStatus, Wind, Vibration, HomePosition, EkfStatusReport,
- * AdsbVehicle.
+ * FenceFetchPoint, FenceStatus, Wind, Vibration, HomePosition, GpsGlobalOrigin,
+ * EkfStatusReport, AdsbVehicle.
  *
  * @module protocol/messages/nav-safety-ext
  */
@@ -208,6 +208,38 @@ export function decodeHomePosition(dv: DataView): HomePositionMsg {
     approachX: dv.getFloat32(40, true),
     approachY: dv.getFloat32(44, true),
     approachZ: dv.getFloat32(48, true),
+  };
+}
+
+// ── GPS_GLOBAL_ORIGIN (ID 49) ───────────────────────────────
+
+export interface GpsGlobalOriginMsg {
+  /** degE7 */
+  lat: number;
+  /** degE7 */
+  lon: number;
+  /** mm AMSL */
+  alt: number;
+  /** Extension; 0 when the sender omits it. */
+  timeUsec: number;
+}
+
+/**
+ * Decode GPS_GLOBAL_ORIGIN (msg ID 49). 12-byte base, 20 with the extension.
+ *
+ * | Offset | Type   | Field                 |
+ * |--------|--------|-----------------------|
+ * | 0      | int32  | latitude (degE7)      |
+ * | 4      | int32  | longitude (degE7)     |
+ * | 8      | int32  | altitude (mm)         |
+ * | 12     | uint64 | time_usec (extension) |
+ */
+export function decodeGpsGlobalOrigin(dv: DataView): GpsGlobalOriginMsg {
+  return {
+    lat: dv.getInt32(0, true),
+    lon: dv.getInt32(4, true),
+    alt: dv.getInt32(8, true),
+    timeUsec: dv.byteLength >= 20 ? Number(dv.getBigUint64(12, true)) : 0,
   };
 }
 

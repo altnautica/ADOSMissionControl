@@ -12,6 +12,7 @@ import { holdsHomeSlot, missionSeqForTarget } from "./engine-mission";
 import { generateStatusMessage } from "./status-messages";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import type { MockProtocol } from "./mock-protocol";
+import { mockEkfFlags } from "./mock-ekf-source";
 import type { FleetDrone } from "@/lib/types";
 
 /** Core sensor bitmask: gyro | accel | compass | baro | GPS | motors | RC | AHRS | battery | pre-arm check */
@@ -117,7 +118,7 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
       posVertVariance: 0.01 + Math.random() * 0.02,
       compassVariance: 0.01 + Math.random() * 0.06,
       terrainAltVariance: 0.01 + Math.random() * 0.02,
-      flags: 0x1FF,
+      flags: mockEkfFlags(),
     });
   }
 
@@ -207,6 +208,9 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
     const homeWp = homePath?.[0];
     if (homeWp) {
       ctx.protocol.emitHomePosition({ timestamp: now, lat: homeWp.lat, lon: homeWp.lon, alt: 0 });
+      // The EKF origin sits at home, as it does when the vehicle first gets
+      // a GPS lock on the ground.
+      ctx.protocol.emitGpsOrigin({ timestamp: now, lat: homeWp.lat, lon: homeWp.lon, alt: 0 });
     }
   }
 

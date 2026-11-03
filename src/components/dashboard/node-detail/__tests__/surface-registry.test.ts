@@ -47,11 +47,21 @@ describe("node-detail surface registry (createContributionRegistry instance)", (
       "overview",
       "flight",
       "cockpit",
+      "map",
       "configure",
       "parameters",
       "logs",
       "agent",
     ]);
+  });
+
+  it("shows the drone Map tab only when the node has a companion agent", () => {
+    const bare = resolveSurfaces(
+      ctx({ agentDeviceId: null, agentIdentityKnown: false, role: null }),
+      [],
+    ).map((s) => s.id);
+    expect(bare).not.toContain("map");
+    expect(resolveSurfaces(forProfile("drone"), []).map((s) => s.id)).toContain("map");
   });
 
   it("appends the Agent surface to every profile", () => {
