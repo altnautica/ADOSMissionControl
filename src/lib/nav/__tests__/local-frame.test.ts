@@ -24,7 +24,7 @@ import {
 function live(seq: number, tiles: Array<[number, number, string]>, resM = 0.05): OccupancyLive {
   return {
     seq,
-    frame: "map_frd",
+    frame: "map_ned",
     resM,
     tileCells: 64,
     tiles: tiles.map(([ix, iy, pngB64]) => ({ ix, iy, pngB64 })),
@@ -103,7 +103,7 @@ describe("projection and transforms", () => {
 
   it("scan to map applies p = t + R·p", () => {
     // Yaw 90°: body forward points east.
-    const pose: NavPose = { R: [0, -1, 0, 1, 0, 0, 0, 0, 1], t: [5, 5, -2], health: "good", frame: "map_frd", source: null };
+    const pose: NavPose = { R: [0, -1, 0, 1, 0, 0, 0, 0, 1], t: [5, 5, -2], health: "good", frame: "map_ned", source: null };
     expect(poseYawDeg(pose)).toBeCloseTo(90);
     const pts = scanToMap({ ...scan, ranges: [2, 0, 0, 0] }, pose);
     expect(pts[0][0]).toBeCloseTo(5);

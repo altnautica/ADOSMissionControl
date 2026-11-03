@@ -162,7 +162,7 @@ export class MockNavStream {
       R: yawMatrix(loop.yawRad),
       t: [loop.x, loop.y, loop.z],
       health: extnavHealthAt(this.cycleS()),
-      frame: "map_frd",
+      frame: "map_ned",
       source: "slam",
     });
     const ranges = scanRanges(loop.x, loop.y, loop.yawRad).map((r) =>

@@ -121,6 +121,6 @@ export class OccupancyReveal {
         this.seq++;
       }
     }
-    return { seq: this.seq, frame: "map_frd", resM: OCC_RES_M, tileCells: OCC_TILE_CELLS, tiles };
+    return { seq: this.seq, frame: "map_ned", resM: OCC_RES_M, tileCells: OCC_TILE_CELLS, tiles };
   }
 }

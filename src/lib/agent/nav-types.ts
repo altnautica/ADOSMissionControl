@@ -293,7 +293,7 @@ export function parseNavPose(raw: unknown): NavPose | null {
     R: R as number[],
     t: t as [number, number, number],
     health: oneOf(raw.health, HEALTH),
-    frame: str(raw.frame) ?? "map_frd",
+    frame: str(raw.frame) ?? "map_ned",
     source: str(raw.source),
   };
 }
@@ -360,7 +360,7 @@ export function parseOccupancyLive(raw: unknown): OccupancyLive | null {
   }
   return {
     seq,
-    frame: str(raw.frame) ?? "map_frd",
+    frame: str(raw.frame) ?? "map_ned",
     resM: num(raw.res_m),
     tileCells: int(raw.tile_cells),
     tiles,

@@ -80,7 +80,7 @@ describe("occupancy synthesis", () => {
     const encode = vi.fn(stubEncoder);
     const reveal = new OccupancyReveal(encode);
     const first = reveal.next();
-    expect(first).toMatchObject({ seq: 1, frame: "map_frd", resM: OCC_RES_M, tileCells: OCC_TILE_CELLS });
+    expect(first).toMatchObject({ seq: 1, frame: "map_ned", resM: OCC_RES_M, tileCells: OCC_TILE_CELLS });
     expect(first.tiles).toEqual([{ ix: -1, iy: -1, pngB64: "png:64x64:4096" }]);
     let grid = mergeOccupancy(EMPTY_OCCUPANCY, first);
     for (let i = 1; i < 16; i++) grid = mergeOccupancy(grid, reveal.next());
@@ -145,7 +145,7 @@ describe("MockNavStream", () => {
     expect(feed?.follow?.data.phase).toBe("idle");
     expect(feed?.nav?.data).toMatchObject({ mode: "external_nav", activeSet: 1, extnavHealth: "good", odomRateHz: 30, obstacleRateHz: 10 });
     expect(feed?.nav?.data.minObstacleM).toBeGreaterThan(0);
-    expect(feed?.pose?.data.frame).toBe("map_frd");
+    expect(feed?.pose?.data.frame).toBe("map_ned");
     expect(feed?.pose?.data.R).toHaveLength(9);
     expect(feed?.scan?.data.ranges).toHaveLength(360);
     expect(feed?.map?.data.sessionId).toBe("demo-session");

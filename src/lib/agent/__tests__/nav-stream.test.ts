@@ -40,7 +40,7 @@ describe("parseNavFrame", () => {
       .toMatchObject({ kind: "nav", data: { activeSet: 2, extnavHealth: "good" } });
     expect(
       parseNavFrame({ kind: "pose", data: { pose: { R: [1, 0, 0, 0, 1, 0, 0, 0, 1], t: [1, 2, 3] }, health: "degraded" } }),
-    ).toMatchObject({ kind: "pose", data: { t: [1, 2, 3], health: "degraded", frame: "map_frd" } });
+    ).toMatchObject({ kind: "pose", data: { t: [1, 2, 3], health: "degraded", frame: "map_ned" } });
     expect(
       parseNavFrame({ kind: "scan", data: { angle_start_rad: 0, angle_increment_rad: 0.1, ranges_m: [1, null, 2] } }),
     ).toMatchObject({ kind: "scan", data: { ranges: [1, 0, 2] } });
@@ -97,7 +97,7 @@ describe("ingest", () => {
 describe("pollMapLive", () => {
   it("asks since the held seq and merges tiles", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
-      new Response(JSON.stringify({ seq: 4, frame: "map_frd", res_m: 0.05, tile_cells: 64, tiles: [{ ix: 0, iy: -1, png_b64: "AAA" }] }), {
+      new Response(JSON.stringify({ seq: 4, frame: "map_ned", res_m: 0.05, tile_cells: 64, tiles: [{ ix: 0, iy: -1, png_b64: "AAA" }] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
