@@ -59,17 +59,25 @@ describe("cockpit palette", () => {
 
   it("gives night-vision and light their own HUD roles", () => {
     for (const theme of ["nvg", "light"]) {
-      const body = block(TOKENS, `html[data-theme="${theme}"]`);
+      const body = block(TOKENS, `:root:root[data-theme="${theme}"]`);
       expect(body, theme).not.toBeNull();
       for (const role of HUD_ROLES) expect(body, `${theme} ${role}`).toContain(`${role}:`);
     }
   });
 
   it("keeps night vision off the bright default HUD colour", () => {
-    const base = block(TOKENS, ":root");
-    const nvg = block(TOKENS, 'html[data-theme="nvg"]');
+    const base = block(TOKENS, ":root:root");
+    const nvg = block(TOKENS, ':root:root[data-theme="nvg"]');
     const primary = (css: string | null) => css?.match(/--hud-primary:\s*([^;]+);/)?.[1];
     expect(primary(nvg)).toBeDefined();
     expect(primary(nvg)).not.toBe(primary(base));
+  });
+
+  it("declares HUD roles only in the locked selectors, never in a theme block", () => {
+    for (const theme of ["light", "nvg"]) {
+      expect(block(TOKENS, `html[data-theme="${theme}"]`), theme).not.toMatch(/--hud-/);
+    }
+    expect(block(TOKENS, ":root")).not.toBeNull();
+    expect(block(TOKENS, ":root")).not.toMatch(/--hud-/);
   });
 });

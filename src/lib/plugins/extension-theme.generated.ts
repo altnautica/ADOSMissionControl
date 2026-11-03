@@ -2,7 +2,8 @@
 //
 // Theme maps sent to extension iframes with the `theme.changed` event. Keys
 // are the CSS custom properties an extension styles against; values are
-// resolved CSS colours.
+// resolved CSS colours, plus the theme-independent HUD v2 target geometry
+// (`--hud-target-*`) as CSS values.
 
 export type ExtensionThemeId = "brand-dark" | "brand-light" | "nvg";
 
@@ -40,6 +41,23 @@ export const EXTENSION_THEMES: Record<ExtensionThemeId, Record<string, string>> 
     "--hud-glass-strong": "rgba(0, 0, 0, 0.78)",
     "--hud-hair": "rgba(255, 255, 255, 0.16)",
     "--hud-hair-2": "rgba(255, 255, 255, 0.08)",
+    "--hud-track": "#FF5A1F",
+    "--hud-lead": "#F5B544",
+    "--hud-coast": "#F59E0B",
+    "--hud-gt": "#A78BFA",
+    "--hud-target-bracket-ratio": "0.22",
+    "--hud-target-bracket-min": "10px",
+    "--hud-target-bracket-max": "28px",
+    "--hud-target-stroke": "2.5px",
+    "--hud-target-outline": "1px",
+    "--hud-target-reticle-arm": "18px",
+    "--hud-target-reticle-gap": "6px",
+    "--hud-target-tag-pad": "6px",
+    "--hud-target-outline-color": "rgba(0, 0, 0, 0.65)",
+    "--hud-target-tag-font": "'JetBrains Mono', monospace",
+    "--hud-target-tag-weight": "600",
+    "--hud-target-tag-transform": "uppercase",
+    "--hud-target-tag-tracking": "0.06em",
   },
   "brand-light": {
     "--bg-primary": "#FFFFFF",
@@ -74,6 +92,23 @@ export const EXTENSION_THEMES: Record<ExtensionThemeId, Record<string, string>> 
     "--hud-glass-strong": "rgba(0, 0, 0, 0.78)",
     "--hud-hair": "rgba(255, 255, 255, 0.16)",
     "--hud-hair-2": "rgba(255, 255, 255, 0.08)",
+    "--hud-track": "#FF5A1F",
+    "--hud-lead": "#F5B544",
+    "--hud-coast": "#F59E0B",
+    "--hud-gt": "#A78BFA",
+    "--hud-target-bracket-ratio": "0.22",
+    "--hud-target-bracket-min": "10px",
+    "--hud-target-bracket-max": "28px",
+    "--hud-target-stroke": "2.5px",
+    "--hud-target-outline": "1px",
+    "--hud-target-reticle-arm": "18px",
+    "--hud-target-reticle-gap": "6px",
+    "--hud-target-tag-pad": "6px",
+    "--hud-target-outline-color": "rgba(0, 0, 0, 0.65)",
+    "--hud-target-tag-font": "'JetBrains Mono', monospace",
+    "--hud-target-tag-weight": "600",
+    "--hud-target-tag-transform": "uppercase",
+    "--hud-target-tag-tracking": "0.06em",
   },
   "nvg": {
     "--bg-primary": "#000000",
@@ -108,5 +143,22 @@ export const EXTENSION_THEMES: Record<ExtensionThemeId, Record<string, string>> 
     "--hud-glass-strong": "rgba(0, 17, 0, 0.8)",
     "--hud-hair": "#003300",
     "--hud-hair-2": "#002200",
+    "--hud-track": "#FF3333",
+    "--hud-lead": "#AA8800",
+    "--hud-coast": "#AA8800",
+    "--hud-gt": "#009900",
+    "--hud-target-bracket-ratio": "0.22",
+    "--hud-target-bracket-min": "10px",
+    "--hud-target-bracket-max": "28px",
+    "--hud-target-stroke": "2.5px",
+    "--hud-target-outline": "1px",
+    "--hud-target-reticle-arm": "18px",
+    "--hud-target-reticle-gap": "6px",
+    "--hud-target-tag-pad": "6px",
+    "--hud-target-outline-color": "rgba(0, 0, 0, 0.65)",
+    "--hud-target-tag-font": "'JetBrains Mono', monospace",
+    "--hud-target-tag-weight": "600",
+    "--hud-target-tag-transform": "uppercase",
+    "--hud-target-tag-tracking": "0.06em",
   },
 };

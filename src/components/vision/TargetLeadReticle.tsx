@@ -40,8 +40,8 @@ import { useCockpitMarksStore } from "@/stores/cockpit-marks-store";
 
 /** Stable mark-source id (one owner of the lead marks). */
 const SOURCE = "builtin.target-lead";
-/** Amber "aim ahead", deliberately distinct from the green designated-lock box. */
-const LEAD_COLOR = "#f5b544";
+/** "Aim ahead" (HUD token `hud.lead`), deliberately distinct from the designated-lock box. */
+const LEAD_COLOR = "var(--hud-lead)";
 
 export function TargetLeadReticle({ droneId }: { droneId: string }) {
   const batch = useDisplayedDetectionBatch(droneId);
