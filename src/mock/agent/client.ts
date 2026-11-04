@@ -16,7 +16,6 @@ import type {
   PairingInfo,
   PeripheralInfo,
   ServiceInfo,
-  SetupActionResult,
   SystemResources,
 } from "@/lib/agent/types";
 import type { HardwareCheckStatus, SetupStatus } from "@/lib/agent/agent-api.generated";
@@ -479,30 +478,5 @@ export class MockAgentClient extends MockAgentClientExtras {
       this._mockProfile,
       this._mockProfile === "ground_station" ? this._mockGroundRole : "",
     );
-  }
-
-  async postProfileChoice(
-    profile: "drone" | "ground_station",
-    ground_role?: "direct" | "relay" | "receiver" | null,
-  ): Promise<SetupActionResult> {
-    await delay(120);
-    this._mockProfile = profile;
-    if (profile === "ground_station") {
-      this._mockGroundRole = (ground_role ?? "direct") as MockGroundRole;
-    }
-    this._mockProfileConfirmed = true;
-    const message =
-      profile === "drone"
-        ? "Profile set to drone."
-        : `Profile set to ground station (${this._mockGroundRole}).`;
-    return {
-      ok: true,
-      message,
-      data: {
-        profile,
-        ground_role: profile === "ground_station" ? this._mockGroundRole : "",
-        changed: true,
-      },
-    };
   }
 }

@@ -1,49 +1,20 @@
 /**
  * @module agent/agent-client/setup
- * @description Setup wizard surface — status, profile choice,
- * hardware-check, and the LCD display sub-flows.
+ * @description Setup wizard surface — status, hardware-check, and the LCD
+ * display sub-flows.
  * @license GPL-3.0-only
  */
 
 import type { z } from "zod";
-import type { SetupActionResult } from "../types";
 import type { HardwareCheckStatus, SetupStatus } from "../agent-api.generated";
-import {
-  HardwareCheckStatusSchema,
-  SetupActionResultSchema,
-  SetupStatusSchema,
-} from "../schemas";
-import { agentRequest, type ArmedOverrideOptions, type RequestContext } from "./transport";
+import { HardwareCheckStatusSchema, SetupStatusSchema } from "../schemas";
+import { agentRequest, type RequestContext } from "./transport";
 
 export function getSetupStatus(ctx: RequestContext): Promise<SetupStatus> {
   return agentRequest<SetupStatus>(ctx, "/api/v1/setup/status", {
     // The schema checks the subset the GCS depends on; the generated type is
     // the wire contract.
     schema: SetupStatusSchema as unknown as z.ZodType<SetupStatus>,
-    allowSchemaFallback: true,
-  });
-}
-
-/**
- * Persist the operator's profile choice from the onboarding wizard.
- * Pass `ground_role` only when `profile === "ground_station"`. Refused with
- * `AgentArmedRefusal` while armed unless `opts.force` is set.
- */
-export function postProfileChoice(
-  ctx: RequestContext,
-  profile: "drone" | "ground_station",
-  ground_role?: "direct" | "relay" | "receiver" | null,
-  opts?: ArmedOverrideOptions,
-): Promise<SetupActionResult> {
-  const body: { profile: string; ground_role?: string | null; force?: true } = { profile };
-  if (profile === "ground_station") {
-    body.ground_role = ground_role ?? "direct";
-  }
-  if (opts?.force) body.force = true;
-  return agentRequest<SetupActionResult>(ctx, "/api/v1/setup/profile", {
-    method: "POST",
-    body: JSON.stringify(body),
-    schema: SetupActionResultSchema as z.ZodType<SetupActionResult>,
     allowSchemaFallback: true,
   });
 }

@@ -19,7 +19,6 @@ import type {
   PairingInfo,
   PeripheralInfo,
   ServiceInfo,
-  SetupActionResult,
   SystemResources,
   VideoStatus,
 } from "../types";
@@ -177,14 +176,6 @@ export class AgentClient {
 
   getSetupStatus(): Promise<SetupStatus> {
     return setup.getSetupStatus(this.ctx);
-  }
-
-  postProfileChoice(
-    profile: "drone" | "ground_station",
-    ground_role?: "direct" | "relay" | "receiver" | null,
-    opts?: ArmedOverrideOptions,
-  ): Promise<SetupActionResult> {
-    return setup.postProfileChoice(this.ctx, profile, ground_role, opts);
   }
 
   getHardwareCheck(): Promise<HardwareCheckStatus> {
