@@ -13,6 +13,12 @@ import {
   ChannelHistoryChart,
   type HoppingState,
 } from "@/components/hardware/ChannelHistoryChart";
+import { normalizeHopKeyStatus } from "@/stores/agent-capabilities/normalize-radio";
+import {
+  hopKeyStatusLabel,
+  hopKeyStatusTone,
+  toneTextClass,
+} from "@/components/hardware/radio/labels";
 
 // Heartbeat older than this marks the link telemetry as stale. The panel
 // polls at 1 Hz, so a few missed polls still reads fresh; this only trips
@@ -113,6 +119,7 @@ const _POLL_INTERVAL_MS = 1000;
  */
 export function VideoLinkPanel() {
   const t = useTranslations("hardware.videoLink");
+  const tRadio = useTranslations("hardware.radio");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
 
@@ -126,13 +133,15 @@ export function VideoLinkPanel() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
+  const storeClient = useAgentConnectionStore((s) => s.client);
+
   const client = useMemo(() => {
-    // `mock://demo` is truthy but is not an HTTP endpoint; without this the
-    // panel polled an unsupported scheme at 1 Hz forever while rendering
-    // nothing.
-    if (!agentUrl || isDemoMode()) return null;
+    // `mock://demo` is not an HTTP endpoint: the demo reads the attached
+    // mock client instead, which serves a simulated ground station's config.
+    if (isDemoMode()) return storeClient;
+    if (!agentUrl) return null;
     return new AgentClient(agentUrl, apiKey);
-  }, [agentUrl, apiKey]);
+  }, [agentUrl, apiKey, storeClient]);
 
   const pollRef = useRef<number | null>(null);
 
@@ -237,6 +246,7 @@ export function VideoLinkPanel() {
   const tiers = adaptive.tiers ?? [];
   const activeTierIdx = adaptive.tier_idx ?? -1;
   const auto = adaptive.auto ?? true;
+  const keyStatus = normalizeHopKeyStatus(config.hopping);
 
   // Acquisition signal. A single agent payload only knows its own radio
   // state, so we cannot compare peer channels here. The link is still
@@ -327,6 +337,13 @@ export function VideoLinkPanel() {
           value={radio.channel != null ? String(radio.channel) : "—"}
           hint={radio.tx_power_dbm != null ? `${radio.tx_power_dbm} dBm` : undefined}
         />
+        {keyStatus ? (
+          <ReadoutRow
+            label={tRadio("hopKeyLabel")}
+            value={hopKeyStatusLabel(tRadio, keyStatus)}
+            valueClass={toneTextClass(hopKeyStatusTone(keyStatus))}
+          />
+        ) : null}
       </div>
 
       {/* Link liveness counters. Rendered only when the agent reports the
@@ -420,17 +437,19 @@ function ReadoutRow({
   label,
   value,
   hint,
+  valueClass = "text-text-primary",
 }: {
   label: string;
   value: string;
   hint?: string;
+  valueClass?: string;
 }) {
   return (
     <div className="flex flex-col">
       <span className="text-[10px] uppercase tracking-widest text-text-tertiary">
         {label}
       </span>
-      <span className="text-text-primary">{value}</span>
+      <span className={valueClass}>{value}</span>
       {hint ? <span className="text-text-tertiary">{hint}</span> : null}
     </div>
   );

@@ -12,6 +12,7 @@ import type {
   RadioTopology,
   RadioPeerLink,
   RadioHopState,
+  RadioHopKeyStatus,
   RadioAcquireState,
   RadioLinkDiag,
 } from "@/lib/api/ground-station/types";
@@ -121,6 +122,27 @@ export function hopStateLabel(
     hopping: "hopState.hopping",
   };
   return t(map[hopState]);
+}
+
+// Operator copy for the ground station's control-plane key state. Keys live
+// under the `hardware.radio` namespace.
+export function hopKeyStatusLabel(
+  t: ReturnType<typeof useTranslations>,
+  status: RadioHopKeyStatus,
+): string {
+  const map: Record<RadioHopKeyStatus, string> = {
+    bound: "hopKeyStatus.bound",
+    cold_start: "hopKeyStatus.cold_start",
+    key_unavailable: "hopKeyStatus.key_unavailable",
+  };
+  return t(map[status]);
+}
+
+// A bound key is healthy. Cold start and an unreadable key both mean the link
+// is not authenticated under its pair key, so both warn: a ground that stays
+// in cold start after pairing never received the shared key.
+export function hopKeyStatusTone(status: RadioHopKeyStatus): RadioDiagTone {
+  return status === "bound" ? "success" : "warning";
 }
 
 export function acquireStateLabel(

@@ -15,6 +15,7 @@
 
 import type {
   RadioAcquireState,
+  RadioHopKeyStatus,
   RadioHopState,
   RadioLinkDiag,
   RadioLinkState,
@@ -54,6 +55,22 @@ const RADIO_HOP_STATES: ReadonlySet<RadioHopState> = new Set<RadioHopState>([
   "locked",
   "hopping",
 ]);
+const RADIO_HOP_KEY_STATUSES: ReadonlySet<RadioHopKeyStatus> =
+  new Set<RadioHopKeyStatus>(["bound", "cold_start", "key_unavailable"]);
+
+/**
+ * Read `hopping.key_status` from a `/api/video/config` body. Null when the
+ * block or field is absent (drone side, older agents, no beacon heard yet)
+ * or carries a value this build does not recognise.
+ */
+export function normalizeHopKeyStatus(hopping: unknown): RadioHopKeyStatus | null {
+  if (typeof hopping !== "object" || hopping === null) return null;
+  const raw = (hopping as Record<string, unknown>).key_status;
+  return typeof raw === "string" && RADIO_HOP_KEY_STATUSES.has(raw as RadioHopKeyStatus)
+    ? (raw as RadioHopKeyStatus)
+    : null;
+}
+
 const RADIO_ACQUIRE_STATES: ReadonlySet<RadioAcquireState> =
   new Set<RadioAcquireState>(["idle", "searching", "locked", "no-peer"]);
 const RADIO_LINK_DIAGS: ReadonlySet<RadioLinkDiag> = new Set<RadioLinkDiag>([

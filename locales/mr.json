@@ -5838,6 +5838,12 @@
         "absentBody": "This node has no WFB receive plane, so there are no adapters to show.",
         "lostEstimate": "Estimated: several adapters receive the same stream.",
         "fecRecPerStream": "Counted per stream, not per adapter, when several adapters receive the same stream."
+      },
+      "hopKeyLabel": "Link key",
+      "hopKeyStatus": {
+        "bound": "Bound",
+        "cold_start": "Waiting for key (cold start)",
+        "key_unavailable": "Key unavailable"
       }
     },
     "videoLink": {

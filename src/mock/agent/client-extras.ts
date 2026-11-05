@@ -2,8 +2,8 @@
  * @module mock/agent/client-extras
  * @description The part of the `AgentClient` surface demo mode answers with
  * "not reported" rather than invented readings: version and capability
- * probes, the consolidated status, display and touch calibration, the video
- * pipeline, the clock and recording. `MockAgentClient` extends this so the
+ * probes, the consolidated status, display and touch calibration, most of the
+ * video pipeline, the clock and recording. `MockAgentClient` extends this so the
  * demo client carries every public `AgentClient` method; the parity is
  * pinned by `tests/unit/mock-agent-client-parity.test.ts`.
  *
@@ -37,6 +37,27 @@ import { DEMO_STATUS_EXTRAS } from "./status-extras";
 
 /** Simulated round trip, the same order as the rest of the demo client. */
 const DEMO_LATENCY_MS = 60;
+
+/** `GET /api/video/config` as a paired ground station answers it: static
+ * radio and encoder blocks, no adaptive controller, and the listener-side hop
+ * snapshot whose `key_status` the radio tab shows. */
+export const DEMO_VIDEO_CONFIG = {
+  radio: { channel: 149, band: "u-nii-3", mcs_index: 1, fec_k: 8, fec_n: 12, tx_power_dbm: 20, preset: "balanced" },
+  encoder: { bitrate_kbps: 4000, width: 1280, height: 720, fps: 30, codec: "h264" },
+  adaptive: { available: false },
+  hopping: {
+    enabled: true,
+    band: "u-nii-3",
+    hop_period_seconds: null,
+    loss_threshold_percent: null,
+    rssi_threshold_dbm: null,
+    last_hop_at: 0,
+    history: [],
+    source: "listener",
+    last_refusal: null,
+    key_status: "bound",
+  },
+} as const;
 
 export class MockAgentClientExtras {
   private demoRecording: { filename: string; startedAt: number } | null = null;
@@ -96,7 +117,7 @@ export class MockAgentClientExtras {
 
   async getVideoConfig(): Promise<unknown | null> {
     await delay(DEMO_LATENCY_MS);
-    return null;
+    return DEMO_VIDEO_CONFIG;
   }
 
   async setVideoConfig(

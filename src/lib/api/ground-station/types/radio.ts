@@ -44,6 +44,13 @@ export type RadioPeerLink = "linked" | "searching" | "no_peer";
 // "hopping" during an in-progress move to a quieter channel.
 export type RadioHopState = "idle" | "searching" | "locked" | "hopping";
 
+// Which key a ground station's presence/hop control plane authenticates
+// under (`/api/video/config` → `hopping.key_status`, ground side only):
+// "bound" once the pair key is read, "cold_start" while no pair key exists
+// yet (the shared default key), "key_unavailable" when the key file exists
+// but cannot be read. Absent on the drone side and before the first beacon.
+export type RadioHopKeyStatus = "bound" | "cold_start" | "key_unavailable";
+
 // Ground receiver channel-acquirer mode. "idle" before acquisition runs,
 // "searching" while it hunts for a valid-decode channel, "locked" once it
 // settles on one, "no-peer" when the radio is up but no peer has been

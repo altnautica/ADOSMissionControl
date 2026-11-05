@@ -5818,6 +5818,12 @@
         "locked": "Locked",
         "hopping": "Hopping"
       },
+      "hopKeyLabel": "Link key",
+      "hopKeyStatus": {
+        "bound": "Bound",
+        "cold_start": "Waiting for key (cold start)",
+        "key_unavailable": "Key unavailable"
+      },
       "acquireState": {
         "idle": "Idle",
         "searching": "Searching",
