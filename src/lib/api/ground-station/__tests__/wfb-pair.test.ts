@@ -115,6 +115,25 @@ describe("pair store", () => {
     expect(status?.paired_drone).toBe("drone-0001");
   });
 
+  it("keeps the installing drone in status when a second drone joins the fleet", async () => {
+    useGroundStationStore.setState({
+      status: { ...useGroundStationStore.getState().status, paired_drone: "drone-0001" } as never,
+    });
+    stubFetch(200, JSON.stringify({ ...REPLY, paired_with_device_id: "drone-0002", paired_at: null, fleet_slot: 3 }));
+    await useGroundStationStore.getState().startPair(api, KEY_B64, "drone-0002");
+    const { pair, status } = useGroundStationStore.getState();
+    expect(pair.result?.fleet_slot).toBe(3);
+    expect(status?.paired_drone).toBe("drone-0001");
+  });
+
+  it("reports a failed unpair so unpair-and-retry stops there", async () => {
+    stubFetch(500, JSON.stringify({ detail: { error: { code: "E_UNPAIR_FAILED" } } }));
+    await expect(useGroundStationStore.getState().unpair(api)).resolves.toBe(false);
+    expect(useGroundStationStore.getState().pair.errorCode).toBe("E_UNPAIR_FAILED");
+    stubFetch(200, JSON.stringify({ paired: false, role: "gs" }));
+    await expect(useGroundStationStore.getState().unpair(api)).resolves.toBe(true);
+  });
+
   it("lands a 400 refusal with its status, code and message", async () => {
     stubFetch(400, DEPRECATED);
     await useGroundStationStore.getState().startPair(api, KEY_B64, "drone-0001");
@@ -141,6 +160,7 @@ describe("pair store", () => {
       "E_FLEET_PERSIST_FAILED",
       "E_PAIR_FAILED",
       "E_PROFILE_MISMATCH",
+      "E_UNPAIR_FAILED",
     ]) {
       expect(errors[code], code).toMatch(/\S/);
     }

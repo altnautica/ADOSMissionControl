@@ -1,6 +1,7 @@
 /**
- * Pair slice for the ground-station store. Owns the pairing flow (the drone's
- * fleet key and device id, the reply's fleet slot, paired-drone status), the network
+ * Pair slice for the ground-station store. Owns the pairing flow (the fleet's
+ * ground-station key, the drone's device id and optional drone-side key half,
+ * the reply's fleet slot, paired-drone status), the network
  * snapshot the pair flow leans on, AP config, and the OLED + screens UI
  * config tied to the paired status.
  *
@@ -59,9 +60,10 @@ export interface PairSlice {
     droneDeviceId: string,
     sharedKeyB64?: string,
   ) => Promise<void>;
-  /** Rejects only with `AgentArmedRefusal` (the vehicle is armed and
-   * `opts.force` is unset); every other failure lands in `pair.error`. */
-  unpair: (api: GroundStationApi, opts?: ArmedOverrideOptions) => Promise<void>;
+  /** Resolves true once the station is unpaired, false when the unpair failed
+   * (the failure lands in `pair.error`). Rejects only with `AgentArmedRefusal`
+   * (the vehicle is armed and `opts.force` is unset). */
+  unpair: (api: GroundStationApi, opts?: ArmedOverrideOptions) => Promise<boolean>;
   clearPair: () => void;
 }
 
@@ -178,10 +180,16 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
       const result = await api.pairDrone(blobB64, droneDeviceId, sharedKeyB64);
       set({
         pair: { ...INITIAL_PAIR, result },
-        status: {
-          ...get().status,
-          paired_drone: result.paired_with_device_id ?? droneDeviceId.trim(),
-        },
+        // A fleet join (`paired_at` null) installs nothing: the station's own
+        // pair record, and so `/status`, still names the drone that installed it.
+        ...(result.paired_at !== null
+          ? {
+              status: {
+                ...get().status,
+                paired_drone: result.paired_with_device_id ?? droneDeviceId.trim(),
+              },
+            }
+          : {}),
       });
     } catch (err) {
       const { message, status } = errorMessage(err);
@@ -204,6 +212,7 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
         pair: INITIAL_PAIR,
         status: { ...get().status, paired_drone: null },
       });
+      return true;
     } catch (err) {
       // The armed refusal is the caller's to answer (it asks the operator and
       // retries with the override); it is not a failed unpair.
@@ -213,11 +222,12 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
         pair: {
           ...get().pair,
           error: message,
-          errorCode: errorCode(err),
+          errorCode: errorCode(err) ?? "E_UNPAIR_FAILED",
           errorStatus: status,
           loading: false,
         },
       });
+      return false;
     }
   },
 

@@ -122,7 +122,7 @@ export interface GroundStationState {
     droneDeviceId: string,
     sharedKeyB64?: string,
   ) => Promise<void>;
-  unpair: (api: GroundStationApi, opts?: ArmedOverrideOptions) => Promise<void>;
+  unpair: (api: GroundStationApi, opts?: ArmedOverrideOptions) => Promise<boolean>;
   clearPair: () => void;
 
   // peripherals actions

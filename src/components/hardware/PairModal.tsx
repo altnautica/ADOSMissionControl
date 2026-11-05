@@ -62,12 +62,16 @@ export function PairModal({ open, onClose }: PairModalProps) {
     setUnpairConfirmOpen(false);
     const client = pairApiFromAgent(agentUrl, apiKey);
     if (!client) return;
+    let unpaired: boolean;
     try {
-      await withArmedOverride((force) => unpair(client, { force }));
+      unpaired = await withArmedOverride((force) => unpair(client, { force }));
     } catch {
       // The operator declined the armed override: the pair stays as it is.
       return;
     }
+    // A failed unpair leaves the other fleet key installed; the store shows
+    // why, and re-pairing now would only hit the same mismatch.
+    if (!unpaired) return;
     await startPair(client, keyB64, droneId, sharedKeyB64);
   };
 
@@ -79,6 +83,10 @@ export function PairModal({ open, onClose }: PairModalProps) {
   // an unknown code falls back to the agent's own message.
   const errorKey = pair.errorCode ? `errors.${pair.errorCode}` : null;
   const errorText = errorKey && t.has(errorKey) ? t(errorKey) : pair.error;
+  const sharedKeyOutcomeKey = `sharedKeyOutcome.${pair.result?.shared_key ?? "notSupplied"}`;
+  // The beacon key did not land: the pair stands, but the operator must act.
+  const sharedKeyWarn =
+    pair.result?.shared_key === "mismatch" || pair.result?.shared_key === "write_failed";
 
   const footer = pair.result ? (
     <Button variant="primary" onClick={handleClose}>
@@ -129,8 +137,14 @@ export function PairModal({ open, onClose }: PairModalProps) {
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-xs uppercase tracking-wide text-text-secondary">{t("sharedKey")}</span>
-            <span className="text-xs text-text-primary">
-              {t(`sharedKeyOutcome.${pair.result.shared_key ?? "notSupplied"}`)}
+            <span
+              className={
+                sharedKeyWarn
+                  ? "rounded border border-status-warning/40 bg-status-warning/10 px-2 py-1 text-xs text-status-warning"
+                  : "text-xs text-text-primary"
+              }
+            >
+              {t.has(sharedKeyOutcomeKey) ? t(sharedKeyOutcomeKey) : pair.result.shared_key}
             </span>
           </div>
         </div>

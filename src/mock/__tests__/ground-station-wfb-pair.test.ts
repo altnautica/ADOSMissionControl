@@ -27,13 +27,13 @@ async function codeOf(p: Promise<unknown>): Promise<[number, string | null]> {
 beforeEach(() => demo.reset());
 
 describe("demo fleet-key pair", () => {
-  it("installs the key and issues the first slot", async () => {
+  it("installs the key and issues slot 1 (slot 0 is the ground station)", async () => {
     const reply = await demo.pairDrone(DEMO_PAIR_KEY_B64, DEMO_PAIR_DEVICE_ID);
     expect(reply).toMatchObject({
       paired: true,
       paired_with_device_id: DEMO_PAIR_DEVICE_ID,
       role: "gs",
-      fleet_slot: 0,
+      fleet_slot: 1,
     });
     expect(reply.paired_at).not.toBeNull();
     expect(reply.fingerprint).toMatch(/^[0-9a-f]{16}$/);
@@ -43,10 +43,10 @@ describe("demo fleet-key pair", () => {
   it("joins a second drone on the same key without a fresh install, and re-pairs idempotently", async () => {
     await demo.pairDrone(DEMO_PAIR_KEY_B64, DEMO_PAIR_DEVICE_ID);
     const second = await demo.pairDrone(DEMO_PAIR_KEY_B64, "demo-drone-02");
-    expect(second.fleet_slot).toBe(1);
+    expect(second.fleet_slot).toBe(2);
     expect(second.paired_at).toBeNull();
     const again = await demo.pairDrone(DEMO_PAIR_KEY_B64, DEMO_PAIR_DEVICE_ID);
-    expect(again.fleet_slot).toBe(0);
+    expect(again.fleet_slot).toBe(1);
     expect(again.slots).toHaveLength(2);
   });
 
@@ -80,6 +80,23 @@ describe("demo fleet-key pair", () => {
     const other = btoa(String.fromCharCode(...new Array<number>(64).fill(9)));
     expect(await codeOf(demo.pairDrone(other, "demo-drone-02"))).toEqual([409, "E_FLEET_KEY_MISMATCH"]);
     expect(await demo.unpairDrone()).toEqual({ paired: false, role: "gs" });
-    expect((await demo.pairDrone(other, "demo-drone-02")).fleet_slot).toBe(0);
+    // Like the agent today, unpair keeps the roster: the new drone takes slot 2.
+    const repaired = await demo.pairDrone(other, "demo-drone-02");
+    expect(repaired.fleet_slot).toBe(2);
+    expect(repaired.slots.map((s) => s.device_id)).toEqual([DEMO_PAIR_DEVICE_ID, "demo-drone-02"]);
+  });
+
+  it("refuses a 25th drone with E_FLEET_FULL and the roster", async () => {
+    for (let i = 1; i <= 24; i++) {
+      await demo.pairDrone(DEMO_PAIR_KEY_B64, `demo-drone-${String(i).padStart(2, "0")}`);
+    }
+    const err = await demo.pairDrone(DEMO_PAIR_KEY_B64, "demo-drone-25").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(GroundStationApiError);
+    expect(errorCode(err)).toBe("E_FLEET_FULL");
+    const body = JSON.parse((err as GroundStationApiError).body);
+    expect(body.detail.error.slots).toHaveLength(24);
+    expect(body.detail.error.slots.map((s: { slot: number }) => s.slot)).toEqual(
+      Array.from({ length: 24 }, (_, i) => i + 1),
+    );
   });
 });

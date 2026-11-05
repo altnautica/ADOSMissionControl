@@ -22,8 +22,9 @@ export const DEMO_PAIR_BASE_URL = "mock://demo";
 /** A wfb-ng key file is exactly this many bytes. */
 export const WFB_KEY_FILE_BYTES = 64;
 
-/** Fleet slots one ground station issues. */
-export const DEMO_FLEET_MAX_SLOTS = 8;
+/** Largest drone slot a fleet issues. Drone slots run 1..=24; slot 0 is the
+ *  ground station itself and is never issued to a drone. */
+export const DEMO_FLEET_MAX_SLOTS = 24;
 
 /** A well-formed demo drone key (64 bytes, base64). */
 export const DEMO_PAIR_KEY_B64 = btoa(
@@ -38,9 +39,14 @@ export const DEMO_PAIR_FINGERPRINT = "3f9a1c07d24e8b56";
 
 const DEVICE_ID_RE = /^[A-Za-z0-9._-]{8,32}$/;
 
-/** The agent's `{detail:{error:{code,message}}}` refusal. */
-function refusal(status: number, code: string, message?: string): GroundStationApiError {
-  const error = message ? { code, message } : { code };
+/** The agent's `{detail:{error:{code,message,...extra}}}` refusal. */
+function refusal(
+  status: number,
+  code: string,
+  message?: string,
+  extra?: Record<string, unknown>,
+): GroundStationApiError {
+  const error = { code, ...(message ? { message } : {}), ...extra };
   return new GroundStationApiError(status, JSON.stringify({ detail: { error } }));
 }
 
@@ -127,7 +133,7 @@ export class DemoGroundStationPair implements DemoPairMethods {
     let row = this.state.slots.find((s) => s.device_id === deviceId);
     if (!row) {
       const taken = new Set(this.state.slots.map((s) => s.slot));
-      const free = Array.from({ length: DEMO_FLEET_MAX_SLOTS }, (_, i) => i).find(
+      const free = Array.from({ length: DEMO_FLEET_MAX_SLOTS }, (_, i) => i + 1).find(
         (s) => !taken.has(s),
       );
       if (free === undefined) {
@@ -135,6 +141,7 @@ export class DemoGroundStationPair implements DemoPairMethods {
           409,
           "E_FLEET_FULL",
           `all ${DEMO_FLEET_MAX_SLOTS} fleet slots are taken; release one before pairing another drone`,
+          { slots: this.state.slots.map((s) => ({ ...s })) },
         );
       }
       row = {
@@ -170,8 +177,10 @@ export class DemoGroundStationPair implements DemoPairMethods {
     };
   };
 
+  /** Like the agent today: wipes the installed fleet key only. The fleet
+   *  roster and the shared beacon key survive an unpair. */
   unpairDrone = async (): Promise<UnpairResult> => {
-    this.reset();
+    this.state.key = null;
     return { paired: false, role: "gs" };
   };
 }
