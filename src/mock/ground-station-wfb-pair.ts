@@ -177,10 +177,10 @@ export class DemoGroundStationPair implements DemoPairMethods {
     };
   };
 
-  /** Like the agent today: wipes the installed fleet key only. The fleet
-   *  roster and the shared beacon key survive an unpair. */
+  /** Like the agent: a station-wide unpair wipes the fleet key, the fleet
+   *  roster and the shared beacon key, so every drone must pair again. */
   unpairDrone = async (): Promise<UnpairResult> => {
-    this.state.key = null;
+    this.reset();
     return { paired: false, role: "gs" };
   };
 }

@@ -5218,7 +5218,7 @@
       "noClient": "No ground station connected.",
       "unpairAndRetry": "Unpair and retry",
       "unpairTitle": "Unpair this ground station?",
-      "unpairMessage": "This wipes the installed radio key and drops every drone in the current fleet. Each of them must be paired again.",
+      "unpairMessage": "This wipes the fleet key, the fleet list and the drone beacon key on this ground station. Every drone in the fleet, not only this one, is dropped and must be paired again.",
       "unpair": "Unpair",
       "errors": {
         "E_PAIR_KEY_DEPRECATED": "This ground station no longer accepts a typed pair key. Paste the fleet radio key instead.",

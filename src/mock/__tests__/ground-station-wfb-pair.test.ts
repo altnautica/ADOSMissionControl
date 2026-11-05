@@ -76,14 +76,17 @@ describe("demo fleet-key pair", () => {
   });
 
   it("refuses a different fleet key until the station is unpaired", async () => {
-    await demo.pairDrone(DEMO_PAIR_KEY_B64, DEMO_PAIR_DEVICE_ID);
+    await demo.pairDrone(DEMO_PAIR_KEY_B64, DEMO_PAIR_DEVICE_ID, DEMO_PAIR_KEY_B64);
     const other = btoa(String.fromCharCode(...new Array<number>(64).fill(9)));
     expect(await codeOf(demo.pairDrone(other, "demo-drone-02"))).toEqual([409, "E_FLEET_KEY_MISMATCH"]);
     expect(await demo.unpairDrone()).toEqual({ paired: false, role: "gs" });
-    // Like the agent today, unpair keeps the roster: the new drone takes slot 2.
-    const repaired = await demo.pairDrone(other, "demo-drone-02");
-    expect(repaired.fleet_slot).toBe(2);
-    expect(repaired.slots.map((s) => s.device_id)).toEqual([DEMO_PAIR_DEVICE_ID, "demo-drone-02"]);
+    // Unpair drops the roster and the beacon key: the new fleet starts at slot 1
+    // and a different shared key installs rather than reporting a mismatch.
+    const repaired = await demo.pairDrone(other, "demo-drone-02", other);
+    expect(repaired.fleet_slot).toBe(1);
+    expect(repaired.paired_at).not.toBeNull();
+    expect(repaired.slots.map((s) => s.device_id)).toEqual(["demo-drone-02"]);
+    expect(repaired.shared_key).toBe("installed");
   });
 
   it("refuses a 25th drone with E_FLEET_FULL and the roster", async () => {
