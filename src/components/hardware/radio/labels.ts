@@ -138,11 +138,12 @@ export function hopKeyStatusLabel(
   return t(map[status]);
 }
 
-// A bound key is healthy. Cold start and an unreadable key both mean the link
-// is not authenticated under its pair key, so both warn: a ground that stays
-// in cold start after pairing never received the shared key.
+// A bound key is neutral, not healthy: it only says this station's own key
+// reads, and a mis-keyed pair still reads bound. Cold start and an unreadable
+// key both mean the link is not authenticated under its pair key, so both
+// warn: a ground that stays in cold start after pairing never got the key.
 export function hopKeyStatusTone(status: RadioHopKeyStatus): RadioDiagTone {
-  return status === "bound" ? "success" : "warning";
+  return status === "bound" ? "muted" : "warning";
 }
 
 export function acquireStateLabel(

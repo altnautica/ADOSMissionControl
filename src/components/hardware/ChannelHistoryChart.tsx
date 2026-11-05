@@ -37,6 +37,9 @@ export type HoppingState = {
   hop_period_seconds: number | null;
   history: HopEntry[];
   last_hop_at?: number;
+  // Ground station only: which key the control plane authenticates under.
+  // Read through `normalizeHopKeyStatus`; absent on the drone side.
+  key_status?: string | null;
 };
 
 type Props = {

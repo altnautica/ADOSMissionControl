@@ -63,7 +63,7 @@ describe("hop key status", () => {
   });
 
   it("warns on cold start and an unreadable key", () => {
-    expect(hopKeyStatusTone("bound")).toBe("success");
+    expect(hopKeyStatusTone("bound")).toBe("muted");
     expect(hopKeyStatusTone("cold_start")).toBe("warning");
     expect(hopKeyStatusTone("key_unavailable")).toBe("warning");
   });

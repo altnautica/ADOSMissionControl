@@ -8,6 +8,11 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Link key on the ground station's Video Link panel.** A "Link key" row
+  shows the ground station's control-plane key state from `/api/video/config`
+  (`hopping.key_status`): bound (neutral), waiting for key (cold start) or key
+  unavailable (both warnings). It is hidden when the agent does not report it.
+  Demo mode serves a bound ground station.
 - **HUD v2 target symbology.** One resolver (`lib/vision/target-state.ts`)
   decides every target state on every video surface: candidate hairline,
   tracked brackets, locked, acquiring, following (filled `TRACK` tag, range and
