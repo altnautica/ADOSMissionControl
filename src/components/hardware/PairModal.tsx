@@ -2,19 +2,22 @@
 
 /**
  * @module PairModal
- * @description Pair-with-drone modal. Collects a 32-char pair key and
- * an optional drone device id, calls the agent, handles 409/400 errors with
- * explicit retry or unpair actions.
+ * @description Pair-with-drone modal. Collects the fleet's radio key (base64)
+ * and the drone's device id, installs the key on the ground station, and shows
+ * the fleet slot the station issued. A different fleet key already installed
+ * offers unpair-and-retry; every other refusal reads as the agent's error code
+ * in plain words.
  * @license GPL-3.0-only
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useGroundStationStore } from "@/stores/ground-station-store";
-import { groundStationApiFromAgent } from "@/lib/api/ground-station-api";
+import { pairApiFromAgent } from "@/lib/api/ground-station/pair-source";
 import { useArmedOverrideConfirm } from "@/hooks/use-armed-override-confirm";
 
 interface PairModalProps {
@@ -23,6 +26,7 @@ interface PairModalProps {
 }
 
 export function PairModal({ open, onClose }: PairModalProps) {
+  const t = useTranslations("hardware.pair");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
 
@@ -32,36 +36,31 @@ export function PairModal({ open, onClose }: PairModalProps) {
   const clearPair = useGroundStationStore((s) => s.clearPair);
   const { withArmedOverride, armedOverrideDialog } = useArmedOverrideConfirm();
 
-  const [pairKey, setPairKey] = useState("");
+  const [keyB64, setKeyB64] = useState("");
   const [droneId, setDroneId] = useState("");
+  const [sharedKeyB64, setSharedKeyB64] = useState("");
   const [unpairConfirmOpen, setUnpairConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) {
-      setPairKey("");
-      setDroneId("");
-      setUnpairConfirmOpen(false);
-    }
-  }, [open]);
-
+  // Every close goes through here (the modal's own close and Done), so the
+  // form starts empty on the next open; the keys never outlive the dialog.
   const handleClose = () => {
+    setKeyB64("");
+    setDroneId("");
+    setSharedKeyB64("");
+    setUnpairConfirmOpen(false);
     clearPair();
     onClose();
   };
 
   const handleSubmit = async () => {
-    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    const client = pairApiFromAgent(agentUrl, apiKey);
     if (!client) return;
-    await startPair(client, pairKey.trim(), droneId.trim() || undefined);
-  };
-
-  const handleUnpairAndRetry = () => {
-    setUnpairConfirmOpen(true);
+    await startPair(client, keyB64, droneId, sharedKeyB64);
   };
 
   const handleConfirmUnpair = async () => {
     setUnpairConfirmOpen(false);
-    const client = groundStationApiFromAgent(agentUrl, apiKey);
+    const client = pairApiFromAgent(agentUrl, apiKey);
     if (!client) return;
     try {
       await withArmedOverride((force) => unpair(client, { force }));
@@ -69,29 +68,34 @@ export function PairModal({ open, onClose }: PairModalProps) {
       // The operator declined the armed override: the pair stays as it is.
       return;
     }
-    await startPair(client, pairKey.trim(), droneId.trim() || undefined);
+    await startPair(client, keyB64, droneId, sharedKeyB64);
   };
 
   const hasClient = Boolean(agentUrl);
-  const isAlreadyPaired = pair.errorStatus === 409;
-  const canSubmit = pairKey.trim().length > 0 && !pair.loading && hasClient;
+  const holdsOtherFleetKey = pair.errorCode === "E_FLEET_KEY_MISMATCH";
+  const canSubmit =
+    keyB64.trim().length > 0 && droneId.trim().length > 0 && !pair.loading && hasClient;
+  // The agent's machine code reads as plain words when the modal knows it;
+  // an unknown code falls back to the agent's own message.
+  const errorKey = pair.errorCode ? `errors.${pair.errorCode}` : null;
+  const errorText = errorKey && t.has(errorKey) ? t(errorKey) : pair.error;
 
   const footer = pair.result ? (
     <Button variant="primary" onClick={handleClose}>
-      Done
+      {t("done")}
     </Button>
   ) : (
     <>
       <Button variant="secondary" onClick={handleClose} disabled={pair.loading}>
-        Cancel
+        {t("cancel")}
       </Button>
-      {isAlreadyPaired ? (
-        <Button variant="primary" onClick={handleUnpairAndRetry} loading={pair.loading}>
-          Unpair and retry
+      {holdsOtherFleetKey ? (
+        <Button variant="primary" onClick={() => setUnpairConfirmOpen(true)} loading={pair.loading}>
+          {t("unpairAndRetry")}
         </Button>
       ) : (
         <Button variant="primary" onClick={handleSubmit} disabled={!canSubmit} loading={pair.loading}>
-          Pair
+          {t("submit")}
         </Button>
       )}
     </>
@@ -99,66 +103,97 @@ export function PairModal({ open, onClose }: PairModalProps) {
 
   return (
     <>
-    <Modal open={open} onClose={handleClose} title="Pair with drone" footer={footer} className="max-w-md">
+    <Modal open={open} onClose={handleClose} title={t("title")} footer={footer} className="max-w-md">
       {pair.result ? (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="pair-success">
           <div className="rounded border border-status-success/40 bg-status-success/10 px-3 py-2 text-sm text-status-success">
-            Paired successfully.
+            {pair.result.paired_at === null ? t("joinedFleet") : t("success")}
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-text-secondary">Drone ID</span>
+            <span className="text-xs uppercase tracking-wide text-text-secondary">{t("droneId")}</span>
             <span className="font-mono text-sm text-text-primary break-all">
-              {pair.result.paired_drone_id}
+              {pair.result.paired_with_device_id ?? droneId.trim()}
             </span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-text-secondary">Fingerprint</span>
+            <span className="text-xs uppercase tracking-wide text-text-secondary">{t("fleetSlot")}</span>
+            <span className="font-mono text-sm text-text-primary">
+              {t("fleetSlotValue", { slot: pair.result.fleet_slot, count: pair.result.slots.length })}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-text-secondary">{t("fingerprint")}</span>
             <span className="font-mono text-xs text-text-primary break-all">
-              {pair.result.key_fingerprint}
+              {pair.result.fingerprint ?? t("unknown")}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-text-secondary">{t("sharedKey")}</span>
+            <span className="text-xs text-text-primary">
+              {t(`sharedKeyOutcome.${pair.result.shared_key ?? "notSupplied"}`)}
             </span>
           </div>
         </div>
       ) : (
         <div className="space-y-3">
+          <p className="text-xs text-text-secondary">{t("intro")}</p>
           <div className="flex flex-col gap-1">
-            <label htmlFor="pair-key" className="text-xs text-text-secondary">
-              Pair key
+            <label htmlFor="pair-fleet-key" className="text-xs text-text-secondary">
+              {t("keyLabel")}
             </label>
-            <input
-              id="pair-key"
-              type="text"
-              value={pairKey}
-              onChange={(e) => setPairKey(e.target.value)}
-              placeholder="32-character pair key"
+            <textarea
+              id="pair-fleet-key"
+              value={keyB64}
+              onChange={(e) => setKeyB64(e.target.value)}
+              placeholder={t("keyPlaceholder")}
               autoFocus
+              rows={3}
               spellCheck={false}
               autoComplete="off"
-              className="w-full h-9 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
+              className="w-full px-2 py-1 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors resize-none break-all"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label htmlFor="drone-id" className="text-xs text-text-secondary">
-              Drone device ID (optional)
+            <label htmlFor="pair-drone-id" className="text-xs text-text-secondary">
+              {t("droneIdLabel")}
             </label>
             <input
-              id="drone-id"
+              id="pair-drone-id"
               type="text"
               value={droneId}
               onChange={(e) => setDroneId(e.target.value)}
-              placeholder="Leave blank to auto-detect"
+              placeholder={t("droneIdPlaceholder")}
               spellCheck={false}
               autoComplete="off"
               className="w-full h-8 px-2 bg-bg-tertiary border border-border-default text-sm font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors"
             />
           </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="pair-shared-key" className="text-xs text-text-secondary">
+              {t("sharedKeyLabel")}
+            </label>
+            <textarea
+              id="pair-shared-key"
+              value={sharedKeyB64}
+              onChange={(e) => setSharedKeyB64(e.target.value)}
+              placeholder={t("sharedKeyPlaceholder")}
+              rows={2}
+              spellCheck={false}
+              autoComplete="off"
+              className="w-full px-2 py-1 bg-bg-tertiary border border-border-default text-xs font-mono text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-primary transition-colors resize-none break-all"
+            />
+          </div>
           {pair.error ? (
-            <div className="rounded border border-status-error/40 bg-status-error/10 px-3 py-2 text-xs text-status-error">
-              {isAlreadyPaired ? "Already paired to another drone. Unpair and retry." : pair.error}
+            <div
+              role="alert"
+              className="rounded border border-status-error/40 bg-status-error/10 px-3 py-2 text-xs text-status-error"
+            >
+              {errorText}
             </div>
           ) : null}
           {!hasClient ? (
             <div className="rounded border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-xs text-status-warning">
-              No ground station connected.
+              {t("noClient")}
             </div>
           ) : null}
         </div>
@@ -166,9 +201,9 @@ export function PairModal({ open, onClose }: PairModalProps) {
     </Modal>
     <ConfirmDialog
       open={unpairConfirmOpen}
-      title="Unpair drone?"
-      message="The pair key will be regenerated and the drone will need to re-pair."
-      confirmLabel="Unpair"
+      title={t("unpairTitle")}
+      message={t("unpairMessage")}
+      confirmLabel={t("unpair")}
       variant="danger"
       onCancel={() => setUnpairConfirmOpen(false)}
       onConfirm={handleConfirmUnpair}

@@ -26,6 +26,7 @@ describe("ground-station pair slice", () => {
       result: null,
       error: null,
       errorStatus: null,
+      errorCode: null,
     });
   });
 
@@ -36,6 +37,7 @@ describe("ground-station pair slice", () => {
         result: null,
         error: "bad key",
         errorStatus: 400,
+        errorCode: "E_BLOB_BASE64",
       },
     });
     useGroundStationStore.getState().clearPair();
@@ -44,6 +46,7 @@ describe("ground-station pair slice", () => {
       result: null,
       error: null,
       errorStatus: null,
+      errorCode: null,
     });
   });
 
@@ -56,6 +59,7 @@ describe("ground-station pair slice", () => {
         result: null,
         error: "expired",
         errorStatus: 410,
+        errorCode: null,
       },
     });
     useGroundStationStore.getState().resetAll();

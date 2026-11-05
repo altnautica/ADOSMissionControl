@@ -35,6 +35,8 @@ export interface PairSlice {
   result: PairResult | null;
   error: string | null;
   errorStatus: number | null;
+  /** The agent's machine-readable error code (`detail.error.code`), if any. */
+  errorCode: string | null;
 }
 
 export interface PicSlice {

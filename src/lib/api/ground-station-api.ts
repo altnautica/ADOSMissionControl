@@ -52,7 +52,8 @@ export class GroundStationApi {
   setMcs = (mcs: number, opts?: ArmedOverrideOptions) => wfb.setMcs(this.ctx, mcs, opts);
   setPreset = (preset: wfb.LinkPreset, opts?: ArmedOverrideOptions) => wfb.setPreset(this.ctx, preset, opts);
   setAdaptive = (enabled: boolean, opts?: ArmedOverrideOptions) => wfb.setAdaptive(this.ctx, enabled, opts);
-  pairDrone = (pairKey: string, droneId?: string) => wfb.pairDrone(this.ctx, pairKey, droneId);
+  pairDrone = (blobB64: string, droneDeviceId: string, sharedKeyB64?: string) =>
+    wfb.pairDrone(this.ctx, blobB64, droneDeviceId, sharedKeyB64);
   unpairDrone = (opts?: ArmedOverrideOptions) => wfb.unpairDrone(this.ctx, opts);
   getWfbRelayStatus = () => wfb.getWfbRelayStatus(this.ctx);
   getWfbReceiverRelays = () => wfb.getWfbReceiverRelays(this.ctx);

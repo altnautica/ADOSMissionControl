@@ -8,6 +8,8 @@ import { useGroundStationStore } from "@/stores/ground-station-store";
 import type { PhoneInvite } from "@/lib/api/ground-station/types";
 import type { GroundStationApi } from "@/lib/api/ground-station-api";
 import { setDemoMeshApi } from "@/lib/api/ground-station/mesh-source";
+import { setDemoPairApi } from "@/lib/api/ground-station/pair-source";
+import { demoGroundStationPair } from "@/mock/ground-station-wfb-pair";
 import {
   DEMO_GS_ROLE,
   DEMO_MESH_BASE_URL,
@@ -67,6 +69,8 @@ export function seedGroundStationStore(): void {
   const receiver = role === "receiver";
   demoGroundStationMesh.reset(role);
   setDemoMeshApi(demoGroundStationMesh as unknown as GroundStationApi);
+  demoGroundStationPair.reset();
+  setDemoPairApi(demoGroundStationPair as unknown as GroundStationApi);
   seedGroundStationLanes();
   useGroundStationStore.setState({
     meshFor: DEMO_MESH_BASE_URL,

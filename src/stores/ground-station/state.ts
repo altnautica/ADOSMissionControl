@@ -118,8 +118,9 @@ export interface GroundStationState {
   ) => Promise<UiConfig | null>;
   startPair: (
     api: GroundStationApi,
-    pairKey: string,
-    droneId?: string,
+    blobB64: string,
+    droneDeviceId: string,
+    sharedKeyB64?: string,
   ) => Promise<void>;
   unpair: (api: GroundStationApi, opts?: ArmedOverrideOptions) => Promise<void>;
   clearPair: () => void;

@@ -38,6 +38,7 @@ export const INITIAL_PAIR: PairSlice = {
   result: null,
   error: null,
   errorStatus: null,
+  errorCode: null,
 };
 
 export const INITIAL_PIC: PicSlice = {

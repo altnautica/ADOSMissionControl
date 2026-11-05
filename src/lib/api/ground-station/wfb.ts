@@ -3,6 +3,7 @@
 import type {
   AutoPairToggleResponse,
   LocalBindSession,
+  PairRequest,
   PairResult,
   PairStatusResponse,
   SetTxPowerResult,
@@ -102,16 +103,36 @@ export function setAdaptive(
   });
 }
 
+/** The `POST .../wfb/pair` body. Whitespace is stripped from each key so a
+ *  wrapped or line-broken paste decodes on the agent; an empty shared key is
+ *  left out, which the agent reads as "the radio bind distributes it". */
+export function pairRequestBody(
+  blobB64: string,
+  droneDeviceId: string,
+  sharedKeyB64?: string,
+): PairRequest {
+  const body: PairRequest = {
+    blob_b64: blobB64.replace(/\s+/g, ""),
+    drone_device_id: droneDeviceId.trim(),
+  };
+  const shared = sharedKeyB64?.replace(/\s+/g, "");
+  if (shared) body.shared_key_b64 = shared;
+  return body;
+}
+
+/** Install the drone's fleet key on this ground station and take a fleet slot
+ *  for `droneDeviceId`. A second drone presenting the same key joins the fleet.
+ *  `sharedKeyB64` is the drone's half of the pair, which the station's beacon
+ *  key is derived from. */
 export function pairDrone(
   ctx: RequestContext,
-  pairKey: string,
-  droneId?: string,
+  blobB64: string,
+  droneDeviceId: string,
+  sharedKeyB64?: string,
 ): Promise<PairResult> {
-  const body: Record<string, string> = { pair_key: pairKey };
-  if (droneId) body.drone_device_id = droneId;
   return gsRequest<PairResult>(ctx, "/api/v1/ground-station/wfb/pair", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(pairRequestBody(blobB64, droneDeviceId, sharedKeyB64)),
   });
 }
 

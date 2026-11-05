@@ -88,6 +88,14 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Pairing a ground station with a drone failed every time.** The Pair modal
+  sent the retired typed `pair_key`, which the agent refuses. It now sends the
+  fleet radio key as base64 (`blob_b64`), the drone's device ID, and optionally
+  the drone's half of the key (`shared_key_b64`) so the station can verify
+  presence beacons. It shows the reply's paired device ID, fleet slot, key
+  fingerprint and beacon-key outcome, explains each agent error code in plain
+  words, and offers unpair-and-retry only when the station holds a different
+  fleet key. Demo mode pairs against an in-memory ground station.
 - The perception chip carried a leftover inline offset that pushed it onto the
   speed tape; it now stacks in its zone.
 - **Setting the operating region could leave a half-written posture.** The

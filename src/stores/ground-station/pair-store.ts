@@ -1,6 +1,6 @@
 /**
- * Pair slice for the ground-station store. Owns the pairing flow (BIP-39
- * pair-key entry, drone-id capture, paired-drone status), the network
+ * Pair slice for the ground-station store. Owns the pairing flow (the drone's
+ * fleet key and device id, the reply's fleet slot, paired-drone status), the network
  * snapshot the pair flow leans on, AP config, and the OLED + screens UI
  * config tied to the paired status.
  *
@@ -8,7 +8,7 @@
  */
 
 import type { GroundStationSliceCreator } from "./state";
-import { errorMessage } from "./error-handler";
+import { errorCode, errorMessage } from "./error-handler";
 import { INITIAL_PAIR } from "./initial-state";
 import { dataCapFromModem } from "./uplink-ws";
 import type { PairSlice as PairSliceShape } from "./types";
@@ -55,8 +55,9 @@ export interface PairSlice {
   ) => Promise<UiConfig | null>;
   startPair: (
     api: GroundStationApi,
-    pairKey: string,
-    droneId?: string,
+    blobB64: string,
+    droneDeviceId: string,
+    sharedKeyB64?: string,
   ) => Promise<void>;
   /** Rejects only with `AgentArmedRefusal` (the vehicle is armed and
    * `opts.force` is unset); every other failure lands in `pair.error`. */
@@ -171,13 +172,16 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
     }
   },
 
-  startPair: async (api, pairKey, droneId) => {
-    set({ pair: { loading: true, result: null, error: null, errorStatus: null } });
+  startPair: async (api, blobB64, droneDeviceId, sharedKeyB64) => {
+    set({ pair: { ...INITIAL_PAIR, loading: true } });
     try {
-      const result = await api.pairDrone(pairKey, droneId);
+      const result = await api.pairDrone(blobB64, droneDeviceId, sharedKeyB64);
       set({
-        pair: { loading: false, result, error: null, errorStatus: null },
-        status: { ...get().status, paired_drone: result.paired_drone_id },
+        pair: { ...INITIAL_PAIR, result },
+        status: {
+          ...get().status,
+          paired_drone: result.paired_with_device_id ?? droneDeviceId.trim(),
+        },
       });
     } catch (err) {
       const { message, status } = errorMessage(err);
@@ -187,6 +191,7 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
           result: null,
           error: message,
           errorStatus: status,
+          errorCode: errorCode(err),
         },
       });
     }
@@ -208,6 +213,7 @@ export const createPairSlice: GroundStationSliceCreator<PairSlice> = (
         pair: {
           ...get().pair,
           error: message,
+          errorCode: errorCode(err),
           errorStatus: status,
           loading: false,
         },

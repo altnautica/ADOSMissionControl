@@ -1,22 +1,43 @@
 /**
  * @module api/ground-station/types/pairing
- * @description Pairing-related types: legacy pair/unpair results, the v0.16
- * local-bind protocol session machine, and the mesh pairing window +
+ * @description Pairing-related types: the fleet-key pair/unpair surface, the
+ * v0.16 local-bind protocol session machine, and the mesh pairing window +
  * approve/revoke + join shapes.
  *
  * @license GPL-3.0-only
  */
 
-// Legacy pair surface
-export interface PairResult {
-  paired_drone_id: string;
-  paired_at: string;
-  key_fingerprint: string;
+// Fleet-key pair surface (`POST` / `DELETE /api/v1/ground-station/wfb/pair`)
+
+/** The `POST .../wfb/pair` body: the fleet's 64-byte wfb-ng key as base64,
+ *  the device id the fleet slot is issued to, and optionally the drone's
+ *  64-byte half of the pair the station's beacon key is derived from. */
+export interface PairRequest {
+  blob_b64: string;
+  drone_device_id: string;
+  shared_key_b64?: string;
 }
 
+/** What became of a supplied shared key half on the ground station. */
+export type SharedKeyOutcome = "installed" | "unchanged" | "mismatch" | "write_failed";
+
+/** The agent's pair reply. `paired_at` is null when the station already held
+ *  this fleet key and the drone joined the fleet without a fresh install. */
+export interface PairResult {
+  paired: boolean;
+  paired_with_device_id: string | null;
+  paired_at: string | null;
+  fingerprint: string | null;
+  role: "gs";
+  fleet_slot: number;
+  slots: FleetSlotRow[];
+  shared_key?: SharedKeyOutcome;
+}
+
+/** The agent's station-wide unpair reply. */
 export interface UnpairResult {
-  unpaired: boolean;
-  previous_drone_id: string | null;
+  paired: false;
+  role: "gs";
 }
 
 // Shapes for the v0.16 pairing surface (local-radio bind protocol). These
