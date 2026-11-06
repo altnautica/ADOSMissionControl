@@ -9143,6 +9143,7 @@
     "detector": {
       "idle": "DETECTOR IDLE",
       "rejected": "NO DETECTOR ON THIS CAMERA",
+      "unauthorized": "DRONE REFUSED THE PAIRING KEY",
       "noLink": "DETECTION NEEDS A DIRECT LINK",
       "unreachable": "DETECTOR UNREACHABLE"
     },

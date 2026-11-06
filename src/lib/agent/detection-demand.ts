@@ -27,8 +27,18 @@ export const DEMAND_RENEW_MS = 2000;
 /** Lease length per request: three renewals' worth, so one lost request never
  * drops detection. */
 export const DEMAND_HOLD_S = 6;
-/** The lease owner Mission Control identifies as. */
-export const DEMAND_OWNER = "mission-control";
+/** A random hex id, from `getRandomValues` because `randomUUID` needs a
+ * secure context and a drone's LAN dashboard link is plain http. */
+function instanceId(): string {
+  const bytes = new Uint8Array(8);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** The lease owner this Mission Control instance identifies as. The agent keeps
+ * one lease per owner, so each window (each load of this module) names itself
+ * apart: one window releasing its lease never cancels another window's. */
+export const DEMAND_OWNER = `mission-control:${instanceId()}`;
 /** The agent's primary camera id, the camera a node without a stream list shows. */
 export const PRIMARY_CAMERA_ID = "main";
 
@@ -37,17 +47,21 @@ export const PRIMARY_CAMERA_ID = "main";
  *  - `pending`: first request in flight;
  *  - `detecting`: the agent runs the detector on this camera;
  *  - `idle`: the agent accepted the lease but reports the detector idle;
- *  - `rejected`: the agent refused the camera (it does not capture it);
+ *  - `rejected`: the agent refused the camera (400: it does not capture it);
+ *  - `unauthorized`: the agent refused the pairing key (401/403), so the key
+ *    Mission Control holds for this drone is stale;
  *  - `unsupported`: the agent has no demand endpoint (it detects on every
  *    captured camera without one);
  *  - `no-link`: no direct LAN link to the drone, so no lease can be held;
- *  - `error`: the last request failed (unreachable agent, engine down).
+ *  - `error`: the last request failed (unreachable agent, engine down, any
+ *    other refusal).
  */
 export type DetectionDemandStatus =
   | "pending"
   | "detecting"
   | "idle"
   | "rejected"
+  | "unauthorized"
   | "unsupported"
   | "no-link"
   | "error";
@@ -102,8 +116,10 @@ async function renew(lease: Lease): Promise<void> {
       // An agent without the endpoint never gates detection: stop asking.
       window.clearInterval(lease.timer);
       setStatus(lease, "unsupported");
-    } else if (status >= 400 && status < 500) {
+    } else if (status === 400) {
       setStatus(lease, "rejected");
+    } else if (status === 401 || status === 403) {
+      setStatus(lease, "unauthorized");
     } else {
       setStatus(lease, "error");
     }

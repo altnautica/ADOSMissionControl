@@ -4,7 +4,8 @@
  * @module vision/DetectorStateTag
  * @description Says why a detection overlay is empty when the drone's detector
  * is not running on the shown camera: the engine reports it idle, refuses the
- * camera, cannot be reached, or the drone has no direct link to ask it over.
+ * camera, refuses the pairing key, cannot be reached, or the drone has no
+ * direct link to ask it over.
  * Shown only while no fresh batch arrives for that camera, so it never sits
  * over live boxes another consumer's lease is producing.
  *
@@ -15,9 +16,12 @@ import { useTranslations } from "next-intl";
 
 import type { DetectionDemandStatus } from "@/lib/agent/detection-demand";
 
-const COPY: Partial<Record<DetectionDemandStatus, "idle" | "rejected" | "noLink" | "unreachable">> = {
+const COPY: Partial<
+  Record<DetectionDemandStatus, "idle" | "rejected" | "unauthorized" | "noLink" | "unreachable">
+> = {
   idle: "idle",
   rejected: "rejected",
+  unauthorized: "unauthorized",
   "no-link": "noLink",
   error: "unreachable",
 };

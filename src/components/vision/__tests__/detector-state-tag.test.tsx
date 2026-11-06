@@ -2,8 +2,8 @@
  * @license GPL-3.0-only
  *
  * The detector state tag explains an empty overlay (detector idle, camera
- * refused, no direct link, agent unreachable) and stays out of the way while
- * the camera is detecting or a fresh batch is on screen.
+ * refused, pairing key refused, no direct link, agent unreachable) and stays
+ * out of the way while the camera is detecting or a fresh batch is on screen.
  */
 
 import { describe, it, expect } from "vitest";
@@ -27,6 +27,7 @@ describe("DetectorStateTag", () => {
   it.each([
     ["idle", messages.hud.detector.idle],
     ["rejected", messages.hud.detector.rejected],
+    ["unauthorized", messages.hud.detector.unauthorized],
     ["no-link", messages.hud.detector.noLink],
     ["error", messages.hud.detector.unreachable],
   ] as const)("names the %s state", (status, text) => {

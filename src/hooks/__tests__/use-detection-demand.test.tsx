@@ -4,7 +4,8 @@
  * A view that draws detection overlays holds a detection lease on the camera
  * it shows: requested at once, renewed every 2 s for 6 s, released with
  * `hold_s: 0` when the view closes, the camera changes or the page hides.
- * Views on the same camera share one lease.
+ * Views on the same camera share one lease. Each window holds its leases under
+ * its own owner, so one window's release never cancels another's lease.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -22,6 +23,7 @@ vi.mock("@/lib/utils", async (orig) => ({
 }));
 
 import { useDetectionDemand } from "../use-detection-demand";
+import { DEMAND_OWNER } from "@/lib/agent/detection-demand";
 
 let fetchMock: ReturnType<typeof vi.fn>;
 let visibility: DocumentVisibilityState = "visible";
@@ -96,7 +98,7 @@ describe("useDetectionDemand", () => {
       {
         url: "http://drone.local:8080/api/vision/demand",
         key: "k1",
-        body: { camera_id: "main", hold_s: 6, owner: "mission-control" },
+        body: { camera_id: "main", hold_s: 6, owner: DEMAND_OWNER },
       },
     ]);
     expect(result.current).toBe("detecting");
@@ -107,7 +109,7 @@ describe("useDetectionDemand", () => {
 
     unmount();
     await advance(0);
-    expect(sent().at(-1)?.body).toEqual({ camera_id: "main", hold_s: 0, owner: "mission-control" });
+    expect(sent().at(-1)?.body).toEqual({ camera_id: "main", hold_s: 0, owner: DEMAND_OWNER });
 
     const count = fetchMock.mock.calls.length;
     await advance(6000);
@@ -210,6 +212,56 @@ describe("useDetectionDemand", () => {
     expect(fetchMock.mock.calls.length).toBe(2);
     unmount();
     await advance(0);
+  });
+
+  it.each([401, 403])("reports a refused pairing key (%i) apart from a refused camera", async (code) => {
+    fetchMock.mockImplementation(async () => reply({ detail: "unauthorized" }, code));
+    const { result, unmount } = renderHook(() => useDetectionDemand("node:dev-1", "main", true));
+    await advance(0);
+    expect(result.current).toBe("unauthorized");
+    expect(result.current).not.toBe("rejected");
+    unmount();
+    await advance(0);
+  });
+
+  it("reports any other refusal as an error, not a refused camera", async () => {
+    fetchMock.mockImplementation(async () => reply({ detail: "unprocessable" }, 422));
+    const { result, unmount } = renderHook(() => useDetectionDemand("node:dev-1", "main", true));
+    await advance(0);
+    expect(result.current).toBe("error");
+    unmount();
+    await advance(0);
+  });
+
+  it("holds each window's lease under its own owner, so one window's release spares the other's", async () => {
+    // Two fresh module loads stand in for two windows, each with its own
+    // module state; a static import yields only the one shared instance.
+    vi.resetModules();
+    const windowA = await import("@/lib/agent/detection-demand");
+    vi.resetModules();
+    const windowB = await import("@/lib/agent/detection-demand");
+    expect(windowA.DEMAND_OWNER).toMatch(/^mission-control:[0-9a-f]{16}$/);
+    expect(windowB.DEMAND_OWNER).toMatch(/^mission-control:[0-9a-f]{16}$/);
+    expect(windowA.DEMAND_OWNER).not.toBe(windowB.DEMAND_OWNER);
+
+    const releaseA = windowA.holdDetectionDemand("node:dev-1", "main", () => {});
+    const releaseB = windowB.holdDetectionDemand("node:dev-1", "main", () => {});
+    await advance(0);
+    expect(sent().map((s) => [s.body.owner, s.body.hold_s])).toEqual([
+      [windowA.DEMAND_OWNER, 6],
+      [windowB.DEMAND_OWNER, 6],
+    ]);
+
+    releaseA();
+    await advance(2000);
+    const releases = sent().filter((s) => s.body.hold_s === 0);
+    expect(releases.map((s) => s.body.owner)).toEqual([windowA.DEMAND_OWNER]);
+    // Window B keeps renewing its own lease.
+    expect(sent().at(-1)?.body).toEqual({ camera_id: "main", hold_s: 6, owner: windowB.DEMAND_OWNER });
+
+    releaseB();
+    await advance(0);
+    expect(sent().at(-1)?.body).toEqual({ camera_id: "main", hold_s: 0, owner: windowB.DEMAND_OWNER });
   });
 
   it("stops asking an agent without the demand endpoint", async () => {
