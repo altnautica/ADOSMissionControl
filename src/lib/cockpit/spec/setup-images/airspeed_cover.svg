@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200" fill="none" stroke="#EDEDED" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>Airspeed calibration: cover the pitot tube</title>
+  <path d="M 60 120 H 200"/><path d="M 60 112 H 200 M 200 112 V 128 H 60"/><path d="M 200 120 H 250"/><path stroke="#3A82FF" d="M 224 96 C 236 96 244 104 244 116 V 124 C 244 136 236 144 224 144 H 214 V 96 Z"/><path stroke="#909090" d="M 280 104 H 300 M 280 120 H 304 M 280 136 H 300"/><text x="160" y="30" fill="#EDEDED" stroke="none" font-family="Inter, sans-serif" font-size="14" font-weight="600" text-anchor="middle" dominant-baseline="middle">Cover the pitot tube</text>
+</svg>

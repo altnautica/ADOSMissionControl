@@ -1,0 +1,206 @@
+{
+  "v": 1,
+  "$description": "Original ADOS line drawing of a DualShock 4 style controller. Draw every path stroked (no fill) with stroke_width in viewBox units, round caps and joins; role control paths fill with the pressed colour while held. Source drawing: ds4.svg.",
+  "viewBox": [
+    0,
+    0,
+    1000,
+    640
+  ],
+  "stroke_width": 4,
+  "stroke_linecap": "round",
+  "stroke_linejoin": "round",
+  "paths": [
+    {
+      "id": "body",
+      "d": "M 300 150 L 700 150 C 790 150 852 178 878 236 C 918 332 952 452 946 522 C 940 588 878 614 828 584 C 788 560 758 506 718 478 L 282 478 C 242 506 212 560 172 584 C 122 614 60 588 54 522 C 48 452 82 332 122 236 C 148 178 210 150 300 150 Z",
+      "role": "body"
+    },
+    {
+      "id": "grip_l",
+      "d": "M 92 470 C 104 520 130 552 160 560",
+      "role": "detail"
+    },
+    {
+      "id": "grip_r",
+      "d": "M 908 470 C 896 520 870 552 840 560",
+      "role": "detail"
+    },
+    {
+      "id": "well_dpad",
+      "d": "M 164 300 A 76 76 0 1 0 316 300 A 76 76 0 1 0 164 300 Z",
+      "role": "detail"
+    },
+    {
+      "id": "well_face",
+      "d": "M 684 300 A 76 76 0 1 0 836 300 A 76 76 0 1 0 684 300 Z",
+      "role": "detail"
+    },
+    {
+      "id": "speaker",
+      "d": "M 474 446 H 526 M 482 458 H 518",
+      "role": "detail"
+    },
+    {
+      "id": "l2",
+      "d": "M 220 70 H 324 A 14 14 0 0 1 338 84 V 86 A 14 14 0 0 1 324 100 H 220 A 14 14 0 0 1 206 86 V 84 A 14 14 0 0 1 220 70 Z",
+      "role": "control",
+      "control": "l2"
+    },
+    {
+      "id": "r2",
+      "d": "M 676 70 H 780 A 14 14 0 0 1 794 84 V 86 A 14 14 0 0 1 780 100 H 676 A 14 14 0 0 1 662 86 V 84 A 14 14 0 0 1 676 70 Z",
+      "role": "control",
+      "control": "r2"
+    },
+    {
+      "id": "l1",
+      "d": "M 207 112 H 339 A 11 11 0 0 1 350 123 V 125 A 11 11 0 0 1 339 136 H 207 A 11 11 0 0 1 196 125 V 123 A 11 11 0 0 1 207 112 Z",
+      "role": "control",
+      "control": "l1"
+    },
+    {
+      "id": "r1",
+      "d": "M 661 112 H 793 A 11 11 0 0 1 804 123 V 125 A 11 11 0 0 1 793 136 H 661 A 11 11 0 0 1 650 125 V 123 A 11 11 0 0 1 661 112 Z",
+      "role": "control",
+      "control": "r1"
+    },
+    {
+      "id": "lightbar",
+      "d": "M 415 128 H 585 A 5 5 0 0 1 590 133 V 133 A 5 5 0 0 1 585 138 H 415 A 5 5 0 0 1 410 133 V 133 A 5 5 0 0 1 415 128 Z",
+      "role": "control",
+      "control": "lightbar"
+    },
+    {
+      "id": "touchpad",
+      "d": "M 414 156 H 586 A 16 16 0 0 1 602 172 V 264 A 16 16 0 0 1 586 280 H 414 A 16 16 0 0 1 398 264 V 172 A 16 16 0 0 1 414 156 Z",
+      "role": "control",
+      "control": "touchpad"
+    },
+    {
+      "id": "share",
+      "d": "M 347 176 H 349 A 9 9 0 0 1 358 185 V 205 A 9 9 0 0 1 349 214 H 347 A 9 9 0 0 1 338 205 V 185 A 9 9 0 0 1 347 176 Z",
+      "role": "control",
+      "control": "share"
+    },
+    {
+      "id": "options",
+      "d": "M 651 176 H 653 A 9 9 0 0 1 662 185 V 205 A 9 9 0 0 1 653 214 H 651 A 9 9 0 0 1 642 205 V 185 A 9 9 0 0 1 651 176 Z",
+      "role": "control",
+      "control": "options"
+    },
+    {
+      "id": "ps",
+      "d": "M 482 402 A 18 18 0 1 0 518 402 A 18 18 0 1 0 482 402 Z",
+      "role": "control",
+      "control": "ps"
+    },
+    {
+      "id": "glyph_ps",
+      "d": "M 494 402 A 6 6 0 1 0 506 402 A 6 6 0 1 0 494 402 Z",
+      "role": "detail"
+    },
+    {
+      "id": "dpad_up",
+      "d": "M 223 240 H 257 V 278 L 240 294 L 223 278 Z",
+      "role": "control",
+      "control": "dpad_up"
+    },
+    {
+      "id": "dpad_down",
+      "d": "M 223 360 H 257 V 322 L 240 306 L 223 322 Z",
+      "role": "control",
+      "control": "dpad_down"
+    },
+    {
+      "id": "dpad_left",
+      "d": "M 180 283 V 317 H 218 L 234 300 L 218 283 Z",
+      "role": "control",
+      "control": "dpad_left"
+    },
+    {
+      "id": "dpad_right",
+      "d": "M 300 283 V 317 H 262 L 246 300 L 262 283 Z",
+      "role": "control",
+      "control": "dpad_right"
+    },
+    {
+      "id": "triangle",
+      "d": "M 738 254 A 22 22 0 1 0 782 254 A 22 22 0 1 0 738 254 Z",
+      "role": "control",
+      "control": "triangle"
+    },
+    {
+      "id": "cross",
+      "d": "M 738 346 A 22 22 0 1 0 782 346 A 22 22 0 1 0 738 346 Z",
+      "role": "control",
+      "control": "cross"
+    },
+    {
+      "id": "square",
+      "d": "M 692 300 A 22 22 0 1 0 736 300 A 22 22 0 1 0 692 300 Z",
+      "role": "control",
+      "control": "square"
+    },
+    {
+      "id": "circle",
+      "d": "M 784 300 A 22 22 0 1 0 828 300 A 22 22 0 1 0 784 300 Z",
+      "role": "control",
+      "control": "circle"
+    },
+    {
+      "id": "glyph_triangle",
+      "d": "M 760 244 L 770 261 L 750 261 Z",
+      "role": "detail"
+    },
+    {
+      "id": "glyph_cross",
+      "d": "M 751 337 L 769 355 M 769 337 L 751 355",
+      "role": "detail"
+    },
+    {
+      "id": "glyph_square",
+      "d": "M 705 291 H 723 V 309 H 705 Z",
+      "role": "detail"
+    },
+    {
+      "id": "glyph_circle",
+      "d": "M 796 300 A 10 10 0 1 0 816 300 A 10 10 0 1 0 796 300 Z",
+      "role": "detail"
+    },
+    {
+      "id": "stick_l",
+      "d": "M 328 404 A 44 44 0 1 0 416 404 A 44 44 0 1 0 328 404 Z",
+      "role": "control",
+      "control": "stick_l"
+    },
+    {
+      "id": "stick_l_cap",
+      "d": "M 342 404 A 30 30 0 1 0 402 404 A 30 30 0 1 0 342 404 Z",
+      "role": "detail"
+    },
+    {
+      "id": "l3",
+      "d": "M 358 404 A 14 14 0 1 0 386 404 A 14 14 0 1 0 358 404 Z",
+      "role": "control",
+      "control": "l3"
+    },
+    {
+      "id": "stick_r",
+      "d": "M 584 404 A 44 44 0 1 0 672 404 A 44 44 0 1 0 584 404 Z",
+      "role": "control",
+      "control": "stick_r"
+    },
+    {
+      "id": "stick_r_cap",
+      "d": "M 598 404 A 30 30 0 1 0 658 404 A 30 30 0 1 0 598 404 Z",
+      "role": "detail"
+    },
+    {
+      "id": "r3",
+      "d": "M 614 404 A 14 14 0 1 0 642 404 A 14 14 0 1 0 614 404 Z",
+      "role": "control",
+      "control": "r3"
+    }
+  ]
+}

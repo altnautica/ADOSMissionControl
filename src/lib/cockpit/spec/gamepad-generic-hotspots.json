@@ -1,0 +1,293 @@
+{
+  "v": 1,
+  "$description": "Hit areas and leader-line anchors for gamepad-generic-art.json, in the same viewBox. label_anchor is the point on the control where a leader line starts; label_side says which side of the drawing its label sits.",
+  "viewBox": [
+    0,
+    0,
+    1000,
+    640
+  ],
+  "hotspots": {
+    "stick_l": {
+      "shape": "circle",
+      "geom": {
+        "cx": 250,
+        "cy": 290,
+        "r": 44
+      },
+      "label_anchor": [
+        206,
+        290
+      ],
+      "label_side": "left"
+    },
+    "stick_r": {
+      "shape": "circle",
+      "geom": {
+        "cx": 630,
+        "cy": 410,
+        "r": 44
+      },
+      "label_anchor": [
+        674,
+        410
+      ],
+      "label_side": "right"
+    },
+    "l1": {
+      "shape": "rect",
+      "geom": {
+        "x": 188,
+        "y": 124,
+        "w": 160,
+        "h": 24,
+        "rx": 11
+      },
+      "label_anchor": [
+        188,
+        136.0
+      ],
+      "label_side": "left"
+    },
+    "r1": {
+      "shape": "rect",
+      "geom": {
+        "x": 652,
+        "y": 124,
+        "w": 160,
+        "h": 24,
+        "rx": 11
+      },
+      "label_anchor": [
+        812,
+        136.0
+      ],
+      "label_side": "right"
+    },
+    "l2": {
+      "shape": "rect",
+      "geom": {
+        "x": 196,
+        "y": 80,
+        "w": 140,
+        "h": 32,
+        "rx": 14
+      },
+      "label_anchor": [
+        266.0,
+        80
+      ],
+      "label_side": "top"
+    },
+    "r2": {
+      "shape": "rect",
+      "geom": {
+        "x": 664,
+        "y": 80,
+        "w": 140,
+        "h": 32,
+        "rx": 14
+      },
+      "label_anchor": [
+        734.0,
+        80
+      ],
+      "label_side": "top"
+    },
+    "l3": {
+      "shape": "circle",
+      "geom": {
+        "cx": 250,
+        "cy": 290,
+        "r": 14
+      },
+      "label_anchor": [
+        250,
+        304
+      ],
+      "label_side": "bottom"
+    },
+    "r3": {
+      "shape": "circle",
+      "geom": {
+        "cx": 630,
+        "cy": 410,
+        "r": 14
+      },
+      "label_anchor": [
+        630,
+        424
+      ],
+      "label_side": "bottom"
+    },
+    "dpad_up": {
+      "shape": "path",
+      "geom": {
+        "d": "M 355 358 H 385 V 388 L 370 404 L 355 388 Z"
+      },
+      "label_anchor": [
+        370,
+        358
+      ],
+      "label_side": "top"
+    },
+    "dpad_down": {
+      "shape": "path",
+      "geom": {
+        "d": "M 355 462 H 385 V 432 L 370 416 L 355 432 Z"
+      },
+      "label_anchor": [
+        370,
+        462
+      ],
+      "label_side": "bottom"
+    },
+    "dpad_left": {
+      "shape": "path",
+      "geom": {
+        "d": "M 318 395 V 425 H 348 L 364 410 L 348 395 Z"
+      },
+      "label_anchor": [
+        318,
+        410
+      ],
+      "label_side": "left"
+    },
+    "dpad_right": {
+      "shape": "path",
+      "geom": {
+        "d": "M 422 395 V 425 H 392 L 376 410 L 392 395 Z"
+      },
+      "label_anchor": [
+        414,
+        425.0
+      ],
+      "label_side": "bottom"
+    },
+    "cross": {
+      "shape": "circle",
+      "geom": {
+        "cx": 750,
+        "cy": 336,
+        "r": 22
+      },
+      "label_anchor": [
+        772,
+        336
+      ],
+      "label_side": "right"
+    },
+    "circle": {
+      "shape": "circle",
+      "geom": {
+        "cx": 796,
+        "cy": 290,
+        "r": 22
+      },
+      "label_anchor": [
+        818,
+        290
+      ],
+      "label_side": "right"
+    },
+    "square": {
+      "shape": "circle",
+      "geom": {
+        "cx": 704,
+        "cy": 290,
+        "r": 22
+      },
+      "label_anchor": [
+        704,
+        312
+      ],
+      "label_side": "bottom"
+    },
+    "triangle": {
+      "shape": "circle",
+      "geom": {
+        "cx": 750,
+        "cy": 244,
+        "r": 22
+      },
+      "label_anchor": [
+        772,
+        244
+      ],
+      "label_side": "right"
+    },
+    "share": {
+      "shape": "rect",
+      "geom": {
+        "x": 404,
+        "y": 236,
+        "w": 36,
+        "h": 22,
+        "rx": 11
+      },
+      "label_anchor": [
+        404,
+        247.0
+      ],
+      "label_side": "left"
+    },
+    "options": {
+      "shape": "rect",
+      "geom": {
+        "x": 560,
+        "y": 236,
+        "w": 36,
+        "h": 22,
+        "rx": 11
+      },
+      "label_anchor": [
+        596,
+        247.0
+      ],
+      "label_side": "right"
+    },
+    "ps": {
+      "shape": "circle",
+      "geom": {
+        "cx": 500,
+        "cy": 236,
+        "r": 24
+      },
+      "label_anchor": [
+        500,
+        212
+      ],
+      "label_side": "top"
+    },
+    "touchpad": {
+      "shape": "rect",
+      "geom": {
+        "x": 452,
+        "y": 300,
+        "w": 96,
+        "h": 40,
+        "rx": 12
+      },
+      "label_anchor": [
+        500.0,
+        340
+      ],
+      "label_side": "bottom"
+    },
+    "lightbar": {
+      "shape": "rect",
+      "geom": {
+        "x": 470,
+        "y": 182,
+        "w": 60,
+        "h": 8,
+        "rx": 4
+      },
+      "label_anchor": [
+        500.0,
+        182
+      ],
+      "label_side": "top"
+    }
+  }
+}

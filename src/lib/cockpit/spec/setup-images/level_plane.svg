@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200" fill="none" stroke="#EDEDED" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>Level calibration: plane at cruise attitude</title>
+  <path stroke="#909090" d="M 20 160 H 300"/><g transform="translate(160 118) rotate(-3)"><path d="M -110 0 C -80 -12 60 -12 100 -2 C 110 0 110 6 100 8 C 60 14 -80 12 -110 4 Z"/><path d="M -100 -2 L -118 -34 H -100 L -80 -6"/><path d="M -20 2 H 40"/></g><path stroke="#909090" stroke-dasharray="4 6" d="M 40 118 H 290"/><text x="160" y="26" fill="#EDEDED" stroke="none" font-family="Inter, sans-serif" font-size="14" font-weight="600" text-anchor="middle" dominant-baseline="middle">Nose up about 3°</text>
+</svg>

@@ -1,0 +1,176 @@
+{
+  "v": 1,
+  "$description": "Original ADOS line drawing of a generic standard-mapping gamepad (offset sticks). Same control ids and drawing rules as ds4-art.json. Source drawing: gamepad-generic.svg.",
+  "viewBox": [
+    0,
+    0,
+    1000,
+    640
+  ],
+  "stroke_width": 4,
+  "stroke_linecap": "round",
+  "stroke_linejoin": "round",
+  "paths": [
+    {
+      "id": "body",
+      "d": "M 290 160 L 710 160 C 800 160 858 196 884 262 C 922 360 950 470 936 532 C 922 592 860 610 812 576 C 774 548 750 500 706 482 L 294 482 C 250 500 226 548 188 576 C 140 610 78 592 64 532 C 50 470 78 360 116 262 C 142 196 200 160 290 160 Z",
+      "role": "body"
+    },
+    {
+      "id": "well_stick_l",
+      "d": "M 188 290 A 62 62 0 1 0 312 290 A 62 62 0 1 0 188 290 Z",
+      "role": "detail"
+    },
+    {
+      "id": "well_face",
+      "d": "M 674 290 A 76 76 0 1 0 826 290 A 76 76 0 1 0 674 290 Z",
+      "role": "detail"
+    },
+    {
+      "id": "well_dpad",
+      "d": "M 304 410 A 66 66 0 1 0 436 410 A 66 66 0 1 0 304 410 Z",
+      "role": "detail"
+    },
+    {
+      "id": "well_stick_r",
+      "d": "M 572 410 A 58 58 0 1 0 688 410 A 58 58 0 1 0 572 410 Z",
+      "role": "detail"
+    },
+    {
+      "id": "l2",
+      "d": "M 210 80 H 322 A 14 14 0 0 1 336 94 V 98 A 14 14 0 0 1 322 112 H 210 A 14 14 0 0 1 196 98 V 94 A 14 14 0 0 1 210 80 Z",
+      "role": "control",
+      "control": "l2"
+    },
+    {
+      "id": "r2",
+      "d": "M 678 80 H 790 A 14 14 0 0 1 804 94 V 98 A 14 14 0 0 1 790 112 H 678 A 14 14 0 0 1 664 98 V 94 A 14 14 0 0 1 678 80 Z",
+      "role": "control",
+      "control": "r2"
+    },
+    {
+      "id": "l1",
+      "d": "M 199 124 H 337 A 11 11 0 0 1 348 135 V 137 A 11 11 0 0 1 337 148 H 199 A 11 11 0 0 1 188 137 V 135 A 11 11 0 0 1 199 124 Z",
+      "role": "control",
+      "control": "l1"
+    },
+    {
+      "id": "r1",
+      "d": "M 663 124 H 801 A 11 11 0 0 1 812 135 V 137 A 11 11 0 0 1 801 148 H 663 A 11 11 0 0 1 652 137 V 135 A 11 11 0 0 1 663 124 Z",
+      "role": "control",
+      "control": "r1"
+    },
+    {
+      "id": "lightbar",
+      "d": "M 474 182 H 526 A 4 4 0 0 1 530 186 V 186 A 4 4 0 0 1 526 190 H 474 A 4 4 0 0 1 470 186 V 186 A 4 4 0 0 1 474 182 Z",
+      "role": "control",
+      "control": "lightbar"
+    },
+    {
+      "id": "touchpad",
+      "d": "M 464 300 H 536 A 12 12 0 0 1 548 312 V 328 A 12 12 0 0 1 536 340 H 464 A 12 12 0 0 1 452 328 V 312 A 12 12 0 0 1 464 300 Z",
+      "role": "control",
+      "control": "touchpad"
+    },
+    {
+      "id": "share",
+      "d": "M 415 236 H 429 A 11 11 0 0 1 440 247 V 247 A 11 11 0 0 1 429 258 H 415 A 11 11 0 0 1 404 247 V 247 A 11 11 0 0 1 415 236 Z",
+      "role": "control",
+      "control": "share"
+    },
+    {
+      "id": "options",
+      "d": "M 571 236 H 585 A 11 11 0 0 1 596 247 V 247 A 11 11 0 0 1 585 258 H 571 A 11 11 0 0 1 560 247 V 247 A 11 11 0 0 1 571 236 Z",
+      "role": "control",
+      "control": "options"
+    },
+    {
+      "id": "ps",
+      "d": "M 476 236 A 24 24 0 1 0 524 236 A 24 24 0 1 0 476 236 Z",
+      "role": "control",
+      "control": "ps"
+    },
+    {
+      "id": "stick_l",
+      "d": "M 206 290 A 44 44 0 1 0 294 290 A 44 44 0 1 0 206 290 Z",
+      "role": "control",
+      "control": "stick_l"
+    },
+    {
+      "id": "stick_l_cap",
+      "d": "M 220 290 A 30 30 0 1 0 280 290 A 30 30 0 1 0 220 290 Z",
+      "role": "detail"
+    },
+    {
+      "id": "l3",
+      "d": "M 236 290 A 14 14 0 1 0 264 290 A 14 14 0 1 0 236 290 Z",
+      "role": "control",
+      "control": "l3"
+    },
+    {
+      "id": "triangle",
+      "d": "M 728 244 A 22 22 0 1 0 772 244 A 22 22 0 1 0 728 244 Z",
+      "role": "control",
+      "control": "triangle"
+    },
+    {
+      "id": "cross",
+      "d": "M 728 336 A 22 22 0 1 0 772 336 A 22 22 0 1 0 728 336 Z",
+      "role": "control",
+      "control": "cross"
+    },
+    {
+      "id": "square",
+      "d": "M 682 290 A 22 22 0 1 0 726 290 A 22 22 0 1 0 682 290 Z",
+      "role": "control",
+      "control": "square"
+    },
+    {
+      "id": "circle",
+      "d": "M 774 290 A 22 22 0 1 0 818 290 A 22 22 0 1 0 774 290 Z",
+      "role": "control",
+      "control": "circle"
+    },
+    {
+      "id": "dpad_up",
+      "d": "M 355 358 H 385 V 388 L 370 404 L 355 388 Z",
+      "role": "control",
+      "control": "dpad_up"
+    },
+    {
+      "id": "dpad_down",
+      "d": "M 355 462 H 385 V 432 L 370 416 L 355 432 Z",
+      "role": "control",
+      "control": "dpad_down"
+    },
+    {
+      "id": "dpad_left",
+      "d": "M 318 395 V 425 H 348 L 364 410 L 348 395 Z",
+      "role": "control",
+      "control": "dpad_left"
+    },
+    {
+      "id": "dpad_right",
+      "d": "M 422 395 V 425 H 392 L 376 410 L 392 395 Z",
+      "role": "control",
+      "control": "dpad_right"
+    },
+    {
+      "id": "stick_r",
+      "d": "M 586 410 A 44 44 0 1 0 674 410 A 44 44 0 1 0 586 410 Z",
+      "role": "control",
+      "control": "stick_r"
+    },
+    {
+      "id": "stick_r_cap",
+      "d": "M 600 410 A 30 30 0 1 0 660 410 A 30 30 0 1 0 600 410 Z",
+      "role": "detail"
+    },
+    {
+      "id": "r3",
+      "d": "M 616 410 A 14 14 0 1 0 644 410 A 14 14 0 1 0 616 410 Z",
+      "role": "control",
+      "control": "r3"
+    }
+  ]
+}

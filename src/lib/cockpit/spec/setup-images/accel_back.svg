@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200" fill="none" stroke="#EDEDED" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>Accelerometer pose: Upside down</title>
+  <path stroke="#909090" d="M 30 172 H 290"/>
+  <g transform="translate(160 150) rotate(180) scale(1.0)"><path d="M -30 -6 H 30 V 8 H -30 Z"/><path d="M -30 0 H -70 M 30 0 H 70"/><path d="M -92 -10 H -48 M 48 -10 H 92"/><path d="M -70 0 V -10 M 70 0 V -10"/><path d="M -20 8 L -26 24 M 20 8 L 26 24"/><circle cx="0" cy="1" r="3" stroke="#3A82FF"/></g>
+  <text x="160" y="22" fill="#EDEDED" stroke="none" font-family="Inter, sans-serif" font-size="14" font-weight="600" text-anchor="middle" dominant-baseline="middle">Upside down</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200" fill="none" stroke="#EDEDED" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>Accelerometer pose: Nose up</title>
+  <path stroke="#909090" d="M 30 172 H 290"/>
+  <g transform="translate(160 98) rotate(-90) scale(0.75)"><path d="M -34 -6 H 34 V 8 H -34 Z"/><path d="M -34 0 H -66 M 34 0 H 66"/><path d="M -88 -10 H -44 M 44 -10 H 88"/><path d="M -66 0 V -10 M 66 0 V -10"/><path d="M -20 8 L -24 24 M 20 8 L 24 24"/><path stroke="#3A82FF" d="M 38 1 L 52 1"/><path stroke="#3A82FF" d="M 48.8 4.0 L 54.0 1.0 L 48.8 -2.0"/></g>
+  <text x="160" y="22" fill="#EDEDED" stroke="none" font-family="Inter, sans-serif" font-size="14" font-weight="600" text-anchor="middle" dominant-baseline="middle">Nose up</text>
+</svg>

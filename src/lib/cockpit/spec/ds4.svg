@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" width="1000" height="640" fill="none" stroke="#EDEDED" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+  <title>ADOS controller drawing: DualShock 4 layout</title>
+  <path id="body" class="body" d="M 300 150 L 700 150 C 790 150 852 178 878 236 C 918 332 952 452 946 522 C 940 588 878 614 828 584 C 788 560 758 506 718 478 L 282 478 C 242 506 212 560 172 584 C 122 614 60 588 54 522 C 48 452 82 332 122 236 C 148 178 210 150 300 150 Z"/>
+  <path id="grip_l" class="detail" d="M 92 470 C 104 520 130 552 160 560" stroke-opacity="0.55"/>
+  <path id="grip_r" class="detail" d="M 908 470 C 896 520 870 552 840 560" stroke-opacity="0.55"/>
+  <path id="well_dpad" class="detail" d="M 164 300 A 76 76 0 1 0 316 300 A 76 76 0 1 0 164 300 Z" stroke-opacity="0.55"/>
+  <path id="well_face" class="detail" d="M 684 300 A 76 76 0 1 0 836 300 A 76 76 0 1 0 684 300 Z" stroke-opacity="0.55"/>
+  <path id="speaker" class="detail" d="M 474 446 H 526 M 482 458 H 518" stroke-opacity="0.55"/>
+  <path id="l2" class="control" d="M 220 70 H 324 A 14 14 0 0 1 338 84 V 86 A 14 14 0 0 1 324 100 H 220 A 14 14 0 0 1 206 86 V 84 A 14 14 0 0 1 220 70 Z"/>
+  <path id="r2" class="control" d="M 676 70 H 780 A 14 14 0 0 1 794 84 V 86 A 14 14 0 0 1 780 100 H 676 A 14 14 0 0 1 662 86 V 84 A 14 14 0 0 1 676 70 Z"/>
+  <path id="l1" class="control" d="M 207 112 H 339 A 11 11 0 0 1 350 123 V 125 A 11 11 0 0 1 339 136 H 207 A 11 11 0 0 1 196 125 V 123 A 11 11 0 0 1 207 112 Z"/>
+  <path id="r1" class="control" d="M 661 112 H 793 A 11 11 0 0 1 804 123 V 125 A 11 11 0 0 1 793 136 H 661 A 11 11 0 0 1 650 125 V 123 A 11 11 0 0 1 661 112 Z"/>
+  <path id="lightbar" class="control" d="M 415 128 H 585 A 5 5 0 0 1 590 133 V 133 A 5 5 0 0 1 585 138 H 415 A 5 5 0 0 1 410 133 V 133 A 5 5 0 0 1 415 128 Z"/>
+  <path id="touchpad" class="control" d="M 414 156 H 586 A 16 16 0 0 1 602 172 V 264 A 16 16 0 0 1 586 280 H 414 A 16 16 0 0 1 398 264 V 172 A 16 16 0 0 1 414 156 Z"/>
+  <path id="share" class="control" d="M 347 176 H 349 A 9 9 0 0 1 358 185 V 205 A 9 9 0 0 1 349 214 H 347 A 9 9 0 0 1 338 205 V 185 A 9 9 0 0 1 347 176 Z"/>
+  <path id="options" class="control" d="M 651 176 H 653 A 9 9 0 0 1 662 185 V 205 A 9 9 0 0 1 653 214 H 651 A 9 9 0 0 1 642 205 V 185 A 9 9 0 0 1 651 176 Z"/>
+  <path id="ps" class="control" d="M 482 402 A 18 18 0 1 0 518 402 A 18 18 0 1 0 482 402 Z"/>
+  <path id="glyph_ps" class="detail" d="M 494 402 A 6 6 0 1 0 506 402 A 6 6 0 1 0 494 402 Z" stroke-opacity="0.55"/>
+  <path id="dpad_up" class="control" d="M 223 240 H 257 V 278 L 240 294 L 223 278 Z"/>
+  <path id="dpad_down" class="control" d="M 223 360 H 257 V 322 L 240 306 L 223 322 Z"/>
+  <path id="dpad_left" class="control" d="M 180 283 V 317 H 218 L 234 300 L 218 283 Z"/>
+  <path id="dpad_right" class="control" d="M 300 283 V 317 H 262 L 246 300 L 262 283 Z"/>
+  <path id="triangle" class="control" d="M 738 254 A 22 22 0 1 0 782 254 A 22 22 0 1 0 738 254 Z"/>
+  <path id="cross" class="control" d="M 738 346 A 22 22 0 1 0 782 346 A 22 22 0 1 0 738 346 Z"/>
+  <path id="square" class="control" d="M 692 300 A 22 22 0 1 0 736 300 A 22 22 0 1 0 692 300 Z"/>
+  <path id="circle" class="control" d="M 784 300 A 22 22 0 1 0 828 300 A 22 22 0 1 0 784 300 Z"/>
+  <path id="glyph_triangle" class="detail" d="M 760 244 L 770 261 L 750 261 Z" stroke-opacity="0.55"/>
+  <path id="glyph_cross" class="detail" d="M 751 337 L 769 355 M 769 337 L 751 355" stroke-opacity="0.55"/>
+  <path id="glyph_square" class="detail" d="M 705 291 H 723 V 309 H 705 Z" stroke-opacity="0.55"/>
+  <path id="glyph_circle" class="detail" d="M 796 300 A 10 10 0 1 0 816 300 A 10 10 0 1 0 796 300 Z" stroke-opacity="0.55"/>
+  <path id="stick_l" class="control" d="M 328 404 A 44 44 0 1 0 416 404 A 44 44 0 1 0 328 404 Z"/>
+  <path id="stick_l_cap" class="detail" d="M 342 404 A 30 30 0 1 0 402 404 A 30 30 0 1 0 342 404 Z" stroke-opacity="0.55"/>
+  <path id="l3" class="control" d="M 358 404 A 14 14 0 1 0 386 404 A 14 14 0 1 0 358 404 Z"/>
+  <path id="stick_r" class="control" d="M 584 404 A 44 44 0 1 0 672 404 A 44 44 0 1 0 584 404 Z"/>
+  <path id="stick_r_cap" class="detail" d="M 598 404 A 30 30 0 1 0 658 404 A 30 30 0 1 0 598 404 Z" stroke-opacity="0.55"/>
+  <path id="r3" class="control" d="M 614 404 A 14 14 0 1 0 642 404 A 14 14 0 1 0 614 404 Z"/>
+</svg>
