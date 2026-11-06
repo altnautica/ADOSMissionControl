@@ -1,0 +1,79 @@
+{
+  "v": 1,
+  "$description": "Flight-state chip. Rules are evaluated in order on the pilot kind; the first match wins. {placeholders} are filled from the pilot kind and its C8 mission object. color names resolve through tokens.json state.*.",
+  "rules": [
+    { "id": "link_stale", "match": { "pilot_stale": true }, "text": "LINK", "color": "stale", "dim": true, "button": null },
+    { "id": "idle_ready", "match": { "owner": "idle", "ready": true }, "text": "READY", "color": "ready", "button": null },
+    { "id": "idle_not_ready", "match": { "owner": "idle", "ready": false }, "text": "NOT READY · {first_block_msg}", "color": "not_ready", "button": "setup_link_when_setup_needed" },
+    { "id": "pilot", "match": { "owner": "pilot" }, "text": "PILOT · {profile_upper}", "color": "pilot", "button": null },
+    { "id": "skill", "match": { "owner": "skill" }, "text": "{skill_label_upper} · {mode_detail}", "color": "skill", "button": null },
+    { "id": "goto", "match": { "owner": "goto" }, "text": "GOTO · {dist_m} m", "color": "goto", "button": null },
+    { "id": "swarm", "match": { "owner": "swarm" }, "text": "SWARM", "color": "swarm", "button": null },
+    { "id": "tuning", "match": { "owner": "tuning" }, "text": "TUNING · {setup_step}", "color": "tuning", "button": null },
+    { "id": "mission_paused", "match": { "mission_state": "paused" }, "text": "MISSION PAUSED · WP {seq}/{total}", "color": "mission", "button": "resume" },
+    { "id": "mission_active", "match": { "owner": "mission_fc", "mission_state": "active" }, "text": "MISSION · WP {seq}/{total} · {eta}", "suffix_if_landing_seq": " · LANDING", "color": "mission", "button": null },
+    { "id": "mission_complete", "match": { "mission_state": "complete", "complete_age_lt_ms": 10000 }, "text": "MISSION COMPLETE", "color": "mission", "button": null },
+    { "id": "mission_fc", "match": { "owner": "mission_fc" }, "text": "MISSION · WP {seq}/{total}", "color": "mission", "button": null },
+    { "id": "vtol_transition", "match": { "vtol_transitioning": true }, "text": "TRANSITION", "color": "rth", "button": null },
+    { "id": "fc_rth", "match": { "owner": "fc_mode", "fc_mode_class": "rtl" }, "text": "RTH · {home_dist_m} m", "color": "rth", "button": null },
+    { "id": "fc_land", "match": { "owner": "fc_mode", "fc_mode_class": "land" }, "text": "LANDING", "color": "rth", "button": null },
+    { "id": "fc_other_ados_standby", "match": { "owner": "fc_mode", "control_mode": "ados" }, "text": "FC · {fc_mode_name_upper} · ADOS STANDING BY", "color": "fc", "button": "take_control" },
+    { "id": "fc_other", "match": { "owner": "fc_mode" }, "text": "FC · {fc_mode_name_upper}", "color": "fc", "button": "take_control" }
+  ],
+  "fc_mode_classes": {
+    "$description": "Numeric custom_mode per firmware family; plane covers QuadPlane Q modes (QRTL 21, QLAND 20).",
+    "rtl": { "copter": [6, 21], "plane": [11, 21] },
+    "land": { "copter": [9], "plane": [20] }
+  },
+  "secondary": {
+    "order": ["hold_reason", "avoid_state", "control_mode"],
+    "avoid_state": {
+      "detour": { "text": "AVOIDING", "color": "avoiding" },
+      "blocked": { "text": "BLOCKED", "color": "blocked" },
+      "off": { "text": "AVOIDANCE OFF", "color": "blocked" },
+      "clear": null
+    },
+    "hold_reason": { "text": "{hold_reason_label}", "color": "avoiding" },
+    "control_mode": {
+      "ados": "ADOS PILOT",
+      "fc_manual": "FC MANUAL",
+      "elrs": "ELRS"
+    }
+  },
+  "hold_reason_labels": {
+    "blocked": "Blocked",
+    "obstacle-close": "Obstacle close",
+    "input_stale": "CONTROLLER LOST · HOLDING",
+    "lease-busy": "Another skill has control"
+  },
+  "stale_after_ms": 2000,
+  "tap": "open_mode_sheet",
+  "mode_sheet": {
+    "sections": ["profile", "control_mode", "avoidance", "hand_to_fc", "fc_modes"],
+    "profile": { "values": ["cine", "normal", "sport"], "labels": ["Cine", "Normal", "Sport"], "confirm": "tap" },
+    "control_mode": {
+      "values": ["ados", "fc_manual", "elrs"],
+      "labels": ["ADOS Pilot", "FC Manual", "ELRS"],
+      "explain": {
+        "ados": "ADOS flies: your sticks go to ADOS Pilot, which holds position, avoids obstacles and runs skills.",
+        "fc_manual": "The flight controller flies: your sticks go straight to the FC. ADOS still runs skills, gotos and missions.",
+        "elrs": "The ground station's ELRS radio drives the FC's RC input. ADOS still runs skills, gotos and missions."
+      },
+      "elrs_only_on": "ground_station_link",
+      "confirm": { "kind": "hold", "ms": 1500 }
+    },
+    "avoidance": {
+      "values": ["brake", "bypass", "off"],
+      "labels": ["Brake", "Bypass", "Off"],
+      "confirm_off": { "kind": "hold", "ms": 1500 }
+    },
+    "hand_to_fc": {
+      "values": ["loiter", "poshold", "althold"],
+      "labels": ["Loiter", "PosHold", "AltHold"],
+      "default": "loiter",
+      "plane_values": ["loiter"]
+    },
+    "vtol_transition": { "shown_when": "vehicle_vtol", "to_fw_param1": 4, "to_mc_param1": 3 },
+    "fc_modes": { "advanced": true, "mark_current": true, "sets_owner": "fc_mode" }
+  }
+}

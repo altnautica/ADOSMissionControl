@@ -1,0 +1,240 @@
+{
+  "v": 1,
+  "export_format": {
+    "$description": "Settings › Controls Export/Import file and the body of PUT /api/v1/ground-station/input/bindings. bindings is the COMPLETE effective binding list (rows shaped exactly like this file's bindings), not a diff. A file missing any locked_actions entry is refused (HTTP 422 listing the missing ones).",
+    "example": {
+      "v": 1,
+      "kind": "ados-controls",
+      "pad": "ds4",
+      "stick_mode": "mode2",
+      "deadzone": 0.08,
+      "profile": "user",
+      "bindings": [
+        { "control": "ps", "with": [], "gesture": "tap", "hold_ms": null, "when": "not_rth", "action": "pause", "rumble": "mode_change", "locked": true }
+      ]
+    },
+    "pad_values": ["ds4", "generic"],
+    "profile_values": ["ados_default", "user"]
+  },
+  "$description": "DualShock 4 (and any standard-mapping pad) default binding map. Sticks follow the stick mode; every other control is a binding row. Signs sent to the pilot: pitch + forward, thr + climb, yaw + clockwise, roll + right.",
+  "default_mode": "mode2",
+  "stick_modes": {
+    "mode2": {
+      "throttle": { "stick": "stick_l", "axis": "y", "invert": true },
+      "yaw": { "stick": "stick_l", "axis": "x", "invert": false },
+      "pitch": { "stick": "stick_r", "axis": "y", "invert": true },
+      "roll": { "stick": "stick_r", "axis": "x", "invert": false }
+    },
+    "mode1": {
+      "pitch": { "stick": "stick_l", "axis": "y", "invert": true },
+      "yaw": { "stick": "stick_l", "axis": "x", "invert": false },
+      "throttle": { "stick": "stick_r", "axis": "y", "invert": true },
+      "roll": { "stick": "stick_r", "axis": "x", "invert": false }
+    }
+  },
+  "conditioning": {
+    "radial_deadzone": 0.08,
+    "deadzone_min": 0.04,
+    "deadzone_max": 0.2,
+    "calibration": "center_and_extents_per_pad_id",
+    "expo": "applied_by_pilot"
+  },
+  "stream": {
+    "rate_hz": 50,
+    "axes_order": ["roll", "pitch", "thr", "yaw"],
+    "stale_timestamp_ms": 150,
+    "stop_on": ["pad_disconnected", "document_hidden", "pad_timestamp_stale"],
+    "on_stop": "release",
+    "buttons_bitfield": {
+      "cross": 0, "circle": 1, "square": 2, "triangle": 3,
+      "l1": 4, "r1": 5, "l2": 6, "r2": 7,
+      "share": 8, "options": 9, "l3": 10, "r3": 11,
+      "dpad_up": 12, "dpad_down": 13, "dpad_left": 14, "dpad_right": 15,
+      "ps": 16, "touchpad": 17
+    },
+    "trigger_pressed_threshold": 0.5
+  },
+  "centered_threshold": 0.1,
+  "controls": [
+    "stick_l", "stick_r", "l1", "r1", "l2", "r2", "l3", "r3",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "cross", "circle", "square", "triangle",
+    "share", "options", "ps", "touchpad", "lightbar"
+  ],
+  "platform_map": {
+    "web_standard": {
+      "buttons": {
+        "cross": 0, "circle": 1, "square": 2, "triangle": 3,
+        "l1": 4, "r1": 5, "l2": 6, "r2": 7,
+        "share": 8, "options": 9, "l3": 10, "r3": 11,
+        "dpad_up": 12, "dpad_down": 13, "dpad_left": 14, "dpad_right": 15,
+        "ps": 16, "touchpad": 17
+      },
+      "axes": { "stick_l_x": 0, "stick_l_y": 1, "stick_r_x": 2, "stick_r_y": 3 },
+      "y_up_is_negative": true,
+      "notes": "touchpad is Chromium's non-standard button 17; l2/r2 analog from button value 0..1"
+    },
+    "android": {
+      "buttons": {
+        "cross": "KEYCODE_BUTTON_A", "circle": "KEYCODE_BUTTON_B",
+        "square": "KEYCODE_BUTTON_X", "triangle": "KEYCODE_BUTTON_Y",
+        "l1": "KEYCODE_BUTTON_L1", "r1": "KEYCODE_BUTTON_R1",
+        "l2": "KEYCODE_BUTTON_L2", "r2": "KEYCODE_BUTTON_R2",
+        "share": "KEYCODE_BUTTON_SELECT", "options": "KEYCODE_BUTTON_START",
+        "l3": "KEYCODE_BUTTON_THUMBL", "r3": "KEYCODE_BUTTON_THUMBR",
+        "ps": "KEYCODE_BUTTON_MODE"
+      },
+      "axes": {
+        "stick_l_x": "AXIS_X", "stick_l_y": "AXIS_Y",
+        "stick_r_x": "AXIS_Z", "stick_r_y": "AXIS_RZ",
+        "l2": "AXIS_LTRIGGER", "r2": "AXIS_RTRIGGER",
+        "dpad_x": "AXIS_HAT_X", "dpad_y": "AXIS_HAT_Y"
+      },
+      "trigger_fallback": { "l2": "AXIS_RX", "r2": "AXIS_RY" },
+      "y_up_is_negative": true
+    },
+    "linux_evdev": {
+      "hid_playstation": {
+        "axes": {
+          "stick_l_x": "ABS_X", "stick_l_y": "ABS_Y",
+          "stick_r_x": "ABS_RX", "stick_r_y": "ABS_RY",
+          "l2": "ABS_Z", "r2": "ABS_RZ",
+          "dpad_x": "ABS_HAT0X", "dpad_y": "ABS_HAT0Y"
+        },
+        "buttons": {
+          "cross": "BTN_SOUTH", "circle": "BTN_EAST", "triangle": "BTN_NORTH", "square": "BTN_WEST",
+          "l1": "BTN_TL", "r1": "BTN_TR", "l2": "BTN_TL2", "r2": "BTN_TR2",
+          "share": "BTN_SELECT", "options": "BTN_START", "ps": "BTN_MODE",
+          "l3": "BTN_THUMBL", "r3": "BTN_THUMBR"
+        },
+        "touchpad": "separate Touchpad device, click on BTN_LEFT"
+      },
+      "hid_sony_legacy": {
+        "detect": "no ABS_RX on the pad",
+        "axes": {
+          "stick_l_x": "ABS_X", "stick_l_y": "ABS_Y",
+          "stick_r_x": "ABS_Z", "stick_r_y": "ABS_RZ",
+          "l2": "ABS_HAT2Y", "r2": "ABS_HAT2X"
+        }
+      }
+    }
+  },
+  "gestures": {
+    "tap": "press and release under hold_ms",
+    "hold": "held for hold_ms",
+    "double_tap": "two taps within 300 ms",
+    "analog": "continuous value 0..1 (triggers) or -1..1 (axes)"
+  },
+  "double_tap_ms": 300,
+  "actions": [
+    { "id": "arm", "label": "Arm", "group": "flight", "builtin": "arm" },
+    { "id": "disarm", "label": "Disarm", "group": "flight", "builtin": "disarm" },
+    { "id": "takeoff", "label": "Take off", "group": "flight", "builtin": "takeoff" },
+    { "id": "land", "label": "Land", "group": "flight", "builtin": "land" },
+    { "id": "rth", "label": "Return home", "group": "flight", "builtin": "rth" },
+    { "id": "pause", "label": "Pause (brake)", "group": "flight", "builtin": "pause" },
+    { "id": "resume", "label": "Resume", "group": "flight", "builtin": "resume" },
+    { "id": "take_control", "label": "Take control", "group": "flight", "builtin": "take_control" },
+    { "id": "kill", "label": "Emergency stop", "group": "flight", "builtin": "kill" },
+    { "id": "rth_cancel", "label": "Cancel RTH (hold)", "group": "flight", "builtin": "pause" },
+    { "id": "vtol_transition", "label": "VTOL transition", "group": "flight", "builtin": null },
+    { "id": "skill_select", "label": "Select / GO / confirm", "group": "skills", "builtin": null },
+    { "id": "skill_stop", "label": "Stop skill / back", "group": "skills", "builtin": null },
+    { "id": "picker_focus_prev", "label": "Previous skill", "group": "skills", "builtin": null },
+    { "id": "picker_focus_next", "label": "Next skill", "group": "skills", "builtin": null },
+    { "id": "param_up", "label": "Parameter up", "group": "skills", "builtin": null },
+    { "id": "param_down", "label": "Parameter down", "group": "skills", "builtin": null },
+    { "id": "designate", "label": "Designate subject", "group": "skills", "builtin": null },
+    { "id": "photo", "label": "Photo", "group": "camera", "builtin": null },
+    { "id": "record_toggle", "label": "Record", "group": "camera", "builtin": null },
+    { "id": "zoom_in", "label": "Zoom in", "group": "camera", "builtin": null },
+    { "id": "zoom_out", "label": "Zoom out", "group": "camera", "builtin": null },
+    { "id": "gimbal_pitch_up", "label": "Gimbal up", "group": "camera", "builtin": null },
+    { "id": "gimbal_pitch_down", "label": "Gimbal down", "group": "camera", "builtin": null },
+    { "id": "gimbal_recenter", "label": "Gimbal recentre", "group": "camera", "builtin": null },
+    { "id": "view_next", "label": "Next view", "group": "view", "builtin": null },
+    { "id": "swap_video_map", "label": "Swap video / map", "group": "view", "builtin": null },
+    { "id": "layer_level_up", "label": "Layer level up", "group": "view", "builtin": null },
+    { "id": "layer_level_down", "label": "Layer level down", "group": "view", "builtin": null },
+    { "id": "quick_settings", "label": "Quick settings", "group": "view", "builtin": null },
+    { "id": "profile_prev", "label": "Previous profile", "group": "profile", "builtin": null },
+    { "id": "profile_next", "label": "Next profile", "group": "profile", "builtin": null },
+    { "id": "profile:cine", "label": "Cine", "group": "profile", "builtin": null },
+    { "id": "profile:normal", "label": "Normal", "group": "profile", "builtin": null },
+    { "id": "profile:sport", "label": "Sport", "group": "profile", "builtin": null },
+    { "id": "none", "label": "None", "group": "none", "builtin": null }
+  ],
+  "action_groups": ["flight", "skills", "camera", "view", "profile", "none"],
+  "bindings": [
+    { "control": "l2", "with": [], "gesture": "analog", "hold_ms": null, "when": null, "action": "gimbal_pitch_down", "rate_full_dps": 60, "rumble": null, "locked": false },
+    { "control": "r2", "with": [], "gesture": "analog", "hold_ms": null, "when": null, "action": "gimbal_pitch_up", "rate_full_dps": 60, "rumble": null, "locked": false },
+    { "control": "l1", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "zoom_out", "rumble": null, "locked": false },
+    { "control": "r1", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "zoom_in", "rumble": null, "locked": false },
+    { "control": "r3", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "gimbal_recenter", "rumble": null, "locked": false },
+    { "control": "l3", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "swap_video_map", "rumble": null, "locked": false },
+    { "control": "dpad_left", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "picker_focus_prev", "rumble": null, "locked": false },
+    { "control": "dpad_right", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "picker_focus_next", "rumble": null, "locked": false },
+    { "control": "dpad_up", "with": [], "gesture": "tap", "hold_ms": null, "when": "picker_open", "action": "param_up", "rumble": null, "locked": false },
+    { "control": "dpad_down", "with": [], "gesture": "tap", "hold_ms": null, "when": "picker_open", "action": "param_down", "rumble": null, "locked": false },
+    { "control": "dpad_up", "with": [], "gesture": "tap", "hold_ms": null, "when": "picker_closed", "action": "layer_level_up", "rumble": null, "locked": false },
+    { "control": "dpad_down", "with": [], "gesture": "tap", "hold_ms": null, "when": "picker_closed", "action": "layer_level_down", "rumble": null, "locked": false },
+    { "control": "cross", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "skill_select", "rumble": null, "locked": false },
+    { "control": "circle", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "skill_stop", "rumble": null, "locked": false },
+    { "control": "square", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "photo", "rumble": null, "locked": false },
+    { "control": "triangle", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "view_next", "rumble": null, "locked": false },
+    { "control": "triangle", "with": [], "gesture": "hold", "hold_ms": 1500, "when": "on_ground", "action": "takeoff", "rumble": "ramp", "locked": false },
+    { "control": "triangle", "with": [], "gesture": "hold", "hold_ms": 1500, "when": "airborne", "action": "land", "rumble": "ramp", "locked": false },
+    { "control": "triangle", "with": [], "gesture": "double_tap", "hold_ms": null, "when": "vehicle_vtol", "action": "vtol_transition", "rumble": "mode_change", "locked": false },
+    { "control": "share", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "record_toggle", "rumble": null, "locked": false },
+    { "control": "options", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "quick_settings", "rumble": null, "locked": false },
+    { "control": "dpad_left", "with": ["options"], "gesture": "tap", "hold_ms": null, "when": null, "action": "profile_prev", "rumble": "mode_change", "locked": false },
+    { "control": "dpad_right", "with": ["options"], "gesture": "tap", "hold_ms": null, "when": null, "action": "profile_next", "rumble": "mode_change", "locked": false },
+    { "control": "ps", "with": [], "gesture": "tap", "hold_ms": null, "when": "not_rth", "action": "pause", "rumble": "mode_change", "locked": true },
+    { "control": "ps", "with": [], "gesture": "hold", "hold_ms": 2000, "when": null, "action": "rth", "rumble": "countdown", "locked": true },
+    { "control": "ps", "with": [], "gesture": "tap", "hold_ms": null, "when": "rth_active", "action": "rth_cancel", "rumble": "mode_change", "locked": false },
+    { "control": "circle", "with": ["options"], "gesture": "tap", "hold_ms": null, "when": null, "action": "pause", "rumble": "mode_change", "locked": false },
+    { "control": "l1", "with": ["r1"], "gesture": "hold", "hold_ms": 2000, "when": "stick_l_centered", "action": "arm", "rumble": "ramp", "locked": true },
+    { "control": "circle", "with": ["l2", "r2"], "gesture": "hold", "hold_ms": 3000, "when": null, "action": "kill", "rumble": "ramp", "locked": true },
+    { "control": "touchpad", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "designate", "rumble": null, "locked": false }
+  ],
+  "locked_actions": [
+    { "action": "pause", "gesture": "tap", "combo": false },
+    { "action": "rth", "gesture": "hold", "combo": false },
+    { "action": "arm", "gesture": "hold", "combo": true },
+    { "action": "kill", "gesture": "hold", "combo": true }
+  ],
+  "when_conditions": {
+    "picker_open": "the skill picker sheet is open",
+    "picker_closed": "the skill picker sheet is closed",
+    "on_ground": "pilot.landed is true",
+    "airborne": "pilot.landed is false",
+    "rth_active": "fc_mode is RTL / SMART_RTL / QRTL",
+    "not_rth": "fc_mode is not RTL / SMART_RTL / QRTL",
+    "stick_l_centered": "left stick within centered_threshold for the whole hold",
+    "vehicle_vtol": "pilot.vehicle_class is vtol"
+  },
+  "designate": {
+    "android": "touchpad cursor",
+    "default": "D-pad reticle: D-pad moves it, Cross selects, Circle cancels"
+  },
+  "lightbar": {
+    "priority": ["failsafe", "low_battery", "rth", "mission", "skill", "pilot", "armed_idle", "disarmed"],
+    "states": {
+      "disarmed": { "color": "#00C853", "pattern": "solid", "hz": null },
+      "armed_idle": { "color": "#FFFFFF", "pattern": "solid", "hz": null },
+      "pilot": { "color": "#2979FF", "pattern": "solid", "hz": null },
+      "skill": { "color": "#22D3EE", "pattern": "solid", "hz": null },
+      "mission": { "color": "#FF3EC8", "pattern": "solid", "hz": null },
+      "rth": { "color": "#F59E0B", "pattern": "blink", "hz": 1 },
+      "low_battery": { "color": "#EF4444", "pattern": "pulse", "hz": 0.5 },
+      "failsafe": { "color": "#EF4444", "pattern": "blink", "hz": 4 }
+    }
+  },
+  "rumble": {
+    "mode_change": { "pulses_ms": [80], "gap_ms": 0, "strong": 0.5, "weak": 0.5 },
+    "warning": { "pulses_ms": [80, 80], "gap_ms": 120, "strong": 0.6, "weak": 0.6 },
+    "critical": { "pulses_ms": [300, 300, 300], "gap_ms": 200, "strong": 1.0, "weak": 1.0 },
+    "ramp": { "from": 0.1, "to": 1.0, "over": "hold_ms", "tick_ms": 100 },
+    "countdown": { "pulse_ms": 80, "every_ms": 500, "over": "hold_ms" }
+  }
+}

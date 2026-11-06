@@ -1,0 +1,142 @@
+{
+  "v": 1,
+  "$description": "Built-in flight actions. Every cockpit surface renders exactly this table: labels, arm gates, confirm tiers, link freshness and keyboard bindings.",
+  "arm_requirements": {
+    "any": "No arm-state gate",
+    "armed": "Vehicle armed",
+    "disarmed": "Vehicle disarmed",
+    "armed_landed": "Vehicle armed and on the ground",
+    "disarmed_or_landed": "Vehicle disarmed, or armed and on the ground"
+  },
+  "confirm_kinds": {
+    "tap": "Fires on tap",
+    "hold": "Press and hold for ms; releasing early cancels",
+    "hold_confirm": "Press and hold for ms, then a confirm dialog"
+  },
+  "builtins": [
+    {
+      "id": "arm",
+      "label": "Arm",
+      "icon": "power",
+      "arm_requirement": "disarmed",
+      "confirm": { "kind": "hold", "ms": 800 },
+      "needs_fresh_link": true,
+      "stale_link": "disable",
+      "keyboard": "shift+a",
+      "arms_first": false,
+      "pilot_action": "arm",
+      "notes": null
+    },
+    {
+      "id": "disarm",
+      "label": "Disarm",
+      "icon": "power-off",
+      "arm_requirement": "armed_landed",
+      "confirm": { "kind": "hold", "ms": 800 },
+      "needs_fresh_link": true,
+      "stale_link": "disable",
+      "keyboard": null,
+      "arms_first": false,
+      "pilot_action": "disarm",
+      "notes": null
+    },
+    {
+      "id": "takeoff",
+      "label": "Take off",
+      "icon": "takeoff",
+      "arm_requirement": "disarmed_or_landed",
+      "confirm": { "kind": "hold", "ms": 1500 },
+      "needs_fresh_link": true,
+      "stale_link": "disable",
+      "keyboard": "shift+t",
+      "arms_first": true,
+      "pilot_action": "takeoff",
+      "notes": "Arms first"
+    },
+    {
+      "id": "land",
+      "label": "Land",
+      "icon": "land",
+      "arm_requirement": "armed",
+      "confirm": { "kind": "hold", "ms": 1500 },
+      "needs_fresh_link": true,
+      "stale_link": "disable",
+      "keyboard": "shift+l",
+      "arms_first": false,
+      "pilot_action": "land",
+      "notes": null
+    },
+    {
+      "id": "rth",
+      "label": "Return home",
+      "icon": "home",
+      "arm_requirement": "armed",
+      "confirm": { "kind": "hold", "ms": 1500 },
+      "needs_fresh_link": true,
+      "stale_link": "disable",
+      "keyboard": "shift+r",
+      "arms_first": false,
+      "pilot_action": "rth",
+      "notes": "Stale link: disabled with a reason"
+    },
+    {
+      "id": "pause",
+      "label": "Pause (brake)",
+      "icon": "pause",
+      "arm_requirement": "armed",
+      "confirm": { "kind": "tap", "ms": 0 },
+      "needs_fresh_link": false,
+      "stale_link": "send_blind",
+      "keyboard": "space",
+      "arms_first": false,
+      "pilot_action": "pause",
+      "notes": null
+    },
+    {
+      "id": "resume",
+      "label": "Resume",
+      "icon": "play",
+      "arm_requirement": "armed",
+      "confirm": { "kind": "tap", "ms": 0 },
+      "needs_fresh_link": true,
+      "stale_link": "disable",
+      "keyboard": "shift+p",
+      "arms_first": false,
+      "pilot_action": "resume",
+      "notes": null
+    },
+    {
+      "id": "take_control",
+      "label": "Take control",
+      "icon": "gamepad",
+      "arm_requirement": "armed",
+      "confirm": { "kind": "tap", "ms": 0 },
+      "needs_fresh_link": true,
+      "stale_link": "disable",
+      "keyboard": "shift+c",
+      "arms_first": false,
+      "pilot_action": "take_control",
+      "notes": null
+    },
+    {
+      "id": "kill",
+      "label": "Emergency stop",
+      "icon": "octagon-alert",
+      "arm_requirement": "armed",
+      "confirm": { "kind": "hold_confirm", "ms": 3000 },
+      "needs_fresh_link": false,
+      "stale_link": "send_blind",
+      "keyboard": "shift+x",
+      "arms_first": false,
+      "pilot_action": "kill",
+      "notes": null
+    }
+  ],
+  "removed": ["abort"],
+  "profile_keys": {
+    "f1": "profile:cine",
+    "f2": "profile:normal",
+    "f3": "profile:sport"
+  },
+  "fc_mode_presets": "mode_sheet"
+}

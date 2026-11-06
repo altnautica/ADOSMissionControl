@@ -1,0 +1,114 @@
+{
+  "v": 1,
+  "$description": "Cockpit grid. Width classes are measured on the cockpit container in Mission Control and on the window or viewport on Android and the agent cockpit. A kiosk surface is always tv.",
+  "breakpoints": {
+    "measure": {
+      "mission_control": "cockpit_container",
+      "android": "window",
+      "agent_cockpit": "viewport"
+    },
+    "classes": [
+      { "id": "compact", "min": 0, "max": 599 },
+      { "id": "medium", "min": 600, "max": 839 },
+      { "id": "expanded", "min": 840, "max": 1599 },
+      { "id": "tv", "min": 1600, "max": null }
+    ],
+    "kiosk_forces": "tv",
+    "portrait": "height > width"
+  },
+  "touch_target": {
+    "min": 48,
+    "left_column": 56,
+    "shutter": 56,
+    "unit": "dp_or_css_px"
+  },
+  "zones": [
+    {
+      "id": "top_bar",
+      "items": ["flight_state_chip", "status_pill", "battery", "link", "nav_source", "controller", "layer_button", "settings"],
+      "battery": { "show": ["percent", "time_left", "rtl_reserve_marker"] }
+    },
+    {
+      "id": "left_column",
+      "align": "vertical_center",
+      "items": ["takeoff_land", "rth", "pause"]
+    },
+    {
+      "id": "right_column",
+      "align": "vertical_center",
+      "items": ["shutter", "photo_video_switch", "zoom", "gimbal_pad", "camera_settings"]
+    },
+    {
+      "id": "bottom_left_card",
+      "cards": ["map", "attitude_radar", "obstacle_radar"],
+      "switch": ["swipe", "l3"]
+    },
+    {
+      "id": "bottom_row",
+      "items": ["D", "H", "H.S", "V.S", "AGL"]
+    },
+    {
+      "id": "bottom_right",
+      "items": ["skill_picker_chip"]
+    },
+    {
+      "id": "center",
+      "items": ["hud", "layers"]
+    }
+  ],
+  "classes": {
+    "compact": {
+      "orientation": "landscape",
+      "column_width": 48,
+      "bottom_left_card": { "kind": "chip", "size": 96 },
+      "labels": "distance_only",
+      "default_layer_level": "route",
+      "scale": 1.0
+    },
+    "medium": {
+      "orientation": "landscape",
+      "column_width": 56,
+      "bottom_left_card": { "kind": "card", "width": 200, "height": 140 },
+      "labels": "full",
+      "default_layer_level": "full",
+      "scale": 1.0
+    },
+    "expanded": {
+      "orientation": "landscape",
+      "column_width": 56,
+      "bottom_left_card": { "kind": "card", "width": 280, "height": 180 },
+      "labels": "full",
+      "default_layer_level": "full",
+      "scale": 1.0
+    },
+    "tv": {
+      "orientation": "landscape",
+      "column_width": 56,
+      "bottom_left_card": { "kind": "card", "width": 280, "height": 180 },
+      "labels": "full",
+      "default_layer_level": "full",
+      "scale": 1.33,
+      "focus_rings": "always",
+      "overlay_fps_cap": 30
+    },
+    "portrait": {
+      "orientation": "portrait",
+      "stack": ["video_16x9_with_top_bar", "left_column_as_row", "skill_picker", "telemetry", "map"],
+      "labels": "distance_only",
+      "default_layer_level": "route",
+      "scale": 1.0
+    }
+  },
+  "on_screen_sticks": {
+    "setting": "controls.on_screen_sticks",
+    "default": false,
+    "classes": ["compact", "expanded"],
+    "pad_size": 120,
+    "placement": "bottom_corners",
+    "pushes_inward": ["skill_picker_chip", "bottom_row"]
+  },
+  "banners": {
+    "handover_ms": 3000,
+    "low_battery_rth_countdown_s": 10
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "v": 1,
+  "$description": "Video data layers. All layers draw into one canvas per video in ascending z; the HUD chrome sits above every layer. Flags and the level persist per surface and per vehicle.",
+  "layers": [
+    { "id": "hud", "label": "HUD", "default": true, "source": "telemetry", "lease": false, "z": 100, "kind": null, "groups": null },
+    { "id": "depth", "label": "Depth", "default": false, "source": "depth", "lease": true, "z": 10, "kind": "depth", "groups": null },
+    { "id": "surfaces", "label": "Surfaces", "default": false, "source": "surfaces", "lease": true, "z": 20, "kind": "surfaces", "groups": null },
+    { "id": "obstacles", "label": "Obstacles", "default": true, "source": "obstacles", "lease": false, "z": 30, "kind": "obstacles", "groups": null },
+    { "id": "targets", "label": "Targets", "default": true, "source": "vision detections", "lease": false, "z": 40, "kind": null, "groups": null },
+    { "id": "ar_route", "label": "Route", "default": true, "source": "ar", "lease": false, "z": 50, "kind": "ar", "groups": ["wp", "leg", "home", "edge"] },
+    { "id": "ar_motion", "label": "Motion", "default": true, "source": "ar", "lease": false, "z": 60, "kind": "ar", "groups": ["fpv", "fpath", "fgoal", "orbit"] }
+  ],
+  "plugin_layer": {
+    "id_pattern": "plugin:<plugin_id>:<overlay_id>",
+    "default": true,
+    "source": "plugin overlay",
+    "lease": false,
+    "z": 70
+  },
+  "levels": {
+    "order": ["full", "route", "off"],
+    "full": {
+      "layers": "every layer whose default is true, plugin layers included",
+      "ar_route_roles": { "wp": ["next", "after", "other"], "leg": ["active", "next", "future"] }
+    },
+    "route": {
+      "layers": ["hud", "targets", "ar_route", "ar_motion", "obstacles"],
+      "ar_route_roles": { "wp": ["next", "after"], "leg": ["active", "next"] },
+      "always": ["home", "edge"]
+    },
+    "off": {
+      "layers": ["hud"]
+    },
+    "lease_layers_independent": true,
+    "note": "depth and surfaces are toggled on their own; the level never turns them on or off"
+  },
+  "level_controls": {
+    "keyboard": "o",
+    "gamepad": ["dpad_up", "dpad_down"],
+    "top_bar_button": true
+  },
+  "staleness": {
+    "dim_after_ms": 500,
+    "hide_after_ms": 2000,
+    "unavailable_chip": "<layer> unavailable"
+  },
+  "view_lease": {
+    "message": { "type": "view", "camera_id": "<served id>", "layers": ["ar_route", "ar_motion", "obstacles", "depth", "surfaces"] },
+    "renew_ms": 2000,
+    "expires_ms": 6000,
+    "poll_query": "view=<camera_id>:<layer,...>",
+    "release_when": ["document_hidden", "view_not_on_screen", "lifecycle_below_started"]
+  },
+  "vision_demand": {
+    "route": "POST /api/vision/demand",
+    "body": { "kind": "depth|surfaces", "camera_id": "<served id>", "hold_s": 6 },
+    "renew_ms": 2000
+  },
+  "options": {
+    "depth": {
+      "style": { "values": ["solid", "outline"], "default": "solid" },
+      "range_m": { "values": [null, 2, 5], "labels": ["Off", "2 m", "5 m"], "default": 5 }
+    },
+    "obstacles": {
+      "near_max_m": 2,
+      "mid_max_m": 5,
+      "measured": "solid",
+      "inferred": "outline",
+      "unknown": "not drawn",
+      "arc_strip": "bottom_center",
+      "radar_card_source": "sectors_m"
+    },
+    "surfaces": {
+      "stroke": "dashed",
+      "score_chip": true
+    }
+  },
+  "grid_decode": {
+    "cols": 32,
+    "rows": 18,
+    "unknown_code": 0,
+    "formula": "d = 0.2 * exp((v - 1) * ln(300) / 254)",
+    "range_m": [0.2, 60],
+    "measured_bit": 1
+  },
+  "persistence": {
+    "scope": ["surface", "vehicle"],
+    "keys": ["flags", "level"]
+  },
+  "interpolation": {
+    "fade_in_ms": 120,
+    "fade_out_ms": 120,
+    "key_field": "k",
+    "pip_draws_layers": false
+  }
+}

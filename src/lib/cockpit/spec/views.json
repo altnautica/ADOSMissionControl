@@ -1,0 +1,31 @@
+{
+  "v": 1,
+  "$description": "Cockpit views. Triangle tap (or the V key) cycles them in order. The stream choice (EO, IR, down) is orthogonal to the view.",
+  "views": [
+    { "id": "pilot", "label": "Pilot", "main": "video", "secondary": null, "side_panel": null, "forced_layers": [] },
+    { "id": "map", "label": "Map", "main": "map", "secondary": "video_pip", "side_panel": null, "forced_layers": [] },
+    { "id": "split", "label": "Split", "main": "video", "secondary": "map", "side_panel": null, "divider": true, "forced_layers": [] },
+    {
+      "id": "vision",
+      "label": "Vision",
+      "main": "video",
+      "secondary": null,
+      "side_panel": ["detection_list", "model_picker", "depth_surfaces_toggles", "engine_health"],
+      "forced_layers": ["targets", "depth", "surfaces"],
+      "forced_while": "view_open"
+    }
+  ],
+  "default": "pilot",
+  "cycle": ["pilot", "map", "split", "vision"],
+  "cycle_keys": { "keyboard": "v", "gamepad": { "control": "triangle", "gesture": "tap" } },
+  "streams": {
+    "orthogonal": true,
+    "select": { "tabs": true, "digit_keys": true, "next_key": "`" }
+  },
+  "dashboard": {
+    "component": "video-panel",
+    "level": "route",
+    "read_only": true,
+    "poll": { "route": "GET /api/v1/nav/status", "hz": 5 }
+  }
+}
