@@ -102,6 +102,32 @@ html[data-theme="nvg"] {
   --hud-target-tag-weight: 600;
   --hud-target-tag-transform: uppercase;
   --hud-target-tag-tracking: 0.06em;
+  --ar-route: #FF3EC8;
+  --ar-future: rgba(255, 255, 255, 0.8);
+  --ar-home: #FFD400;
+  --ar-follow: #22D3EE;
+  --ar-detour: #F59E0B;
+  --ar-blocked: #EF4444;
+  --ar-halo: rgba(0, 0, 0, 0.6);
+  --ar-paused: #909090;
+  --layer-obstacle-near: rgba(239, 68, 68, 0.45);
+  --layer-obstacle-mid: rgba(245, 158, 11, 0.3);
+  --layer-depth-near: rgba(239, 68, 68, 0.45);
+  --layer-depth-mid: rgba(245, 158, 11, 0.3);
+  --layer-surface-zone: #00C853;
+  --state-ready: #00C853;
+  --state-not-ready: #EF4444;
+  --state-pilot: #2979FF;
+  --state-skill: #22D3EE;
+  --state-goto: #2979FF;
+  --state-swarm: #2979FF;
+  --state-mission: #FF3EC8;
+  --state-rth: #F59E0B;
+  --state-fc: #909090;
+  --state-tuning: #F59E0B;
+  --state-stale: #909090;
+  --state-avoiding: #F59E0B;
+  --state-blocked: #EF4444;
 }
 
 :root:root[data-theme="light"] {
