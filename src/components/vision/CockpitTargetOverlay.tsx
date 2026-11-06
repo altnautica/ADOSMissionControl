@@ -30,6 +30,7 @@ import { computeRenderedRect } from "@/components/cockpit/VideoOverlayHost";
 import { useToast } from "@/components/ui/toast";
 import { useBoxSmoothing, smoothKey } from "@/hooks/use-box-smoothing";
 import { useCameraDetectionBatch, useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
+import { useDetectionDemand } from "@/hooks/use-detection-demand";
 import { useElementSize } from "@/hooks/use-element-size";
 import { useFollowDesignationSync } from "@/hooks/use-follow-designation-sync";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
@@ -37,6 +38,7 @@ import { useResolvedTargets } from "@/hooks/use-resolved-targets";
 import { useTargetDrag } from "@/hooks/use-target-drag";
 import { useTargetFocus } from "@/hooks/use-target-focus";
 import { useTargetPopup } from "@/hooks/use-target-popup";
+import { PRIMARY_CAMERA_ID } from "@/lib/agent/detection-demand";
 import { designateTarget } from "@/lib/skills/target-actions";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { DOUBLE_CLICK_MS, focusOrder } from "@/lib/vision/target-interaction";
@@ -49,6 +51,7 @@ import { useVideoStore } from "@/stores/video-store";
 import { useVideoStreamsStore, type StreamRole } from "@/stores/video-streams-store";
 import type { DetectionBox } from "@/stores/vision-detections-store";
 
+import { DetectorStateTag } from "./DetectorStateTag";
 import { TargetActionPopup } from "./TargetActionPopup";
 import { TargetGlyph } from "./TargetGlyph";
 
@@ -103,6 +106,8 @@ export function CockpitTargetOverlay({ droneId, pip }: CockpitTargetOverlayProps
   });
   const camera = freshBatch?.cameraId ?? (pip ? pip.cameraId : mainLeg);
   useFollowDesignationSync(pip ? null : droneId, camera);
+  // Ask the engine to detect on the camera this layer shows while it is up.
+  const demand = useDetectionDemand(droneId, pip ? pip.cameraId : (mainLeg ?? PRIMARY_CAMERA_ID), true);
   const smoothed = useBoxSmoothing(videoLost ? null : freshBatch, reducedMotion);
 
   // The main overlay owns the cockpit target state: drop the popup and the
@@ -251,6 +256,7 @@ export function CockpitTargetOverlay({ droneId, pip }: CockpitTargetOverlayProps
           style={{ left: selection.x, top: selection.y, width: selection.w, height: selection.h }}
         />
       )}
+      <DetectorStateTag status={demand} show={freshBatch === null && !videoLost} />
       {popup && popupAt && (
         <div className="absolute z-[7]" style={{ left: popupAt.x, top: popupAt.y + popupAt.h + 4 }}>
           <TargetActionPopup target={popup} onClose={closePopup} />

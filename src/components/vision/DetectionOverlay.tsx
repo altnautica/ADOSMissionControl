@@ -20,10 +20,12 @@
 import { useMemo, useRef } from "react";
 
 import { computeRenderedRect } from "@/components/cockpit/VideoOverlayHost";
+import { useDetectionDemand } from "@/hooks/use-detection-demand";
 import { useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
 import { useElementSize } from "@/hooks/use-element-size";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { useResolvedTargets } from "@/hooks/use-resolved-targets";
+import { PRIMARY_CAMERA_ID } from "@/lib/agent/detection-demand";
 import { widthClassFor } from "@/lib/cockpit/width-class";
 import { coverRect } from "@/lib/vision/target-geometry";
 import { layoutTargets, tagFontPx } from "@/lib/vision/target-layout";
@@ -33,6 +35,7 @@ import {
   useVisionDetectionsStore,
 } from "@/stores/vision-detections-store";
 
+import { DetectorStateTag } from "./DetectorStateTag";
 import { TargetGlyph } from "./TargetGlyph";
 
 interface DetectionOverlayProps {
@@ -80,6 +83,12 @@ export function DetectionOverlay({
   });
   // A caller-specific stale window tighter than the shared one.
   const tooOld = !batch || now - batch.receivedAt > staleAfterMs;
+  // Ask the engine to detect on the camera this overlay shows: the pinned
+  // stream's camera, else the active leg (the primary camera without legs).
+  const demandCamera = streamKey
+    ? streamKey.slice(streamKey.lastIndexOf("::") + 2)
+    : (leg ?? PRIMARY_CAMERA_ID);
+  const demand = useDetectionDemand(droneId, demandCamera, true);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const size = useElementSize(wrapperRef);
@@ -106,6 +115,7 @@ export function DetectionOverlay({
       {(tooOld ? layouts.filter((l) => !l.item.detection) : layouts).map((l) => (
         <TargetGlyph key={l.key} layout={l} reducedMotion={reducedMotion} />
       ))}
+      <DetectorStateTag status={demand} show={tooOld} />
     </div>
   );
 }

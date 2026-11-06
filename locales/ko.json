@@ -9334,6 +9334,12 @@
       "smartHint": "Smart: coast on the prediction and re-acquire a matching person.",
       "phase": "Phase",
       "notInstalled": "Follow-me is not installed on this node."
+    },
+    "detector": {
+      "idle": "DETECTOR IDLE",
+      "rejected": "NO DETECTOR ON THIS CAMERA",
+      "noLink": "DETECTION NEEDS A DIRECT LINK",
+      "unreachable": "DETECTOR UNREACHABLE"
     }
   }
 }

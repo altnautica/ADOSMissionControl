@@ -9140,6 +9140,12 @@
       "menuFollow": "Follow",
       "menuLock": "Lock"
     },
+    "detector": {
+      "idle": "DETECTOR IDLE",
+      "rejected": "NO DETECTOR ON THIS CAMERA",
+      "noLink": "DETECTION NEEDS A DIRECT LINK",
+      "unreachable": "DETECTOR UNREACHABLE"
+    },
     "toast": {
       "reacquired": "Re-acquired #{id} · {sim} · {gap} s gap"
     },

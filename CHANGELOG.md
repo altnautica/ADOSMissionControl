@@ -57,6 +57,16 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Detection runs on demand. A view that draws detection overlays for a
+  drone camera (the cockpit target layer, the picture-in-picture inset, the
+  Perception preview and other video previews) asks the drone to detect on the
+  camera it shows: it holds a lease through `POST /api/vision/demand`
+  (`owner: "mission-control"`, 6 s, renewed every 2 s) over the direct LAN link
+  while it is open and the page is visible, and releases it (`hold_s: 0`) when
+  it closes, switches camera or the page hides. Views on the same camera share
+  one lease. The always-on detection listener holds none. With no boxes
+  arriving, the overlay says why: detector idle, no detector on this camera,
+  detection needs a direct link, or detector unreachable.
 - A designated or followed target is drawn in the tracking colour instead of
   the green lock colour, and the lock brackets no longer pulse; the what's-locked
   chip reports the follow phase (following, coasting, searching, holding, lost,

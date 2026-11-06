@@ -223,6 +223,15 @@ export interface DesignateResult {
   trackId: number | null;
 }
 
+/** The agent's reply to a detection-demand lease (`POST /api/vision/demand`):
+ * whether the detector now runs on that camera, and the lease expiry in the
+ * agent's own milliseconds (null once nothing holds the camera). */
+export interface DetectionDemandResult {
+  cameraId: string;
+  detecting: boolean;
+  untilMs: number | null;
+}
+
 export class VisionAgentError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {

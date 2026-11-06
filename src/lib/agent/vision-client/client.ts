@@ -28,6 +28,7 @@ import {
   VisionAgentError,
   type DesignateBox,
   type DesignateResult,
+  type DetectionDemandResult,
   type EngineStatus,
   type VisionClient,
   type VisionDownloadResult,
@@ -294,6 +295,33 @@ export class VisionAgentClient implements VisionClient {
     return {
       designated: e.designated === true,
       trackId: typeof e.track_id === "number" ? e.track_id : null,
+    };
+  }
+
+  /**
+   * Hold (or release) a lease on detection for one camera
+   * (`POST /api/vision/demand`). The agent runs its detector on a camera only
+   * while some consumer holds a lease on it; a lease lasts `holdS` seconds
+   * (0..60) and is renewed by repeating the call. `holdS: 0` releases this
+   * owner's lease. The agent refuses a camera it does not capture (4xx).
+   */
+  async requestDetection(
+    cameraId: string,
+    holdS: number,
+    owner: string,
+  ): Promise<DetectionDemandResult> {
+    const data = await this.json(
+      await timedFetch(`${this.baseUrl}/api/vision/demand`, {
+        method: "POST",
+        headers: { ...this.headers(), "Content-Type": "application/json" },
+        body: JSON.stringify({ camera_id: cameraId, hold_s: holdS, owner }),
+      }),
+    );
+    const e = data as Record<string, unknown>;
+    return {
+      cameraId: typeof e.camera_id === "string" ? e.camera_id : cameraId,
+      detecting: e.detecting === true,
+      untilMs: typeof e.until_ms === "number" ? e.until_ms : null,
     };
   }
 
