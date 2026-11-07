@@ -14,14 +14,25 @@
       ]
     },
     {
-      "id": "depth_midas_v3",
+      "id": "depth_midas_v21_small",
       "task": "depth",
-      "name": "Depth Estimator",
-      "description": "Monocular depth estimation for obstacle avoidance",
+      "name": "Depth Estimator (MiDaS v2.1 small)",
+      "description": "Monocular relative depth for the cockpit depth and surfaces layers. Runs only while a depth or surfaces layer is on; the drone scales it to metres with its LiDAR and rangefinder",
       "license": "MIT",
+      "recommended": true,
       "classes": [],
       "variants": [
-        { "variant": "small", "input_size": "256x256", "min_tops": 0.8, "formats": {} }
+        {
+          "variant": "cpu_fp32_256",
+          "input_size": "256x256",
+          "min_tops": 0,
+          "runtime": "onnx",
+          "board_match": ["generic-x86_64", "generic-arm64", "rpi4b", "rpi5"],
+          "filename": "midas_v21_small_256.onnx",
+          "size_bytes": 66764249,
+          "sha256": "2d8c6cb8f415229daf1eb041024208e2608c9f98e17c81cc7c6ecb449c56fd58",
+          "url": "https://github.com/isl-org/MiDaS/releases/download/v2_1/model-small.onnx"
+        }
       ]
     },
     {

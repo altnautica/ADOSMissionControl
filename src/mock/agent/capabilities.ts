@@ -290,9 +290,9 @@ export function getMockCapabilities(
     models: {
       installed: [
         { id: "person_v1", variant: "small", format: "rknn", size_mb: 12, loaded: true },
-        { id: "depth_midas_v3", variant: "small", format: "rknn", size_mb: 15, loaded: true },
+        { id: "depth_midas_v21_small", variant: "cpu_fp32_256", format: "onnx", size_mb: 64, loaded: true },
       ],
-      cache_used_mb: 27,
+      cache_used_mb: 76,
       cache_max_mb: 500,
       registry_url: "https://raw.githubusercontent.com/altnautica/ADOSMissionControl/main/public/models/registry.json",
     },
