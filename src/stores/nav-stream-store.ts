@@ -24,6 +24,7 @@ import type {
   NavState,
   OccupancyLive,
 } from "@/lib/agent/nav-types";
+import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
 import {
   EMPTY_OCCUPANCY,
   appendTrail,
@@ -38,6 +39,8 @@ export const NAV_STATE_STALE_MS = 2000;
 export const SCAN_STALE_MS = 500;
 export const POSE_STALE_MS = 500;
 export const OCCUPANCY_DIM_MS = 5000;
+/** The flight-state chip dims and reads LINK after this (cockpit spec). */
+export const PILOT_STALE_MS = 2000;
 
 export interface Stamped<T> {
   data: T;
@@ -52,6 +55,8 @@ export interface DroneNavFeed {
   pose?: Stamped<NavPose>;
   scan?: Stamped<NavScan>;
   map?: Stamped<MapStatus>;
+  /** ADOS Pilot state (`pilot` kind, 10 Hz). */
+  pilot?: Stamped<PilotState>;
   trail: TrailPoint[];
   occupancy: OccupancyGrid;
   /** Browser clock (ms) of the last successful `map/live` poll, or null. */
@@ -68,6 +73,7 @@ interface NavStreamState {
   setPose: (droneId: string, data: NavPose, at?: number) => void;
   setScan: (droneId: string, data: NavScan, at?: number) => void;
   setMap: (droneId: string, data: MapStatus, at?: number) => void;
+  setPilot: (droneId: string, data: PilotState, at?: number) => void;
   mergeOccupancy: (droneId: string, live: OccupancyLive, at?: number) => void;
   clear: (droneId: string) => void;
 }
@@ -100,6 +106,8 @@ export const useNavStreamStore = create<NavStreamState>()((set) => ({
     set((s) => patch(s, droneId, () => ({ scan: { data, receivedAt: at } }))),
   setMap: (droneId, data, at = Date.now()) =>
     set((s) => patch(s, droneId, () => ({ map: { data, receivedAt: at } }))),
+  setPilot: (droneId, data, at = Date.now()) =>
+    set((s) => patch(s, droneId, () => ({ pilot: { data, receivedAt: at } }))),
   mergeOccupancy: (droneId, live, at = Date.now()) =>
     set((s) =>
       patch(s, droneId, (feed) => ({

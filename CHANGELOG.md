@@ -8,6 +8,28 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Cockpit data layers in one canvas.** A layer stack over the main video
+  draws every data layer in the cockpit spec's z-order: depth, surfaces,
+  obstacles, targets (detection glyphs, cockpit marks, lead reticle), AR route
+  and AR motion. Overlay frames from the agent's nav stream (`ar`,
+  `obstacles`, `depth`, `surfaces`) live in a mutable store outside React; a
+  change-driven draw loop interpolates keyed AR items between frames, fades
+  items in and out over 120 ms, dims a layer after 500 ms and hides it after
+  2 s with an "unavailable" chip, stops while the tab is hidden and caps at
+  30 fps on a TV/kiosk. The level (Full / Route / Off) and per-layer switches
+  persist per vehicle. The PiP draws no layers.
+- **View and vision leases.** The layer stack names the camera and layers it
+  shows on the nav stream (`{"type":"view"}`, renewed every 2 s, released when
+  hidden), so the agent computes overlays only for what is watched; the depth
+  and surfaces layers hold a vision-demand lease of their own kind.
+- **Vision view.** The detection preview moved from the Perception tab into
+  the cockpit: a side panel with the live detection list, the model picker,
+  depth style and range, and the engine summary.
+- **ADOS Pilot state on the nav stream.** The `pilot` kind is parsed into the
+  nav-stream store for the flight-state chip. Demo mode streams `ar`,
+  `obstacles`, `depth` and `surfaces` frames built from the agent's golden
+  wire fixtures.
+
 - **Link key on the ground station's Video Link panel.** A "Link key" row
   shows the ground station's control-plane key state from `/api/video/config`
   (`hopping.key_status`): bound (neutral), waiting for key (cold start) or key

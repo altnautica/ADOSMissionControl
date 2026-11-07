@@ -1,23 +1,23 @@
 "use client";
 
 /**
- * @module vision/TargetLeadReticle
- * @description Draws a LEAD reticle for the operator-designated target: a ghost
+ * @module hooks/use-target-lead
+ * @description The LEAD reticle for the operator-designated target: a ghost
  * reticle a fixed time ahead of a MOVING, tracked target plus the lead vector
  * from its current centre. It reads the target's real per-frame motion from the
  * detection stream and projects it forward — an aim-ahead cue for a mover, and
  * the same lead a gimbal/behaviour would use.
  *
- * It composites through the shared mark layer (pushes marks into
- * `cockpit-marks-store` under one source id; {@link CockpitMarkLayer} draws
- * them letterbox-correct) rather than stacking its own overlay.
+ * It composites through the shared mark set (pushes marks into
+ * `cockpit-marks-store` under one source id); the layer stack's `targets`
+ * layer draws them letterbox-correct.
  *
  * Honest (no fabricated reading): the reticle appears only for a tracked, designated target
  * on a FRESH feed of the displayed camera with real, measurable motion. It
  * clears the moment the target is released, the track drops, the feed goes
  * stale (a timer fires at the batch's stale deadline even when no further batch
  * arrives), or the target stops — never a fabricated heading for a still or
- * lost target. Renders nothing itself.
+ * lost target.
  *
  * @license GPL-3.0-only
  */
@@ -43,7 +43,7 @@ const SOURCE = "builtin.target-lead";
 /** "Aim ahead" (HUD token `hud.lead`), deliberately distinct from the designated-lock box. */
 const LEAD_COLOR = "var(--hud-lead)";
 
-export function TargetLeadReticle({ droneId }: { droneId: string }) {
+export function useTargetLead(droneId: string): void {
   const batch = useDisplayedDetectionBatch(droneId);
   const designated = useSelectedTargetStore((s) => s.designated);
   const setMarks = useCockpitMarksStore((s) => s.setMarks);
@@ -147,6 +147,4 @@ export function TargetLeadReticle({ droneId }: { droneId: string }) {
   useEffect(() => {
     return () => clearSource(SOURCE);
   }, [droneId, clearSource]);
-
-  return null;
 }

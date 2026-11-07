@@ -1,7 +1,7 @@
 /**
  * Tests for the composited cockpit draw-layer handlers: a plugin posting
  * `cockpit.marks` writes validated, source-namespaced marks into the shared
- * marks store (composited by `CockpitMarkLayer`); `cockpit.marks.clear` +
+ * marks store (composited by the cockpit layer stack); `cockpit.marks.clear` +
  * `dispose()` drop them; and the bridge gates the `ui.slot.video-overlay`
  * capability before a mark post runs. The method-rule map is asserted too.
  *

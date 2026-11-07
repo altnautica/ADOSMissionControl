@@ -39,13 +39,16 @@ export interface SubscribeOptions<E> {
   /** The peer closed the socket, with its close code and reason, before the
    *  redial. A handler can explain a refusal in the reason. */
   onClose?: (code: number | undefined, reason: string) => void;
+  /** The socket opened. `send` writes one text frame on it; a send after
+   *  that socket closed is dropped. Called again after every redial. */
+  onOpen?: (send: (text: string) => void) => void;
 }
 
 export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
   if (typeof window === "undefined") {
     return () => {};
   }
-  const { ctx, path, scope, onEvent, onState, onClose, peerSendsKeepalive = true } = opts;
+  const { ctx, path, scope, onEvent, onState, onClose, onOpen, peerSendsKeepalive = true } = opts;
   // No ``?api_key=`` query param. The pairing key never reaches the URL.
   const url = ctx.baseUrl.replace(/^http/, "ws") + path;
 
@@ -76,5 +79,11 @@ export function subscribeWebSocket<E>(opts: SubscribeOptions<E>): () => void {
     },
     slowRetryCloseCodes: [CLOSE_POLICY_VIOLATION],
     onClose,
+    onOpen: onOpen
+      ? (ws) =>
+          onOpen((text) => {
+            if (ws.readyState === WebSocket.OPEN) ws.send(text);
+          })
+      : undefined,
   });
 }

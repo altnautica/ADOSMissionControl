@@ -1,7 +1,7 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TargetLeadReticle } from "@/components/vision/TargetLeadReticle";
+import { useTargetLead } from "@/hooks/use-target-lead";
 import { useCockpitMarksStore } from "@/stores/cockpit-marks-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
 import {
@@ -35,7 +35,12 @@ function push(x: number, cameraId = "cam0") {
 
 const hasLead = () => useCockpitMarksStore.getState().bySource.has("builtin.target-lead");
 
-describe("TargetLeadReticle", () => {
+function TargetLeadReticle({ droneId }: { droneId: string }) {
+  useTargetLead(droneId);
+  return null;
+}
+
+describe("useTargetLead", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000_000);

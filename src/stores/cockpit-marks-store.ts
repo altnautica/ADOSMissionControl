@@ -5,7 +5,7 @@
  * @description The shared seam for cockpit overlay MARKS. Any source — a
  * built-in feature, or a host adapter for a plugin that streams marks over the
  * bridge instead of drawing its own iframe — pushes its current marks keyed by
- * a stable source id; `CockpitMarkLayer` composites every source's marks into
+ * a stable source id; the cockpit layer stack composites every source's marks into
  * one letterbox-correct overlay. Ephemeral (not persisted): marks are the live
  * frame's annotations.
  *

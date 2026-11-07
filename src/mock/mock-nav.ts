@@ -27,6 +27,7 @@ import { getMockEkfSourceSet } from "./mock-ekf-source";
 import { extnavHealthAt, scriptFollow } from "./mock-hud-script";
 import { demoLoopAt, scanRanges, yawMatrix } from "./mock-nav-world";
 import { OccupancyReveal, type GreyPngEncoder } from "./mock-occupancy";
+import { MockLayerStream } from "./mock-layers";
 
 const FOLLOW_MS = 200;
 const NAV_MS = 500;
@@ -92,6 +93,7 @@ export class MockNavStream {
   private timers: ReturnType<typeof setInterval>[] = [];
   private occupancy: OccupancyReveal | null = null;
   private minObstacleM: number | null = null;
+  private readonly layers = new MockLayerStream(demoActiveCameraId);
 
   constructor(private readonly encoder?: GreyPngEncoder) {}
 
@@ -107,10 +109,12 @@ export class MockNavStream {
       setInterval(() => this.tickPose(), POSE_MS),
       setInterval(() => this.tickMap(), MAP_MS),
     ];
+    this.layers.start(droneId, startMs);
     this.tickMap();
   }
 
   stop(): void {
+    this.layers.stop();
     for (const t of this.timers) clearInterval(t);
     this.timers = [];
     if (this.droneId) useNavStreamStore.getState().clear(this.droneId);

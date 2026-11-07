@@ -1,0 +1,13 @@
+{"v":1,"ts_ms":1793960000000,"approx":false,"reason":null,
+ "mission":{"state":"active","seq":4,"total":6,"item_reached":3,"id":null,"source":"mission_state","age_ms":120,"landing_seq":false},
+ "cameras":{"main":{"frame_w":1280,"frame_h":720,"reason":null,"items":[
+   {"t":"wp","k":"wp:4","seq":4,"role":"next","x":0.52,"y":0.41,"gx":0.52,"gy":0.63,"dist_m":120.0,"eta_s":42.0,"size":0.25},
+   {"t":"wp","k":"wp:5","seq":5,"role":"after","x":0.61,"y":0.38,"gx":null,"gy":null,"dist_m":180.0,"eta_s":null,"size":0.25},
+   {"t":"leg","k":"leg:active","role":"active","pts":[[0.5,0.9],[0.52,0.63]]},
+   {"t":"leg","k":"leg:next","role":"next","pts":[[0.52,0.63],[0.61,0.6]]},
+   {"t":"home","k":"home","x":0.1,"y":0.8,"gx":0.1,"gy":0.85,"dist_m":35.0},
+   {"t":"fpv","k":"fpv","x":0.5,"y":0.55},
+   {"t":"fpath","k":"fpath","state":"detour","pts":[[0.5,0.7],[0.45,0.6]]},
+   {"t":"fgoal","k":"fgoal","x":0.45,"y":0.6},
+   {"t":"orbit","k":"orbit","dir":"cw","cx":0.5,"cy":0.6,"pts":[[0.6,0.6],[0.55,0.65]]},
+   {"t":"edge","k":"edge:home","of":"home","seq":null,"ang":2.6,"dist_m":35.0}]}}}

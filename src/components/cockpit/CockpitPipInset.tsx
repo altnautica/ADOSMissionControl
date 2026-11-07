@@ -32,7 +32,6 @@ import {
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
 import { CockpitDemoStream } from "@/components/cockpit/CockpitDemoStream";
-import { CockpitTargetOverlay } from "@/components/vision/CockpitTargetOverlay";
 
 interface CockpitPipInsetProps {
   droneId: string;
@@ -330,15 +329,6 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
             )}
           </>
         )}
-        <CockpitTargetOverlay
-          droneId={droneId}
-          pip={{
-            cameraId: pip.id,
-            role: pip.role,
-            videoLost: !demo && pipStatus !== "live",
-            fit: "cover",
-          }}
-        />
       </div>
     </div>
   );

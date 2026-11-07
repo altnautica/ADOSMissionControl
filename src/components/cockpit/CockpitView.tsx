@@ -39,9 +39,9 @@ import { Plane } from "lucide-react";
 import { VideoCanvas } from "@/components/flight/VideoCanvas";
 import { CockpitZones } from "@/components/cockpit/CockpitZones";
 import { VideoOverlayHost } from "@/components/cockpit/VideoOverlayHost";
-import { CockpitTargetOverlay } from "@/components/vision/CockpitTargetOverlay";
-import { CockpitMarkLayer } from "@/components/vision/CockpitMarkLayer";
-import { TargetLeadReticle } from "@/components/vision/TargetLeadReticle";
+import { LayerStack } from "@/components/cockpit/layers/LayerStack";
+import { PRIMARY_CAMERA_ID } from "@/lib/agent/detection-demand";
+import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { PluginTargetActionHost } from "@/components/vision/PluginTargetActionHost";
 import { PluginCockpitWidgetHost } from "@/components/plugins/PluginCockpitWidgetHost";
 import { PluginSkillHost } from "@/components/cockpit/PluginSkillHost";
@@ -111,6 +111,10 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   // the measured Skill Bar clearance the range panel sits above.
   const layoutSize = useCockpitContainerLayout(containerRef);
   const skillBarClear = useSkillBarClearance(skillBarRef);
+  // The served camera the main video shows: the layer stack draws for it.
+  const layerCamera = useVideoStreamsStore(
+    (s) => s.activeStreamIdByDrone[droneId] ?? s.streamsByDrone[droneId]?.[0]?.id ?? PRIMARY_CAMERA_ID,
+  );
 
   // A pending skill confirm owns input: pause the radial while one is open.
   const confirmPending = useSkillConfirmStore((s) => s.pending !== null);
@@ -174,12 +178,9 @@ export function CockpitView({ droneId }: CockpitViewProps) {
               demo mode; self-gated, never on a real node. */}
           <CockpitDemoStream droneId={droneId} />
           <VideoOverlayHost droneId={droneId} />
-          {/* Host-owned detection/target overlay: click a box to select + act. */}
-          <CockpitTargetOverlay droneId={droneId} />
-          {/* Aim-ahead reticle for a moving designated target (self-gated). */}
-          <TargetLeadReticle droneId={droneId} />
-          {/* The active-target reticle + every source's marks, letterbox-correct. */}
-          <CockpitMarkLayer droneId={droneId} />
+          {/* Every data layer (targets, marks, AR, obstacles, depth, surfaces)
+              in one canvas, with the target click areas. */}
+          <LayerStack droneId={droneId} cameraId={layerCamera} view="pilot" />
         </VideoCanvas>
 
         {/* Registered cockpit widgets: the instrument HUD, radar, telemetry

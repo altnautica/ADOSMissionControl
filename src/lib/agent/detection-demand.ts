@@ -66,8 +66,12 @@ export type DetectionDemandStatus =
   | "no-link"
   | "error";
 
+/** What a lease asks the engine to run on its camera. */
+export type VisionDemandKind = "detection" | "depth" | "surfaces";
+
 interface Lease {
   droneId: string;
+  kind: VisionDemandKind;
   cameraId: string;
   holders: number;
   status: DetectionDemandStatus;
@@ -83,8 +87,12 @@ const leases = new Map<string, Lease>();
 /** Releases still on the wire, per lease key. */
 const releasing = new Map<string, Promise<void>>();
 
-function leaseKey(droneId: string, cameraId: string): string {
-  return `${droneId}\u0000${cameraId}`;
+function leaseKey(droneId: string, cameraId: string, kind: VisionDemandKind): string {
+  return `${droneId}\u0000${cameraId}\u0000${kind}`;
+}
+
+function keyOf(lease: Lease): string {
+  return leaseKey(lease.droneId, lease.cameraId, lease.kind);
 }
 
 function setStatus(lease: Lease, status: DetectionDemandStatus): void {
@@ -94,7 +102,7 @@ function setStatus(lease: Lease, status: DetectionDemandStatus): void {
 }
 
 async function renew(lease: Lease): Promise<void> {
-  if (leases.get(leaseKey(lease.droneId, lease.cameraId)) !== lease) return;
+  if (leases.get(keyOf(lease)) !== lease) return;
   const agent = resolveLocalAgentForDrone(deviceIdFromNodeId(lease.droneId) ?? lease.droneId);
   if (!agent) {
     setStatus(lease, "no-link");
@@ -106,11 +114,12 @@ async function renew(lease: Lease): Promise<void> {
       lease.cameraId,
       DEMAND_HOLD_S,
       DEMAND_OWNER,
+      lease.kind,
     );
-    if (leases.get(leaseKey(lease.droneId, lease.cameraId)) !== lease) return;
+    if (leases.get(keyOf(lease)) !== lease) return;
     setStatus(lease, reply.detecting ? "detecting" : "idle");
   } catch (e) {
-    if (leases.get(leaseKey(lease.droneId, lease.cameraId)) !== lease) return;
+    if (leases.get(keyOf(lease)) !== lease) return;
     const status = e instanceof VisionAgentError ? e.status : 0;
     if (status === 404) {
       // An agent without the endpoint never gates detection: stop asking.
@@ -127,7 +136,7 @@ async function renew(lease: Lease): Promise<void> {
 }
 
 function release(lease: Lease): void {
-  const key = leaseKey(lease.droneId, lease.cameraId);
+  const key = keyOf(lease);
   window.clearInterval(lease.timer);
   leases.delete(key);
   lease.listeners.clear();
@@ -139,6 +148,7 @@ function release(lease: Lease): void {
         lease.cameraId,
         0,
         DEMAND_OWNER,
+        lease.kind,
       );
     } catch {
       // The lease runs out on its own within DEMAND_HOLD_S.
@@ -151,20 +161,23 @@ function release(lease: Lease): void {
 }
 
 /**
- * Hold detection on `cameraId` of `droneId` until the returned release runs.
- * `onStatus` receives the current status at once and on every change.
+ * Hold `kind` (detection by default; the depth and surfaces layers lease
+ * `depth` / `surfaces`) on `cameraId` of `droneId` until the returned release
+ * runs. `onStatus` receives the current status at once and on every change.
  */
 export function holdDetectionDemand(
   droneId: string,
   cameraId: string,
   onStatus: (status: DetectionDemandStatus) => void,
+  kind: VisionDemandKind = "detection",
 ): () => void {
-  const key = leaseKey(droneId, cameraId);
+  const key = leaseKey(droneId, cameraId, kind);
   let lease = leases.get(key);
   if (!lease) {
     const created: Lease = {
       droneId,
       cameraId,
+      kind,
       holders: 0,
       status: "pending",
       listeners: new Set(),

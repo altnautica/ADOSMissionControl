@@ -18,6 +18,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   holdDetectionDemand,
   type DetectionDemandStatus,
+  type VisionDemandKind,
 } from "@/lib/agent/detection-demand";
 import { isDemoMode } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ export function useDetectionDemand(
   droneId: string | null,
   cameraId: string | null,
   enabled: boolean,
+  kind: VisionDemandKind = "detection",
 ): DetectionDemandStatus | null {
   const visible = useSyncExternalStore(
     subscribeVisibility,
@@ -42,8 +44,8 @@ export function useDetectionDemand(
   useEffect(() => {
     if (!holding || !droneId || !cameraId) return;
     // Reports the lease's current status at once, then every change.
-    return holdDetectionDemand(droneId, cameraId, setStatus);
-  }, [holding, droneId, cameraId]);
+    return holdDetectionDemand(droneId, cameraId, setStatus, kind);
+  }, [holding, droneId, cameraId, kind]);
 
   return holding ? status : null;
 }

@@ -57,6 +57,8 @@ export interface ReconnectingSocketOptions<S extends ReconnectingSocketLike> {
   /** A peer-initiated close, with its code and reason (empty when the close
    * event carried none), before the loop schedules the redial. */
   onClose?: (code: number | undefined, reason: string) => void;
+  /** The socket opened: the caller may send on it until its next close. */
+  onOpen?: (ws: S) => void;
 }
 
 /** Run the loop until the returned teardown is called. */
@@ -159,6 +161,11 @@ export function openReconnectingSocket<S extends ReconnectingSocketLike>(
       }
       armLiveness();
       report("connected");
+      try {
+        opts.onOpen?.(ws);
+      } catch {
+        // a consumer error never reaches the socket loop
+      }
     };
     ws.onmessage = (ev) => {
       armLiveness();

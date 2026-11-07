@@ -9342,5 +9342,38 @@
       "noLink": "DETECTION NEEDS A DIRECT LINK",
       "unreachable": "DETECTOR UNREACHABLE"
     }
+  },
+  "cockpitLayers": {
+    "cycleHint": "Data layers: Full, Route, Off (O)",
+    "levelAria": "Data layers: {level}",
+    "menuAria": "Data layer switches",
+    "level": {
+      "full": "Full",
+      "route": "Route",
+      "off": "Off"
+    },
+    "layer": {
+      "depth": "Depth",
+      "surfaces": "Surfaces",
+      "obstacles": "Obstacles",
+      "targets": "Targets",
+      "ar_route": "Route",
+      "ar_motion": "Motion"
+    },
+    "depthOptions": "Depth",
+    "depthStyle": {
+      "solid": "Solid",
+      "outline": "Outline"
+    },
+    "depthRange": {
+      "2": "2 m",
+      "5": "5 m",
+      "off": "Off"
+    },
+    "detections": "Detections",
+    "noDetections": "No detections on this camera.",
+    "model": "Model",
+    "engine": "Engine",
+    "visionForced": "Targets, depth and surfaces stay on while this view is open."
   }
 }

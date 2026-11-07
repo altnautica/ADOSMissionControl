@@ -5,7 +5,7 @@
  * A plugin that draws over the video posts vector MARKS instead of stacking its
  * own overlay iframe; the host validates them (untrusted iframe input) and
  * writes them into the shared `cockpit-marks-store` under a per-iframe source
- * id, and `CockpitMarkLayer` composites every source's marks into ONE
+ * id, and the cockpit layer stack composites every source's marks into ONE
  * letterbox-correct overlay. An iframe's marks clear when it unmounts, and
  * `dispose()` clears every iframe's on drone switch, so a dead panel never
  * leaves stale annotations on the video.

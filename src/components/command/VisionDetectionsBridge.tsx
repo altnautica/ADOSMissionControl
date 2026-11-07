@@ -18,7 +18,7 @@
  *
  * A drone reached ONLY through a ground station's WFB relay (no LAN, no cloud
  * pairing of its own) has no `resolveLanAgentUrl` either, so it fell through to
- * nothing: `CockpitTargetOverlay` saw an empty batch forever even while the
+ * nothing: the cockpit target layer saw an empty batch forever even while the
  * ground station was faithfully relaying the drone's own detection stream.
  *
  * The relay branch below POLLS instead of opening a WebSocket. The ground

@@ -17,6 +17,20 @@
 import { gsRequest, type RequestContext } from "@/lib/api/ground-station/request";
 import { subscribeWebSocket } from "@/lib/api/ground-station/ws";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
+import {
+  parseArFrame,
+  parseDepthFrame,
+  parseObstaclesFrame,
+  parsePilotState,
+  parseSurfacesFrame,
+  type ArFrame,
+  type DepthFrame,
+  type ObstaclesFrame,
+  type PilotState,
+  type SurfacesFrame,
+} from "@/lib/cockpit/layers/cockpit-frames";
+import { clearFrames, putFrame } from "@/lib/cockpit/layers/frame-store";
+import { setViewLeaseSender } from "@/lib/cockpit/layers/view-lease";
 
 import {
   parseFollowEvent,
@@ -40,7 +54,12 @@ export type NavFrame =
   | { kind: "nav"; data: NavState }
   | { kind: "follow"; data: FollowState }
   | { kind: "map"; data: MapStatus }
-  | { kind: "follow_event"; data: FollowEvent };
+  | { kind: "follow_event"; data: FollowEvent }
+  | { kind: "pilot"; data: PilotState }
+  | { kind: "obstacles"; data: ObstaclesFrame }
+  | { kind: "ar"; data: ArFrame }
+  | { kind: "depth"; data: DepthFrame }
+  | { kind: "surfaces"; data: SurfacesFrame };
 
 /** Parse one nav-stream frame; null for keepalives, unknown kinds and
  * malformed payloads. */
@@ -72,12 +91,34 @@ export function parseNavFrame(raw: unknown): NavFrame | null {
       const data = parseFollowEvent(f.topic, f.data);
       return data ? { kind: "follow_event", data } : null;
     }
+    case "pilot": {
+      const data = parsePilotState(f.data);
+      return data ? { kind: "pilot", data } : null;
+    }
+    case "obstacles": {
+      const data = parseObstaclesFrame(f.data);
+      return data ? { kind: "obstacles", data } : null;
+    }
+    case "ar": {
+      const data = parseArFrame(f.data);
+      return data ? { kind: "ar", data } : null;
+    }
+    case "depth": {
+      const data = parseDepthFrame(f.data);
+      return data ? { kind: "depth", data } : null;
+    }
+    case "surfaces": {
+      const data = parseSurfacesFrame(f.data);
+      return data ? { kind: "surfaces", data } : null;
+    }
     default:
       return null;
   }
 }
 
-/** Store one parsed frame for `droneId`. */
+/** Store one parsed frame for `droneId`. The overlay frames (`ar`,
+ * `obstacles`, `depth`, `surfaces`) go to the layer stack's mutable frame
+ * store, never to React state; the rest to the nav-stream store. */
 export function ingestNavFrame(droneId: string, frame: NavFrame, at: number = Date.now()): void {
   const s = useNavStreamStore.getState();
   switch (frame.kind) {
@@ -98,6 +139,15 @@ export function ingestNavFrame(droneId: string, frame: NavFrame, at: number = Da
       break;
     case "follow_event":
       s.pushFollowEvent(droneId, frame.data, at);
+      break;
+    case "pilot":
+      s.setPilot(droneId, frame.data, at);
+      break;
+    case "obstacles":
+    case "ar":
+    case "depth":
+    case "surfaces":
+      putFrame(droneId, frame.kind, frame.data, at);
       break;
   }
 }
@@ -156,7 +206,12 @@ export function connectNavStream(opts: ConnectNavStreamOptions): NavStreamConnec
     },
     // The handler sends `{kind:"keepalive"}` every 5 s.
     peerSendsKeepalive: true,
-    onState,
+    onState: (state) => {
+      if (state !== "connected") setViewLeaseSender(droneId, null);
+      onState?.(state);
+    },
+    // Every (re)opened socket gets the current view leases at once.
+    onOpen: (send) => setViewLeaseSender(droneId, send),
   });
 
   let closed = false;
@@ -176,6 +231,8 @@ export function connectNavStream(opts: ConnectNavStreamOptions): NavStreamConnec
       inFlight?.abort();
       unsubscribe();
       useNavStreamStore.getState().clear(droneId);
+      setViewLeaseSender(droneId, null);
+      clearFrames(droneId);
     },
   };
 }

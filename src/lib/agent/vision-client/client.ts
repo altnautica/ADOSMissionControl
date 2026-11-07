@@ -309,12 +309,16 @@ export class VisionAgentClient implements VisionClient {
     cameraId: string,
     holdS: number,
     owner: string,
+    kind: "detection" | "depth" | "surfaces" = "detection",
   ): Promise<DetectionDemandResult> {
+    const body: Record<string, unknown> = { camera_id: cameraId, hold_s: holdS, owner };
+    // Detection is the agent's default lease kind; older agents know no other.
+    if (kind !== "detection") body.kind = kind;
     const data = await this.json(
       await timedFetch(`${this.baseUrl}/api/vision/demand`, {
         method: "POST",
         headers: { ...this.headers(), "Content-Type": "application/json" },
-        body: JSON.stringify({ camera_id: cameraId, hold_s: holdS, owner }),
+        body: JSON.stringify(body),
       }),
     );
     const e = data as Record<string, unknown>;

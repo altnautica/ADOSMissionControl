@@ -10,8 +10,8 @@
  *   - Feed health— the perception session state + core/NPU usage;
  *   - Inputs     — the node's cameras and which pipeline reads which;
  *   - Models     — the model registry (registry + installed + cache).
- * The right column is a self-contained preview of the detection overlay over
- * the drone's video pane so boxes can be confirmed without leaving the panel.
+ * The live detection preview is the cockpit's Vision view (video, detection
+ * list, model picker, depth and surfaces layers); this tab manages the models.
  *
  * Every readout is honest (no fabricated reading): a metric with no real source is hidden
  * (the NPU bar, per-model throughput, feed age) rather than shown as a
@@ -20,7 +20,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Eye, Sparkles } from "lucide-react";
 import { VisionSummaryCard } from "@/components/vision/VisionSummaryCard";
@@ -31,8 +31,6 @@ import { VisionInputsPanel } from "@/components/vision/VisionInputsPanel";
 import { PerceptionTierCard } from "@/components/vision/PerceptionTierCard";
 import { PerceptionSessionCard } from "@/components/vision/PerceptionSessionCard";
 import { ModelPicker } from "@/components/vision/ModelPicker";
-import { DetectionOverlay } from "@/components/vision/DetectionOverlay";
-import { VideoCanvas } from "@/components/flight/VideoCanvas";
 import {
   useAgentCapabilitiesStore,
   selectDeviceCapabilities,
@@ -64,18 +62,9 @@ export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
     (s) => selectDeviceCapabilities(s, nodeDeviceId)?.visionAvailable === true,
   );
 
-  // Which pipeline stream (`modelId::cameraId`) the preview is pinned to, or
-  // null to follow the latest batch across all streams. Clicking a pipeline row
-  // pins it; clicking it again clears back to latest.
-  const [previewStream, setPreviewStream] = useState<string | null>(null);
-  const selectPreview = useCallback(
-    (key: string) => setPreviewStream((prev) => (prev === key ? null : key)),
-    [],
-  );
-
-  // Live detection feed. Connect while this tab is mounted (i.e. active) and
-  // tear the socket down on unmount or when the agent connection changes, so
-  // the overlay shows live boxes only when the operator is looking at vision.
+  // Live detection feed for the engine and session cards. Connect while this
+  // tab is mounted and tear the socket down on unmount or when the agent
+  // connection changes.
   useEffect(() => {
     if (!agentUrl) return;
     const conn = connectVisionDetections({ droneId, agentUrl, apiKey });
@@ -83,8 +72,8 @@ export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
   }, [droneId, agentUrl, apiKey]);
 
   // Demo mode: feed the synthetic detection stream into the store (the same
-  // seam the live feed uses) so the preview + the perception session card show
-  // live boxes and a real batches/sec for the selected drone with no agent.
+  // seam the live feed uses) so the perception session card shows a real
+  // batches/sec for the selected drone with no agent.
   useEffect(() => {
     if (!isDemoMode() || !droneId) return;
     let active = true;
@@ -148,44 +137,16 @@ export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
           </Section>
 
           <Section title={t("sectionInputs")}>
-            <VisionPipelinesPanel
-              droneId={droneId}
-              selectedKey={previewStream}
-              onSelect={selectPreview}
-            />
+            <VisionPipelinesPanel droneId={droneId} />
             <VisionInputsPanel droneId={droneId} />
           </Section>
+        </div>
 
+        <div className="flex flex-col gap-5">
           <Section title={t("sectionModels")}>
             <ModelPicker droneId={droneId} mode="full" />
           </Section>
         </div>
-
-        <section className="rounded border border-border-default bg-bg-secondary p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="text-xs uppercase tracking-wide text-text-secondary">
-              {t("detectionPreview")}
-            </h3>
-            <span className="truncate font-mono text-[10px] text-text-tertiary">
-              {previewStream
-                ? t("previewingStream", {
-                    stream: previewStream.replace("::", " · "),
-                  })
-                : t("previewingLatest")}
-            </span>
-          </div>
-          <div className="relative aspect-video w-full overflow-hidden rounded border border-border-default">
-            <VideoCanvas>
-              <DetectionOverlay
-                droneId={droneId}
-                streamKey={previewStream ?? undefined}
-              />
-            </VideoCanvas>
-          </div>
-          <p className="mt-2 text-[11px] text-text-tertiary">
-            {t("overlayHint")}
-          </p>
-        </section>
       </div>
     </div>
   );

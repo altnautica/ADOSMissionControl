@@ -9342,5 +9342,27 @@
       "phase": "Phase",
       "notInstalled": "Follow-me is not installed on this node."
     }
+  },
+  "cockpitLayers": {
+    "cycleHint": "Data layers: Full, Route, Off (O)",
+    "levelAria": "Data layers: {level}",
+    "menuAria": "Data layer switches",
+    "level": { "full": "Full", "route": "Route", "off": "Off" },
+    "layer": {
+      "depth": "Depth",
+      "surfaces": "Surfaces",
+      "obstacles": "Obstacles",
+      "targets": "Targets",
+      "ar_route": "Route",
+      "ar_motion": "Motion"
+    },
+    "depthOptions": "Depth",
+    "depthStyle": { "solid": "Solid", "outline": "Outline" },
+    "depthRange": { "off": "Off", "2": "2 m", "5": "5 m" },
+    "detections": "Detections",
+    "noDetections": "No detections on this camera.",
+    "model": "Model",
+    "engine": "Engine",
+    "visionForced": "Targets, depth and surfaces stay on while this view is open."
   }
 }

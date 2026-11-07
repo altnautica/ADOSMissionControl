@@ -2,7 +2,7 @@
  * @module cockpit/marks
  * @description The cockpit mark model. A "mark" is a lightweight vector
  * primitive (box, reticle, point, polyline, label) that the host composites
- * into ONE letterbox-correct overlay layer (`CockpitMarkLayer`), instead of a
+ * into ONE letterbox-correct overlay layer (the layer stack's `targets` layer), instead of a
  * plugin drawing its own boxes inside a separate sandboxed iframe. Built-in
  * features and (via a host adapter) plugins push marks into the shared
  * `cockpit-marks-store`; the layer maps them onto the rendered video rect and
