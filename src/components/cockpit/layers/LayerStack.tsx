@@ -23,6 +23,7 @@
 
 import { isDemoMode } from "@/lib/utils";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 
 import { TargetController } from "@/components/cockpit/layers/TargetController";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
@@ -85,6 +86,17 @@ export function LayerStack({ droneId, cameraId, view }: LayerStackProps) {
   const droneRef = useRef(droneId);
   droneRef.current = droneId;
   const [engine] = useState(() => new LayerEngine((out) => readFlight(droneRef.current, out)));
+  const tChip = useTranslations("cockpitLayers.chip");
+  useEffect(() => {
+    engine.setChipText({
+      arUnavailable: tChip("arUnavailable"),
+      arApprox: tChip("arApprox"),
+      depthUnavailable: tChip("depthUnavailable"),
+      depthUnscaled: tChip("depthUnscaled"),
+      surfacesUnavailable: tChip("surfacesUnavailable"),
+      obstaclesUnavailable: tChip("obstaclesUnavailable"),
+    });
+  }, [engine, tChip]);
 
   useEffect(() => {
     layerStackStats.commits += 1;

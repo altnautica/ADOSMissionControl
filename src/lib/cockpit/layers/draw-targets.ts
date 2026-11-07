@@ -16,7 +16,7 @@
  */
 
 import { mapPoint, mapScale, type CockpitMark, type MarkFrame } from "@/lib/cockpit/marks";
-import { FOCUS_OFFSET } from "@/lib/vision/target-geometry";
+import { FOCUS_OFFSET, type ScreenRect } from "@/lib/vision/target-geometry";
 import type { GlyphLayout, PlacedTag } from "@/lib/vision/target-layout";
 import { LOST_FADE_MS } from "@/lib/vision/target-state";
 
@@ -203,11 +203,71 @@ function drawTag(ctx: CanvasRenderingContext2D, tag: PlacedTag, fontPx: number, 
   ctx.beginPath();
   ctx.roundRect(tag.x, tag.y, tag.w, tag.h, 4);
   ctx.fill();
-  ctx.font = `${s.tagWeight} ${fontPx}px ${s.tagFont}`;
+  ctx.font = tagFont(s, fontPx);
   ctx.fillStyle = toneColor(tag.tone, s);
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(tag.text, tag.x + s.tagPad, tag.y + tag.h / 2);
+}
+
+/** CSS font strings per style and size, built once per value. */
+const fontCache = new Map<string, Map<number, string>>();
+function tagFont(s: TargetStyle, px: number): string {
+  const family = `${s.tagWeight}|${s.tagFont}`;
+  let bySize = fontCache.get(family);
+  if (!bySize) {
+    bySize = new Map();
+    fontCache.set(family, bySize);
+  }
+  let f = bySize.get(px);
+  if (f === undefined) {
+    f = `${s.tagWeight} ${px}px ${s.tagFont}`;
+    bySize.set(px, f);
+  }
+  return f;
+}
+
+/** ~63 % of the gap to a tracked box's new place closes in this window. */
+const SMOOTH_TIME_CONSTANT_MS = 120;
+/** Below this gap (px) an eased box snaps to its laid-out place. */
+const CONVERGE_EPS_PX = 0.5;
+/** The displayed (eased) screen box per tracked glyph key. */
+interface EasedBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  live: boolean;
+}
+const eased = new Map<string, EasedBox>();
+let lastDrawAt: number | null = null;
+
+/** Ease a tracked glyph's box toward its laid-out box. Returns true while it
+ * is still moving. */
+function easeBox(key: string, box: ScreenRect, a: number): EasedBox {
+  let e = eased.get(key);
+  if (!e) {
+    e = { x: box.x, y: box.y, w: box.w, h: box.h, live: true };
+    eased.set(key, e);
+    return e;
+  }
+  e.live = true;
+  e.x += (box.x - e.x) * a;
+  e.y += (box.y - e.y) * a;
+  e.w += (box.w - e.w) * a;
+  e.h += (box.h - e.h) * a;
+  if (
+    Math.abs(box.x - e.x) < CONVERGE_EPS_PX &&
+    Math.abs(box.y - e.y) < CONVERGE_EPS_PX &&
+    Math.abs(box.w - e.w) < CONVERGE_EPS_PX &&
+    Math.abs(box.h - e.h) < CONVERGE_EPS_PX
+  ) {
+    e.x = box.x;
+    e.y = box.y;
+    e.w = box.w;
+    e.h = box.h;
+  }
+  return e;
 }
 
 /** Per-key start time of the re-acquired snap. */
@@ -229,6 +289,11 @@ export function drawTargets(
 ): boolean {
   let animating = false;
   seen.clear();
+  // Exponential ease: the share of the remaining gap closed since the last draw.
+  const dt = lastDrawAt === null ? 0 : Math.max(0, now - lastDrawAt);
+  const ease = 1 - Math.exp(-dt / SMOOTH_TIME_CONSTANT_MS);
+  lastDrawAt = now;
+  for (const e of eased.values()) e.live = false;
   for (const l of scene.layouts) {
     const item = l.item;
     const mods = item.modifiers;
@@ -244,6 +309,17 @@ export function drawTargets(
     ctx.globalAlpha = alpha;
     ctx.lineCap = "butt";
     ctx.lineJoin = "miter";
+    // A tracked box eases to its new place: the whole glyph is drawn through
+    // the map from its laid-out box to the eased one, in this canvas pass.
+    if (!scene.reducedMotion && l.box && item.trackId != null && l.box.w > 0 && l.box.h > 0) {
+      const e = easeBox(l.key, l.box, ease);
+      if (e.x !== l.box.x || e.y !== l.box.y || e.w !== l.box.w || e.h !== l.box.h) {
+        animating = true;
+        const sx = e.w / l.box.w;
+        const sy = e.h / l.box.h;
+        ctx.transform(sx, 0, 0, sy, e.x - l.box.x * sx, e.y - l.box.y * sy);
+      }
+    }
     const p = paths(l);
 
     if (l.ghost.length > 1) {
@@ -334,25 +410,23 @@ export function drawTargets(
       ctx.fillStyle = color;
       ctx.fill(p.arrow);
     }
-    if (l.key === scene.focusKey) {
-      const f = box
-        ? { x: box.x - FOCUS_OFFSET, y: box.y - FOCUS_OFFSET, w: box.w + 2 * FOCUS_OFFSET, h: box.h + 2 * FOCUS_OFFSET }
-        : l.arrow
-          ? { x: l.arrow.x - 10, y: l.arrow.y - 10, w: 20, h: 20 }
-          : null;
-      if (f) {
-        ctx.setLineDash(DASH_FOCUS);
-        ctx.strokeStyle = s.ink;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(f.x, f.y, f.w, f.h);
-        ctx.setLineDash(NO_DASH);
+    if (l.key === scene.focusKey && (box || l.arrow)) {
+      ctx.setLineDash(DASH_FOCUS);
+      ctx.strokeStyle = s.ink;
+      ctx.lineWidth = 2;
+      if (box) {
+        ctx.strokeRect(box.x - FOCUS_OFFSET, box.y - FOCUS_OFFSET, box.w + 2 * FOCUS_OFFSET, box.h + 2 * FOCUS_OFFSET);
+      } else if (l.arrow) {
+        ctx.strokeRect(l.arrow.x - 10, l.arrow.y - 10, 20, 20);
       }
+      ctx.setLineDash(NO_DASH);
     }
     if (l.topTag) drawTag(ctx, l.topTag, l.fontPx, s);
     for (const t of l.bottomTags) drawTag(ctx, t, l.fontPx, s);
     ctx.restore();
   }
   for (const k of snapStart.keys()) if (!seen.has(k)) snapStart.delete(k);
+  for (const [k, e] of eased) if (!e.live) eased.delete(k);
   drawMarks(ctx, scene.marks, scene.markFrame, s, cssW, cssH);
   return animating;
 }

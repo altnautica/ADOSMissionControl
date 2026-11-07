@@ -46,6 +46,10 @@ export interface ChipInput {
   vtolTransitioning?: boolean;
   /** Current setup step label while owner is `tuning`. */
   setupStep?: string | null;
+  /** Vehicle position in the pilot's local NED frame (LOCAL_POSITION_NED). */
+  vehicleNe?: [number, number] | null;
+  /** Vehicle distance from the FC's home position, metres. */
+  homeDistM?: number | null;
   now: number;
 }
 
@@ -106,10 +110,12 @@ function matches(rule: Rule, f: ReturnType<typeof facts>): boolean {
 function placeholders(i: ChipInput): Record<string, string> {
   const p = i.pilot;
   const m = i.mission;
+  // Distance still to fly: the vehicle against the goal, never the setpoint
+  // (on a clear path the planner's setpoint is the goal itself).
   const goal = p?.goalNed;
-  const sp = p?.setpointNed;
-  const dist =
-    goal && sp ? Math.round(Math.hypot(goal[0] - sp[0], goal[1] - sp[1])).toString() : "—";
+  const at = i.vehicleNe;
+  const dist = goal && at ? Math.round(Math.hypot(goal[0] - at[0], goal[1] - at[1])).toString() : "—";
+  const homeDist = i.homeDistM != null && Number.isFinite(i.homeDistM) ? Math.round(i.homeDistM).toString() : "—";
   return {
     first_block_msg: p?.readiness.find((r) => !r.ok && r.severity === "block")?.msg ?? "",
     profile_upper: (p?.profile ?? "normal").toUpperCase(),
@@ -121,7 +127,7 @@ function placeholders(i: ChipInput): Record<string, string> {
     total: String(m?.total ?? 0),
     eta: "",
     fc_mode_name_upper: (p?.fcModeName ?? "").toUpperCase(),
-    home_dist_m: dist,
+    home_dist_m: homeDist,
   };
 }
 

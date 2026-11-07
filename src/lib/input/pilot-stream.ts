@@ -47,6 +47,7 @@ export type PilotActionName =
 /** Server reply to an action, when the pilot sends one. */
 export interface PilotActionResult {
   name: string;
+  id?: string;
   ok: boolean;
   err?: string;
   at: number;
@@ -63,7 +64,7 @@ export type PilotOutboundFrame =
       buttons: number;
     }
   | { op: "release"; src: string; session: number }
-  | { op: "action"; name: PilotActionName; src: string; args?: Record<string, unknown> }
+  | { op: "action"; name: PilotActionName; src: string; id: string; args?: Record<string, unknown> }
   | { op: "session.take"; src: string; session: number }
   | { op: "hb"; src: string };
 
@@ -192,9 +193,65 @@ export function sendPilotRelease(): boolean {
   return send({ op: "release", src: PILOT_SRC, session: PILOT_SESSION_ID });
 }
 
-/** Send a flight action. Returns false when no stream is open. */
+/** How long an action waits for the pilot's `action_result`. */
+export const PILOT_ACTION_TIMEOUT_MS = 3000;
+
+/** The pilot's answer to one action. */
+export interface PilotActionOutcome {
+  ok: boolean;
+  err?: string;
+}
+
+interface PendingAction {
+  name: string;
+  resolve: (r: PilotActionOutcome) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+let actionSeq = 0;
+const pendingActions = new Map<string, PendingAction>();
+
+function settleAction(id: string, outcome: PilotActionOutcome): void {
+  const p = pendingActions.get(id);
+  if (!p) return;
+  pendingActions.delete(id);
+  clearTimeout(p.timer);
+  p.resolve(outcome);
+}
+
+/** Fail every action still waiting (the stream closed under it). */
+function failPendingActions(err: string): void {
+  for (const id of [...pendingActions.keys()]) settleAction(id, { ok: false, err });
+}
+
+function actionFrame(name: PilotActionName, id: string, args?: Record<string, unknown>): PilotOutboundFrame {
+  return args ? { op: "action", name, src: PILOT_SRC, id, args } : { op: "action", name, src: PILOT_SRC, id };
+}
+
+/** Send a flight action without waiting for its result. Returns false when no
+ * stream is open. */
 export function sendPilotAction(name: PilotActionName, args?: Record<string, unknown>): boolean {
-  return send(args ? { op: "action", name, src: PILOT_SRC, args } : { op: "action", name, src: PILOT_SRC });
+  actionSeq += 1;
+  return send(actionFrame(name, `mc-${actionSeq}`, args));
+}
+
+/**
+ * Send a flight action and wait for the pilot's `action_result` carrying the
+ * same id. A refusal, a closed stream or no answer within
+ * {@link PILOT_ACTION_TIMEOUT_MS} resolves `ok: false` with the reason.
+ */
+export function requestPilotAction(
+  name: PilotActionName,
+  args?: Record<string, unknown>,
+  timeoutMs: number = PILOT_ACTION_TIMEOUT_MS,
+): Promise<PilotActionOutcome> {
+  actionSeq += 1;
+  const id = `mc-${actionSeq}`;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => settleAction(id, { ok: false, err: "the pilot did not answer" }), timeoutMs);
+    pendingActions.set(id, { name, resolve, timer });
+    if (!send(actionFrame(name, id, args))) settleAction(id, { ok: false, err: "the pilot stream is not open" });
+  });
 }
 
 /** Take the stick session from another surface. */
@@ -215,14 +272,13 @@ export function handlePilotServerFrame(droneId: string, frame: unknown): void {
     }
     for (const fn of stateListeners) fn(droneId, f.data);
   } else if (f.kind === "action_result" && typeof f.name === "string") {
+    const ok = f.ok === true;
+    const err = typeof f.err === "string" ? f.err : undefined;
+    const id = typeof f.id === "string" ? f.id : undefined;
     usePilotLinkStore.getState().set({
-      lastAction: {
-        name: f.name,
-        ok: f.ok === true,
-        ...(typeof f.err === "string" ? { err: f.err } : {}),
-        at: Date.now(),
-      },
+      lastAction: { name: f.name, ...(id ? { id } : {}), ok, ...(err ? { err } : {}), at: Date.now() },
     });
+    if (id) settleAction(id, err ? { ok, err } : { ok });
   }
 }
 
@@ -280,6 +336,7 @@ export function connectPilotStream(opts: {
         connected: live,
         ...(live ? {} : { streaming: false, controlMode: null }),
       });
+      if (!live) failPendingActions("the pilot stream closed");
     },
   });
 
@@ -295,6 +352,7 @@ export function connectPilotStream(opts: {
         agentFor: null,
       });
       clearInterval(hb);
+      failPendingActions("the pilot stream closed");
       teardown();
       socket = null;
     },

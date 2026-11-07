@@ -6,9 +6,11 @@
  * reads them, so a new frame bumps {@link frameVersion} and wakes the loop's
  * listener without re-rendering any component.
  *
- * Each slot keeps the newest frame and the one before it, with their arrival
- * times on this browser's clock, so the renderer can interpolate keyed items
- * over the measured inter-frame interval.
+ * Each slot keeps the newest frame and the one before it, with the arrival
+ * times of each distinct frame on this browser's clock, so the renderer can
+ * interpolate keyed items over the measured inter-frame interval. A keep-alive
+ * (same `ts_ms`) moves only `receivedAt`, the freshness clock; it never moves
+ * `frameAt`, so it cannot restart interpolation.
  *
  * @license GPL-3.0-only
  */
@@ -17,8 +19,12 @@ import type { ArFrame, DepthFrame, ObstaclesFrame, SurfacesFrame } from "./cockp
 
 export interface FrameSlot<T> {
   frame: T;
+  /** Last time this frame or a keep-alive of it arrived (freshness). */
   receivedAt: number;
+  /** When `frame` itself first arrived (interpolation clock). */
+  frameAt: number;
   prev: T | null;
+  /** When `prev` first arrived. */
   prevAt: number | null;
 }
 
@@ -65,13 +71,15 @@ export function putFrame<K extends FrameKind>(
     cur.receivedAt = at;
   } else if (cur) {
     cur.prev = cur.frame;
-    cur.prevAt = cur.receivedAt;
+    cur.prevAt = cur.frameAt;
     cur.frame = next;
     cur.receivedAt = at;
+    cur.frameAt = at;
   } else {
     (d as unknown as Record<FrameKind, FrameSlot<unknown>>)[kind] = {
       frame,
       receivedAt: at,
+      frameAt: at,
       prev: null,
       prevAt: null,
     };

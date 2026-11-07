@@ -6,19 +6,11 @@ import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import { useInputStore } from "@/stores/input-store";
 import { useVideoStreamsStore, type StreamDescriptor } from "@/stores/video-streams-store";
-import { COCKPIT_GAMEPAD_BUTTON } from "@/lib/skills/chord";
 
 const DRONE = "node:d1";
 
 function leg(id: string, index: number): StreamDescriptor {
   return { id, index, label: id, kind: "concurrent", address: { whepPath: `${id}/whep` } };
-}
-
-function pressButton(button: number) {
-  const down = Array<boolean>(16).fill(false);
-  down[button] = true;
-  useInputStore.setState({ buttons: down });
-  useInputStore.setState({ buttons: Array<boolean>(16).fill(false) });
 }
 
 describe("useCockpitInput", () => {
@@ -47,17 +39,6 @@ describe("useCockpitInput", () => {
     } finally {
       window.removeEventListener("keydown", shellHandler);
     }
-  });
-
-  it("the D-pad does not switch the main stream while the radial owns it", () => {
-    renderHook(() => useCockpitInput({ droneId: DRONE, cockpitEnabled: true }));
-    useSkillInputStore.getState().setRadialOpen(true);
-    pressButton(COCKPIT_GAMEPAD_BUTTON.dpadRight);
-    expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("eo");
-
-    useSkillInputStore.getState().setRadialOpen(false);
-    pressButton(COCKPIT_GAMEPAD_BUTTON.dpadRight);
-    expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("ir");
   });
 
   it("Shift+comma opens quick settings whatever character the layout produces", () => {

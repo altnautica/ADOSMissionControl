@@ -28,7 +28,6 @@ import { useTranslations } from "next-intl";
 
 import { computeRenderedRect } from "@/components/cockpit/VideoOverlayHost";
 import { useToast } from "@/components/ui/toast";
-import { useBoxSmoothing, smoothKey } from "@/hooks/use-box-smoothing";
 import { useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
 import { useDetectionDemand } from "@/hooks/use-detection-demand";
 import { useFollowDesignationSync } from "@/hooks/use-follow-designation-sync";
@@ -45,7 +44,7 @@ import { designateTarget } from "@/lib/skills/target-actions";
 import { DOUBLE_CLICK_MS, focusOrder } from "@/lib/vision/target-interaction";
 import { frameToScreen, type ScreenRect } from "@/lib/vision/target-geometry";
 import { layoutTargets, tagFontPx, type GlyphLayout } from "@/lib/vision/target-layout";
-import type { DrawItem, FrameRect } from "@/lib/vision/target-state";
+import type { DrawItem } from "@/lib/vision/target-state";
 import { useCockpitMarksStore } from "@/stores/cockpit-marks-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
@@ -100,7 +99,6 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
   useTargetLead(droneId);
   // Ask the engine to detect on the camera this layer shows while it is up.
   const demand = useDetectionDemand(droneId, cameraId, true);
-  const smoothed = useBoxSmoothing(videoLost ? null : freshBatch, reducedMotion);
 
   // This layer owns the cockpit target state: drop the popup and the
   // designation when the drone changes. Hiding the layer (level Off, the Map
@@ -131,11 +129,6 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
 
   const layouts = useMemo<GlyphLayout[]>(() => {
     if (!rendered) return [];
-    const displayRect = (item: DrawItem): FrameRect | null => {
-      if (reducedMotion || item.trackId == null || !item.detection || !freshBatch) return null;
-      const b = smoothed.get(smoothKey(freshBatch.cameraId, item.trackId));
-      return b ? { x: b.x, y: b.y, w: b.width, h: b.height } : null;
-    };
     const reveal = new Set<string>();
     if (hoverKey) reveal.add(hoverKey);
     if (focusRaw) reveal.add(focusRaw);
@@ -143,11 +136,10 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
       rendered,
       fontPx: tagFontPx(widthClass, false),
       widthClass,
-      displayRect,
       ghost,
       revealKeys: reveal,
     });
-  }, [resolved, rendered, widthClass, smoothed, ghost, hoverKey, focusRaw, reducedMotion, freshBatch]);
+  }, [resolved, rendered, widthClass, ghost, hoverKey, focusRaw]);
 
   const order = useMemo(() => focusOrder(layouts), [layouts]);
   const focusKey = focusRaw !== null && order.includes(focusRaw) ? focusRaw : null;

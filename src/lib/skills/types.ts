@@ -125,6 +125,10 @@ export interface SkillState {
    * for example a last-resort command offered over a stale link.
    */
   warning?: string;
+  /** Epoch ms the plugin last reported this state (plugin skills only). */
+  seenAt?: number;
+  /** True when the link to the drone is down: the state is the last known. */
+  linkLost?: boolean;
 }
 
 export interface SkillContext {

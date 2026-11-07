@@ -18,7 +18,7 @@ import { Rocket, X } from "lucide-react";
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
 import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
 import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
-import { sendPilotAction } from "@/lib/input/pilot-stream";
+import { requestPilotAction, sendPilotAction } from "@/lib/input/pilot-stream";
 import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useSkillRegistry } from "@/lib/skills";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
@@ -128,11 +128,11 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
   const running = pilot?.sequence != null && pilot.sequence.step !== "done";
 
   const launch = () => {
-    const ok = sendPilotAction(
+    setSent("Launch sent");
+    void requestPilotAction(
       "launch",
       launchArgs({ after, altM: fixedWing ? null : alt, skillId, gotoNE, whenDone }) as unknown as Record<string, unknown>,
-    );
-    setSent(ok ? "Launch sent" : "The pilot stream is not open");
+    ).then((r) => setSent(r.ok ? "Launch accepted" : `Launch refused: ${r.err ?? "no reason given"}`));
   };
 
   const choice = (on: boolean) =>

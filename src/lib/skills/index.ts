@@ -244,11 +244,9 @@ export async function activate(
     cooldownUntil.set(key, now + DEBOUNCE_MS);
   }
 
-  if (
-    (PREEMPTS_FOLLOW_ME[skillId] === true || skillId.startsWith("mode.")) &&
-    useFollowMeStore.getState().droneId === ctx.droneId
-  ) {
-    stopFollowMe();
+  if (PREEMPTS_FOLLOW_ME[skillId] === true || skillId.startsWith("mode.")) {
+    if (useFollowMeStore.getState().droneId === ctx.droneId) stopFollowMe();
+    void stopMotionSkills(ctx);
   }
 
   busy.add(key);
@@ -341,6 +339,19 @@ export async function deactivate(
     busy.delete(key);
     useSkillRegistry.getState().recomputeSelected();
   }
+}
+
+/**
+ * Stop every active `motion` skill on the context's drone. Built-in pause,
+ * land, rth, kill and Mode-sheet changes call this; navigation estimators and
+ * camera skills are not motion skills and keep running.
+ */
+export async function stopMotionSkills(ctx: SkillContext): Promise<void> {
+  const registry = useSkillRegistry.getState();
+  const active = [...registry.skills.values()].filter(
+    (s) => s.motion === true && registry.getState(ctx.droneId, s.id).kind === "active",
+  );
+  await Promise.all(active.map((s) => deactivate(s.id, ctx)));
 }
 
 let builtinsRegistered = false;

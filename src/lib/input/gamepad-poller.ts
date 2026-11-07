@@ -40,9 +40,6 @@ import {
   sticksRouteToPilot,
 } from "./pilot-stream";
 
-/** Radial stick deadzone every surface applies before the pilot stream. */
-export const PILOT_RADIAL_DEADZONE = 0.08;
-
 /** What the cockpit shows about the pad itself. */
 export interface PadStatus {
   /** A pad is connected (from `gamepadconnected`/`gamepaddisconnected` or a read). */

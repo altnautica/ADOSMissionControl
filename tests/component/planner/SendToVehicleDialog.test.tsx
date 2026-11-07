@@ -54,7 +54,7 @@ function seedDrones(ids: string[], selected: string | null) {
 }
 
 /** The per-drone flight state the heartbeat writes to the node registry. */
-/** The C8 mission state the link computes for `id`. */
+/** The mission state the link computes for `id`. */
 function report(id: string, state: MissionStateKind) {
   useMissionStateStore.setState((s) => ({
     status: {

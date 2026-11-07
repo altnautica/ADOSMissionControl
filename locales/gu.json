@@ -9347,6 +9347,14 @@
     }
   },
   "cockpitLayers": {
+    "chip": {
+      "arUnavailable": "AR unavailable",
+      "arApprox": "AR ≈",
+      "depthUnavailable": "Depth unavailable",
+      "depthUnscaled": "Depth unscaled",
+      "surfacesUnavailable": "Surfaces unavailable",
+      "obstaclesUnavailable": "Obstacles unavailable"
+    },
     "cycleHint": "Data layers: Full, Route, Off (O)",
     "levelAria": "Data layers: {level}",
     "menuAria": "Data layer switches",

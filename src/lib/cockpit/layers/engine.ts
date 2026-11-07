@@ -43,6 +43,7 @@ import {
 } from "./layer-layout";
 import { LAYER_DIM_MS, LAYER_HIDE_MS } from "./layer-spec";
 import type { DepthRange, DepthStyle } from "@/stores/cockpit-layers-store";
+import cockpitTokens from "@/lib/cockpit/spec/tokens.json";
 
 const DIM_ALPHA = 0.45;
 /** Obstacle cells drawn up to this range; red at or under the near limit. */
@@ -50,7 +51,25 @@ const OBSTACLE_MAX_M = 5;
 const NEAR_M = 2;
 /** Interpolation interval when only one frame has arrived. */
 const DEFAULT_INTERVAL_MS = 100;
-const CHIP_COLOR = "#E5E7EB";
+/** Interpolation interval bounds. The upper bound keeps a frame that follows a
+ * keep-alive-only stretch from crawling over seconds. */
+const MIN_INTERVAL_MS = 16;
+const MAX_INTERVAL_MS = 250;
+const CHIP_COLOR = cockpitTokens.layer.unavailable_chip;
+
+/** The status chips the engine can draw; the shell passes localised text. */
+export type LayerChipText = Record<
+  "arUnavailable" | "arApprox" | "depthUnavailable" | "depthUnscaled" | "surfacesUnavailable" | "obstaclesUnavailable",
+  string
+>;
+const DEFAULT_CHIP_TEXT: LayerChipText = {
+  arUnavailable: "AR unavailable",
+  arApprox: "AR ≈",
+  depthUnavailable: "Depth unavailable",
+  depthUnscaled: "Depth unscaled",
+  surfacesUnavailable: "Surfaces unavailable",
+  obstaclesUnavailable: "Obstacles unavailable",
+};
 
 /** What the loop draws, set from React only when a toggle, the level, the
  * camera or the view changes. */
@@ -109,6 +128,7 @@ export class LayerEngine {
   private opts: LayerOptions | null = null;
   private style: TargetStyle | null = null;
   private targets: TargetScene | null = null;
+  private chipText: LayerChipText = DEFAULT_CHIP_TEXT;
   private readonly readFlight: (out: FlightContext) => void;
   private readonly flight: FlightContext = { mission: null, avoid: null, showLoaded: true };
 
@@ -209,6 +229,12 @@ export class LayerEngine {
   setOptions(opts: LayerOptions): void {
     this.opts = opts;
     this.relayout();
+  }
+
+  /** Localised chip text (set from the shell when the locale changes). */
+  setChipText(text: LayerChipText): void {
+    this.chipText = text;
+    this.invalidate();
   }
 
   setStyle(style: TargetStyle): void {
@@ -363,9 +389,9 @@ export class LayerEngine {
           this.laidDepth.valid = true;
         }
         paintOps(ctx, this.depth, st === 1 ? DIM_ALPHA : 1);
-        if (unscaled) this.chip("depth-unscaled", "Depth unscaled");
+        if (unscaled) this.chip("depth-unscaled", this.chipText.depthUnscaled);
       } else {
-        this.chip("depth", "Depth unavailable");
+        this.chip("depth", this.chipText.depthUnavailable);
       }
     }
 
@@ -382,7 +408,7 @@ export class LayerEngine {
         }
         paintOps(ctx, this.zones, st === 1 ? DIM_ALPHA : 1);
       } else {
-        this.chip("surfaces", "Surfaces unavailable");
+        this.chip("surfaces", this.chipText.surfacesUnavailable);
       }
     }
 
@@ -404,7 +430,7 @@ export class LayerEngine {
         }
         paintOps(ctx, this.obs, st === 1 ? DIM_ALPHA : 1);
       } else if (slot) {
-        this.chip("obstacles", "Obstacles unavailable");
+        this.chip("obstacles", this.chipText.obstaclesUnavailable);
       }
     }
 
@@ -454,18 +480,21 @@ export class LayerEngine {
           this.laidAr.frame = slot.frame;
           this.laidAr.valid = true;
         }
-        const interval = slot.prevAt !== null ? Math.max(16, slot.receivedAt - slot.prevAt) : DEFAULT_INTERVAL_MS;
-        const since = now - slot.receivedAt;
+        const interval =
+          slot.prevAt !== null
+            ? Math.min(MAX_INTERVAL_MS, Math.max(MIN_INTERVAL_MS, slot.frameAt - slot.prevAt))
+            : DEFAULT_INTERVAL_MS;
+        const since = now - slot.frameAt;
         const tt = slot.prev ? Math.min(1, since / interval) : 1;
         const fade = slot.prev ? Math.min(1, since / FADE_MS) : 1;
         lerpOps(this.arPrev, this.arNext, tt, fade, this.arOut);
         if (tt < 1 || fade < 1) animating = true;
         paintOps(ctx, this.arOut, st === 1 ? DIM_ALPHA : 1);
         const status = arStatusChip(slot.frame, arCam, false);
-        if (status) this.chip("ar", status);
+        if (status) this.chip("ar", status === "AR ≈" ? this.chipText.arApprox : this.chipText.arUnavailable);
       } else if (slot) {
         // Stale, or nothing for the camera on screen.
-        this.chip("ar", "AR unavailable");
+        this.chip("ar", this.chipText.arUnavailable);
       }
     }
 

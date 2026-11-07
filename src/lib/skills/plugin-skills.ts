@@ -126,16 +126,18 @@ function readPluginState(droneId: string, topic: string): SkillState {
     .getState()
     .getPluginSkillState(droneId, topic);
   if (!event) return { kind: "idle" };
+  const seenAt = event.receivedAt;
   if (event.state === "active") {
-    return event.badge ? { kind: "active", badge: event.badge } : { kind: "active" };
+    return event.badge ? { kind: "active", badge: event.badge, seenAt } : { kind: "active", seenAt };
   }
   if (event.state === "disabled") {
     return {
       kind: "disabled",
       reason: event.reason ?? "skills.plugin.reason.unavailable",
+      seenAt,
     };
   }
-  return { kind: "idle" };
+  return { kind: "idle", seenAt };
 }
 
 /**
@@ -165,10 +167,14 @@ export function buildPluginSkill(c: DroneSkillContribution): Skill {
     // write that activates the skill, so it reads disabled with that reason.
     getState: (ctx) => {
       const deviceId = pluginDeviceId(ctx);
+      const reported = readPluginState(deviceId, c.stateTopic);
       if (!isDemoMode() && !canWritePluginConfig(deviceId)) {
+        // A skill last seen active stays ACTIVE (stale) on a lost link, never
+        // disabled, so its Stop stays reachable.
+        if (reported.kind === "active") return { ...reported, linkLost: true };
         return { kind: "disabled", reason: PLUGIN_REACH_REQUIRED_REASON };
       }
-      return readPluginState(deviceId, c.stateTopic);
+      return reported;
     },
     activate: async (ctx) => {
       const ok = await writePluginConfig({

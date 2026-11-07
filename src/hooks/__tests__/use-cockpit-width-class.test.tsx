@@ -6,12 +6,12 @@ import { safeRegionHeight, useCockpitContainerLayout } from "@/hooks/use-cockpit
 import { isKioskSearch, widthClassFor } from "@/lib/cockpit/width-class";
 
 describe("widthClassFor", () => {
-  it("splits at 600, 1024 and 1600 px", () => {
+  it("splits at 600, 840 and 1600 px", () => {
     expect(widthClassFor(390, false)).toBe("compact");
     expect(widthClassFor(599, false)).toBe("compact");
     expect(widthClassFor(600, false)).toBe("medium");
-    expect(widthClassFor(1023, false)).toBe("medium");
-    expect(widthClassFor(1024, false)).toBe("expanded");
+    expect(widthClassFor(839, false)).toBe("medium");
+    expect(widthClassFor(840, false)).toBe("expanded");
     expect(widthClassFor(1599, false)).toBe("expanded");
     expect(widthClassFor(1600, false)).toBe("tv");
   });

@@ -39,6 +39,15 @@ const TAB_LABEL: Record<PickerTab, string> = {
 export const ECHO_TIMEOUT_MS = 3000;
 /** Preemption waits this long for the active skill's echo before GO. */
 export const PREEMPT_WAIT_MS = 1000;
+/** Plugin state older than this dims its entry with "last seen". */
+export const SKILL_STATE_STALE_MS = 3000;
+
+/** "last seen <n> s" when a plugin's state is older than the stale limit. */
+export function lastSeenText(seenAt: number | undefined, now: number): string | null {
+  if (seenAt === undefined) return null;
+  const age = now - seenAt;
+  return age > SKILL_STATE_STALE_MS ? `last seen ${Math.floor(age / 1000)} s` : null;
+}
 
 /** Skills the picker offers for a vehicle class (manifest `vehicle_classes`). */
 export function pickerSkills(skills: Skill[], vehicleClass: PilotState["vehicleClass"]): Skill[] {
@@ -74,6 +83,14 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
   const [tab, setTab] = useState<PickerTab>("behavior");
   const [selected, setSelected] = useState<string | null>(null);
   const [pending, setPending] = useState<{ id: string; want: boolean; at: number } | null>(null);
+  // A Stop pressed while the link is down waits here until it returns.
+  const [queuedStop, setQueuedStop] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [open]);
 
   const skills = useMemo(
     () => pickerSkills([...registry.values()], pilot?.vehicleClass ?? null),
@@ -120,11 +137,30 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
 
   const stop = useCallback(
     async (skill: Skill) => {
+      if (stateOf(skill.id).linkLost) {
+        setQueuedStop(skill.id);
+        notify?.(`${skillDisplayLabel(skill, t)}: Stop queued until the link returns`);
+        return;
+      }
       setPending({ id: skill.id, want: false, at: Date.now() });
       await deactivate(skill.id, buildSkillContext(droneId));
     },
-    [droneId],
+    [droneId, stateOf, notify, t],
   );
+
+  // Send a queued Stop once the registry reports the link back.
+  useEffect(() => {
+    if (queuedStop === null) return;
+    const id = queuedStop;
+    return useSkillRegistry.subscribe((reg) => {
+      const st = reg.getState(droneId, id);
+      if (st.linkLost) return;
+      setQueuedStop(null);
+      if (st.kind !== "active") return;
+      setPending({ id, want: false, at: Date.now() });
+      void deactivate(id, buildSkillContext(droneId));
+    });
+  }, [queuedStop, droneId]);
 
   const sel = selected ? skills.find((s) => s.id === selected) ?? null : null;
 
@@ -203,6 +239,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
               </h4>
               {list.map((s) => {
                 const st = stateOf(s.id);
+                const seen = lastSeenText(st.seenAt, now);
                 return (
                   <button
                     key={s.id}
@@ -211,9 +248,11 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
                     onClick={() => setSelected(s.id)}
                     disabled={st.kind === "disabled"}
                     title={st.kind === "disabled" ? st.reason : undefined}
+                    data-stale={seen !== null || st.linkLost === true ? "true" : undefined}
                     className={cn(
                       "flex min-h-12 items-center justify-between rounded-md border px-3 text-left text-sm",
                       selected === s.id ? "border-accent-primary" : "border-border-default",
+                      (seen !== null || st.linkLost) && "opacity-60",
                       "disabled:opacity-40",
                     )}
                   >
@@ -222,7 +261,11 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
                       {pending?.id === s.id && (
                         <span aria-label="pending" className="h-3 w-3 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
                       )}
-                      {st.kind === "active" && <span className="text-[#22D3EE]">Active</span>}
+                      {queuedStop === s.id && <span>Stop queued</span>}
+                      {seen !== null && <span className="normal-case text-text-secondary">{seen}</span>}
+                      {st.kind === "active" && (
+                        <span className="text-[#22D3EE]">{st.linkLost ? "Active (stale)" : "Active"}</span>
+                      )}
                     </span>
                   </button>
                 );

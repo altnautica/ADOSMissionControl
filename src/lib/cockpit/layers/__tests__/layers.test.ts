@@ -139,7 +139,15 @@ describe("frame store", () => {
     putFrame("d2", "ar", parseArFrame({ ...arFixture, ts_ms: 2 })!, 900);
     expect(slot.frame).toBe(b);
     expect(slot.receivedAt).toBe(900);
+    // The keep-alive must not restart interpolation.
+    expect(slot.frameAt).toBe(150);
+    expect(slot.prevAt).toBe(100);
     expect(slot.prev).toBe(a);
+    const c = parseArFrame({ ...arFixture, ts_ms: 3 })!;
+    putFrame("d2", "ar", c, 1000);
+    expect(slot.prev).toBe(b);
+    expect(slot.prevAt).toBe(150);
+    expect(slot.frameAt).toBe(1000);
   });
 });
 

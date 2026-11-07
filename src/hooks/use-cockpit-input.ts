@@ -27,6 +27,7 @@ import { isTextTarget } from "@/hooks/use-skill-input";
 import { isDemoMode } from "@/lib/utils";
 import { useCockpitLayersStore } from "@/stores/cockpit-layers-store";
 import { useCockpitViewStore } from "@/lib/cockpit/views";
+import { pilotStreamOpen, requestPilotAction } from "@/lib/input/pilot-stream";
 
 interface CockpitInputOptions {
   /** The drone whose cockpit this is. */
@@ -180,6 +181,22 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
       e.preventDefault();
       if (e.code === "KeyO") useCockpitLayersStore.getState().cycleLevel(droneId);
       else useCockpitViewStore.getState().cycleView(droneId);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [droneId]);
+
+  // F1 / F2 / F3 pick the Cine / Normal / Sport flight profile on the pilot.
+  useEffect(() => {
+    if (!droneId) return;
+    const profiles = { F1: "cine", F2: "normal", F3: "sport" } as const;
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+      const profile = profiles[e.code as keyof typeof profiles];
+      if (!profile || isTextTarget(e.target) || inputOwnedElsewhere()) return;
+      if (!pilotStreamOpen(droneId)) return;
+      e.preventDefault();
+      void requestPilotAction(`profile:${profile}`);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

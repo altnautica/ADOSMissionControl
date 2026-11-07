@@ -122,8 +122,8 @@ describe("controller gesture engine", () => {
     const dup = [...SPEC_BINDINGS, { ...SPEC_BINDINGS.find((b) => b.action === "photo")!, action: "record_toggle" }];
     expect(bindingConflicts(dup).size).toBe(2);
     const noPause = SPEC_BINDINGS.filter((b) => !(b.action === "pause" && b.control === "ps"));
-    // Options + Circle still pauses (a combo tap), so the lone tap lock is missing.
-    expect(missingLocked(noPause)).toEqual(["pause (tap)"]);
+    // Options + Circle still pauses (a combo press), so the lone press lock is missing.
+    expect(missingLocked(noPause)).toEqual(["pause (press)"]);
   });
 });
 

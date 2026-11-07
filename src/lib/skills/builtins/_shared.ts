@@ -9,7 +9,7 @@
  */
 
 import { specBuiltin, specConfirmGesture } from "@/lib/cockpit/spec-builtins";
-import { sendPilotAction, sticksRouteToPilot, type PilotActionName } from "@/lib/input/pilot-stream";
+import { requestPilotAction, sticksRouteToPilot, type PilotActionName } from "@/lib/input/pilot-stream";
 import type { CommandResult } from "@/lib/protocol/types";
 import type {
   ConfirmGesture,
@@ -139,15 +139,12 @@ export function viaPilot(ctx: SkillContext): boolean {
   return sticksRouteToPilot(ctx.droneId);
 }
 
-/** Send a built-in as a pilot action; the dispatcher reads the result. */
-export function pilotActionResult(
+/** Send a built-in as a pilot action and wait for the pilot's answer, so a
+ * refusal (or no answer) reaches the dispatcher as a failure. */
+export async function pilotActionResult(
   name: PilotActionName,
   args?: Record<string, unknown>,
-): CommandResult {
-  const sent = sendPilotAction(name, args);
-  return {
-    success: sent,
-    resultCode: sent ? 0 : 4,
-    message: sent ? "" : "the pilot stream is not open",
-  };
+): Promise<CommandResult> {
+  const r = await requestPilotAction(name, args);
+  return { success: r.ok, resultCode: r.ok ? 0 : 4, message: r.ok ? "" : (r.err ?? "refused") };
 }

@@ -75,6 +75,7 @@ export class MockPilot {
   /** Fields a demo scenario pins on top of the live state. */
   private pinned: Json = {};
   private lastInputAt = 0;
+  private log: { at: number; frame: PilotOutboundFrame }[] = [];
 
   start(droneId: string): void {
     this.stop();
@@ -85,8 +86,11 @@ export class MockPilot {
     // Demo scenarios (and the cockpit screenshot run) pin chip states, e.g.
     // a paused mission, through this handle. Demo builds only.
     if (typeof window !== "undefined" && isDemoMode()) {
-      (window as unknown as { __adosDemoPilot?: { pin: (f: Json) => void } }).__adosDemoPilot = {
-        pin: (f) => this.pin(f),
+      (window as unknown as { __adosDemoPilot?: unknown }).__adosDemoPilot = {
+        pin: (f: Json) => this.pin(f),
+        // The last outbound frames with their receive time (browser checks of
+        // the stick stream rate, axes and release).
+        frames: () => this.log.slice(),
       };
     }
     this.publish();
@@ -106,6 +110,10 @@ export class MockPilot {
   }
 
   private receive(frame: PilotOutboundFrame): boolean {
+    if (isDemoMode()) {
+      this.log.push({ at: performance.now(), frame });
+      if (this.log.length > 600) this.log.splice(0, this.log.length - 600);
+    }
     const armed = useDroneStore.getState().armState === "armed";
     switch (frame.op) {
       case "input":
@@ -127,7 +135,7 @@ export class MockPilot {
       case "action":
         this.action(frame.name, frame.args ?? {});
         if (this.droneId) {
-          handlePilotServerFrame(this.droneId, { kind: "action_result", name: frame.name, ok: true });
+          handlePilotServerFrame(this.droneId, { kind: "action_result", name: frame.name, id: frame.id, ok: true });
         }
         break;
     }

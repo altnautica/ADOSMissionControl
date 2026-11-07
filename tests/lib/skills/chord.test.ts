@@ -91,7 +91,7 @@ describe("isReservedChord", () => {
 
   it("accepts ordinary bindable chords", () => {
     // "0" stays bindable — only 1..9 map to the Nth stream.
-    for (const chord of ["shift+a", "f1", "q", "0", "alt+g"]) {
+    for (const chord of ["shift+a", "f4", "q", "0", "alt+g"]) {
       expect(isReservedChord(chord)).toBe(false);
     }
   });

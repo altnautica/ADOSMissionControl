@@ -32,7 +32,6 @@ import {
   bracketPath,
   offFrameArrow,
   type DrawItem,
-  type FrameRect,
   type ResolvedTargets,
   type TagTone,
   type TargetKind,
@@ -79,8 +78,6 @@ export interface LayoutOptions {
   widthClass: CockpitWidthClass;
   /** Items whose candidate tag shows even when the box is short. */
   revealKeys?: ReadonlySet<string>;
-  /** The on-screen frame rect (box smoothing); defaults to `item.rect`. */
-  displayRect?: (item: DrawItem) => FrameRect | null;
   /** Followed-box history for the COASTING ghost path. */
   ghost?: readonly GhostSample[];
 }
@@ -180,7 +177,7 @@ export function layoutTargets(resolved: ResolvedTargets, o: LayoutOptions): Glyp
   resolved.items.forEach((item, i) => {
     const key = seen.has(item.key) ? `${item.key}:${i}` : item.key;
     seen.add(key);
-    const frameRect = (item.rect && o.displayRect?.(item)) ?? item.rect;
+    const frameRect = item.rect;
     const box = frameRect ? frameToScreen(frameRect, resolved.frameW, resolved.frameH, rr) : null;
 
     const g: GlyphLayout = {

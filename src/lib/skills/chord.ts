@@ -98,6 +98,9 @@ const RESERVED_CHORDS: ReadonlySet<string> = new Set([
   "p",
   "o",
   "v",
+  "f1",
+  "f2",
+  "f3",
   "shift+<",
   "shift+;",
 ]);

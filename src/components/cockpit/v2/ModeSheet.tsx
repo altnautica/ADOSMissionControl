@@ -16,8 +16,9 @@ import { X } from "lucide-react";
 
 import flightStateSpec from "@/lib/cockpit/spec/flight-state.json";
 import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
-import { sendPilotAction, type PilotActionName } from "@/lib/input/pilot-stream";
-import { activate, buildSkillContext } from "@/lib/skills";
+import { requestPilotAction, type PilotActionName } from "@/lib/input/pilot-stream";
+import { activate, buildSkillContext, stopMotionSkills } from "@/lib/skills";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { HoldButton } from "./HoldButton";
 
@@ -49,8 +50,15 @@ const pill = (active: boolean) =>
   );
 
 export function ModeSheet({ droneId, pilot, groundStationLink, onClose }: ModeSheetProps) {
+  const { toast } = useToast();
   const act = (name: PilotActionName, args?: Record<string, unknown>) => {
-    sendPilotAction(name, args);
+    // A control-mode change or a hand-over to the FC ends any motion skill.
+    if (name.startsWith("control_mode:") || name === "hand_to_fc") {
+      void stopMotionSkills(buildSkillContext(droneId));
+    }
+    void requestPilotAction(name, args).then((r) => {
+      if (!r.ok) toast(`${name}: ${r.err ?? "refused"}`, "error");
+    });
   };
 
   const controlModes = SHEET.control_mode.values.filter(

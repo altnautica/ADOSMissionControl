@@ -221,6 +221,31 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Pilot actions report refusals.** Built-ins flown through the drone's
+  pilot, the Mode sheet, the Launch sheet and F1/F2/F3 now carry an action id
+  and wait up to 3 s for the pilot's answer; a refusal, a closed stream or no
+  answer shows as a failure with the pilot's reason instead of reading as
+  sent.
+- **Overlay keep-alives no longer restart interpolation.** A repeated frame
+  refreshes only the layer's freshness clock; items interpolate over the time
+  between distinct frames, bounded to 16–250 ms.
+- **Mode-sheet changes stop motion skills.** A control-mode change, a hand-over
+  to the flight controller, and pause, land, return home, kill or an FC mode
+  change end any active motion skill; navigation and camera skills keep
+  running.
+- **Skill picker freshness.** A plugin state older than 3 s dims its entry with
+  "last seen N s"; on a lost link an active skill reads "Active (stale)" and its
+  Stop is queued until the link returns.
+- **Flight-state chip distances.** GOTO distance is the vehicle against the
+  goal (it read 0 m on every clear path) and RTH distance is the vehicle
+  against the flight controller's home.
+- **F1/F2/F3 pick the Cine/Normal/Sport flight profile** and are reserved from
+  skill bindings.
+- **Target boxes ease inside the layer canvas.** Tracked boxes ease toward each
+  new detection in the canvas draw loop; the per-frame React smoothing loop is
+  removed. Tag fonts are cached, and the focus ring allocates nothing per frame.
+- **Layer chips** use the spec's unavailable-chip colour and are localised.
+
 - **Pairing a ground station with a drone failed every time.** The Pair modal
   sent the retired typed `pair_key`, which the agent refuses. It now sends the
   fleet radio key as base64 (`blob_b64`), the drone's device ID, and optionally

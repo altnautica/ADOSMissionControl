@@ -1,15 +1,17 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   PILOT_SESSION_ID,
   handlePilotServerFrame,
   newSessionId,
   pilotStreamOpen,
+  requestPilotAction,
   sendPilotAction,
   sendPilotInput,
   sendPilotRelease,
   setPilotSender,
   sticksRouteToFc,
+  takePilotSession,
   usePilotLinkStore,
   type PilotOutboundFrame,
 } from "../pilot-stream";
@@ -62,7 +64,75 @@ describe("pilot stream frames (pilot.v1)", () => {
   it("actions are sent with args", () => {
     const frames = capture();
     sendPilotAction("hand_to_fc", { mode: "loiter" });
-    expect(frames[0]).toEqual({ op: "action", name: "hand_to_fc", src: "mc", args: { mode: "loiter" } });
+    expect(frames[0]).toMatchObject({ op: "action", name: "hand_to_fc", src: "mc", args: { mode: "loiter" } });
+    expect(typeof (frames[0] as { id: unknown }).id).toBe("string");
+  });
+
+  it("an awaited action resolves with the pilot's answer for its id", async () => {
+    const frames = capture();
+    const refused = requestPilotAction("arm");
+    const accepted = requestPilotAction("pause");
+    const [a, b] = frames as Extract<PilotOutboundFrame, { op: "action" }>[];
+    expect(a.id).not.toBe(b.id);
+    handlePilotServerFrame("drone-1", { kind: "action_result", name: "pause", id: b.id, ok: true });
+    handlePilotServerFrame("drone-1", { kind: "action_result", name: "arm", id: a.id, ok: false, err: "disarmed" });
+    await expect(refused).resolves.toEqual({ ok: false, err: "disarmed" });
+    await expect(accepted).resolves.toEqual({ ok: true });
+  });
+
+  it("an unanswered action fails after the timeout, and fails at once with no stream", async () => {
+    vi.useFakeTimers();
+    try {
+      capture();
+      const silent = requestPilotAction("land", undefined, 3000);
+      vi.advanceTimersByTime(3001);
+      await expect(silent).resolves.toMatchObject({ ok: false });
+    } finally {
+      vi.useRealTimers();
+    }
+    setPilotSender(null);
+    await expect(requestPilotAction("rth")).resolves.toMatchObject({ ok: false });
+  });
+});
+
+/**
+ * The JSON frames a surface sends must decode with the agent's
+ * `decode_request` (ados-protocol `pilot/wire.rs`): `input` needs src: string,
+ * session/seq: u32, t_ms: u64, axes: [f32; 4], buttons: u32; `release` and
+ * `session.take` need src and a u32 session; `action` needs name and src, with
+ * an optional string id and object args.
+ */
+describe("pilot.v1 wire shape", () => {
+  const isU32 = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 0xffffffff;
+  const keys = (o: object) => Object.keys(o).sort();
+
+  it("input, release, session.take and action survive JSON with the decoder's types", () => {
+    const frames = capture();
+    sendPilotInput([1, -1, 0.5, 0], 0b1010);
+    sendPilotRelease();
+    takePilotSession();
+    sendPilotAction("launch", { after: "hold", alt_m: 3 });
+    const [input, release, take, action] = frames.map((f) => JSON.parse(JSON.stringify(f)));
+
+    expect(keys(input)).toEqual(["axes", "buttons", "op", "seq", "session", "src", "t_ms"]);
+    expect(input.op).toBe("input");
+    expect(typeof input.src).toBe("string");
+    expect(isU32(input.session) && input.session !== 0).toBe(true);
+    expect(isU32(input.seq)).toBe(true);
+    expect(Number.isInteger(input.t_ms) && input.t_ms >= 0).toBe(true);
+    expect(input.axes).toHaveLength(4);
+    for (const a of input.axes) expect(Number.isFinite(a) && a >= -1 && a <= 1).toBe(true);
+    expect(isU32(input.buttons)).toBe(true);
+
+    for (const [f, op] of [[release, "release"], [take, "session.take"]] as const) {
+      expect(keys(f)).toEqual(["op", "session", "src"]);
+      expect(f.op).toBe(op);
+      expect(f.session).toBe(input.session);
+    }
+
+    expect(keys(action)).toEqual(["args", "id", "name", "op", "src"]);
+    expect(typeof action.id).toBe("string");
+    expect(action.args).toEqual({ after: "hold", alt_m: 3 });
   });
 
   it("reads control_mode from pilot frames and reports the stream open", () => {
