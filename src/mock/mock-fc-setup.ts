@@ -6,7 +6,8 @@
  * quad-X through the ground wizard: detection and frame done, a six-pose
  * accelerometer calibration, a timed compass calibration, a motor check with
  * the yes/no question, battery and initial-tune inputs, the FC profile and the
- * ADOS Pilot introduction. The air wizard waits on the ground wizard.
+ * ADOS Pilot introduction. The air wizard waits on the ground wizard; its
+ * autotune runs roll and pitch, then yaw, with progress and live gains.
  * @license GPL-3.0-only
  */
 
@@ -158,6 +159,15 @@ function enter(e: DemoState, wizard: "ground" | "air", step: string): void {
     case "ados_intro":
       Object.assign(s, { state: "waiting_user", actions: [action("use_ados"), action("keep_fc", "secondary")] });
       break;
+    case "autotune":
+      Object.assign(s, {
+        state: "waiting_user",
+        body_key: "setup.autotune.body",
+        progress: null,
+        live: { wind_mps: 2.1, battery_pct: 92 },
+        actions: [action("start"), action("abort", "danger", "hold")],
+      });
+      break;
     default:
       Object.assign(s, { state: "waiting_user", actions: [action("start")] });
   }
@@ -190,12 +200,34 @@ function finish(e: DemoState, wizard: "ground" | "air", step: string, result: Js
 
 function tick(e: DemoState): void {
   for (const [key, s] of Object.entries(e.steps)) {
-    if (s.step !== "compass" || s.state !== "running") continue;
-    const p = Math.min(1, ((s.progress as number) ?? 0) + 0.1);
-    s.progress = p;
-    s.live = { compass_pct: Math.round(p * 100), attempt: 1 };
-    if (p >= 1) finish(e, key.split("/")[0] as "ground", "compass", { compass_fitness: 9.4 });
-    else emit(e, wire(s));
+    if (s.state !== "running") continue;
+    if (s.step === "compass") {
+      const p = Math.min(1, ((s.progress as number) ?? 0) + 0.1);
+      s.progress = p;
+      s.live = { compass_pct: Math.round(p * 100), attempt: 1 };
+      if (p >= 1) finish(e, key.split("/")[0] as "ground", "compass", { compass_fitness: 9.4 });
+      else emit(e, wire(s));
+    } else if (s.step === "autotune") {
+      // Roll and pitch over the first 60 %, yaw after; about 50 s in all.
+      const p = Math.min(1, ((s.progress as number) ?? 0) + 0.01);
+      const yaw = p >= 0.6;
+      s.progress = p;
+      s.body_key = yaw ? "setup.autotune.body.yaw" : "setup.autotune.body.roll_pitch";
+      s.live = {
+        autotune_axis: yaw ? "yaw" : p < 0.3 ? "roll" : "pitch",
+        phase: "twitch",
+        altitude_m: 8,
+        wind_mps: 2.1,
+        battery_pct: Math.round(92 - p * 30),
+        last_text: yaw ? "AutoTune: Yaw" : "AutoTune: Saved gains",
+      };
+      if (p >= 1) {
+        finish(e, "air", "autotune", {
+          gains_before: { ATC_RAT_RLL_P: 0.135, ATC_RAT_PIT_P: 0.135, ATC_RAT_YAW_P: 0.18 },
+          gains_after: { ATC_RAT_RLL_P: 0.112, ATC_RAT_PIT_P: 0.121, ATC_RAT_YAW_P: 0.24 },
+        });
+      } else emit(e, wire(s));
+    }
   }
 }
 
@@ -254,6 +286,18 @@ function doAction(e: DemoState, wizard: "ground" | "air", step: string, id: stri
     case "ados_intro:use_ados":
     case "ados_intro:keep_fc":
       finish(e, wizard, step, { control_mode: id === "use_ados" ? "ados" : "fc_manual" });
+      break;
+    case "autotune:start":
+      Object.assign(s, { state: "running", progress: 0, actions: [action("abort", "danger", "hold")] });
+      emit(e, wire(s));
+      break;
+    case "autotune:abort":
+      Object.assign(s, { state: "failed", progress: null, actions: [action("retry")], blockers: ["setup.abort.operator"] });
+      emit(e, wire(s));
+      break;
+    case "autotune:retry":
+      enter(e, wizard, step);
+      emit(e, wire(s));
       break;
     default:
       finish(e, wizard, step, { pass: true });
