@@ -10,14 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useSyncExternalStore,
-  type RefObject,
-} from "react";
+import { type RefObject, createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { isKioskSearch, widthClassFor, type CockpitWidthClass } from "@/lib/cockpit/width-class";
 
@@ -96,7 +89,10 @@ export function useCockpitContainerLayout(
 
   const width = size && size.width > 0 ? size.width : DEFAULT_COCKPIT_LAYOUT.width;
   const height = size && size.height > 0 ? size.height : DEFAULT_COCKPIT_LAYOUT.height;
-  return { widthClass: widthClassFor(width, kiosk), width, height };
+  // A stable object: it is the context value, so a new one per cockpit render
+  // would re-render every consumer (the layer stack among them) at telemetry rate.
+  const widthClass = widthClassFor(width, kiosk);
+  return useMemo(() => ({ widthClass, width, height }), [widthClass, width, height]);
 }
 
 /** Bottom offset of the Skill Bar container inside the cockpit (px). */

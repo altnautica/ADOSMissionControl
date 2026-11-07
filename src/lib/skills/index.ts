@@ -10,6 +10,7 @@
  * @license GPL-3.0-only
  */
 
+import { usePluginSkillHostStore } from "@/lib/skills/plugin-skill-host-store";
 import type {
   Skill,
   SkillContext,
@@ -452,5 +453,11 @@ export function initSkillSubscriptions(): void {
     if (next.isActive !== prev.isActive || next.isPaused !== prev.isPaused) {
       schedule();
     }
+  });
+
+  // A plugin's own state report (active, idle, disabled, and when it was last
+  // seen) is what its picker entry shows.
+  usePluginSkillHostStore.subscribe((next, prev) => {
+    if (next.states !== prev.states) schedule();
   });
 }

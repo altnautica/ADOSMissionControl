@@ -22,7 +22,7 @@
  */
 
 import { isDemoMode } from "@/lib/utils";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
 import { TargetController } from "@/components/cockpit/layers/TargetController";
@@ -69,7 +69,9 @@ function readFlight(droneId: string, out: FlightContext): void {
 /** Commit counter for the performance gate (zero commits while frames stream). */
 export const layerStackStats = { commits: 0 };
 
-export function LayerStack({ droneId, cameraId, view }: LayerStackProps) {
+/** Memoised: its props are primitives, so the cockpit's own re-renders (at
+ * telemetry rate) never re-render the layer stack. */
+export const LayerStack = memo(function LayerStack({ droneId, cameraId, view }: LayerStackProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const size = useElementSize(containerRef);
@@ -200,4 +202,4 @@ export function LayerStack({ droneId, cameraId, view }: LayerStackProps) {
       )}
     </div>
   );
-}
+});

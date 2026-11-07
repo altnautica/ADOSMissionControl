@@ -9,6 +9,8 @@
  * @license GPL-3.0-only
  */
 
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import { usePluginSkillHostStore } from "@/lib/skills/plugin-skill-host-store";
 import { parsePilotState } from "@/lib/cockpit/layers/cockpit-frames";
 import {
   handlePilotServerFrame,
@@ -91,6 +93,13 @@ export class MockPilot {
         // The last outbound frames with their receive time (browser checks of
         // the stick stream rate, axes and release).
         frames: () => this.log.slice(),
+        // A plugin state report, as the agent's plugin event stream delivers
+        // it (demo scenarios: an active skill whose reports stop).
+        skillState: (topic: string, state: "active" | "idle" | "disabled") => {
+          if (!this.droneId) return;
+          const device = deviceIdFromNodeId(this.droneId) ?? this.droneId;
+          usePluginSkillHostStore.getState().pushPluginSkillState(device, topic, { state });
+        },
       };
     }
     this.publish();

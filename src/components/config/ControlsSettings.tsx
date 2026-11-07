@@ -228,7 +228,7 @@ function ControlSheet({
   onClose,
 }: {
   control: string;
-  draft: Ds4Binding[];
+  draft: readonly Ds4Binding[];
   setDraft: (next: Ds4Binding[]) => void;
   onClose: () => void;
 }) {
@@ -431,7 +431,10 @@ export function ControlsSettings() {
   const gamepadId = useInputStore((s) => s.gamepadId);
   const txMode = useInputStore((s) => s.txMode);
   const setTxMode = useInputStore((s) => s.setTxMode);
-  const [draft, setDraft] = useState<Ds4Binding[]>(() => [...effectiveBindings({ bindings: saved })]);
+  // Unsaved edits; until the first edit the draft is the stored table, so a
+  // store that hydrates after the first render still shows the saved bindings.
+  const [edits, setDraft] = useState<Ds4Binding[] | null>(null);
+  const draft = useMemo<readonly Ds4Binding[]>(() => edits ?? effectiveBindings({ bindings: saved }), [edits, saved]);
   const [selected, setSelected] = useState<string | null>(null);
   const [capture, setCapture] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -461,7 +464,8 @@ export function ControlsSettings() {
 
   const save = () => {
     if (saveError) return;
-    setBindings(draft);
+    setBindings([...draft]);
+    setDraft(null);
     setMessage("Saved");
   };
   const download = () => {

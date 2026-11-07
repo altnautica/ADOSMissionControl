@@ -245,6 +245,18 @@ the project follows [Semantic Versioning](https://semver.org/).
   new detection in the canvas draw loop; the per-frame React smoothing loop is
   removed. Tag fonts are cached, and the focus ring allocates nothing per frame.
 - **Layer chips** use the spec's unavailable-chip colour and are localised.
+- **The layer stack no longer re-renders while frames stream.** The cockpit's
+  layout context value is stable between renders and the layer stack is
+  memoised, so telemetry-rate cockpit renders stop reaching it (163 commits in
+  10 s before, 0 after).
+- **Settings › Controls shows the saved bindings after a reload.** The draft
+  followed the default table when the store hydrated after the first render;
+  it now follows the saved table until the first edit.
+- **Plugin skill state reports refresh the skill picker at once.** A report
+  from a plugin (active, idle, disabled) now recomputes the picker and bar;
+  before, it waited for an unrelated vehicle-state change.
+- **Demo mode** lists the SIYI pod's eight camera skills and Follow-Me's tweak
+  parameters in the skill picker.
 
 - **Pairing a ground station with a drone failed every time.** The Pair modal
   sent the retired typed `pair_key`, which the agent refuses. It now sends the
