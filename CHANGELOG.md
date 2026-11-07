@@ -8,6 +8,17 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Aircraft setup (Settings › Aircraft setup).** The selected drone's agent
+  runs the ground and air setup wizards (detection, frame, accelerometer,
+  level, compass, airspeed, radio, the ADOS switch position, motor and control
+  surface checks, battery, initial tune, notch, the FC parameter profile, Meet
+  ADOS Pilot; first hover or flight, trims, airspeed and TECS, autotune,
+  verify). Each step is drawn from the agent's step schema with the cockpit
+  spec's text and pictures: live values, progress, the motor question, inputs,
+  blockers, results, and tap, hold or props-off hold confirms. Any finished
+  step can be run again on its own, parameter snapshots can be restored, and
+  the setup report lists each step's numbers. Demo mode plays a quad through
+  the ground wizard.
 - **Cockpit views.** `V` (or Triangle on a controller) cycles Pilot, Map
   (the map main with the video as a picture-in-picture, which draws no data
   layers), Split (video beside the map) and Vision (the video with the

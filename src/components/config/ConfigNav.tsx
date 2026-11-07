@@ -15,6 +15,7 @@ import {
   User,
   Puzzle,
   Network,
+  Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -28,6 +29,7 @@ const GCS_NAV_ITEMS: NavItem[] = [
   { href: "/config", labelKey: "general", icon: <Settings size={14} /> },
   { href: "/config/operator", labelKey: "operator", icon: <User size={14} /> },
   { href: "/config/input", labelKey: "inputDevices", icon: <Gamepad2 size={14} /> },
+  { href: "/config/aircraft-setup", labelKey: "aircraftSetup", icon: <Wrench size={14} /> },
   // `/config/can` shipped as a route with no entry here, so the only way in was
   // to type the URL — while `canConfig.slcanHint` tells the operator to
   // "Configure SLCAN via /config/can".

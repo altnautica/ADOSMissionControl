@@ -754,7 +754,8 @@
     "flashTool": "Herramienta de flasheo",
     "operator": "Operator & Aircraft",
     "plugins": "Extensiones",
-    "can": "DroneCAN"
+    "can": "DroneCAN",
+    "aircraftSetup": "Aircraft setup"
   },
   "general": {
     "title": "Ajustes generales",
@@ -9386,5 +9387,49 @@
     "model": "Model",
     "engine": "Engine",
     "visionForced": "Targets, depth and surfaces stay on while this view is open."
+  },
+  "aircraftSetup": {
+    "title": "Aircraft setup",
+    "description": "Calibration, initial tune and the ADOS Pilot hand-over, run by the drone's agent. Each step can be run again on its own.",
+    "noDrone": "Select a drone to set it up.",
+    "noAgent": "This drone has no reachable ADOS agent on this network. Use the flight controller pages for direct setup.",
+    "loading": "Reading the aircraft setup…",
+    "loadError": "Could not read the aircraft setup: {error}",
+    "retry": "Retry",
+    "noFc": "No flight controller identified yet. Check the flight controller link.",
+    "steps": "Steps",
+    "rerun": "Run this step again",
+    "live": "Live",
+    "result": "Result",
+    "holdTo": "Hold to {action}",
+    "reverted": "Restored {count} parameters",
+    "stepState": {
+      "pending": "Pending",
+      "running": "Running",
+      "waiting_user": "Your turn",
+      "done": "Done",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "wizardState": {
+      "not_started": "Not started",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed",
+      "aborted": "Aborted"
+    },
+    "vehicleClass": {
+      "multirotor": "Multirotor",
+      "fixedwing": "Fixed-wing",
+      "vtol": "VTOL"
+    },
+    "report": {
+      "date": "Date",
+      "firmware": "Firmware",
+      "vehicle": "Vehicle",
+      "noSteps": "No step results yet.",
+      "snapshots": "Parameter snapshots",
+      "noSnapshots": "No snapshots yet."
+    }
   }
 }
