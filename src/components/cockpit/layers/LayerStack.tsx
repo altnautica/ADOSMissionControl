@@ -94,13 +94,21 @@ export function LayerStack({ droneId, cameraId, view }: LayerStackProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     engine.attach(canvas);
+    // Browser test seam: read draw timings, commits and the view demand; flip
+    // layers on the shown vehicle the same way the layer menu does.
     const w = window as unknown as {
-      __adosLayers?: { engine: LayerEngine; stats: typeof layerStackStats; demand: () => Record<string, string[]> };
+      __adosLayers?: {
+        engine: LayerEngine;
+        stats: typeof layerStackStats;
+        demand: () => Record<string, string[]>;
+        setLayer: (id: string, on: boolean) => void;
+      };
     };
     w.__adosLayers = {
       engine,
       stats: layerStackStats,
       demand: () => Object.fromEntries(viewDemand(droneRef.current)),
+      setLayer: (id, on) => useCockpitLayersStore.getState().setLayer(droneRef.current, id, on),
     };
     return () => {
       engine.detach();
