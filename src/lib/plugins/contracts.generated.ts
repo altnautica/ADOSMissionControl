@@ -20,6 +20,7 @@ export const CONTRACT_VERSIONS = {
   "cloud-publish": 1,
   "sensor.v1": 1,
   "plugin.events": 1,
+  "pilot.v1": 1,
 } as const;
 
 export const SIDECAR_VERSIONS = {
@@ -218,6 +219,13 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     transport: "unix-stream",
     status: "active",
     description: "The plugin event-bus export (seam K): a host service opens the plugin host's root-only _events.sock, writes one {v, op: subscribe, topics: [exact topic names]} line, and reads one {v, topic, publisher, ts_ms, payload} line per bus event on those topics. Every event already passed the host's publish check; the publisher id is host-stamped. The native control front reads the navigation, mapping and follow topics through it.",
+  },
+  "pilot.v1": {
+    version: 1,
+    wire: "msgpack",
+    transport: "unix-stream",
+    status: "active",
+    description: "The command-authority socket served by ados-pilot (pilot.sock): 4-byte big-endian length-prefixed msgpack maps keyed by `op`. Client ops: input {src, session, seq, t_ms, axes:[roll,pitch,thr,yaw], buttons}, release, session.take, hb, action {name, src, args?, id?}, lease.acquire {holder:{plugin_id, skill_id}, kind}, lease.release, goal {lease_id, goal}, goto {n, e, d, yaw?}, swarm.goal {vn, ve, vd, yaw?}, subscribe, view_demand {cameras, models}, feed {topic, payload}, and the setup.* family (list, start, action, run_step, abort, subscribe). Server messages: state (the nav `pilot` kind), obstacles (the nav `obstacles` kind), sticks {lease_id, axes}, lease.revoked {lease_id, reason}, and replies keyed by the request op. On a ground station the native control front binds the same path and relays input, release, action, session.take and hb to the drone over the aux Pilot channel.",
   },
 };
 
