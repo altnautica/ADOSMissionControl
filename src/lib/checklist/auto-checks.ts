@@ -42,7 +42,11 @@ export type AutoCheckId =
   | "sensors-healthy"
   | "prearm-pass"
   | "flight-plan"
-  | "geofence-set";
+  | "geofence-set"
+  | "pilot-readiness"
+  | "link-fresh"
+  | "controller"
+  | "storage";
 
 export interface AutoCheckVerdict {
   status: "pending" | "pass" | "fail";
@@ -73,6 +77,19 @@ export interface AutoCheckInputs {
   fenceOnVehicle: boolean | null;
   /** Localised label for a MAVLink GPS_FIX_TYPE. */
   formatGpsFix: (fixType: number) => string;
+  /** The ADOS Pilot's state, when the drone's agent runs the pilot. */
+  pilot?: PilotChecklistInput | null;
+  /** Whether the FC heartbeat is fresh; null before any link. */
+  linkFresh?: boolean | null;
+  /** Whether a usable controller is connected to this surface. */
+  controllerConnected?: boolean | null;
+  /** Disk use (percent) reported by the drone's agent, when known. */
+  diskPercent?: number | null;
+}
+
+export interface PilotChecklistInput {
+  readiness: readonly { id: string; ok: boolean; severity: "block" | "warn"; msg: string }[];
+  controlMode: "ados" | "fc_manual" | "elrs" | null;
 }
 
 const UNKNOWN: AutoCheckVerdict = { status: "pending", displayValue: NOT_MEASURED };
@@ -112,6 +129,35 @@ function batteryVoltage(
   return {
     status: perCell >= PREFLIGHT_MIN_CELL_V ? "pass" : "fail",
     displayValue: `${perCell.toFixed(2)}V/cell (${count}S)`,
+  };
+}
+
+/** Disk use (percent) on the drone above which the storage item fails. */
+export const PREFLIGHT_MAX_DISK_PCT = 95;
+
+/** The ADOS Pilot's own readiness items: any red `block` item fails, with
+ * its message; warnings pass with a count. No pilot (a direct link, or an
+ * agent without the pilot) is not a failure: the item reads "Not used". */
+function pilotReadiness(pilot: PilotChecklistInput | null): AutoCheckVerdict {
+  if (!pilot) return { status: "pass", displayValue: "Not used" };
+  const block = pilot.readiness.find((r) => !r.ok && r.severity === "block");
+  if (block) return { status: "fail", displayValue: block.msg || block.id };
+  const warns = pilot.readiness.filter((r) => !r.ok).length;
+  return { status: "pass", displayValue: warns > 0 ? `${warns} warning${warns === 1 ? "" : "s"}` : "Ready" };
+}
+
+/** A controller is required only when the pilot flies the sticks (`ados`). */
+function controllerCheck(pilot: PilotChecklistInput | null, connected: boolean | null): AutoCheckVerdict {
+  if (!pilot || pilot.controlMode !== "ados") return { status: "pass", displayValue: "Not needed" };
+  if (connected === null) return UNKNOWN;
+  return connected ? { status: "pass", displayValue: "Connected" } : { status: "fail", displayValue: "Not connected" };
+}
+
+function storageCheck(diskPercent: number | null): AutoCheckVerdict {
+  if (diskPercent === null || !Number.isFinite(diskPercent)) return UNKNOWN;
+  return {
+    status: diskPercent < PREFLIGHT_MAX_DISK_PCT ? "pass" : "fail",
+    displayValue: `${Math.max(0, Math.round(100 - diskPercent))}% free`,
   };
 }
 
@@ -182,5 +228,14 @@ export function evaluateAutoChecks(inputs: AutoCheckInputs, now: number): AutoCh
         : inputs.fenceOnVehicle
           ? { status: "pass", displayValue: "Enabled" }
           : { status: "fail", displayValue: "Disabled" },
+    "pilot-readiness": pilotReadiness(inputs.pilot ?? null),
+    "link-fresh":
+      inputs.linkFresh == null
+        ? UNKNOWN
+        : inputs.linkFresh
+          ? { status: "pass", displayValue: "Live" }
+          : { status: "fail", displayValue: "Stale" },
+    controller: controllerCheck(inputs.pilot ?? null, inputs.controllerConnected ?? null),
+    storage: storageCheck(inputs.diskPercent ?? null),
   };
 }

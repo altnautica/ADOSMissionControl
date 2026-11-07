@@ -1,6 +1,6 @@
 /**
  * Pause (brake) skill. On the ADOS pilot it brakes to a hold (and pauses an
- * FC mission). Without the pilot, an active mission (C8 state) is paused with
+ * FC mission). Without the pilot, an active mission is paused with
  * DO_PAUSE_CONTINUE, otherwise the vehicle holds in LOITER. One-shot,
  * armed-only, no confirm, and sent blind over a stale link (shared spec).
  *

@@ -9,6 +9,7 @@ import {
   sendPilotInput,
   sendPilotRelease,
   setPilotSender,
+  sticksRouteToFc,
   usePilotLinkStore,
   type PilotOutboundFrame,
 } from "../pilot-stream";
@@ -25,7 +26,7 @@ function capture(): PilotOutboundFrame[] {
 
 afterEach(() => {
   setPilotSender(null);
-  usePilotLinkStore.getState().set({ controlMode: null, framesSent: 0 });
+  usePilotLinkStore.getState().set({ controlMode: null, framesSent: 0, agentFor: null });
 });
 
 describe("pilot stream frames (pilot.v1)", () => {
@@ -70,6 +71,25 @@ describe("pilot stream frames (pilot.v1)", () => {
     expect(usePilotLinkStore.getState().controlMode).toBe("ados");
     expect(pilotStreamOpen("drone-1")).toBe(true);
     expect(pilotStreamOpen("drone-2")).toBe(false);
+  });
+});
+
+describe("stick route to the flight controller", () => {
+  it("a direct link always takes RC overrides", () => {
+    expect(sticksRouteToFc("drone-1")).toBe(true);
+  });
+  it("an agent drone takes them only in fc_manual with the stream open", () => {
+    usePilotLinkStore.getState().set({ agentFor: "drone-1" });
+    expect(sticksRouteToFc("drone-1")).toBe(false);
+    capture();
+    for (const mode of ["ados", "elrs", null] as const) {
+      usePilotLinkStore.getState().set({ controlMode: mode });
+      expect(sticksRouteToFc("drone-1")).toBe(false);
+    }
+    usePilotLinkStore.getState().set({ controlMode: "fc_manual" });
+    expect(sticksRouteToFc("drone-1")).toBe(true);
+    setPilotSender(null);
+    expect(sticksRouteToFc("drone-1")).toBe(false);
   });
 });
 

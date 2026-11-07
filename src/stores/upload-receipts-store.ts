@@ -31,6 +31,13 @@ export interface UploadReceipt {
    * so mission seq N is the (N-1)th expanded item.
    */
   homeSlot?: boolean;
+  /** Mission receipts only: the MISSION_ACK `opaque_id` (absent when 0). */
+  opaqueId?: number;
+  /** Mission receipts only: the item count sent, home slot included. */
+  total?: number;
+  /** Mission receipts only: the drone agent's `mission.uploads_seen` just
+   * before this upload, when the agent publishes it. */
+  uploadsSeenBefore?: number;
 }
 
 /**

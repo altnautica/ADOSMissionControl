@@ -50,6 +50,13 @@ import { FlightStateChip } from "@/components/cockpit/v2/FlightStateChip";
 import { LeftColumn } from "@/components/cockpit/v2/LeftColumn";
 import { SkillPicker } from "@/components/cockpit/v2/SkillPicker";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { useCockpitView, viewDef, type CockpitViewId } from "@/lib/cockpit/views";
+import { CockpitMapPane } from "@/components/cockpit/v2/CockpitMapPane";
+import { CockpitTopActions } from "@/components/cockpit/v2/CockpitTopActions";
+import { VisionViewPanel } from "@/components/cockpit/layers/VisionViewPanel";
+import { FlightFlowOverlays } from "@/components/cockpit/v2/FlightFlowOverlays";
+import { OnScreenSticks } from "@/components/cockpit/v2/OnScreenSticks";
+import { useDs4Dispatcher } from "@/hooks/use-ds4-dispatcher";
 import { notifySkill } from "@/lib/skills/registry";
 import { CockpitTopBar } from "@/components/cockpit/CockpitTopBar";
 import { CockpitAlerts } from "@/components/cockpit/CockpitAlerts";
@@ -70,7 +77,6 @@ import { DEFAULT_DENSITY, type CockpitDensity } from "@/lib/cockpit/density";
 import { zoneContainerClass } from "@/lib/cockpit/zones";
 import { useCockpitViewSetup } from "@/hooks/use-cockpit-view-setup";
 
-import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -92,13 +98,18 @@ const CockpitQuickSettings = dynamic(() =>
 const CockpitCommandPalette = dynamic(() =>
   import("@/components/cockpit/CockpitCommandPalette").then((m) => m.CockpitCommandPalette),
 );
-const SkillRadial = dynamic(() =>
-  import("@/components/cockpit/SkillRadial").then((m) => m.SkillRadial),
-);
 
 function enableSkillLayer(): void {
   useCockpitStore.getState().setEnabled(true);
 }
+
+/** The video pane's placement per view. */
+const VIDEO_CLASS: Record<CockpitViewId, string> = {
+  pilot: "absolute inset-0 z-0",
+  vision: "absolute inset-y-0 left-0 right-[min(340px,40%)] z-0",
+  split: "absolute inset-y-0 left-0 z-0 w-1/2",
+  map: "absolute bottom-24 left-3 z-[25] aspect-video w-[min(320px,40%)] overflow-hidden rounded-lg border border-white/20 shadow-lg",
+};
 
 interface CockpitViewProps {
   /** The drone this cockpit flies (the node whose tab this is). */
@@ -111,6 +122,8 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const skillBarRef = useRef<HTMLDivElement>(null);
   const { pilot } = usePilotState(droneId);
+  const view = useCockpitView(droneId);
+  const viewMeta = viewDef(view);
   const notifyToast = useCallback((msg: string) => notifySkill(msg, "warning"), []);
 
   // Width class + size from the cockpit container (never the viewport), and
@@ -122,8 +135,6 @@ export function CockpitView({ droneId }: CockpitViewProps) {
     (s) => s.activeStreamIdByDrone[droneId] ?? s.streamsByDrone[droneId]?.[0]?.id ?? PRIMARY_CAMERA_ID,
   );
 
-  // A pending skill confirm owns input: pause the radial while one is open.
-  const confirmPending = useSkillConfirmStore((s) => s.pending !== null);
 
   // The skill / game layer (Skill Bar + editor + radial); on by default.
   const cockpitEnabled = useCockpitStore((s) => s.enabled);
@@ -162,6 +173,8 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   // Every side effect of the surface (gamepad, focus, immersive request,
   // registrations, input surface, hotkeys, video streams, close-on-leave).
   useCockpitViewSetup(droneId, containerRef);
+  // Controller buttons: the binding table in force, rumble and lightbar.
+  useDs4Dispatcher(droneId);
 
   return (
     <CockpitLayoutContext.Provider value={layoutSize}>
@@ -179,15 +192,36 @@ export function CockpitView({ droneId }: CockpitViewProps) {
         <PluginTargetActionHost droneId={droneId} />
         <PluginCockpitWidgetHost droneId={droneId} />
 
-        <VideoCanvas className="absolute inset-0 z-0" chrome="cockpit" droneId={droneId}>
+        {/* Views (cockpit spec views.json): Pilot and Vision put the video
+            main, Split puts the map beside it, Map puts the map main with the
+            video as a PiP. The video element is never remounted. */}
+        {viewMeta.main === "map" || viewMeta.secondary === "map" ? (
+          <CockpitMapPane
+            droneId={droneId}
+            className={
+              viewMeta.main === "map"
+                ? "absolute inset-0 z-0"
+                : "absolute inset-y-0 right-0 z-0 w-1/2 border-l-2 border-white/30"
+            }
+          />
+        ) : null}
+        <VideoCanvas className={VIDEO_CLASS[view]} chrome="cockpit" droneId={droneId}>
           {/* Demo-only synthetic feed so switching visibly changes the picture in
               demo mode; self-gated, never on a real node. */}
           <CockpitDemoStream droneId={droneId} />
           <VideoOverlayHost droneId={droneId} />
           {/* Every data layer (targets, marks, AR, obstacles, depth, surfaces)
-              in one canvas, with the target click areas. */}
-          <LayerStack droneId={droneId} cameraId={layerCamera} view="pilot" />
+              in one canvas, with the target click areas. The PiP never draws
+              layers. */}
+          {viewMeta.main === "video" && (
+            <LayerStack droneId={droneId} cameraId={layerCamera} view={view} />
+          )}
         </VideoCanvas>
+        {viewMeta.sidePanel && (
+          <aside className="pointer-events-auto absolute inset-y-0 right-0 z-30 w-[min(340px,40%)] overflow-y-auto border-l border-white/10 bg-bg-primary/90 pt-14 backdrop-blur-sm">
+            <VisionViewPanel droneId={droneId} />
+          </aside>
+        )}
 
         {/* Registered cockpit widgets: the instrument HUD, radar, telemetry
             strip, chips and extension widgets. */}
@@ -226,12 +260,13 @@ export function CockpitView({ droneId }: CockpitViewProps) {
           </div>
         )}
 
-        {/* DJI grid (shared spec layout.json): the flight-state chip top-left,
+        {/* Cockpit grid (shared spec layout.json): the flight-state chip top-left,
             the left column centred, the skill picker bottom-right. The
             loadout editor (keyboard / gamepad bindings) shows only while
             editing; there is no visible skill bar. */}
-        <div className="pointer-events-auto absolute left-3 top-14 z-40">
+        <div className="pointer-events-auto absolute left-3 top-14 z-40 flex flex-wrap items-start gap-2">
           <FlightStateChip droneId={droneId} />
+          <CockpitTopActions droneId={droneId} />
         </div>
         {cockpitEnabled && <LeftColumn droneId={droneId} />}
         <div
@@ -271,10 +306,11 @@ export function CockpitView({ droneId }: CockpitViewProps) {
           </div>
         )}
 
-        {/* Gamepad radial quick-select. */}
-        {cockpitEnabled && (
-          <SkillRadial enabled={!confirmPending && !editing} />
-        )}
+        {/* Flight-flow chrome the pilot drives (handover banner, centre-sticks
+            ring, sticks-with take over, countdowns, voice) and the optional
+            on-screen sticks. */}
+        <FlightFlowOverlays droneId={droneId} pilot={pilot} />
+        <OnScreenSticks droneId={droneId} />
 
         {/* Quick settings (extension parameters + the vision model picker). */}
         {cockpitEnabled && quickOpen && (

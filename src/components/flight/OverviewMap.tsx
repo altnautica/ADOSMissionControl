@@ -164,7 +164,7 @@ export function OverviewMap({
 
   // Mission pause/resume state
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
-  // C8 mission state, never inferred from flight-mode names.
+  // mission state, never inferred from flight-mode names.
   const missionState = useMissionStatus(selectedDroneId)?.state ?? null;
   const isAutoMode = missionState === "active";
   const showMissionControls = missionState === "active" || missionState === "paused";

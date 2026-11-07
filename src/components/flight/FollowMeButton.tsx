@@ -58,7 +58,7 @@ export function FollowMeButton() {
     ? "Starting..."
     : isActive
     ? `${isPaused ? "GPS weak" : "Following"}: ${droneName ?? "drone"} (stop)`
-    : "Follow Me";
+    : "Follow my device";
 
   return (
     <div className="flex items-center gap-1.5">

@@ -2,7 +2,7 @@
  * @module cockpit/flight-state
  * @description The flight-state chip, evaluated from the shared spec
  * (`spec/flight-state.json`): its rules run in order on the drone's `pilot`
- * kind and C8 mission state, first match wins. The chip text, colour, dim
+ * kind and mission state, first match wins. The chip text, colour, dim
  * flag, button and secondary line all come from the spec so every surface
  * shows the same words.
  * @license GPL-3.0-only

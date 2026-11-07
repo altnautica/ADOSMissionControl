@@ -61,7 +61,7 @@ describe("resolveBoundSkillId", () => {
     expect(resolveBoundSkillId("arm", "unknown", noMission)).toBe("arm");
   });
 
-  it("flips pause to resume only while the C8 mission state is paused", () => {
+  it("flips pause to resume only while the mission state is paused", () => {
     expect(resolveBoundSkillId("pause", "armed", { missionState: "paused" })).toBe("resume");
     expect(resolveBoundSkillId("pause", "armed", noMission)).toBe("pause");
     expect(resolveBoundSkillId("pause", "armed", { missionState: "active" })).toBe("pause");

@@ -14,6 +14,7 @@ import { Gamepad2 } from "lucide-react";
 import { BluetoothPairModal } from "@/components/hardware/BluetoothPairModal";
 import { ControllersSection } from "@/components/hardware/ControllersSection";
 import { SkillBindingsSection } from "@/components/config/SkillBindingsSection";
+import { ControlsSettings } from "@/components/config/ControlsSettings";
 import { PageIntro } from "@/components/hardware/PageIntro";
 import { HintChip } from "@/components/hardware/HintChip";
 import { Button } from "@/components/ui/button";
@@ -263,6 +264,7 @@ export default function InputDevicesPage() {
         </section>
 
         {/* Cockpit skill / keyboard bindings for the active loadout. */}
+        <ControlsSettings />
         <SkillBindingsSection />
 
         <BluetoothPairModal open={pairOpen} onClose={() => setPairOpen(false)} />

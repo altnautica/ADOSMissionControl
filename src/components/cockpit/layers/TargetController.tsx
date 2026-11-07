@@ -103,8 +103,14 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
   const smoothed = useBoxSmoothing(videoLost ? null : freshBatch, reducedMotion);
 
   // This layer owns the cockpit target state: drop the popup and the
-  // designation on drone switch / unmount.
-  useEffect(() => () => reset(), [droneId, reset]);
+  // designation when the drone changes. Hiding the layer (level Off, the Map
+  // view) unmounts it and keeps the designation.
+  const shownDrone = useRef(droneId);
+  useEffect(() => {
+    if (shownDrone.current === droneId) return;
+    shownDrone.current = droneId;
+    reset();
+  }, [droneId, reset]);
 
   const popup = useTargetPopup({
     droneId,

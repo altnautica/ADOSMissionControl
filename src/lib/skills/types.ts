@@ -160,7 +160,7 @@ export interface SkillContext {
    */
   availableModes: UnifiedFlightMode[];
   /**
-   * The C8 mission state (agent-computed, or the direct link's), null when
+   * The mission state (agent-computed, or the direct link's), null when
    * unknown. Pause and resume read it; no surface infers a mission from mode names.
    */
   missionState: MissionStateKind | null;
@@ -221,13 +221,13 @@ export interface Skill {
   category: SkillCategory;
   source: SkillSource;
   pluginId?: string;
-  /** C5 skill-picker tab (manifest category); built-ins have none. */
+  /** Skill-picker tab (manifest category); built-ins have none. */
   pickerCategory?: "behavior" | "camera" | "navigation" | "utility";
-  /** C5: the skill commands the vehicle (one at a time, preempted by built-ins). */
+  /** the skill commands the vehicle (one at a time, preempted by built-ins). */
   motion?: boolean;
-  /** C5: parameter keys the picker's Tweak panel shows. */
+  /** parameter keys the picker's Tweak panel shows. */
   params?: string[];
-  /** C5: vehicle classes the skill supports; absent = every class. */
+  /** vehicle classes the skill supports; absent = every class. */
   vehicleClasses?: ("multirotor" | "fixedwing" | "vtol")[];
   toggle: boolean;
   confirm?: ConfirmPolicy;

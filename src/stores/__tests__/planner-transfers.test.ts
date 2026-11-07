@@ -147,7 +147,7 @@ describe("uploads while the vehicle flies its mission", () => {
     { id: "b", lat: 47.001, lon: 8, alt: 30, command: "WAYPOINT" } as Waypoint,
   ];
 
-  /** The C8 mission state the link computes for `id`. */
+  /** The mission state the link computes for `id`. */
   function report(id: string, state: MissionStateKind | null): void {
     const status = useMissionStateStore.getState().status;
     const next = { ...status };

@@ -59,7 +59,7 @@ function pts2(v: unknown, max = Infinity): [number, number][] {
   return out;
 }
 
-// ── mission state (C8) ────────────────────────────────────────────────────
+// ── mission state ────────────────────────────────────────────────────
 
 export const MISSION_STATES = ["none", "loaded", "active", "paused", "complete", "returning"] as const;
 export type MissionStateName = (typeof MISSION_STATES)[number];
@@ -95,7 +95,7 @@ export function parseMission(raw: unknown): MissionState | null {
   };
 }
 
-// ── pilot (C3 `pilot` + C10 additions) ────────────────────────────────────
+// ── pilot (`pilot` kind with the flight-flow fields) ────────────────────────────────────
 
 export const PILOT_OWNERS = ["idle", "pilot", "skill", "goto", "swarm", "mission_fc", "fc_mode", "tuning"] as const;
 export type PilotOwner = (typeof PILOT_OWNERS)[number];
@@ -205,7 +205,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
   };
 }
 
-// ── per-camera grids (C3 `obstacles` / `depth`) ───────────────────────────
+// ── per-camera grids (`obstacles` / `depth` kinds) ───────────────────────────
 
 /** A per-camera grid: `near` holds cols·rows log-coded distances (0 =
  *  unknown); `measured` is a cols·rows bitmask (1 = from LiDAR/occupancy). */
@@ -306,7 +306,7 @@ export function decodeBase64Into(s: string, out: Uint8Array): number {
   return n;
 }
 
-// ── AR (C3 `ar`, C7 keys) ─────────────────────────────────────────────────
+// ── AR (`ar` kind, stable item keys) ─────────────────────────────────────────────────
 
 export type ArItem =
   | { t: "wp"; k: string; seq: number; role: "next" | "after" | "other"; x: number; y: number; gx: number | null; gy: number | null; distM: number | null; etaS: number | null; size: number }

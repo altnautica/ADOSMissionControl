@@ -95,10 +95,13 @@ function flush(droneId: string, force: boolean): void {
       d.sent.set(cam, text);
     }
   }
-  // Cameras nobody watches any more: one empty lease, then forget them.
+  // Cameras nobody watches any more. The agent keeps one lease per socket
+  // (the latest frame wins), so a camera switch is already superseded by the
+  // new camera's frame; only when nothing is watched does one empty lease go
+  // out, for the last camera.
   for (const cam of [...d.sent.keys()]) {
     if (demand.has(cam)) continue;
-    d.send?.(message(cam, []));
+    if (demand.size === 0) d.send?.(message(cam, []));
     d.sent.delete(cam);
   }
   if (d.holders.size === 0) {

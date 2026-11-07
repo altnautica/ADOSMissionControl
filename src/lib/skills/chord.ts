@@ -72,6 +72,8 @@ export function canonicalChord(e: KeyboardEvent): string | null {
  *   - Shift+comma, the cockpit quick-settings drawer. The cockpit matches it by
  *     physical key; the chord a held Shift produces from that key follows the
  *     layout ("shift+<" on US/UK, "shift+;" on German), so both are reserved.
+ *   - bare "o" (the data-layer level Full / Route / Off) and bare "v" (the
+ *     cockpit view cycle), both from the shared cockpit spec.
  */
 const RESERVED_CHORDS: ReadonlySet<string> = new Set([
   "escape",
@@ -94,6 +96,8 @@ const RESERVED_CHORDS: ReadonlySet<string> = new Set([
   "9",
   "`",
   "p",
+  "o",
+  "v",
   "shift+<",
   "shift+;",
 ]);

@@ -61,6 +61,9 @@ export interface DroneNavFeed {
   occupancy: OccupancyGrid;
   /** Browser clock (ms) of the last successful `map/live` poll, or null. */
   occupancyPolledAt: number | null;
+  /** How the feed arrives: the live stream, the 2 Hz `nav/status` fallback
+   * poll (reduced rate, e.g. a ground-station radio relay), or not yet known. */
+  transport?: "stream" | "poll" | null;
 }
 
 const EMPTY_FEED: DroneNavFeed = { trail: [], occupancy: EMPTY_OCCUPANCY, occupancyPolledAt: null };
@@ -75,6 +78,7 @@ interface NavStreamState {
   setMap: (droneId: string, data: MapStatus, at?: number) => void;
   setPilot: (droneId: string, data: PilotState, at?: number) => void;
   mergeOccupancy: (droneId: string, live: OccupancyLive, at?: number) => void;
+  setTransport: (droneId: string, transport: "stream" | "poll" | null) => void;
   clear: (droneId: string) => void;
 }
 
@@ -114,6 +118,12 @@ export const useNavStreamStore = create<NavStreamState>()((set) => ({
         occupancy: mergeOccupancy(feed.occupancy, live),
         occupancyPolledAt: at,
       })),
+    ),
+  setTransport: (droneId, transport) =>
+    set((s) =>
+      (s.byDrone[droneId]?.transport ?? null) === transport
+        ? s
+        : patch(s, droneId, () => ({ transport })),
     ),
   clear: (droneId) =>
     set((s) => {

@@ -27,6 +27,11 @@ import { useThrottledTelemetryVersion } from "@/hooks/use-throttled-telemetry-ve
 import { useKnownCellCount } from "@/hooks/use-known-cell-count";
 import { useFenceUploadStatus, useMissionUploadStatus } from "@/hooks/use-upload-status";
 import { evaluateAutoChecks } from "@/lib/checklist/auto-checks";
+import { isSkillLinkFresh } from "@/lib/skills/registry";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { usePadStatusStore } from "@/lib/input/gamepad-poller";
+import { useDroneStore } from "@/stores/drone-store";
+import { useAgentSystemStore } from "@/stores/agent-system-store";
 
 /** MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` label key. */
 const GPS_FIX_KEYS: Record<number, string> = {
@@ -66,6 +71,10 @@ export function ChecklistAutoRunner(): null {
   const fenceOnVehicle = fenceStatus === "on-aircraft" ? geofenceEnabled : null;
   const battery = batteryBuf.latest();
   const knownCellCount = useKnownCellCount(droneId, battery?.cellCount);
+  const { pilot } = usePilotState(droneId);
+  const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
+  const padUsable = usePadStatusStore((s) => s.connected && s.usable);
+  const diskPercent = useAgentSystemStore((s) => s.resources?.disk_percent ?? null);
 
   useEffect(() => {
     if (droneId && sessionDroneId !== droneId) startSession(droneId);
@@ -84,6 +93,10 @@ export function ChecklistAutoRunner(): null {
           missionOnVehicle,
           fenceOnVehicle,
           formatGpsFix: (fixType) => tFix(GPS_FIX_KEYS[fixType] ?? "fix3d"),
+          pilot: pilot ? { readiness: pilot.readiness, controlMode: pilot.controlMode } : null,
+          linkFresh: lastHeartbeat > 0 ? isSkillLinkFresh(lastHeartbeat, Date.now()) : null,
+          controllerConnected: padUsable,
+          diskPercent,
         },
         Date.now(),
       ),
@@ -91,6 +104,7 @@ export function ChecklistAutoRunner(): null {
   }, [
     droneId, sessionDroneId, sessionId, applyAutoVerdicts, version, tick, battery, knownCellCount,
     gpsBuf, ekfBuf, sysStatusBuf, missionOnVehicle, fenceOnVehicle, tFix,
+    pilot, lastHeartbeat, padUsable, diskPercent,
   ]);
 
   return null;

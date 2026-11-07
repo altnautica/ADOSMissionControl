@@ -1,6 +1,6 @@
 /**
  * Resume skill. On the ADOS pilot it resumes (a paused FC mission goes back to
- * AUTO). Without the pilot it continues a paused mission (C8 state) with
+ * AUTO). Without the pilot it continues a paused mission with
  * DO_PAUSE_CONTINUE. One-shot, armed-only, tap (shared spec).
  *
  * @module skills/builtins/resume

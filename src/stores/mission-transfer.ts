@@ -27,6 +27,7 @@ import {
 } from "@/lib/mission-upload";
 import { DEFAULT_PLAN_PROFILE, profileFromVehicleInfo } from "@/lib/mission/plan-profile";
 import { droppedItemWarning } from "@/lib/mission-io-formats";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 type GetState = () => MissionStoreState;
 type SetState = (partial: Partial<MissionStoreState>) => void;
@@ -124,9 +125,16 @@ export async function uploadPlanMission(
 
   let success = false;
   let failure: string | null = null;
+  let opaqueId: number | undefined;
+  // The agent's count of uploads it has seen from any client: theplan
+  // identity rule trusts this receipt only while no other upload follows.
+  const uploadsSeenBefore = droneId
+    ? (useNavStreamStore.getState().byDrone[droneId]?.pilot?.data.mission?.uploadsSeen ?? undefined)
+    : undefined;
   try {
     const result = await protocol.uploadMission(items);
     success = result.success;
+    opaqueId = result.opaqueId;
     if (!success) failure = result.message || "The flight controller did not accept the mission";
   } catch (err) {
     failure = err instanceof Error && err.message ? err.message : "The mission transfer failed";
@@ -142,6 +150,9 @@ export async function uploadPlanMission(
         contentHash: uploadedHash,
         at: Date.now(),
         homeSlot: isArduPilot,
+        total: items.length,
+        ...(opaqueId !== undefined ? { opaqueId } : {}),
+        ...(uploadsSeenBefore !== undefined ? { uploadsSeenBefore } : {}),
       });
     } else {
       receipts.clearKindForDrone("mission", droneId);
@@ -197,11 +208,17 @@ export async function downloadPlanMission(set: SetState): Promise<Waypoint[]> {
     // kept (then the two differ and nothing vouches for the plan).
     const droneId = droneIdOf(protocol);
     if (droneId && downloadWarnings.length === 0) {
+      // The plan now held is the drone's: adopt its identity so the plan
+      // identity check reads "match" until another upload replaces it.
+      const agentMission = useNavStreamStore.getState().byDrone[droneId]?.pilot?.data.mission;
       useUploadReceiptsStore.getState().record("mission", {
         droneId,
         contentHash: missionContentHash(waypoints, planWireSettings(settings)),
         at: Date.now(),
         homeSlot: isArduPilot,
+        ...(agentMission?.id ? { opaqueId: agentMission.id } : {}),
+        ...(agentMission?.total != null ? { total: agentMission.total } : {}),
+        ...(agentMission?.uploadsSeen != null ? { uploadsSeenBefore: agentMission.uploadsSeen } : {}),
       });
     }
     return waypoints;

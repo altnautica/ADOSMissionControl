@@ -36,10 +36,11 @@ import {
   PILOT_INPUT_PERIOD_MS,
   sendPilotInput,
   sendPilotRelease,
+  sticksRouteToFc,
   sticksRouteToPilot,
 } from "./pilot-stream";
 
-/** Radial stick deadzone every surface applies before the pilot stream (C4). */
+/** Radial stick deadzone every surface applies before the pilot stream. */
 export const PILOT_RADIAL_DEADZONE = 0.08;
 
 /** What the cockpit shows about the pad itself. */
@@ -178,16 +179,6 @@ const MIN_HZ = 1;
  */
 const STALE_AXES_MS = 50;
 
-/**
- * How long a pad may hold a deflected stick without the device itself
- * reporting before its sample stops counting as live.
- *
- * `getGamepads()` keeps returning the last snapshot of a Bluetooth pad that
- * went out of range until the OS drops the device, which can take seconds.
- * A held deflection from a real hand carries analogue noise, so the pad's own
- * `timestamp` keeps advancing; a frozen one is a pad that stopped reporting.
- */
-const FROZEN_DEFLECTION_MS = 500;
 
 /** Why the stream sends nothing on a relay link that cannot publish. */
 const RELAY_WRITE_BLOCK = "the cloud relay holds no broker write grant for this drone";
@@ -195,28 +186,10 @@ const RELAY_WRITE_BLOCK = "the cloud relay holds no broker write grant for this 
 let pollAnimFrame: number | null = null;
 let manualControlTimer: ReturnType<typeof setTimeout> | null = null;
 let activeGamepadIndex: number | null = null;
-/** The active pad's last reported `timestamp`, and when it last advanced. */
-let lastPadTimestamp: number | null = null;
-let lastPadReportAt = 0;
 
 /** Get the mapping for a TX mode. */
 export function getMappingForMode(mode: TxMode): GamepadMapping {
   return mode === 1 ? MODE_1_MAPPING : MODE_2_MAPPING;
-}
-
-/**
- * Whether the pad itself has reported recently enough for a deflected stick
- * to be trusted. A pad that reports no timestamp (0) is not judged by it.
- */
-function padReporting(gp: Gamepad, deflected: boolean, now: number): boolean {
-  const ts = gp.timestamp;
-  if (!Number.isFinite(ts) || ts <= 0) return true;
-  if (ts !== lastPadTimestamp) {
-    lastPadTimestamp = ts;
-    lastPadReportAt = now;
-    return true;
-  }
-  return !deflected || now - lastPadReportAt <= FROZEN_DEFLECTION_MS;
 }
 
 /** Surfaces currently holding the polling loop. */
@@ -267,7 +240,6 @@ function startPolling(): void {
         if (gamepads[i]) {
           gp = gamepads[i];
           activeGamepadIndex = i;
-          lastPadTimestamp = null;
           break;
         }
       }
@@ -280,7 +252,6 @@ function startPolling(): void {
       // back must not silently resume an RC override on an armed aircraft.
       if (inputStore.activeController === "gamepad") inputStore.resetInput();
       activeGamepadIndex = null;
-      lastPadTimestamp = null;
       lastPadUsable = false;
       lastPilotAxes = [0, 0, 0, 0];
       patchPadStatus({ connected: false, usable: false, needsCalibration: false, name: null });
@@ -299,10 +270,11 @@ function startPolling(): void {
     // the TX-mode mapping picks which axis is which stick function.
     const padAxes = Array.from(gp.axes);
     const cal = calibrations[gp.id];
-    // A non-standard layout's axis order is unknown until the calibration
-    // wizard has mapped it; such a pad is shown but never streamed.
+    // A non-standard layout's axis order is unknown (a calibration records
+    // centre and travel, not which axis is which stick), so such a pad is
+    // shown but never streamed.
     const standard = gp.mapping === "standard";
-    lastPadUsable = standard || cal !== undefined;
+    lastPadUsable = standard;
     patchPadStatus({
       connected: true,
       seen: true,
@@ -361,7 +333,10 @@ function startPolling(): void {
       // on-screen aiming. Y is inverted so up is positive.
       rightStick: [gp.axes[2] ?? 0, -(gp.axes[3] ?? 0)],
       buttons: buttonsToArray(gp.buttons),
-      live: padReporting(gp, axes.some((v) => v !== 0), Date.now()),
+      // A present, connected pad is live. Its timestamp is not used: Chrome on
+      // Linux advances it only when a value changes, so a stick held still
+      // (centred or pinned) would read as a lost pad.
+      live: gp.connected !== false,
     });
   }
 
@@ -391,7 +366,7 @@ function onVisibilityChange(): void {
   if (typeof document === "undefined") return;
   if (document.hidden) {
     // Pause only the timer: the operator's request to stream still stands.
-    // The pilot route says so: a hidden tab releases the sticks (C4).
+    // The pilot route says so: a hidden tab releases the sticks.
     sendPilotRelease();
     if (manualControlTimer !== null) {
       clearTimeout(manualControlTimer);
@@ -431,15 +406,17 @@ export function manualControlPeriodMs(hz: number): number | null {
 
 /**
  * The pilot-route pass: stream the sticks to the drone's pilot at 50 Hz, or
- * release them when the pad is gone, unusable or stale (C4 stop rules).
+ * release them when the pad is gone, unusable or stale (the shared stop rules).
  * Returns the wait before the next pass.
  */
 function pilotTick(now: number): number {
   const input = useInputStore.getState();
-  const padStale =
-    lastPadTimestamp !== null && lastPadTimestamp > 0 && now - lastPadReportAt > PAD_STALE_MS;
+  // Liveness is the poll's own sample time while the pad is present: Chrome
+  // on Linux advances `Gamepad.timestamp` only when a value changes, so a
+  // stick held still (centred or pinned) has a frozen timestamp and is not
+  // a lost pad. A hidden tab stops the poll, which ages the sample.
   const sampleStale = input.axesAt === null || now - input.axesAt > PAD_STALE_MS;
-  if (input.activeController !== "gamepad" || !lastPadUsable || padStale || sampleStale) {
+  if (input.activeController !== "gamepad" || !lastPadUsable || sampleStale) {
     sendPilotRelease();
     return GATE_RECHECK_MS;
   }
@@ -462,6 +439,8 @@ export function manualControlTick(): number {
   if (sticksRouteToPilot(selectedId)) return pilotTick(Date.now());
   // Leaving the pilot route (mode change, stream closed) ends its session.
   sendPilotRelease();
+  // An agent-connected drone takes RC overrides only in `fc_manual`.
+  if (!sticksRouteToFc(selectedId)) return GATE_RECHECK_MS;
   const protocol = useDroneManager.getState().getSelectedProtocol();
   const input = useInputStore.getState();
   const { axes, axesAt, buttons, activeController, manualControlEnabled } = input;
@@ -491,6 +470,8 @@ export function manualControlTick(): number {
     flightMode,
   });
   if (!allowed || !protocol) return GATE_RECHECK_MS;
+  // A pad whose axis order is unknown (non-standard layout) never flies.
+  if (activeController === "gamepad" && usePadStatusStore.getState().needsCalibration) return GATE_RECHECK_MS;
 
   // SAMPLE LIVENESS. The sticks come from a `requestAnimationFrame` loop and
   // this tick is an independent `setTimeout` chain, so the two can diverge:
@@ -614,7 +595,6 @@ function stopPolling(): void {
   }
   stopManualControlStream();
   activeGamepadIndex = null;
-  lastPadTimestamp = null;
 
   const inputStore = useInputStore.getState();
   if (inputStore.activeController === "gamepad") {

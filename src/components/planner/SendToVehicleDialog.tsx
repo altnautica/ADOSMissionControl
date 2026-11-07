@@ -71,7 +71,7 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
   const nameOf = (id: string) => p.drones.find((d) => d.id === id)?.name ?? id;
   const targetName = targetId ? nameOf(targetId) : null;
   const mismatch = !!targetId && !!planDroneId && planDroneId !== targetId && planDroneConnected;
-  // The target's own C8 mission state, never the selected drone's.
+  // The target's own mission state, never the selected drone's.
   const flyingMission = isFlyingMission(useMissionStatus(targetId));
   // A plan written for one autopilot or vehicle class, sent to another.
   const planProfile = useMissionStore((s) => s.vehicleProfile);

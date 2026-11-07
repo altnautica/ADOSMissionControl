@@ -2,7 +2,7 @@
  * The binding resolver: one slot can stand for a pair of skills whose meaning
  * flips with the vehicle's state. An `arm` binding fires `disarm` while the
  * vehicle is armed, and a `pause` binding fires `resume` while the mission is
- * paused (the C8 mission state, never a flight-mode name). Every surface that
+ * paused (the mission state, never a flight-mode name). Every surface that
  * fires or labels a binding (keyboard, gamepad, skill picker, palette,
  * radial, tooltips) resolves through here so they all agree.
  *

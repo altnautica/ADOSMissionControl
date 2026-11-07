@@ -8,6 +8,49 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Cockpit views.** `V` (or Triangle on a controller) cycles Pilot, Map
+  (the map main with the video as a picture-in-picture, which draws no data
+  layers), Split (video beside the map) and Vision (the video with the
+  detection list, model picker, depth options and engine summary at the
+  side). `O` cycles the data-layer level; the layer button and the view button
+  sit next to the flight-state chip, with the controller status.
+- **Reduced update rate over a radio link.** When the drone's live nav stream
+  cannot open but its HTTP API answers, the cockpit polls
+  `GET /api/v1/nav/status` at 2 Hz with its view lease and shows "Reduced
+  update rate (radio)". Each value keeps its age on the drone.
+- **Launch sheet.** With the drone's pilot reachable, Take off opens Launch:
+  take-off altitude, the after-take-off action (hold, a behaviour skill, start
+  the loaded mission, or go to a point) and an optional when-done action. One
+  1.5 s hold sends the sequence; the pilot's progress shows as a step strip,
+  and Pause aborts it.
+- **Flight-flow chrome.** The handover banner, the "Centre sticks to take
+  control" ring, "Sticks are with <surface>" with a Take over hold, the
+  low-battery return-home countdown with Cancel, the link-loss countdown,
+  voice prompts (handovers, return home, low battery, mission started, paused
+  and complete; on by default) and optional on-screen sticks, all in the
+  shared cockpit words.
+- **Controller bindings from the shared table.** PS pauses and held 2 s
+  returns home (PS again cancels), L1 + R1 held 2 s with the left stick
+  centred arms, L2 + R2 + Circle held 3 s is the emergency stop, the D-pad
+  moves through the skill picker and steps the focused parameter (the layer
+  level with the picker closed), Cross starts a skill and Circle stops it,
+  Triangle cycles the view and held takes off or lands, Options opens quick
+  settings, Options + D-pad changes the profile, Share records and Square
+  takes a photo. Each action rumbles; on a secure origin a granted DualShock 4
+  lightbar follows the flight state. A controller hold confirms a hold-tier
+  action by itself (an incomplete checklist still opens the sheet).
+- **Settings › Controls.** The controller drawing with every control's
+  action, live input, per-gesture editing, locked safety bindings that can
+  only be moved, conflict highlighting that blocks Save, Mode 1 / Mode 2,
+  stick calibration with the deadzone, rumble and lightbar tests, reset,
+  export and import of the shared controls file, the first-connect tour,
+  on-screen sticks and voice prompts.
+- **Pre-flight checklist items** for the ADOS Pilot's readiness, a live link,
+  a connected controller when the pilot flies the sticks, and drone storage.
+- **Plan on drone.** Mission uploads record the MISSION_ACK plan identity;
+  the cockpit's map views say "Plan on drone differs from this device's
+  plan" when the drone holds another plan, with Load from drone.
+
 - **Pilot stream.** With an agent-connected drone, the cockpit opens
   `WS /api/v1/pilot/stream` (ticket scope `pilot.control`). In `ados` control
   mode the gamepad's sticks go to the drone's pilot as `pilot.v1` input frames
@@ -110,6 +153,13 @@ the project follows [Semantic Versioning](https://semver.org/).
   stand-in instead of showing it as a working detector.
 
 ### Changed
+
+- **Cockpit width classes follow the shared spec**: medium is 600–839 px and
+  expanded starts at 840 px (was 1024).
+- **The gamepad radial and the old cockpit gamepad shortcuts are removed**
+  (L1 + R1 quick settings, D-pad stream cycling, Start to leave immersive,
+  Share to open the radial): the controller binding table owns every button.
+  `o` and `v` are reserved for the layer level and the view cycle.
 
 - **Built-in flight actions follow the shared cockpit table.** Labels, arm
   gates, confirm tiers (Arm and Disarm hold 800 ms, Take off, Land and Return

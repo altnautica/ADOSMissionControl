@@ -1,7 +1,7 @@
 schema_version: 3
 id: com.altnautica.siyi-pod
 name: "ADOS SIYI Optical Pod"
-version: "0.5.1"
+version: "0.5.3"
 description: "Native driver for the SIYI optical-pod line (A2 mini, A8 mini, ZR10, ZR30, ZT6, ZT30) with per-model capability negotiation: gimbal, zoom, focus, photo/record, thermal palette and gain, and a laser rangefinder with subject geolocation."
 description_long: |
   Speaks the SIYI Gimbal Camera External SDK over UDP, TCP, or a TTL serial port
@@ -25,7 +25,7 @@ features:
   - "Sends nothing to a pod that has not identified itself"
 hardware_requirements:
   cameras: "A SIYI optical pod (A2 mini, A8 mini, ZR10, ZR30, ZT6, or ZT30) on the pod network (192.168.144.x) or a TTL serial port"
-  boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "x86"]
+  boards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5", "generic-x86_64"]
 resource_impact:
   cpu_percent_peak: 12
   ram_mb: 96
@@ -34,7 +34,7 @@ resource_impact:
   startup_time_seconds: 3
 telemetry_fields:
   - "siyi"
-documentation_url: "https://docs.altnautica.com/drone-agent/siyi-pod-overview"
+documentation_url: "https://docs.altnautica.com/drone-agent/extensions-catalog#ados-siyi-optical-pod"
 author: "Altnautica"
 homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/siyi-pod"
 license: "GPL-3.0-or-later"
@@ -43,7 +43,7 @@ risk: high
 compatibility:
   ados_version: ">=0.99.179"
   gcs_version: ">=0.56.0"
-  supported_boards: ["cm4", "cm5", "rk3582", "rk3588s2", "rk3576", "rpi5", "x86"]
+  supported_boards: ["cm4", "cm5", "rock-5c-lite", "rk3588s2", "rk3576", "rpi5", "generic-x86_64"]
 
 agent:
   runtime: python
@@ -183,7 +183,7 @@ gcs:
         toggle: false
         confirm: false
         arm_requirement: any
-        default_binding: { key: "o" }
+        default_binding: { key: "b" }
         activation: { via: config, config_key: palette_cycle }
         state: { via: event, topic: "siyi.pod.palette" }
       - id: fire-lrf
@@ -213,7 +213,7 @@ gcs:
         toggle: false
         confirm: false
         arm_requirement: any
-        default_binding: { key: "v" }
+        default_binding: { key: "n" }
         activation: { via: config, config_key: nadir }
         state: { via: event, topic: "siyi.pod.gimbal" }
       - id: zoom-in

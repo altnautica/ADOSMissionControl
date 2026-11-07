@@ -59,8 +59,9 @@ export const takeoffSkill: Skill = {
   getState: (ctx) => disabledIfNoLink(ctx) ?? disabledUnlessDisarmed(ctx) ?? { kind: "idle" },
   activate: async (ctx, args) => {
     const altitudeM = takeoffAltitude(args);
-    // The pilot arms first and climbs itself.
-    if (viaPilot(ctx)) return pilotActionResult("takeoff", { alt_m: altitudeM });
+    // The pilot's own takeoff climbs to a fixed height; the launch sequence
+    // takes the altitude (checks, arm, take off, then hold there).
+    if (viaPilot(ctx)) return pilotActionResult("launch", { after: "hold", alt_m: altitudeM });
     if (!ctx.protocol) return;
     // A refused arm ends the take-off: commanding a climb after the vehicle
     // declined to arm would dispatch blind, so the refusal is what goes back

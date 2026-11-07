@@ -47,6 +47,12 @@ export interface CommandResult {
    * let surfaces render "written to flash" for a write nobody confirmed.
    */
   acknowledged?: boolean;
+  /**
+   * Mission uploads only: the MISSION_ACK `opaque_id` the vehicle assigned to
+   * the plan it now holds (MAVLink 2 extension; 0 or absent when the
+   * autopilot does not set one).
+   */
+  opaqueId?: number;
 }
 
 /** A single on-board parameter value. */

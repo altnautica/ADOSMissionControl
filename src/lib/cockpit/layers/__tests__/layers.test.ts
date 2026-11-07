@@ -1,5 +1,5 @@
 /**
- * The cockpit layer stack's data path: the C3 parsers on the agent's golden
+ * The cockpit layer stack's data path: the nav-frame parsers on the agent's golden
  * wire fixtures (copied byte for byte), the nav-stream routing of the overlay
  * kinds into the mutable frame store, the view lease merge/renew/release, the
  * level rules from the cockpit spec, and the draw loop's change-driven
@@ -31,7 +31,7 @@ import { LayerEngine } from "../engine";
 import { ingestNavFrame, parseNavFrame } from "@/lib/agent/nav-stream";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
-describe("C3 parsers on the golden fixtures", () => {
+describe("nav-frame parsers on the golden fixtures", () => {
   it("parses the ar frame with keys, mission and every item type", () => {
     const f = parseArFrame(arFixture);
     expect(f).not.toBeNull();
@@ -82,7 +82,7 @@ describe("C3 parsers on the golden fixtures", () => {
     expect(g.cols * g.rows).toBe(576);
   });
 
-  it("parses the pilot frame with the C8 mission and the C10 extras", () => {
+  it("parses the pilot frame with the mission and the flight-flow fields", () => {
     const p = parsePilotState(pilotFixture);
     expect(p).not.toBeNull();
     expect(p!.owner).toBe("skill");
@@ -150,7 +150,7 @@ describe("view lease", () => {
     vi.useRealTimers();
   });
 
-  it("merges holders per camera, renews every 2 s and drops a released camera", () => {
+  it("merges holders per camera, renews every 2 s and releases once nothing is watched", () => {
     const sent: unknown[] = [];
     setViewLeaseSender("d3", (t) => sent.push(JSON.parse(t)));
     const a = holdViewLease("d3", "main", ["ar_route", "obstacles"]);
@@ -163,7 +163,8 @@ describe("view lease", () => {
     b.update("down", ["depth"]);
     expect(sent).toContainEqual({ type: "view", camera_id: "down", layers: ["depth"] });
     a.release();
-    expect(sent).toContainEqual({ type: "view", camera_id: "main", layers: [] });
+    // One lease per socket: the "down" frame already superseded "main".
+    expect(sent).not.toContainEqual({ type: "view", camera_id: "main", layers: [] });
     b.release();
     expect(sent.at(-1)).toEqual({ type: "view", camera_id: "down", layers: [] });
     const m = sent.length;

@@ -45,6 +45,10 @@ const DEFAULT_ITEMS: Omit<ChecklistItem, "status" | "displayValue">[] = [
   { id: "ekf-ok", category: "software", label: "EKF status OK", description: "EKF variance within limits", type: "auto" },
   { id: "sensors-healthy", category: "software", label: "Sensor health OK", description: "All present sensors reporting healthy", type: "auto" },
   { id: "prearm-pass", category: "software", label: "Firmware pre-arm pass", description: "No PreArm failures from FC", type: "auto" },
+  { id: "pilot-readiness", category: "software", label: "ADOS Pilot ready", description: "Every pilot readiness item is green (FC profile, position estimate, height source)", type: "auto" },
+  { id: "link-fresh", category: "software", label: "Link live", description: "Flight controller heartbeat is fresh", type: "auto" },
+  { id: "controller", category: "hardware", label: "Controller connected", description: "Needed when ADOS Pilot flies the sticks", type: "auto" },
+  { id: "storage", category: "hardware", label: "Storage free", description: "Drone storage below 95% full", type: "auto" },
 
   // Environment
   { id: "wind-ok", category: "environment", label: "Wind conditions acceptable", description: "Wind speed within vehicle limits", type: "manual" },

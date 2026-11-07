@@ -16,7 +16,7 @@ const copter = (over: Partial<MissionInputs>): MissionInputs => ({
   ...over,
 });
 
-describe("computeMissionState (C8)", () => {
+describe("computeMissionState", () => {
   it("none when there is no mission", () => {
     expect(computeMissionState(copter({ total: 0 }), NOW).status.state).toBe("none");
     expect(computeMissionState(copter({ total: 0xffff }), NOW).status.state).toBe("none");
@@ -70,7 +70,11 @@ describe("computeMissionState (C8)", () => {
   });
 
   it("complete on the last item reached and stays latched", () => {
-    const r = computeMissionState(copter({ armed: true, customMode: 3, seq: 4, itemReached: 4, latched: true }), NOW);
+    // ArduPilot's total excludes home at seq 0: with 5 items the last is seq 5.
+    expect(
+      computeMissionState(copter({ armed: true, customMode: 3, seq: 5, itemReached: 4, latched: true }), NOW).status.state,
+    ).toBe("active");
+    const r = computeMissionState(copter({ armed: true, customMode: 3, seq: 5, itemReached: 5, latched: true }), NOW);
     expect(r.status.state).toBe("complete");
     expect(computeMissionState(copter({ armed: true, customMode: 5, completeLatched: r.completeLatched }), NOW).status.state).toBe("complete");
   });
@@ -80,6 +84,11 @@ describe("computeMissionState (C8)", () => {
     expect(computeMissionState(plane({ armed: true, customMode: 10, seq: 1 }), NOW).status.state).toBe("active");
     expect(computeMissionState(plane({ armed: true, customMode: 19, latched: true }), NOW).status.state).toBe("paused");
     expect(computeMissionState(plane({ armed: true, customMode: 11, latched: true }), NOW).status.state).toBe("returning");
+  });
+
+  it("PX4 counts from 0: the last of 5 items is seq 4", () => {
+    const px4 = copter({ firmware: "px4", armed: true, customMode: (4 << 16) | (4 << 24), seq: 4, itemReached: 4, latched: true });
+    expect(computeMissionState(px4, NOW).status.state).toBe("complete");
   });
 
   it("PX4 AUTO.MISSION (main 4 sub 4) is active", () => {

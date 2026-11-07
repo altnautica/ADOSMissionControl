@@ -66,7 +66,7 @@ export interface DroneSkillContribution {
   stateTopic: string;
   /** Suggested default binding from the manifest. */
   defaultBinding?: { key?: string | null; gamepadButton?: number | null };
-  /** C5 fields; absent on an older manifest. */
+  /** Skill-picker fields; absent on an older manifest. */
   motion?: boolean;
   nudge?: boolean;
   oneShot?: boolean;

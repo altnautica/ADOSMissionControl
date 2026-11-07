@@ -21,6 +21,7 @@
  * @license GPL-3.0-only
  */
 
+import { isDemoMode } from "@/lib/utils";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { TargetController } from "@/components/cockpit/layers/TargetController";
@@ -94,8 +95,10 @@ export function LayerStack({ droneId, cameraId, view }: LayerStackProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     engine.attach(canvas);
-    // Browser test seam: read draw timings, commits and the view demand; flip
-    // layers on the shown vehicle the same way the layer menu does.
+    // Browser test seam (demo builds only): read draw timings, commits and the
+    // view demand; flip layers on the shown vehicle the same way the layer
+    // menu does.
+    if (!isDemoMode()) return () => engine.detach();
     const w = window as unknown as {
       __adosLayers?: {
         engine: LayerEngine;

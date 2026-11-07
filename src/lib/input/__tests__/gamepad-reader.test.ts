@@ -78,23 +78,25 @@ describe("gamepad reader", () => {
     expect(useInputStore.getState().manualControlEnabled).toBe(false);
   });
 
-  it("stops refreshing the liveness stamp when a deflected pad stops reporting", () => {
+  it("keeps a pinned stick live when its timestamp does not move", () => {
+    // Chrome on Linux advances the timestamp only when a value changes: a
+    // stick held at full deflection is still a live pad.
     axes = [0.8, 0, 0, 0];
     releases.push(acquireGamepadPolling());
     step();
-    const reportedAt = useInputStore.getState().axesAt;
-    expect(reportedAt).toBe(10_000);
-
-    // Same device timestamp for longer than a hand can hold a stick still.
+    expect(useInputStore.getState().axesAt).toBe(10_000);
     vi.setSystemTime(10_600);
     step();
-    expect(useInputStore.getState().axesAt).toBe(reportedAt);
+    expect(useInputStore.getState().axesAt).toBe(10_600);
+  });
 
-    // The pad reports again: live again.
-    timestamp = 2;
-    vi.setSystemTime(10_620);
+  it("stops refreshing the liveness stamp when the pad disconnects", () => {
+    releases.push(acquireGamepadPolling());
     step();
-    expect(useInputStore.getState().axesAt).toBe(10_620);
+    connected = false;
+    vi.setSystemTime(10_600);
+    step();
+    expect(useInputStore.getState().axesAt).not.toBe(10_600);
   });
 
   it("keeps a centred pad live when its timestamp does not move", () => {

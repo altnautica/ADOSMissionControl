@@ -85,6 +85,7 @@ export function handleMissionAckFrame(s: MissionContext, frame: MAVLinkFrame): v
     s.missionUpload.resolve({
       success: ack.type === 0, resultCode: ack.type,
       message: ack.type === 0 ? 'Mission accepted' : `Mission rejected: type ${ack.type}`,
+      ...(ack.type === 0 && ack.opaqueId !== 0 ? { opaqueId: ack.opaqueId } : {}),
     })
     s.missionUpload = null
   }

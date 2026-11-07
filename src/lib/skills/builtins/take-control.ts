@@ -7,8 +7,9 @@
  * @license GPL-3.0-only
  */
 
+import { pilotStreamOpen } from "@/lib/input/pilot-stream";
 import type { Skill } from "../types";
-import { disabledIfNoLink, pilotActionResult, REASON, viaPilot } from "./_shared";
+import { disabledIfNoLink, pilotActionResult, REASON } from "./_shared";
 
 export const takeControlSkill: Skill = {
   id: "take_control",
@@ -21,7 +22,9 @@ export const takeControlSkill: Skill = {
   getState: (ctx) => {
     const noLink = disabledIfNoLink(ctx);
     if (noLink) return noLink;
-    if (!viaPilot(ctx)) return { kind: "disabled", reason: REASON.noPilot };
+    // Any control mode: taking control from the FC (owner fc_mode) is the
+    // handover from a traditional start.
+    if (!pilotStreamOpen(ctx.droneId)) return { kind: "disabled", reason: REASON.noPilot };
     if (ctx.armState === "disarmed") return { kind: "disabled", reason: REASON.notArmed };
     return { kind: "idle" };
   },

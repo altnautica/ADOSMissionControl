@@ -180,12 +180,20 @@ export async function activate(
   }
 
   // Confirm gate — open the shared sheet and await the operator. A `tap`
-  // policy is confirmed by the press itself and opens nothing. The sheet names
-  // the target drone and, on a stale link, warns the command may not arrive.
+  // policy is confirmed by the press itself and opens nothing; so is a `hold`
+  // policy fired by a controller hold binding (`confirmedByHold`), whose own
+  // hold time is the confirmation. The sheet names the target drone and, on a
+  // stale link, warns the command may not arrive.
   let activateArgs = args;
   let sendCtx = ctx;
   const policy = skill.confirmFor ? skill.confirmFor(args, ctx) : skill.confirm;
-  if (policy && policy.gesture !== "tap") {
+  // An incomplete pre-flight checklist always opens the sheet, so the
+  // operator sees what is failing before an arm.
+  const heldOnPad =
+    policy?.gesture === "hold" &&
+    args?.confirmedByHold === true &&
+    !(policy.checklistAware && !useChecklistStore.getState().isReadyToArm(ctx.droneId));
+  if (policy && policy.gesture !== "tap" && !heldOnPad) {
     busy.add(key);
     let result: ConfirmResult = false;
     try {

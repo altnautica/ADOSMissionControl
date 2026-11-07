@@ -16,7 +16,7 @@ import type { FirmwareType } from "@/lib/protocol/types";
 
 export type MissionStateKind = "none" | "loaded" | "active" | "paused" | "complete" | "returning";
 
-/** The C8 `mission` object (camelCase, as every MC parser carries it). */
+/** The `mission` object (camelCase, as every MC parser carries it). */
 export interface MissionStatus {
   state: MissionStateKind;
   seq: number;
@@ -40,6 +40,15 @@ function family(fw: FirmwareType | undefined): Family {
   if (fw === "ardupilot-plane") return "plane";
   if (fw === "px4") return "px4";
   return "other";
+}
+
+/**
+ * The seq of a mission's last item. ArduPilot's MISSION_CURRENT `total`
+ * excludes home at seq 0, so its last item is `total`; PX4 counts from 0, so
+ * its last is `total - 1`.
+ */
+function lastSeq(fw: FirmwareType | undefined, total: number): number {
+  return family(fw) === "px4" || family(fw) === "other" ? total - 1 : total;
 }
 
 /** PX4 main mode in bits 16–23, sub mode in bits 24–31. */
@@ -124,7 +133,7 @@ export const EMPTY_INPUTS: MissionInputs = {
 };
 
 /**
- * The C8 rules, first match wins. Pure: returns the status and the tracker
+ * The mission-state rules, first match wins. Pure: returns the status and the tracker
  * fields the result updates (`latched`, `completeLatched`).
  */
 export function computeMissionState(
@@ -160,7 +169,7 @@ export function computeMissionState(
   if (
     S === MS.complete ||
     completeLatched ||
-    (latched && i.itemReached !== null && i.itemReached === i.total - 1)
+    (latched && i.itemReached !== null && i.itemReached === lastSeq(i.firmware, i.total))
   ) {
     completeLatched = true;
     return out("complete");

@@ -30,7 +30,7 @@ import {
   type SurfacesFrame,
 } from "@/lib/cockpit/layers/cockpit-frames";
 import { clearFrames, putFrame } from "@/lib/cockpit/layers/frame-store";
-import { setViewLeaseSender } from "@/lib/cockpit/layers/view-lease";
+import { setViewLeaseSender, viewDemand } from "@/lib/cockpit/layers/view-lease";
 
 import {
   parseFollowEvent,
@@ -154,6 +154,51 @@ export function ingestNavFrame(droneId: string, frame: NavFrame, at: number = Da
 
 /** Interval of the occupancy poll. */
 export const MAP_LIVE_POLL_MS = 1000;
+/** Interval of the `GET /api/v1/nav/status` fallback poll (2 Hz). */
+export const NAV_STATUS_POLL_MS = 500;
+/** How long the stream may stay down before the status poll takes over. */
+export const NAV_STREAM_FALLBACK_MS = 5000;
+
+/** The `?view=` query for the drone's main view lease
+ * (`<camera_id>:<layer,…>`), or null when nothing is leased. */
+export function navStatusViewQuery(droneId: string): string | null {
+  for (const [cam, layers] of viewDemand(droneId)) {
+    return `${cam}:${layers.join(",")}`;
+  }
+  return null;
+}
+
+/**
+ * One fallback poll of `GET /api/v1/nav/status`: every kind present is
+ * ingested as if it had arrived on the stream, stamped with its age on the
+ * drone (`age_ms`) so a stale value never reads as fresh. The `?view=` query
+ * carries the view lease, so the drone computes the same overlays it would
+ * for a stream client. Resolves false on any failure.
+ */
+export async function pollNavStatus(
+  ctx: RequestContext,
+  droneId: string,
+  signal?: AbortSignal,
+  now: () => number = Date.now,
+): Promise<boolean> {
+  const view = navStatusViewQuery(droneId);
+  const path = view ? `/api/v1/nav/status?view=${encodeURIComponent(view)}` : "/api/v1/nav/status";
+  try {
+    const raw = await gsRequest<unknown>(ctx, path, { signal });
+    if (typeof raw !== "object" || raw === null) return false;
+    for (const [kind, entry] of Object.entries(raw as Record<string, unknown>)) {
+      if (kind === "view_demand" || typeof entry !== "object" || entry === null) continue;
+      const e = entry as { ts_ms?: unknown; age_ms?: unknown; data?: unknown };
+      const frame = parseNavFrame({ kind, ts_ms: e.ts_ms, data: e.data });
+      if (!frame) continue;
+      const age = typeof e.age_ms === "number" && e.age_ms >= 0 ? e.age_ms : 0;
+      ingestNavFrame(droneId, frame, now() - age);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export interface ConnectNavStreamOptions {
   droneId: string;
@@ -195,6 +240,12 @@ export function connectNavStream(opts: ConnectNavStreamOptions): NavStreamConnec
   const { droneId, agentUrl, apiKey, onState } = opts;
   if (!agentUrl) return { close: () => {} };
   const ctx: RequestContext = { baseUrl: agentUrl, apiKey };
+  const store = useNavStreamStore.getState;
+
+  // When the stream was last connected (or the connection started): the
+  // status poll takes over once it has been down NAV_STREAM_FALLBACK_MS.
+  let streamUp = false;
+  let downSince = Date.now();
 
   const unsubscribe = subscribeWebSocket<unknown>({
     ctx,
@@ -208,6 +259,13 @@ export function connectNavStream(opts: ConnectNavStreamOptions): NavStreamConnec
     peerSendsKeepalive: true,
     onState: (state) => {
       if (state !== "connected") setViewLeaseSender(droneId, null);
+      if (state === "connected") {
+        streamUp = true;
+        store().setTransport(droneId, "stream");
+      } else if (streamUp) {
+        streamUp = false;
+        downSince = Date.now();
+      }
       onState?.(state);
     },
     // Every (re)opened socket gets the current view leases at once.
@@ -215,20 +273,39 @@ export function connectNavStream(opts: ConnectNavStreamOptions): NavStreamConnec
   });
 
   let closed = false;
-  let inFlight: AbortController | null = null;
+  let mapInFlight: AbortController | null = null;
+  let navInFlight: AbortController | null = null;
+  let lastMapPoll = 0;
   const timer = setInterval(() => {
-    if (closed || inFlight) return;
-    inFlight = new AbortController();
-    void pollMapLive(ctx, droneId, inFlight.signal).finally(() => {
-      inFlight = null;
-    });
-  }, MAP_LIVE_POLL_MS);
+    if (closed) return;
+    const now = Date.now();
+    if (!mapInFlight && now - lastMapPoll >= MAP_LIVE_POLL_MS) {
+      lastMapPoll = now;
+      mapInFlight = new AbortController();
+      void pollMapLive(ctx, droneId, mapInFlight.signal).finally(() => {
+        mapInFlight = null;
+      });
+    }
+    // Reduced-rate fallback: the stream did not come up (or dropped) but the
+    // HTTP path may still answer, e.g. a ground-station radio relay.
+    if (!streamUp && now - downSince >= NAV_STREAM_FALLBACK_MS && !navInFlight) {
+      navInFlight = new AbortController();
+      void pollNavStatus(ctx, droneId, navInFlight.signal)
+        .then((ok) => {
+          if (!closed && !streamUp) store().setTransport(droneId, ok ? "poll" : null);
+        })
+        .finally(() => {
+          navInFlight = null;
+        });
+    }
+  }, NAV_STATUS_POLL_MS);
 
   return {
     close: () => {
       closed = true;
       clearInterval(timer);
-      inFlight?.abort();
+      mapInFlight?.abort();
+      navInFlight?.abort();
       unsubscribe();
       useNavStreamStore.getState().clear(droneId);
       setViewLeaseSender(droneId, null);

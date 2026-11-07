@@ -73,11 +73,11 @@ export interface LocalAgentSkillRow {
   configKey?: string;
   stateTopic?: string;
   defaultBinding?: { key?: string | null; gamepadButton?: number | null };
-  /** C5: commands the vehicle (needs the pilot motion lease). */
+  /** commands the vehicle (needs the pilot motion lease). */
   motion?: boolean;
   nudge?: boolean;
   oneShot?: boolean;
-  /** C5: parameter keys shown in the skill's Tweak panel. */
+  /** parameter keys shown in the skill's Tweak panel. */
   params?: string[];
   vehicleClasses?: ("multirotor" | "fixedwing" | "vtol")[];
 }

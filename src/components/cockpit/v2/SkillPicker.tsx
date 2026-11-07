@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The skill picker (bottom-right, C5): a chip showing the active skill, which
+ * The skill picker (bottom-right): a chip showing the active skill, which
  * opens a sheet with tabs Behaviors / Camera / Navigation / Utility. Each
  * plugin's skills are grouped under its name. Selecting a skill opens its
  * Tweak panel (the manifest `params`), then GO; Stop hands back to the pilot
@@ -13,7 +13,7 @@
  * @license GPL-3.0-only
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
@@ -24,6 +24,7 @@ import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { onPickerCommand, usePickerStore } from "@/lib/cockpit/picker-commands";
 
 export const PICKER_TABS = ["behavior", "camera", "navigation", "utility"] as const;
 export type PickerTab = (typeof PICKER_TABS)[number];
@@ -34,12 +35,12 @@ const TAB_LABEL: Record<PickerTab, string> = {
   utility: "Utility",
 };
 
-/** A write is pending until the state echo; after this it reverts (C5). */
+/** A write is pending until the state echo; after this it reverts. */
 export const ECHO_TIMEOUT_MS = 3000;
-/** Preemption waits this long for the active skill's echo before GO (C5). */
+/** Preemption waits this long for the active skill's echo before GO. */
 export const PREEMPT_WAIT_MS = 1000;
 
-/** Skills the picker offers for a vehicle class (C5 `vehicle_classes`). */
+/** Skills the picker offers for a vehicle class (manifest `vehicle_classes`). */
 export function pickerSkills(skills: Skill[], vehicleClass: PilotState["vehicleClass"]): Skill[] {
   return skills.filter(
     (s) =>
@@ -126,6 +127,49 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
   );
 
   const sel = selected ? skills.find((s) => s.id === selected) ?? null : null;
+
+  // Controller commands (D-pad focus, Cross GO, Circle Stop, D-pad ↑/↓ on
+  // the focused skill's first numeric parameter). Read through a ref so the
+  // subscription is made once.
+  const latest = useRef({ open, tab, skills, sel, active, activeMotion, go, stop, droneId });
+  useEffect(() => {
+    latest.current = { open, tab, skills, sel, active, activeMotion, go, stop, droneId };
+  });
+  useEffect(
+    () =>
+      onPickerCommand((cmd) => {
+        const L = latest.current;
+        const list = groupByPlugin(L.skills, L.tab).flatMap(([, g]) => g);
+        if (cmd === "focus_next" || cmd === "focus_prev") {
+          if (!L.open) setOpen(true);
+          if (list.length === 0) return;
+          const at = L.sel ? list.findIndex((s) => s.id === L.sel?.id) : -1;
+          const step = cmd === "focus_next" ? 1 : -1;
+          const next = at < 0 ? (step > 0 ? 0 : list.length - 1) : (at + step + list.length) % list.length;
+          setSelected(list[next].id);
+        } else if (cmd === "select") {
+          if (!L.open) setOpen(true);
+          else if (L.sel) void L.go(L.sel);
+        } else if (cmd === "stop") {
+          const target = L.activeMotion ?? L.active;
+          if (target) void L.stop(target);
+          else if (L.open) setOpen(false);
+        } else if (L.sel) {
+          const deviceId = deviceIdFromNodeId(L.droneId) ?? L.droneId;
+          const pluginId = L.sel.pluginId ?? "";
+          const values = usePluginConfigCache.getState().values[pluginConfigKey(deviceId, pluginId)];
+          const key = (L.sel.params ?? []).find((k) => typeof values?.[k] === "number");
+          if (!key) return;
+          const value = (values?.[key] as number) + (cmd === "param_up" ? 1 : -1);
+          usePluginConfigCache.getState().record(deviceId, pluginId, key, value);
+          void writePluginConfigValue({ droneId: deviceId, pluginId, key, value });
+        }
+      }),
+    [],
+  );
+  useEffect(() => {
+    usePickerStore.getState().setOpen(open);
+  }, [open]);
 
   return (
     <div className="relative flex flex-col items-end gap-2" data-testid="skill-picker">

@@ -20,7 +20,7 @@ import { Navigation, Crosshair } from "lucide-react";
 
 export function MissionExecutionOverlay() {
   const selectedId = useDroneManager((s) => s.selectedDroneId);
-  // C8 mission state: shown while the mission flies or is paused, never
+  // mission state: shown while the mission flies or is paused, never
   // inferred from flight-mode names.
   const mission = useMissionStatus(selectedId);
   const currentWaypoint = useMissionStore((s) => s.currentWaypoint);

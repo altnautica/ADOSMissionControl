@@ -25,7 +25,8 @@ vi.mock("@/components/flight/VideoCanvas", () => ({
 
 // The gamepad poller touches navigator.getGamepads + rAF; the cockpit only needs
 // to hold and release it.
-vi.mock("@/lib/input/gamepad-poller", () => ({
+vi.mock("@/lib/input/gamepad-poller", async (orig) => ({
+  ...(await orig<typeof import("@/lib/input/gamepad-poller")>()),
   acquireGamepadPolling: () => () => {},
   startManualControlStream: vi.fn(),
   stopManualControlStream: vi.fn(),
@@ -145,7 +146,7 @@ describe("CockpitView", () => {
     expect(container.querySelector(".mmap")).not.toBeNull();
   });
 
-  it("renders the DJI grid: flight-state chip, left column and skill picker, no visible skill bar", () => {
+  it("renders the cockpit grid: flight-state chip, left column and skill picker, no visible skill bar", () => {
     const { getByTestId, queryByRole } = renderCockpit();
     expect(getByTestId("flight-state-chip")).toBeInTheDocument();
     expect(getByTestId("left-column")).toBeInTheDocument();

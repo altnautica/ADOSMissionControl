@@ -1,7 +1,7 @@
 /**
  * Tooltip chords come from the active loadout: a rebind moves the chord, the
  * arm slot's chord fires disarm, and the pause slot fires resume only while
- * the C8 mission state is paused.
+ * the mission state is paused.
  *
  * @license GPL-3.0-only
  */
@@ -56,7 +56,7 @@ describe("useSkillChord", () => {
     selectMissionDrone();
     useDroneStore.setState({ armState: "armed" });
     // Resume has its own slot in the spec loadout (shift+p); the pause slot
-    // (space) names resume only while the C8 mission state is paused.
+    // (space) names resume only while the mission state is paused.
     const notPaused = renderHook(() => useSkillChord("resume"));
     expect(notPaused.result.current).toBe(formatChord("shift+p"));
 

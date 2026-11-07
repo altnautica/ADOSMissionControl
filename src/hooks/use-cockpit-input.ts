@@ -3,7 +3,8 @@
  * @description The cockpit's own keyboard and gamepad controls: the command
  * palette chord, Escape for the palette and the binding editor, the
  * quick-settings chord, the video-stream hotkeys, the picture-in-picture
- * toggle, D-pad stream cycling and the Start exit.
+ * toggle, and the data-layer and view keys. Controller buttons are bound by
+ * the controller binding table (`use-ds4-dispatcher`).
  *
  * Every handler asks one question before acting: does something else own
  * input right now? A pending skill confirm, the binding editor, the command
@@ -18,15 +19,14 @@
  */
 
 import { useEffect } from "react";
-import { useInputStore } from "@/stores/input-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
-import { useUiStore } from "@/stores/ui-store";
-import { COCKPIT_GAMEPAD_BUTTON } from "@/lib/skills/chord";
 import { isTextTarget } from "@/hooks/use-skill-input";
 import { isDemoMode } from "@/lib/utils";
+import { useCockpitLayersStore } from "@/stores/cockpit-layers-store";
+import { useCockpitViewStore } from "@/lib/cockpit/views";
 
 interface CockpitInputOptions {
   /** The drone whose cockpit this is. */
@@ -49,17 +49,6 @@ function inputOwnedElsewhere(): boolean {
     input.radialOpen ||
     useFlyQuickSettingsStore.getState().isOpen
   );
-}
-
-/** Edge-detect one gamepad button (or all of a chord) going down. */
-function onGamepadPress(buttons: readonly number[], fire: () => void): () => void {
-  const down = (state: boolean[]) => buttons.every((b) => state[b] ?? false);
-  let prev = down(useInputStore.getState().buttons);
-  return useInputStore.subscribe((state) => {
-    const now = down(state.buttons);
-    if (now && !prev) fire();
-    prev = now;
-  });
 }
 
 export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions): void {
@@ -122,20 +111,6 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
     return () => window.removeEventListener("keydown", handler);
   }, [cockpitEnabled]);
 
-  // L1 + R1 together toggles quick settings.
-  useEffect(() => {
-    if (!cockpitEnabled) return;
-    return onGamepadPress(
-      [COCKPIT_GAMEPAD_BUTTON.quickSettingsLeft, COCKPIT_GAMEPAD_BUTTON.quickSettingsRight],
-      () => {
-        const input = useSkillInputStore.getState();
-        if (useSkillConfirmStore.getState().pending !== null) return;
-        if (input.editorOpen || input.paletteOpen || input.radialOpen) return;
-        useFlyQuickSettingsStore.getState().toggle();
-      },
-    );
-  }, [cockpitEnabled]);
-
   // Bare digits 1..N select the Nth video stream and backtick cycles, on a
   // multi-stream node only (otherwise the key passes through). The store
   // refuses a known-dead leg.
@@ -193,33 +168,20 @@ export function useCockpitInput({ droneId, cockpitEnabled }: CockpitInputOptions
     return () => window.removeEventListener("keydown", handler);
   }, [droneId]);
 
-  // D-pad left/right cycles the video stream, except while the radial (which
-  // the D-pad aims) or any other input owner is open.
+  // O cycles the data-layer level (Full → Route → Off) and V cycles the
+  // cockpit view (pilot → map → split → vision), per the cockpit spec. Both
+  // chords are reserved, so no skill is bound to them.
   useEffect(() => {
     if (!droneId) return;
-    const cycle = (dir: 1 | -1) => () => {
-      const vs = useVideoStreamsStore.getState();
-      if ((vs.streamsByDrone[droneId] ?? []).length <= 1) return;
-      if (vs.switchingByDrone[droneId] || inputOwnedElsewhere()) return;
-      vs.cycleStream(droneId, dir);
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+      if (e.code !== "KeyO" && e.code !== "KeyV") return;
+      if (isTextTarget(e.target) || inputOwnedElsewhere()) return;
+      e.preventDefault();
+      if (e.code === "KeyO") useCockpitLayersStore.getState().cycleLevel(droneId);
+      else useCockpitViewStore.getState().cycleView(droneId);
     };
-    const offRight = onGamepadPress([COCKPIT_GAMEPAD_BUTTON.dpadRight], cycle(1));
-    const offLeft = onGamepadPress([COCKPIT_GAMEPAD_BUTTON.dpadLeft], cycle(-1));
-    return () => {
-      offRight();
-      offLeft();
-    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [droneId]);
-
-  // Start leaves immersive mode, so a stick-only operator always has a way
-  // back to the embedded tab.
-  useEffect(
-    () =>
-      onGamepadPress([COCKPIT_GAMEPAD_BUTTON.exit], () => {
-        if (useSkillConfirmStore.getState().pending === null) {
-          useUiStore.getState().exitImmersiveMode();
-        }
-      }),
-    [],
-  );
 }

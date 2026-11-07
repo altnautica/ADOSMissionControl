@@ -12,6 +12,8 @@ export interface MissionAckMsg {
   targetComponent: number;
   type: number;
   missionType: number;
+  /** v2 extension: the plan identity the vehicle assigned (0 = not set). */
+  opaqueId: number;
 }
 
 /**
@@ -23,6 +25,7 @@ export interface MissionAckMsg {
  * | 1      | uint8 | targetComponent |
  * | 2      | uint8 | type            |
  * | 3      | uint8 | missionType     | (v2 extension, optional)
+ * | 4      | uint32| opaqueId        | (v2 extension, optional)
  */
 export function decodeMissionAck(dv: DataView): MissionAckMsg {
   return {
@@ -30,6 +33,7 @@ export function decodeMissionAck(dv: DataView): MissionAckMsg {
     targetComponent: dv.getUint8(1),
     type: dv.getUint8(2),
     missionType: dv.byteLength > 3 ? dv.getUint8(3) : 0,
+    opaqueId: dv.byteLength >= 8 ? dv.getUint32(4, true) : 0,
   };
 }
 

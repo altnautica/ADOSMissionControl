@@ -15,10 +15,10 @@ import { WS_TICKET_PROTOCOL, mintWsTicket } from "@/lib/api/ground-station/ws-ti
 import type { RequestContext } from "@/lib/api/ground-station/request";
 import { openReconnectingSocket } from "@/lib/net/reconnecting-socket";
 
-/** Stick frame rate on the pilot stream (C4). */
+/** Stick frame rate on the pilot stream. */
 export const PILOT_INPUT_HZ = 50;
 export const PILOT_INPUT_PERIOD_MS = 1000 / PILOT_INPUT_HZ;
-/** A pad whose own timestamp has not advanced for this long stops streaming (C4). */
+/** A pad whose own timestamp has not advanced for this long stops streaming. */
 export const PAD_STALE_MS = 150;
 /** The `src` this surface names itself with. */
 export const PILOT_SRC = "mc";
@@ -93,6 +93,9 @@ interface PilotLinkState {
   lastAction: PilotActionResult | null;
   /** The drone's `control.mode` as the pilot last reported it. */
   controlMode: PilotControlMode | null;
+  /** The drone this surface reaches through its agent (the bridge holds a
+   * pilot stream for it, open or reconnecting), or null for a direct link. */
+  agentFor: string | null;
   /** Raw pilot state the stream pushed, handed to `onPilotState` subscribers. */
   set: (patch: Partial<Omit<PilotLinkState, "set">>) => void;
 }
@@ -104,6 +107,7 @@ export const usePilotLinkStore = create<PilotLinkState>((set) => ({
   framesSent: 0,
   lastAction: null,
   controlMode: null,
+  agentFor: null,
   set: (patch) => set(patch),
 }));
 
@@ -148,6 +152,19 @@ function send(frame: PilotOutboundFrame): boolean {
     s.set({ framesSent: s.framesSent + 1 });
   }
   return ok;
+}
+
+/**
+ * Whether the sticks may go to the flight controller as MANUAL_CONTROL for
+ * `droneId`: on a direct link always; on an agent-connected drone only while
+ * its pilot reports `control_mode == fc_manual` (in `ados` they go to the
+ * pilot, in `elrs` the ground station's radio flies, and while the stream is
+ * down nothing is known, so nothing is sent).
+ */
+export function sticksRouteToFc(droneId: string | null | undefined): boolean {
+  const s = usePilotLinkStore.getState();
+  if (!droneId || s.agentFor !== droneId) return true;
+  return pilotStreamOpen(droneId) && s.controlMode === "fc_manual";
 }
 
 /** Send one stick frame. `axes` already carry deadzone and mode mapping. */
@@ -230,6 +247,7 @@ export function connectPilotStream(opts: {
     if (!usePilotLinkStore.getState().streaming) send({ op: "hb", src: PILOT_SRC });
   }, 1000);
 
+  usePilotLinkStore.getState().set({ agentFor: droneId, controlMode: null });
   const teardown = openReconnectingSocket<WebSocket>({
     open: async (signal) => {
       const ticket = await mintWsTicket(ctx, "pilot.control", signal);
@@ -255,10 +273,12 @@ export function connectPilotStream(opts: {
             return true;
           }
         : null;
+      // A dropped stream forgets the control mode: until the pilot reports
+      // it again, neither the pilot nor the FC route is taken.
       usePilotLinkStore.getState().set({
         droneId: live ? droneId : null,
         connected: live,
-        ...(live ? {} : { streaming: false }),
+        ...(live ? {} : { streaming: false, controlMode: null }),
       });
     },
   });
@@ -267,7 +287,13 @@ export function connectPilotStream(opts: {
     close: () => {
       sendPilotRelease();
       sender = null;
-      usePilotLinkStore.getState().set({ droneId: null, connected: false, streaming: false });
+      usePilotLinkStore.getState().set({
+        droneId: null,
+        connected: false,
+        streaming: false,
+        controlMode: null,
+        agentFor: null,
+      });
       clearInterval(hb);
       teardown();
       socket = null;
