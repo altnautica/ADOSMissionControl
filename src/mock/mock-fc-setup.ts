@@ -195,6 +195,9 @@ function finish(e: DemoState, wizard: "ground" | "air", step: string, result: Js
   } else {
     e.wizards[wizard] = { state: "done", completed_at: new Date().toISOString() };
     emitWizard(e, wizard);
+    // Completing the ground wizard unlocks the air wizard: push its new
+    // availability too, as the agent's fresh view does.
+    if (wizard === "ground") emitWizard(e, "air");
   }
 }
 

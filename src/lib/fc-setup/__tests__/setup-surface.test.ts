@@ -6,6 +6,7 @@ import { fetchSetupStatus, rerunStep, runStepAction, setupErrorKey, startWizard 
 import { currentStep } from "../parse";
 import { SETUP_IMAGES, optionText, setupImageUrl, setupText } from "../strings";
 import { demoSetupTransport, resetDemoSetup } from "@/mock/mock-fc-setup";
+import type { SetupFrame } from "../types";
 
 describe("setup strings and pictures", () => {
   it("bundles every picture the cockpit spec ships", () => {
@@ -78,5 +79,23 @@ describe("demo setup engine", () => {
     const step = await runStepAction(t, "ground", "outputs", "test");
     expect(step.live.question_key).toBe("setup.question.motor_position");
     expect(step.actions.map((a) => a.id)).toEqual(["answer_yes", "answer_no"]);
+  });
+
+  it("streams the air wizard as available once the ground wizard completes", async () => {
+    const t = demoSetupTransport("demo-test");
+    const frames: SetupFrame[] = [];
+    const stop = t.openStream((f) => frames.push(f));
+    let wizard = await startWizard(t, "ground");
+    for (let guard = 0; guard < 20; guard++) {
+      const step = currentStep(wizard);
+      if (!step) break;
+      await runStepAction(t, "ground", step.step, "done");
+      wizard = (await fetchSetupStatus(t)).wizards.find((w) => w.id === "ground")!;
+    }
+    stop();
+    expect(wizard.state).toBe("done");
+    const air = frames.flatMap((f) => (f.kind === "wizard" && f.data.id === "air" ? [f.data] : []));
+    expect(air.at(-1)?.available).toBe(true);
+    expect(air.at(-1)?.blockers).toEqual([]);
   });
 });
