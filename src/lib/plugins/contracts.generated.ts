@@ -8,7 +8,7 @@ export const CONTRACT_VERSIONS = {
   "framebus.descriptor": 2,
   "tap.frame": 2,
   "vision.detection": 3,
-  "state.v2": 4,
+  "state.v2": 5,
   "frame": 0,
   "mavlink.socket": 2,
   "mavlink.ingest": 0,
@@ -137,11 +137,11 @@ export const CONTRACT_CATALOG: Record<string, ContractMeta> = {
     description: "Self-describing detection/percept batches published on the vision.detection topic (v2 adds optional mask, keypoints, depth, world position, and an optional 2D box; v3 stamps ts_ms from the frame's host monotonic clock, not wall-clock).",
   },
   "state.v2": {
-    version: 4,
+    version: 5,
     wire: "msgpack",
     transport: "unix-stream",
     status: "active",
-    description: "Length-prefixed msgpack vehicle-state frame (the current state-socket format). v3 added position_age_ms (how long since the flight controller's last decoded POSITION, read by the swarm beacon's suppression gate). v4 publishes a not-reported reading (battery voltage/current/remaining/temperature, GPS eph/epv, RC rssi) as null instead of the MAVLink sentinel. The runtime extras carry `fc_system_id`/`fc_component_id` once the FC heartbeat is latched.",
+    description: "Length-prefixed msgpack vehicle-state frame (the current state-socket format). v3 added position_age_ms (how long since the flight controller's last decoded POSITION, read by the swarm beacon's suppression gate). v4 publishes a not-reported reading (battery voltage/current/remaining/temperature, GPS eph/epv, RC rssi) as null instead of the MAVLink sentinel. v5 adds `home` (HOME_POSITION in both frames), `gimbal` (camera gimbal pitch/yaw, earth-frame flag, age), `mission` (the mission state computed on the agent: state none|loaded|active|paused|complete|returning, seq, total, item_reached, id, source, age_ms, landing_seq, plus the mirror rev, its navigation items and uploads_seen), `prearm` (PreArm/Arm STATUSTEXT of the last 10 s) and `attitude.time_boot_ms`. The runtime extras carry `fc_system_id`/`fc_component_id` once the FC heartbeat is latched.",
   },
   "frame": {
     version: 0,
