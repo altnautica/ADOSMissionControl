@@ -56,21 +56,28 @@ export type PilotOutboundFrame =
   | {
       op: "input";
       src: string;
-      session: string;
+      session: number;
       seq: number;
       t_ms: number;
       axes: [number, number, number, number];
       buttons: number;
     }
-  | { op: "release"; src: string; session: string }
+  | { op: "release"; src: string; session: number }
   | { op: "action"; name: PilotActionName; src: string; args?: Record<string, unknown> }
-  | { op: "session.take"; src: string; session: string }
+  | { op: "session.take"; src: string; session: number }
   | { op: "hb"; src: string };
 
-/** One page load is one stick session. */
-function newSessionId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `mc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+/**
+ * One page load is one stick session. `pilot.v1` carries the session as a
+ * non-zero u32, so it is a random integer in 1..2^32-1.
+ */
+export function newSessionId(): number {
+  const word = new Uint32Array(1);
+  do {
+    if (typeof crypto !== "undefined" && "getRandomValues" in crypto) crypto.getRandomValues(word);
+    else word[0] = Math.floor(Math.random() * 0x1_0000_0000);
+  } while (word[0] === 0);
+  return word[0];
 }
 
 export const PILOT_SESSION_ID = newSessionId();

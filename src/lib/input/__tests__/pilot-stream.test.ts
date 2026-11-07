@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   PILOT_SESSION_ID,
   handlePilotServerFrame,
+  newSessionId,
   pilotStreamOpen,
   sendPilotAction,
   sendPilotInput,
@@ -37,6 +38,16 @@ describe("pilot stream frames (pilot.v1)", () => {
     expect(a).toMatchObject({ op: "input", src: "mc", session: PILOT_SESSION_ID, axes: [0.1, 0.2, 0.3, -0.4], buttons: 5 });
     expect(b.seq).toBe(a.seq + 1);
     expect(usePilotLinkStore.getState().streaming).toBe(true);
+  });
+
+  it("names the session with a non-zero u32, as pilot.v1 decodes it", () => {
+    expect(Number.isInteger(PILOT_SESSION_ID)).toBe(true);
+    expect(PILOT_SESSION_ID).toBeGreaterThan(0);
+    expect(PILOT_SESSION_ID).toBeLessThanOrEqual(0xffffffff);
+    for (let i = 0; i < 100; i++) {
+      const id = newSessionId();
+      expect(Number.isInteger(id) && id > 0 && id <= 0xffffffff).toBe(true);
+    }
   });
 
   it("release is sent once per stop", () => {
