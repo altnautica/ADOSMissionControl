@@ -53,6 +53,19 @@ describe("demo setup engine", () => {
     expect(after.running).toEqual({ wizard: "ground", step: "level" });
   });
 
+  it("streams parsed frames: the finished step, then the next unfinished one", async () => {
+    const t = demoSetupTransport("demo-test");
+    const frames: unknown[] = [];
+    const stop = t.openStream((f) => frames.push(f));
+    await startWizard(t, "ground");
+    await runStepAction(t, "ground", "level", "start");
+    stop();
+    const steps = frames.filter((f): f is { kind: "step"; data: { step: string; inputs: unknown[] } } => (f as { kind: string }).kind === "step");
+    // Level finishes out of order; the engine returns to the unfinished accel step.
+    expect(steps.map((f) => f.data.step)).toEqual(["level", "accel"]);
+    for (const f of steps) expect(Array.isArray(f.data.inputs)).toBe(true);
+  });
+
   it("refuses an air step before the ground wizard with the engine's key", async () => {
     const t = demoSetupTransport("demo-test");
     const err = await rerunStep(t, "air", "autotune").catch((e: unknown) => e);

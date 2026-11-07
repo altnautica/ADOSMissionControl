@@ -12,6 +12,7 @@
  */
 
 import { fcSetupUrls, SetupRequestError, type SetupTransport } from "@/lib/fc-setup/client";
+import { parseFrame } from "@/lib/fc-setup/parse";
 import type { SetupFrame, StepState, Wizard } from "@/lib/fc-setup/types";
 
 type Json = Record<string, unknown>;
@@ -24,7 +25,8 @@ interface DemoState {
   steps: Record<string, Json>;
   order: Record<"ground" | "air", string[]>;
   snapshots: { file: string; ts: string }[];
-  listeners: Set<(f: SetupFrame) => void>;
+  /** Stream subscribers; frames are wire-shaped, as the agent sends them. */
+  listeners: Set<(frame: Json) => void>;
   timer: ReturnType<typeof setInterval> | null;
 }
 
@@ -115,13 +117,11 @@ function statusOf(e: DemoState): Json {
 }
 
 function emit(e: DemoState, step: Json): void {
-  const frame = { kind: "step", ts_ms: Date.now(), data: step } as unknown as SetupFrame;
-  for (const fn of e.listeners) fn(frame);
+  for (const fn of e.listeners) fn({ kind: "step", ts_ms: Date.now(), data: step });
 }
 
 function emitWizard(e: DemoState, id: "ground" | "air"): void {
-  const frame = { kind: "wizard", ts_ms: Date.now(), data: wizardOf(e, id) } as unknown as SetupFrame;
-  for (const fn of e.listeners) fn(frame);
+  for (const fn of e.listeners) fn({ kind: "wizard", ts_ms: Date.now(), data: wizardOf(e, id) });
 }
 
 /** Put a step into its operator-facing state when it becomes current. */
@@ -351,11 +351,16 @@ export function demoSetupTransport(deviceId: string): SetupTransport {
       throw new SetupRequestError(422, "setup.err.not_found", "unknown route");
     },
     openStream: (onFrame, onOpen) => {
-      e.listeners.add(onFrame);
+      // The same parser the agent stream goes through.
+      const listener = (raw: Json) => {
+        const frame: SetupFrame | null = parseFrame(raw);
+        if (frame) onFrame(frame);
+      };
+      e.listeners.add(listener);
       if (!e.timer) e.timer = setInterval(() => tick(e), 500);
       queueMicrotask(() => onOpen?.());
       return () => {
-        e.listeners.delete(onFrame);
+        e.listeners.delete(listener);
         if (e.listeners.size === 0 && e.timer) {
           clearInterval(e.timer);
           e.timer = null;
