@@ -8,11 +8,17 @@
  *   the input store. It transmits nothing. Any surface that needs to see a
  *   button press — binding capture, a calibration wizard — wants this one.
  *   It is reference counted: the loop runs while any surface holds it.
- * - `startManualControlStream` transmits those sticks to the aircraft as an RC
- *   override, at the rate the connected link declares, and only while every
- *   condition in {@link manualControlAllowed} holds. Only a flying surface
- *   starts this.
+ * - `startManualControlStream` transmits those sticks to the aircraft, at the
+ *   rate the route declares. With an agent-connected drone in `ados` control
+ *   mode the sticks go to the drone's pilot (`pilot.v1` input frames at
+ *   50 Hz, radial deadzone only: the pilot applies the expo). Otherwise, for
+ *   `fc_manual` or a direct-serial flight controller, they go out as an RC
+ *   override, only while every condition in {@link manualControlAllowed}
+ *   holds. Only a flying surface starts this.
  *
+ * A pad must report the standard layout. A pad that does not is used only
+ * through a calibration made in the calibration wizard; until then it is
+ * read but never streamed, and {@link usePadStatusStore} says why.
  * They were one function, which meant opening a keybinding panel opened an RC
  * override on the connected aircraft.
  */
@@ -24,6 +30,67 @@ import { selectedDroneMqttAuthority } from "@/hooks/use-mqtt-control-authority";
 import { canPublishFcFrames } from "@/lib/nodes/mqtt-control-authority";
 import { manualControlAllowed } from "./manual-control-gate";
 import { isReservedGamepadButton } from "@/lib/skills/chord";
+import { create } from "zustand";
+import {
+  PAD_STALE_MS,
+  PILOT_INPUT_PERIOD_MS,
+  sendPilotInput,
+  sendPilotRelease,
+  sticksRouteToPilot,
+} from "./pilot-stream";
+
+/** Radial stick deadzone every surface applies before the pilot stream (C4). */
+export const PILOT_RADIAL_DEADZONE = 0.08;
+
+/** What the cockpit shows about the pad itself. */
+export interface PadStatus {
+  /** A pad is connected (from `gamepadconnected`/`gamepaddisconnected` or a read). */
+  connected: boolean;
+  /** The pad has reported at least once: browsers expose a pad only after its first input. */
+  seen: boolean;
+  name: string | null;
+  /** `mapping === "standard"`, or a calibration wizard axis map exists for this pad. */
+  usable: boolean;
+  /** True when the pad layout is not standard and has no calibration. */
+  needsCalibration: boolean;
+}
+
+export const usePadStatusStore = create<PadStatus & { set: (p: Partial<PadStatus>) => void }>(
+  (set) => ({
+    connected: false,
+    seen: false,
+    name: null,
+    usable: false,
+    needsCalibration: false,
+    set: (p) => set(p),
+  }),
+);
+
+function patchPadStatus(p: Partial<PadStatus>): void {
+  const s = usePadStatusStore.getState();
+  for (const k of Object.keys(p) as (keyof PadStatus)[]) {
+    if (s[k] !== p[k]) {
+      s.set(p);
+      return;
+    }
+  }
+}
+
+/**
+ * Radial deadzone: the stick vector inside `dz` reads zero, outside it is
+ * rescaled so the edge of the deadzone is 0 and full deflection stays 1.
+ */
+export function radialDeadzone(x: number, y: number, dz: number): [number, number] {
+  const mag = Math.hypot(x, y);
+  if (mag <= dz) return [0, 0];
+  const scaled = Math.min(1, (mag - dz) / (1 - dz)) / mag;
+  return [x * scaled, y * scaled];
+}
+
+/** The last pilot-route axes [roll, pitch, thr, yaw], radial deadzone applied. */
+let lastPilotAxes: [number, number, number, number] = [0, 0, 0, 0];
+/** Whether the last read came from a usable pad. */
+let lastPadUsable = false;
 
 export interface GamepadMapping {
   rollAxis: number;
@@ -163,6 +230,7 @@ let pollHolders = 0;
  */
 export function acquireGamepadPolling(): () => void {
   pollHolders += 1;
+  installPadListeners();
   startPolling();
   let released = false;
   return () => {
@@ -213,6 +281,9 @@ function startPolling(): void {
       if (inputStore.activeController === "gamepad") inputStore.resetInput();
       activeGamepadIndex = null;
       lastPadTimestamp = null;
+      lastPadUsable = false;
+      lastPilotAxes = [0, 0, 0, 0];
+      patchPadStatus({ connected: false, usable: false, needsCalibration: false, name: null });
       return;
     }
 
@@ -228,6 +299,17 @@ function startPolling(): void {
     // the TX-mode mapping picks which axis is which stick function.
     const padAxes = Array.from(gp.axes);
     const cal = calibrations[gp.id];
+    // A non-standard layout's axis order is unknown until the calibration
+    // wizard has mapped it; such a pad is shown but never streamed.
+    const standard = gp.mapping === "standard";
+    lastPadUsable = standard || cal !== undefined;
+    patchPadStatus({
+      connected: true,
+      seen: true,
+      name: gp.id,
+      usable: lastPadUsable,
+      needsCalibration: !lastPadUsable,
+    });
     const physical = (i: number): number => {
       const v = padAxes[i] ?? 0;
       return cal && i < cal.center.length
@@ -246,6 +328,19 @@ function startPolling(): void {
     const rawPitch = -physical(mapping.pitchAxis);
     const rawThrottle = -physical(mapping.throttleAxis);
     const rawYaw = physical(mapping.yawAxis);
+
+    // Pilot route: radial deadzone per physical stick, no expo (the pilot
+    // shapes). Mode 2: left = throttle + yaw, right = pitch + roll. Mode 1
+    // swaps the Y axes: left = pitch + yaw, right = throttle + roll.
+    if (txMode === 1) {
+      const [pYaw, pPitch] = radialDeadzone(rawYaw, rawPitch, deadzone);
+      const [pRoll, pThr] = radialDeadzone(rawRoll, rawThrottle, deadzone);
+      lastPilotAxes = [pRoll, pPitch, pThr, pYaw];
+    } else {
+      const [pYaw, pThr] = radialDeadzone(rawYaw, rawThrottle, deadzone);
+      const [pRoll, pPitch] = radialDeadzone(rawRoll, rawPitch, deadzone);
+      lastPilotAxes = [pRoll, pPitch, pThr, pYaw];
+    }
 
     // Apply deadzone + expo
     const axes: [number, number, number, number] = [
@@ -296,6 +391,8 @@ function onVisibilityChange(): void {
   if (typeof document === "undefined") return;
   if (document.hidden) {
     // Pause only the timer: the operator's request to stream still stands.
+    // The pilot route says so: a hidden tab releases the sticks (C4).
+    sendPilotRelease();
     if (manualControlTimer !== null) {
       clearTimeout(manualControlTimer);
       manualControlTimer = null;
@@ -333,10 +430,38 @@ export function manualControlPeriodMs(hz: number): number | null {
 }
 
 /**
+ * The pilot-route pass: stream the sticks to the drone's pilot at 50 Hz, or
+ * release them when the pad is gone, unusable or stale (C4 stop rules).
+ * Returns the wait before the next pass.
+ */
+function pilotTick(now: number): number {
+  const input = useInputStore.getState();
+  const padStale =
+    lastPadTimestamp !== null && lastPadTimestamp > 0 && now - lastPadReportAt > PAD_STALE_MS;
+  const sampleStale = input.axesAt === null || now - input.axesAt > PAD_STALE_MS;
+  if (input.activeController !== "gamepad" || !lastPadUsable || padStale || sampleStale) {
+    sendPilotRelease();
+    return GATE_RECHECK_MS;
+  }
+  // While an on-screen control has the sticks the deflection is aiming:
+  // roll, pitch and throttle go out centred, which the pilot holds.
+  const [roll, pitch, thr, yaw] = lastPilotAxes;
+  const axes: [number, number, number, number] = input.sticksCaptured
+    ? [0, 0, 0, yaw]
+    : [roll, pitch, thr, yaw];
+  sendPilotInput(axes, manualControlButtonMask(input.buttons));
+  return PILOT_INPUT_PERIOD_MS;
+}
+
+/**
  * One pass of the manual-control stream. Returns how long to wait before the
  * next pass. Exported for tests; the stream schedules it.
  */
 export function manualControlTick(): number {
+  const selectedId = useDroneManager.getState().selectedDroneId;
+  if (sticksRouteToPilot(selectedId)) return pilotTick(Date.now());
+  // Leaving the pilot route (mode change, stream closed) ends its session.
+  sendPilotRelease();
   const protocol = useDroneManager.getState().getSelectedProtocol();
   const input = useInputStore.getState();
   const { axes, axesAt, buttons, activeController, manualControlEnabled } = input;
@@ -436,6 +561,7 @@ export function startManualControlStream(): void {
 /** Stop transmitting sticks. Leaves gamepad reading running. */
 export function stopManualControlStream(): void {
   manualControlRequested = false;
+  sendPilotRelease();
   if (typeof document !== "undefined") {
     document.removeEventListener("visibilitychange", onVisibilityChange);
   }
@@ -454,6 +580,26 @@ export function manualControlButtonMask(buttons: readonly boolean[]): number {
     if (buttons[i] && !isReservedGamepadButton(i)) bitmask |= 1 << i;
   }
   return bitmask;
+}
+
+let padListenersInstalled = false;
+
+/** `gamepadconnected` / `gamepaddisconnected` drive the pad status. A pad
+ * that disconnects releases the pilot sticks at once, without waiting for
+ * the next read. */
+function installPadListeners(): void {
+  if (padListenersInstalled || typeof window === "undefined") return;
+  padListenersInstalled = true;
+  window.addEventListener("gamepadconnected", (e) => {
+    const gp = (e as GamepadEvent).gamepad;
+    patchPadStatus({ connected: true, seen: true, name: gp.id });
+  });
+  window.addEventListener("gamepaddisconnected", () => {
+    lastPadUsable = false;
+    lastPilotAxes = [0, 0, 0, 0];
+    sendPilotRelease();
+    patchPadStatus({ connected: false, usable: false, needsCalibration: false, name: null });
+  });
 }
 
 /**

@@ -66,6 +66,12 @@ export interface DroneSkillContribution {
   stateTopic: string;
   /** Suggested default binding from the manifest. */
   defaultBinding?: { key?: string | null; gamepadButton?: number | null };
+  /** C5 fields; absent on an older manifest. */
+  motion?: boolean;
+  nudge?: boolean;
+  oneShot?: boolean;
+  params?: string[];
+  vehicleClasses?: ("multirotor" | "fixedwing" | "vtol")[];
 }
 
 /**
@@ -149,6 +155,10 @@ export function buildPluginSkill(c: DroneSkillContribution): Skill {
     category: mapSkillCategory(c.category),
     source: "plugin",
     pluginId: c.pluginId,
+    pickerCategory: c.category,
+    motion: c.motion === true,
+    params: c.params ?? [],
+    ...(c.vehicleClasses ? { vehicleClasses: c.vehicleClasses } : {}),
     toggle: c.toggle,
     armRequirement,
     // A drone reached only through the cloud has no path for the config

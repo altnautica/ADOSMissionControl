@@ -214,7 +214,7 @@ describe("follow-me session", () => {
       armState: "armed",
       flightMode: "GUIDED",
       availableModes: [],
-      previousMode: "LOITER",
+      missionState: null,
       supports: () => true,
       checklistReady: true,
       confirm: async () => true,

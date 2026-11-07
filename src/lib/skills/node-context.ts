@@ -51,6 +51,7 @@
  * @license GPL-3.0-only
  */
 
+import { readMissionStatus } from "@/lib/mission/use-mission-status";
 import type { FirmwareType, UnifiedFlightMode } from "@/lib/protocol/types";
 import type { ArmState, FlightMode } from "@/lib/types";
 import { asFlightMode, liveAvailableModes } from "@/lib/flight-mode";
@@ -248,7 +249,7 @@ export function buildSkillContextForNode(
       armState,
       flightMode,
       availableModes: liveAvailableModes(liveFc) ?? [],
-      previousMode: flightMode,
+      missionState: readMissionStatus(node._id)?.state ?? null,
       // Real capabilities: the live protocol has handshaken, so its flags are
       // truthful (unlike the sink-backed branch below).
       supports: (cap) => Boolean(liveFc.getCapabilities()?.[cap]),
@@ -320,10 +321,7 @@ export function buildSkillContextForNode(
     armState,
     flightMode,
     availableModes,
-    // No per-node mode history exists. Reporting the current mode as the
-    // previous one asserts no transition, so nothing infers a paused mission
-    // from a mode change that was never observed.
-    previousMode: flightMode,
+    missionState: readMissionStatus(node._id)?.state ?? null,
     supports: () => false,
     // Capability flags stay blanket-false (no handshake), but autonomous-nav
     // visibility is driven off the node's real firmware family instead, so a

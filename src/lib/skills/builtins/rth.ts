@@ -9,12 +9,7 @@
  */
 
 import type { Skill } from "../types";
-import {
-  builtinConfirm,
-  disabledIfNoBlindLink,
-  lastResortPath,
-  withStaleLinkWarning,
-} from "./_shared";
+import { disabledIfNoLink, pilotActionResult, REASON, specConfirm, viaPilot } from "./_shared";
 
 export const rthSkill: Skill = {
   id: "rth",
@@ -23,16 +18,22 @@ export const rthSkill: Skill = {
   category: "flight",
   source: "builtin",
   toggle: false,
-  armRequirement: "any",
+  armRequirement: "armed",
   requiresAutonomousNav: true,
   // A short real lockout after a return-to-home command so a stray second press
   // cannot re-issue the same high-consequence command; the slot sweeps the
   // window down so the operator sees when it is fireable again.
   cooldownMs: 5000,
-  confirm: builtinConfirm("rth", "hold", "primary"),
-  getState: (ctx) =>
-    disabledIfNoBlindLink(ctx) ?? withStaleLinkWarning(ctx, { kind: "idle" }),
+  confirm: specConfirm("rth", "primary"),
+  // The shared spec disables Return home on a stale link, with the reason.
+  getState: (ctx) => {
+    const noLink = disabledIfNoLink(ctx);
+    if (noLink) return ctx.linkStale ? { kind: "disabled", reason: REASON.linkStaleDisabled } : noLink;
+    if (ctx.armState === "disarmed") return { kind: "disabled", reason: REASON.notArmed };
+    return { kind: "idle" };
+  },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and neither spends the cooldown nor greys the control on it.
-  activate: async (ctx) => lastResortPath(ctx)?.returnToLaunch(),
+  activate: async (ctx) =>
+    viaPilot(ctx) ? pilotActionResult("rth") : ctx.protocol?.returnToLaunch(),
 };

@@ -173,7 +173,12 @@ export function handleFencePoint(payload: DataView, callbacks: FencePointCallbac
 export function handleMissionCurrent(payload: DataView, callbacks: MissionProgressCallback[]): void {
   const data = decodeMissionCurrent(payload)
   for (const cb of callbacks) {
-    cb({ currentSeq: data.seq })
+    cb({
+      currentSeq: data.seq,
+      ...(data.total !== undefined ? { total: data.total } : {}),
+      ...(data.missionState !== undefined ? { missionState: data.missionState } : {}),
+      ...(data.missionId !== undefined ? { missionId: data.missionId } : {}),
+    })
   }
 }
 

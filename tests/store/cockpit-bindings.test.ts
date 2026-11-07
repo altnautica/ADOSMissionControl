@@ -125,8 +125,9 @@ describe("gamepad remap dispatches the bound skill", () => {
 
   it("rebinding a button away from a slot removes the old resolution", () => {
     const s = useSettingsStore.getState();
-    // Default: arm on button 0. Move button 0 to the kill slot (index 9).
-    s.setSlotGamepadButton(DEFAULT_LOADOUT_ID, 9, 0);
+    // Bind button 0 to arm (slot 0), then move it to the kill slot (index 7).
+    s.setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 0);
+    useSettingsStore.getState().setSlotGamepadButton(DEFAULT_LOADOUT_ID, 7, 0);
     const slots = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].slots;
     // Now button 0 resolves to kill, not arm.
     const resolved = slots.find(

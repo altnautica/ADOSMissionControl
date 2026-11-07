@@ -1,14 +1,15 @@
 /**
  * Tooltip chords come from the active loadout: a rebind moves the chord, the
- * arm slot's chord fires disarm, and the pause slot's chord names resume only
- * while a mission is paused.
+ * arm slot's chord fires disarm, and the pause slot fires resume only while
+ * the C8 mission state is paused.
  *
  * @license GPL-3.0-only
  */
 
 import { afterEach, describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useSkillChord } from "@/lib/skills/use-skill-chord";
+import { useBoundSkillResolver, useSkillChord } from "@/lib/skills/use-skill-chord";
+import { useMissionStateStore } from "@/lib/mission/mission-state";
 import { formatChord } from "@/lib/skills/chord";
 import { useSettingsStore } from "@/stores/settings-store";
 import { cloneDefaultLoadout, DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
@@ -40,6 +41,7 @@ function applyDefaultLoadout(): void {
 
 afterEach(() => {
   useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
+  useMissionStateStore.setState({ inputs: {}, status: {} });
 });
 
 describe("useSkillChord", () => {
@@ -49,16 +51,31 @@ describe("useSkillChord", () => {
     expect(result.current).toBe(formatChord("shift+a"));
   });
 
-  it("names a resume chord only while a mission is paused", () => {
+  it("has its own resume chord, and the pause slot fires resume while the mission is paused", () => {
     applyDefaultLoadout();
     selectMissionDrone();
-    useDroneStore.setState({ armState: "armed", flightMode: "GUIDED", previousMode: "AUTO" });
+    useDroneStore.setState({ armState: "armed" });
+    // Resume has its own slot in the spec loadout (shift+p); the pause slot
+    // (space) names resume only while the C8 mission state is paused.
     const notPaused = renderHook(() => useSkillChord("resume"));
-    expect(notPaused.result.current).toBeNull();
+    expect(notPaused.result.current).toBe(formatChord("shift+p"));
 
-    useDroneStore.setState({ flightMode: "LOITER", previousMode: "AUTO" });
-    const paused = renderHook(() => useSkillChord("resume"));
-    expect(paused.result.current).toBe(formatChord("shift+p"));
+    useMissionStateStore.setState({
+      status: {
+        [DRONE]: {
+          state: "paused",
+          seq: 1,
+          total: 3,
+          itemReached: null,
+          id: null,
+          source: "mission_state",
+          ageMs: 0,
+          landingSeq: false,
+        },
+      },
+    });
+    const resolver = renderHook(() => useBoundSkillResolver());
+    expect(resolver.result.current("pause")).toBe("resume");
   });
 
   it("follows a rebind", () => {
@@ -74,7 +91,13 @@ describe("useSkillChord", () => {
 
   it("returns null for an unbound skill", () => {
     applyDefaultLoadout();
-    const { result } = renderHook(() => useSkillChord("kill"));
+    const { result } = renderHook(() => useSkillChord("mode.loiter"));
     expect(result.current).toBeNull();
+  });
+
+  it("binds the shared spec chords by default", () => {
+    applyDefaultLoadout();
+    expect(renderHook(() => useSkillChord("kill")).result.current).toBe(formatChord("shift+x"));
+    expect(renderHook(() => useSkillChord("take_control")).result.current).toBe(formatChord("shift+c"));
   });
 });

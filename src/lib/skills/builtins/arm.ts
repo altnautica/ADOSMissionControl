@@ -9,7 +9,9 @@
 
 import type { Skill } from "../types";
 import {
-  builtinConfirm,
+  pilotActionResult,
+  specConfirm,
+  viaPilot,
   disabledIfNoLink,
   disabledUnlessDisarmed,
 } from "./_shared";
@@ -22,9 +24,9 @@ export const armSkill: Skill = {
   source: "builtin",
   toggle: false,
   armRequirement: "disarmed",
-  confirm: builtinConfirm("arm", "slide", "danger", { checklistAware: true }),
+  confirm: specConfirm("arm", "danger", { checklistAware: true }),
   getState: (ctx) => disabledIfNoLink(ctx) ?? disabledUnlessDisarmed(ctx) ?? { kind: "idle" },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal (e.g. a prearm failure) and spends nothing on it.
-  activate: async (ctx) => ctx.protocol?.arm(),
+  activate: async (ctx) => (viaPilot(ctx) ? pilotActionResult("arm") : ctx.protocol?.arm()),
 };

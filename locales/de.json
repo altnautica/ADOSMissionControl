@@ -7574,13 +7574,13 @@
         "button": "Fortsetzen"
       }
     },
-    "abort": {
-      "label": "Abort",
-      "effect": "Commands an immediate land",
+    "takeControl": {
+      "label": "Take control",
+      "effect": "ADOS Pilot takes control back from the flight controller",
       "confirm": {
-        "title": "Abort flight",
-        "message": "Command an immediate land at the current position?",
-        "button": "Abort"
+        "title": "Take control of {drone}",
+        "message": "ADOS Pilot takes control and holds position. Centre the sticks to fly.",
+        "button": "Take control"
       }
     },
     "kill": {
@@ -7627,7 +7627,10 @@
       "noCharges": "No charges remaining",
       "commandRejected": "The vehicle did not accept the command",
       "linkStale": "Link stale: sent without confirmation of receipt",
-      "changedSincePrompt": "The vehicle changed while the confirmation was open. Nothing was sent."
+      "changedSincePrompt": "The vehicle changed while the confirmation was open. Nothing was sent.",
+      "noPausedMission": "No paused mission",
+      "noPilot": "ADOS Pilot is not flying this drone",
+      "linkStaleDisabled": "Link stale: needs a fresh link"
     },
     "state": {
       "ready": "Ready",

@@ -1,8 +1,9 @@
 /**
- * The canonical built-in skill set. Each built-in is a thin adapter over an
- * existing protocol call with a declarative confirm/arm gate; the registry
- * enforces the gates uniformly. The list order here is the default bar order
- * within each category.
+ * The canonical built-in skill set, exactly the shared cockpit spec's table
+ * (`lib/cockpit/spec/builtins.json`). Each built-in is a thin adapter over the
+ * pilot action (ADOS pilot route) or the protocol call (FC manual, direct
+ * link), with the spec's confirm tier and arm gate. FC mode presets are
+ * registered for the Mode sheet and the node board but never slotted.
  *
  * @module skills/builtins
  * @license GPL-3.0-only
@@ -16,7 +17,7 @@ import { landSkill } from "./land";
 import { rthSkill } from "./rth";
 import { pauseSkill } from "./pause";
 import { resumeSkill } from "./resume";
-import { abortSkill } from "./abort";
+import { takeControlSkill } from "./take-control";
 import { killSkill } from "./kill";
 import { modeSkills } from "./modes";
 import { setModeSkill } from "./set-mode";
@@ -31,10 +32,12 @@ export const builtinSkills: Skill[] = [
   rthSkill,
   pauseSkill,
   resumeSkill,
-  abortSkill,
+  takeControlSkill,
   killSkill,
+  // FC mode presets: offered by the Mode sheet and the node board, never
+  // slotted in the default loadout.
   ...modeSkills,
-  // Parameterised, not bindable: dispatched by the flight-mode dropdown.
+  // Parameterised, not bindable: dispatched by the Mode sheet's FC modes.
   setModeSkill,
   // Parameterised, not bindable: dispatched by the Fly Here dialog.
   flyHereSkill,
@@ -48,7 +51,7 @@ export {
   rthSkill,
   pauseSkill,
   resumeSkill,
-  abortSkill,
+  takeControlSkill,
   killSkill,
   modeSkills,
   setModeSkill,

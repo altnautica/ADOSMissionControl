@@ -65,19 +65,37 @@ export function decodeMissionCount(dv: DataView): MissionCountMsg {
 
 export interface MissionCurrentMsg {
   seq: number;
+  /** Extension fields; undefined when the payload ends before them. */
+  total?: number;
+  missionState?: number;
+  missionMode?: number;
+  missionId?: number;
 }
 
 /**
- * Decode MISSION_CURRENT (msg ID 42).
+ * Decode MISSION_CURRENT (msg ID 42), base field plus the extensions in
+ * declared order (MAVLink v2 truncates trailing zero bytes, so a short
+ * payload past `seq` reads its missing bytes as zero).
  *
- * | Offset | Type   | Field |
- * |--------|--------|-------|
- * | 0      | uint16 | seq   |
+ * | Offset | Type   | Field          |
+ * |--------|--------|----------------|
+ * | 0      | uint16 | seq            |
+ * | 2      | uint16 | total          |
+ * | 4      | uint8  | mission_state  |
+ * | 5      | uint8  | mission_mode   |
+ * | 6      | uint32 | mission_id     |
  */
 export function decodeMissionCurrent(dv: DataView): MissionCurrentMsg {
-  return {
-    seq: dv.getUint16(0, true),
-  };
+  const len = dv.byteLength;
+  const u8 = (o: number): number => (o < len ? dv.getUint8(o) : 0);
+  const msg: MissionCurrentMsg = { seq: u8(0) | (u8(1) << 8) };
+  if (len > 2) {
+    msg.total = u8(2) | (u8(3) << 8);
+    msg.missionState = u8(4);
+    msg.missionMode = u8(5);
+    msg.missionId = (u8(6) | (u8(7) << 8) | (u8(8) << 16) | (u8(9) << 24)) >>> 0;
+  }
+  return msg;
 }
 
 // ── MISSION_ITEM_REACHED (ID 46) ───────────────────────────

@@ -1,12 +1,10 @@
 "use client";
 
+import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { useFreshTelemetry, useTelemetryLatest } from "@/hooks/use-telemetry-latest";
-import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
 import { knownRemainingPct } from "@/lib/battery";
-import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useMissionStore } from "@/stores/mission-store";
 import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import { projectByBearing, GPS_FIX_LABELS } from "@/lib/drawing/geo-utils";
@@ -165,13 +163,11 @@ export function OverviewMap({
   const mapReadyRef = useRef(false);
 
   // Mission pause/resume state
-  const flightMode = useLiveFlightMode();
-  const previousMode = useDroneStore((s) => s.previousMode);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
-  const missionState = useMissionStore((s) => s.activeMission?.state);
-  const isAutoMode = flightMode === "AUTO";
-  const isPausedFromAuto = flightMode === "LOITER" && previousMode === "AUTO";
-  const showMissionControls = isAutoMode || isPausedFromAuto || missionState === "running" || missionState === "paused";
+  // C8 mission state, never inferred from flight-mode names.
+  const missionState = useMissionStatus(selectedDroneId)?.state ?? null;
+  const isAutoMode = missionState === "active";
+  const showMissionControls = missionState === "active" || missionState === "paused";
 
   // Position, GPS and navigation output only while fresh: the rings keep the
   // last sample after the link dies, and a frozen fix must not read as live.

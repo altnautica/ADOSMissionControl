@@ -1,7 +1,7 @@
 schema_version: 3
 id: com.altnautica.mavlink-gimbal-v2
 name: "ADOS MAVLink Gimbal v2 Controller"
-version: "1.4.1"
+version: "1.4.2"
 description: "MAVLink Gimbal v2 control: manual sliders, ROI lock-on-target, and an 'Aim at this target' action that keeps the gimbal on a vision-locked detection."
 description_long: |
   Drives a MAVLink gimbal-manager (component 154). Beyond manual pitch/yaw
@@ -29,7 +29,7 @@ resource_impact:
   startup_time_seconds: 2
 telemetry_fields:
   - "gimbal"
-documentation_url: "https://docs.altnautica.com/drone-agent/mavlink-gimbal-v2-overview"
+documentation_url: "https://docs.altnautica.com/drone-agent/extensions-catalog#ados-mavlink-gimbal-v2-controller"
 author: "Altnautica"
 homepage: "https://github.com/altnautica/ADOSExtensions/tree/main/extensions/mavlink-gimbal-v2"
 license: "GPL-3.0-or-later"
@@ -62,9 +62,10 @@ agent:
       component_kind: gimbal
       sub_id: 0
     # The companion's own component id: every gimbal-manager command the
-    # plugin emits is transmitted from it (see ONBOARD_COMPUTER_COMP_ID in
-    # agent/src/altnautica_gimbal_v2/ctx_router.py), and it is the component
-    # announced as holding primary control.
+    # plugin emits carries it in the frame header (see ONBOARD_COMPUTER_COMP_ID
+    # in agent/src/altnautica_gimbal_v2/ctx_router.py), and it is the component
+    # announced as holding primary control. It is the companion's shared id, so
+    # the plugin never reserves it at runtime; only 154 is registered.
     - component_id: 191
       component_kind: generic
       sub_id: 0
@@ -149,7 +150,7 @@ gcs:
         toggle: false
         confirm: false
         arm_requirement: any
-        default_binding: { key: "shift+c" }
+        default_binding: { key: "shift+e" }
         activation: { via: config, config_key: recenter }
         state: { via: event, topic: "sensor.gimbal.recenter" }
       - id: nadir

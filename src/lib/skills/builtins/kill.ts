@@ -11,8 +11,11 @@
 
 import type { Skill } from "../types";
 import {
-  builtinConfirm,
   disabledIfNoBlindLink,
+  pilotActionResult,
+  REASON,
+  specConfirm,
+  viaPilot,
   lastResortPath,
   withStaleLinkWarning,
 } from "./_shared";
@@ -24,13 +27,18 @@ export const killSkill: Skill = {
   category: "safety",
   source: "builtin",
   toggle: false,
-  armRequirement: "any",
-  confirm: builtinConfirm("kill", "guarded", "danger"),
-  getState: (ctx) =>
-    disabledIfNoBlindLink(ctx) ?? withStaleLinkWarning(ctx, { kind: "idle" }),
+  armRequirement: "armed",
+  confirm: specConfirm("kill", "danger"),
+  getState: (ctx) => {
+    const noLink = disabledIfNoBlindLink(ctx);
+    if (noLink) return noLink;
+    if (ctx.armState === "disarmed") return { kind: "disabled", reason: REASON.notArmed };
+    return withStaleLinkWarning(ctx, { kind: "idle" });
+  },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and spends nothing on it.
   // `true` is the confirm block above: the dispatcher only reaches activate
   // after the guard was armed and the hold inside its window completed.
-  activate: async (ctx) => lastResortPath(ctx)?.killSwitch(true),
+  activate: async (ctx) =>
+    viaPilot(ctx) ? pilotActionResult("kill") : lastResortPath(ctx)?.killSwitch(true),
 };

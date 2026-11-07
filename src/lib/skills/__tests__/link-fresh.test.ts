@@ -50,6 +50,7 @@ function stateOf(skillId: string) {
 
 const NO_LINK = { kind: "disabled", reason: "skills.reason.noFcLink" };
 const STALE = { kind: "idle", warning: "skills.reason.linkStale" };
+const STALE_DISABLED = { kind: "disabled", reason: "skills.reason.linkStaleDisabled" };
 
 describe("skill link freshness", () => {
   beforeEach(() => {
@@ -74,17 +75,20 @@ describe("skill link freshness", () => {
     vi.useRealTimers();
   });
 
-  it("stale_link_allows_kill_rth_land_only", () => {
+  it("stale link: kill and pause send blind, rth and land disable with the reason (shared spec)", () => {
     useDroneStore.setState({
       armState: "armed",
       lastHeartbeat: Date.now() - 3500,
     });
     useSkillRegistry.getState().recomputeSelected();
 
-    for (const id of ["kill", "rth", "land"]) {
+    for (const id of ["kill", "pause"]) {
       expect(stateOf(id)).toEqual(STALE);
     }
-    for (const id of ["disarm", "abort", "pause", "resume", "mode.loiter"]) {
+    for (const id of ["rth", "land"]) {
+      expect(stateOf(id)).toEqual(STALE_DISABLED);
+    }
+    for (const id of ["disarm", "resume", "take_control", "mode.loiter"]) {
       expect(stateOf(id)).toEqual(NO_LINK);
     }
     useDroneStore.setState({ armState: "disarmed" });
@@ -97,7 +101,7 @@ describe("skill link freshness", () => {
   it("disables the last-resort set too before any heartbeat was heard", () => {
     useDroneStore.setState({ armState: "unknown", lastHeartbeat: 0 });
     useSkillRegistry.getState().recomputeSelected();
-    for (const id of ["kill", "rth", "land"]) {
+    for (const id of ["kill", "pause", "rth", "land"]) {
       expect(stateOf(id)).toEqual(NO_LINK);
     }
   });
@@ -126,29 +130,29 @@ describe("skill link freshness", () => {
     useDroneStore.setState({ armState: "disarmed", lastHeartbeat: Date.now() });
     useSkillRegistry.getState().recomputeSelected();
     expect(stateOf("arm").kind).toBe("idle");
-    expect(stateOf("rth")).toEqual({ kind: "idle" });
 
     useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
     useSkillRegistry.getState().recomputeSelected();
     expect(stateOf("land")).toEqual({ kind: "idle" });
+    expect(stateOf("rth")).toEqual({ kind: "idle" });
   });
 
   it("notices a heartbeat going stale with no store change", () => {
     initSkillSubscriptions();
     useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
     vi.advanceTimersByTime(600);
-    expect(stateOf("abort").kind).toBe("idle");
-    expect(stateOf("land")).toEqual({ kind: "idle" });
+    expect(stateOf("disarm").kind).toBe("idle");
+    expect(stateOf("kill")).toEqual({ kind: "idle" });
 
     // No further heartbeat arrives; nothing in any store changes.
     vi.advanceTimersByTime(SKILL_LINK_FRESH_MS + 600);
-    expect(stateOf("abort")).toEqual(NO_LINK);
-    expect(stateOf("land")).toEqual(STALE);
+    expect(stateOf("disarm")).toEqual(NO_LINK);
+    expect(stateOf("kill")).toEqual(STALE);
 
     // The link comes back: the next sample re-enables the skill.
     useDroneStore.setState({ lastHeartbeat: Date.now() });
     vi.advanceTimersByTime(600);
-    expect(stateOf("abort").kind).toBe("idle");
-    expect(stateOf("land")).toEqual({ kind: "idle" });
+    expect(stateOf("disarm").kind).toBe("idle");
+    expect(stateOf("kill")).toEqual({ kind: "idle" });
   });
 });

@@ -30,6 +30,8 @@ export type WsAuthScope =
   | "gs.mesh_events"
   | "vision.detections"
   | "nav.stream"
+  | "pilot.control"
+  | "fc.setup"
   | `plugins.install_job:${string}`
   | `plugins.http:${string}`;
 

@@ -11,12 +11,12 @@
 
 "use client";
 
+import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useCallback, useMemo } from "react";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
-import { buildSkillContextFor } from "./registry";
 import { resolveBoundSkillId } from "./bound-skill";
 import { formatChord } from "./chord";
 
@@ -28,21 +28,11 @@ export function useBoundSkillResolver(droneId?: string | null): (skillId: string
   const selectedId = useDroneManager((s) => s.selectedDroneId);
   const target = droneId ?? selectedId;
   const armState = useDroneStore((s) => s.armState);
-  const flightMode = useDroneStore((s) => s.flightMode);
-  const previousMode = useDroneStore((s) => s.previousMode);
-
-  const supports = useMemo(
-    () => (target ? buildSkillContextFor(target).supports : () => false),
-    // The mode fields are deps so a fresh handshake is re-read on the next
-    // mode or arm change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [target, armState, flightMode, previousMode],
-  );
+  const missionState = useMissionStatus(target)?.state ?? null;
 
   return useCallback(
-    (skillId: string) =>
-      resolveBoundSkillId(skillId, armState, { flightMode, previousMode, supports }),
-    [armState, flightMode, previousMode, supports],
+    (skillId: string) => resolveBoundSkillId(skillId, armState, { missionState }),
+    [armState, missionState],
   );
 }
 

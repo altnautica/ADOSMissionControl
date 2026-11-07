@@ -7,6 +7,8 @@
  * frozen after link loss).
  */
 
+import { useDroneManager } from "@/stores/drone-manager";
+import { useMissionStateStore } from "@/lib/mission/mission-state";
 import { describe, it, expect, beforeEach } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
@@ -118,6 +120,22 @@ describe("MissionExecutionOverlay", () => {
   beforeEach(() => {
     useDroneStore.setState({ flightMode: "AUTO", lastHeartbeat: Date.now() });
     useMissionStore.setState({ currentWaypoint: null });
+    useDroneManager.setState({ selectedDroneId: "drone-overlay" });
+    useMissionStateStore.setState({
+      inputs: {},
+      status: {
+        "drone-overlay": {
+          state: "active",
+          seq: 1,
+          total: 3,
+          itemReached: null,
+          id: null,
+          source: "mission_state",
+          ageMs: 0,
+          landingSeq: false,
+        },
+      },
+    });
   });
 
   it("shows live distance and cross-track error", () => {
@@ -134,7 +152,7 @@ describe("MissionExecutionOverlay", () => {
     expect(container.textContent).not.toContain("3.2m");
   });
 
-  it("hides when no live heartbeat backs the AUTO mode", () => {
+  it("hides when no live heartbeat backs the mission state", () => {
     seedNav(0);
     useDroneStore.setState({ flightMode: "AUTO", lastHeartbeat: 0 });
     const { container } = renderWithIntl(<MissionExecutionOverlay />);

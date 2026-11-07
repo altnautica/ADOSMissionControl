@@ -23,7 +23,7 @@ import { useDroneManager, type DroneManagerState } from "@/stores/drone-manager"
 import { useDroneStore } from "@/stores/drone-store";
 import { useMissionStore } from "@/stores/mission-store";
 import { useNodeRegistryStore } from "@/stores/node-registry";
-import type { ArmState, FlightMode } from "@/lib/types";
+import { useMissionStateStore, type MissionStateKind } from "@/lib/mission/mission-state";
 
 const initialDroneManager = useDroneManager.getState();
 
@@ -54,10 +54,23 @@ function seedDrones(ids: string[], selected: string | null) {
 }
 
 /** The per-drone flight state the heartbeat writes to the node registry. */
-function report(id: string, armState: ArmState, flightMode: FlightMode) {
-  const registry = useNodeRegistryStore.getState();
-  registry.attachFc(id, id);
-  registry.updateFcTelemetry(id, { armState, flightMode });
+/** The C8 mission state the link computes for `id`. */
+function report(id: string, state: MissionStateKind) {
+  useMissionStateStore.setState((s) => ({
+    status: {
+      ...s.status,
+      [id]: {
+        state,
+        seq: 1,
+        total: 2,
+        itemReached: null,
+        id: null,
+        source: "mission_state",
+        ageMs: 0,
+        landingSeq: false,
+      },
+    },
+  }));
 }
 
 function renderDialog(props: Partial<DialogProps> = {}) {
@@ -93,6 +106,7 @@ beforeEach(() => {
   useDroneStore.setState({ armState: "disarmed", flightMode: "STABILIZE" });
   useMissionStore.setState({ vehicleProfile: null });
   useNodeRegistryStore.getState().clear();
+  useMissionStateStore.setState({ inputs: {}, status: {} });
 });
 afterEach(cleanup);
 
@@ -184,7 +198,7 @@ describe("SendToVehicleDialog", () => {
 
   it("blocks every row while the target is armed and flying its mission", () => {
     seedDrones(["d1"], "d1");
-    report("d1", "armed", "AUTO");
+    report("d1", "active");
     renderDialog();
     for (const [label, item] of [["Mission (2 items)", "mission"], ["Geofence", "geofence"], ["Rally points (1)", "rally"]]) {
       const box = screen.getByLabelText(label);
@@ -194,18 +208,18 @@ describe("SendToVehicleDialog", () => {
     }
   });
 
-  it("reads the target's flight state from the node registry, not the drone store", () => {
-    seedDrones(["d1"], "d1");
-    useDroneStore.setState({ armState: "unknown", flightMode: "UNKNOWN" });
-    report("d1", "armed", "MISSION");
+  it("reads the target's own mission state, not the selected drone's", () => {
+    seedDrones(["d1", "d2"], "d1");
+    report("d2", "loaded");
+    report("d1", "active");
     renderDialog();
     expect(screen.getByLabelText("Mission (2 items)")).toBeDisabled();
     expect(screen.getByLabelText("Geofence")).toBeDisabled();
   });
 
-  it("allows every row once the vehicle leaves its mission", () => {
+  it("allows every row once the mission is paused", () => {
     seedDrones(["d1"], "d1");
-    report("d1", "armed", "LOITER");
+    report("d1", "paused");
     renderDialog();
     expect(screen.getByLabelText("Mission (2 items)")).toBeChecked();
     expect(screen.getByLabelText("Geofence")).toBeChecked();

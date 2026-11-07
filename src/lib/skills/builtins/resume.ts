@@ -1,14 +1,15 @@
 /**
- * Resume skill — mission-aware. When a mission was paused (LOITER after AUTO),
- * resume continues it; otherwise it returns the vehicle to AUTO. One-shot,
- * armed-only, hold-to-confirm. Requires autonomous nav.
+ * Resume skill. On the ADOS pilot it resumes (a paused FC mission goes back to
+ * AUTO). Without the pilot it continues a paused mission (C8 state) with
+ * DO_PAUSE_CONTINUE. One-shot, armed-only, tap (shared spec).
  *
  * @module skills/builtins/resume
  * @license GPL-3.0-only
  */
 
 import type { Skill } from "../types";
-import { builtinConfirm, disabledIfNoLink, REASON } from "./_shared";
+import { useMissionStateStore } from "@/lib/mission/mission-state";
+import { disabledIfNoLink, pilotActionResult, REASON, viaPilot } from "./_shared";
 
 export const resumeSkill: Skill = {
   id: "resume",
@@ -19,27 +20,22 @@ export const resumeSkill: Skill = {
   toggle: false,
   armRequirement: "armed",
   requiresAutonomousNav: true,
-  confirm: builtinConfirm("resume", "hold", "primary"),
   getState: (ctx) => {
     const noLink = disabledIfNoLink(ctx);
     if (noLink) return noLink;
     if (ctx.armState === "disarmed") {
       return { kind: "disabled", reason: REASON.notArmed };
     }
+    if (!viaPilot(ctx) && ctx.missionState !== "paused") {
+      return { kind: "disabled", reason: REASON.noPausedMission };
+    }
     return { kind: "idle" };
   },
   activate: async (ctx) => {
-    if (!ctx.protocol) return;
-    const missionAware = ctx.supports("supportsMissionUpload");
-    const resumingMission =
-      missionAware &&
-      ctx.flightMode === "LOITER" &&
-      ctx.previousMode === "AUTO";
-    // Either branch's answer goes back to the dispatcher, which surfaces
-    // a refusal and spends nothing on it.
-    if (resumingMission) {
-      return ctx.protocol.resumeMission();
-    }
-    return ctx.protocol.setFlightMode("AUTO");
+    if (viaPilot(ctx)) return pilotActionResult("resume");
+    if (!ctx.protocol || ctx.missionState !== "paused") return;
+    const r = await ctx.protocol.resumeMission();
+    if (r.success) useMissionStateStore.getState().observe(ctx.droneId, { apPause: false });
+    return r;
   },
 };

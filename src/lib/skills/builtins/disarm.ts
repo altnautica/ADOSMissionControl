@@ -6,7 +6,7 @@
  */
 
 import type { Skill } from "../types";
-import { builtinConfirm, disabledIfNoLink, REASON } from "./_shared";
+import { disabledIfNoLink, pilotActionResult, REASON, specConfirm, viaPilot } from "./_shared";
 
 export const disarmSkill: Skill = {
   id: "disarm",
@@ -16,7 +16,7 @@ export const disarmSkill: Skill = {
   source: "builtin",
   toggle: false,
   armRequirement: "armed",
-  confirm: builtinConfirm("disarm", "hold", "danger"),
+  confirm: specConfirm("disarm", "danger"),
   getState: (ctx) => {
     const noLink = disabledIfNoLink(ctx);
     if (noLink) return noLink;
@@ -27,5 +27,5 @@ export const disarmSkill: Skill = {
   },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and spends nothing on it.
-  activate: async (ctx) => ctx.protocol?.disarm(),
+  activate: async (ctx) => (viaPilot(ctx) ? pilotActionResult("disarm") : ctx.protocol?.disarm()),
 };

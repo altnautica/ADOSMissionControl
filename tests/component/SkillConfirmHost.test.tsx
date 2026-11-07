@@ -282,23 +282,23 @@ describe("gamepad confirm of Arm through the dispatcher", () => {
     });
   }
 
-  it("arms after button 0 is held for 1500 ms with the sheet open", async () => {
+  it("arms after button 0 is held for the spec's 800 ms with the sheet open", async () => {
     renderWithIntl(<SkillConfirmHost />);
     pressArmOnGamepad();
-    expect(useSkillConfirmStore.getState().pending?.policy.gesture).toBe("slide");
+    expect(useSkillConfirmStore.getState().pending?.policy.gesture).toBe("hold");
 
     // Keep the heartbeat fresh while the pilot holds.
-    advance(1500);
+    advance(800);
     useDroneStore.setState({ lastHeartbeat: Date.now() });
     await flush();
     expect(arm).toHaveBeenCalledTimes(1);
   });
 
-  it("does not arm when button 0 is released at 1000 ms", async () => {
+  it("does not arm when button 0 is released at 500 ms", async () => {
     renderWithIntl(<SkillConfirmHost />);
     pressArmOnGamepad();
 
-    advance(1000);
+    advance(500);
     setButton(0, false);
     advance(2000);
     await flush();

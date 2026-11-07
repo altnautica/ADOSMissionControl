@@ -62,7 +62,7 @@ function ctxWith(overrides: Partial<SkillContext> = {}): SkillContext {
     armState: "disarmed",
     flightMode: "MANUAL",
     availableModes: [],
-    previousMode: "MANUAL",
+    missionState: null,
     supports: () => false,
     checklistReady: false,
     confirm: async () => true,

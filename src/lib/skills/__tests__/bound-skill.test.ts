@@ -52,26 +52,21 @@ function ctxWith(confirm: SkillContext["confirm"], notify = vi.fn()): SkillConte
   return { ...buildSkillContext(DRONE), confirm, notify };
 }
 
-const noCaps = { flightMode: "LOITER", previousMode: "AUTO", supports: () => false } as const;
+const noMission = { missionState: null } as const;
 
 describe("resolveBoundSkillId", () => {
   it("flips arm to disarm only while armed", () => {
-    expect(resolveBoundSkillId("arm", "armed", noCaps)).toBe("disarm");
-    expect(resolveBoundSkillId("arm", "disarmed", noCaps)).toBe("arm");
-    expect(resolveBoundSkillId("arm", "unknown", noCaps)).toBe("arm");
+    expect(resolveBoundSkillId("arm", "armed", noMission)).toBe("disarm");
+    expect(resolveBoundSkillId("arm", "disarmed", noMission)).toBe("arm");
+    expect(resolveBoundSkillId("arm", "unknown", noMission)).toBe("arm");
   });
 
-  it("flips pause to resume only for a paused mission on mission-capable firmware", () => {
-    const capable = { ...noCaps, supports: () => true };
-    expect(resolveBoundSkillId("pause", "armed", capable)).toBe("resume");
-    expect(resolveBoundSkillId("pause", "armed", noCaps)).toBe("pause");
-    expect(
-      resolveBoundSkillId("pause", "armed", { ...capable, previousMode: "GUIDED" }),
-    ).toBe("pause");
-    expect(resolveBoundSkillId("pause", "armed", { ...capable, flightMode: "AUTO" })).toBe(
-      "pause",
-    );
-    expect(resolveBoundSkillId("rth", "armed", capable)).toBe("rth");
+  it("flips pause to resume only while the C8 mission state is paused", () => {
+    expect(resolveBoundSkillId("pause", "armed", { missionState: "paused" })).toBe("resume");
+    expect(resolveBoundSkillId("pause", "armed", noMission)).toBe("pause");
+    expect(resolveBoundSkillId("pause", "armed", { missionState: "active" })).toBe("pause");
+    expect(resolveBoundSkillId("pause", "armed", { missionState: "loaded" })).toBe("pause");
+    expect(resolveBoundSkillId("rth", "armed", { missionState: "paused" })).toBe("rth");
   });
 });
 
@@ -109,13 +104,8 @@ describe("bound dispatch", () => {
 
   it("a pause binding resumes a paused mission", async () => {
     selectDrone({ supportsMissionUpload: true });
-    useDroneStore.setState({
-      armState: "armed",
-      flightMode: "LOITER",
-      previousMode: "AUTO",
-      lastHeartbeat: Date.now() + 1,
-    });
-    await activateBound("pause", ctxWith(async () => true));
+    useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() + 1 });
+    await activateBound("pause", { ...ctxWith(async () => true), missionState: "paused" });
     expect(resumeMission).toHaveBeenCalledTimes(1);
     expect(setFlightMode).not.toHaveBeenCalledWith("LOITER");
   });

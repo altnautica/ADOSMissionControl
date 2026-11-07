@@ -27,6 +27,7 @@ import { asFlightMode } from "@/lib/flight-mode";
 import { useMissionStore } from "./mission-store";
 import { createFleetAlertProducer } from "@/lib/fleet-alerts";
 import { createAdsbTrafficTable } from "@/lib/telemetry/adsb-traffic";
+import { useMissionStateStore } from "@/lib/mission/mission-state";
 
 /**
  * Bridge protocol telemetry callbacks into the Zustand stores
@@ -272,11 +273,24 @@ export function bridgeTelemetry(
 
     protocol.onMissionProgress((data) => {
       if (data.reachedSeq !== undefined) {
+        useMissionStateStore.getState().observe(droneId, { itemReached: data.reachedSeq });
         const settings = useSettingsStore.getState();
         if (settings.audioEnabled && settings.alertWaypoint) {
           audioEngine.play("waypoint_reached");
         }
-      } else if (isSelected()) {
+      } else {
+        // The FC's own count when it sends one; an older FC sends none, so the
+        // plan this GCS holds stands in for the mirror.
+        const total = data.total ?? (isSelected() ? useMissionStore.getState().waypoints.length : 0);
+        useMissionStateStore.getState().observe(droneId, {
+          seq: data.currentSeq,
+          total,
+          missionState: data.missionState ?? null,
+          missionCurrentAt: Date.now(),
+          id: data.missionId ?? null,
+        });
+      }
+      if (data.reachedSeq === undefined && isSelected()) {
         // MISSION_CURRENT: the item the FC is flying now. mission-store is a
         // single slot for the selected drone, and maps the seq onto the plan
         // only when this drone's upload receipt matches it.
@@ -286,6 +300,11 @@ export function bridgeTelemetry(
 
     protocol.onHeartbeat((data) => {
       const droneStore = useDroneStore.getState();
+      useMissionStateStore.getState().observe(droneId, {
+        armed: data.armed,
+        customMode: data.customMode ?? null,
+        firmware: data.vehicleInfo?.firmwareType,
+      });
 
       // Previous arm state and mode come from THIS drone's registry entry, not
       // from the single-slot drone-store: the store holds the selected drone

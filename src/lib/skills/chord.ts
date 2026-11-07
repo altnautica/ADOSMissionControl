@@ -33,6 +33,9 @@ export function canonicalChord(e: KeyboardEvent): string | null {
   } else if (/^F([1-9]|1[0-9]|2[0-4])$/.test(e.code)) {
     // Function keys: F1..F24 -> "f1".."f24".
     base = e.code.toLowerCase();
+  } else if (e.code === "Space" || e.key === " ") {
+    // The shared spec names the space bar "space" (Pause).
+    base = "space";
   } else if (e.key.length === 1) {
     // Single printable character (letters, punctuation) -> lower-cased key.
     base = e.key.toLowerCase();

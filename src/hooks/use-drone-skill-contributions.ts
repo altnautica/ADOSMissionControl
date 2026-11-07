@@ -55,6 +55,11 @@ interface SkillContributionRow {
   configKey?: string;
   stateTopic?: string;
   defaultBinding?: { key?: string | null; gamepadButton?: number | null };
+  motion?: boolean;
+  nudge?: boolean;
+  oneShot?: boolean;
+  params?: unknown[];
+  vehicleClasses?: ("multirotor" | "fixedwing" | "vtol")[];
 }
 
 /**
@@ -221,6 +226,11 @@ export function useDroneSkillContributions(
           configKey,
           stateTopic,
           defaultBinding: s.defaultBinding,
+          motion: s.motion === true,
+          nudge: s.nudge === true,
+          oneShot: s.oneShot === true,
+          params: Array.isArray(s.params) ? s.params.filter((p): p is string => typeof p === "string") : [],
+          ...(Array.isArray(s.vehicleClasses) ? { vehicleClasses: s.vehicleClasses } : {}),
         });
       }
     }

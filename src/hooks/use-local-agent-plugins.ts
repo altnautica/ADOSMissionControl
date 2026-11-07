@@ -73,6 +73,13 @@ export interface LocalAgentSkillRow {
   configKey?: string;
   stateTopic?: string;
   defaultBinding?: { key?: string | null; gamepadButton?: number | null };
+  /** C5: commands the vehicle (needs the pilot motion lease). */
+  motion?: boolean;
+  nudge?: boolean;
+  oneShot?: boolean;
+  /** C5: parameter keys shown in the skill's Tweak panel. */
+  params?: string[];
+  vehicleClasses?: ("multirotor" | "fixedwing" | "vtol")[];
 }
 
 /** One normalized target-action row, matching the camelCase shape the
@@ -180,6 +187,18 @@ function mapSkill(raw: unknown): LocalAgentSkillRow | null {
       arm === "armed" || arm === "disarmed" || arm === "any" ? arm : null,
     configKey: str(activation.config_key),
     stateTopic: str(state.topic),
+    motion: raw.motion === true,
+    nudge: raw.nudge === true,
+    oneShot: raw.one_shot === true,
+    params: Array.isArray(raw.params) ? raw.params.filter((p): p is string => typeof p === "string") : [],
+    ...(Array.isArray(raw.vehicle_classes)
+      ? {
+          vehicleClasses: raw.vehicle_classes.filter(
+            (v): v is "multirotor" | "fixedwing" | "vtol" =>
+              v === "multirotor" || v === "fixedwing" || v === "vtol",
+          ),
+        }
+      : {}),
     defaultBinding: db
       ? {
           key: typeof db.key === "string" ? db.key : null,

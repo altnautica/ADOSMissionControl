@@ -8,6 +8,9 @@
  * @license GPL-3.0-only
  */
 
+import { specBuiltin, specConfirmGesture } from "@/lib/cockpit/spec-builtins";
+import { sendPilotAction, sticksRouteToPilot, type PilotActionName } from "@/lib/input/pilot-stream";
+import type { CommandResult } from "@/lib/protocol/types";
 import type {
   ConfirmGesture,
   ConfirmPolicy,
@@ -70,6 +73,9 @@ export const REASON = {
   modeUnavailable: "skills.reason.modeUnavailable",
   noAutonomousNav: "skills.reason.noAutonomousNav",
   linkStale: "skills.reason.linkStale",
+  linkStaleDisabled: "skills.reason.linkStaleDisabled",
+  noPausedMission: "skills.reason.noPausedMission",
+  noPilot: "skills.reason.noPilot",
 } as const;
 
 /** A drone has no live FC link when its protocol is absent. */
@@ -108,4 +114,40 @@ export function disabledUnlessDisarmed(ctx: SkillContext): SkillState | null {
   if (ctx.armState === "armed") return { kind: "disabled", reason: REASON.alreadyArmed };
   if (ctx.armState === "unknown") return { kind: "disabled", reason: REASON.noFcLink };
   return null;
+}
+
+/**
+ * The confirm policy of a built-in, with the tier and hold time the shared
+ * cockpit spec names for it. Sheet text lives at `skills.<key>.confirm.*`.
+ */
+export function specConfirm(
+  id: string,
+  variant: ConfirmPolicy["variant"],
+  extra?: Pick<ConfirmPolicy, "checklistAware" | "altitude">,
+): ConfirmPolicy | undefined {
+  const { gesture, holdMs } = specConfirmGesture(specBuiltin(id));
+  if (gesture === "tap") return undefined;
+  return { ...builtinConfirm(id, gesture, variant, extra), holdMs };
+}
+
+/**
+ * True when this drone is flown by its ADOS pilot from this surface: an open
+ * pilot stream and `control.mode == ados`. Built-ins then send pilot actions
+ * instead of raw flight-controller commands.
+ */
+export function viaPilot(ctx: SkillContext): boolean {
+  return sticksRouteToPilot(ctx.droneId);
+}
+
+/** Send a built-in as a pilot action; the dispatcher reads the result. */
+export function pilotActionResult(
+  name: PilotActionName,
+  args?: Record<string, unknown>,
+): CommandResult {
+  const sent = sendPilotAction(name, args);
+  return {
+    success: sent,
+    resultCode: sent ? 0 : 4,
+    message: sent ? "" : "the pilot stream is not open",
+  };
 }

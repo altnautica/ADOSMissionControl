@@ -17,6 +17,7 @@
  * @license GPL-3.0-only
  */
 
+import { mockPilot } from "./mock-pilot";
 import type { MapStatus, NavState, ReacquireMode } from "@/lib/agent/nav-types";
 import { pluginConfigKey, usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
@@ -110,11 +111,13 @@ export class MockNavStream {
       setInterval(() => this.tickMap(), MAP_MS),
     ];
     this.layers.start(droneId, startMs);
+    mockPilot.start(droneId);
     this.tickMap();
   }
 
   stop(): void {
     this.layers.stop();
+    mockPilot.stop();
     for (const t of this.timers) clearInterval(t);
     this.timers = [];
     if (this.droneId) useNavStreamStore.getState().clear(this.droneId);

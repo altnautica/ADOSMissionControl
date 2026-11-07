@@ -45,8 +45,12 @@ import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { PluginTargetActionHost } from "@/components/vision/PluginTargetActionHost";
 import { PluginCockpitWidgetHost } from "@/components/plugins/PluginCockpitWidgetHost";
 import { PluginSkillHost } from "@/components/cockpit/PluginSkillHost";
-import { SkillBar } from "@/components/cockpit/SkillBar";
 import { CockpitBarControls } from "@/components/cockpit/CockpitBarControls";
+import { FlightStateChip } from "@/components/cockpit/v2/FlightStateChip";
+import { LeftColumn } from "@/components/cockpit/v2/LeftColumn";
+import { SkillPicker } from "@/components/cockpit/v2/SkillPicker";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { notifySkill } from "@/lib/skills/registry";
 import { CockpitTopBar } from "@/components/cockpit/CockpitTopBar";
 import { CockpitAlerts } from "@/components/cockpit/CockpitAlerts";
 import { CockpitVideoStatusBanner } from "@/components/cockpit/CockpitVideoStatusBanner";
@@ -106,6 +110,8 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   const tFly = useTranslations("flyCockpit");
   const containerRef = useRef<HTMLDivElement>(null);
   const skillBarRef = useRef<HTMLDivElement>(null);
+  const { pilot } = usePilotState(droneId);
+  const notifyToast = useCallback((msg: string) => notifySkill(msg, "warning"), []);
 
   // Width class + size from the cockpit container (never the viewport), and
   // the measured Skill Bar clearance the range panel sits above.
@@ -220,21 +226,26 @@ export function CockpitView({ droneId }: CockpitViewProps) {
           </div>
         )}
 
-        {/* Bottom-center: the live Skill Bar with its side controls, or the
-            binding editor while editing. Measured so the range panel clears it. */}
+        {/* DJI grid (shared spec layout.json): the flight-state chip top-left,
+            the left column centred, the skill picker bottom-right. The
+            loadout editor (keyboard / gamepad bindings) shows only while
+            editing; there is no visible skill bar. */}
+        <div className="pointer-events-auto absolute left-3 top-14 z-40">
+          <FlightStateChip droneId={droneId} />
+        </div>
+        {cockpitEnabled && <LeftColumn droneId={droneId} />}
         <div
           ref={skillBarRef}
           className="pointer-events-none absolute inset-x-0 bottom-3 z-30 flex justify-center"
         >
-          {cockpitEnabled && editing ? (
-            <SkillBarEditor onClose={closeEditor} />
-          ) : (
-            <div className="pointer-events-auto flex items-end gap-2">
-              <SkillBar droneId={droneId} />
-              {cockpitEnabled && <CockpitBarControls />}
-            </div>
-          )}
+          {cockpitEnabled && editing && <SkillBarEditor onClose={closeEditor} />}
         </div>
+        {cockpitEnabled && !editing && (
+          <div className="pointer-events-auto absolute bottom-3 right-3 z-30 flex items-end gap-2">
+            <CockpitBarControls />
+            <SkillPicker droneId={droneId} pilot={pilot} notify={notifyToast} />
+          </div>
+        )}
 
         {/* Re-enable-skills prompt, reachable only after an explicit opt-out. It
             sits in the bottom-left zone so it never covers the boresight. */}

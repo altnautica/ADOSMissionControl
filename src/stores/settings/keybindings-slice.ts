@@ -126,8 +126,8 @@ export function cloneDefaultCockpitLayout(): CockpitLayout {
  * resolves it through `resolveBoundSkillId`, so the slot fires (and renders)
  * "disarm" while the vehicle is armed and disarm keeps its hold confirm.
  * Slot 4 binds "pause", which resolves to "resume" while a mission is paused.
- * Kill is slotted but deliberately unbound. Mode presets guided/auto are
- * registered built-ins available in the drawer but unslotted by default.
+ * The slots and chords are the shared cockpit spec's built-in table; FC mode
+ * presets live in the Mode sheet and are never slotted.
  *
  * Frozen so an accidental mutation of the shared default is caught; callers
  * always clone via cloneDefaultLoadout().
@@ -136,16 +136,18 @@ const DEFAULT_LOADOUT: Loadout = Object.freeze({
   id: DEFAULT_LOADOUT_ID,
   name: "Default",
   slots: [
-    { index: 0, skillId: "arm", key: "shift+a", gamepadButton: 0 },
+    // Keyboard chords are the shared spec's (builtins.json). The controller
+    // map is ds4.json, so no slot carries a gamepad button by default.
+    { index: 0, skillId: "arm", key: "shift+a", gamepadButton: null },
     { index: 1, skillId: "takeoff", key: "shift+t", gamepadButton: null },
-    { index: 2, skillId: "land", key: "shift+l", gamepadButton: 2 },
-    { index: 3, skillId: "rth", key: "shift+r", gamepadButton: 1 },
-    { index: 4, skillId: "pause", key: "shift+p", gamepadButton: 3 },
-    { index: 5, skillId: "abort", key: "shift+x", gamepadButton: null },
-    { index: 6, skillId: "mode.loiter", key: "f1", gamepadButton: null },
-    { index: 7, skillId: "mode.althold", key: "f2", gamepadButton: null },
-    { index: 8, skillId: "mode.stabilize", key: "f3", gamepadButton: null },
-    { index: 9, skillId: "kill", key: null, gamepadButton: null },
+    { index: 2, skillId: "land", key: "shift+l", gamepadButton: null },
+    { index: 3, skillId: "rth", key: "shift+r", gamepadButton: null },
+    { index: 4, skillId: "pause", key: "space", gamepadButton: null },
+    { index: 5, skillId: "resume", key: "shift+p", gamepadButton: null },
+    { index: 6, skillId: "take_control", key: "shift+c", gamepadButton: null },
+    { index: 7, skillId: "kill", key: "shift+x", gamepadButton: null },
+    { index: 8, skillId: null, key: null, gamepadButton: null },
+    { index: 9, skillId: null, key: null, gamepadButton: null },
     { index: 10, skillId: null, key: null, gamepadButton: null },
     { index: 11, skillId: null, key: null, gamepadButton: null },
   ],

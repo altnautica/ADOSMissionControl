@@ -1,9 +1,9 @@
 /**
  * The binding resolver: one slot can stand for a pair of skills whose meaning
  * flips with the vehicle's state. An `arm` binding fires `disarm` while the
- * vehicle is armed, and a `pause` binding fires `resume` while a mission is
- * paused (LOITER entered from AUTO on mission-capable firmware). Every surface
- * that fires or labels a binding (keyboard, gamepad, Skill Bar, palette,
+ * vehicle is armed, and a `pause` binding fires `resume` while the mission is
+ * paused (the C8 mission state, never a flight-mode name). Every surface that
+ * fires or labels a binding (keyboard, gamepad, skill picker, palette,
  * radial, tooltips) resolves through here so they all agree.
  *
  * @module skills/bound-skill
@@ -14,15 +14,11 @@ import type { ArmState } from "@/lib/types";
 import type { SkillContext } from "./types";
 
 /** The context fields the resolver reads. */
-export type BoundSkillContext = Pick<SkillContext, "flightMode" | "previousMode" | "supports">;
+export type BoundSkillContext = Pick<SkillContext, "missionState">;
 
 /** True while a mission is paused and a `pause` binding should resume it. */
 export function isMissionPaused(ctx: BoundSkillContext): boolean {
-  return (
-    ctx.flightMode === "LOITER" &&
-    ctx.previousMode === "AUTO" &&
-    ctx.supports("supportsMissionUpload")
-  );
+  return ctx.missionState === "paused";
 }
 
 /** The skill a binding to `skillId` fires in the current vehicle state. */

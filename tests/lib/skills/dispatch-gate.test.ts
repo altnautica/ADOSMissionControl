@@ -42,7 +42,7 @@ function makeCtx(over: Partial<SkillContext> = {}): SkillContext {
     armState: "disarmed",
     flightMode: "STABILIZE",
     availableModes: [],
-    previousMode: "STABILIZE",
+    missionState: null,
     supports: () => true,
     checklistReady: true,
     confirm: vi.fn(async () => true),
@@ -328,10 +328,12 @@ describe("built-in arm adapter", () => {
     await activate("arm", ctx);
 
     expect(confirm).toHaveBeenCalledTimes(1);
-    // The confirm policy carries the danger variant + the slide gesture.
+    // The confirm policy carries the danger variant and the shared spec's
+    // tier: hold for 800 ms.
     expect(seen).not.toBeNull();
     expect((seen as unknown as ConfirmPolicy).variant).toBe("danger");
-    expect((seen as unknown as ConfirmPolicy).gesture).toBe("slide");
+    expect((seen as unknown as ConfirmPolicy).gesture).toBe("hold");
+    expect((seen as unknown as ConfirmPolicy).holdMs).toBe(800);
     expect(arm).toHaveBeenCalledTimes(1);
   });
 

@@ -8,6 +8,38 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Pilot stream.** With an agent-connected drone, the cockpit opens
+  `WS /api/v1/pilot/stream` (ticket scope `pilot.control`). In `ados` control
+  mode the gamepad's sticks go to the drone's pilot as `pilot.v1` input frames
+  at 50 Hz, with a radial deadzone of 0.08 by default (the pilot applies the
+  expo); the stream sends `release` when the pad disconnects, the tab is
+  hidden or the pad stops reporting for 150 ms. `fc_manual` and direct-serial
+  links keep the RC override. A pad must report the standard layout or carry
+  a calibration from the calibration wizard before it streams.
+- **Flight-state chip and Mode sheet.** A chip at the top left shows who flies
+  the drone (READY, PILOT · NORMAL, the skill, MISSION · WP n/N, RTH, FC ·
+  mode with Take control, LINK when the pilot state is stale) with the
+  secondary line for hold reason, avoidance and control mode, in the cockpit
+  spec's words and colours. Tapping it opens the Mode sheet: profile, control
+  mode (hold to confirm), avoidance (hold to turn off), hand to FC, VTOL
+  transition and the FC modes.
+- **Skill picker.** The visible skill bar is replaced by a picker at the
+  bottom right: tabs Behaviors / Camera / Navigation / Utility, each plugin's
+  skills grouped under it, a Tweak panel for the skill's parameters, GO and
+  Stop. One motion skill runs at a time; a skill that does not echo its state
+  within 3 s reverts with a toast. Skills that exclude the drone's vehicle
+  class are hidden. The loadout still holds keyboard bindings.
+- **Left column.** Take off / Land, Return home and Pause sit at the left,
+  vertically centred.
+- **Mission state.** Mission overlays, the pause/resume binding and the
+  upload guard read one mission state (`none`, `loaded`, `active`, `paused`,
+  `complete`, `returning`): the drone's own when its agent publishes one,
+  otherwise computed from the link's HEARTBEAT custom mode, MISSION_CURRENT
+  (with its `total`, `mission_state` and `mission_id` fields, now decoded) and
+  MISSION_ITEM_REACHED. Flight-mode names no longer decide it.
+- **Demo pilot.** Demo mode answers the pilot stream: sticks take the demo
+  drone to PILOT, and Mode sheet actions change its state.
+
 - **Cockpit data layers in one canvas.** A layer stack over the main video
   draws every data layer in the cockpit spec's z-order: depth, surfaces,
   obstacles, targets (detection glyphs, cockpit marks, lead reticle), AR route
@@ -78,6 +110,17 @@ the project follows [Semantic Versioning](https://semver.org/).
   stand-in instead of showing it as a working detector.
 
 ### Changed
+
+- **Built-in flight actions follow the shared cockpit table.** Labels, arm
+  gates, confirm tiers (Arm and Disarm hold 800 ms, Take off, Land and Return
+  home hold 1.5 s, Emergency stop hold 3 s then confirm) and keyboard chords
+  (`shift+a`, `shift+t`, `shift+l`, `shift+r`, `space` Pause, `shift+p`
+  Resume, `shift+c` Take control, `shift+x` Emergency stop) come from the
+  cockpit spec. With the pilot flying, each built-in is sent as a pilot
+  action. Return home and Land are disabled on a stale link; Pause and
+  Emergency stop are still sent blind. A new Take control action hands the
+  drone back to the pilot. FC mode presets moved out of the default loadout
+  to the Mode sheet.
 
 - Detection runs on demand. A view that draws detection overlays for a
   drone camera (the cockpit target layer, the picture-in-picture inset, the
@@ -156,6 +199,10 @@ the project follows [Semantic Versioning](https://semver.org/).
   on any verification failure, it builds from source. It no longer runs an
   unversioned `./ados-deploy` from the checkout, and Windows shells (Git Bash,
   MSYS, Cygwin) now get the Windows release asset.
+
+### Removed
+
+- **Abort.** The Abort action is gone; Pause covers it.
 
 ## [0.61.0] - 2026-10-22
 

@@ -13,6 +13,7 @@
  * @license GPL-3.0-only
  */
 
+import { readMissionStatus } from "@/lib/mission/use-mission-status";
 import { create } from "zustand";
 import type {
   Skill,
@@ -118,7 +119,7 @@ export function buildSkillContextFor(droneId: string): SkillContext {
     armState: droneState.armState,
     flightMode: droneState.flightMode,
     availableModes,
-    previousMode: droneState.previousMode,
+    missionState: readMissionStatus(droneId)?.state ?? null,
     supports,
     autonomousNav,
     checklistReady: useChecklistStore.getState().isReadyToArm(droneId),

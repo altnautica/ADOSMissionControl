@@ -9,7 +9,9 @@
 
 import type { Skill, SkillActivateArgs } from "../types";
 import {
-  builtinConfirm,
+  pilotActionResult,
+  specConfirm,
+  viaPilot,
   disabledIfNoLink,
   disabledUnlessDisarmed,
 } from "./_shared";
@@ -42,7 +44,7 @@ export const takeoffSkill: Skill = {
   toggle: false,
   armRequirement: "disarmed",
   requiresAutonomousNav: true,
-  confirm: builtinConfirm("takeoff", "hold", "danger", {
+  confirm: specConfirm("takeoff", "danger", {
     checklistAware: true,
     altitude: {
       defaultM: TAKEOFF_ALTITUDE_M.default,
@@ -56,8 +58,10 @@ export const takeoffSkill: Skill = {
   confirmValues: (args) => ({ altitude: takeoffAltitude(args) }),
   getState: (ctx) => disabledIfNoLink(ctx) ?? disabledUnlessDisarmed(ctx) ?? { kind: "idle" },
   activate: async (ctx, args) => {
-    if (!ctx.protocol) return;
     const altitudeM = takeoffAltitude(args);
+    // The pilot arms first and climbs itself.
+    if (viaPilot(ctx)) return pilotActionResult("takeoff", { alt_m: altitudeM });
+    if (!ctx.protocol) return;
     // A refused arm ends the take-off: commanding a climb after the vehicle
     // declined to arm would dispatch blind, so the refusal is what goes back
     // to the dispatcher (which surfaces it and spends nothing).

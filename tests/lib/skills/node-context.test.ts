@@ -306,12 +306,12 @@ describe("state that cannot be sourced per node", () => {
     expect(ctx.checklistReady).toBe(false);
   });
 
-  it("asserts no mode transition, so nothing infers a paused mission", () => {
+  it("infers no mission from mode names: no mission status reads null", () => {
     publishTelemetry(DEVICE_ID, { armed: true, mode: "LOITER" });
 
     const ctx = buildSkillContextForNode(NODE, { originIsHttps: false });
 
-    expect(ctx.previousMode).toBe(ctx.flightMode);
+    expect(ctx.missionState).toBeNull();
   });
 
   it("falls back to a mode naming no autonomy when the name is unknown", () => {

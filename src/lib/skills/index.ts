@@ -415,7 +415,6 @@ export function initSkillSubscriptions(): void {
     if (
       next.armState !== prev.armState ||
       next.flightMode !== prev.flightMode ||
-      next.previousMode !== prev.previousMode ||
       next.connectionState !== prev.connectionState
     ) {
       schedule();

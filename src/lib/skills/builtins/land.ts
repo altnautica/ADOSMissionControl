@@ -8,13 +8,7 @@
  */
 
 import type { Skill } from "../types";
-import {
-  builtinConfirm,
-  disabledIfNoBlindLink,
-  lastResortPath,
-  withStaleLinkWarning,
-  REASON,
-} from "./_shared";
+import { disabledIfNoLink, pilotActionResult, REASON, specConfirm, viaPilot } from "./_shared";
 
 export const landSkill: Skill = {
   id: "land",
@@ -25,16 +19,17 @@ export const landSkill: Skill = {
   toggle: false,
   armRequirement: "armed",
   requiresAutonomousNav: true,
-  confirm: builtinConfirm("land", "hold", "danger"),
+  confirm: specConfirm("land", "danger"),
   getState: (ctx) => {
-    const noLink = disabledIfNoBlindLink(ctx);
-    if (noLink) return noLink;
+    // The shared spec disables Land on a stale link, with the reason.
+    const noLink = disabledIfNoLink(ctx);
+    if (noLink) return ctx.linkStale ? { kind: "disabled", reason: REASON.linkStaleDisabled } : noLink;
     if (ctx.armState === "disarmed") {
       return { kind: "disabled", reason: REASON.notArmed };
     }
-    return withStaleLinkWarning(ctx, { kind: "idle" });
+    return { kind: "idle" };
   },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and spends nothing on it.
-  activate: async (ctx) => lastResortPath(ctx)?.land(),
+  activate: async (ctx) => (viaPilot(ctx) ? pilotActionResult("land") : ctx.protocol?.land()),
 };

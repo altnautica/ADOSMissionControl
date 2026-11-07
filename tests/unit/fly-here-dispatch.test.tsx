@@ -38,7 +38,7 @@ function makeCtx(over: Partial<SkillContext> = {}): SkillContext {
     armState: "armed",
     flightMode: "LOITER",
     availableModes: [],
-    previousMode: "LOITER",
+    missionState: null,
     supports: () => true,
     checklistReady: true,
     confirm: vi.fn(async () => true),

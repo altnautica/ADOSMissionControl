@@ -1,10 +1,11 @@
 "use client";
 
+import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Power, ArrowUpFromLine, Home, ArrowDownToLine,
-  Pause, Play, XOctagon, Skull, ClipboardCheck,
+  Pause, Play, Skull, ClipboardCheck,
 } from "lucide-react";
 import { FollowMeButton } from "./FollowMeButton";
 import { LoadoutSelector } from "./LoadoutSelector";
@@ -34,8 +35,8 @@ export function ActionsPanel() {
   const { toast } = useToast();
   const armState = useDroneStore((s) => s.armState);
   const flightMode = useDroneStore((s) => s.flightMode);
-  const previousMode = useDroneStore((s) => s.previousMode);
   const selectedId = useDroneManager((s) => s.selectedDroneId);
+  const missionState = useMissionStatus(selectedId)?.state ?? null;
   // A running follow-me session keeps its stop control on screen whatever the
   // selected drone's arm state or capabilities: the session may be commanding
   // an aircraft that is not the one shown here.
@@ -70,7 +71,6 @@ export function ActionsPanel() {
   // offers neither ARM nor DISARM rather than guessing.
   const armUnknown = armState === "unknown";
   const { supports } = useFirmwareCapabilities();
-  const hasMissions = supports("supportsMissionUpload");
   const hasAutonomousFlight = supports("supportsAutonomousNav"); // RTL/Land/Takeoff
 
   // Every action fires through the single skill-dispatch pipeline so confirm,
@@ -100,7 +100,7 @@ export function ActionsPanel() {
   // Pause/Resume present as one mission-aware control; the skill it fires
   // (pause vs resume) is chosen from the same mode/mission state the original
   // panel used to pick its button variant.
-  const isResumable = hasMissions && flightMode === "LOITER" && previousMode === "AUTO";
+  const isResumable = missionState === "paused";
   const firePauseResume = () => fire(isResumable ? "resume" : "pause");
 
   // The shell-level dispatcher serves this panel's key and gamepad bindings
@@ -117,7 +117,6 @@ export function ActionsPanel() {
     rth: useSkillChord("rth"),
     takeoff: useSkillChord("takeoff"),
     land: useSkillChord("land"),
-    abort: useSkillChord("abort"),
     kill: useSkillChord("kill"),
   };
   const tip = (labelKey: string, chord: string | null) =>
@@ -188,7 +187,7 @@ export function ActionsPanel() {
         <div className="flex items-center gap-1">
           {hasAutonomousFlight && (
             <div className="flex-1 [&>*]:w-full">
-              {hasMissions && flightMode === "AUTO" ? (
+              {missionState === "active" ? (
                 <Tooltip content={tip("actions.pauseMission", chords.pause)} position="right">
                   <Button
                     variant="secondary"
@@ -279,17 +278,6 @@ export function ActionsPanel() {
               </div>
             </>
           )}
-          <div className="flex-1 [&>*]:w-full">
-            <Tooltip content={tip("actions.abort", chords.abort)} position="left">
-              <Button
-                variant="danger"
-                size="sm"
-                className="w-full"
-                icon={<XOctagon size={14} />}
-                onClick={() => fire("abort")}
-              />
-            </Tooltip>
-          </div>
           <div className="flex-1 [&>*]:w-full">
             <Tooltip content={tip("actions.kill", chords.kill)} position="left">
               <Button

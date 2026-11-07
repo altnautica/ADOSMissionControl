@@ -12,6 +12,7 @@ import type { CommandResult, ProtocolCapabilities } from "@/lib/protocol/types";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 import type { FlightMode, ArmState } from "@/lib/types";
 import type { SkillProtocol } from "./skill-protocol";
+import type { MissionStateKind } from "@/lib/mission/mission-state";
 
 export type SkillCategory = "flight" | "behavior" | "camera" | "safety";
 export type SkillSource = "builtin" | "plugin";
@@ -158,8 +159,11 @@ export interface SkillContext {
    * when no FC handler is present.
    */
   availableModes: UnifiedFlightMode[];
-  /** Previous flight mode, for pause/resume. */
-  previousMode: FlightMode;
+  /**
+   * The C8 mission state (agent-computed, or the direct link's), null when
+   * unknown. Pause and resume read it; no surface infers a mission from mode names.
+   */
+  missionState: MissionStateKind | null;
   supports: (cap: keyof ProtocolCapabilities) => boolean;
   /**
    * Whether this node's firmware supports autonomous navigation, gating the
@@ -217,6 +221,14 @@ export interface Skill {
   category: SkillCategory;
   source: SkillSource;
   pluginId?: string;
+  /** C5 skill-picker tab (manifest category); built-ins have none. */
+  pickerCategory?: "behavior" | "camera" | "navigation" | "utility";
+  /** C5: the skill commands the vehicle (one at a time, preempted by built-ins). */
+  motion?: boolean;
+  /** C5: parameter keys the picker's Tweak panel shows. */
+  params?: string[];
+  /** C5: vehicle classes the skill supports; absent = every class. */
+  vehicleClasses?: ("multirotor" | "fixedwing" | "vtol")[];
   toggle: boolean;
   confirm?: ConfirmPolicy;
   /**

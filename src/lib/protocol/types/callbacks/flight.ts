@@ -53,6 +53,8 @@ export type HeartbeatCallback = (data: {
   mode: UnifiedFlightMode;
   systemStatus: number;
   vehicleInfo: VehicleInfo;
+  /** The raw HEARTBEAT custom_mode (MAVLink links only), for numeric mode checks. */
+  customMode?: number;
 }) => void;
 
 export type ParameterCallback = (data: ParameterValue) => void;
@@ -66,4 +68,9 @@ export type RadioCallback = (data: RadioData) => void;
 export type MissionProgressCallback = (data: {
   currentSeq: number;
   reachedSeq?: number;
+  /** MISSION_CURRENT extension fields, present when the FC sends them. */
+  total?: number;
+  /** MISSION_STATE enum (0 unknown, 1 no mission, 2 not started, 3 active, 4 paused, 5 complete). */
+  missionState?: number;
+  missionId?: number;
 }) => void;

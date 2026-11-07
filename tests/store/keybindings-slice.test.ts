@@ -50,9 +50,13 @@ describe("keybindings slice", () => {
     const slot0 = loadout.slots.find((s) => s.index === 0);
     expect(slot0?.skillId).toBe("arm");
     expect(slot0?.key).toBe("shift+a");
-    // Kill is slotted but deliberately unbound.
+    // Every built-in carries the shared spec's chord; no slot has a default
+    // gamepad button (the controller map is ds4.json).
     const kill = loadout.slots.find((s) => s.skillId === "kill");
-    expect(kill?.key).toBe(null);
+    expect(kill?.key).toBe("shift+x");
+    expect(loadout.slots.find((s) => s.skillId === "pause")?.key).toBe("space");
+    expect(loadout.slots.every((s) => s.gamepadButton === null)).toBe(true);
+    expect(loadout.slots.some((s) => s.skillId === "abort")).toBe(false);
   });
 
   it("a Skill lives in exactly one slot (last-write-wins)", () => {
@@ -173,6 +177,7 @@ describe("keybindings slice", () => {
 
     it("never takes a key or button another slot holds", () => {
       emptyFirst();
+      useSettingsStore.getState().setSlotGamepadButton(DEFAULT_LOADOUT_ID, 0, 0);
       seed("shift+a", 0);
       const arm = useSettingsStore
         .getState()
@@ -224,22 +229,22 @@ describe("keybindings slice", () => {
     it("lands in the free slots of the 12-slot default loadout", () => {
       const slots = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].slots;
       expect(slots).toHaveLength(12);
-      expect(slots.filter((s) => s.skillId !== null)).toHaveLength(10);
+      expect(slots.filter((s) => s.skillId !== null)).toHaveLength(8);
       seed("g", null);
-      expect(slotOf()?.index).toBe(10);
+      expect(slotOf()?.index).toBe(8);
     });
 
-    it("pads a loadout saved with 10 slots so a plugin skill can land", () => {
+    it("pads a loadout saved with only its 8 bound slots so a plugin skill can land", () => {
       const loadout = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID];
       useSettingsStore.setState({
         loadouts: {
-          [DEFAULT_LOADOUT_ID]: { ...loadout, slots: loadout.slots.slice(0, 10) },
+          [DEFAULT_LOADOUT_ID]: { ...loadout, slots: loadout.slots.slice(0, 8) },
         },
       });
       expect(seed("g", null)).toBe("bound");
       const after = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].slots;
       expect(after).toHaveLength(12);
-      expect(slotOf()?.index).toBe(10);
+      expect(slotOf()?.index).toBe(8);
     });
   });
 });

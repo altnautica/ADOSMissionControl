@@ -175,7 +175,8 @@ export const useInputStore = create<InputStoreState>((set) => ({
   rightStick: [0, 0],
   buttons: new Array(16).fill(false),
   txMode: loadTxMode(),
-  deadzone: 0.05,
+  // C4: radial deadzone 0.08 on every surface (adjustable 0.04–0.20 in Controls).
+  deadzone: 0.08,
   expo: 0.3,
   calibrations: loadCalibrations(),
   manualControlEnabled: false,

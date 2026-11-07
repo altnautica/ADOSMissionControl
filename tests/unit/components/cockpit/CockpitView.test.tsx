@@ -145,15 +145,21 @@ describe("CockpitView", () => {
     expect(container.querySelector(".mmap")).not.toBeNull();
   });
 
-  it("renders the Skill Bar when the skill layer is enabled", () => {
-    const { getByRole } = renderCockpit();
-    expect(getByRole("toolbar")).toBeInTheDocument();
+  it("renders the DJI grid: flight-state chip, left column and skill picker, no visible skill bar", () => {
+    const { getByTestId, queryByRole } = renderCockpit();
+    expect(getByTestId("flight-state-chip")).toBeInTheDocument();
+    expect(getByTestId("left-column")).toBeInTheDocument();
+    expect(getByTestId("skill-picker")).toBeInTheDocument();
+    expect(queryByRole("toolbar", { name: /skill bar/i })).toBeNull();
   });
 
-  it("does not render the Skill Bar when the skill layer is disabled", () => {
+  it("drops the left column and skill picker when the skill layer is disabled", () => {
     useCockpitStore.setState({ enabled: false });
-    const { queryByRole } = renderCockpit();
-    expect(queryByRole("toolbar")).toBeNull();
+    const { queryByTestId, getByTestId } = renderCockpit();
+    expect(queryByTestId("left-column")).toBeNull();
+    expect(queryByTestId("skill-picker")).toBeNull();
+    // The chip always shows who flies.
+    expect(getByTestId("flight-state-chip")).toBeInTheDocument();
   });
 
   it("enters immersive mode from the cockpit control (does not self-mount bridges)", () => {

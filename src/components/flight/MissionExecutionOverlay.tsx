@@ -12,23 +12,26 @@
  */
 
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
-import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
 import { useMissionStore } from "@/stores/mission-store";
-import { useDroneStore } from "@/stores/drone-store";
+import { useLiveFlightMode } from "@/hooks/use-live-flight-mode";
+import { useMissionStatus } from "@/lib/mission/use-mission-status";
+import { useDroneManager } from "@/stores/drone-manager";
 import { Navigation, Crosshair } from "lucide-react";
 
 export function MissionExecutionOverlay() {
-  const flightMode = useLiveFlightMode();
-  const previousMode = useDroneStore((s) => s.previousMode);
-  const missionState = useMissionStore((s) => s.activeMission?.state);
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
+  // C8 mission state: shown while the mission flies or is paused, never
+  // inferred from flight-mode names.
+  const mission = useMissionStatus(selectedId);
   const currentWaypoint = useMissionStore((s) => s.currentWaypoint);
   const waypointCount = useMissionStore((s) => s.waypoints.length);
   const nav = useFreshTelemetry("navController");
   const vfr = useFreshTelemetry("vfr");
 
-  const isAutoMode = flightMode === "AUTO";
-  const isPausedFromAuto = flightMode === "LOITER" && previousMode === "AUTO";
-  const showOverlay = isAutoMode || isPausedFromAuto || missionState === "running" || missionState === "paused";
+  // The heartbeat gate the HUD applies: a mission state the link stopped
+  // confirming is not shown as live.
+  const linkLive = useLiveFlightMode() !== null;
+  const showOverlay = linkLive && (mission?.state === "active" || mission?.state === "paused");
 
   const wpDist = nav?.wpDist ?? null;
   const xte = nav?.xtrackError ?? null;

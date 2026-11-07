@@ -57,6 +57,6 @@ export function handleHeartbeat(s: FrameHandlerState, frame: MAVLinkFrame): void
   const armed = (hb.baseMode & 0x80) !== 0
   const mode = s.firmwareHandler?.decodeFlightMode(hb.customMode) ?? 'UNKNOWN'
   for (const cb of s.cbs.heartbeatCallbacks) {
-    cb({ armed, mode, systemStatus: hb.systemStatus, vehicleInfo: s.vehicleInfo! })
+    cb({ armed, mode, systemStatus: hb.systemStatus, vehicleInfo: s.vehicleInfo!, customMode: hb.customMode })
   }
 }
