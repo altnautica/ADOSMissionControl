@@ -19,6 +19,10 @@ the project follows [Semantic Versioning](https://semver.org/).
   step can be run again on its own, parameter snapshots can be restored, and
   the setup report lists each step's numbers. Demo mode plays a quad through
   the ground wizard.
+- **Aircraft setup entry points.** The flight-state chip's NOT READY state
+  shows "Set up aircraft" when the drone reports aircraft setup is needed, and
+  the first time Mission Control sees a flight controller without a completed
+  ground setup a banner offers the wizard (once per aircraft).
 - **Cockpit views.** `V` (or Triangle on a controller) cycles Pilot, Map
   (the map main with the video as a picture-in-picture, which draws no data
   layers), Split (video beside the map) and Vision (the video with the
@@ -165,6 +169,16 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Calibration and autotune through the drone's agent.** On a drone whose
+  agent runs the setup engine, the accelerometer, gyro, compass, level,
+  airspeed and radio calibration panels and the autotune sections (ArduPilot
+  PID tuning, PX4 autotune) run that one setup step on the agent and show it
+  live, instead of sending MAVLink. A flight controller on a direct serial
+  link keeps the MAVLink panels; Betaflight and iNav panels are unchanged.
+- **Setup wizard text.** A step body variant the spec lacks falls back to the
+  step's body, and an enum choice is labelled from the spec (for example
+  "LiPo") rather than its raw value.
+
 - **Cockpit width classes follow the shared spec**: medium is 600–839 px and
   expanded starts at 840 px (was 1024).
 - **The gamepad radial and the old cockpit gamepad shortcuts are removed**
@@ -231,6 +245,11 @@ the project follows [Semantic Versioning](https://semver.org/).
   metric table.
 
 ### Fixed
+
+- **The cockpit map no longer sits under the flight-state chip.** The minimap
+  is the bottom-left card at the spec's size for each width class, so the top
+  left holds only the chip row; the stream tabs and top-left widgets moved
+  below it, and the camera roster and picture-in-picture moved above the map.
 
 - **Pilot actions report refusals.** Built-ins flown through the drone's
   pilot, the Mode sheet, the Launch sheet and F1/F2/F3 now carry an action id

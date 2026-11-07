@@ -69,7 +69,7 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
 
   return (
     <div
-      className="zone tl d-std pointer-events-auto"
+      className="zone blc d-std pointer-events-auto"
       data-expanded={expanded ? "true" : "false"}
     >
       <button

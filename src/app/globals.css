@@ -709,24 +709,32 @@ html[data-power="low"] .ados-cockpit,
 .ados-cockpit .zone.tl { top: 52px; left: 18px; }
 .ados-cockpit .zone.tr { top: 52px; right: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .ados-cockpit .zone.bc { left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 30; }
-/* Stream tabs sit to the right of the minimap inset (18 px + its width + 10 px). */
-.ados-cockpit .zone.tls { top: 52px; left: calc(28px + clamp(160px, 26cqi, 280px)); }
-.ados-cockpit[data-width-class="tv"] .zone.tls { left: calc(28px + clamp(200px, 26cqi, 360px)); }
+/* The bottom-left card (the cockpit spec's layout.json `bottom_left_card`):
+   the minimap, sized per width class. The top-left belongs to the top bar's
+   flight-state chip row, so the map never sits under it. Compact shows the
+   map as a chip that opens it upward as a sheet. */
+.ados-cockpit { --blc-w: 280px; --blc-h: 180px; }
+.ados-cockpit[data-width-class="medium"] { --blc-w: 200px; --blc-h: 140px; }
+.ados-cockpit[data-width-class="tv"] { --blc-w: 372px; --blc-h: 240px; }
+.ados-cockpit[data-width-class="compact"] { --blc-h: 48px; }
+.ados-cockpit .zone.blc { bottom: 20px; left: 18px; display: flex; flex-direction: column-reverse; align-items: flex-start; }
+/* Stream tabs sit under the flight-state chip row (56 px top + 48 px row + 8 px). */
+.ados-cockpit .zone.tls { top: 112px; left: 18px; }
 
 /* Arrangeable-widget zone containers (the registry composes the chips + plugin
    widgets into these; the operator can move a widget between zones). One
    anchored flex column per zone stacks that zone's widgets. Distinct from the
    fixed `.zone.*` cards above so the minimap + faithful HUD are untouched. */
 .ados-cockpit .cockpit-zone { position: absolute; z-index: 20; display: flex; flex-direction: column; gap: 10px; }
-/* Below the minimap inset (52 px top + its 16:10 height + a 10 px gap). */
-.ados-cockpit .cockpit-zone.tl { top: calc(62px + clamp(160px, 26cqi, 280px) * 10 / 16); left: 18px; align-items: flex-start; }
-.ados-cockpit[data-width-class="tv"] .cockpit-zone.tl { top: calc(62px + clamp(200px, 26cqi, 360px) * 10 / 16); }
+/* Below the flight-state chip row and the stream tabs under it. */
+.ados-cockpit .cockpit-zone.tl { top: 160px; left: 18px; align-items: flex-start; }
 .ados-cockpit .cockpit-zone.tc { top: 104px; left: 50%; transform: translateX(-50%); align-items: center; }
 .ados-cockpit .cockpit-zone.tr { top: 96px; right: 18px; align-items: flex-end; }
 .ados-cockpit .cockpit-zone.ml { top: 50%; left: 18px; transform: translateY(-50%); align-items: flex-start; }
 .ados-cockpit .cockpit-zone.cc { top: 50%; left: 50%; transform: translate(-50%, -50%); align-items: center; }
 .ados-cockpit .cockpit-zone.mr { top: 50%; right: 18px; transform: translateY(-50%); align-items: flex-end; }
-.ados-cockpit .cockpit-zone.bl { bottom: 92px; left: 18px; align-items: flex-start; }
+/* Above the bottom-left map card (20 px + its height + a 10 px gap). */
+.ados-cockpit .cockpit-zone.bl { bottom: calc(var(--blc-h) + 30px); left: 18px; align-items: flex-start; }
 .ados-cockpit .cockpit-zone.bc { left: 50%; bottom: 60px; transform: translateX(-50%); align-items: center; }
 .ados-cockpit .cockpit-zone.br { bottom: 92px; right: 18px; align-items: flex-end; }
 .ados-cockpit .cockpit-zone.full { inset: 0; align-items: center; justify-content: center; }
@@ -968,11 +976,10 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .ados-cockpit .perchip.warn .reason { color: var(--hud-warn); }
 .ados-cockpit .perchip.crit .reason { color: var(--hud-crit); }
 
-/* minimap + local frame + proximity radar.
-   Inset: clamp(0.26w, 160, 280) x 10/16 of the cockpit width; tv class
-   clamp(0.26w, 200, 360). Compact (< 600 px) collapses to a chip. */
-.ados-cockpit .mmap { width: clamp(160px, 26cqi, 280px); aspect-ratio: 16 / 10; overflow: hidden; position: relative; }
-.ados-cockpit[data-width-class="tv"] .mmap { width: clamp(200px, 26cqi, 360px); }
+/* minimap + local frame + proximity radar: the bottom-left card at the
+   layout.json size of the width class (expanded 280x180, medium 200x140, tv
+   at its 1.33 scale). Compact (< 600 px) collapses to a chip. */
+.ados-cockpit .mmap { width: var(--blc-w); height: var(--blc-h); overflow: hidden; position: relative; }
 .ados-cockpit .mmap .cap { position: absolute; top: 6px; left: 8px; z-index: 2; }
 .ados-cockpit .mmap .seg button { padding: 3px 6px; font-size: 9px; }
 /* Compact minimap toggle, shown in place of the map on narrow cockpits. */
@@ -1099,10 +1106,10 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 @keyframes strm-shimmer { 0%, 100% { opacity: .25; } 50% { opacity: .7; } }
 
 /* picture-in-picture inset: a second stream over the main video, draggable.
-   Default corner: bottom-left, above the camera roster (zone bottom 92px +
-   roster + 12px gap), clear of the radar and the right rail. A drag stores an
+   Default corner: bottom-left, above the map card and the camera roster on it
+   (map height + 30 px zone offset + roster + 12px gap), clear of the radar and the right rail. A drag stores an
    explicit left/top instead. */
-.ados-cockpit .pipinset { position: absolute; left: 18px; bottom: 224px; z-index: 25; width: 208px; padding: 0; overflow: hidden; }
+.ados-cockpit .pipinset { position: absolute; left: 18px; bottom: calc(var(--blc-h) + 162px); z-index: 25; width: 208px; padding: 0; overflow: hidden; }
 .ados-cockpit .pipinset .piphead { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 5px 4px 9px; cursor: move; touch-action: none; background: var(--hud-glass-strong); border-bottom: 1px solid var(--hud-hair); }
 .ados-cockpit .pipinset .piphead .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--hud-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ados-cockpit .pipinset .pipclose { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; border: 0; background: transparent; color: var(--hud-muted); cursor: pointer; flex: none; }
@@ -1140,7 +1147,7 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
   .ados-cockpit .mmap { display: none; }
   .ados-cockpit .mmap-chip { display: inline-flex; }
   /* The chip opens the map as a sheet at 90 % of the cockpit width. */
-  .ados-cockpit .zone.tl[data-expanded="true"] .mmap { display: block; margin-top: 8px; width: 90cqi; }
+  .ados-cockpit .zone.blc[data-expanded="true"] .mmap { display: block; margin-bottom: 8px; width: 90cqi; height: auto; aspect-ratio: 16 / 10; }
 }
 @container cockpit (max-width: 720px) {
   .ados-cockpit .tape, .ados-cockpit .hud-vsi { display: none; }

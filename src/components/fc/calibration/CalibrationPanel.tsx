@@ -18,10 +18,13 @@ import { CompassPreflightChecks } from "./CompassPreflightChecks";
 import { PX4CalibrationsSection } from "./PX4CalibrationsSection";
 import { ArduPilotCalibrations } from "./ArduPilotCalibrations";
 import { MspCalibrationSection } from "./MspCalibrationSection";
+import { AgentSetupStep } from "./AgentSetupStep";
+import { useAgentFcSetup } from "@/lib/fc-setup/use-fc-setup";
 
 export function CalibrationPanel() {
   const t = useTranslations("calibration");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { firmwareType } = useFirmwareCapabilities();
   // MSP firmwares get their own calibration surfaces; the ArduPilot/PX4
   // wizards below depend on MAVLink calibration feedback they never send.
@@ -29,6 +32,9 @@ export function CalibrationPanel() {
   const connected = !!selectedProtocol;
 
   const cal = useCalibrationEngine();
+  // An agent-connected drone runs each calibration as one setup-engine step;
+  // a direct-serial FC keeps the MAVLink wizards. MSP firmware never routes.
+  const setup = useAgentFcSetup(mspFirmware ? null : selectedDroneId);
 
   const compassProgress = compassProgressEntries(cal.compass);
 
@@ -57,7 +63,7 @@ export function CalibrationPanel() {
           {mspFirmware && <MspCalibrationSection firmware={mspFirmware} />}
 
           {/* Accelerometer — 6-position (ArduPilot/PX4) */}
-          {!mspFirmware && <CalibrationWizard
+          {!mspFirmware && <AgentSetupStep setup={setup} wizard="ground" step="accel"><CalibrationWizard
             title={t("accelCalibrationTitle")}
             description={t("accelCalibrationDesc")}
             steps={ACCEL_STEPS}
@@ -70,10 +76,10 @@ export function CalibrationPanel() {
             onStart={() => cal.startCalibration("accel", cal.setAccel, ACCEL_STEPS.length)}
             blockedReason={cal.blockedReason}
             onCancel={() => cal.cancelCalibration("accel", cal.setAccel)}
-          />}
+          /></AgentSetupStep>}
 
           {/* Gyroscope */}
-          {!mspFirmware && <CalibrationWizard
+          {!mspFirmware && <AgentSetupStep setup={setup} wizard="ground" step="gyro"><CalibrationWizard
             title={t("gyroCalibrationTitle")}
             description={t("gyroCalibrationDesc")}
             steps={GYRO_STEPS}
@@ -84,7 +90,7 @@ export function CalibrationPanel() {
             onStart={() => cal.startCalibration("gyro", cal.setGyro, GYRO_STEPS.length)}
             blockedReason={cal.blockedReason}
             onCancel={() => cal.cancelCalibration("gyro", cal.setGyro)}
-          />}
+          /></AgentSetupStep>}
 
           {/* Compass pre-calibration checks (ArduPilot only) */}
           {!mspFirmware && connected && !cal.isPx4 && cal.compass.status === "idle" && (
@@ -95,7 +101,7 @@ export function CalibrationPanel() {
           )}
 
           {/* Compass */}
-          {!mspFirmware && <CalibrationWizard
+          {!mspFirmware && <AgentSetupStep setup={setup} wizard="ground" step="compass"><CalibrationWizard
             title={t("compassCalibrationTitle")}
             description={t("compassCalibrationDesc")}
             steps={COMPASS_STEPS}
@@ -119,7 +125,7 @@ export function CalibrationPanel() {
             onStart={() => cal.startCalibration("compass", cal.setCompass, COMPASS_STEPS.length)}
             blockedReason={cal.blockedReason}
             onCancel={() => cal.cancelCalibration("compass", cal.setCompass)}
-          />}
+          /></AgentSetupStep>}
 
           {/* Compass Reboot Required Banner */}
           {!mspFirmware && cal.compass.needsReboot && cal.compass.status === "success" && (
@@ -147,6 +153,7 @@ export function CalibrationPanel() {
           {!mspFirmware && (
             <ArduPilotCalibrations
               connected={connected}
+              setup={setup}
               blockedReason={cal.blockedReason}
               level={cal.level} airspeed={cal.airspeed} baro={cal.baro}
               esc={cal.esc} compassmot={cal.compassmot} baroPressure={cal.baroPressure}

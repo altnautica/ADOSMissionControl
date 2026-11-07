@@ -12,6 +12,7 @@ import { ShellBridges } from "./ShellBridges";
 import { FailsafeAlertBanner } from "@/components/flight/FailsafeAlertBanner";
 import { PluginCrashBanner } from "@/components/plugins/PluginCrashBanner";
 import { SlcanModeBanner } from "@/components/shared/SlcanModeBanner";
+import { AircraftSetupBanner } from "@/components/shared/AircraftSetupBanner";
 import { DesktopUpdateBanner } from "./DesktopUpdateBanner";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useAuthStore } from "@/stores/auth-store";
@@ -399,6 +400,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <FailsafeAlertBanner />
           <SlcanModeBanner />
+          {!immersiveMode && <AircraftSetupBanner />}
           {!immersiveMode && <DesktopUpdateBanner />}
           {!immersiveMode && <PluginCrashBanner />}
           {children}

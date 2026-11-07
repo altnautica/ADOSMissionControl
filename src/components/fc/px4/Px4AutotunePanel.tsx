@@ -16,6 +16,8 @@ import { PanelHeader } from "../shared/PanelHeader";
 import { ArmedWarningBanner } from "@/components/indicators/ArmedWarningBanner";
 import { EnumSelect } from "../parameters/EnumSelect";
 import { ParamFieldLabel } from "../parameters/ParamFieldLabel";
+import { AgentSetupStep } from "../calibration/AgentSetupStep";
+import { useAgentFcSetup } from "@/lib/fc-setup/use-fc-setup";
 
 interface Field { param: string; label: string; kind: "enum" | "number"; min?: number; max?: number; step?: number }
 
@@ -43,6 +45,7 @@ const FW_FIELDS: Field[] = [
 export function Px4AutotunePanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
   const selectedDrone = useDroneManager(selectSelectedDrone);
+  const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   const { paramName: pn } = useParamLabel();
   const paramMeta = useParamMetadataMap();
   const scrollRef = usePanelScroll("px4-autotune");
@@ -67,6 +70,7 @@ export function Px4AutotunePanel() {
   useUnsavedGuard(dirtyParams.size > 0);
 
   const connected = !!selectedProtocol;
+  const setup = useAgentFcSetup(selectedDroneId);
   const hasDirty = dirtyParams.size > 0;
 
   const { saving, save: handleSave, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
@@ -97,6 +101,10 @@ export function Px4AutotunePanel() {
           icon={<Wand2 size={16} />} loading={loading} loadProgress={loadProgress} hasLoaded={hasLoaded}
           onRead={refresh} connected={connected} error={error} />
 
+        {/* On an agent-connected drone the setup engine's `air` autotune step
+            runs the tune (the pilot holds position); the parameter trigger
+            below is the direct-connect path. */}
+        <AgentSetupStep setup={setup} wizard="air" step="autotune">
         <div className="flex items-start gap-2 border border-status-warning/40 bg-status-warning/5 p-3">
           <AlertTriangle size={14} className="text-status-warning mt-0.5 shrink-0" />
           <p className="text-[11px] text-text-secondary">
@@ -118,6 +126,7 @@ export function Px4AutotunePanel() {
           {!connected && <span className="text-[10px] text-text-tertiary">Connect a drone to save parameters</span>}
           {hasDirty && connected && <span className="text-[10px] text-status-warning">Unsaved changes</span>}
         </div>
+        </AgentSetupStep>
       </div>
     </div>
     </ArmedWarningBanner>

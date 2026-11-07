@@ -11,9 +11,13 @@ import {
   LEVEL_STEPS, AIRSPEED_STEPS, BARO_STEPS, ESC_CAL_STEPS, COMPASSMOT_STEPS,
 } from "./calibration-types";
 import type { CalibrationState } from "./calibration-types";
+import { AgentSetupStep } from "./AgentSetupStep";
+import type { FcSetupController } from "@/lib/fc-setup/use-fc-setup";
 
 interface Props {
   connected: boolean;
+  /** The drone's agent setup engine; null keeps the MAVLink wizards. */
+  setup: FcSetupController | null;
   /** Set while a calibration may not start (vehicle armed or arm state unknown). */
   blockedReason?: string;
   level: CalibrationState;
@@ -32,7 +36,7 @@ interface Props {
 }
 
 export function ArduPilotCalibrations({
-  connected, blockedReason, level, airspeed, baro, esc, compassmot, baroPressure,
+  connected, setup, blockedReason, level, airspeed, baro, esc, compassmot, baroPressure,
   startCalibration, cancelCalibration,
   setLevel, setAirspeed, setBaro, setEsc, setCompassmot,
 }: Props) {
@@ -40,7 +44,7 @@ export function ArduPilotCalibrations({
 
   return (
     <>
-      <CalibrationWizard
+      <AgentSetupStep setup={setup} wizard="ground" step="level"><CalibrationWizard
         title="Level Calibration"
         description="Set the reference level horizon for the flight controller."
         steps={LEVEL_STEPS}
@@ -51,13 +55,13 @@ export function ArduPilotCalibrations({
         onStart={() => startCalibration("level", setLevel, LEVEL_STEPS.length)}
         blockedReason={blockedReason}
         onCancel={() => cancelCalibration("level", setLevel)}
-      />
+      /></AgentSetupStep>
 
       {level.needsReboot && level.status === "success" && (
         <CalibrationRebootBanner label="Level calibration saved" onReboot={() => { const p = selectedProtocol; if (p) p.reboot(); }} />
       )}
 
-      <CalibrationWizard
+      <AgentSetupStep setup={setup} wizard="ground" step="airspeed"><CalibrationWizard
         title="Airspeed Calibration"
         description="ArduPlane only — cover the pitot tube opening before starting."
         steps={AIRSPEED_STEPS}
@@ -68,7 +72,7 @@ export function ArduPilotCalibrations({
         onStart={() => startCalibration("airspeed", setAirspeed, AIRSPEED_STEPS.length)}
         blockedReason={blockedReason}
         onCancel={() => cancelCalibration("airspeed", setAirspeed)}
-      />
+      /></AgentSetupStep>
 
       <CalibrationWizard
         title="Barometer Calibration"
@@ -95,7 +99,7 @@ export function ArduPilotCalibrations({
         </div>
       )}
 
-      <RcCalibrationWizard connected={connected} />
+      <AgentSetupStep setup={setup} wizard="ground" step="radio"><RcCalibrationWizard connected={connected} /></AgentSetupStep>
       <RcChannelMapSection />
       <GpsConfigSection />
       <ServoCalibrationSection />

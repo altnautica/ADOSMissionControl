@@ -18,7 +18,7 @@ import { AlertTriangle, CheckCircle2, CircleDashed, Gamepad2, Loader2, MinusCirc
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
 import { inputArgs, liveRows, outputQuestion } from "@/lib/fc-setup/parse";
-import { formatValue, setupImageUrl, setupLabel, setupText } from "@/lib/fc-setup/strings";
+import { formatValue, optionText, setupImageUrl, setupLabel, setupText } from "@/lib/fc-setup/strings";
 import { HOLD_CONFIRM_MS, type ActionStyle, type InputOption, type SetupAction, type SetupStep, type SetupValue, type StepInput, type StepState } from "@/lib/fc-setup/types";
 import { cn } from "@/lib/utils";
 
@@ -286,7 +286,7 @@ function InputField({ input, value, onChange }: { input: StepInput; value: Setup
             onClick={() => onChange(o)}
             className={cn(control, o === value ? "border-accent-primary bg-accent-primary/15 text-accent-primary" : "hover:bg-bg-tertiary")}
           >
-            {label_key ? setupText(label_key) : formatValue(o)}
+            {optionText(input.label_key, o, label_key)}
           </button>
         ))}
       </div>

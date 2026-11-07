@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { fetchSetupStatus, rerunStep, runStepAction, setupErrorKey, startWizard } from "../client";
 import { currentStep } from "../parse";
-import { SETUP_IMAGES, setupImageUrl, setupText } from "../strings";
+import { SETUP_IMAGES, optionText, setupImageUrl, setupText } from "../strings";
 import { demoSetupTransport, resetDemoSetup } from "@/mock/mock-fc-setup";
 
 describe("setup strings and pictures", () => {
@@ -22,6 +22,17 @@ describe("setup strings and pictures", () => {
   it("fills placeholders and shows an unknown key as itself", () => {
     expect(setupText("setup.question.motor_position", { n: 3 })).toContain("3");
     expect(setupText("setup.nope")).toBe("setup.nope");
+  });
+
+  it("falls back from a body variant to the step body, and only there", () => {
+    expect(setupText("setup.accel.body.no_such_phase")).toBe(setupText("setup.accel.body"));
+    expect(setupText("setup.accel.title.no_such_phase")).toBe("setup.accel.title.no_such_phase");
+  });
+
+  it("labels a bare enum option by the engine's <input key>.<value> convention", () => {
+    expect(optionText("setup.input.chemistry", "lipo", null)).toBe("LiPo");
+    expect(optionText("setup.input.cells", 4, null)).toBe("4");
+    expect(optionText("setup.input.chemistry", "lipo", "setup.input.chemistry.liion")).toBe("Li-ion");
   });
 });
 

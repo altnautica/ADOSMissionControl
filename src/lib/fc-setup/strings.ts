@@ -68,15 +68,26 @@ export function interpolate(template: string, args: Record<string, SetupValue>):
   });
 }
 
-/** The English text for `key` with `args` filled in. A key the spec does not
- *  carry renders as the key itself, so a gap is visible rather than blank. */
+/** The English text for `key` with `args` filled in. Per the spec's lookup
+ *  rule, a missing `setup.<step>.body.<variant|phase>` falls back to
+ *  `setup.<step>.body`; any other key the spec does not carry renders as the
+ *  key itself, so a gap is visible rather than blank. */
 export function setupText(
   key: string,
   args: Record<string, SetupValue> = {},
   table: Readonly<Record<string, string>> = STRINGS,
 ): string {
-  const template = table[key];
+  const bodyVariant = /^(setup\.[^.]+\.body)\.[^.]+$/.exec(key);
+  const template = table[key] ?? (bodyVariant ? table[bodyVariant[1]] : undefined);
   return template === undefined ? key : interpolate(template, args);
+}
+
+/** An enum option's text: its own `label_key`, else the engine's convention
+ *  `<input label_key>.<value>` when the spec carries it, else the value. */
+export function optionText(inputLabelKey: string, value: SetupValue, labelKey: string | null): string {
+  if (labelKey) return setupText(labelKey);
+  const named = `${inputLabelKey}.${String(value)}`;
+  return named in STRINGS ? setupText(named) : formatValue(value);
 }
 
 /** A live-value or result key as a label: the spec's `setup.<group>.<key>`

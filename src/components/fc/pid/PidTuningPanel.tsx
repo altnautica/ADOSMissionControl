@@ -28,6 +28,8 @@ import { ParamTooltip } from "../parameters/ParamTooltip";
 import { PidAnalysisSection } from "./PidAnalysisSection";
 import { usePidAnalysisStore, type SuggestionTarget } from "@/stores/pid-analysis-store";
 import { AutotuneSection, LivePidResponseGraph, PidSnapshotComparison, Px4GainMultipliers } from "./PidComparisonSection";
+import { AgentSetupStep } from "../calibration/AgentSetupStep";
+import { useAgentFcSetup } from "@/lib/fc-setup/use-fc-setup";
 
 export function PidTuningPanel() {
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
@@ -38,6 +40,9 @@ export function PidTuningPanel() {
   const t = useTranslations("fcToasts.pid");
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
+  // On an agent-connected ArduPilot copter, autotune runs as the setup engine's
+  // `air` wizard step (the pilot flies it); otherwise it is the MAVLink mode switch.
+  const setup = useAgentFcSetup(firmwareType === "ardupilot-copter" ? selectedDroneId : null);
 
   // Log analysis and AI suggestions describe one vehicle; clear them before
   // another drone's panel paints.
@@ -200,7 +205,11 @@ export function PidTuningPanel() {
           </div>
         )}
 
-        {!isPx4 && vehicleType === "copter" && <AutotuneSection connected={connected} />}
+        {!isPx4 && vehicleType === "copter" && (
+          <AgentSetupStep setup={setup} wizard="air" step="autotune">
+            <AutotuneSection connected={connected} />
+          </AgentSetupStep>
+        )}
 
         <PidAnalysisSection target={suggestionTarget} connected={connected} />
 

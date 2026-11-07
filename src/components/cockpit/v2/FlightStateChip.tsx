@@ -3,17 +3,21 @@
 /**
  * The flight-state chip (top bar, left): who flies the drone and how, in the
  * shared spec's words and colours. Tapping it opens the Mode sheet. Its
- * button (Take control, Resume) fires the matching built-in.
+ * button (Take control, Resume) fires the matching built-in; NOT READY with
+ * the readiness item `setup_needed` red links to the aircraft setup wizard.
  *
  * @module cockpit/v2/FlightStateChip
  * @license GPL-3.0-only
  */
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { ModeSheet } from "./ModeSheet";
+import { AIRCRAFT_SETUP_HREF } from "@/components/shared/AircraftSetupBanner";
 
 const BUTTON_LABEL: Record<string, { label: string; skill: string }> = {
   take_control: { label: "Take control", skill: "take_control" },
@@ -31,6 +35,9 @@ export function FlightStateChip({
   const { pilot } = usePilotState(droneId);
   const [open, setOpen] = useState(false);
   const button = chip.button ? BUTTON_LABEL[chip.button] : undefined;
+  const setupLink =
+    chip.button === "setup_link_when_setup_needed" &&
+    (pilot?.readiness.some((r) => r.id === "setup_needed" && !r.ok) ?? false);
 
   return (
     <>
@@ -64,6 +71,15 @@ export function FlightStateChip({
           >
             {button.label}
           </button>
+        )}
+        {setupLink && (
+          <Link
+            href={AIRCRAFT_SETUP_HREF}
+            data-testid="chip-setup-link"
+            className="glass-pill flex min-h-12 items-center px-3 text-xs font-semibold text-text-primary"
+          >
+            {specString("setup.wizard.entry.set_up_aircraft")}
+          </Link>
         )}
       </div>
       {open && (
