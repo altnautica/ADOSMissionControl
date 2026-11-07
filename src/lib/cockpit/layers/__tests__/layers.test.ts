@@ -232,7 +232,7 @@ describe("draw loop", () => {
 
   function engine(): { e: LayerEngine; calls: string[] } {
     const { canvas, calls } = recordingCanvas();
-    const e = new LayerEngine(() => ({ mission: null, avoid: null, showLoaded: true }));
+    const e = new LayerEngine(() => {});
     e.attach(canvas);
     e.setRunning(false);
     e.resize(1280, 720, 1);

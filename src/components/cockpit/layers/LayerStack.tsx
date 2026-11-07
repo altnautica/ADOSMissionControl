@@ -55,14 +55,13 @@ function subscribeVisibility(onChange: () => void): () => void {
   return () => document.removeEventListener("visibilitychange", onChange);
 }
 
-/** Live flight context for the AR layout, read at draw time. */
-function flightContext(droneId: string): FlightContext {
+/** Live flight context for the AR layout, read at draw time into `out`. A
+ * `loaded` mission previews only while disarmed or owner ∈ {pilot, fc_mode}. */
+function readFlight(droneId: string, out: FlightContext): void {
   const p = useNavStreamStore.getState().byDrone[droneId]?.pilot?.data ?? null;
-  return {
-    mission: p?.mission ?? null,
-    avoid: p?.avoidState ?? null,
-    showLoaded: !p || !p.armed || p.owner === "pilot" || p.owner === "fc_mode",
-  };
+  out.mission = p?.mission ?? null;
+  out.avoid = p?.avoidState ?? null;
+  out.showLoaded = !p || !p.armed || p.owner === "pilot" || p.owner === "fc_mode";
 }
 
 /** Commit counter for the performance gate (zero commits while frames stream). */
@@ -84,7 +83,7 @@ export function LayerStack({ droneId, cameraId, view }: LayerStackProps) {
 
   const droneRef = useRef(droneId);
   droneRef.current = droneId;
-  const [engine] = useState(() => new LayerEngine(() => flightContext(droneRef.current)));
+  const [engine] = useState(() => new LayerEngine((out) => readFlight(droneRef.current, out)));
 
   useEffect(() => {
     layerStackStats.commits += 1;

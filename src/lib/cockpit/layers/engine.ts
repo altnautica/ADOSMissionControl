@@ -2,8 +2,8 @@
  * @module cockpit/layers/engine
  * @description The layer stack's draw loop, outside React. One canvas per
  * video, sized to the container at `devicePixelRatio`; every layer is drawn
- * into it in the cockpit's z-order: targets (detections, marks, lead), AR
- * route and motion, obstacles, depth, surfaces.
+ * into it in the cockpit spec's z-order: depth, surfaces, obstacles, targets
+ * (detections, marks, lead), AR route and AR motion.
  *
  * The loop draws only when something changed: a new frame in the frame store,
  * a new target scene, a resize, a layer or level change, an interpolation or
@@ -13,13 +13,14 @@
  * Interpolation: AR ops of the same key move linearly between the last two
  * frames over the measured inter-frame interval; ops new in a frame fade in
  * over 120 ms and removed ones fade out. Layouts are recomputed only when a
- * frame, the rect or the options change; between them only the blend runs,
- * into reused buffers.
+ * frame, the rect or the options change; between them only the blend runs.
+ * Every buffer, rect and option object is owned by the engine and reused, so
+ * a steady draw allocates nothing.
  *
  * @license GPL-3.0-only
  */
 
-import { layoutAr } from "./ar-layout";
+import { arStatusChip, layoutAr, type ArLayoutOptions, type LayerLevel } from "./ar-layout";
 import {
   decodeBase64Into,
   type ArCamera,
@@ -32,15 +33,14 @@ import { getFrames, subscribeFrames, type FrameSlot } from "./frame-store";
 import {
   DrawOpBuffer,
   FADE_MS,
-  containRect,
   layoutCells,
   layoutSectorArc,
   layoutZones,
   lerpOps,
   paintOps,
+  type CellOptions,
   type Rect,
 } from "./layer-layout";
-import type { LayerLevel } from "./ar-layout";
 import { LAYER_DIM_MS, LAYER_HIDE_MS } from "./layer-spec";
 import type { DepthRange, DepthStyle } from "@/stores/cockpit-layers-store";
 
@@ -50,7 +50,7 @@ const OBSTACLE_MAX_M = 5;
 const NEAR_M = 2;
 /** Interpolation interval when only one frame has arrived. */
 const DEFAULT_INTERVAL_MS = 100;
-
+const CHIP_COLOR = "#E5E7EB";
 
 /** What the loop draws, set from React only when a toggle, the level, the
  * camera or the view changes. */
@@ -65,8 +65,8 @@ export interface LayerOptions {
   fpsCap: number;
 }
 
-/** Live flight context the AR layout needs, read at draw time (not per frame
- * through React). */
+/** Live flight context the AR layout needs, read at draw time into the
+ * engine's own object (never through React state). */
 export interface FlightContext {
   mission: MissionState | null;
   avoid: AvoidState | null;
@@ -82,16 +82,18 @@ export interface LayerPerf {
   cursor: number;
 }
 
+/** A decoded per-camera grid in reused buffers. */
 interface GridScratch {
   near: Uint8Array;
   measured: Uint8Array;
+  hasMeasured: boolean;
 }
 
-/** Per-kind layout state: the frame and rect the ops were laid out for. */
+/** Per-kind layout state: the frame the ops were laid out from, and whether a
+ * rect or option change since then forces a new layout. */
 interface Laid {
   frame: unknown;
-  prevFrame: unknown;
-  key: string;
+  valid: boolean;
 }
 
 export class LayerEngine {
@@ -107,7 +109,8 @@ export class LayerEngine {
   private opts: LayerOptions | null = null;
   private style: TargetStyle | null = null;
   private targets: TargetScene | null = null;
-  private flight: () => FlightContext;
+  private readonly readFlight: (out: FlightContext) => void;
+  private readonly flight: FlightContext = { mission: null, avoid: null, showLoaded: true };
 
   private raf = 0;
   private staleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -115,6 +118,8 @@ export class LayerEngine {
   private dirty = true;
   private running = false;
   private unsubscribe: (() => void) | null = null;
+  private readonly onFrame = (t: number) => this.frame(t);
+  private readonly onStale = () => this.invalidate();
 
   private readonly arPrev = new DrawOpBuffer();
   private readonly arNext = new DrawOpBuffer();
@@ -123,14 +128,34 @@ export class LayerEngine {
   private readonly depth = new DrawOpBuffer();
   private readonly zones = new DrawOpBuffer();
   private readonly chips = new DrawOpBuffer();
-  private readonly gridScratch: GridScratch = { near: new Uint8Array(576), measured: new Uint8Array(72) };
-  private laidAr: Laid = { frame: null, prevFrame: null, key: "" };
-  private laidObs: Laid = { frame: null, prevFrame: null, key: "" };
-  private laidDepth: Laid = { frame: null, prevFrame: null, key: "" };
-  private laidZones: Laid = { frame: null, prevFrame: null, key: "" };
+  private readonly grid: GridScratch = { near: new Uint8Array(576), measured: new Uint8Array(72), hasMeasured: false };
+  private readonly rect: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private readonly arOpts: ArLayoutOptions = {
+    level: "full",
+    groups: { route: true, motion: true },
+    mission: null,
+    avoid: null,
+    showLoaded: true,
+  };
+  private readonly obsCells: CellOptions = { maxM: OBSTACLE_MAX_M, nearM: NEAR_M, mode: "solid" };
+  private readonly obsArc = { maxM: OBSTACLE_MAX_M, nearM: NEAR_M };
+  private readonly depthCells: CellOptions = { maxM: 5, nearM: NEAR_M, mode: "solid", unscaled: false };
+  private readonly laidAr: Laid = { frame: null, valid: false };
+  private readonly laidObs: Laid = { frame: null, valid: false };
+  private readonly laidDepth: Laid = { frame: null, valid: false };
+  private readonly laidZones: Laid = { frame: null, valid: false };
+  /** AR layout inputs read at draw time; a change forces a new layout. */
+  private arMission: string | null = null;
+  private arAvoid: AvoidState | null = null;
+  private arShowLoaded = true;
+  private arFrameW = 0;
+  private arFrameH = 0;
+  /** Earliest staleness boundary seen in the current draw. */
+  private nextBoundary = Infinity;
+  private chipCount = 0;
 
-  constructor(flight: () => FlightContext) {
-    this.flight = flight;
+  constructor(readFlight: (out: FlightContext) => void) {
+    this.readFlight = readFlight;
   }
 
   attach(canvas: HTMLCanvasElement): void {
@@ -198,10 +223,10 @@ export class LayerEngine {
 
   /** Something the layouts depend on changed: lay out again on the next draw. */
   private relayout(): void {
-    this.laidAr.key = "";
-    this.laidObs.key = "";
-    this.laidDepth.key = "";
-    this.laidZones.key = "";
+    this.laidAr.valid = false;
+    this.laidObs.valid = false;
+    this.laidDepth.valid = false;
+    this.laidZones.valid = false;
     this.invalidate();
   }
 
@@ -212,7 +237,7 @@ export class LayerEngine {
 
   private schedule(): void {
     if (!this.running || this.raf !== 0 || !this.ctx) return;
-    this.raf = requestAnimationFrame((t) => this.frame(t));
+    this.raf = requestAnimationFrame(this.onFrame);
   }
 
   private frame(t: number): void {
@@ -239,41 +264,63 @@ export class LayerEngine {
     if (animating) this.schedule();
   }
 
-  /** The letterboxed video rect in CSS px. */
-  private rect(fallbackW: number, fallbackH: number): Rect {
-    const w = this.videoW || fallbackW;
-    const h = this.videoH || fallbackH;
-    return containRect(this.cssW, this.cssH, w || 16, h || 9);
+  /** Lay the letterboxed (object-contain) video rect into `this.rect`. A
+   * change marks every layout stale. */
+  private layoutRect(fallbackW: number, fallbackH: number): void {
+    const fw = this.videoW || fallbackW || 16;
+    const fh = this.videoH || fallbackH || 9;
+    const s = Math.min(this.cssW / fw, this.cssH / fh);
+    const w = fw * s;
+    const h = fh * s;
+    const x = (this.cssW - w) / 2;
+    const y = (this.cssH - h) / 2;
+    const r = this.rect;
+    if (r.x === x && r.y === y && r.w === w && r.h === h) return;
+    r.x = x;
+    r.y = y;
+    r.w = w;
+    r.h = h;
+    this.laidAr.valid = false;
+    this.laidObs.valid = false;
+    this.laidDepth.valid = false;
+    this.laidZones.valid = false;
   }
 
-  /** Staleness of a slot: 0 fresh, 1 dimmed, 2 hidden. Arms a timer for the
-   * next boundary so a stalled feed still dims and hides on time. */
-  private age(slot: FrameSlot<unknown> | null, now: number, nextBoundary: { at: number }): 0 | 1 | 2 {
+  /** Staleness of a slot: 0 fresh, 1 dimmed, 2 hidden. Records the next
+   * boundary so a stalled feed still dims and hides on time. */
+  private age(slot: FrameSlot<unknown> | null, now: number): 0 | 1 | 2 {
     if (!slot) return 2;
     const a = now - slot.receivedAt;
     if (a < LAYER_DIM_MS) {
-      nextBoundary.at = Math.min(nextBoundary.at, slot.receivedAt + LAYER_DIM_MS);
+      this.nextBoundary = Math.min(this.nextBoundary, slot.receivedAt + LAYER_DIM_MS);
       return 0;
     }
     if (a < LAYER_HIDE_MS) {
-      nextBoundary.at = Math.min(nextBoundary.at, slot.receivedAt + LAYER_HIDE_MS);
+      this.nextBoundary = Math.min(this.nextBoundary, slot.receivedAt + LAYER_HIDE_MS);
       return 1;
     }
     return 2;
   }
 
-  private grid(g: CameraGrid): { cols: number; rows: number; near: Uint8Array; measured: Uint8Array | null } {
+  /** Decode a per-camera grid into the reused buffers. */
+  private decode(g: CameraGrid): void {
     const n = g.cols * g.rows;
-    const s = this.gridScratch;
+    const s = this.grid;
     if (s.near.length < n) s.near = new Uint8Array(n);
     if (s.measured.length < Math.ceil(n / 8)) s.measured = new Uint8Array(Math.ceil(n / 8));
     decodeBase64Into(g.near, s.near);
-    let measured: Uint8Array | null = null;
-    if (g.measured) {
-      decodeBase64Into(g.measured, s.measured);
-      measured = s.measured;
-    }
-    return { cols: g.cols, rows: g.rows, near: s.near, measured };
+    s.hasMeasured = g.measured !== null;
+    if (g.measured !== null) decodeBase64Into(g.measured, s.measured);
+  }
+
+  private chip(k: string, text: string): void {
+    const c = this.chips.push(k, "chip");
+    c.text = text;
+    c.color = CHIP_COLOR;
+    c.align = "left";
+    c.x = 12;
+    c.y = 18 + this.chipCount * 24;
+    this.chipCount += 1;
   }
 
   /** Draw everything; true while an animation needs the next frame. */
@@ -287,54 +334,125 @@ export class LayerEngine {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
     let animating = false;
-    const boundary = { at: Infinity };
+    this.nextBoundary = Infinity;
+    this.chips.clear();
+    this.chipCount = 0;
     const frames = getFrames(o.droneId);
     const cam = o.cameraId;
     const on = o.layers;
-    this.chips.clear();
-    let chipY = 0;
-    const chip = (k: string, text: string) => {
-      const c = this.chips.push(k, "chip");
-      c.text = text;
-      c.color = "#E5E7EB";
-      c.align = "left";
-      c.x = 12;
-      c.y = 0;
-      chipY += 1;
-      c.y = 18 + (chipY - 1) * 24;
-    };
+    const arCam: ArCamera | undefined = frames.ar?.frame.cameras[cam];
+    this.layoutRect(arCam?.frameW ?? 0, arCam?.frameH ?? 0);
+    const rect = this.rect;
 
-    // ── targets (detections, marks, lead) ──
-    if (on.has("targets") && this.targets && this.style) {
-      if (drawTargets(ctx, this.targets, this.style, now)) animating = true;
+    // ── depth (z 10) ──
+    if (on.has("depth") && o.depthRange !== "off") {
+      const slot = frames.depth;
+      const st = this.age(slot, now);
+      const g = slot?.frame.cameras[cam];
+      if (st < 2 && slot && g) {
+        const unscaled = (g.scaleSource ?? slot.frame.scaleSource) === "none";
+        if (this.laidDepth.frame !== slot.frame || !this.laidDepth.valid) {
+          this.depth.clear();
+          this.decode(g);
+          const c = this.depthCells;
+          c.maxM = o.depthRange === "2" ? 2 : 5;
+          c.mode = o.depthMode;
+          c.unscaled = unscaled;
+          layoutCells(this.grid.near, this.grid.hasMeasured ? this.grid.measured : null, g.cols, g.rows, rect, c, this.depth);
+          this.laidDepth.frame = slot.frame;
+          this.laidDepth.valid = true;
+        }
+        paintOps(ctx, this.depth, st === 1 ? DIM_ALPHA : 1);
+        if (unscaled) this.chip("depth-unscaled", "Depth unscaled");
+      } else {
+        this.chip("depth", "Depth unavailable");
+      }
     }
 
-    // ── AR route + motion ──
+    // ── surfaces (z 20) ──
+    if (on.has("surfaces")) {
+      const slot = frames.surfaces;
+      const st = this.age(slot, now);
+      if (st < 2 && slot && slot.frame.cameraId === cam) {
+        if (this.laidZones.frame !== slot.frame || !this.laidZones.valid) {
+          this.zones.clear();
+          layoutZones(slot.frame.zones, rect, this.zones);
+          this.laidZones.frame = slot.frame;
+          this.laidZones.valid = true;
+        }
+        paintOps(ctx, this.zones, st === 1 ? DIM_ALPHA : 1);
+      } else {
+        this.chip("surfaces", "Surfaces unavailable");
+      }
+    }
+
+    // ── obstacles (z 30) ──
+    if (on.has("obstacles")) {
+      const slot = frames.obstacles;
+      const st = this.age(slot, now);
+      if (st < 2 && slot) {
+        if (this.laidObs.frame !== slot.frame || !this.laidObs.valid) {
+          this.obs.clear();
+          const g = slot.frame.cameras[cam];
+          if (g) {
+            this.decode(g);
+            layoutCells(this.grid.near, this.grid.hasMeasured ? this.grid.measured : null, g.cols, g.rows, rect, this.obsCells, this.obs);
+          }
+          layoutSectorArc(slot.frame.sectorsM, rect, this.obsArc, this.obs);
+          this.laidObs.frame = slot.frame;
+          this.laidObs.valid = true;
+        }
+        paintOps(ctx, this.obs, st === 1 ? DIM_ALPHA : 1);
+      } else if (slot) {
+        this.chip("obstacles", "Obstacles unavailable");
+      }
+    }
+
+    // ── targets (z 40): detections, marks, lead ──
+    if (on.has("targets") && this.targets && this.style) {
+      if (drawTargets(ctx, this.targets, this.style, now, this.cssW, this.cssH)) animating = true;
+    }
+
+    // ── AR route (z 50) + motion (z 60) ──
     const wantRoute = on.has("ar_route");
     const wantMotion = on.has("ar_motion");
     if ((wantRoute || wantMotion) && o.level !== "off") {
       const slot = frames.ar;
-      const st = this.age(slot, now, boundary);
-      const arCam: ArCamera | undefined = slot?.frame.cameras[cam];
+      const st = this.age(slot, now);
       if (st < 2 && slot && arCam) {
-        const rect = this.rect(arCam.frameW, arCam.frameH);
-        const f = this.flight();
-        const lopts = {
-          level: o.level,
-          groups: { route: wantRoute, motion: wantMotion },
-          mission: slot.frame.mission ?? f.mission,
-          avoid: f.avoid,
-          showLoaded: f.showLoaded,
-        };
-        const key = `${rect.x},${rect.y},${rect.w},${rect.h},${o.level},${wantRoute},${wantMotion},${lopts.mission?.state ?? ""},${f.avoid ?? ""},${f.showLoaded}`;
-        if (this.laidAr.frame !== slot.frame || this.laidAr.key !== key) {
+        const f = this.flight;
+        this.readFlight(f);
+        const mission = slot.frame.mission ?? f.mission;
+        const ms = mission?.state ?? null;
+        if (
+          ms !== this.arMission ||
+          f.avoid !== this.arAvoid ||
+          f.showLoaded !== this.arShowLoaded ||
+          arCam.frameW !== this.arFrameW ||
+          arCam.frameH !== this.arFrameH
+        ) {
+          this.arMission = ms;
+          this.arAvoid = f.avoid;
+          this.arShowLoaded = f.showLoaded;
+          this.arFrameW = arCam.frameW;
+          this.arFrameH = arCam.frameH;
+          this.laidAr.valid = false;
+        }
+        if (this.laidAr.frame !== slot.frame || !this.laidAr.valid) {
+          const lo = this.arOpts;
+          lo.level = o.level;
+          lo.groups.route = wantRoute;
+          lo.groups.motion = wantMotion;
+          lo.mission = mission;
+          lo.avoid = f.avoid;
+          lo.showLoaded = f.showLoaded;
           this.arNext.clear();
-          layoutAr(arCam, rect, lopts, this.arNext);
+          layoutAr(arCam, rect, lo, this.arNext);
           this.arPrev.clear();
           const prevCam = slot.prev?.cameras[cam];
-          if (prevCam) layoutAr(prevCam, rect, lopts, this.arPrev);
+          if (prevCam) layoutAr(prevCam, rect, lo, this.arPrev);
           this.laidAr.frame = slot.frame;
-          this.laidAr.key = key;
+          this.laidAr.valid = true;
         }
         const interval = slot.prevAt !== null ? Math.max(16, slot.receivedAt - slot.prevAt) : DEFAULT_INTERVAL_MS;
         const since = now - slot.receivedAt;
@@ -342,114 +460,21 @@ export class LayerEngine {
         const fade = slot.prev ? Math.min(1, since / FADE_MS) : 1;
         lerpOps(this.arPrev, this.arNext, tt, fade, this.arOut);
         if (tt < 1 || fade < 1) animating = true;
-        ctx.globalAlpha = 1;
-        if (st === 1) this.dimmed(ctx, () => paintOps(ctx, this.arOut));
-        else paintOps(ctx, this.arOut);
-        if (slot.frame.approx) chip("ar", "AR ≈");
-        else if (slot.frame.reason !== null || arCam.reason !== null) chip("ar", "AR unavailable");
-      } else if (slot && st === 2) {
-        chip("ar", "AR unavailable");
-      }
-    }
-
-    // ── obstacles ──
-    if (on.has("obstacles")) {
-      const slot = frames.obstacles;
-      const st = this.age(slot, now, boundary);
-      if (st < 2 && slot) {
-        const g = slot.frame.cameras[cam];
-        const rect = this.rect(0, 0);
-        const key = `${rect.x},${rect.y},${rect.w},${rect.h}`;
-        if (this.laidObs.frame !== slot.frame || this.laidObs.key !== key) {
-          this.obs.clear();
-          if (g) {
-            const d = this.grid(g);
-            layoutCells(d.near, d.measured, d.cols, d.rows, rect, { maxM: OBSTACLE_MAX_M, nearM: NEAR_M, mode: "solid" }, this.obs);
-          }
-          layoutSectorArc(slot.frame.sectorsM, rect, { maxM: OBSTACLE_MAX_M, nearM: NEAR_M }, this.obs);
-          this.laidObs.frame = slot.frame;
-          this.laidObs.key = key;
-        }
-        if (st === 1) this.dimmed(ctx, () => paintOps(ctx, this.obs));
-        else paintOps(ctx, this.obs);
+        paintOps(ctx, this.arOut, st === 1 ? DIM_ALPHA : 1);
+        const status = arStatusChip(slot.frame, arCam, false);
+        if (status) this.chip("ar", status);
       } else if (slot) {
-        chip("obstacles", "Obstacles unavailable");
-      }
-    }
-
-    // ── depth ──
-    if (on.has("depth") && o.depthRange !== "off") {
-      const slot = frames.depth;
-      const st = this.age(slot, now, boundary);
-      if (st < 2 && slot) {
-        const g = slot.frame.cameras[cam];
-        const rect = this.rect(0, 0);
-        const key = `${rect.x},${rect.y},${rect.w},${rect.h},${o.depthMode},${o.depthRange}`;
-        if (this.laidDepth.frame !== slot.frame || this.laidDepth.key !== key) {
-          this.depth.clear();
-          if (g) {
-            const d = this.grid(g);
-            layoutCells(
-              d.near,
-              d.measured,
-              d.cols,
-              d.rows,
-              rect,
-              {
-                maxM: o.depthRange === "2" ? 2 : 5,
-                nearM: NEAR_M,
-                mode: o.depthMode,
-                unscaled: (g.scaleSource ?? slot.frame.scaleSource) === "none",
-              },
-              this.depth,
-            );
-          }
-          this.laidDepth.frame = slot.frame;
-          this.laidDepth.key = key;
-        }
-        if (st === 1) this.dimmed(ctx, () => paintOps(ctx, this.depth));
-        else paintOps(ctx, this.depth);
-        if (g && (g.scaleSource ?? slot.frame.scaleSource) === "none") chip("depth-unscaled", "Depth unscaled");
-      } else {
-        chip("depth", "Depth unavailable");
-      }
-    }
-
-    // ── surfaces ──
-    if (on.has("surfaces")) {
-      const slot = frames.surfaces;
-      const st = this.age(slot, now, boundary);
-      if (st < 2 && slot && slot.frame.cameraId === cam) {
-        const rect = this.rect(0, 0);
-        const key = `${rect.x},${rect.y},${rect.w},${rect.h}`;
-        if (this.laidZones.frame !== slot.frame || this.laidZones.key !== key) {
-          this.zones.clear();
-          layoutZones(slot.frame.zones, rect, this.zones);
-          this.laidZones.frame = slot.frame;
-          this.laidZones.key = key;
-        }
-        if (st === 1) this.dimmed(ctx, () => paintOps(ctx, this.zones));
-        else paintOps(ctx, this.zones);
-      } else {
-        chip("surfaces", "Surfaces unavailable");
+        // Stale, or nothing for the camera on screen.
+        this.chip("ar", "AR unavailable");
       }
     }
 
     if (this.chips.n > 0) paintOps(ctx, this.chips);
 
     clearTimeout(this.staleTimer);
-    if (!animating && Number.isFinite(boundary.at)) {
-      this.staleTimer = setTimeout(() => this.invalidate(), Math.max(0, boundary.at - Date.now()) + 1);
+    if (!animating && Number.isFinite(this.nextBoundary)) {
+      this.staleTimer = setTimeout(this.onStale, Math.max(0, this.nextBoundary - Date.now()) + 1);
     }
     return animating;
-  }
-
-  private dimmed(ctx: CanvasRenderingContext2D, paint: () => void): void {
-    // paintOps sets globalAlpha per op; draw the layer into a dimmed group.
-    ctx.save();
-    ctx.globalCompositeOperation = "source-over";
-    ctx.filter = `opacity(${DIM_ALPHA})`;
-    paint();
-    ctx.restore();
   }
 }

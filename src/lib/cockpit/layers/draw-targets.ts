@@ -212,6 +212,8 @@ function drawTag(ctx: CanvasRenderingContext2D, tag: PlacedTag, fontPx: number, 
 
 /** Per-key start time of the re-acquired snap. */
 const snapStart = new Map<string, number>();
+/** Keys with a live snap this draw (reused across draws). */
+const seen = new Set<string>();
 
 /**
  * Draw one target scene. Returns true while something animates (a lost fade,
@@ -222,9 +224,11 @@ export function drawTargets(
   scene: TargetScene,
   s: TargetStyle,
   now: number,
+  cssW: number,
+  cssH: number,
 ): boolean {
   let animating = false;
-  const seen = new Set<string>();
+  seen.clear();
   for (const l of scene.layouts) {
     const item = l.item;
     const mods = item.modifiers;
@@ -349,7 +353,7 @@ export function drawTargets(
     ctx.restore();
   }
   for (const k of snapStart.keys()) if (!seen.has(k)) snapStart.delete(k);
-  drawMarks(ctx, scene.marks, scene.markFrame, s);
+  drawMarks(ctx, scene.marks, scene.markFrame, s, cssW, cssH);
   return animating;
 }
 
@@ -366,10 +370,10 @@ function drawMarks(
   marks: readonly CockpitMark[],
   frame: MarkFrame | null,
   s: TargetStyle,
+  cw: number,
+  ch: number,
 ): void {
   if (marks.length === 0) return;
-  const cw = ctx.canvas.width / (ctx.getTransform().a || 1);
-  const ch = ctx.canvas.height / (ctx.getTransform().d || 1);
   for (const m of marks) {
     const space = m.space ?? "frame";
     const color = m.color === "var(--hud-lead)" ? s.lead : (m.color ?? MARK_ACCENT);
