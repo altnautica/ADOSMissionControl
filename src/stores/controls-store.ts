@@ -96,7 +96,7 @@ function isBinding(v: unknown): v is Ds4Binding {
     typeof b.control === "string" &&
     Array.isArray(b.with) &&
     b.with.every((w) => typeof w === "string") &&
-    (b.gesture === "tap" || b.gesture === "hold" || b.gesture === "double_tap" || b.gesture === "analog") &&
+    (b.gesture === "press" || b.gesture === "tap" || b.gesture === "hold" || b.gesture === "double_tap" || b.gesture === "analog") &&
     (b.hold_ms === null || typeof b.hold_ms === "number") &&
     (b.when === null || typeof b.when === "string") &&
     typeof b.action === "string" &&

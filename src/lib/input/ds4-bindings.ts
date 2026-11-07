@@ -16,8 +16,10 @@
  *     tap;
  *   - a hold fires once, when held for its `hold_ms`; a release before that
  *     is a tap; `stick_l_centered` must hold for the whole hold;
- *   - a Pause tap (the brake) fires on press, not on release, so a press
- *     that goes on to the 2 s return-home hold has already braked;
+ *   - a `press` row fires on button-down; a hold row on the same control
+ *     keeps timing and fires on top (PS: brake on press, return home at
+ *     2 s). A Pause `tap` row is treated the same way, so a brake never
+ *     waits for the release;
  *   - several rows for one gesture (Triangle hold: take off on the ground,
  *     land in the air) fire the first whose `when` is true.
  *
@@ -26,7 +28,7 @@
 
 import ds4 from "@/lib/cockpit/spec/ds4.json";
 
-export type Ds4Gesture = "tap" | "hold" | "double_tap" | "analog";
+export type Ds4Gesture = "press" | "tap" | "hold" | "double_tap" | "analog";
 
 export interface Ds4Binding {
   control: string;
@@ -199,7 +201,9 @@ export class GestureEngine {
       const p = this.presses.get(c);
       const candidates = this.candidatesFor(c, next);
       if (fresh) {
-        const brake = this.firstWhen(candidates.filter((b) => b.gesture === "tap" && b.action === "pause"));
+        const brake = this.firstWhen(
+          candidates.filter((b) => b.gesture === "press" || (b.gesture === "tap" && b.action === "pause")),
+        );
         this.presses.set(c, { t0: now, candidates, holdFired: false, tapFired: brake !== null, broken: false });
         this.pendingTap.delete(c);
         if (brake) this.cb.fire(brake);

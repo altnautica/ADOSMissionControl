@@ -63,6 +63,16 @@ describe("controller gesture engine", () => {
     expect(run(SPEC_BINDINGS, [[0, ["ps"]], [1000, ["ps"]], [2000, ["ps"]], [2100, []]])).toEqual(["pause", "rth"]);
   });
 
+  it("a press row fires on button-down and a hold on the same control still fires", () => {
+    const rows: Ds4Binding[] = [
+      { control: "ps", with: [], gesture: "press", hold_ms: null, when: null, action: "pause", rumble: null, locked: true },
+      { control: "ps", with: [], gesture: "hold", hold_ms: 2000, when: null, action: "rth", rumble: null, locked: true },
+    ];
+    expect(run(rows, [[0, ["ps"]]])).toEqual(["pause"]);
+    expect(run(rows, [[0, ["ps"]], [2100, ["ps"]], [2200, []]])).toEqual(["pause", "rth"]);
+    expect(run(rows, [[0, ["ps"]], [100, []]])).toEqual(["pause"]);
+  });
+
   it("PS tap during RTH cancels it", () => {
     const fired = run(SPEC_BINDINGS, [[0, ["ps"]], [100, []]], (c) => c === "rth_active");
     expect(fired).toEqual(["rth_cancel"]);

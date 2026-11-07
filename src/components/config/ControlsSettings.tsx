@@ -57,7 +57,7 @@ type Hotspot = {
   label_side: "left" | "right" | "top" | "bottom";
 };
 
-const GESTURES: readonly Exclude<Ds4Gesture, "analog">[] = ["tap", "hold", "double_tap"];
+const GESTURES: readonly Exclude<Ds4Gesture, "analog">[] = ["press", "tap", "hold", "double_tap"];
 const GROUP_LABEL: Record<string, string> = {
   flight: "Flight",
   skills: "Skills",
