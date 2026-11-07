@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "$description": "Flight-state chip. Rules are evaluated in order on the pilot kind; the first match wins. {placeholders} are filled from the pilot kind and its C8 mission object. color names resolve through tokens.json state.*.",
+  "$description": "Flight-state chip. Rules are evaluated in order on the pilot kind; the first match wins. {placeholders} are filled from the pilot kind and its mission object. color names resolve through tokens.json state.*.",
   "rules": [
     { "id": "link_stale", "match": { "pilot_stale": true }, "text": "LINK", "color": "stale", "dim": true, "button": null },
     { "id": "idle_ready", "match": { "owner": "idle", "ready": true }, "text": "READY", "color": "ready", "button": null },

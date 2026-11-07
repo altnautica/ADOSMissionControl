@@ -10,7 +10,7 @@
       "deadzone": 0.08,
       "profile": "user",
       "bindings": [
-        { "control": "ps", "with": [], "gesture": "tap", "hold_ms": null, "when": "not_rth", "action": "pause", "rumble": "mode_change", "locked": true }
+        { "control": "ps", "with": [], "gesture": "press", "hold_ms": null, "when": "not_rth", "action": "pause", "rumble": "mode_change", "locked": true }
       ]
     },
     "pad_values": ["ds4", "generic"],
@@ -120,6 +120,7 @@
     }
   },
   "gestures": {
+    "press": "fires the moment the control goes down; a hold row on the same control keeps timing and fires on top (PS: brake at once, RTH at 2 s)",
     "tap": "press and release under hold_ms",
     "hold": "held for hold_ms",
     "double_tap": "two taps within 300 ms",
@@ -189,16 +190,17 @@
     { "control": "options", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "quick_settings", "rumble": null, "locked": false },
     { "control": "dpad_left", "with": ["options"], "gesture": "tap", "hold_ms": null, "when": null, "action": "profile_prev", "rumble": "mode_change", "locked": false },
     { "control": "dpad_right", "with": ["options"], "gesture": "tap", "hold_ms": null, "when": null, "action": "profile_next", "rumble": "mode_change", "locked": false },
-    { "control": "ps", "with": [], "gesture": "tap", "hold_ms": null, "when": "not_rth", "action": "pause", "rumble": "mode_change", "locked": true },
+    { "control": "ps", "with": [], "gesture": "press", "hold_ms": null, "when": "not_rth", "action": "pause", "rumble": "mode_change", "locked": true },
     { "control": "ps", "with": [], "gesture": "hold", "hold_ms": 2000, "when": null, "action": "rth", "rumble": "countdown", "locked": true },
-    { "control": "ps", "with": [], "gesture": "tap", "hold_ms": null, "when": "rth_active", "action": "rth_cancel", "rumble": "mode_change", "locked": false },
-    { "control": "circle", "with": ["options"], "gesture": "tap", "hold_ms": null, "when": null, "action": "pause", "rumble": "mode_change", "locked": false },
+    { "control": "ps", "with": [], "gesture": "press", "hold_ms": null, "when": "rth_active", "action": "rth_cancel", "rumble": "mode_change", "locked": false },
+    { "control": "circle", "with": ["options"], "gesture": "press", "hold_ms": null, "when": "not_rth", "action": "pause", "rumble": "mode_change", "locked": false },
+    { "control": "circle", "with": ["options"], "gesture": "hold", "hold_ms": 2000, "when": null, "action": "rth", "rumble": "countdown", "locked": false },
     { "control": "l1", "with": ["r1"], "gesture": "hold", "hold_ms": 2000, "when": "stick_l_centered", "action": "arm", "rumble": "ramp", "locked": true },
     { "control": "circle", "with": ["l2", "r2"], "gesture": "hold", "hold_ms": 3000, "when": null, "action": "kill", "rumble": "ramp", "locked": true },
     { "control": "touchpad", "with": [], "gesture": "tap", "hold_ms": null, "when": null, "action": "designate", "rumble": null, "locked": false }
   ],
   "locked_actions": [
-    { "action": "pause", "gesture": "tap", "combo": false },
+    { "action": "pause", "gesture": "press", "combo": false },
     { "action": "rth", "gesture": "hold", "combo": false },
     { "action": "arm", "gesture": "hold", "combo": true },
     { "action": "kill", "gesture": "hold", "combo": true }
