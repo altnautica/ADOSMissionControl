@@ -37,7 +37,7 @@ import {
   usePluginSkillHostStore,
   type PluginSkillReportedState,
 } from "@/lib/skills/plugin-skill-host-store";
-import { holdReasonWord } from "@/lib/vision/target-state";
+import { holdReasonWord } from "@/lib/vision/target-format";
 
 /** How often to poll each plugin's published state, in ms. */
 export const POLL_INTERVAL_MS = 750;

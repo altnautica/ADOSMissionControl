@@ -23,14 +23,22 @@
  * override on the connected aircraft.
  */
 
-import { useInputStore, type TxMode } from "@/stores/input-store";
+import { useInputStore } from "@/stores/input-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { selectedDroneMqttAuthority } from "@/hooks/use-mqtt-control-authority";
 import { canPublishFcFrames } from "@/lib/nodes/mqtt-control-authority";
 import { manualControlAllowed } from "./manual-control-gate";
-import { isReservedGamepadButton } from "@/lib/skills/chord";
-import { create } from "zustand";
+import {
+  applyCal,
+  applyDeadzone,
+  applyExpo,
+  buttonsToArray,
+  getMappingForMode,
+  manualControlButtonMask,
+  radialDeadzone,
+} from "./gamepad-axes";
+import { patchPadStatus, usePadStatusStore } from "./pad-status";
 import {
   PAD_STALE_MS,
   PILOT_INPUT_PERIOD_MS,
@@ -40,120 +48,10 @@ import {
   sticksRouteToPilot,
 } from "./pilot-stream";
 
-/** What the cockpit shows about the pad itself. */
-export interface PadStatus {
-  /** A pad is connected (from `gamepadconnected`/`gamepaddisconnected` or a read). */
-  connected: boolean;
-  /** The pad has reported at least once: browsers expose a pad only after its first input. */
-  seen: boolean;
-  name: string | null;
-  /** `mapping === "standard"`, or a calibration wizard axis map exists for this pad. */
-  usable: boolean;
-  /** True when the pad layout is not standard and has no calibration. */
-  needsCalibration: boolean;
-}
-
-export const usePadStatusStore = create<PadStatus & { set: (p: Partial<PadStatus>) => void }>(
-  (set) => ({
-    connected: false,
-    seen: false,
-    name: null,
-    usable: false,
-    needsCalibration: false,
-    set: (p) => set(p),
-  }),
-);
-
-function patchPadStatus(p: Partial<PadStatus>): void {
-  const s = usePadStatusStore.getState();
-  for (const k of Object.keys(p) as (keyof PadStatus)[]) {
-    if (s[k] !== p[k]) {
-      s.set(p);
-      return;
-    }
-  }
-}
-
-/**
- * Radial deadzone: the stick vector inside `dz` reads zero, outside it is
- * rescaled so the edge of the deadzone is 0 and full deflection stays 1.
- */
-export function radialDeadzone(x: number, y: number, dz: number): [number, number] {
-  const mag = Math.hypot(x, y);
-  if (mag <= dz) return [0, 0];
-  const scaled = Math.min(1, (mag - dz) / (1 - dz)) / mag;
-  return [x * scaled, y * scaled];
-}
-
 /** The last pilot-route axes [roll, pitch, thr, yaw], radial deadzone applied. */
 let lastPilotAxes: [number, number, number, number] = [0, 0, 0, 0];
 /** Whether the last read came from a usable pad. */
 let lastPadUsable = false;
-
-export interface GamepadMapping {
-  rollAxis: number;
-  pitchAxis: number;
-  throttleAxis: number;
-  yawAxis: number;
-  txMode: TxMode;
-}
-
-// Default: Mode 2 (left stick = throttle+yaw, right stick = roll+pitch)
-const MODE_2_MAPPING: GamepadMapping = {
-  rollAxis: 2, // right stick X
-  pitchAxis: 3, // right stick Y
-  throttleAxis: 1, // left stick Y
-  yawAxis: 0, // left stick X
-  txMode: 2,
-};
-
-// Mode 1: pitch and throttle swap sticks relative to mode 2, so the left stick
-// carries yaw and pitch and the right stick carries roll and throttle.
-const MODE_1_MAPPING: GamepadMapping = {
-  rollAxis: 2, // right stick X
-  pitchAxis: 1, // left stick Y (swapped with throttle)
-  throttleAxis: 3, // right stick Y (swapped with pitch)
-  yawAxis: 0, // left stick X
-  txMode: 1,
-};
-
-/** Apply deadzone — inputs below threshold snap to 0. */
-function applyDeadzone(value: number, deadzone: number): number {
-  if (Math.abs(value) < deadzone) return 0;
-  // Scale remaining range from 0..1 after deadzone
-  const sign = value > 0 ? 1 : -1;
-  return (sign * (Math.abs(value) - deadzone)) / (1 - deadzone);
-}
-
-/** Normalize one raw axis to -1..1 from its measured center/min/max. */
-export function applyCal(raw: number, center: number, min: number, max: number): number {
-  const adjusted = raw - center;
-  const halfRange = adjusted >= 0 ? (max - center) : (center - min);
-  if (halfRange <= 0.01) return 0;
-  return Math.max(-1, Math.min(1, adjusted / halfRange));
-}
-
-/** Apply exponential curve — higher expo = more gentle near center, more aggressive at extremes. */
-function applyExpo(value: number, expo: number): number {
-  // Blend linear and cubic: output = (1-expo)*value + expo*value^3
-  return (1 - expo) * value + expo * value * value * value;
-}
-
-/**
- * Convert gamepad buttons to a boolean array for the input store.
- *
- * Each call returns its own array. Sharing one buffer would publish the same
- * reference on every frame, so a store subscriber comparing references would
- * never see a press, and a consumer holding a previous frame would find it
- * rewritten underneath. Sixteen booleans per frame is the same order as the
- * axes array published alongside it.
- */
-function buttonsToArray(buttons: readonly GamepadButton[]): boolean[] {
-  const out: boolean[] = new Array(16).fill(false);
-  const len = Math.min(buttons.length, 16);
-  for (let i = 0; i < len; i++) out[i] = buttons[i]?.pressed ?? false;
-  return out;
-}
 
 /**
  * How often the stream re-checks itself while it is not transmitting.
@@ -183,11 +81,6 @@ const RELAY_WRITE_BLOCK = "the cloud relay holds no broker write grant for this 
 let pollAnimFrame: number | null = null;
 let manualControlTimer: ReturnType<typeof setTimeout> | null = null;
 let activeGamepadIndex: number | null = null;
-
-/** Get the mapping for a TX mode. */
-export function getMappingForMode(mode: TxMode): GamepadMapping {
-  return mode === 1 ? MODE_1_MAPPING : MODE_2_MAPPING;
-}
 
 /** Surfaces currently holding the polling loop. */
 let pollHolders = 0;
@@ -546,18 +439,6 @@ export function stopManualControlStream(): void {
   if (manualControlTimer === null) return;
   clearTimeout(manualControlTimer);
   manualControlTimer = null;
-}
-
-/**
- * The MANUAL_CONTROL button bitmask for a button frame: the first 16 buttons,
- * minus the ones the cockpit reserves for its own controls.
- */
-export function manualControlButtonMask(buttons: readonly boolean[]): number {
-  let bitmask = 0;
-  for (let i = 0; i < Math.min(buttons.length, 16); i++) {
-    if (buttons[i] && !isReservedGamepadButton(i)) bitmask |= 1 << i;
-  }
-  return bitmask;
 }
 
 let padListenersInstalled = false;

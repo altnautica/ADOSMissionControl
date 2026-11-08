@@ -28,7 +28,7 @@ import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
 import layoutSpec from "@/lib/cockpit/spec/layout.json";
 import { hasSpecString, specString } from "@/lib/cockpit/spec-strings";
 import { PILOT_SRC, sendPilotAction, takePilotSession, usePilotLinkStore } from "@/lib/input/pilot-stream";
-import { usePadStatusStore } from "@/lib/input/gamepad-poller";
+import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useCockpitPrefsStore } from "@/stores/cockpit-prefs-store";
 

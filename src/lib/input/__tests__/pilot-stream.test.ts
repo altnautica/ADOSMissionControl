@@ -15,7 +15,7 @@ import {
   usePilotLinkStore,
   type PilotOutboundFrame,
 } from "../pilot-stream";
-import { radialDeadzone } from "../gamepad-poller";
+import { radialDeadzone } from "../gamepad-axes";
 
 function capture(): PilotOutboundFrame[] {
   const frames: PilotOutboundFrame[] = [];

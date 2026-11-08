@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 
 import type { FollowState } from "@/lib/agent/nav-types";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
-import { formatRange, rangeInterval } from "@/lib/vision/target-state";
+import { formatRange, rangeInterval } from "@/lib/vision/target-format";
 import {
   LATENCY_WARN_MS,
   PHASE_TONE,

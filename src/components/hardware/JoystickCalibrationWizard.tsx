@@ -15,7 +15,7 @@ import { ChevronRight, RotateCcw, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { useInputStore, type GamepadCalibration } from "@/stores/input-store";
-import { applyCal } from "@/lib/input/gamepad-poller";
+import { applyCal } from "@/lib/input/gamepad-axes";
 
 type Step = "center" | "range" | "verify";
 

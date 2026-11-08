@@ -31,7 +31,7 @@ import { useFollowStateEntry } from "@/hooks/use-nav-feed";
 import { useClockTick } from "@/lib/agent/freshness";
 import type { FollowState } from "@/lib/agent/nav-types";
 import { perceptionFeedState, staleReason } from "@/lib/vision/perception-health";
-import { classWord, holdReasonWord } from "@/lib/vision/target-state";
+import { classWord, holdReasonWord } from "@/lib/vision/target-format";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useClockStore } from "@/stores/clock-store";
 import { FOLLOW_STALE_MS, useNavStreamStore } from "@/stores/nav-stream-store";

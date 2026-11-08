@@ -1,8 +1,9 @@
 /**
  * @module hud/layer-layout
- * @description The cockpit layer draw list and its painter, shared by every
- * web surface that draws the cockpit data layers over a video (the agent
- * cockpit and kiosk, the agent dashboard, and Mission Control's byte copy).
+ * @description The cockpit layer draw list, shared by every web surface that
+ * draws the cockpit data layers over a video (the agent cockpit and kiosk, the
+ * agent dashboard, and Mission Control's copy). Its painter, `paintOps`, is in
+ * `layer-paint` in Mission Control.
  *
  * A layer is laid out into a `DrawOpBuffer`: a reusable list of draw
  * operations in CSS pixels of the overlay canvas. Ops are recycled frame to
@@ -15,8 +16,7 @@
  * (`layoutCells`), the bottom-centre obstacle arc (`layoutSectorArc`) and the
  * landing-zone polygons of the `surfaces` layer (`layoutZones`).
  *
- * Dependency-free apart from `cockpit-frames`: Mission Control copies the
- * three files byte for byte.
+ * Dependency-free apart from `cockpit-frames`.
  *
  * @license GPL-3.0-only
  */
@@ -370,152 +370,4 @@ export function layoutZones(zones: readonly SurfaceZone[], rect: Rect, out: Draw
     chip.text = `${Math.round(zone.score * 100)}`;
     chip.color = LAYER_COLORS.zone;
   }
-}
-
-// ── painter ───────────────────────────────────────────────────────────────
-
-const textWidths = new Map<string, number>();
-const LABEL_FONT = "600 12px Inter, system-ui, sans-serif";
-
-function measure(ctx: CanvasRenderingContext2D, text: string): number {
-  let w = textWidths.get(text);
-  if (w === undefined) {
-    w = ctx.measureText(text).width;
-    if (textWidths.size > 512) textWidths.clear();
-    textWidths.set(text, w);
-  }
-  return w;
-}
-
-function tracePath(ctx: CanvasRenderingContext2D, op: DrawOp): void {
-  ctx.beginPath();
-  switch (op.kind) {
-    case "line":
-    case "poly":
-      for (let i = 0; i < op.n; i++) {
-        const x = op.pts[i * 2];
-        const y = op.pts[i * 2 + 1];
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      if (op.closed) ctx.closePath();
-      break;
-    case "rect":
-      ctx.rect(op.x, op.y, op.w, op.h);
-      break;
-    case "circle":
-      ctx.arc(op.x, op.y, op.r, 0, Math.PI * 2);
-      break;
-    case "tri":
-      ctx.moveTo(op.x, op.y);
-      ctx.lineTo(op.x - op.r / 2, op.y - op.r);
-      ctx.lineTo(op.x + op.r / 2, op.y - op.r);
-      ctx.closePath();
-      break;
-    case "arrow": {
-      const c = Math.cos(op.ang);
-      const s = Math.sin(op.ang);
-      const r = op.r;
-      ctx.moveTo(op.x + c * r, op.y + s * r);
-      ctx.lineTo(op.x - c * r * 0.6 - s * r * 0.6, op.y - s * r * 0.6 + c * r * 0.6);
-      ctx.lineTo(op.x - c * r * 0.2, op.y - s * r * 0.2);
-      ctx.lineTo(op.x - c * r * 0.6 + s * r * 0.6, op.y - s * r * 0.6 - c * r * 0.6);
-      ctx.closePath();
-      break;
-    }
-    case "chevron": {
-      const c = Math.cos(op.ang);
-      const s = Math.sin(op.ang);
-      const r = op.r;
-      ctx.moveTo(op.x - c * r - s * r, op.y - s * r + c * r);
-      ctx.lineTo(op.x, op.y);
-      ctx.lineTo(op.x - c * r + s * r, op.y - s * r - c * r);
-      break;
-    }
-    case "fpv":
-      ctx.moveTo(op.x + op.r, op.y);
-      ctx.arc(op.x, op.y, op.r, 0, Math.PI * 2);
-      ctx.moveTo(op.x - op.r, op.y);
-      ctx.lineTo(op.x - op.r * 2, op.y);
-      ctx.moveTo(op.x + op.r, op.y);
-      ctx.lineTo(op.x + op.r * 2, op.y);
-      ctx.moveTo(op.x, op.y - op.r);
-      ctx.lineTo(op.x, op.y - op.r * 1.6);
-      break;
-    case "cross":
-      ctx.moveTo(op.x - op.r, op.y - op.r);
-      ctx.lineTo(op.x + op.r, op.y + op.r);
-      ctx.moveTo(op.x + op.r, op.y - op.r);
-      ctx.lineTo(op.x - op.r, op.y + op.r);
-      break;
-    case "pad":
-      ctx.arc(op.x, op.y, op.r, 0, Math.PI * 2);
-      ctx.moveTo(op.x - op.r * 0.4, op.y - op.r * 0.5);
-      ctx.lineTo(op.x - op.r * 0.4, op.y + op.r * 0.5);
-      ctx.moveTo(op.x + op.r * 0.4, op.y - op.r * 0.5);
-      ctx.lineTo(op.x + op.r * 0.4, op.y + op.r * 0.5);
-      ctx.moveTo(op.x - op.r * 0.4, op.y);
-      ctx.lineTo(op.x + op.r * 0.4, op.y);
-      break;
-    default:
-      break;
-  }
-}
-
-/**
- * Paint `buf` onto `ctx` (already scaled to CSS px). Every stroke and glyph
- * gets a HALO_PX halo unless `op.halo` is false. `alphaScale` dims the whole
- * buffer (a stale layer).
- */
-export function paintOps(ctx: CanvasRenderingContext2D, buf: DrawOpBuffer, alphaScale = 1): void {
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  ctx.font = LABEL_FONT;
-  ctx.textBaseline = "middle";
-  for (let i = 0; i < buf.n; i++) {
-    const op = buf.ops[i];
-    const a = op.alpha * alphaScale;
-    const fa = op.fillAlpha * alphaScale;
-    if (a <= 0.001 && (op.fill === null || fa <= 0.001)) continue;
-    if (op.kind === "chip" || op.kind === "text") {
-      const w = measure(ctx, op.text);
-      const left = op.align === "left" ? op.x : op.align === "right" ? op.x - w : op.x - w / 2;
-      if (op.kind === "chip") {
-        ctx.globalAlpha = 0.72 * a;
-        ctx.fillStyle = LAYER_COLORS.halo;
-        ctx.beginPath();
-        ctx.roundRect(left - 6, op.y - 10, w + 12, 20, 6);
-        ctx.fill();
-      } else {
-        ctx.globalAlpha = HALO_ALPHA * a;
-        ctx.strokeStyle = LAYER_COLORS.halo;
-        ctx.lineWidth = HALO_PX * 2;
-        ctx.strokeText(op.text, left, op.y);
-      }
-      ctx.globalAlpha = a;
-      ctx.fillStyle = op.color;
-      ctx.fillText(op.text, left, op.y);
-      continue;
-    }
-    tracePath(ctx, op);
-    if (op.fill !== null && fa > 0) {
-      ctx.globalAlpha = fa;
-      ctx.fillStyle = op.fill;
-      ctx.fill();
-    }
-    if (a <= 0.001) continue;
-    ctx.setLineDash(op.dash > 0 ? [op.dash, op.dash * 0.8] : []);
-    if (op.halo) {
-      ctx.globalAlpha = HALO_ALPHA * a;
-      ctx.strokeStyle = LAYER_COLORS.halo;
-      ctx.lineWidth = op.width + HALO_PX * 2;
-      ctx.stroke();
-    }
-    ctx.globalAlpha = a;
-    ctx.strokeStyle = op.color;
-    ctx.lineWidth = op.width;
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
 }

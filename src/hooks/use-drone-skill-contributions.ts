@@ -33,7 +33,7 @@ import { isDemoMode } from "@/lib/utils";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLocalAgentPlugins } from "@/hooks/use-local-agent-plugins";
-import { getDemoDroneSkillContributions } from "@/mock/mock-plugins";
+import { getDemoDroneSkillContributions } from "@/mock/mock-plugin-skills";
 import {
   mapSkillCategory,
   type DroneSkillContribution,

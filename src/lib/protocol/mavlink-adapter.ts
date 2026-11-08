@@ -20,7 +20,6 @@ import type {
 } from './types'
 import type { MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat } from './encoders'
-import { MAV_CMD_CAN_FORWARD } from './encoders/can-forward'
 import { CommandQueue } from './command-queue'
 import { TELEMETRY_STALE_MS } from '@/lib/telemetry/freshness'
 import { createFirmwareHandler } from './firmware/ardupilot'
@@ -355,26 +354,8 @@ export class MAVLinkAdapter implements DroneProtocol {
     })
   }
   sendSerialData(t: string) { cmds.cmdSendSerialData(this.cc, t) }
-
-  /**
-   * Enable MAVLink CAN passthrough on the given bus (1 or 2; 0 disables). The
-   * ACK is awaited so the caller knows the FC accepted before opening a CAN client.
-   */
-  async enableCanForward(bus: number) {
-    return this.sendCommandLong(MAV_CMD_CAN_FORWARD, [bus, 0, 0, 0, 0, 0, 0])
-  }
-
-  /**
-   * Test a single actuator output (PX4). `functionCode` is an
-   * ACTUATOR_OUTPUT_FUNCTION (Motor1=1..16, Servo1=33..48), `value` is
-   * normalized (-1..1; NaN = stop), `timeoutS` auto-restores the output. The
-   * FC rejects the command while armed.
-   */
-  async actuatorTest(functionCode: number, value: number, timeoutS: number) {
-    // MAV_CMD_ACTUATOR_TEST (310): p1 value, p2 timeout, p5 output function.
-    return this.sendCommandLong(310, [value, timeoutS, 0, 0, functionCode, 0, 0])
-  }
-
+  async enableCanForward(bus: number) { return ext.enableCanForward(this.xc, bus) }
+  async actuatorTest(functionCode: number, value: number, timeoutS: number) { return ext.actuatorTest(this.xc, functionCode, value, timeoutS) }
   sendCanFrame(bus: number, id: number, data: Uint8Array): void { ext.sendCanFrame(this.xc, bus, id, data, false) }
   sendCanFdFrame(bus: number, id: number, data: Uint8Array): void { ext.sendCanFrame(this.xc, bus, id, data, true) }
 

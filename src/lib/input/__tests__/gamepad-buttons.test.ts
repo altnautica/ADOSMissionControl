@@ -13,8 +13,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   acquireGamepadPolling,
   isPolling,
-  manualControlButtonMask,
 } from "../gamepad-poller";
+import { manualControlButtonMask } from "../gamepad-axes";
 import { COCKPIT_GAMEPAD_BUTTON } from "@/lib/skills/chord";
 import { useInputStore } from "@/stores/input-store";
 

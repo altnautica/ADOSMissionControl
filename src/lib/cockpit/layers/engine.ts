@@ -20,13 +20,12 @@
  * @license GPL-3.0-only
  */
 
-import { arStatusChip, layoutAr, type ArLayoutOptions, type LayerLevel } from "./ar-layout";
+import { arStatusChip, layoutAr, type ArLayoutOptions } from "./ar-layout";
 import {
   decodeBase64Into,
   type ArCamera,
   type AvoidState,
   type CameraGrid,
-  type MissionState,
 } from "./cockpit-frames";
 import { drawTargets, type TargetScene, type TargetStyle } from "./draw-targets";
 import { getFrames, subscribeFrames, type FrameSlot } from "./frame-store";
@@ -37,13 +36,21 @@ import {
   layoutSectorArc,
   layoutZones,
   lerpOps,
-  paintOps,
   type CellOptions,
   type Rect,
 } from "./layer-layout";
+import { paintOps } from "./layer-paint";
 import { LAYER_DIM_MS, LAYER_HIDE_MS } from "./layer-spec";
-import type { DepthRange, DepthStyle } from "@/stores/cockpit-layers-store";
 import cockpitTokens from "@/lib/cockpit/spec/tokens.json";
+import {
+  DEFAULT_CHIP_TEXT,
+  type FlightContext,
+  type GridScratch,
+  type LayerChipText,
+  type LayerOptions,
+  type LayerPerf,
+  type Laid,
+} from "./engine-types";
 
 const DIM_ALPHA = 0.45;
 /** Obstacle cells drawn up to this range; red at or under the near limit. */
@@ -56,64 +63,6 @@ const DEFAULT_INTERVAL_MS = 100;
 const MIN_INTERVAL_MS = 16;
 const MAX_INTERVAL_MS = 250;
 const CHIP_COLOR = cockpitTokens.layer.unavailable_chip;
-
-/** The status chips the engine can draw; the shell passes localised text. */
-export type LayerChipText = Record<
-  "arUnavailable" | "arApprox" | "depthUnavailable" | "depthUnscaled" | "surfacesUnavailable" | "obstaclesUnavailable",
-  string
->;
-const DEFAULT_CHIP_TEXT: LayerChipText = {
-  arUnavailable: "AR unavailable",
-  arApprox: "AR ≈",
-  depthUnavailable: "Depth unavailable",
-  depthUnscaled: "Depth unscaled",
-  surfacesUnavailable: "Surfaces unavailable",
-  obstaclesUnavailable: "Obstacles unavailable",
-};
-
-/** What the loop draws, set from React only when a toggle, the level, the
- * camera or the view changes. */
-export interface LayerOptions {
-  droneId: string;
-  cameraId: string;
-  level: LayerLevel;
-  layers: ReadonlySet<string>;
-  depthMode: DepthStyle;
-  depthRange: DepthRange;
-  /** Max frames per second (kiosk/TV: 30); 0 = display rate. */
-  fpsCap: number;
-}
-
-/** Live flight context the AR layout needs, read at draw time into the
- * engine's own object (never through React state). */
-export interface FlightContext {
-  mission: MissionState | null;
-  avoid: AvoidState | null;
-  showLoaded: boolean;
-}
-
-/** Draw-time statistics for the performance gate. */
-export interface LayerPerf {
-  draws: number;
-  skipped: number;
-  /** Last 512 draw durations, ms. */
-  samples: Float64Array;
-  cursor: number;
-}
-
-/** A decoded per-camera grid in reused buffers. */
-interface GridScratch {
-  near: Uint8Array;
-  measured: Uint8Array;
-  hasMeasured: boolean;
-}
-
-/** Per-kind layout state: the frame the ops were laid out from, and whether a
- * rect or option change since then forces a new layout. */
-interface Laid {
-  frame: unknown;
-  valid: boolean;
-}
 
 export class LayerEngine {
   readonly perf: LayerPerf = { draws: 0, skipped: 0, samples: new Float64Array(512), cursor: 0 };

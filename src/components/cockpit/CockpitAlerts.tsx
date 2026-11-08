@@ -36,7 +36,7 @@ import {
   type ReceivedText,
 } from "./band/cockpit-alert-rules";
 import { useHudCopy } from "@/hooks/use-hud-copy";
-import { reacquiredToast } from "@/lib/vision/target-state";
+import { reacquiredToast } from "@/lib/vision/target-format";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 /** MAV_SEVERITY_CRITICAL; lower values are more severe. */

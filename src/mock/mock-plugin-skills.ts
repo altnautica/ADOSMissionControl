@@ -1,0 +1,171 @@
+/**
+ * @module mock-plugin-skills
+ * @description Demo `flight.skill` contributions per demo drone, served in
+ * demo mode in place of a real agent's skill list.
+ * @license GPL-3.0-only
+ */
+
+import type { DroneSkillContribution } from "@/lib/skills/plugin-skills";
+
+/**
+ * Mock `flight.skill` contributions for a single demo drone: the Follow-Me
+ * motion skill with its tweakable parameters, and the SIYI pod's eight camera
+ * skills, so the skill picker shows both tabs without a real agent.
+ */
+const DEMO_SKILL_CONTRIBUTIONS: Record<string, DroneSkillContribution[]> = {
+  "alpha-1": [
+    {
+      installId: "demo-install-006",
+      pluginId: "com.altnautica.follow-me",
+      localId: "follow-me",
+      label: "Follow-Me",
+      icon: "Crosshair",
+      category: "behavior",
+      toggle: true,
+      confirm: true,
+      armRequirement: "armed",
+      configKey: "active",
+      stateTopic: "follow.state",
+      defaultBinding: { key: "shift+f", gamepadButton: null },
+      motion: true,
+      nudge: true,
+      vehicleClasses: ["multirotor", "vtol"],
+      params: [
+        "follow_mode",
+        "follow_distance_m",
+        "follow_angle_deg",
+        "orbit_radius_m",
+        "orbit_rate_dps",
+        "orbit_direction",
+        "follow_height_m",
+      ],
+    },
+    // The SIYI pod's eight camera skills, as its manifest declares them.
+    {
+      installId: "demo-install-siyi",
+      pluginId: "com.altnautica.siyi-pod",
+      localId: "siyi-record",
+      label: "Record",
+      icon: "Video",
+      category: "camera",
+      toggle: true,
+      confirm: false,
+      armRequirement: "any",
+      configKey: "recording",
+      stateTopic: "siyi.pod.record",
+      oneShot: false,
+      defaultBinding: { key: "r", gamepadButton: null },
+    },
+    {
+      installId: "demo-install-siyi",
+      pluginId: "com.altnautica.siyi-pod",
+      localId: "cycle-palette",
+      label: "Cycle palette",
+      icon: "Palette",
+      category: "camera",
+      toggle: false,
+      confirm: false,
+      armRequirement: "any",
+      configKey: "palette_cycle",
+      stateTopic: "siyi.pod.palette",
+      oneShot: true,
+      defaultBinding: { key: "b", gamepadButton: null },
+    },
+    {
+      installId: "demo-install-siyi",
+      pluginId: "com.altnautica.siyi-pod",
+      localId: "fire-lrf",
+      label: "Fire rangefinder",
+      icon: "ScanLine",
+      category: "camera",
+      toggle: false,
+      confirm: true,
+      armRequirement: "any",
+      configKey: "laser_fire",
+      stateTopic: "siyi.pod.laser",
+      oneShot: true,
+      defaultBinding: { key: "l", gamepadButton: null },
+    },
+    {
+      installId: "demo-install-siyi",
+      pluginId: "com.altnautica.siyi-pod",
+      localId: "center",
+      label: "Center gimbal",
+      icon: "LocateFixed",
+      category: "camera",
+      toggle: false,
+      confirm: false,
+      armRequirement: "any",
+      configKey: "center",
+      stateTopic: "siyi.pod.gimbal",
+      oneShot: true,
+      defaultBinding: { key: "c", gamepadButton: null },
+    },
+    {
+      installId: "demo-install-siyi",
+      pluginId: "com.altnautica.siyi-pod",
+      localId: "nadir",
+      label: "Nadir",
+      icon: "ArrowDownToLine",
+      category: "camera",
+      toggle: false,
+      confirm: false,
+      armRequirement: "any",
+      configKey: "nadir",
+      stateTopic: "siyi.pod.gimbal",
+      oneShot: true,
+      defaultBinding: { key: "n", gamepadButton: null },
+    },
+    {
+      installId: "demo-install-siyi",
+      pluginId: "com.altnautica.siyi-pod",
+      localId: "zoom-in",
+      label: "Zoom in",
+      icon: "ZoomIn",
+      category: "camera",
+      toggle: false,
+      confirm: false,
+      armRequirement: "any",
+      configKey: "zoom_in",
+      stateTopic: "siyi.pod.zoom",
+      oneShot: true,
+      defaultBinding: { key: "]", gamepadButton: null },
+    },
+    {
+      installId: "demo-install-siyi",
+      pluginId: "com.altnautica.siyi-pod",
+      localId: "zoom-out",
+      label: "Zoom out",
+      icon: "ZoomOut",
+      category: "camera",
+      toggle: false,
+      confirm: false,
+      armRequirement: "any",
+      configKey: "zoom_out",
+      stateTopic: "siyi.pod.zoom",
+      oneShot: true,
+      defaultBinding: { key: "[", gamepadButton: null },
+    },
+    {
+      installId: "demo-install-siyi",
+      pluginId: "com.altnautica.siyi-pod",
+      localId: "photo",
+      label: "Photo",
+      icon: "Camera",
+      category: "camera",
+      toggle: false,
+      confirm: false,
+      armRequirement: "any",
+      configKey: "photo",
+      stateTopic: "siyi.pod.photo",
+      oneShot: true,
+      defaultBinding: { key: "k", gamepadButton: null },
+    },
+  ],
+};
+
+export function getDemoDroneSkillContributions(
+  agentId: string,
+): DroneSkillContribution[] {
+  return (DEMO_SKILL_CONTRIBUTIONS[agentId] ?? []).map((c) => ({ ...c }));
+}

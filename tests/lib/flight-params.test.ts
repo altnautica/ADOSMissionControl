@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { DroneProtocol } from "@/lib/protocol/types";
 import { readVehicleFlightParams } from "@/lib/mission/flight-params";
-import { ARDUPLANE_MOCK_PARAMS, MOCK_PARAMS, PX4_MOCK_PARAMS, type MockParam } from "@/mock/mock-params";
+import { ARDUPLANE_MOCK_PARAMS, MOCK_PARAMS, type MockParam } from "@/mock/mock-params";
+import { PX4_MOCK_PARAMS } from "@/mock/mock-params-px4";
 
 /** A protocol answering from a parameter list (later entries win), throwing for unknown names. */
 function protocolFrom(firmwareType: string, params: MockParam[]): DroneProtocol {

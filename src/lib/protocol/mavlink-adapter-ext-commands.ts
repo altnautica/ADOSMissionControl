@@ -1,12 +1,13 @@
 /**
- * MAVLink adapter — EKF source-set switching and CAN frame passthrough.
+ * MAVLink adapter — EKF source-set switching, CAN passthrough and the PX4
+ * actuator test.
  *
  * @module protocol/mavlink-adapter-ext-commands
  */
 
 import type { CommandResult, FirmwareHandler } from './types'
 import { MAV_CMD_SET_EKF_SOURCE_SET } from './encoders'
-import { encodeCanFrame, encodeCanFdFrame } from './encoders/can-forward'
+import { MAV_CMD_CAN_FORWARD, encodeCanFrame, encodeCanFdFrame } from './encoders/can-forward'
 
 export interface ExtCommandContext {
   firmwareHandler: FirmwareHandler | null
@@ -53,4 +54,23 @@ export function sendCanFrame(c: ExtCommandContext, bus: number, id: number, data
   c.sendHousekeeping(fd
     ? encodeCanFdFrame(c.targetSysId, c.targetCompId, bus, can, c.sysId, c.compId)
     : encodeCanFrame(c.targetSysId, c.targetCompId, bus, can, c.sysId, c.compId))
+}
+
+/**
+ * Enable MAVLink CAN passthrough on the given bus (1 or 2; 0 disables). The
+ * ACK is awaited so the caller knows the FC accepted before opening a CAN client.
+ */
+export function enableCanForward(c: ExtCommandContext, bus: number): Promise<CommandResult> {
+  return c.sendCommandLong(MAV_CMD_CAN_FORWARD, [bus, 0, 0, 0, 0, 0, 0])
+}
+
+/**
+ * Test a single actuator output (PX4). `functionCode` is an
+ * ACTUATOR_OUTPUT_FUNCTION (Motor1=1..16, Servo1=33..48), `value` is
+ * normalized (-1..1; NaN = stop), `timeoutS` auto-restores the output. The
+ * FC rejects the command while armed.
+ */
+export function actuatorTest(c: ExtCommandContext, functionCode: number, value: number, timeoutS: number): Promise<CommandResult> {
+  // MAV_CMD_ACTUATOR_TEST (310): p1 value, p2 timeout, p5 output function.
+  return c.sendCommandLong(310, [value, timeoutS, 0, 0, functionCode, 0, 0])
 }

@@ -27,15 +27,8 @@ import {
   type Point,
   type ScreenRect,
 } from "./target-geometry";
-import {
-  bracketArm,
-  bracketPath,
-  offFrameArrow,
-  type DrawItem,
-  type ResolvedTargets,
-  type TagTone,
-  type TargetKind,
-} from "./target-state";
+import { bracketArm, bracketPath, offFrameArrow } from "./target-format";
+import type { DrawItem, ResolvedTargets, TagTone, TargetKind } from "./target-state";
 
 export const TAG_PAD = 6;
 export const TAG_OFFSET = 3;

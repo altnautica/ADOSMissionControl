@@ -59,32 +59,17 @@ import {
 import { buildPluginHandlers } from "@/lib/plugins/handlers";
 import { createConvexRecordsBackend } from "@/lib/plugins/handlers/records";
 import type { BridgeHandler } from "@/lib/plugins/bridge";
-import type {
-  InlineMountState,
-  PluginSlotContribution,
-} from "@/components/plugins/PluginHostProvider";
+import type { InlineMountState } from "@/components/plugins/PluginHostProvider";
+import type { GcsContributeRow, PluginSlotName, PairedNodeProfile } from "@/lib/plugins/types";
 import {
-  PLUGIN_SLOTS,
-  slotOffersOnProfile,
-  slotToCapability,
-  type GcsContributeRow,
-  type PluginSlotName,
-  type PairedNodeProfile,
-} from "@/lib/plugins/types";
-import {
-  DEMO_INLINE_FIXTURE_MODULE,
-  DEMO_INLINE_FIXTURE_PANEL_ID,
-  DEMO_INLINE_FIXTURE_PLUGIN_ID,
-} from "@/mock/inline-fixture-plugin";
-import { getDemoVisionNavContribution } from "@/mock/mock-vision-nav";
-import { DEMO_CAPTURE_SURFACES } from "@/mock/mock-visor-surfaces";
-import { DEMO_LIVE_WORLD_CONTRIBUTION } from "@/mock/mock-live-world";
+  EMPTY_CONTRIBUTIONS as EMPTY,
+  demoInlineContributions,
+  entryMounts,
+  type SlottedContribution,
+} from "@/hooks/plugin-contribution-mounts";
 
 /** Slot fallback sort hint, matching the slot-13 contract default. */
 const DEFAULT_ORDER = 60;
-
-/** A renderable contribution carrying the slot it mounts into. */
-type SlottedContribution = PluginSlotContribution & { slot: PluginSlotName };
 
 /** Source-agnostic install row the bundle + handler + builder pipeline reads,
  * unifying the Convex query rows and the local agent-detail rows. */
@@ -102,13 +87,6 @@ interface NormalizedRow {
   inlineUnavailable?: string;
 }
 
-const EMPTY: ReadonlyArray<SlottedContribution> = Object.freeze([]);
-
-const KNOWN_SLOTS = new Set<string>(PLUGIN_SLOTS);
-function isKnownSlot(slot: string): slot is PluginSlotName {
-  return KNOWN_SLOTS.has(slot);
-}
-
 /** Whether two maps hold the same values under the same keys. A lifecycle
  * effect re-publishes its map on every run; keeping the previous instance when
  * nothing changed stops a no-op publish from re-rendering the host. */
@@ -118,80 +96,6 @@ function sameEntries<K, V>(a: ReadonlyMap<K, V>, b: ReadonlyMap<K, V>): boolean 
     if (b.get(key) !== value) return false;
   }
   return true;
-}
-
-/** Whether a manifest entry mounts in `slot` (any slot when unset) on a node of
- * `nodeProfile`: a known slot, with a per-node page slot profile-narrowed to
- * the node, matching the header/body filter so an off-profile page never
- * mounts. */
-function entryMounts(
-  entry: GcsContributeRow,
-  slot: PluginSlotName | undefined,
-  nodeProfile: PairedNodeProfile | undefined,
-): entry is GcsContributeRow & { slot: PluginSlotName } {
-  return (
-    (!slot || entry.slot === slot) &&
-    isKnownSlot(entry.slot) &&
-    slotOffersOnProfile(entry.slot, entry.profile, nodeProfile)
-  );
-}
-
-/** The demo's inline mounts on a drone: the fixture's Agent page, the Vision
- * Nav tab body on the demo drone running that extension, and the live 3D
- * viewer stand-in. In-memory modules handed straight to the host (no trust
- * gate, no agent). */
-function demoInlineContributions(
-  deviceId: string | null,
-  slot: PluginSlotName | undefined,
-  nodeProfile: PairedNodeProfile | undefined,
-): ReadonlyArray<SlottedContribution> {
-  if (deviceId === null) return EMPTY;
-  const out: SlottedContribution[] = [];
-  const visionNav = getDemoVisionNavContribution(deviceId);
-  if (visionNav && entryMounts(visionNav.entry, slot, nodeProfile)) {
-    out.push(visionNav.contribution);
-  }
-  if (nodeProfile === "visor") {
-    for (const surface of DEMO_CAPTURE_SURFACES) {
-      if (entryMounts(surface.entry, slot, nodeProfile)) out.push(surface.contribution);
-    }
-  }
-  if (entryMounts(DEMO_LIVE_WORLD_CONTRIBUTION.entry, slot, nodeProfile)) {
-    out.push(DEMO_LIVE_WORLD_CONTRIBUTION.contribution);
-  }
-  const entry: GcsContributeRow = {
-    slot: "node.agent.page",
-    panelId: DEMO_INLINE_FIXTURE_PANEL_ID,
-    profile: ["drone"],
-  };
-  if (!entryMounts(entry, slot, nodeProfile)) return out;
-  out.push({
-    slot: "node.agent.page",
-    pluginId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
-    panelId: DEMO_INLINE_FIXTURE_PANEL_ID,
-    title: "Inline Fixture",
-    bundleUrl: "",
-    isolation: "inline",
-    inline: {
-      status: "ready",
-      bundle: {
-        kind: "inline",
-        module: DEMO_INLINE_FIXTURE_MODULE,
-        trust: {
-          pluginId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
-          version: "0.0.0-demo",
-          signerId: "demo",
-          entrypoint: "gcs/fixture.mjs",
-          paths: [],
-        },
-        readAsset: () => Promise.reject(new Error("the demo fixture ships no assets")),
-      },
-    },
-    grantedCapabilities: new Set([slotToCapability("node.agent.page")]),
-    handlers: {},
-    pluginInstallId: DEMO_INLINE_FIXTURE_PLUGIN_ID,
-  });
-  return out;
 }
 
 /**

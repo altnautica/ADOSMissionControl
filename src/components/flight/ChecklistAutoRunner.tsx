@@ -29,7 +29,7 @@ import { useFenceUploadStatus, useMissionUploadStatus } from "@/hooks/use-upload
 import { evaluateAutoChecks } from "@/lib/checklist/auto-checks";
 import { isSkillLinkFresh } from "@/lib/skills/registry";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
-import { usePadStatusStore } from "@/lib/input/gamepad-poller";
+import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useDroneStore } from "@/stores/drone-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 

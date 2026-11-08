@@ -7,10 +7,9 @@
 548 src/lib/protocol/__tests__/ftp.test.ts
 594 src/lib/protocol/firmware/ap-periph-manifest.ts
 771 src/lib/protocol/firmware/rockchip-bootrom.ts
-509 src/mock/agent/client.ts
 761 src/mock/first-party-registry.ts
 1397 src/mock/inav-mock-protocol.ts
 840 src/mock/mock-can-bus.ts
-1358 src/mock/mock-params.ts
+1151 src/mock/mock-params.ts
 751 src/mock/scenarios.ts
 510 src/stores/__tests__/mqtt-control-grant-store.test.ts

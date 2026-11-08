@@ -29,7 +29,8 @@ import { TargetController } from "@/components/cockpit/layers/TargetController";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useDetectionDemand } from "@/hooks/use-detection-demand";
 import { useElementSize } from "@/hooks/use-element-size";
-import { LayerEngine, type FlightContext } from "@/lib/cockpit/layers/engine";
+import { LayerEngine } from "@/lib/cockpit/layers/engine";
+import type { FlightContext } from "@/lib/cockpit/layers/engine-types";
 import { resolveTargetStyle } from "@/lib/cockpit/layers/draw-targets";
 import { effectiveLayers, type LayerStackView } from "@/lib/cockpit/layers/layer-spec";
 import {

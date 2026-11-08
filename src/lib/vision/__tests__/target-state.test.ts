@@ -12,16 +12,14 @@ import {
   bracketArm,
   bracketPath,
   classWord,
-  followedRect,
   formatRange,
   holdReasonWord,
   offFrameArrow,
   rangeInterval,
   reacquiredToast,
-  resolveTargets,
   wrap180,
-  type ResolveInput,
-} from "../target-state";
+} from "../target-format";
+import { followedRect, resolveTargets, type ResolveInput } from "../target-state";
 
 const NOW = 1_000_000;
 

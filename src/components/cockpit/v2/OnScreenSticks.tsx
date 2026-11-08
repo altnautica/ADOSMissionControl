@@ -23,7 +23,8 @@ import {
   sticksRouteToPilot,
   usePilotLinkStore,
 } from "@/lib/input/pilot-stream";
-import { radialDeadzone, usePadStatusStore } from "@/lib/input/gamepad-poller";
+import { radialDeadzone } from "@/lib/input/gamepad-axes";
+import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useCockpitPrefsStore } from "@/stores/cockpit-prefs-store";
 
 const SPEC = layoutSpec.on_screen_sticks;

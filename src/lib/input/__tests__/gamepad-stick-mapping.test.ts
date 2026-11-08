@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import { getMappingForMode } from "../gamepad-poller";
+import { getMappingForMode } from "../gamepad-axes";
 
 /**
  * Standard gamepad axis layout, which is what the mapping indices refer to:

@@ -15,7 +15,7 @@ import { Gamepad2, Radio } from "lucide-react";
 
 import { LayerLevelButton } from "@/components/cockpit/layers/LayerLevelButton";
 import { useCockpitView, useCockpitViewStore, viewDef } from "@/lib/cockpit/views";
-import { usePadStatusStore } from "@/lib/input/gamepad-poller";
+import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 function ViewButton({ droneId }: { droneId: string }) {
