@@ -26,6 +26,10 @@
       "dynamic": false
     },
     {
+      "path": "/config/aircraft-setup",
+      "dynamic": false
+    },
+    {
       "path": "/config/can",
       "dynamic": false
     },

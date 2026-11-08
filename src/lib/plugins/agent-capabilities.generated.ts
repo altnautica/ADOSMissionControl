@@ -333,7 +333,7 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
   },
   "flight.guided_setpoint": {
     label: "Emit guided-mode setpoints",
-    description: "Lets the plugin command the flight controller with guided-mode position or velocity setpoints (and the guided-mode entry and exit handshake) through a scoped sender, instead of raw MAVLink writes. The setpoint stream is the only flight-command surface this capability grants.",
+    description: "Lets the plugin command guided-mode position or velocity setpoints through a scoped sender, instead of raw MAVLink writes. On a vehicle running the ADOS pilot each setpoint becomes a position goal under an implicit motion lease, so the pilot still applies its limits and obstacle planner; the plugin must have the vehicle in its guided mode. The setpoint stream is the only flight-command surface this capability grants.",
     category: "flight_control",
     risk: "high",
     risk_reason: "Commands vehicle motion in guided mode; a faulty stream can fly the aircraft.",
@@ -344,6 +344,13 @@ export const AGENT_CAPABILITY_CATALOG: Record<string, CapabilityMeta> = {
     category: "flight_control",
     risk: "critical",
     risk_reason: "Directly commands aircraft attitude/body rates and thrust at tick rate; a faulty stream can fly the aircraft outside guided-mode limits.",
+  },
+  "flight.motion": {
+    label: "Command motion through the pilot",
+    description: "Lets a skill hold the ADOS pilot's motion lease and send it follow, orbit or position goals, and receive the operator's shaped stick nudges while it holds the lease. The pilot applies its speed limits, geofence and obstacle planner to every goal, and revokes the lease on pause, land, return-home, a stick takeover or an FC mode change.",
+    category: "flight_control",
+    risk: "high",
+    risk_reason: "Commands vehicle motion; a faulty skill can fly the aircraft within the pilot's limits.",
   },
   "mavlink.tunnel": {
     label: "Send and receive MAVLink TUNNEL payloads",
