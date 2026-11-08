@@ -426,9 +426,14 @@ jobs:
           // listCommentsFor and createCommentFor (comments), updateMyProfileWith,
           // setProfileRole and ensureProfileWith (profiles) are the shared bodies
           // both Convex twins call; each calls getAuthUserId first.
+          // claimForUser (lib/pairingClaim) calls getAuthUserId and throws before
+          // any read. claimForBrowser (lib/pairingClaim) resolves the caller's
+          // server-minted browser-session secret with resolveBrowserOwner and
+          // returns invalid_browser_session before any pairing row is read or
+          // written; that session is the anonymous path's caller identity.
           // requireCommandForDevice is deliberately absent: it only matches a
           // command to a device id and authenticates no caller.
-          const AUTH = /getAuthUserId|requireAdmin|requireRole|requireUser|assertAdmin|ctx\.auth\.getUserIdentity|requireGcsAccess|assertOwnsDevice|requireOwnedDroneByDeviceId|requireOwnedCommand|listCommentsFor|createCommentFor|updateMyProfileWith|setProfileRole|ensureProfileWith/;
+          const AUTH = /getAuthUserId|requireAdmin|requireRole|requireUser|assertAdmin|ctx\.auth\.getUserIdentity|requireGcsAccess|assertOwnsDevice|requireOwnedDroneByDeviceId|requireOwnedCommand|listCommentsFor|createCommentFor|updateMyProfileWith|setProfileRole|ensureProfileWith|claimForUser|claimForBrowser/;
           const DECL = /export const (\w+)\s*=\s*(internalMutation|internalQuery|internalAction|mutation|query|action|httpAction)\s*\(/g;
 
           let total = 0;
