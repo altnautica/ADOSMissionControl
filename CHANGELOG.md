@@ -316,6 +316,9 @@ the project follows [Semantic Versioning](https://semver.org/).
   on any verification failure, it builds from source. It no longer runs an
   unversioned `./ados-deploy` from the checkout, and Windows shells (Git Bash,
   MSYS, Cygwin) now get the Windows release asset.
+- Next.js 16.4.5, DOMPurify 3.4.17, zod 4.6.7, fast-uri 3.1.9 and ip-address
+  10.7.6 for published security advisories (within the declared version
+  ranges).
 
 ### Removed
 
