@@ -14,6 +14,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { useGroundStationLink } from "@/lib/cockpit/ground-station-link";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { ModeSheet } from "./ModeSheet";
@@ -26,13 +27,18 @@ const BUTTON_LABEL: Record<string, { label: string; skill: string }> = {
 
 export function FlightStateChip({
   droneId,
-  groundStationLink = false,
+  groundStationLink,
 }: {
   droneId: string;
+  /** Override of the detected ground-station link (tests); by default the
+   * node registry decides whether the drone is reached through a ground
+   * station, which is when the Mode sheet offers ELRS. */
   groundStationLink?: boolean;
 }) {
   const chip = useFlightStateChip(droneId);
   const { pilot } = usePilotState(droneId);
+  const detectedLink = useGroundStationLink(droneId);
+  const viaGroundStation = groundStationLink ?? detectedLink;
   const [open, setOpen] = useState(false);
   const button = chip.button ? BUTTON_LABEL[chip.button] : undefined;
   const setupLink =
@@ -86,7 +92,7 @@ export function FlightStateChip({
         <ModeSheet
           droneId={droneId}
           pilot={pilot}
-          groundStationLink={groundStationLink}
+          groundStationLink={viaGroundStation}
           onClose={() => setOpen(false)}
         />
       )}

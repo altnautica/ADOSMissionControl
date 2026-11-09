@@ -6,7 +6,8 @@
  */
 
 import { afterEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { emptyEntry, useNodeRegistryStore } from "@/stores/node-registry";
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 
 import { FlightStateChip } from "../FlightStateChip";
@@ -47,5 +48,42 @@ describe("FlightStateChip setup link", () => {
     mount();
     expect(screen.getByTestId("flight-state-chip").getAttribute("data-chip")).toBe("idle_not_ready");
     expect(screen.queryByTestId("chip-setup-link")).toBeNull();
+  });
+});
+
+describe("Mode sheet ELRS control mode", () => {
+  afterEach(() => {
+    useNavStreamStore.getState().clear(DRONE);
+    useNodeRegistryStore.setState({ nodes: {} });
+  });
+
+  function register(relayed: boolean) {
+    const entry = emptyEntry("node:gs-test-drone");
+    entry.fc = { ...entry.fc, managedId: DRONE };
+    entry.presence = {
+      ...entry.presence,
+      deviceId: "gs-test-drone",
+      sources: relayed ? ["relayed"] : ["local"],
+      ...(relayed ? { reachedVia: "node:gs-1" } : {}),
+    };
+    useNodeRegistryStore.setState({ nodes: { [entry.nodeId]: entry } });
+  }
+
+  function openSheet() {
+    pinReadiness([]);
+    mount();
+    fireEvent.click(screen.getByTestId("flight-state-chip").querySelector("button")!);
+  }
+
+  it("offers ELRS when the drone is reached through a ground station", () => {
+    register(true);
+    openSheet();
+    expect(screen.getByTestId("mode-sheet").textContent).toContain("ELRS");
+  });
+
+  it("does not offer ELRS on a direct link", () => {
+    register(false);
+    openSheet();
+    expect(screen.getByTestId("mode-sheet").textContent).not.toContain("ELRS");
   });
 });
