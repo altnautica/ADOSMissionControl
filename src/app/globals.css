@@ -888,7 +888,7 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-centre { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--fs-text); }
 .ados-cockpit .fs-centre-svg { width: 200px; height: 200px; overflow: visible; filter: drop-shadow(0 0 2px var(--cockpit-shadow)); }
 .ados-cockpit .fs-centre-svg line, .ados-cockpit .fs-centre-svg circle { stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.ados-cockpit .fs-centre-hdg { position: absolute; top: calc(50% - 132px); left: 50%; transform: translateX(-50%); padding: 2px 8px; border-radius: 6px; background: var(--fs-bg); font-size: var(--fs-top-px); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ados-cockpit .fs-centre-hdg { position: absolute; top: var(--hdg-top, calc(50% - 132px)); left: 50%; transform: translateX(-50%); padding: 2px 8px; border-radius: 6px; background: var(--fs-bg); font-size: var(--fs-top-px); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ados-cockpit .hud-instruments { position: absolute; inset: 0; }
 .ados-cockpit .hud-picture-centre { position: absolute; pointer-events: none; }
 /* A short centre (the portrait 16:9 strip): the instruments shrink to fit it

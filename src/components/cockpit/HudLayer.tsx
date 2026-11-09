@@ -19,7 +19,7 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { useHudInstruments } from "@/hooks/use-hud-instruments";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
@@ -31,7 +31,7 @@ import { WindIndicator } from "@/components/cockpit/hud/WindIndicator";
 import { HudSummary } from "@/components/cockpit/hud/HudSummary";
 import { CentreMarks } from "@/components/cockpit/flight/CentreMarks";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
-import { rectStyle, videoRect } from "@/components/cockpit/flight/flight-grid";
+import { centreHeadingTop, rectStyle, videoRect } from "@/components/cockpit/flight/flight-grid";
 import { effectiveLayers } from "@/lib/cockpit/layers/layer-spec";
 import { useCockpitView } from "@/lib/cockpit/views";
 import { useVehicleLayers } from "@/stores/cockpit-layers-store";
@@ -110,7 +110,13 @@ export function HudLayer({ droneId }: { droneId: string }) {
   // picture is a small card, so the marks keep the centre zone.
   const origin = centre ?? { x: 0, y: 0, w: grid.width, h: grid.height };
   const pic = view === "map" ? origin : videoRect(view, grid);
-  const boresight = { left: pic.x - origin.x, top: pic.y - origin.y, width: pic.w, height: pic.h };
+  const boresight = {
+    left: pic.x - origin.x,
+    top: pic.y - origin.y,
+    width: pic.w,
+    height: pic.h,
+    "--hdg-top": `${centreHeadingTop(pic, grid)}px`,
+  } as CSSProperties;
 
   return (
     <div

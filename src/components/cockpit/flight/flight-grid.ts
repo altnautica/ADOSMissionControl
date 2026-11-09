@@ -253,3 +253,18 @@ export function videoRect(view: CockpitViewId, grid: FlightGrid): Rect {
   if (view === "vision" && grid.zones.side_panel) return { x: 0, y: 0, w: grid.zones.side_panel.x, h: grid.height };
   return full;
 }
+
+/** The heading readout's top above the picture centre (`.fs-centre-hdg`). */
+export const CENTRE_HEADING_RISE_PX = 132;
+const CENTRE_HEADING_GAP_PX = 4;
+
+/**
+ * The heading readout's top inside the picture box `pic`, in pixels. It sits
+ * {@link CENTRE_HEADING_RISE_PX} above the picture centre, but never under the
+ * top bar: in portrait the picture is a short 16:9 strip just below the bar.
+ */
+export function centreHeadingTop(pic: Rect, grid: FlightGrid): number {
+  const bar = grid.zones.top_bar;
+  const below = bar ? bar.y + bar.h + CENTRE_HEADING_GAP_PX - pic.y : CENTRE_HEADING_GAP_PX;
+  return Math.max(pic.h / 2 - CENTRE_HEADING_RISE_PX, below, CENTRE_HEADING_GAP_PX);
+}

@@ -73,3 +73,35 @@ describe("HUD registration with the video", () => {
     }
   }
 });
+
+describe("centre heading readout", () => {
+  it("sits below the top bar in portrait at 412x915", () => {
+    const grid = flightGrid({ width: 412, height: 915, widthClass: "compact" });
+    expect(grid.cls).toBe("portrait");
+    useCockpitViewStore.getState().setView(DRONE, "pilot");
+    useCockpitLayersStore.getState().setLevel(DRONE, "full");
+    renderWithIntl(
+      <FlightGridContext.Provider value={grid}>
+        <HudLayer droneId={DRONE} />
+      </FlightGridContext.Provider>,
+    );
+    const layer = screen.getByTestId("hud-layer");
+    const box = screen.getByTestId("hud-picture-centre");
+    const top = px(layer.style.top) + px(box.style.top) + px(box.style.getPropertyValue("--hdg-top"));
+    const bar = grid.zones.top_bar!;
+    expect(top).toBeGreaterThanOrEqual(bar.y + bar.h);
+  });
+
+  it("keeps its place above the picture centre in landscape", () => {
+    const grid = flightGrid({ width: 1280, height: 800, widthClass: "expanded" });
+    useCockpitViewStore.getState().setView(DRONE, "pilot");
+    useCockpitLayersStore.getState().setLevel(DRONE, "full");
+    renderWithIntl(
+      <FlightGridContext.Provider value={grid}>
+        <HudLayer droneId={DRONE} />
+      </FlightGridContext.Provider>,
+    );
+    const box = screen.getByTestId("hud-picture-centre");
+    expect(px(box.style.getPropertyValue("--hdg-top"))).toBe(800 / 2 - 132);
+  });
+});

@@ -51,4 +51,24 @@ describe("flight screen shell", () => {
     toast.remove();
     preInert.remove();
   });
+
+  it("makes a banner that mounts mid-flight inert too, and restores it on exit", async () => {
+    const { unmount } = renderWithIntl(<CockpitView droneId="shell-drone" />);
+    const frame = screen.getByTestId("flight-screen");
+    const column = frame.parentElement as HTMLElement;
+    const banner = document.createElement("div");
+    banner.innerHTML = "<button>Dismiss</button>";
+    column.prepend(banner);
+    const late = document.createElement("aside");
+    document.body.append(late);
+    await Promise.resolve();
+    expect(banner.hasAttribute("inert")).toBe(true);
+    expect(late.hasAttribute("inert")).toBe(true);
+    expect(frame.closest("[inert]")).toBeNull();
+
+    unmount();
+    expect(banner.hasAttribute("inert")).toBe(false);
+    expect(late.hasAttribute("inert")).toBe(false);
+    late.remove();
+  });
 });

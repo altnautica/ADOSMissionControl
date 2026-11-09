@@ -101,11 +101,12 @@ export function GimbalPad({ droneId }: { droneId: string }) {
           onPointerUp={release}
           onPointerCancel={release}
           onLostPointerCapture={release}
+          // Enter only: Space is the Pause hotkey and must never move the gimbal.
           onKeyDown={(e) => {
-            if ((e.key === " " || e.key === "Enter") && !e.repeat) press(p, y);
+            if (e.key === "Enter" && !e.repeat) press(p, y);
           }}
           onKeyUp={(e) => {
-            if (e.key === " " || e.key === "Enter") release();
+            if (e.key === "Enter") release();
           }}
           onBlur={release}
         >

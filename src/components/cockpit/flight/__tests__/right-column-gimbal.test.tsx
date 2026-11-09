@@ -77,4 +77,36 @@ describe("right column gimbal pad", () => {
     expect(posts[0]).toMatchObject({ pitch_dps: 60, yaw_dps: 0 });
     expect(posts.at(-1)).toMatchObject({ pitch_dps: 0, yaw_dps: 0 });
   });
+
+  it("ignores Space, which stays the Pause hotkey, and still answers Enter", async () => {
+    await renderColumn();
+    const up = screen.getByTestId("fs-gimbal-up");
+    const keys: string[] = [];
+    const onKey = (e: KeyboardEvent): void => {
+      keys.push(e.key);
+    };
+    window.addEventListener("keydown", onKey);
+    try {
+      up.focus();
+      await act(async () => {
+        fireEvent.keyDown(up, { key: " ", code: "Space" });
+        fireEvent.keyUp(up, { key: " ", code: "Space" });
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      expect(posts).toEqual([]);
+      expect(keys).toEqual([" "]);
+      await act(async () => {
+        fireEvent.keyDown(up, { key: "Enter" });
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      await act(async () => {
+        fireEvent.keyUp(up, { key: "Enter" });
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      expect(posts[0]).toMatchObject({ pitch_dps: 60, yaw_dps: 0 });
+      expect(posts.at(-1)).toMatchObject({ pitch_dps: 0, yaw_dps: 0 });
+    } finally {
+      window.removeEventListener("keydown", onKey);
+    }
+  });
 });
