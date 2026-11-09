@@ -42,6 +42,7 @@ export type PilotActionName =
   | `control_mode:${"ados" | "fc_manual" | "elrs"}`
   | `avoid:${"brake" | "bypass" | "off"}`
   | "rth_cancel"
+  | "goto"
   | `vtol:${"fw" | "mc"}`;
 
 /** Server reply to an action, when the pilot sends one. */

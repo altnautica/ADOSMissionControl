@@ -7692,7 +7692,14 @@
     },
     "flyHere": {
       "label": "Fly Here",
-      "effect": "Flies to the chosen map point at the set altitude"
+      "effect": "Flies to the chosen map point at the set altitude",
+      "refused": {
+        "bad_args": "Fly Here refused: the point or altitude is not valid",
+        "not_armed": "Fly Here refused: the drone is not armed",
+        "landed": "Fly Here refused: the drone is on the ground",
+        "tuning": "Fly Here refused: a setup step is running",
+        "no_home": "Fly Here refused: the drone has no home position yet"
+      }
     }
   },
   "skillBindings": {
