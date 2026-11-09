@@ -215,14 +215,19 @@ function drawTag(ctx: CanvasRenderingContext2D, tag: PlacedTag, fontPx: number, 
   ctx.fillText(tag.text, tag.x + s.tagPad, tag.y + tag.h / 2);
 }
 
-/** CSS font strings per style and size, built once per value. */
-const fontCache = new Map<string, Map<number, string>>();
-function tagFont(s: TargetStyle, px: number): string {
-  const family = `${s.tagWeight}|${s.tagFont}`;
-  let bySize = fontCache.get(family);
+/** CSS font strings per weight, family and size, built once per value; the
+ * lookup itself builds no key. */
+const fontCache = new Map<TargetStyle["tagWeight"], Map<string, Map<number, string>>>();
+export function tagFont(s: TargetStyle, px: number): string {
+  let byFamily = fontCache.get(s.tagWeight);
+  if (!byFamily) {
+    byFamily = new Map();
+    fontCache.set(s.tagWeight, byFamily);
+  }
+  let bySize = byFamily.get(s.tagFont);
   if (!bySize) {
     bySize = new Map();
-    fontCache.set(family, bySize);
+    byFamily.set(s.tagFont, bySize);
   }
   let f = bySize.get(px);
   if (f === undefined) {

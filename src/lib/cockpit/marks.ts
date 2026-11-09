@@ -92,7 +92,8 @@ export interface MarkFrame {
 }
 
 /** Map an (x, y) in a mark's space to container pixels. `frame` may be null
- * for `"normalized"` marks (which need only the container size). */
+ * for `"normalized"` marks (which need only the container size). The painter
+ * passes `out`, a scratch point it reuses, so a frame allocates nothing. */
 export function mapPoint(
   x: number,
   y: number,
@@ -100,14 +101,17 @@ export function mapPoint(
   containerW: number,
   containerH: number,
   frame: MarkFrame | null,
+  out: { x: number; y: number } = { x: 0, y: 0 },
 ): { x: number; y: number } | null {
   if (space === "normalized") {
-    return { x: x * containerW, y: y * containerH };
+    out.x = x * containerW;
+    out.y = y * containerH;
+    return out;
   }
   if (!frame || frame.frameWidth <= 0 || frame.frameHeight <= 0) return null;
-  const sx = frame.rect.width / frame.frameWidth;
-  const sy = frame.rect.height / frame.frameHeight;
-  return { x: frame.rect.left + x * sx, y: frame.rect.top + y * sy };
+  out.x = frame.rect.left + x * (frame.rect.width / frame.frameWidth);
+  out.y = frame.rect.top + y * (frame.rect.height / frame.frameHeight);
+  return out;
 }
 
 /** Upper bound on marks accepted from one source in a single post — a defence

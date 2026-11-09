@@ -21,6 +21,13 @@ const FRAME: MarkFrame = {
 };
 
 describe("mark coordinate mapping", () => {
+  it("maps into the caller's scratch point instead of allocating one", () => {
+    const out = { x: 0, y: 0 };
+    expect(mapPoint(0.5, 0.25, "normalized", 800, 600, null, out)).toBe(out);
+    expect(out).toEqual({ x: 400, y: 150 });
+    expect(mapPoint(640, 360, "frame", 800, 600, FRAME, out)).toBe(out);
+  });
+
   it("maps frame-space points onto the rendered video rect", () => {
     // Frame center (640, 360) -> rect center (400, 75 + 225 = 300).
     expect(mapPoint(640, 360, "frame", 800, 600, FRAME)).toEqual({

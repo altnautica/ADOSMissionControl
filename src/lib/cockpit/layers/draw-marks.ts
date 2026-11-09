@@ -8,6 +8,9 @@
  */
 
 import { mapPoint, mapScale, type CockpitMark, type MarkFrame } from "@/lib/cockpit/marks";
+
+/** The one point the painter maps into: a mark is drawn before the next is mapped. */
+const scratch = { x: 0, y: 0 };
 import type { TargetStyle } from "./draw-targets";
 
 /** Corner-bracket length as a fraction of the shorter box side. */
@@ -36,7 +39,7 @@ export function drawMarks(
     switch (m.kind) {
       case "box":
       case "reticle": {
-        const p = mapPoint(m.x, m.y, space, cw, ch, frame);
+        const p = mapPoint(m.x, m.y, space, cw, ch, frame, scratch);
         if (!p) break;
         const w = mapScale(m.width, "x", space, cw, ch, frame);
         const h = mapScale(m.height, "y", space, cw, ch, frame);
@@ -68,7 +71,7 @@ export function drawMarks(
         break;
       }
       case "point": {
-        const p = mapPoint(m.x, m.y, space, cw, ch, frame);
+        const p = mapPoint(m.x, m.y, space, cw, ch, frame, scratch);
         if (!p) break;
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -82,7 +85,7 @@ export function drawMarks(
         ctx.beginPath();
         let ok = true;
         for (let i = 0; i < m.points.length; i++) {
-          const p = mapPoint(m.points[i][0], m.points[i][1], space, cw, ch, frame);
+          const p = mapPoint(m.points[i][0], m.points[i][1], space, cw, ch, frame, scratch);
           if (!p) {
             ok = false;
             break;
@@ -94,7 +97,7 @@ export function drawMarks(
         break;
       }
       case "label": {
-        const p = mapPoint(m.x, m.y, space, cw, ch, frame);
+        const p = mapPoint(m.x, m.y, space, cw, ch, frame, scratch);
         if (!p) break;
         ctx.fillStyle = color;
         ctx.font = "11px monospace";
