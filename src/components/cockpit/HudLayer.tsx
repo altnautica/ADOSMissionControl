@@ -2,8 +2,9 @@
 
 /**
  * @module fly/cockpit/HudLayer
- * @description The cockpit's centre HUD, placed in the flight screen's centre
- * zone. At every layer level where `centre_marks` is on it draws the clean
+ * @description The cockpit's centre HUD. The tapes and heading tape sit in
+ * the flight screen's centre zone; the centre marks and the attitude
+ * instruments sit on the main picture's centre (`videoRect`). At every layer level where `centre_marks` is on it draws the clean
  * centre (reticle, short horizon mark, small heading readout). Only at the
  * `instruments` level does it draw the flight instruments: artificial horizon
  * with pitch ladder, roll scale and flight-path marker; heading tape with the
@@ -30,7 +31,7 @@ import { WindIndicator } from "@/components/cockpit/hud/WindIndicator";
 import { HudSummary } from "@/components/cockpit/hud/HudSummary";
 import { CentreMarks } from "@/components/cockpit/flight/CentreMarks";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
-import { rectStyle } from "@/components/cockpit/flight/flight-grid";
+import { rectStyle, videoRect } from "@/components/cockpit/flight/flight-grid";
 import { effectiveLayers } from "@/lib/cockpit/layers/layer-spec";
 import { useCockpitView } from "@/lib/cockpit/views";
 import { useVehicleLayers } from "@/stores/cockpit-layers-store";
@@ -103,6 +104,13 @@ export function HudLayer({ droneId }: { droneId: string }) {
   const instruments = on.has("instruments");
   const marks = on.has("centre_marks") && !instruments;
   const centre = grid.zones.center;
+  // The boresight marks and the attitude instruments sit on the main
+  // picture's centre (the camera's optical axis), not on the centre zone
+  // between the chrome; the tapes keep the centre zone. In the Map view the
+  // picture is a small card, so the marks keep the centre zone.
+  const origin = centre ?? { x: 0, y: 0, w: grid.width, h: grid.height };
+  const pic = view === "map" ? origin : videoRect(view, grid);
+  const boresight = { left: pic.x - origin.x, top: pic.y - origin.y, width: pic.w, height: pic.h };
 
   return (
     <div
@@ -111,15 +119,21 @@ export function HudLayer({ droneId }: { droneId: string }) {
       data-level={layers.level}
       style={centre ? rectStyle(centre) : undefined}
     >
-      {marks && <CentreMarks reading={reading} />}
+      {(marks || instruments) && (
+        <div className="hud-picture-centre" data-testid="hud-picture-centre" style={boresight}>
+          {marks && <CentreMarks reading={reading} />}
+          {instruments && (
+            <AttitudeIndicator
+              pitch={reading.pitch}
+              roll={reading.roll}
+              flightPath={reading.flightPath}
+              attFlagLabel={t("attFlag")}
+            />
+          )}
+        </div>
+      )}
       {instruments && (
         <div className="hud-instruments" data-testid="hud-instruments">
-          <AttitudeIndicator
-            pitch={reading.pitch}
-            roll={reading.roll}
-            flightPath={reading.flightPath}
-            attFlagLabel={t("attFlag")}
-          />
           <HeadingTape
             heading={reading.heading}
             homeBearing={reading.homeBearing}

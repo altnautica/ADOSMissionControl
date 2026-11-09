@@ -5,8 +5,9 @@
  * @description The bottom row (cockpit spec `layout.json` `bottom_row`):
  * D (distance to home), H (height above home), H.S (horizontal speed), V.S
  * (vertical speed) and AGL (height above the ground: the ADOS pilot's
- * `agl_m`, else a downward range finder, else the terrain report). Values come from fresh samples only; a
- * value with no fresh source shows the no-data glyph.
+ * rangefinder `agl_m`, else a downward range finder, else the terrain
+ * report). Values come from fresh samples only, except the latched home
+ * position; a value with no source shows the no-data glyph.
  *
  * @license GPL-3.0-only
  */
@@ -49,13 +50,17 @@ export const BottomRow = memo(function BottomRow({ droneId }: { droneId: string 
   const b = useTelemetryStore.getState();
   const now = Date.now();
   const vfr = fresh(b.vfr.latest(), now);
+  const pilotFresh = receivedAt !== null && now - receivedAt <= PILOT_STALE_MS;
   const v = bottomRowValues({
     position: fresh(b.position.latest(), now),
     vfr: vfr && typeof vfr.groundspeed === "number" ? { groundspeed: vfr.groundspeed, climb: vfr.climb } : null,
-    home: fresh(b.homePosition.latest(), now),
+    // HOME_POSITION is latched: the FC sends it on connect, arm and set-home
+    // only, so it stays valid until it changes or the link drops.
+    home: b.homePosition.latest() ?? null,
     rangefinder: fresh(b.distanceSensor.latest(), now),
     terrain: fresh(b.terrain.latest(), now),
-    pilotAglM: receivedAt !== null && now - receivedAt <= PILOT_STALE_MS ? (pilot?.aglM ?? null) : null,
+    pilotAglM: pilotFresh ? (pilot?.aglM ?? null) : null,
+    pilotAglSource: pilotFresh ? (pilot?.aglSource ?? null) : null,
   });
   const cells: { key: string; label: string; value: string; title: string }[] = [
     { key: "d", label: "D", value: metres(v.distM), title: t("d") },

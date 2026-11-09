@@ -29,6 +29,7 @@ export const AttitudeRadar = memo(function AttitudeRadar({ size }: { droneId: st
   const known = r.pitch !== null && r.roll !== null;
   const pitch = r.pitch ?? 0;
   const roll = r.roll ?? 0;
+  const hdgKnown = r.heading !== null;
   const hdg = r.heading ?? 0;
   const shift = Math.max(-1, Math.min(1, pitch / PITCH_FULL_DEG)) * ball;
   const home = r.homeBearing;
@@ -64,15 +65,19 @@ export const AttitudeRadar = memo(function AttitudeRadar({ size }: { droneId: st
         </g>
       </g>
       <circle cx={c} cy={c} r={ball} fill="none" stroke="var(--fs-border)" />
-      <circle cx={c} cy={c} r={ring} fill="none" stroke="var(--fs-border)" />
-      {ticks.map((d) => {
-        const [x1, y1] = at(d, ring);
-        const [x2, y2] = at(d, ring - (d % 90 === 0 ? 7 : 4));
-        return <line key={d} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--fs-text-dim)" strokeWidth={1} />;
-      })}
-      <text x={nx} y={ny + 3.5} textAnchor="middle" className="fs-att-n">
-        N
-      </text>
+      {/* An unknown heading dims the ring and its N mark like the ball: a
+          north-up ring at full opacity would read as a known heading. */}
+      <g opacity={hdgKnown ? 1 : 0.35} data-testid="fs-attitude-ring" data-known={hdgKnown ? "true" : "false"}>
+        <circle cx={c} cy={c} r={ring} fill="none" stroke="var(--fs-border)" />
+        {ticks.map((d) => {
+          const [x1, y1] = at(d, ring);
+          const [x2, y2] = at(d, ring - (d % 90 === 0 ? 7 : 4));
+          return <line key={d} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--fs-text-dim)" strokeWidth={1} />;
+        })}
+        <text x={nx} y={ny + 3.5} textAnchor="middle" className="fs-att-n">
+          N
+        </text>
+      </g>
       {homeXY && <circle cx={homeXY[0]} cy={homeXY[1]} r={4} fill="var(--fs-ok)" data-testid="fs-attitude-home" />}
       <path d={`M${c - 14} ${c} h9 l5 5 l5 -5 h9`} fill="none" stroke="var(--fs-warn)" strokeWidth={2} strokeLinejoin="round" />
       <path d={`M${c} ${c - ring + 2} l-5 -6 h10 z`} fill="var(--fs-text)" />

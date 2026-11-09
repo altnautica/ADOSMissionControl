@@ -6,8 +6,9 @@
  * `status_pill`): "All systems OK", the one active alert's text, or
  * "<n> warnings", coloured by the worst severity. Sources: the cockpit alert
  * rules (link, battery, FC state and status text at WARNING or worse, FC
- * pre-arm, GNSS, EKF, fence, video), pilot readiness, the pilot's ring of FC
- * status text, the navigation source
+ * pre-arm, GNSS, EKF, fence, video), pilot readiness and the pilot's ring of
+ * FC status text while the pilot state is fresh (else one "not answering"
+ * warning), the navigation source
  * and the companion's storage. A new alert makes the pill flash until it is
  * acknowledged; opening the list acknowledges every alert in it.
  *
@@ -24,7 +25,9 @@ import { useNavSource } from "@/hooks/use-nav-source";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useCockpitAlertList } from "../CockpitAlerts";
 import type { CockpitAlertId } from "../band/cockpit-alert-rules";
-import type { FcStatusText } from "@/lib/hud/cockpit-frames";
+import type { FcStatusText, PilotState } from "@/lib/hud/cockpit-frames";
+import { PILOT_STALE_MS } from "@/stores/nav-stream-store";
+import { useDroneStore } from "@/stores/drone-store";
 
 export type PillSeverity = "ok" | "warning" | "critical";
 
@@ -82,45 +85,71 @@ export function pillSummary(alerts: readonly PillAlert[], acked: ReadonlySet<str
 /** MAVLink severity 0-2 (emergency, alert, critical) is critical; 3-4 a warning. */
 const STATUSTEXT_CRITICAL_MAX = 2;
 
+const PREARM = /^PreArm:\s*/i;
+
+export interface StatusTextOptions {
+  /** The pre-arm item's label for a reason (`cockpit.alerts.prearm`). */
+  prearmLabel: (reason: string) => string;
+  /** Pre-arm lines are listed on the ground only. */
+  disarmed: boolean;
+}
+
 /**
  * The pilot's ring of FC status text (WARNING or worse, last 30 s, newest
  * first) as pill alerts. A line already listed by another source (the FC's
- * own STATUSTEXT over a direct link) is not listed twice.
+ * own STATUSTEXT over a direct link) is not listed twice. ArduPilot sends
+ * pre-arm failures ("PreArm: ...") at CRITICAL and repeats them; each is the
+ * pre-arm item (a warning, keyed like the cockpit's own pre-arm rule), listed
+ * once and only while disarmed.
  */
 export function statusTextAlerts(
   ring: readonly FcStatusText[] | undefined,
-  listedTexts: ReadonlySet<string>,
+  listedKeys: ReadonlySet<string>,
+  opts: StatusTextOptions,
 ): PillAlert[] {
   const out: PillAlert[] = [];
   const seen = new Set<string>();
   for (const s of ring ?? []) {
-    if (listedTexts.has(s.text) || seen.has(s.text)) continue;
-    seen.add(s.text);
-    out.push({
-      key: `fc:${s.text}`,
-      severity: s.severity <= STATUSTEXT_CRITICAL_MAX ? "critical" : "warning",
-      text: s.text,
-      source: "fc_status_text",
-    });
+    const prearm = PREARM.test(s.text);
+    if (prearm && !opts.disarmed) continue;
+    const reason = prearm ? s.text.replace(PREARM, "") : "";
+    const alert: PillAlert = prearm
+      ? { key: `alert:prearm:${reason}`, severity: "warning", text: opts.prearmLabel(reason), source: "fc_prearm" }
+      : {
+          key: `fc:${s.text}`,
+          severity: s.severity <= STATUSTEXT_CRITICAL_MAX ? "critical" : "warning",
+          text: s.text,
+          source: "fc_status_text",
+        };
+    if (listedKeys.has(alert.key) || listedKeys.has(alert.text) || seen.has(alert.key)) continue;
+    seen.add(alert.key);
+    out.push(alert);
   }
   return out;
 }
 
-function usePillAlerts(droneId: string): PillAlert[] {
-  const t = useTranslations("flightScreen.pill");
-  const { alerts, label } = useCockpitAlertList(droneId);
-  const { pilot } = usePilotState(droneId);
-  const nav = useNavSource(droneId).result;
-  const navText = t("navSource", { kind: nav.kind });
-  const disk = useAgentSystemStore((s) => s.status?.health?.disk_percent ?? null);
+/** Re-render cadence so a pilot state ages out of the pill. */
+const PILL_TICK_MS = 500;
 
-  const out: PillAlert[] = alerts.map((a) => ({
-    key: `alert:${a.id}:${a.detail ?? ""}`,
-    severity: a.level === "critical" ? "critical" : "warning",
-    text: label(a),
-    source: ALERT_SOURCE[a.id],
-  }));
-  for (const r of pilot?.readiness ?? []) {
+/**
+ * The pilot's readiness items and FC status text while its state is fresh
+ * (`PILOT_STALE_MS`). A pilot state that has gone stale lists nothing of its
+ * own but one warning that the pilot is not answering, so the pill never
+ * reads OK on frozen data.
+ */
+export function pilotAlerts(
+  pilot: PilotState | null,
+  receivedAt: number | null,
+  now: number,
+  listed: readonly PillAlert[],
+  opts: StatusTextOptions & { notAnswering: string },
+): PillAlert[] {
+  if (receivedAt === null || pilot === null) return [];
+  if (now - receivedAt > PILOT_STALE_MS) {
+    return [{ key: "pilot:stale", severity: "warning", text: opts.notAnswering, source: "pilot_readiness" }];
+  }
+  const out: PillAlert[] = [];
+  for (const r of pilot.readiness ?? []) {
     if (r.ok) continue;
     out.push({
       key: `ready:${r.id}`,
@@ -129,7 +158,43 @@ function usePillAlerts(droneId: string): PillAlert[] {
       source: "pilot_readiness",
     });
   }
-  out.push(...statusTextAlerts(pilot?.statustext, new Set(out.map((a) => a.text))));
+  const keys = new Set<string>();
+  for (const a of [...listed, ...out]) {
+    keys.add(a.key);
+    keys.add(a.text);
+  }
+  out.push(...statusTextAlerts(pilot.statustext, keys, opts));
+  return out;
+}
+
+function usePillAlerts(droneId: string): PillAlert[] {
+  const t = useTranslations("flightScreen.pill");
+  const ta = useTranslations("cockpit.alerts");
+  const { alerts, label } = useCockpitAlertList(droneId);
+  const { pilot, receivedAt } = usePilotState(droneId);
+  const disarmed = useDroneStore((s) => s.armState === "disarmed");
+  const nav = useNavSource(droneId).result;
+  const navText = t("navSource", { kind: nav.kind });
+  const disk = useAgentSystemStore((s) => s.status?.health?.disk_percent ?? null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), PILL_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const out: PillAlert[] = alerts.map((a) => ({
+    key: `alert:${a.id}:${a.detail ?? ""}`,
+    severity: a.level === "critical" ? "critical" : "warning",
+    text: label(a),
+    source: ALERT_SOURCE[a.id],
+  }));
+  out.push(
+    ...pilotAlerts(pilot, receivedAt, now, out, {
+      prearmLabel: (reason) => ta("prearm", { reason }),
+      disarmed,
+      notAnswering: t("pilotStale"),
+    }),
+  );
   if (nav.tone === "warn" || nav.tone === "crit") {
     out.push({
       key: `nav:${nav.kind}:${nav.tone}`,

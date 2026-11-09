@@ -161,9 +161,10 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
   // Hand the scene to the canvas loop, with the batch's arrival so the layer
   // dims at 500 ms and hides at 2 s on its own.
   const batchAt = displayed?.receivedAt ?? null;
+  const detector = batchAt !== null || demand === "detecting";
   useEffect(() => {
-    engine.setTargets({ layouts, at: Date.now(), focusKey, reducedMotion, marks, markFrame, batchAt });
-  }, [engine, layouts, focusKey, reducedMotion, marks, markFrame, batchAt]);
+    engine.setTargets({ layouts, at: Date.now(), focusKey, reducedMotion, marks, markFrame, batchAt, detector });
+  }, [engine, layouts, focusKey, reducedMotion, marks, markFrame, batchAt, detector]);
   useEffect(() => () => engine.setTargets(null), [engine]);
 
   const openFor = (item: DrawItem) => {
@@ -219,10 +220,14 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
       onDragSelect(reticleBox(x, y, frameW, frameH, boxes));
     };
   });
+  // Registered only while this layer has a rendered frame to draw the
+  // reticle on and designate in; otherwise the controls keep their bindings.
+  const canDesignate = rendered !== null;
   useEffect(() => {
+    if (!canDesignate) return;
     setReticleSelect((x, y) => designateAtRef.current(x, y));
     return () => setReticleSelect(null);
-  }, []);
+  }, [canDesignate]);
   const reticleAt =
     reticle.open && rendered
       ? frameToScreen({ x: reticle.x * frameW, y: reticle.y * frameH, w: 0, h: 0 }, frameW, frameH, rendered)

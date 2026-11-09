@@ -28,6 +28,7 @@ import {
   type CameraGrid,
 } from "@/lib/hud/cockpit-frames";
 import { drawTargets, type TargetScene, type TargetStyle } from "./draw-targets";
+import { drawMarks } from "./draw-marks";
 import { getFrames, subscribeFrames, type FrameSlot } from "./frame-store";
 import {
   DrawOpBuffer,
@@ -385,8 +386,10 @@ export class LayerEngine {
       }
     }
 
-    // ── targets (z 40): detections, marks, lead; dims and hides on the
-    // detection batch's age like every other layer ──
+    // ── targets (z 40): detections and lead dim and hide on the detection
+    // batch's age like every other layer; the cockpit marks do not depend on
+    // detections and always draw. The unavailable chip shows only when a
+    // detector exists and its batch has gone stale. ──
     if (on.has("targets") && this.targets && this.style) {
       const at = this.targets.batchAt;
       if (at !== null) this.targetSlot.receivedAt = at;
@@ -395,7 +398,8 @@ export class LayerEngine {
         const opacity = st === 1 ? DIM_ALPHA : 1;
         if (drawTargets(ctx, this.targets, this.style, now, this.cssW, this.cssH, opacity)) animating = true;
       } else {
-        this.chip("targets", this.chipText.targetsUnavailable);
+        drawMarks(ctx, this.targets.marks, this.targets.markFrame, this.style, this.cssW, this.cssH);
+        if (this.targets.detector) this.chip("targets", this.chipText.targetsUnavailable);
       }
     }
 

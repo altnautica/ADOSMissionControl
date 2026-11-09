@@ -11,6 +11,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { LayerEngine } from "../engine";
 import type { TargetScene, TargetStyle } from "../draw-targets";
 import type { GlyphLayout } from "@/lib/vision/target-layout";
+import type { CockpitMark } from "@/lib/cockpit/marks";
 
 const STYLE: TargetStyle = {
   ink: "#fff",
@@ -82,8 +83,10 @@ const BOX_LAYOUT = {
   fontPx: 12,
 } as unknown as GlyphLayout;
 
-function scene(batchAt: number | null): TargetScene {
-  return { layouts: [BOX_LAYOUT], at: 1000, focusKey: null, reducedMotion: true, marks: [], markFrame: null, batchAt };
+const MARK: CockpitMark = { id: "m1", kind: "point", x: 0.5, y: 0.5, space: "normalized" };
+
+function scene(batchAt: number | null, detector = batchAt !== null, marks: CockpitMark[] = []): TargetScene {
+  return { layouts: [BOX_LAYOUT], at: 1000, focusKey: null, reducedMotion: true, marks, markFrame: null, batchAt, detector };
 }
 
 beforeAll(() => {
@@ -99,7 +102,7 @@ describe("targets layer staleness", () => {
   let e: LayerEngine | null = null;
   afterEach(() => e?.detach());
 
-  function setup(batchAt: number | null): Recorder {
+  function setup(batchAt: number | null, detector = batchAt !== null, marks: CockpitMark[] = []): Recorder {
     const r = recorder();
     e = new LayerEngine(() => {});
     e.attach(r.canvas);
@@ -115,7 +118,7 @@ describe("targets layer staleness", () => {
       fpsCap: 0,
     });
     e.setStyle(STYLE);
-    e.setTargets(scene(batchAt));
+    e.setTargets(scene(batchAt, detector, marks));
     r.calls.length = 0;
     r.alphas.length = 0;
     r.texts.length = 0;
@@ -146,10 +149,29 @@ describe("targets layer staleness", () => {
     expect(r.texts).toContain("Targets unavailable");
   });
 
-  it("shows the unavailable chip when no batch was received", () => {
-    const r = setup(null);
+  it("shows the unavailable chip when a running detector has sent no batch", () => {
+    const r = setup(null, true);
     e!.draw(5000);
     expect(r.calls).not.toContain("stroke");
+    expect(r.texts).toContain("Targets unavailable");
+  });
+
+  it("shows no chip on a drone without a detector", () => {
+    const r = setup(null, false);
+    e!.draw(5000);
+    expect(r.texts).not.toContain("Targets unavailable");
+  });
+
+  it("draws the cockpit marks with no detection batch", () => {
+    const r = setup(null, false, [MARK]);
+    e!.draw(5000);
+    expect(r.calls).toContain("arc");
+  });
+
+  it("keeps drawing the cockpit marks after the batch goes stale", () => {
+    const r = setup(1000, true, [MARK]);
+    e!.draw(1000 + 2500);
+    expect(r.calls).toContain("arc");
     expect(r.texts).toContain("Targets unavailable");
   });
 });

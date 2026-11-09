@@ -153,10 +153,10 @@ describe("CockpitView", () => {
     expect(queryByRole("toolbar", { name: /skill bar/i })).toBeNull();
   });
 
-  it("drops the left column and skill picker when the skill layer is disabled", () => {
+  it("drops the skill picker but keeps the flight column when the skill layer is disabled", () => {
     useCockpitStore.setState({ enabled: false });
     const { queryByTestId, getByTestId } = renderCockpit();
-    expect(queryByTestId("left-column")).toBeNull();
+    expect(getByTestId("left-column")).toBeInTheDocument();
     expect(queryByTestId("skill-picker")).toBeNull();
     // The chip always shows who flies.
     expect(getByTestId("flight-state-chip")).toBeInTheDocument();

@@ -35,13 +35,20 @@ export const useDesignateReticle = create<ReticleState>(() => ({
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
 
+/**
+ * Open the reticle at the centre, or close it. It opens only while a mounted
+ * target layer with a rendered frame has registered `onSelect`: a reticle
+ * nothing draws or can designate with must not take the controls.
+ */
 export function toggleReticle(): void {
   const s = useDesignateReticle.getState();
-  useDesignateReticle.setState(s.open ? { open: false } : { open: true, x: 0.5, y: 0.5 });
+  if (s.open) useDesignateReticle.setState({ open: false });
+  else if (s.onSelect) useDesignateReticle.setState({ open: true, x: 0.5, y: 0.5 });
 }
 
+/** Register the target layer's designate (null closes the reticle too). */
 export function setReticleSelect(fn: ReticleSelect | null): void {
-  useDesignateReticle.setState({ onSelect: fn });
+  useDesignateReticle.setState(fn ? { onSelect: fn } : { onSelect: null, open: false });
 }
 
 /**
@@ -51,6 +58,10 @@ export function setReticleSelect(fn: ReticleSelect | null): void {
 export function reticleControl(control: string): boolean {
   const s = useDesignateReticle.getState();
   if (!s.open) return false;
+  if (!s.onSelect) {
+    useDesignateReticle.setState({ open: false });
+    return false;
+  }
   switch (control) {
     case "dpad_up":
       useDesignateReticle.setState({ y: clamp(s.y - RETICLE_STEP) });

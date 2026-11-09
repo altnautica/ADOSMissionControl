@@ -826,6 +826,9 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-col-target { width: var(--fs-target); height: var(--fs-target); min-height: 0; padding: 0; flex-direction: column; gap: 2px; font-size: var(--fs-label-px); border-radius: var(--fs-radius); }
 .ados-cockpit .fs-col-row .fs-col-target { flex: 1; max-width: 120px; }
 .ados-cockpit .fs-col-btn { width: 40px; height: 32px; padding: 0; font-variant-numeric: tabular-nums; }
+.ados-cockpit .fs-gimbal-pad { display: grid; grid-template-areas: ". up ." "left . right" ". down ."; grid-template-columns: repeat(3, 24px); grid-template-rows: repeat(3, 24px); gap: 2px; padding: 2px; border-radius: var(--fs-radius-sm); background: color-mix(in srgb, var(--fs-text) 6%, transparent); }
+.ados-cockpit .fs-gimbal-pad button { display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--fs-text); cursor: pointer; touch-action: none; }
+.ados-cockpit .fs-gimbal-pad button:active { background: color-mix(in srgb, var(--fs-text) 16%, transparent); }
 .ados-cockpit .fs-shutter { position: relative; border-radius: 50%; border: 3px solid var(--fs-text); background: transparent; padding: 0; cursor: pointer; display: grid; place-items: center; }
 .ados-cockpit .fs-shutter > i { width: 72%; height: 72%; border-radius: 50%; background: var(--fs-text); transition: all 180ms ease-out; }
 .ados-cockpit .fs-shutter[data-mode="video"] > i { background: var(--fs-crit); }
@@ -885,8 +888,9 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-centre { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: var(--fs-text); }
 .ados-cockpit .fs-centre-svg { width: 200px; height: 200px; overflow: visible; filter: drop-shadow(0 0 2px var(--cockpit-shadow)); }
 .ados-cockpit .fs-centre-svg line, .ados-cockpit .fs-centre-svg circle { stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.ados-cockpit .fs-centre-hdg { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); padding: 2px 8px; border-radius: 6px; background: var(--fs-bg); font-size: var(--fs-top-px); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ados-cockpit .fs-centre-hdg { position: absolute; top: calc(50% - 132px); left: 50%; transform: translateX(-50%); padding: 2px 8px; border-radius: 6px; background: var(--fs-bg); font-size: var(--fs-top-px); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ados-cockpit .hud-instruments { position: absolute; inset: 0; }
+.ados-cockpit .hud-picture-centre { position: absolute; pointer-events: none; }
 /* A short centre (the portrait 16:9 strip): the instruments shrink to fit it
    instead of running past its edges; the wind readout gives way. */
 .ados-cockpit .hud-layer { container-type: size; }

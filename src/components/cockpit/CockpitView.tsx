@@ -127,7 +127,8 @@ export function CockpitView({ droneId }: CockpitViewProps) {
     (s) => s.activeStreamIdByDrone[droneId] ?? s.streamsByDrone[droneId]?.[0]?.id ?? PRIMARY_CAMERA_ID,
   );
 
-  // The skill / game layer (left column, skills chip, editor); on by default.
+  // The skill / game layer (skills chip, editor); on by default. The left
+  // column is the built-in flight column and shows whatever this is.
   const cockpitEnabled = useCockpitStore((s) => s.enabled);
 
   // The editor and palette flags live in the skill-input store so the
@@ -214,7 +215,8 @@ export function CockpitView({ droneId }: CockpitViewProps) {
         <CockpitAlerts droneId={droneId} />
         <CockpitPipInset droneId={droneId} />
 
-        {cockpitEnabled && <LeftColumn droneId={droneId} />}
+        {/* The built-in flight column, not part of the optional skill layer. */}
+        <LeftColumn droneId={droneId} />
         <RightColumn droneId={droneId} />
         {viewMeta.main !== "map" && <BottomLeftCard droneId={droneId} />}
         <BottomRow droneId={droneId} />

@@ -9456,7 +9456,8 @@
     "pill": {
       "aria": "Status: {text}. Open the alert list",
       "navSource": "Navigation source degraded ({kind})",
-      "storage": "Companion storage {pct}% full"
+      "storage": "Companion storage {pct}% full",
+      "pilotStale": "ADOS Pilot not answering"
     },
     "battery": {
       "title": "Battery: charge, time to the return reserve, and the reserve marker",
@@ -9495,7 +9496,14 @@
       "settings": "Camera settings",
       "noPicture": "No live picture to capture",
       "demoFeed": "Demo feed",
-      "offline": "No video"
+      "offline": "No video",
+      "gimbal": "Gimbal",
+      "gimbalDir": {
+        "up": "Tilt up (hold)",
+        "down": "Tilt down (hold)",
+        "left": "Pan left (hold)",
+        "right": "Pan right (hold)"
+      }
     },
     "row": {
       "d": "Distance from home",

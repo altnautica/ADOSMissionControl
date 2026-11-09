@@ -82,6 +82,16 @@ describe("flight screen grid", () => {
     checkGrid(gridAt(1280, 800, { sidePanelWidth: 340 }));
   });
 
+  for (const [w, h] of [[1920, 1080], [1280, 800], [900, 600], [1280, 720]] as const) {
+    it(`keeps the follow dock clear of the Vision side panel at ${w}x${h}`, () => {
+      // The panel width as the flight frame computes it.
+      const g = gridAt(w, h, { following: true, sidePanelWidth: Math.round(Math.min(340, w * 0.4)) });
+      expect(g.zones.follow_dock).toBeDefined();
+      expect(g.zones.side_panel).toBeDefined();
+      checkGrid(g);
+    });
+  }
+
   it("scales the chrome by 1.33 at tv and uses 56 px targets on wide classes", () => {
     expect(gridAt(1920, 1080).scale).toBe(1.33);
     expect(gridAt(1280, 800).target).toBe(56);

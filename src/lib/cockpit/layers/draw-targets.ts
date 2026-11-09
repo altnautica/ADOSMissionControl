@@ -146,6 +146,10 @@ export interface TargetScene {
    * batch was received. The layer dims and hides on its age like every
    * other layer. */
   batchAt: number | null;
+  /** A detector is running for this camera (a batch arrived, or the demand
+   * lease reports detecting). Without one there is nothing to call
+   * unavailable, so no chip. */
+  detector: boolean;
 }
 
 const RE_SNAP_MS = 320;

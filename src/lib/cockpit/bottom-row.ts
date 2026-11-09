@@ -5,10 +5,11 @@
  * speed), V.S (vertical speed) and AGL (height above the ground). Every value
  * is null when no fresh sample backs it; the row renders the no-data glyph.
  *
- * AGL is the ADOS pilot's `agl_m` while a fresh pilot state carries one (a
- * fresh downward rangefinder, else the height above home). Without it, a
- * downward rangefinder (DISTANCE_SENSOR orientation 25, within its valid
- * range) first, then the FC's terrain report.
+ * AGL is the ADOS pilot's `agl_m` only while a fresh pilot state says it
+ * came from a rangefinder (`agl_source: "rangefinder"`); its height-above-home
+ * fallback is not a height above the ground and is never shown as one.
+ * Otherwise a downward rangefinder (DISTANCE_SENSOR orientation 25, within
+ * its valid range) first, then the FC's terrain report, else no data.
  *
  * @license GPL-3.0-only
  */
@@ -27,6 +28,8 @@ export interface BottomRowInputs {
   terrain: { currentHeight: number } | null;
   /** The pilot kind's `agl_m`, null when the pilot state is stale or absent. */
   pilotAglM: number | null;
+  /** The pilot kind's `agl_source`; only "rangefinder" is a height above the ground. */
+  pilotAglSource?: string | null;
 }
 
 export interface BottomRowValues {
@@ -43,7 +46,14 @@ export function bottomRowValues(i: BottomRowInputs): BottomRowValues {
   const heightM = typeof pos?.relativeAlt === "number" ? pos.relativeAlt : null;
   const hSpeedMps = i.vfr?.groundspeed ?? pos?.groundSpeed ?? null;
   const vSpeedMps = i.vfr?.climb ?? pos?.climbRate ?? null;
-  return { distM, heightM, hSpeedMps, vSpeedMps, aglM: i.pilotAglM ?? aglFrom(i.rangefinder, i.terrain) };
+  return {
+    distM,
+    heightM,
+    hSpeedMps,
+    vSpeedMps,
+    aglM:
+      (i.pilotAglSource === "rangefinder" ? i.pilotAglM : null) ?? aglFrom(i.rangefinder, i.terrain),
+  };
 }
 
 function aglFrom(rf: BottomRowInputs["rangefinder"], terrain: BottomRowInputs["terrain"]): number | null {

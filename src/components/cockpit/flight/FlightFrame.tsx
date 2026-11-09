@@ -4,7 +4,7 @@
  * @module cockpit/flight/FlightFrame
  * @description The flight screen's frame: the cockpit root element, fixed
  * over the whole viewport (the fleet list, the app header and the drone
- * page's tabs stay mounted underneath), with the grid measured from the
+ * page's tabs stay mounted underneath, made `inert` while it is up), with the grid measured from the
  * container's own size and published to every zone. The grid lives here, not
  * in the cockpit root, so a follow-state tick re-renders only the frame and
  * the zones that read it, never the video.
@@ -24,8 +24,9 @@ import type { CockpitLayoutSize } from "@/hooks/use-cockpit-width-class";
 import type { CockpitViewId } from "@/lib/cockpit/views";
 import { useCockpitLayersStore, type LayerLevel } from "@/stores/cockpit-layers-store";
 import { FlightGridContext, chromeVars, useFlightGrid } from "./flight-context";
-import { flightGrid, rectStyle, type FlightGrid } from "./flight-grid";
+import { flightGrid, rectStyle, videoRect, type FlightGrid } from "./flight-grid";
 import { useViewZoomStore } from "./view-zoom-store";
+import { inertShellAround } from "./inert-shell";
 
 export function FlightFrame({
   droneId,
@@ -66,6 +67,12 @@ export function FlightFrame({
     setClassDefault(layoutSpec.classes[grid.cls].default_layer_level as LayerLevel);
   }, [grid.cls, setClassDefault]);
 
+  // The page underneath leaves the tab order and the accessibility tree.
+  useEffect(() => {
+    const frame = containerRef.current;
+    return frame ? inertShellAround(frame) : undefined;
+  }, [containerRef]);
+
   const centre = grid.zones.center;
   const style = {
     ...chromeVars(grid.scale),
@@ -97,18 +104,11 @@ export function FlightFrame({
 
 /** Where the main picture sits for a view at this grid. */
 export function videoPlacement(view: CockpitViewId, grid: FlightGrid): CSSProperties {
-  const portrait = grid.cls === "portrait";
-  const video = grid.zones.video;
   if (view === "map") {
     const card = grid.zones.bottom_left_card;
     return card ? { ...rectStyle(card), zIndex: 26 } : { inset: 0 };
   }
-  if (portrait && video) return rectStyle(video);
-  if (view === "split") return { left: 0, top: 0, bottom: 0, width: "50%" };
-  if (view === "vision" && grid.zones.side_panel) {
-    return { left: 0, top: 0, bottom: 0, right: grid.width - grid.zones.side_panel.x };
-  }
-  return { inset: 0 };
+  return rectStyle(videoRect(view, grid));
 }
 
 /** Where the map pane sits when a view shows it (main or beside the video). */

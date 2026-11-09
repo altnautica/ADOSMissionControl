@@ -246,6 +246,25 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Flight screen.** The centre marks and flight instruments sit on the
+  video's centre (the video pane's in Split view), where the boxes and route
+  are drawn. The bottom row keeps the latched home position for D, and AGL
+  never shows height above home: only a rangefinder or the terrain report.
+  The status pill ages out stale pilot readiness and FC text, warns when the
+  pilot stops answering instead of reading "All systems OK", and lists a
+  "PreArm:" line once, as a pre-arm warning, on the ground only. "Load from
+  drone" no longer leaves "Plan on drone differs" on ArduPilot. The follow
+  dock clears the Vision side panel; the touchpad reticle opens only where a
+  target layer can draw it; cockpit marks draw without a detector and
+  "Targets unavailable" shows only for a running detector; the page under
+  the flight screen is inert; Take off / Land, RTH and Pause stay on screen
+  with the skill layer off; the attitude radar dims an unknown heading; a
+  layer switch no longer saves the class default level for the vehicle.
+- **Gimbal rate.** The right column gains a press-and-hold gimbal pad, shown
+  only when the drone reports it takes gimbal rates. Rates are quantised, sent
+  one at a time at about 10 Hz with the zero never overtaken, and back off on
+  a rate limit.
+
 - **The cockpit map no longer sits under the flight-state chip.** The minimap
   is the bottom-left card at the spec's size for each width class, so the top
   left holds only the chip row; the stream tabs and top-left widgets moved

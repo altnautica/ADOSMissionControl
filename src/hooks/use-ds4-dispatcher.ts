@@ -218,7 +218,7 @@ export function useDs4Dispatcher(droneId: string): void {
       const { buttons, triggers } = useInputStore.getState();
       const now = Date.now();
       engine.update((c) => buttons[WEB_BUTTON_INDEX[c] ?? -1] === true, now);
-      gimbal?.tick(trigger(down, triggers), trigger(up, triggers), now);
+      gimbal?.tick(trigger(down, triggers), trigger(up, triggers));
     };
     const unsub = useInputStore.subscribe((s, prev) => {
       if (s.buttons !== prev.buttons) step();

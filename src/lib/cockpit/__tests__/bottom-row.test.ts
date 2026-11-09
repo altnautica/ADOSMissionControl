@@ -20,11 +20,18 @@ const base: BottomRowInputs = {
 
 describe("bottom row AGL", () => {
   it("reads the pilot's agl_m when it has one", () => {
-    expect(bottomRowValues({ ...base, pilotAglM: 4.2 }).aglM).toBe(4.2);
+    expect(bottomRowValues({ ...base, pilotAglM: 4.2, pilotAglSource: "rangefinder" }).aglM).toBe(4.2);
   });
 
   it("falls back to the rangefinder, then the terrain report", () => {
     expect(bottomRowValues(base).aglM).toBe(3.5);
     expect(bottomRowValues({ ...base, rangefinder: null }).aglM).toBe(9);
+  });
+
+  it("never shows the pilot's height above home as AGL", () => {
+    const home = { ...base, pilotAglM: 60, pilotAglSource: "home" };
+    expect(bottomRowValues(home).aglM).toBe(3.5);
+    expect(bottomRowValues({ ...home, rangefinder: null }).aglM).toBe(9);
+    expect(bottomRowValues({ ...home, rangefinder: null, terrain: null }).aglM).toBeNull();
   });
 });

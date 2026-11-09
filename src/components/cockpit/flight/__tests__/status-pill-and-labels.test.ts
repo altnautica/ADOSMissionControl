@@ -12,7 +12,9 @@ import { describe, expect, it } from "vitest";
 import ds4Hotspots from "@/lib/cockpit/spec/ds4-hotspots.json";
 import genericHotspots from "@/lib/cockpit/spec/gamepad-generic-hotspots.json";
 import { layoutLeaderLabels, type LeaderInput } from "@/components/config/leader-labels";
-import { pillSummary, statusTextAlerts, type PillAlert } from "../StatusPill";
+import { pilotAlerts, pillSummary, statusTextAlerts, type PillAlert } from "../StatusPill";
+import { PILOT_STALE_MS } from "@/stores/nav-stream-store";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 
 const warn: PillAlert = { key: "a", severity: "warning", text: "GPS: no 3D fix", source: "nav_source" };
 const crit: PillAlert = { key: "b", severity: "critical", text: "Battery critical", source: "battery" };
@@ -48,29 +50,73 @@ function inputs(table: { hotspots: Record<string, { label_anchor: number[]; labe
 }
 
 describe("status pill: the pilot's FC status text", () => {
+  const opts = { prearmLabel: (r: string) => `PREARM: ${r}`, disarmed: true };
   const ring = [
     { severity: 2, text: "Crash: Disarming", ageMs: 100 },
-    { severity: 4, text: "PreArm: Compass not calibrated", ageMs: 1200 },
-    { severity: 4, text: "PreArm: Compass not calibrated", ageMs: 9000 },
+    { severity: 2, text: "PreArm: Compass not calibrated", ageMs: 1200 },
+    { severity: 2, text: "PreArm: Compass not calibrated", ageMs: 9000 },
   ];
 
   it("lists each line once, critical at severity 2 or worse", () => {
-    expect(statusTextAlerts(ring, new Set())).toEqual([
-      { key: "fc:Crash: Disarming", severity: "critical", text: "Crash: Disarming", source: "fc_status_text" },
-      {
-        key: "fc:PreArm: Compass not calibrated",
-        severity: "warning",
-        text: "PreArm: Compass not calibrated",
-        source: "fc_status_text",
-      },
+    expect(statusTextAlerts(ring, new Set(), opts)[0]).toEqual({
+      key: "fc:Crash: Disarming",
+      severity: "critical",
+      text: "Crash: Disarming",
+      source: "fc_status_text",
+    });
+  });
+
+  it("lists a PreArm line once, as the pre-arm item, as a warning", () => {
+    const out = statusTextAlerts(ring, new Set(), opts);
+    expect(out).toHaveLength(2);
+    expect(out[1]).toEqual({
+      key: "alert:prearm:Compass not calibrated",
+      severity: "warning",
+      text: "PREARM: Compass not calibrated",
+      source: "fc_prearm",
+    });
+  });
+
+  it("does not repeat the cockpit's own pre-arm alert, and drops PreArm lines once armed", () => {
+    const listed = new Set(["alert:prearm:Compass not calibrated"]);
+    expect(statusTextAlerts(ring, listed, opts).map((a) => a.text)).toEqual(["Crash: Disarming"]);
+    expect(statusTextAlerts(ring, new Set(), { ...opts, disarmed: false }).map((a) => a.text)).toEqual([
+      "Crash: Disarming",
     ]);
   });
 
   it("skips a line another source already lists", () => {
-    expect(statusTextAlerts(ring, new Set(["Crash: Disarming"])).map((a) => a.text)).toEqual([
-      "PreArm: Compass not calibrated",
+    expect(statusTextAlerts(ring, new Set(["Crash: Disarming"]), opts).map((a) => a.text)).toEqual([
+      "PREARM: Compass not calibrated",
     ]);
-    expect(statusTextAlerts(undefined, new Set())).toEqual([]);
+    expect(statusTextAlerts(undefined, new Set(), opts)).toEqual([]);
+  });
+});
+
+describe("status pill: pilot freshness", () => {
+  const opts = { prearmLabel: (r: string) => `PREARM: ${r}`, disarmed: true, notAnswering: "ADOS Pilot not answering" };
+  const pilot = {
+    readiness: [{ id: "gps", ok: false, severity: "warn", msg: "GPS not ready" }],
+    statustext: [{ severity: 4, text: "EKF variance", ageMs: 0 }],
+  } as unknown as PilotState;
+
+  it("lists readiness and FC text while the pilot state is fresh", () => {
+    expect(pilotAlerts(pilot, 1000, 1000 + PILOT_STALE_MS, [], opts).map((a) => a.text)).toEqual([
+      "GPS not ready",
+      "EKF variance",
+    ]);
+  });
+
+  it("ages them out and warns that the pilot is not answering, never OK", () => {
+    const out = pilotAlerts(pilot, 1000, 1001 + PILOT_STALE_MS, [], opts);
+    expect(out.map((a) => a.text)).toEqual(["ADOS Pilot not answering"]);
+    expect(pillSummary(out, new Set()).severity).toBe("warning");
+    const clean = { readiness: [], statustext: [] } as unknown as PilotState;
+    expect(pillSummary(pilotAlerts(clean, 0, 10_000, [], opts), new Set()).text).toBe("ADOS Pilot not answering");
+  });
+
+  it("adds nothing when no pilot state was ever received", () => {
+    expect(pilotAlerts(null, null, 10_000, [], opts)).toEqual([]);
   });
 });
 

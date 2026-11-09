@@ -25,6 +25,10 @@ import { widthClassFor } from "@/lib/cockpit/width-class";
 import type { MissionState } from "@/lib/hud/cockpit-frames";
 import { pollNavStatus } from "@/lib/agent/nav-stream";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
+import { bindDroneSelection } from "@/stores/drone-selection";
+import { downloadPlanMission } from "@/stores/mission-transfer";
+import { receiptFor, useUploadReceiptsStore } from "@/stores/upload-receipts-store";
+import type { DroneProtocol, MissionItem } from "@/lib/protocol/types";
 import pilotFixture from "@/lib/cockpit/layers/fixtures/pilot-frame.json";
 
 describe("cockpit views", () => {
@@ -250,5 +254,29 @@ describe("nav status fallback poll", () => {
     expect(ok).toBe(true);
     const pilot = useNavStreamStore.getState().byDrone.d1?.pilot;
     expect(pilot?.receivedAt).toBe(9_700);
+  });
+});
+
+describe("plan identity after Load from drone", () => {
+  afterEach(() => {
+    bindDroneSelection(() => ({ drones: new Map(), selectedDroneId: null }));
+    useUploadReceiptsStore.setState({ receipts: {} });
+  });
+  it("reads match on an ArduPilot drone whose mission id is 0", async () => {
+    const item = (seq: number, lat: number): MissionItem => ({
+      seq, frame: 3, command: 16, current: 0, autocontinue: 1,
+      param1: 0, param2: 0, param3: 0, param4: 0, x: lat * 1e7, y: 77.5 * 1e7, z: 30,
+    });
+    // Home in slot 0, then five waypoints: MISSION_CURRENT reports five.
+    const items = [item(0, 12.9), ...[1, 2, 3, 4, 5].map((s) => item(s, 12.9 + s * 0.001))];
+    const protocol = {
+      downloadMission: async () => items,
+      getVehicleInfo: () => ({ firmwareType: "ardupilot-copter" }),
+    } as unknown as DroneProtocol;
+    bindDroneSelection(() => ({ drones: new Map([["d", { protocol }]]), selectedDroneId: "d" }) as never);
+    const m = mission({ id: 0, total: 5, uploadsSeen: 4 });
+    useNavStreamStore.getState().setPilot("d", { mission: m } as never);
+    await downloadPlanMission(() => {});
+    expect(planIdentity(receiptFor("mission", "d"), m)).toBe("match");
   });
 });

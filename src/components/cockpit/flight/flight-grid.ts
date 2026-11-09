@@ -19,6 +19,7 @@
 import layoutSpec from "@/lib/cockpit/spec/layout.json";
 import tokens from "@/lib/cockpit/spec/tokens.json";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
+import type { CockpitViewId } from "@/lib/cockpit/views";
 
 export type FlightGridClass = CockpitWidthClass | "portrait";
 
@@ -198,8 +199,13 @@ export function flightGrid(i: FlightGridInput): FlightGrid {
     bottom_row: round(row),
     bottom_right: round(skills),
   };
-  if (i.following) zones.follow_dock = round({ x: row.x, y: row.y - g - FOLLOW_H * s, w: row.w, h: FOLLOW_H * s });
-  if (panelW > 0) zones.side_panel = round({ x: W - e - panelW, y: y0, w: panelW, h: H - e - y0 - skillsH - g });
+  const panelX = W - e - panelW;
+  if (i.following) {
+    // Beside a side panel (the Vision view) the dock ends a gap short of it.
+    const dockW = panelW > 0 ? Math.min(row.w, panelX - g - row.x) : row.w;
+    zones.follow_dock = round({ x: row.x, y: row.y - g - FOLLOW_H * s, w: dockW, h: FOLLOW_H * s });
+  }
+  if (panelW > 0) zones.side_panel = round({ x: panelX, y: y0, w: panelW, h: H - e - y0 - skillsH - g });
   return {
     cls,
     widthClass: i.widthClass,
@@ -231,4 +237,19 @@ export function rectInside(inner: Rect, outer: Rect): boolean {
 /** Absolute-position style for a zone rectangle. */
 export function rectStyle(r: Rect): { left: number; top: number; width: number; height: number } {
   return { left: r.x, top: r.y, width: r.w, height: r.h };
+}
+
+/**
+ * Where the main picture sits for a view at this grid, in screen pixels. In
+ * the Map view it is the bottom-left card. The video inside is letterboxed
+ * (`object-fit: contain`), so its centre is this rect's centre.
+ */
+export function videoRect(view: CockpitViewId, grid: FlightGrid): Rect {
+  const full = { x: 0, y: 0, w: grid.width, h: grid.height };
+  const video = grid.zones.video;
+  if (view === "map") return grid.zones.bottom_left_card ?? full;
+  if (grid.cls === "portrait" && video) return video;
+  if (view === "split") return { x: 0, y: 0, w: grid.width / 2, h: grid.height };
+  if (view === "vision" && grid.zones.side_panel) return { x: 0, y: 0, w: grid.zones.side_panel.x, h: grid.height };
+  return full;
 }

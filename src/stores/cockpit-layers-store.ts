@@ -10,6 +10,9 @@
  * compact and portrait, Full otherwise), which the cockpit publishes with
  * {@link CockpitLayersState.setClassDefault}.
  *
+ * Flipping one layer or the depth style on such a vehicle stores the flip
+ * but not the level: the level keeps following the class default.
+ *
  * Changing the level drops the per-layer flips, so a level always means the
  * same thing on screen.
  *
@@ -39,6 +42,9 @@ export interface VehicleLayers {
   flips: Record<string, boolean>;
   depthStyle: DepthStyle;
   depthRange: DepthRange;
+  /** The level was not chosen by the operator (only a layer switch or the
+   * depth style was): it follows the layout class's default. */
+  levelFromClass?: boolean;
 }
 
 /** One stable default entry per level, so a selector returning it is stable. */
@@ -77,40 +83,49 @@ function stepped(cur: LayerLevel, by: number): LayerLevel {
   return LAYER_LEVELS[(((LAYER_LEVELS.indexOf(cur) + by) % n) + n) % n];
 }
 
+/** The vehicle's entry with an operator-chosen level (the flips dropped). */
+function chosenLevel(
+  s: CockpitLayersState,
+  droneId: string,
+  level: (cur: LayerLevel) => LayerLevel,
+): Pick<CockpitLayersState, "byVehicle"> {
+  const { levelFromClass: _class, ...cur } = vehicleLayers(s.byVehicle, droneId, s.classDefault);
+  return { byVehicle: { ...s.byVehicle, [droneId]: { ...cur, level: level(cur.level), flips: {} } } };
+}
+
+/** The vehicle's entry for a switch or depth change: a vehicle with no
+ * stored entry keeps following the class default. */
+function unchosenLevel(s: CockpitLayersState, droneId: string): VehicleLayers {
+  const stored = s.byVehicle[droneId];
+  return stored ?? { ...DEFAULT_BY_LEVEL[s.classDefault], levelFromClass: true };
+}
+
 export const useCockpitLayersStore = create<CockpitLayersState>()(
   persist(
     (set) => ({
       byVehicle: {},
       classDefault: DEFAULT_LAYER_LEVEL,
-      setClassDefault: (classDefault) => set((s) => (s.classDefault === classDefault ? s : { classDefault })),
-      setLevel: (droneId, level) =>
-        set((s) => ({
-          byVehicle: { ...s.byVehicle, [droneId]: { ...vehicleLayers(s.byVehicle, droneId, s.classDefault), level, flips: {} } },
-        })),
-      cycleLevel: (droneId) =>
+      setClassDefault: (classDefault) =>
         set((s) => {
-          const cur = vehicleLayers(s.byVehicle, droneId, s.classDefault);
-          return { byVehicle: { ...s.byVehicle, [droneId]: { ...cur, level: stepped(cur.level, 1), flips: {} } } };
+          // Vehicles whose level follows the class move with it.
+          let byVehicle = s.byVehicle;
+          for (const [id, v] of Object.entries(s.byVehicle)) {
+            if (!v.levelFromClass || v.level === classDefault) continue;
+            if (byVehicle === s.byVehicle) byVehicle = { ...s.byVehicle };
+            byVehicle[id] = { ...v, level: classDefault };
+          }
+          return s.classDefault === classDefault && byVehicle === s.byVehicle ? s : { classDefault, byVehicle };
         }),
-      stepLevel: (droneId, by) =>
-        set((s) => {
-          const cur = vehicleLayers(s.byVehicle, droneId, s.classDefault);
-          return { byVehicle: { ...s.byVehicle, [droneId]: { ...cur, level: stepped(cur.level, by), flips: {} } } };
-        }),
+      setLevel: (droneId, level) => set((s) => chosenLevel(s, droneId, () => level)),
+      cycleLevel: (droneId) => set((s) => chosenLevel(s, droneId, (cur) => stepped(cur, 1))),
+      stepLevel: (droneId, by) => set((s) => chosenLevel(s, droneId, (cur) => stepped(cur, by))),
       setLayer: (droneId, layerId, on) =>
         set((s) => {
-          const cur = vehicleLayers(s.byVehicle, droneId, s.classDefault);
-          return {
-            byVehicle: { ...s.byVehicle, [droneId]: { ...cur, flips: { ...cur.flips, [layerId]: on } } },
-          };
+          const cur = unchosenLevel(s, droneId);
+          return { byVehicle: { ...s.byVehicle, [droneId]: { ...cur, flips: { ...cur.flips, [layerId]: on } } } };
         }),
       setDepth: (droneId, depthStyle, depthRange) =>
-        set((s) => ({
-          byVehicle: {
-            ...s.byVehicle,
-            [droneId]: { ...vehicleLayers(s.byVehicle, droneId, s.classDefault), depthStyle, depthRange },
-          },
-        })),
+        set((s) => ({ byVehicle: { ...s.byVehicle, [droneId]: { ...unchosenLevel(s, droneId), depthStyle, depthRange } } })),
     }),
     {
       name: "altcmd:cockpit-layers",
@@ -128,7 +143,13 @@ export const useCockpitLayersStore = create<CockpitLayersState>()(
         const byVehicle: Record<string, VehicleLayers> = {};
         if (raw && typeof raw === "object" && !Array.isArray(raw)) {
           for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
-            const e = v as { level?: unknown; flips?: unknown; depthStyle?: unknown; depthRange?: unknown } | null;
+            const e = v as {
+              level?: unknown;
+              flips?: unknown;
+              depthStyle?: unknown;
+              depthRange?: unknown;
+              levelFromClass?: unknown;
+            } | null;
             if (!e || !(LAYER_LEVELS as readonly unknown[]).includes(e.level)) continue;
             const flips: Record<string, boolean> = {};
             if (e.flips && typeof e.flips === "object") {
@@ -141,6 +162,7 @@ export const useCockpitLayersStore = create<CockpitLayersState>()(
               flips,
               depthStyle: e.depthStyle === "outline" ? "outline" : "solid",
               depthRange: e.depthRange === "off" || e.depthRange === "2" ? e.depthRange : "5",
+              ...(e.levelFromClass === true ? { levelFromClass: true } : {}),
             };
           }
         }

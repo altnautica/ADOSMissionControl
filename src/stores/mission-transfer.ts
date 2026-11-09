@@ -217,7 +217,9 @@ export async function downloadPlanMission(set: SetState): Promise<Waypoint[]> {
         at: Date.now(),
         homeSlot: isArduPilot,
         ...(agentMission?.id ? { opaqueId: agentMission.id } : {}),
-        ...(agentMission?.total != null ? { total: agentMission.total } : {}),
+        // MISSION_CURRENT's total excludes ArduPilot's home slot; the receipt
+        // counts items as the upload path does, home included.
+        ...(agentMission?.total != null ? { total: agentMission.total + (isArduPilot ? 1 : 0) } : {}),
         ...(agentMission?.uploadsSeen != null ? { uploadsSeenBefore: agentMission.uploadsSeen } : {}),
       });
     }
