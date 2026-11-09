@@ -11,7 +11,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
-import type { HudCopy } from "@/lib/vision/hud-copy";
+import type { HudCopy } from "@/lib/hud/hud-copy";
 
 export function useHudCopy(): HudCopy {
   const t = useTranslations("hud");

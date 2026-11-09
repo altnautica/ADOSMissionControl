@@ -142,10 +142,38 @@ export interface PilotState {
   sequence: { step: "checks" | "arm" | "takeoff" | "after" | "done"; after: string | null; error: string | null } | null;
   banner: { textKey: string; args: Record<string, unknown>; untilMs: number | null } | null;
   rthCountdownS: number | null;
+  /** Pilot actions this agent accepts from a surface (e.g. `goto`). */
+  surfaceOps: string[];
+  /** Height above ground, from a fresh downward rangefinder or the EKF
+   *  height above home. */
+  aglM: number | null;
+  aglSource: "rangefinder" | "home" | null;
+  /** FC STATUSTEXT at WARNING or worse from the last 30 s, newest first. */
+  statustext: FcStatusText[];
+}
+
+/** One FC STATUSTEXT line; severity is MAVLink's (0 emergency … 4 warning). */
+export interface FcStatusText {
+  severity: number;
+  text: string;
+  ageMs: number;
 }
 
 const AVOID_STATES: readonly AvoidState[] = ["clear", "detour", "blocked", "off"];
 const SEQ_STEPS = ["checks", "arm", "takeoff", "after", "done"] as const;
+
+function parseStatusText(raw: unknown): FcStatusText[] {
+  if (!Array.isArray(raw)) return [];
+  const out: FcStatusText[] = [];
+  for (const r of raw.slice(0, 8)) {
+    const o = obj(r);
+    const text = o ? str(o.text) : null;
+    const severity = o ? num(o.severity) : null;
+    if (!o || text === null || severity === null) continue;
+    out.push({ severity, text, ageMs: num(o.age_ms) ?? 0 });
+  }
+  return out;
+}
 
 export function parsePilotState(raw: unknown): PilotState | null {
   const p = obj(raw);
@@ -209,6 +237,10 @@ export function parsePilotState(raw: unknown): PilotState | null {
         ? { textKey: banner.text_key as string, args: obj(banner.args) ?? {}, untilMs: num(banner.until_ms) }
         : null,
     rthCountdownS: num(p.rth_countdown_s),
+    surfaceOps: Array.isArray(p.surface_ops) ? p.surface_ops.filter((o): o is string => typeof o === "string") : [],
+    aglM: num(p.agl_m),
+    aglSource: oneOf(p.agl_source, ["rangefinder", "home"] as const),
+    statustext: parseStatusText(p.statustext),
   };
 }
 

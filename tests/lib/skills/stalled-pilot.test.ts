@@ -19,7 +19,7 @@ import {
   usePilotLinkStore,
   type PilotOutboundFrame,
 } from "@/lib/input/pilot-stream";
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import type { SkillContext, SkillProtocol } from "@/lib/skills/types";
 

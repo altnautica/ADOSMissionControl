@@ -29,7 +29,7 @@ import { Crosshair, X } from "lucide-react";
 import { useCameraDetectionBatch } from "@/hooks/use-detection-batch";
 import { useFollowStateEntry } from "@/hooks/use-nav-feed";
 import { useClockTick } from "@/lib/agent/freshness";
-import type { FollowState } from "@/lib/agent/nav-types";
+import type { FollowState } from "@/lib/hud/nav-types";
 import { perceptionFeedState, staleReason } from "@/lib/vision/perception-health";
 import { classWord, holdReasonWord } from "@/lib/vision/target-format";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";

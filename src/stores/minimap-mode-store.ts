@@ -10,7 +10,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-import type { MinimapPin } from "@/lib/nav/minimap-mode";
+import type { MinimapPin } from "@/lib/hud/minimap-mode";
 
 interface MinimapModeState {
   pinByVehicle: Record<string, MinimapPin>;

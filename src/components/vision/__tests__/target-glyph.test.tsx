@@ -2,7 +2,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { TargetGlyph } from "@/components/vision/TargetGlyph";
-import { parseFollowState, type FollowEvent } from "@/lib/agent/nav-types";
+import { parseFollowState, type FollowEvent } from "@/lib/hud/nav-types";
 import { layoutTargets } from "@/lib/vision/target-layout";
 import { resolveTargets, type ResolveInput } from "@/lib/vision/target-state";
 import type { VisionDetection } from "@/stores/vision-detections-store";

@@ -13,14 +13,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { OCCUPANCY_TILE_LIMIT, type OccupancyGrid } from "@/lib/nav/local-frame";
+import { OCCUPANCY_TILE_LIMIT, type OccupancyGrid } from "@/lib/hud/local-frame";
 import {
   FREE_ALPHA,
   OCCUPIED_ALPHA,
   recolourOccupancy,
   withAlpha,
   type Rgba,
-} from "@/lib/nav/occupancy-bitmap";
+} from "@/lib/hud/occupancy-bitmap";
 
 interface CacheEntry {
   b64: string;

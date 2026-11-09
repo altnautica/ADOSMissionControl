@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import { HUD_COPY_EN, type HudCopy } from "./hud-copy";
+import { HUD_COPY_EN, type HudCopy } from "@/lib/hud/hud-copy";
 
 /** Class word: uppercase, anything outside `[A-Z0-9 ]` → space, ≤ 12 chars. */
 export function classWord(label: string): string {

@@ -19,7 +19,7 @@ vi.mock("react-leaflet", () => ({
 }));
 
 import { FollowTargetGeoLayer } from "@/components/map/local/FollowTargetGeoLayer";
-import type { FollowState } from "@/lib/agent/nav-types";
+import type { FollowState } from "@/lib/hud/nav-types";
 import { nedToLatLon } from "@/lib/nav/ned-geo";
 import { useGpsOriginStore } from "@/stores/gps-origin-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";

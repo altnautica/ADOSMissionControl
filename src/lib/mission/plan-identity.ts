@@ -22,7 +22,7 @@
  * @license GPL-3.0-only
  */
 
-import type { MissionState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { MissionState } from "@/lib/hud/cockpit-frames";
 import type { UploadReceipt } from "@/stores/upload-receipts-store";
 
 export type PlanIdentity = "match" | "differs" | "unknown";

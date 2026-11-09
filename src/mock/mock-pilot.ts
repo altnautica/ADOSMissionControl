@@ -11,7 +11,7 @@
 
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { usePluginSkillHostStore } from "@/lib/skills/plugin-skill-host-store";
-import { parsePilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import {
   handlePilotServerFrame,
   setPilotSender,

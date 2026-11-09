@@ -1,5 +1,5 @@
 /**
- * @module nav/local-frame
+ * @module hud/local-frame
  * @description Pure geometry for the minimap's local frame: occupancy tile
  * placement and merging, map → screen projection, scan → map transform, the
  * SLAM trail and the scale bar. All local layers live in the map frame
@@ -9,7 +9,7 @@
  * @license GPL-3.0-only
  */
 
-import type { NavHealth, NavPose, NavScan, OccupancyLive } from "@/lib/agent/nav-types";
+import type { NavHealth, NavPose, NavScan, OccupancyLive } from "./nav-types";
 
 // ── occupancy tiles ──────────────────────────────────────────────────
 
@@ -184,24 +184,23 @@ export function appendTrail(trail: readonly TrailPoint[], p: TrailPoint): TrailP
   return next.length > TRAIL_MAX_POINTS ? next.slice(next.length - TRAIL_MAX_POINTS) : next;
 }
 
+type TrailRun = { points: TrailPoint[]; dashed: boolean };
+
 /** Split a trail into drawable runs. `lost` points break the line; each run
  * is dashed when its samples were recorded while degraded. */
-export function trailRuns(trail: readonly TrailPoint[]): Array<{ points: TrailPoint[]; dashed: boolean }> {
-  type Run = { points: TrailPoint[]; dashed: boolean };
-  const runs: Run[] = [];
-  let cur: Run | null = null;
+export function trailRuns(trail: readonly TrailPoint[]): TrailRun[] {
+  const runs: TrailRun[] = [];
+  let cur = null as TrailRun | null;
   for (const p of trail) {
     if (p.health === "lost") {
       cur = null;
       continue;
     }
     const dashed = p.health === "degraded";
-    if (cur === null) {
-      cur = { points: [], dashed };
-      runs.push(cur);
-    } else if (cur.dashed !== dashed) {
+    if (!cur || cur.dashed !== dashed) {
       // Start the new run at the previous run's last point so runs connect.
-      cur = { points: [cur.points[cur.points.length - 1]], dashed };
+      const prev: TrailPoint | undefined = cur?.points[cur.points.length - 1];
+      cur = { points: prev ? [prev] : [], dashed };
       runs.push(cur);
     }
     cur.points.push(p);

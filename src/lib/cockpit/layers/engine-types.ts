@@ -6,8 +6,8 @@
  * @license GPL-3.0-only
  */
 
-import type { LayerLevel } from "./ar-layout";
-import type { AvoidState, MissionState } from "./cockpit-frames";
+import type { LayerLevel } from "@/lib/hud/ar-layout";
+import type { AvoidState, MissionState } from "@/lib/hud/cockpit-frames";
 import type { DepthRange, DepthStyle } from "@/stores/cockpit-layers-store";
 
 /** The status chips the engine can draw; the shell passes localised text. */

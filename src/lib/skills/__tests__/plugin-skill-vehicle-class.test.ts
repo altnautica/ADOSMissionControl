@@ -22,7 +22,7 @@ import {
   type DroneSkillContribution,
 } from "@/lib/skills/plugin-skills";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 
 const DRONE = "drone-vc";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseFollowState } from "@/lib/agent/nav-types";
+import { parseFollowState } from "@/lib/hud/nav-types";
 import {
   coverRect,
   inflateHit,

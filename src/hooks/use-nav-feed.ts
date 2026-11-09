@@ -21,7 +21,7 @@ import {
   type FollowState,
   type MapStatus,
   type NavState,
-} from "@/lib/agent/nav-types";
+} from "@/lib/hud/nav-types";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { WORLD_ENGINE_PLUGIN_ID } from "@/lib/api/agent/sensors";
 import { usePluginCloudStateStore, type PluginCloudSlice } from "@/stores/plugin-cloud-state-store";

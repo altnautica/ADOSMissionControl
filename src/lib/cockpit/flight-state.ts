@@ -10,7 +10,7 @@
 
 import flightStateSpec from "./spec/flight-state.json";
 import tokens from "./spec/tokens.json";
-import type { ArFrame, PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { ArFrame, PilotState } from "@/lib/hud/cockpit-frames";
 import type { MissionStatus } from "@/lib/mission/mission-state";
 
 interface Rule {

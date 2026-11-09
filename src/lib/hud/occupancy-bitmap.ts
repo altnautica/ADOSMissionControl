@@ -1,5 +1,5 @@
 /**
- * @module nav/occupancy-bitmap
+ * @module hud/occupancy-bitmap
  * @description Pixel recolouring for live occupancy tiles. A tile arrives as
  * a greyscale map_server PNG; each pixel is classified once at decode
  * (`occupancyClass`) and painted occupied / free / transparent in the HUD ink
@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import { occupancyClass } from "@/lib/nav/local-frame";
+import { occupancyClass } from "./local-frame";
 
 /** An RGBA colour with 0–255 channels. */
 export type Rgba = readonly [number, number, number, number];

@@ -11,7 +11,7 @@ import { emptyEntry, useNodeRegistryStore } from "@/stores/node-registry";
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 
 import { FlightStateChip } from "../FlightStateChip";
-import { parsePilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 

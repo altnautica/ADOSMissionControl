@@ -9,11 +9,11 @@
  * @license GPL-3.0-only
  */
 
-import type { FollowState } from "@/lib/agent/nav-types";
+import type { FollowState } from "@/lib/hud/nav-types";
 import { useClockTick } from "@/lib/agent/freshness";
 import { pluginSkillId } from "@/lib/skills/plugin-skills";
 import { useSkillRegistry } from "@/lib/skills";
-import { isFollowingMode } from "@/lib/vision/follow-chrome";
+import { isFollowingMode } from "@/lib/hud/follow-chrome";
 import { FOLLOW_ME_PLUGIN_ID, useFollowStateEntry } from "@/hooks/use-nav-feed";
 import { FOLLOW_STALE_MS } from "@/stores/nav-stream-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";

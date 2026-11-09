@@ -1,9 +1,10 @@
 /**
- * @module vision/hud-copy
+ * @module hud/hud-copy
  * @description The HUD target tag strings. The resolver formats tags through
- * this table so a surface can pass its translated copy (`useHudCopy`, the
- * `hud.target.*` locale keys) while tests and non-React callers use the
- * English default. Uppercase state words stay uppercase in every locale.
+ * this table so a surface can pass its translated copy while tests and
+ * non-React callers use the English default. The agent cockpit's Feed is not
+ * translated, so it uses the English table. Uppercase state words stay
+ * uppercase in every locale.
  *
  * @license GPL-3.0-only
  */

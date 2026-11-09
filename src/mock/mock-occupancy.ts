@@ -10,7 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import type { OccupancyLive, OccupancyTileWire } from "@/lib/agent/nav-types";
+import type { OccupancyLive, OccupancyTileWire } from "@/lib/hud/nav-types";
 import {
   PILLARS,
   ROOM_HALF_M,

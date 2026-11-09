@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import arFixture from "../layers/fixtures/ar-frame.json";
 import pilotFixture from "../layers/fixtures/pilot-frame.json";
-import { parseArFrame, parsePilotState, type PilotState } from "../layers/cockpit-frames";
+import { parseArFrame, parsePilotState, type PilotState } from "@/lib/hud/cockpit-frames";
 import { evaluateChip, formatEta, nextWaypointEtaS } from "../flight-state";
 import type { MissionStatus } from "@/lib/mission/mission-state";
 

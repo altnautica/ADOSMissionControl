@@ -1,5 +1,5 @@
 /**
- * @module vision/follow-chrome
+ * @module hud/follow-chrome
  * @description Pure rules behind the following-mode chrome (range panel,
  * right rail, follow skill popover): when following mode is on, the phase
  * colour, the range interval-bar geometry and the readout formats.
@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import type { FollowPhase, RangeCueKind } from "@/lib/agent/nav-types";
+import type { FollowPhase, RangeCueKind } from "./nav-types";
 
 /** HUD role a phase word is drawn in. */
 export type PhaseTone = "track" | "coast" | "warn" | "crit" | "muted";

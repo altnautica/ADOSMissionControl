@@ -14,7 +14,7 @@
  */
 
 import ds4 from "@/lib/cockpit/spec/ds4.json";
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 
 type RumbleSpec = { pulses_ms: number[]; gap_ms: number; strong: number; weak: number };
 const RUMBLE = ds4.rumble as unknown as Record<string, RumbleSpec>;

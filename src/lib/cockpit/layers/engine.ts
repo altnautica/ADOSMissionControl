@@ -20,13 +20,13 @@
  * @license GPL-3.0-only
  */
 
-import { arStatusChip, layoutAr, type ArLayoutOptions } from "./ar-layout";
+import { arStatusChip, layoutAr, type ArLayoutOptions } from "@/lib/hud/ar-layout";
 import {
   decodeBase64Into,
   type ArCamera,
   type AvoidState,
   type CameraGrid,
-} from "./cockpit-frames";
+} from "@/lib/hud/cockpit-frames";
 import { drawTargets, type TargetScene, type TargetStyle } from "./draw-targets";
 import { getFrames, subscribeFrames, type FrameSlot } from "./frame-store";
 import {
@@ -38,8 +38,8 @@ import {
   lerpOps,
   type CellOptions,
   type Rect,
-} from "./layer-layout";
-import { paintOps } from "./layer-paint";
+} from "@/lib/hud/layer-layout";
+import { paintOps } from "@/lib/hud/layer-paint";
 import { LAYER_DIM_MS, LAYER_HIDE_MS } from "./layer-spec";
 import cockpitTokens from "@/lib/cockpit/spec/tokens.json";
 import {

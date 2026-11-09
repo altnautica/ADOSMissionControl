@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import messages from "../../../../locales/en.json";
 import { WhatsLockedChip } from "@/components/vision/WhatsLockedChip";
-import { parseFollowState } from "@/lib/agent/nav-types";
+import { parseFollowState } from "@/lib/hud/nav-types";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";

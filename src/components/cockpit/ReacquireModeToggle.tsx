@@ -12,7 +12,7 @@
 
 import { useTranslations } from "next-intl";
 
-import type { ReacquireMode } from "@/lib/agent/nav-types";
+import type { ReacquireMode } from "@/lib/hud/nav-types";
 import { cn } from "@/lib/utils";
 import { useReacquireMode } from "@/hooks/use-reacquire-mode";
 

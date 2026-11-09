@@ -22,7 +22,7 @@ import { launchArgs } from "@/components/cockpit/v2/LaunchSheet";
 import { bannerText, voiceLine } from "@/components/cockpit/v2/FlightFlowOverlays";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { widthClassFor } from "@/lib/cockpit/width-class";
-import type { MissionState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { MissionState } from "@/lib/hud/cockpit-frames";
 import { pollNavStatus } from "@/lib/agent/nav-stream";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import pilotFixture from "@/lib/cockpit/layers/fixtures/pilot-frame.json";

@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { evaluateChip, nextWaypointEtaS, type ChipView } from "@/lib/cockpit/flight-state";
 import { getFrames } from "@/lib/cockpit/layers/frame-store";
 import { LAYER_HIDE_MS } from "@/lib/cockpit/layers/layer-spec";

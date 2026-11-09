@@ -15,7 +15,7 @@ import { useMemo } from "react";
 import { X } from "lucide-react";
 
 import flightStateSpec from "@/lib/cockpit/spec/flight-state.json";
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { requestPilotAction, type PilotActionName } from "@/lib/input/pilot-stream";
 import { activate, buildSkillContext, stopMotionSkills } from "@/lib/skills";
 import { useToast } from "@/components/ui/toast";

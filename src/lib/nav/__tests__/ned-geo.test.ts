@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FollowState } from "@/lib/agent/nav-types";
+import type { FollowState } from "@/lib/hud/nav-types";
 import { haversineDistance } from "@/lib/geo/distance";
 
 import { followTargetGeo, nedToLatLon } from "../ned-geo";

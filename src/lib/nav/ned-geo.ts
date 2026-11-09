@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import type { FollowState } from "@/lib/agent/nav-types";
+import type { FollowState } from "@/lib/hud/nav-types";
 import { offsetPoint } from "@/lib/drawing/geo-utils";
 
 /** `(north, east)` metres from `origin` as `[lat, lon]` degrees. */

@@ -18,7 +18,7 @@ import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 import { CONFIRM_HOLD_DEFAULT_MS } from "@/lib/skills/types";
-import { EKF_FLAG, gpsFixWord, sourceValueKey } from "@/lib/vision/nav-source";
+import { EKF_FLAG, gpsFixWord, sourceValueKey } from "@/lib/hud/nav-source";
 import type { NavSourceView } from "@/hooks/use-nav-source";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useEkfSourceStore, type EkfSourceSet } from "@/stores/ekf-source-store";

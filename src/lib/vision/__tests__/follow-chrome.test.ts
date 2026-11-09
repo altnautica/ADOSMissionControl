@@ -6,7 +6,7 @@ import {
   intervalBar,
   isFollowingMode,
   rangeScaleMax,
-} from "@/lib/vision/follow-chrome";
+} from "@/lib/hud/follow-chrome";
 import { camSwapPlan } from "@/lib/cockpit/cam-swap";
 import type { StreamDescriptor } from "@/stores/video-streams-store";
 

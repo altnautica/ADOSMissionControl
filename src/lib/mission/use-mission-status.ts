@@ -6,7 +6,7 @@
  * @license GPL-3.0-only
  */
 
-import type { MissionState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { MissionState } from "@/lib/hud/cockpit-frames";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { selectMissionStatus, useMissionStateStore, type MissionStatus } from "./mission-state";
 

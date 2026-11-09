@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { FREE_ALPHA, OCCUPIED_ALPHA, parseCssColor, recolourOccupancy, withAlpha } from "../occupancy-bitmap";
+import { FREE_ALPHA, OCCUPIED_ALPHA, parseCssColor, recolourOccupancy, withAlpha } from "@/lib/hud/occupancy-bitmap";
 
 function grey(...values: number[]): Uint8ClampedArray {
   const out = new Uint8ClampedArray(values.length * 4);

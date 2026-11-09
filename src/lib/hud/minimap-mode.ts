@@ -1,5 +1,5 @@
 /**
- * @module nav/minimap-mode
+ * @module hud/minimap-mode
  * @description Which frame the cockpit minimap draws: the global tile map or
  * the local north/east frame. Local mode is chosen when the GPS fix has been
  * below 3D for more than 2 s, when the active EKF horizontal-position source

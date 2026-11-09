@@ -13,7 +13,7 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../locales/en.json";
 import { ProximityRadar } from "@/components/flight/ProximityRadar";
 import { buildRadarModel, radarDial } from "@/components/flight/proximity-radar-model";
-import type { NavScan, NavState } from "@/lib/agent/nav-types";
+import type { NavScan, NavState } from "@/lib/hud/nav-types";
 import type { ObstacleData } from "@/lib/types/telemetry";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";

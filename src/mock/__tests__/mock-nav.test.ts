@@ -9,7 +9,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { EMPTY_OCCUPANCY, mergeOccupancy, tileFootprint } from "@/lib/nav/local-frame";
+import { EMPTY_OCCUPANCY, mergeOccupancy, tileFootprint } from "@/lib/hud/local-frame";
 import { getMockEkfSourceSet, mockEkfFlags, setMockEkfSourceSet } from "@/mock/mock-ekf-source";
 import { MockNavStream, demoMapStatus } from "@/mock/mock-nav";
 import { demoLoopAt, obstacleSectorsCm, rayCast, scanRanges, yawMatrix } from "@/mock/mock-nav-world";

@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import type { MapPlacement, MapStatus, StreamState, UploadState } from "@/lib/agent/nav-types";
+import type { MapPlacement, MapStatus, StreamState, UploadState } from "@/lib/hud/nav-types";
 import type { Stamped } from "@/stores/nav-stream-store";
 import { formatBytes } from "@/lib/tile-math";
 

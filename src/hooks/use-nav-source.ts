@@ -12,9 +12,9 @@
  * @license GPL-3.0-only
  */
 
-import type { NavState } from "@/lib/agent/nav-types";
+import type { NavState } from "@/lib/hud/nav-types";
 import { useClockTick } from "@/lib/agent/freshness";
-import { EKF_STALE_MS, resolveNavSource, type NavSourceResult } from "@/lib/vision/nav-source";
+import { EKF_STALE_MS, resolveNavSource, type NavSourceResult } from "@/lib/hud/nav-source";
 import { useThrottledTelemetryVersion } from "@/hooks/use-throttled-telemetry-version";
 import { useNavStateEntry } from "@/hooks/use-nav-feed";
 import { useEkfSourceParams } from "@/hooks/use-ekf-source-params";

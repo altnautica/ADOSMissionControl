@@ -22,8 +22,8 @@ import {
   scanToMap,
   type OccupancyGrid,
   type TrailPoint,
-} from "@/lib/nav/local-frame";
-import type { LocalSceneDrone, LocalSceneTarget } from "@/lib/nav/local-scene";
+} from "@/lib/hud/local-frame";
+import type { LocalSceneDrone, LocalSceneTarget } from "@/lib/hud/local-scene";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import {
   FOLLOW_STALE_MS,

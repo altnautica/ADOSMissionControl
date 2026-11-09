@@ -12,7 +12,7 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../../locales/en.json";
 import { MapStatusCard } from "@/components/drone-detail/map/MapStatusCard";
 import { MAP_STATUS_STALE_MS, mapStatusView } from "@/components/drone-detail/map/map-status-view";
-import type { MapStatus, NavHealth } from "@/lib/agent/nav-types";
+import type { MapStatus, NavHealth } from "@/lib/hud/nav-types";
 
 const NOW = 1_000_000;
 

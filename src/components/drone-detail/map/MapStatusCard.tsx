@@ -14,7 +14,7 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
-import type { NavHealth } from "@/lib/agent/nav-types";
+import type { NavHealth } from "@/lib/hud/nav-types";
 import { cn } from "@/lib/utils";
 import {
   PLACEMENT_KEY,

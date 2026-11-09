@@ -20,7 +20,7 @@ import { Layers } from "lucide-react";
 import { MinimapBasemapSelector } from "@/components/map/MinimapBasemapSelector";
 import { LocalFrameMap } from "@/components/map/local/LocalFrameMap";
 import { useMinimapFrame } from "@/components/map/local/use-minimap-frame";
-import type { MinimapPin } from "@/lib/nav/minimap-mode";
+import type { MinimapPin } from "@/lib/hud/minimap-mode";
 import { useUiStore } from "@/stores/ui-store";
 
 // The minimap is a Leaflet view: load it client-only so the cockpit renders on

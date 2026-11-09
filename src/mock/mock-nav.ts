@@ -18,7 +18,7 @@
  */
 
 import { mockPilot } from "./mock-pilot";
-import type { MapStatus, NavState, ReacquireMode } from "@/lib/agent/nav-types";
+import type { MapStatus, NavState, ReacquireMode } from "@/lib/hud/nav-types";
 import { pluginConfigKey, usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
 import { useNavStreamStore } from "@/stores/nav-stream-store";

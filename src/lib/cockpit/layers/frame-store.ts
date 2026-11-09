@@ -15,7 +15,7 @@
  * @license GPL-3.0-only
  */
 
-import type { ArFrame, DepthFrame, ObstaclesFrame, SurfacesFrame } from "./cockpit-frames";
+import type { ArFrame, DepthFrame, ObstaclesFrame, SurfacesFrame } from "@/lib/hud/cockpit-frames";
 
 export interface FrameSlot<T> {
   frame: T;

@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import type { NavScan } from "@/lib/agent/nav-types";
+import type { NavScan } from "@/lib/hud/nav-types";
 
 export const RADAR_SCALES_M = [3, 6, 12] as const;
 export type RadarScale = (typeof RADAR_SCALES_M)[number];

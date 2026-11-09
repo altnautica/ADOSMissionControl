@@ -94,5 +94,17 @@
   },
   "until_ms": 1793960003000
  },
- "rth_countdown_s": null
+ "rth_countdown_s": null,
+ "surface_ops": [
+  "goto"
+ ],
+ "agl_m": 4.2,
+ "agl_source": "rangefinder",
+ "statustext": [
+  {
+   "severity": 4,
+   "text": "PreArm: Compass not calibrated",
+   "age_ms": 1200
+  }
+ ]
 }

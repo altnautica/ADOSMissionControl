@@ -28,7 +28,7 @@ import {
   type ObstaclesFrame,
   type PilotState,
   type SurfacesFrame,
-} from "@/lib/cockpit/layers/cockpit-frames";
+} from "@/lib/hud/cockpit-frames";
 import { clearFrames, putFrame } from "@/lib/cockpit/layers/frame-store";
 import { setViewLeaseSender, viewDemand } from "@/lib/cockpit/layers/view-lease";
 
@@ -46,7 +46,7 @@ import {
   type NavPose,
   type NavScan,
   type NavState,
-} from "./nav-types";
+} from "@/lib/hud/nav-types";
 
 export type NavFrame =
   | { kind: "pose"; data: NavPose }

@@ -23,7 +23,7 @@ import {
   parseArFrame,
   parseDepthFrame,
   parseSurfacesFrame,
-} from "../cockpit-frames";
+} from "@/lib/hud/cockpit-frames";
 import { clearFrames, frameVersion, getFrames, putFrame } from "../frame-store";
 import { effectiveLayers } from "../layer-spec";
 import { holdViewLease, setViewLeaseSender, viewDemand } from "../view-lease";
@@ -92,6 +92,14 @@ describe("nav-frame parsers on the golden fixtures", () => {
     expect(p!.inputSession).toEqual({ src: "mc", label: "Mission Control", session: 7 });
     expect(p!.banner?.textKey).toBe("pilot.banner.ados_engaged");
     expect(p!.vehicleClass).toBe("multirotor");
+  });
+
+  it("parses the surface ops, height above ground and FC warnings", () => {
+    const p = parsePilotState(pilotFixture)!;
+    expect(p.surfaceOps).toEqual(["goto"]);
+    expect(p.aglM).toBe(4.2);
+    expect(p.aglSource).toBe("rangefinder");
+    expect(p.statustext).toEqual([{ severity: 4, text: "PreArm: Compass not calibrated", ageMs: 1200 }]);
   });
 });
 

@@ -1,5 +1,5 @@
 /**
- * @module vision/nav-source
+ * @module hud/nav-source
  * @description What the EKF navigates on, as one chip: a source (DR, EXT NAV,
  * GPS, FLOW), a quality word and a tone. Inputs are the FC's
  * EKF_STATUS_REPORT flags, the GPS fix, the EKF source-set parameters and the
@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import type { NavState } from "@/lib/agent/nav-types";
+import type { NavState } from "./nav-types";
 
 /** EKF_STATUS_REPORT flag bits the chip reads. */
 export const EKF_FLAG = {

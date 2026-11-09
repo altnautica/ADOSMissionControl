@@ -35,7 +35,7 @@ import { MissionRouteOverlay } from "@/components/flight/MissionRouteOverlay";
 import { useMissionStore } from "@/stores/mission-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 import type { Waypoint } from "@/lib/types";
 
 const item = (seq: number, command: number, x: number, y: number) => ({

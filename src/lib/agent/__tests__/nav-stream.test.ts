@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 import { ingestNavFrame, parseNavFrame, pollMapLive } from "../nav-stream";
-import { parseFollowState, parseMapStatus, parseNavPose, parseNavState } from "../nav-types";
+import { parseFollowState, parseMapStatus, parseNavPose, parseNavState } from "@/lib/hud/nav-types";
 
 const DRONE = "node:test-1";
 

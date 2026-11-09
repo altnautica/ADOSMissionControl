@@ -1,5 +1,5 @@
 /**
- * @module nav-types
+ * @module hud/nav-types
  * @description Typed shapes and boundary parsers for the agent's navigation
  * feed: the follow-me `follow.state` and its discrete events, the vision-nav
  * `nav.state`, the world-engine pose / scan / map status topics, and the live

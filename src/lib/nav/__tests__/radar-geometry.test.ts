@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { NavScan } from "@/lib/agent/nav-types";
+import type { NavScan } from "@/lib/hud/nav-types";
 
 import {
   autoRadarScale,

@@ -7,7 +7,7 @@
  * @license GPL-3.0-only
  */
 
-import type { LocalScene } from "@/lib/nav/local-scene";
+import type { LocalScene } from "@/lib/hud/local-scene";
 
 export interface LocalSceneColours {
   ink: string;

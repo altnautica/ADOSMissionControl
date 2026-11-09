@@ -9,7 +9,7 @@ import messages from "../../../../locales/en.json";
 import { NavSourceChip } from "@/components/cockpit/NavSourceChip";
 import { CockpitLayoutContext } from "@/hooks/use-cockpit-width-class";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
-import { EKF_FLAG } from "@/lib/vision/nav-source";
+import { EKF_FLAG } from "@/lib/hud/nav-source";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useEkfSourceStore } from "@/stores/ekf-source-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";

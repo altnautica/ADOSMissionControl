@@ -23,15 +23,15 @@ import type {
   NavScan,
   NavState,
   OccupancyLive,
-} from "@/lib/agent/nav-types";
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+} from "@/lib/hud/nav-types";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 import {
   EMPTY_OCCUPANCY,
   appendTrail,
   mergeOccupancy,
   type OccupancyGrid,
   type TrailPoint,
-} from "@/lib/nav/local-frame";
+} from "@/lib/hud/local-frame";
 
 /** HUD staleness rules, shared by every reader. */
 export const FOLLOW_STALE_MS = 2000;

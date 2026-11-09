@@ -1,5 +1,5 @@
 /**
- * @module nav/local-scene
+ * @module hud/local-scene
  * @description Builds the draw list for the local-frame map (cockpit minimap
  * local mode and the node-detail Map tab). Pure: every coordinate here is a
  * screen pixel from `mapToScreen`; the canvas painter only strokes and fills
@@ -19,7 +19,7 @@ import {
   type LocalView,
   type OccupancyGrid,
   type TrailPoint,
-} from "@/lib/nav/local-frame";
+} from "./local-frame";
 
 /** The view recentres on the drone this long after the last pan. */
 export const RECENTRE_AFTER_MS = 10_000;

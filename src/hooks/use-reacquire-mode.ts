@@ -16,7 +16,7 @@ import { useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { create } from "zustand";
 
-import type { ReacquireMode } from "@/lib/agent/nav-types";
+import type { ReacquireMode } from "@/lib/hud/nav-types";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";

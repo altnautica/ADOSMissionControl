@@ -17,7 +17,7 @@ import { Rocket, X } from "lucide-react";
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
 import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { requestPilotAction, sendPilotAction } from "@/lib/input/pilot-stream";
 import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useSkillRegistry } from "@/lib/skills";

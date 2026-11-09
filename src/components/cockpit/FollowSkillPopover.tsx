@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { ChevronUp } from "lucide-react";
 
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
-import { PHASE_TONE } from "@/lib/vision/follow-chrome";
+import { PHASE_TONE } from "@/lib/hud/follow-chrome";
 import { useFollowingMode } from "@/hooks/use-following-mode";
 import { ReacquireModeToggle } from "./ReacquireModeToggle";
 

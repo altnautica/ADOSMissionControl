@@ -21,7 +21,7 @@ import type {
   NavHealth,
   PredictedBbox,
   ReacquireMode,
-} from "@/lib/agent/nav-types";
+} from "@/lib/hud/nav-types";
 import type { DetectionBox, VisionDetection } from "@/stores/vision-detections-store";
 
 export const HUD_STATE_S = 4;

@@ -22,7 +22,7 @@ import {
   type MinimapFrame,
   type MinimapLocalReason,
   type MinimapPin,
-} from "@/lib/nav/minimap-mode";
+} from "@/lib/hud/minimap-mode";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import { useMinimapModeStore } from "@/stores/minimap-mode-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";

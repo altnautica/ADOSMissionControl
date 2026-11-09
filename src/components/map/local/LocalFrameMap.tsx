@@ -30,8 +30,8 @@ import {
   stepZoom,
   viewCentre,
   wheelZoom,
-} from "@/lib/nav/local-scene";
-import { parseCssColor, type Rgba } from "@/lib/nav/occupancy-bitmap";
+} from "@/lib/hud/local-scene";
+import { parseCssColor, type Rgba } from "@/lib/hud/occupancy-bitmap";
 import { cn } from "@/lib/utils";
 
 interface LocalFrameMapProps {

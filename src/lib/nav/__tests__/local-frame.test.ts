@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { NavPose, NavScan, OccupancyLive } from "@/lib/agent/nav-types";
+import type { NavPose, NavScan, OccupancyLive } from "@/lib/hud/nav-types";
 
 import {
   EMPTY_OCCUPANCY,
@@ -19,7 +19,7 @@ import {
   tileFootprint,
   trailRuns,
   type TrailPoint,
-} from "../local-frame";
+} from "@/lib/hud/local-frame";
 
 function live(seq: number, tiles: Array<[number, number, string]>, resM = 0.05): OccupancyLive {
   return {

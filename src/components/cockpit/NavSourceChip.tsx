@@ -15,7 +15,7 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Compass, Satellite, ScanLine, Waves, type LucideIcon } from "lucide-react";
 
-import type { NavSourceKind, NavSourceResult, NavTone } from "@/lib/vision/nav-source";
+import type { NavSourceKind, NavSourceResult, NavTone } from "@/lib/hud/nav-source";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useNavSource } from "@/hooks/use-nav-source";
 import { NavSourcePopover } from "./NavSourcePopover";

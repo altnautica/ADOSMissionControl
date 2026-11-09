@@ -11,10 +11,10 @@
  * @license GPL-3.0-only
  */
 
-import type { FollowEvent, FollowState } from "@/lib/agent/nav-types";
+import type { FollowEvent, FollowState } from "@/lib/hud/nav-types";
 import type { VisionDetection } from "@/stores/vision-detections-store";
 
-import { HUD_COPY_EN, type HudCopy } from "./hud-copy";
+import { HUD_COPY_EN, type HudCopy } from "@/lib/hud/hud-copy";
 import { classWord, formatRange, holdReasonWord, wrap180 } from "./target-format";
 
 export type TargetKind =

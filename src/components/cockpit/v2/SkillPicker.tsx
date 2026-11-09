@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { usePluginConfigCache, pluginConfigKey } from "@/lib/plugins/config-cache";
 import { activate, buildSkillContext, deactivate, useSkillRegistry, type Skill } from "@/lib/skills";

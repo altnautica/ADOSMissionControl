@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { EMPTY_OCCUPANCY, type OccupancyGrid } from "../local-frame";
+import { EMPTY_OCCUPANCY, type OccupancyGrid } from "@/lib/hud/local-frame";
 import {
   RECENTRE_AFTER_MS,
   buildLocalScene,
@@ -10,7 +10,7 @@ import {
   viewCentre,
   wheelZoom,
   type LocalSceneInput,
-} from "../local-scene";
+} from "@/lib/hud/local-scene";
 
 const view = { centreX: 0, centreY: 0, pxPerM: 10, cx: 100, cy: 100 };
 

@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import type { NavScan, NavState } from "@/lib/agent/nav-types";
+import type { NavScan, NavState } from "@/lib/hud/nav-types";
 import {
   RADAR_CAUTION_M,
   RADAR_DANGER_M,

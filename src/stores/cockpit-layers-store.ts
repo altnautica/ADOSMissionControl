@@ -21,7 +21,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 import layersSpec from "@/lib/cockpit/spec/layers.json";
-import type { LayerLevel } from "@/lib/cockpit/layers/ar-layout";
+import type { LayerLevel } from "@/lib/hud/ar-layout";
 
 export type { LayerLevel };
 

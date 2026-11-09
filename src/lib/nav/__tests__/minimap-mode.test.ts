@@ -7,7 +7,7 @@ import {
   activePosxySource,
   nextNoFixSince,
   resolveMinimapMode,
-} from "../minimap-mode";
+} from "@/lib/hud/minimap-mode";
 
 const base = { pin: "auto" as const, noFixSince: null, now: 10_000, activePosxy: 3 };
 

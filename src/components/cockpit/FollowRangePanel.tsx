@@ -14,7 +14,7 @@
 
 import { useTranslations } from "next-intl";
 
-import type { FollowState } from "@/lib/agent/nav-types";
+import type { FollowState } from "@/lib/hud/nav-types";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { formatRange, rangeInterval } from "@/lib/vision/target-format";
 import {
@@ -23,7 +23,7 @@ import {
   RANGE_CUE_ORDER,
   bearing3,
   intervalBar,
-} from "@/lib/vision/follow-chrome";
+} from "@/lib/hud/follow-chrome";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useFollowingMode } from "@/hooks/use-following-mode";
 

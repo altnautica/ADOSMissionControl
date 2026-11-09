@@ -2,9 +2,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { NavState } from "@/lib/agent/nav-types";
+import type { NavState } from "@/lib/hud/nav-types";
 
-import { gpsFixWord, navSourceTextEn, resolveNavSource, sourceValueKey, type NavSourceInput } from "../nav-source";
+import { gpsFixWord, navSourceTextEn, resolveNavSource, sourceValueKey, type NavSourceInput } from "@/lib/hud/nav-source";
 
 function nav(over: Partial<NavState>): NavState {
   return {

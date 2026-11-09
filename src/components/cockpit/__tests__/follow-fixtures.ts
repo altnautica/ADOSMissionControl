@@ -1,4 +1,4 @@
-import type { FollowState } from "@/lib/agent/nav-types";
+import type { FollowState } from "@/lib/hud/nav-types";
 
 /** A following-phase `follow.state` with every panel field filled in. */
 export function followState(over: Partial<FollowState> = {}): FollowState {

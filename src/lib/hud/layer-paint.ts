@@ -12,6 +12,9 @@ import { HALO_ALPHA, HALO_PX, LAYER_COLORS, type DrawOp, type DrawOpBuffer } fro
 
 const textWidths = new Map<string, number>();
 const LABEL_FONT = "600 12px Inter, system-ui, sans-serif";
+/** Dash patterns reused on every paint (`setLineDash` copies its argument). */
+const DASH = [0, 0];
+const SOLID: number[] = [];
 
 function measure(ctx: CanvasRenderingContext2D, text: string): number {
   let w = textWidths.get(text);
@@ -140,7 +143,13 @@ export function paintOps(ctx: CanvasRenderingContext2D, buf: DrawOpBuffer, alpha
       ctx.fill();
     }
     if (a <= 0.001) continue;
-    ctx.setLineDash(op.dash > 0 ? [op.dash, op.dash * 0.8] : []);
+    if (op.dash > 0) {
+      DASH[0] = op.dash;
+      DASH[1] = op.dash * 0.8;
+      ctx.setLineDash(DASH);
+    } else {
+      ctx.setLineDash(SOLID);
+    }
     if (op.halo) {
       ctx.globalAlpha = HALO_ALPHA * a;
       ctx.strokeStyle = LAYER_COLORS.halo;
@@ -152,6 +161,6 @@ export function paintOps(ctx: CanvasRenderingContext2D, buf: DrawOpBuffer, alpha
     ctx.lineWidth = op.width;
     ctx.stroke();
   }
-  ctx.setLineDash([]);
+  ctx.setLineDash(SOLID);
   ctx.globalAlpha = 1;
 }
