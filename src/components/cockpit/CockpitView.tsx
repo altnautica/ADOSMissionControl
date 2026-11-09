@@ -217,7 +217,7 @@ export function CockpitView({ droneId }: CockpitViewProps) {
         {cockpitEnabled && <LeftColumn droneId={droneId} />}
         <RightColumn droneId={droneId} />
         {viewMeta.main !== "map" && <BottomLeftCard droneId={droneId} />}
-        <BottomRow />
+        <BottomRow droneId={droneId} />
         <FollowDock droneId={droneId} />
 
         {/* EDIT banner — the dispatcher is paused and the bindings are in edit mode. */}

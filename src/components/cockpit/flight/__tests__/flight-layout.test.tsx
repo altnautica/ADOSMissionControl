@@ -131,7 +131,7 @@ function renderChrome(g: FlightGrid, droneId = "layout-test") {
         <FlightTopBar droneId={droneId} />
         <LeftColumn droneId={droneId} />
         <RightColumn droneId={droneId} />
-        <BottomRow />
+        <BottomRow droneId={droneId} />
         <HudLayer droneId={droneId} />
       </div>
     </FlightGridContext.Provider>,

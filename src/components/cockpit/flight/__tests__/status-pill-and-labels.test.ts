@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import ds4Hotspots from "@/lib/cockpit/spec/ds4-hotspots.json";
 import genericHotspots from "@/lib/cockpit/spec/gamepad-generic-hotspots.json";
 import { layoutLeaderLabels, type LeaderInput } from "@/components/config/leader-labels";
-import { pillSummary, type PillAlert } from "../StatusPill";
+import { pillSummary, statusTextAlerts, type PillAlert } from "../StatusPill";
 
 const warn: PillAlert = { key: "a", severity: "warning", text: "GPS: no 3D fix", source: "nav_source" };
 const crit: PillAlert = { key: "b", severity: "critical", text: "Battery critical", source: "battery" };
@@ -46,6 +46,33 @@ function inputs(table: { hotspots: Record<string, { label_anchor: number[]; labe
     side: h.label_side as LeaderInput["side"],
   }));
 }
+
+describe("status pill: the pilot's FC status text", () => {
+  const ring = [
+    { severity: 2, text: "Crash: Disarming", ageMs: 100 },
+    { severity: 4, text: "PreArm: Compass not calibrated", ageMs: 1200 },
+    { severity: 4, text: "PreArm: Compass not calibrated", ageMs: 9000 },
+  ];
+
+  it("lists each line once, critical at severity 2 or worse", () => {
+    expect(statusTextAlerts(ring, new Set())).toEqual([
+      { key: "fc:Crash: Disarming", severity: "critical", text: "Crash: Disarming", source: "fc_status_text" },
+      {
+        key: "fc:PreArm: Compass not calibrated",
+        severity: "warning",
+        text: "PreArm: Compass not calibrated",
+        source: "fc_status_text",
+      },
+    ]);
+  });
+
+  it("skips a line another source already lists", () => {
+    expect(statusTextAlerts(ring, new Set(["Crash: Disarming"])).map((a) => a.text)).toEqual([
+      "PreArm: Compass not calibrated",
+    ]);
+    expect(statusTextAlerts(undefined, new Set())).toEqual([]);
+  });
+});
 
 describe("controller leader labels", () => {
   for (const [name, table] of [["ds4", ds4Hotspots], ["generic", genericHotspots]] as const) {

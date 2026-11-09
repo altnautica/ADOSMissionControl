@@ -4,8 +4,8 @@
  * @module cockpit/flight/BottomRow
  * @description The bottom row (cockpit spec `layout.json` `bottom_row`):
  * D (distance to home), H (height above home), H.S (horizontal speed), V.S
- * (vertical speed) and AGL (height above the ground, from a downward range
- * finder, else the terrain report). Values come from fresh samples only; a
+ * (vertical speed) and AGL (height above the ground: the ADOS pilot's
+ * `agl_m`, else a downward range finder, else the terrain report). Values come from fresh samples only; a
  * value with no fresh source shows the no-data glyph.
  *
  * @license GPL-3.0-only
@@ -18,6 +18,8 @@ import { bottomRowValues } from "@/lib/cockpit/bottom-row";
 import { isFresh } from "@/lib/telemetry/freshness";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { PILOT_STALE_MS } from "@/stores/nav-stream-store";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useThrottledTelemetryVersion } from "@/hooks/use-throttled-telemetry-version";
 import { useFlightGrid } from "./flight-context";
 import { rectStyle } from "./flight-grid";
@@ -36,10 +38,11 @@ function speed(v: number | null): string {
   return v === null || !Number.isFinite(v) ? NO_DATA_GLYPH : `${v.toFixed(1)} m/s`;
 }
 
-export const BottomRow = memo(function BottomRow() {
+export const BottomRow = memo(function BottomRow({ droneId }: { droneId: string }) {
   const t = useTranslations("flightScreen.row");
   const grid = useFlightGrid();
   useThrottledTelemetryVersion();
+  const { pilot, receivedAt } = usePilotState(droneId);
   const rect = grid.zones.bottom_row;
   if (!rect) return null;
 
@@ -52,6 +55,7 @@ export const BottomRow = memo(function BottomRow() {
     home: fresh(b.homePosition.latest(), now),
     rangefinder: fresh(b.distanceSensor.latest(), now),
     terrain: fresh(b.terrain.latest(), now),
+    pilotAglM: receivedAt !== null && now - receivedAt <= PILOT_STALE_MS ? (pilot?.aglM ?? null) : null,
   });
   const cells: { key: string; label: string; value: string; title: string }[] = [
     { key: "d", label: "D", value: metres(v.distM), title: t("d") },

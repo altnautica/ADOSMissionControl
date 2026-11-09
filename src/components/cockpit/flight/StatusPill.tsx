@@ -6,7 +6,8 @@
  * `status_pill`): "All systems OK", the one active alert's text, or
  * "<n> warnings", coloured by the worst severity. Sources: the cockpit alert
  * rules (link, battery, FC state and status text at WARNING or worse, FC
- * pre-arm, GNSS, EKF, fence, video), pilot readiness, the navigation source
+ * pre-arm, GNSS, EKF, fence, video), pilot readiness, the pilot's ring of FC
+ * status text, the navigation source
  * and the companion's storage. A new alert makes the pill flash until it is
  * acknowledged; opening the list acknowledges every alert in it.
  *
@@ -23,6 +24,7 @@ import { useNavSource } from "@/hooks/use-nav-source";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useCockpitAlertList } from "../CockpitAlerts";
 import type { CockpitAlertId } from "../band/cockpit-alert-rules";
+import type { FcStatusText } from "@/lib/hud/cockpit-frames";
 
 export type PillSeverity = "ok" | "warning" | "critical";
 
@@ -77,6 +79,33 @@ export function pillSummary(alerts: readonly PillAlert[], acked: ReadonlySet<str
   return { severity, text, count, flashing: alerts.some((a) => !acked.has(a.key)) };
 }
 
+/** MAVLink severity 0-2 (emergency, alert, critical) is critical; 3-4 a warning. */
+const STATUSTEXT_CRITICAL_MAX = 2;
+
+/**
+ * The pilot's ring of FC status text (WARNING or worse, last 30 s, newest
+ * first) as pill alerts. A line already listed by another source (the FC's
+ * own STATUSTEXT over a direct link) is not listed twice.
+ */
+export function statusTextAlerts(
+  ring: readonly FcStatusText[] | undefined,
+  listedTexts: ReadonlySet<string>,
+): PillAlert[] {
+  const out: PillAlert[] = [];
+  const seen = new Set<string>();
+  for (const s of ring ?? []) {
+    if (listedTexts.has(s.text) || seen.has(s.text)) continue;
+    seen.add(s.text);
+    out.push({
+      key: `fc:${s.text}`,
+      severity: s.severity <= STATUSTEXT_CRITICAL_MAX ? "critical" : "warning",
+      text: s.text,
+      source: "fc_status_text",
+    });
+  }
+  return out;
+}
+
 function usePillAlerts(droneId: string): PillAlert[] {
   const t = useTranslations("flightScreen.pill");
   const { alerts, label } = useCockpitAlertList(droneId);
@@ -100,6 +129,7 @@ function usePillAlerts(droneId: string): PillAlert[] {
       source: "pilot_readiness",
     });
   }
+  out.push(...statusTextAlerts(pilot?.statustext, new Set(out.map((a) => a.text))));
   if (nav.tone === "warn" || nav.tone === "crit") {
     out.push({
       key: `nav:${nav.kind}:${nav.tone}`,
