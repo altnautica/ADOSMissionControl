@@ -6,8 +6,62 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+This release covers everything since 0.61.0: sixty-eight commits between
+2026-10-22 and 2026-11-10. Three threads run through it.
+
+The first is the cockpit, rebuilt as one full-viewport flight screen. A top
+bar carries the flight-state chip, the status pill and STOP; flight actions
+sit in a left column, the camera controls in a right column, the telemetry in
+a bottom row, and the centre keeps the picture with an Instruments level for
+the attitude instruments. Data layers (AR route, obstacles, depth, surfaces
+and targets) draw in one canvas over the video, dim and hide when their data
+goes stale, and ask the drone only for what is on screen through view leases.
+A Fly button opens the flight screen from the fleet rows and the drone page.
+
+The second is the drone's ADOS Pilot. The cockpit streams sticks and actions
+to the pilot, shows who flies the drone in the flight-state chip, and offers
+the Mode sheet, a skill picker, a Launch sheet and Fly here through the pilot.
+Built-in actions fall back to the flight controller when the pilot stalls. A
+DualShock 4 follows a shared binding table with gimbal rate on L2/R2 and a
+designate reticle on the touchpad, and Settings › Aircraft setup runs the
+agent's ground and air setup wizards.
+
+The third is the ground underneath: maps show when the plan on the drone
+differs from this device's plan, ground-station pairing sends the fleet key
+the agent expects, and a round of refactors splits the largest client,
+protocol, Convex and panel modules and generates the agent's API types.
+
 ### Added
 
+- **Flight screen.** The cockpit is one full-viewport grid: a top bar
+  (flight-state chip, status pill, battery with time to reserve, link,
+  navigation source, controller, layer level, Menu, STOP), a left column of
+  flight actions, a right column with the shutter, photo/video, zoom and
+  camera settings, a centre for the picture and the layers, a bottom-left card
+  that switches between map, attitude and obstacles by swipe or dots, the
+  D/H/H.S/V.S/AGL bottom row, and a follow dock above it while following.
+  Portrait stacks the picture, the actions, the readouts and the map. Items
+  that do not fit the top bar move into the Menu. The flight instruments draw
+  only at the Instruments level and shrink to fit a short centre.
+- **Fly button.** The fleet rows and the drone page open the flight screen.
+- **Fly here through the pilot.** When the drone's pilot owns the drone and
+  takes a go-to, Fly here sends the map point to the pilot, and a refusal
+  (for example while launching) is shown with its reason.
+- **Mission ETA.** The active mission chip shows the next waypoint's ETA from
+  the drone's AR frame.
+- **ELRS control mode.** The Mode sheet offers the ELRS control mode when the
+  drone is reached through a ground station.
+- **Status pill FC warnings.** The status pill lists the flight controller
+  warnings the pilot reports, and the bottom row's AGL reads the pilot's
+  height above ground.
+- **Designate reticle and gimbal rate on the controller.** L2 and R2 drive the
+  gimbal pitch rate through the agent, and the touchpad opens a designate
+  reticle. The cockpit asks for a button press before a pad reports, shows the
+  pad's product name and the first-connect tour, and reads "not supported" for
+  a pad without the standard layout.
+- **Plan banner on every map.** Every full map view carries the plan banner,
+  and when the plan on the drone differs the route drawn is the agent's copy
+  of the drone's mission.
 - **Aircraft setup (Settings › Aircraft setup).** The selected drone's agent
   runs the ground and air setup wizards (detection, frame, accelerometer,
   level, compass, airspeed, radio, the ADOS switch position, motor and control
@@ -137,9 +191,9 @@ the project follows [Semantic Versioning](https://semver.org/).
 - **Following chrome.** A range panel (range, ±2σ interval, AGL with its
   source, depression, bearing, target speed, range cues, pipeline latency), a
   right rail (follow / stop, STRICT | SMART re-acquire toggle written to the
-  follow-me config, front ⇄ belly swap, record, and mirrors of the hold, RTL and
-  land skills), and the re-acquire toggle on the follow skill.
-- **Nav-source chip.** Replaces the band's GPS item with what the EKF navigates
+  follow-me config, front ⇄ belly swap and record), and the re-acquire toggle
+  on the follow skill.
+- **Nav-source chip.** Shows in the top bar what the EKF navigates
   on (`DR`, `EXT NAV`, `GPS 3D·14`, `FLOW`) and a quality word, from
   EKF_STATUS_REPORT, the GPS fix, the EK3 source-set parameters and the
   vision-nav state. Its popover decodes source sets 1-3 and switches the active
@@ -191,7 +245,7 @@ the project follows [Semantic Versioning](https://semver.org/).
   home hold 1.5 s, Emergency stop hold 3 s then confirm) and keyboard chords
   (`shift+a`, `shift+t`, `shift+l`, `shift+r`, `space` Pause, `shift+p`
   Resume, `shift+c` Take control, `shift+x` Emergency stop) come from the
-  cockpit spec. With the pilot flying, each built-in is sent as a pilot
+  cockpit spec. While the pilot has the drone, each built-in is sent as a pilot
   action. Return home and Land are disabled on a stale link; Pause and
   Emergency stop are still sent blind. A new Take control action hands the
   drone back to the pilot. FC mode presets moved out of the default loadout
@@ -214,11 +268,25 @@ the project follows [Semantic Versioning](https://semver.org/).
   the green lock colour, and the lock brackets no longer pulse; the what's-locked
   chip reports the follow phase (following, coasting, searching, holding, lost,
   re-acquired).
-- `[` and `]` cycle a focus ring over drawn targets and preempt a Skill Bar
-  binding on the same key while targets are drawn; Enter opens the target menu.
-  A drag on empty video designates a box.
-- The Skill Bar follow slot shows the follow phase as a badge (acquiring,
-  coasting, searching, holding with its reason, lost).
+- `[` and `]` cycle a focus ring over drawn targets and preempt a skill
+  binding on the same key while targets are drawn; Enter opens the target
+  menu. A drag on empty video designates a box.
+- The follow skill shows the follow phase as a badge (acquiring, coasting,
+  searching, holding with its reason, lost).
+- **Built-ins fall back to the flight controller** when the pilot stops
+  answering, so Pause, Return home and Land still reach the drone.
+- **Vision model picker.** Only a detection model can be made the engine
+  detector, and the cockpit picker lists detection models only. The armed
+  lock reads the picker's own drone.
+- **Extension skills.** A stopped extension is named with its reason, a skill
+  excluded for the vehicle class is refused on keys and the controller too,
+  and default keys left unbound by a clash are listed in Settings › Controls.
+- **Agent-run ground calibrations hold while the drone is armed.**
+- The pilot stream's frames are checked key for key against the agent's
+  shared request fixtures.
+- Large modules are split into directories (agent client, protocol adapter,
+  Convex pairing, plugins, flight logs, telemetry recorder, video player,
+  large panels) with public function paths unchanged.
 - The demo flight controller reports an external-nav source set with optical
   flow and GPS fallback sets, and its EKF flags follow the commanded set.
 - The error page, LED panel, 3D motor view, mission route, overview map and
@@ -252,8 +320,10 @@ the project follows [Semantic Versioning](https://semver.org/).
   never shows height above home: only a rangefinder or the terrain report.
   The status pill ages out stale pilot readiness and FC text, warns when the
   pilot stops answering instead of reading "All systems OK", and lists a
-  "PreArm:" line once, as a pre-arm warning, on the ground only. "Load from
-  drone" no longer leaves "Plan on drone differs" on ArduPilot. The follow
+  "PreArm:" line once, as a pre-arm warning, on the ground only. Plan
+  identity counts the ArduPilot home slot, claims no difference without a
+  reported total, and "Load from drone" no longer leaves "Plan on drone
+  differs" on ArduPilot. The follow
   dock clears the Vision side panel; the touchpad reticle opens only where a
   target layer can draw it; cockpit marks draw without a detector and
   "Targets unavailable" shows only for a running detector; the page under
@@ -263,7 +333,9 @@ the project follows [Semantic Versioning](https://semver.org/).
 - **Gimbal rate.** The right column gains a press-and-hold gimbal pad, shown
   only when the drone reports it takes gimbal rates. Rates are quantised, sent
   one at a time at about 10 Hz with the zero never overtaken, and back off on
-  a rate limit.
+  a rate limit. Space stays Pause while the pad is held.
+- **Detection boxes go stale visibly.** Boxes dim at 500 ms and hide at 2 s
+  with a "Targets unavailable" chip.
 
 - **The cockpit map no longer sits under the flight-state chip.** The minimap
   is the bottom-left card at the spec's size for each width class, so the top
@@ -342,6 +414,10 @@ the project follows [Semantic Versioning](https://semver.org/).
 ### Removed
 
 - **Abort.** The Abort action is gone; Pause covers it.
+- **Old cockpit chrome.** The status band, the telemetry strip, the top-right
+  actions, the skill bar controls, the HUD readouts, the follow rail's hold,
+  return and land mirrors, and the layout editor's chrome toggles with their
+  saved flags are replaced by the flight screen.
 
 ## [0.61.0] - 2026-10-22
 
