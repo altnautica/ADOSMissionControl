@@ -14,6 +14,7 @@
  "fc_mode_name": "GUIDED",
  "armed": true,
  "landed": false,
+ "vtol_transitioning": false,
  "input_src": "mc",
  "input_age_ms": 40,
  "hold_reason": null,
@@ -68,6 +69,7 @@
   }
  ],
  "link_loss_in_s": null,
+ "link_loss_action": "rth",
  "mission": {
   "state": "none",
   "seq": 0,

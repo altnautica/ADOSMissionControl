@@ -256,6 +256,11 @@ export function requestPilotAction(
   });
 }
 
+/** One heartbeat: keeps the pilot's link-loss failsafe counting this surface. */
+export function sendPilotHeartbeat(): boolean {
+  return send({ op: "hb", src: PILOT_SRC });
+}
+
 /** Take the stick session from another surface. */
 export function takePilotSession(): boolean {
   return send({ op: "session.take", src: PILOT_SRC, session: PILOT_SESSION_ID });
@@ -302,7 +307,7 @@ export function connectPilotStream(opts: {
   // While not streaming sticks, a 1 Hz heartbeat keeps the pilot's link-loss
   // failsafe from counting this surface as gone.
   const hb = setInterval(() => {
-    if (!usePilotLinkStore.getState().streaming) send({ op: "hb", src: PILOT_SRC });
+    if (!usePilotLinkStore.getState().streaming) sendPilotHeartbeat();
   }, 1000);
 
   usePilotLinkStore.getState().set({ agentFor: droneId, controlMode: null });

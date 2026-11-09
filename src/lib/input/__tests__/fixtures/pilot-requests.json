@@ -1,0 +1,1 @@
+{"input":{"op":"input","src":"android","session":7,"seq":12,"t_ms":3400,"axes":[0.25,-1.0,0.0,0.5],"buttons":65537},"release":{"op":"release","src":"android","session":7},"session_take":{"op":"session.take","src":"android","session":8},"hb":{"op":"hb","src":"android"},"action":{"op":"action","name":"hand_to_fc","src":"android","args":{"mode":"loiter"},"id":"3"}}

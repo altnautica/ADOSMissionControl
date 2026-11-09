@@ -95,7 +95,7 @@ export function parseMission(raw: unknown): MissionState | null {
   };
 }
 
-// ── pilot (`pilot` kind with the flight-flow fields) ────────────────────────────────────
+// ── pilot (nav kind `pilot` with the flow fields) ────────────────────────────────────
 
 export const PILOT_OWNERS = ["idle", "pilot", "skill", "goto", "swarm", "mission_fc", "fc_mode", "tuning"] as const;
 export type PilotOwner = (typeof PILOT_OWNERS)[number];
@@ -131,6 +131,11 @@ export interface PilotState {
   setpointNed: [number, number, number] | null;
   readiness: ReadinessItem[];
   linkLossInS: number | null;
+  /** What the pilot does when the countdown ends; null from an agent that
+   *  does not report it. */
+  linkLossAction: "rth" | "hold" | "land" | null;
+  /** The FC is flying a VTOL transition (either direction). */
+  vtolTransitioning: boolean;
   mission: MissionState | null;
   inputSession: { src: string; label: string; session: number | null } | null;
   gate: { pending: boolean; progress: number } | null;
@@ -193,6 +198,8 @@ export function parsePilotState(raw: unknown): PilotState | null {
     setpointNed: pt3(p.setpoint_ned),
     readiness,
     linkLossInS: num(p.link_loss_in_s),
+    linkLossAction: oneOf(p.link_loss_action, ["rth", "hold", "land"] as const),
+    vtolTransitioning: p.vtol_transitioning === true,
     mission: parseMission(p.mission),
     inputSession: is && str(is.src) !== null ? { src: is.src as string, label: str(is.label) ?? (is.src as string), session: num(is.session) } : null,
     gate: gate ? { pending: gate.pending === true, progress: Math.min(1, Math.max(0, num(gate.progress) ?? 0)) } : null,
@@ -205,7 +212,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
   };
 }
 
-// ── per-camera grids (`obstacles` / `depth` kinds) ───────────────────────────
+// ── per-camera grids (nav kinds `obstacles` / `depth`) ───────────────────────────
 
 /** A per-camera grid: `near` holds cols·rows log-coded distances (0 =
  *  unknown); `measured` is a cols·rows bitmask (1 = from LiDAR/occupancy). */
@@ -306,7 +313,7 @@ export function decodeBase64Into(s: string, out: Uint8Array): number {
   return n;
 }
 
-// ── AR (`ar` kind, stable item keys) ─────────────────────────────────────────────────
+// ── AR (nav kind `ar`, stable item keys) ─────────────────────────────────────────────────
 
 export type ArItem =
   | { t: "wp"; k: string; seq: number; role: "next" | "after" | "other"; x: number; y: number; gx: number | null; gy: number | null; distM: number | null; etaS: number | null; size: number }
