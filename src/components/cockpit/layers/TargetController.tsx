@@ -41,6 +41,7 @@ import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import type { CockpitMark, MarkFrame } from "@/lib/cockpit/marks";
 import type { LayerEngine } from "@/lib/cockpit/layers/engine";
 import { designateTarget } from "@/lib/skills/target-actions";
+import { reticleBox, setReticleSelect, useDesignateReticle } from "@/lib/cockpit/designate-reticle";
 import { DOUBLE_CLICK_MS, focusOrder } from "@/lib/vision/target-interaction";
 import { frameToScreen, type ScreenRect } from "@/lib/vision/target-geometry";
 import { layoutTargets, tagFontPx, type GlyphLayout } from "@/lib/vision/target-layout";
@@ -206,6 +207,27 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
       (message, status) => toast(tRoot.has(message) ? tRoot(message) : message, status ?? "info"),
     );
   };
+  // The controller's designate reticle (touchpad): Cross designates the
+  // detection under it, or a small box around it on empty video.
+  const reticle = useDesignateReticle();
+  const designateAtRef = useRef<(x: number, y: number) => void>(() => {});
+  useEffect(() => {
+    designateAtRef.current = (x, y) => {
+      if (frameW <= 0 || frameH <= 0) return;
+      const boxes: DetectionBox[] = [];
+      for (const l of layouts) if (l.item.detection?.bbox) boxes.push(l.item.detection.bbox);
+      onDragSelect(reticleBox(x, y, frameW, frameH, boxes));
+    };
+  });
+  useEffect(() => {
+    setReticleSelect((x, y) => designateAtRef.current(x, y));
+    return () => setReticleSelect(null);
+  }, []);
+  const reticleAt =
+    reticle.open && rendered
+      ? frameToScreen({ x: reticle.x * frameW, y: reticle.y * frameH, w: 0, h: 0 }, frameW, frameH, rendered)
+      : null;
+
   const selection = useTargetDrag(layerRef, rendered && !videoLost ? { rendered, frameW, frameH } : null, onDragSelect);
 
   // Largest first, so a smaller box nested in a larger one sits on top and
@@ -248,6 +270,14 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
           className="tgt-select"
           data-testid="target-drag-selection"
           style={{ left: selection.x, top: selection.y, width: selection.w, height: selection.h }}
+        />
+      )}
+      {reticleAt && (
+        <div
+          aria-hidden="true"
+          data-testid="designate-reticle"
+          className="pointer-events-none absolute z-[6] h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent-primary"
+          style={{ left: reticleAt.x, top: reticleAt.y }}
         />
       )}
       <DetectorStateTag status={demand} show={freshBatch === null && !videoLost} />

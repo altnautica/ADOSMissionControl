@@ -28,6 +28,8 @@ import {
 } from "@/lib/input/ds4-bindings";
 import { lightbarColour, lightbarState, rumble, rumbleHoldTick, setLightbar } from "@/lib/input/ds4-feedback";
 import { sendPilotAction } from "@/lib/input/pilot-stream";
+import { GimbalRateDriver } from "@/lib/cockpit/gimbal-rate";
+import { reticleControl, toggleReticle } from "@/lib/cockpit/designate-reticle";
 import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
 import { useCockpitLayersStore, vehicleLayers, LAYER_LEVELS } from "@/stores/cockpit-layers-store";
 import { effectiveBindings, useControlsStore } from "@/stores/controls-store";
@@ -141,6 +143,9 @@ function runAction(droneId: string, b: Ds4Binding): void {
     case "gimbal_recenter":
       firePluginSkill(droneId, ["center", "recenter", "gimbal-recenter"]);
       break;
+    case "designate":
+      toggleReticle();
+      break;
   }
 }
 
@@ -181,6 +186,9 @@ export function useDs4Dispatcher(droneId: string): void {
       fire: (b) => {
         // A confirm sheet owns input: only the safety bindings get through.
         if (useSkillConfirmStore.getState().pending !== null && !LOCKED[b.action]) return;
+        // The open designate reticle takes the bare D-pad, Cross and Circle;
+        // chords (Options + Circle, the kill hold) still reach their actions.
+        if (b.with.length === 0 && !LOCKED[b.action] && reticleControl(b.control)) return;
         if (b.rumble && b.rumble !== "ramp" && b.rumble !== "countdown") rumble(b.rumble);
         runAction(droneId, b);
       },
@@ -197,9 +205,20 @@ export function useDs4Dispatcher(droneId: string): void {
         }
       },
     });
+    // L2 / R2 analog: gimbal pitch rate on the drone's agent.
+    const all = effectiveBindings({ bindings });
+    const pitch = (action: string) => all.find((b) => b.gesture === "analog" && b.action === action);
+    const down = pitch("gimbal_pitch_down");
+    const up = pitch("gimbal_pitch_up");
+    const gimbal =
+      down || up ? new GimbalRateDriver(droneId, up?.rate_full_dps ?? down?.rate_full_dps ?? 60) : null;
+    const trigger = (b: Ds4Binding | undefined, t: [number, number]) =>
+      b?.control === "l2" ? t[0] : b?.control === "r2" ? t[1] : 0;
     const step = () => {
-      const buttons = useInputStore.getState().buttons;
-      engine.update((c) => buttons[WEB_BUTTON_INDEX[c] ?? -1] === true, Date.now());
+      const { buttons, triggers } = useInputStore.getState();
+      const now = Date.now();
+      engine.update((c) => buttons[WEB_BUTTON_INDEX[c] ?? -1] === true, now);
+      gimbal?.tick(trigger(down, triggers), trigger(up, triggers), now);
     };
     const unsub = useInputStore.subscribe((s, prev) => {
       if (s.buttons !== prev.buttons) step();
@@ -208,6 +227,7 @@ export function useDs4Dispatcher(droneId: string): void {
     return () => {
       unsub();
       clearInterval(tick);
+      gimbal?.stop();
     };
   }, [droneId, bindings]);
 

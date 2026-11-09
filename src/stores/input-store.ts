@@ -23,6 +23,8 @@ export interface GamepadFrame {
   rawAxes: [number, number, number, number];
   rightStick: [number, number];
   buttons: boolean[];
+  /** Analog L2 and R2 travel, 0..1 (standard-mapping buttons 6 and 7). */
+  triggers: [number, number];
   /**
    * The device itself reported within the liveness window. False when the
    * pad's own timestamp froze with a stick deflected, so the frame is shown
@@ -112,6 +114,8 @@ interface InputStoreState {
    */
   rightStick: [number, number];
   buttons: boolean[];
+  /** Analog L2 and R2 travel, 0..1. */
+  triggers: [number, number];
   /** The operator's stick mode, persisted across sessions. */
   txMode: TxMode;
   deadzone: number;
@@ -174,6 +178,7 @@ export const useInputStore = create<InputStoreState>((set) => ({
   padAxes: [],
   rightStick: [0, 0],
   buttons: new Array(16).fill(false),
+  triggers: [0, 0],
   txMode: loadTxMode(),
   // Radial deadzone 0.08 on every surface (adjustable 0.04–0.20 in Controls).
   deadzone: 0.08,
@@ -196,6 +201,8 @@ export const useInputStore = create<InputStoreState>((set) => ({
       rawAxes: frame.rawAxes,
       rightStick: frame.rightStick,
       buttons: sameButtons(s.buttons, frame.buttons) ? s.buttons : frame.buttons,
+      triggers:
+        s.triggers[0] === frame.triggers[0] && s.triggers[1] === frame.triggers[1] ? s.triggers : frame.triggers,
       axesAt: frame.live ? Date.now() : s.axesAt,
     })),
   setTxMode: (txMode) => {
@@ -237,6 +244,7 @@ export const useInputStore = create<InputStoreState>((set) => ({
       padAxes: [],
       rightStick: [0, 0],
       buttons: new Array(16).fill(false),
+      triggers: [0, 0],
       // The reason belongs to a link that is no longer being written to.
       manualControlLinkBlock: null,
       // Losing the controller revokes the opt-in. Re-attaching one must be an

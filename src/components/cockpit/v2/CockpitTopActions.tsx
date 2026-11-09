@@ -16,6 +16,9 @@ import { Gamepad2, Radio } from "lucide-react";
 import { LayerLevelButton } from "@/components/cockpit/layers/LayerLevelButton";
 import { useCockpitView, useCockpitViewStore, viewDef } from "@/lib/cockpit/views";
 import { usePadStatusStore } from "@/lib/input/pad-status";
+import { specString } from "@/lib/cockpit/spec-strings";
+import { useInputStore } from "@/stores/input-store";
+import { Tour } from "@/components/config/ControlsSettingsCards";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 function ViewButton({ droneId }: { droneId: string }) {
@@ -35,25 +38,50 @@ function ViewButton({ droneId }: { droneId: string }) {
   );
 }
 
-function ControllerChip() {
+/**
+ * Controller status. Before any pad has reported it asks for a button press
+ * (browsers expose a pad only after one). A pad whose layout is not standard
+ * never streams sticks, so it reads "not supported". A pad's first connect
+ * shows the three-card tour once per pad id, here as in Settings › Controls.
+ */
+export function ControllerChip() {
   const pad = usePadStatusStore();
-  if (!pad.seen && !pad.connected) return null;
+  const padId = useInputStore((s) => s.gamepadId);
+  if (!pad.seen && !pad.connected) {
+    return (
+      <span
+        data-testid="cockpit-controller-chip"
+        data-connected="false"
+        className="glass-pill flex min-h-[32px] max-w-[220px] items-center gap-1.5 px-3 text-[11px] text-on-media/70"
+      >
+        <Gamepad2 size={13} aria-hidden="true" />
+        <span className="truncate">{specString("controls.press_any_button")}</span>
+      </span>
+    );
+  }
   const label = !pad.connected
     ? "Controller lost"
     : pad.needsCalibration
-      ? "Controller layout not standard: calibrate"
+      ? "Controller layout not supported"
       : (pad.name ?? "Controller");
   return (
-    <span
-      data-testid="cockpit-controller-chip"
-      data-connected={pad.connected}
-      title={pad.name ?? undefined}
-      className={`glass-pill flex min-h-[32px] max-w-[220px] items-center gap-1.5 px-3 text-[11px] ${
-        pad.connected && pad.usable ? "text-on-media" : "text-status-warning"
-      }`}
-    >
-      <Gamepad2 size={13} aria-hidden="true" />
-      <span className="truncate">{label}</span>
+    <span className="relative">
+      <span
+        data-testid="cockpit-controller-chip"
+        data-connected={pad.connected}
+        title={pad.name ?? undefined}
+        className={`glass-pill flex min-h-[32px] max-w-[220px] items-center gap-1.5 px-3 text-[11px] ${
+          pad.connected && pad.usable ? "text-on-media" : "text-status-warning"
+        }`}
+      >
+        <Gamepad2 size={13} aria-hidden="true" />
+        <span className="truncate">{label}</span>
+      </span>
+      {pad.connected && pad.usable && padId && (
+        <span className="absolute right-0 top-full z-50 mt-2 w-72">
+          <Tour padId={padId} />
+        </span>
+      )}
     </span>
   );
 }

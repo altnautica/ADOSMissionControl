@@ -223,6 +223,7 @@ function startPolling(): void {
       // on-screen aiming. Y is inverted so up is positive.
       rightStick: [gp.axes[2] ?? 0, -(gp.axes[3] ?? 0)],
       buttons: buttonsToArray(gp.buttons),
+      triggers: [gp.buttons[6]?.value ?? 0, gp.buttons[7]?.value ?? 0],
       // A present, connected pad is live. Its timestamp is not used: Chrome on
       // Linux advances it only when a value changes, so a stick held still
       // (centred or pinned) would read as a lost pad.

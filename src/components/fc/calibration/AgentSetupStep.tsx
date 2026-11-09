@@ -19,6 +19,7 @@ import { StepCard } from "@/components/aircraft-setup/StepCard";
 import { Button } from "@/components/ui/button";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { findStep, type FcSetupController } from "@/lib/fc-setup/use-fc-setup";
+import { useArmedLock } from "@/hooks/use-armed-lock";
 
 export function AgentSetupStep({
   setup,
@@ -32,12 +33,16 @@ export function AgentSetupStep({
   step: string;
   children: ReactNode;
 }) {
+  // Ground steps (calibrations) are refused by the engine while armed; the
+  // button says so up front, like the MAVLink panels it replaces.
+  const { isHardBlocked } = useArmedLock();
   const current = setup ? findStep(setup.status, wizard, step) : null;
   if (!setup || !current) return <>{children}</>;
 
   // Running or waiting on the operator: the engine drives the step and its own actions show.
   const active = current.state === "running" || current.state === "waiting_user";
   const runKey = `${wizard}/${step}/run`;
+  const armedLocked = wizard === "ground" && isHardBlocked;
   const runLabel = specString(current.state === "pending" ? "setup.action.start" : "setup.action.run_again");
 
   return (
@@ -58,7 +63,8 @@ export function AgentSetupStep({
           size="sm"
           icon={<Play size={12} />}
           loading={setup.busy === runKey}
-          disabled={setup.busy !== null}
+          disabled={setup.busy !== null || armedLocked}
+          title={armedLocked ? specString("setup.err.armed") : undefined}
           onClick={() => void setup.runStep(wizard, step)}
           data-testid={`agent-setup-run-${step}`}
         >

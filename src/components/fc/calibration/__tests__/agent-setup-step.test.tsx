@@ -13,11 +13,20 @@ import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 import { AgentSetupStep } from "../AgentSetupStep";
 import { useFcSetup } from "@/lib/fc-setup/use-fc-setup";
 import { demoSetupTransport, resetDemoSetup } from "@/mock/mock-fc-setup";
+import { useDroneStore } from "@/stores/drone-store";
 
 const transport = demoSetupTransport("agent-step-test");
 
-function Harness({ steps, engine = true }: { steps: string[]; engine?: boolean }) {
-  const setup = useFcSetup(engine ? transport : null);
+function Harness({
+  steps,
+  engine = true,
+  via = transport,
+}: {
+  steps: string[];
+  engine?: boolean;
+  via?: typeof transport;
+}) {
+  const setup = useFcSetup(engine ? via : null);
   const routed = engine && setup.status?.uid ? setup : null;
   return (
     <>
@@ -61,5 +70,21 @@ describe("AgentSetupStep", () => {
     // The engine now asks for the first pose: its own action replaces Run.
     await waitFor(() => expect(screen.queryByTestId("agent-setup-run-accel")).toBeNull());
     expect(screen.getByText("Next pose")).toBeTruthy();
+  });
+
+  it("holds a ground step's run while the selected vehicle is armed", async () => {
+    useDroneStore.setState({ armState: "armed", connectionState: "connected" });
+    try {
+      render(
+        <IntlWrapper>
+          <Harness steps={["accel"]} via={demoSetupTransport("agent-step-armed")} />
+        </IntlWrapper>,
+      );
+      const run = await screen.findByTestId("agent-setup-run-accel");
+      expect((run as HTMLButtonElement).disabled).toBe(true);
+      expect(run.getAttribute("title")).toBe("Disarm first");
+    } finally {
+      useDroneStore.setState({ armState: "disarmed", connectionState: "disconnected" });
+    }
   });
 });
