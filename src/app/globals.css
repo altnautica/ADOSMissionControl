@@ -1107,10 +1107,11 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .ados-cockpit .perchip.warn .reason { color: var(--hud-warn); }
 .ados-cockpit .perchip.crit .reason { color: var(--hud-crit); }
 
-/* minimap + local frame + proximity radar: the bottom-left card at the
-   layout.json size of the width class (expanded 280x180, medium 200x140, tv
-   at its 1.33 scale). Compact (< 600 px) collapses to a chip. */
-.ados-cockpit .mmap { width: var(--blc-w); height: var(--blc-h); overflow: hidden; position: relative; }
+/* minimap + local frame: fills the bottom-left card face, which the flight
+   grid sizes per width class (a round chip on a compact cockpit). The card
+   face centres its child, so the map must take the face's box itself: an
+   auto-sized map with only absolutely placed children collapses to 0x0. */
+.ados-cockpit .mmap { position: absolute; inset: 0; overflow: hidden; }
 .ados-cockpit .mmap .cap { position: absolute; top: 6px; left: 8px; z-index: 2; }
 .ados-cockpit .mmap .seg button { padding: 3px 6px; font-size: 9px; }
 /* Compact minimap toggle, shown in place of the map on narrow cockpits. */

@@ -329,7 +329,9 @@ protocol, Convex and panel modules and generates the agent's API types.
   "Targets unavailable" shows only for a running detector; the page under
   the flight screen is inert; Take off / Land, RTH and Pause stay on screen
   with the skill layer off; the attitude radar dims an unknown heading; a
-  layer switch no longer saves the class default level for the vehicle.
+  layer switch no longer saves the class default level for the vehicle. The
+  bottom-left card's map fills the card again: it had collapsed to nothing,
+  leaving an empty panel with no tiles, drone or route.
 - **Gimbal rate.** The right column gains a press-and-hold gimbal pad, shown
   only when the drone reports it takes gimbal rates. Rates are quantised, sent
   one at a time at about 10 Hz with the zero never overtaken, and back off on
