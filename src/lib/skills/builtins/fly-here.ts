@@ -56,7 +56,7 @@ function flyHereTarget(args?: SkillActivateArgs): FlyHereTarget | null {
 
 /** Pilot `goto` refusals the operator gets a sentence for; any other code is
  * shown as the pilot sent it. */
-const PILOT_GOTO_REFUSALS = new Set(["bad_args", "not_armed", "landed", "tuning", "no_home", "launching"]);
+const PILOT_GOTO_REFUSALS = new Set(["bad_args", "not_armed", "landed", "tuning", "no_home", "launching", "control_mode"]);
 
 /** True when this drone's ADOS pilot flies it from this surface and accepts a
  * `goto` from a surface. */

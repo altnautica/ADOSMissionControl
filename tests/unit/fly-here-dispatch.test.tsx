@@ -137,4 +137,9 @@ describe("Fly Here dialog", () => {
     });
     expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25);
   });
+
+  it("warns that the hold takes over a running mission or skill", () => {
+    open();
+    expect(screen.getByText(/Takes over from any running mission or skill/)).toBeTruthy();
+  });
 });

@@ -207,6 +207,9 @@ export function GuidedConfirmDialog() {
           </div>
         )}
 
+        {/* The hold replaces whatever flies the drone now */}
+        <p className="text-[10px] text-status-warning">Takes over from any running mission or skill.</p>
+
         {/* Error */}
         {error && (
           <div className="px-2 py-1 bg-status-error/10 border border-status-error/30 rounded">

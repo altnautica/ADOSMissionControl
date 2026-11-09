@@ -44,8 +44,10 @@ protocol, Convex and panel modules and generates the agent's API types.
   that do not fit the top bar move into the Menu. The flight instruments draw
   only at the Instruments level and shrink to fit a short centre.
 - **Fly button.** The fleet rows and the drone page open the flight screen.
-- **Fly here through the pilot.** When the drone's pilot owns the drone and
-  takes a go-to, Fly here sends the map point to the pilot, and a refusal
+- **Fly here through the pilot.** Under ADOS control, when the drone's pilot
+  takes a go-to, Fly here sends the map point to the pilot whatever runs now
+  (a mission, a skill, a flight mode), and the hold dialog says it takes over.
+  In FC manual or ELRS control it repositions the flight controller. A refusal
   (for example while launching) is shown with its reason.
 - **Mission ETA.** The active mission chip shows the next waypoint's ETA from
   the drone's AR frame.

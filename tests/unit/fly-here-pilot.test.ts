@@ -52,10 +52,10 @@ function ctx(): SkillContext {
   } as unknown as SkillContext;
 }
 
-function pilotWith(surfaceOps: string[]): void {
+function pilotWith(surfaceOps: string[], owner = "pilot"): void {
   useNavStreamStore
     .getState()
-    .setPilot(DRONE, { controlMode: "ados", surfaceOps } as unknown as PilotState, Date.now());
+    .setPilot(DRONE, { controlMode: "ados", surfaceOps, owner } as unknown as PilotState, Date.now());
 }
 
 /** Answer the next sent action as the pilot would. */
@@ -116,7 +116,7 @@ describe("Fly Here through the pilot", () => {
     expect(guidedGoto).not.toHaveBeenCalled();
   });
 
-  it.each(["bad_args", "not_armed", "landed", "tuning", "no_home", "launching"])(
+  it.each(["bad_args", "not_armed", "landed", "tuning", "no_home", "launching", "control_mode"])(
     "shows the pilot's %s refusal",
     async (code) => {
       pilotWith(["goto"]);
@@ -131,6 +131,26 @@ describe("Fly Here through the pilot", () => {
 
   it("keeps the flight-controller reposition when the pilot takes no goto", async () => {
     pilotWith([]);
+    await activate("fly-here", ctx(), { lat: 10, lon: 20, altitudeM: 30 });
+    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 30);
+    expect(frames.some((f) => f.op === "action")).toBe(false);
+  });
+
+  it.each(["mission_fc", "skill", "fc_mode", "goto"])(
+    "sends the pilot the goto whatever runs now (owner %s)",
+    async (owner) => {
+      pilotWith(["goto"], owner);
+      const done = activate("fly-here", ctx(), { lat: 10, lon: 20, altitudeM: 30 });
+      await answer(true);
+      await done;
+      expect(frames.find((f) => f.op === "action")).toMatchObject({ name: "goto" });
+      expect(guidedGoto).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["fc_manual", "elrs"])("repositions the flight controller under %s control", async (mode) => {
+    handlePilotServerFrame(DRONE, { kind: "pilot", data: { control_mode: mode } });
+    pilotWith(["goto"]);
     await activate("fly-here", ctx(), { lat: 10, lon: 20, altitudeM: 30 });
     expect(guidedGoto).toHaveBeenCalledWith(10, 20, 30);
     expect(frames.some((f) => f.op === "action")).toBe(false);
