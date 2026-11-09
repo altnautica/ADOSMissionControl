@@ -78,4 +78,10 @@ describe("pilot.v1 wire frames match the agent's golden fixtures", () => {
     void requestPilotAction("hand_to_fc", fixtures.action.args, 10);
     expectWireEqual(frames[0], fixtures.action);
   });
+
+  it("action goto (Fly Here)", () => {
+    const frames = capture();
+    void requestPilotAction("goto", fixtures.goto.args, 10);
+    expectWireEqual(frames[0], fixtures.goto);
+  });
 });
