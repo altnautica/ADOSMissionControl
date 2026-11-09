@@ -10,7 +10,7 @@
 
 import flightStateSpec from "./spec/flight-state.json";
 import tokens from "./spec/tokens.json";
-import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
+import type { ArFrame, PilotState } from "@/lib/cockpit/layers/cockpit-frames";
 import type { MissionStatus } from "@/lib/mission/mission-state";
 
 interface Rule {
@@ -50,7 +50,29 @@ export interface ChipInput {
   vehicleNe?: [number, number] | null;
   /** Vehicle distance from the FC's home position, metres. */
   homeDistM?: number | null;
+  /** Seconds to the next mission waypoint (the `ar` frame's next gate), or null. */
+  etaS?: number | null;
   now: number;
+}
+
+/** `m:ss` for the chip's `{eta}`, empty when unknown (the rule's trailing
+ * separator is then dropped). */
+export function formatEta(s: number | null | undefined): string {
+  if (s == null || !Number.isFinite(s) || s < 0) return "";
+  const t = Math.round(s);
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+}
+
+/** The next waypoint's ETA in seconds from an `ar` frame (any camera that
+ * carries the next gate), or null. */
+export function nextWaypointEtaS(frame: ArFrame | null | undefined): number | null {
+  if (!frame) return null;
+  for (const id in frame.cameras) {
+    for (const it of frame.cameras[id].items) {
+      if (it.t === "wp" && it.role === "next" && it.etaS !== null) return it.etaS;
+    }
+  }
+  return null;
 }
 
 export interface ChipSecondary {
@@ -125,7 +147,7 @@ function placeholders(i: ChipInput): Record<string, string> {
     setup_step: (i.setupStep ?? "").toUpperCase(),
     seq: String(m?.seq ?? 0),
     total: String(m?.total ?? 0),
-    eta: "",
+    eta: formatEta(i.etaS),
     fc_mode_name_upper: (p?.fcModeName ?? "").toUpperCase(),
     home_dist_m: homeDist,
   };

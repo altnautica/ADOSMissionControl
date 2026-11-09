@@ -8,7 +8,9 @@
 import { useEffect, useState } from "react";
 
 import type { PilotState } from "@/lib/cockpit/layers/cockpit-frames";
-import { evaluateChip, type ChipView } from "@/lib/cockpit/flight-state";
+import { evaluateChip, nextWaypointEtaS, type ChipView } from "@/lib/cockpit/flight-state";
+import { getFrames } from "@/lib/cockpit/layers/frame-store";
+import { LAYER_HIDE_MS } from "@/lib/cockpit/layers/layer-spec";
 import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -56,11 +58,16 @@ export function useFlightStateChip(droneId: string | null | undefined): ChipView
   const home = tel.homePosition.latest() ?? null;
   const homeDistM =
     home && pos && pos.lat !== 0 && pos.lon !== 0 ? haversineDistance(home.lat, home.lon, pos.lat, pos.lon) : null;
+  // The next gate's ETA from the drone's `ar` frame, while the frame is fresh
+  // (the layers' 2 s hide rule).
+  const ar = droneId ? getFrames(droneId).ar : null;
+  const etaS = ar && now - ar.receivedAt < LAYER_HIDE_MS ? nextWaypointEtaS(ar.frame) : null;
 
   return evaluateChip({
     pilot,
     vehicleNe: local ? [local.x, local.y] : null,
     homeDistM,
+    etaS,
     pilotAgeMs: receivedAt === null ? Number.POSITIVE_INFINITY : now - receivedAt,
     mission,
     completeSinceMs: track.since,
