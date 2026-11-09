@@ -53,6 +53,16 @@ export type ModelFitReason =
 /** Where a model entry came from in the merged list. */
 export type ModelSource = "registry" | "installed" | "custom";
 
+/**
+ * Whether the engine can run `model` as its detector: a detection model, or
+ * one whose task is unknown (an installed file outside the registry). A
+ * depth, tracking or re-identification model is never offered as the
+ * detector; the agent refuses it.
+ */
+export function isDetectionModel(model: Pick<FilteredModel, "task">): boolean {
+  return model.task === "" || model.task.toLowerCase() === "detection";
+}
+
 /** One merged, board-tagged model row the picker renders. */
 export interface FilteredModel {
   /** Stable model id (dedup key across sources). */

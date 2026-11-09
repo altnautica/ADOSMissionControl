@@ -1775,7 +1775,8 @@
     "backendReasonUnknown": "no reason reported",
     "backendMock": "Detector backend is a test stand-in; detections are not from a real model.",
     "benchmarkOnly": "Benchmark only",
-    "benchmarkOnlyHint": "Weights carry research-use terms. Never installed by default; install explicitly for benchmarks."
+    "benchmarkOnlyHint": "Weights carry research-use terms. Never installed by default; install explicitly for benchmarks.",
+    "notDetector": "Not a detector"
   },
   "nodeSettings": {
     "subtitle": "Configure this node's onboard computer. Changes write straight to the agent over the LAN.",

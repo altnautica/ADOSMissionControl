@@ -22,7 +22,9 @@ export function useModelPicker(
 ) {
   const t = useTranslations("vision");
   const { toast } = useToast();
-  const { isHardBlocked, hardBlockMessage } = useArmedLock();
+  // The arm lock reads the picker's own drone, never whichever drone is
+  // selected elsewhere.
+  const { isHardBlocked, hardBlockMessage } = useArmedLock(droneId);
   // Reads (the model LIST) resolve against the single ACTIVE agent connection,
   // while writes (set-active / upload) resolve the LAN agent by `droneId` (see
   // `vision-detector-writer`). These coincide because selection drives the

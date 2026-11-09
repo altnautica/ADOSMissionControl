@@ -54,3 +54,38 @@ describe("ModelPickerRows benchmark-only badge", () => {
     expect(screen.queryByText("benchmarkOnly")).toBeNull();
   });
 });
+
+describe("ModelPickerRows detector choice", () => {
+  afterEach(cleanup);
+
+  function installed(id: string, task: string): FilteredModel {
+    return { ...row(id, false), task, installed: true };
+  }
+
+  function rows(models: FilteredModel[], mode: "full" | "compact") {
+    render(
+      <ModelPickerRows
+        models={models}
+        mode={mode}
+        downloads={{}}
+        settingActive={null}
+        isHardBlocked={false}
+        hardBlockMessage=""
+        startDownload={() => {}}
+        setActive={() => {}}
+      />,
+    );
+  }
+
+  it("offers Set Active only on a detection model", () => {
+    rows([installed("yolo", "detection"), installed("midas", "depth"), installed("file", "")], "full");
+    expect(screen.getAllByText("setActive")).toHaveLength(2);
+    expect(screen.getByTestId("not-a-detector")).toBeTruthy();
+  });
+
+  it("lists detection models only in the compact picker", () => {
+    rows([installed("yolo", "detection"), installed("midas", "depth")], "compact");
+    expect(screen.getByText("yolo")).toBeTruthy();
+    expect(screen.queryByText("midas")).toBeNull();
+  });
+});

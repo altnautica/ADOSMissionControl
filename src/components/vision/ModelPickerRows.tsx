@@ -5,7 +5,7 @@ import { Download, CheckCircle2, Cpu, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { FilteredModel } from "@/lib/vision/model-filter";
+import { isDetectionModel, type FilteredModel } from "@/lib/vision/model-filter";
 import {
   TERMINAL_STATES,
   fitLabel,
@@ -24,7 +24,9 @@ interface ModelPickerRowsProps {
   setActive: (modelId: string) => void;
 }
 
-/** One row per model: badges, then download progress or the set-active control. */
+/** One row per model: badges, then download progress or the set-active
+ * control. Only a detection model can be made the engine's detector; the
+ * compact picker (cockpit Vision view) lists detection models only. */
 export function ModelPickerRows({
   models,
   mode,
@@ -36,9 +38,10 @@ export function ModelPickerRows({
   setActive,
 }: ModelPickerRowsProps) {
   const t = useTranslations("vision");
+  const shown = mode === "compact" ? models.filter(isDetectionModel) : models;
   return (
   <ul className={cn("flex flex-col", mode === "compact" ? "gap-1.5" : "gap-2")}>
-    {models.map((model) => {
+    {shown.map((model) => {
       const dl = downloads[model.id];
       const downloading = dl != null && !TERMINAL_STATES.has(dl.state);
       const isSettingActive = settingActive === model.id;
@@ -135,6 +138,10 @@ export function ModelPickerRows({
               <span className="inline-flex items-center gap-1 text-[11px] text-status-success">
                 <CheckCircle2 size={13} />
                 {t("activeBadge")}
+              </span>
+            ) : !isDetectionModel(model) ? (
+              <span className="text-[11px] text-text-tertiary" data-testid="not-a-detector">
+                {t("notDetector")}
               </span>
             ) : (
               <Button

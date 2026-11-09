@@ -1682,6 +1682,7 @@
     "customBadge": "Custom",
     "unverifiedBadge": "Unverified",
     "setActive": "Set Active",
+    "notDetector": "Not a detector",
     "setActiveDone": "{id} is now the active detector",
     "setActiveFailed": "Could not set the active detector",
     "setActiveNoAgent": "No LAN connection to this drone. Pair it to change the detector.",
