@@ -38,7 +38,11 @@ import {
   installPluginConfigWriter,
   uninstallPluginConfigWriter,
 } from "@/lib/skills/plugin-config-writer";
-import { useDroneSkillContributions } from "@/hooks/use-drone-skill-contributions";
+import {
+  useDronePluginStatuses,
+  useDroneSkillContributions,
+  type DronePluginStatus,
+} from "@/hooks/use-drone-skill-contributions";
 import { usePluginSkillEgress } from "@/hooks/use-plugin-skill-egress";
 import { useToast } from "@/components/ui/toast";
 
@@ -49,6 +53,12 @@ export function PluginSkillHost({ droneId }: { droneId: string }) {
   // bare device id, not the `node:<deviceId>` node id.
   const pluginDeviceId = droneId ? (deviceIdFromNodeId(droneId) ?? droneId) : null;
   const contributions = useDroneSkillContributions(pluginDeviceId ?? undefined);
+  const statuses = useDronePluginStatuses(pluginDeviceId ?? undefined);
+  const statusesRef = useRef<Record<string, DronePluginStatus> | null>(statuses);
+  // Declared before the registration effect, so it has run when that reads it.
+  useEffect(() => {
+    statusesRef.current = statuses;
+  }, [statuses]);
 
   // Poll the drone's extensions for their published state over the LAN and
   // feed it to the Skill Bar store + the extension event bus (live state ring).
@@ -65,9 +75,9 @@ export function PluginSkillHost({ droneId }: { droneId: string }) {
 
   // Skill ids registered by this host and the drone they were resolved for, so
   // a re-run diffs against exactly what this host added.
-  const registeredRef = useRef<{ droneId: string | null; ids: Set<string> }>({
+  const registeredRef = useRef<{ droneId: string | null; ids: Map<string, string> }>({
     droneId: null,
-    ids: new Set(),
+    ids: new Map(),
   });
 
   // The latest translator + toast, read inside the registration effect without
@@ -86,13 +96,14 @@ export function PluginSkillHost({ droneId }: { droneId: string }) {
     // Same drone, source still resolving: keep what is registered.
     if (sameDrone && contributions === null) return;
 
-    const next = new Set<string>();
+    // Skill id -> the plugin id that contributed it.
+    const next = new Map<string, string>();
     const unbound: string[] = [];
     if (target !== null && contributions !== null) {
       for (const contribution of contributions) {
         const skill = buildPluginSkill(contribution);
         registry.register(skill);
-        next.add(skill.id);
+        next.set(skill.id, contribution.pluginId);
         if (contribution.defaultBinding) {
           const settings = useSettingsStore.getState();
           const outcome = settings.seedSuggestedBinding(
@@ -107,11 +118,27 @@ export function PluginSkillHost({ droneId }: { droneId: string }) {
       }
     }
 
-    for (const id of prev.ids) {
+    const stopped = new Set<string>();
+    for (const [id, pluginId] of prev.ids) {
       if (next.has(id)) continue;
       registry.unregister(id, sameDrone ? { deactivateOn: target } : undefined);
+      if (sameDrone) stopped.add(pluginId);
     }
     registeredRef.current = { droneId: target, ids: next };
+
+    if (stopped.size > 0) {
+      const { t: translate, toast: notify } = feedbackRef.current;
+      for (const pluginId of stopped) {
+        const row = statusesRef.current?.[pluginId];
+        notify(
+          translate("extensions.stopped", {
+            plugin: row?.name || pluginId,
+            reason: translate(`extensions.stoppedReason.${stoppedReason(row)}`),
+          }),
+          "warning",
+        );
+      }
+    }
 
     if (unbound.length > 0) {
       const { t: translate, toast: notify } = feedbackRef.current;
@@ -126,11 +153,18 @@ export function PluginSkillHost({ droneId }: { droneId: string }) {
   useEffect(
     () => () => {
       const registry = useSkillRegistry.getState();
-      for (const id of registeredRef.current.ids) registry.unregister(id);
-      registeredRef.current = { droneId: null, ids: new Set() };
+      for (const id of registeredRef.current.ids.keys()) registry.unregister(id);
+      registeredRef.current = { droneId: null, ids: new Map() };
     },
     [],
   );
 
   return null;
+}
+
+/** Why an extension's skills left the drone, from its install status. */
+function stoppedReason(row: DronePluginStatus | undefined): "disabled" | "crashed" | "removed" | "unavailable" {
+  if (!row || row.status === "removed") return "removed";
+  if (row.status === "disabled" || row.status === "crashed") return row.status;
+  return "unavailable";
 }

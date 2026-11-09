@@ -50,6 +50,3 @@ export function specConfirmGesture(row: SpecBuiltin): { gesture: ConfirmGesture;
       return { gesture: "guarded", holdMs: row.confirm.ms };
   }
 }
-
-/** F-key profile bindings (`f1` → `profile:cine`, …). */
-export const SPEC_PROFILE_KEYS = builtinsSpec.profile_keys as Record<string, PilotActionName>;

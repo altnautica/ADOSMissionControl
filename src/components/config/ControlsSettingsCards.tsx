@@ -17,6 +17,11 @@ import { canRumble, lightbarColour, lightbarSupported, requestLightbarDevice, ru
 import { useControlsStore } from "@/stores/controls-store";
 import { useInputStore } from "@/stores/input-store";
 import { useCockpitPrefsStore } from "@/stores/cockpit-prefs-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { clashedUnboundSkills } from "@/stores/settings/keybindings-slice";
+import { useSkillRegistry } from "@/lib/skills";
+import { skillDisplayLabel } from "@/lib/skills/skill-label";
+import { useTranslations } from "next-intl";
 
 const LIGHTBAR_STATES = Object.keys(ds4Spec.lightbar.states) as (keyof typeof ds4Spec.lightbar.states)[];
 
@@ -141,6 +146,26 @@ export function Tour({ padId }: { padId: string }) {
       >
         {at + 1 < TOUR.length ? "Next" : "Done"}
       </button>
+    </section>
+  );
+}
+
+/** Extension skills whose suggested key or button clashed with another
+ * binding: they sit in the active loadout unbound until the operator binds
+ * them. */
+export function ClashedSkills() {
+  const t = useTranslations();
+  const loadout = useSettingsStore((s) => s.loadouts[s.activeLoadoutId]);
+  const skills = useSkillRegistry((s) => s.skills);
+  const ids = clashedUnboundSkills(loadout);
+  if (ids.length === 0) return null;
+  const labels = ids.map((id) => {
+    const skill = skills.get(id);
+    return skill ? skillDisplayLabel(skill, t) : id;
+  });
+  return (
+    <section data-testid="controls-unbound-skills" className="rounded-lg border border-status-warning/50 bg-status-warning/10 p-3 text-xs">
+      {t("extensions.bindings.unbound", { skills: labels.join(", ") })}
     </section>
   );
 }

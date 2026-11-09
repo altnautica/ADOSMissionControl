@@ -116,7 +116,7 @@ function guardKey(droneId: string, skillId: string): string {
  * change too.
  */
 const PREEMPTS_FOLLOW_ME: Record<string, true> = {
-  rth: true, land: true, abort: true, kill: true, "set-mode": true, pause: true,
+  rth: true, land: true, kill: true, "set-mode": true, pause: true,
 };
 
 /**

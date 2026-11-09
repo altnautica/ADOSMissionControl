@@ -76,6 +76,10 @@ export interface Loadout {
    *  loadout. Seeding happens once per skill, so a slot the operator cleared
    *  stays cleared. */
   seededSkillIds: string[];
+  /** Plugin skills whose suggested key or button clashed with another binding
+   *  and were slotted without it; Settings › Controls lists the ones still
+   *  unbound. Absent on loadouts saved before it existed. */
+  clashedSkillIds?: string[];
 }
 
 /** A plugin manifest's suggested key chord and/or gamepad button. */
@@ -349,7 +353,12 @@ export const createKeybindingsActions: SettingsSliceFactory<
       return {
         loadouts: {
           ...state.loadouts,
-          [loadoutId]: { ...loadout, slots: cloneDefaultSlots(), seededSkillIds: [] },
+          [loadoutId]: {
+            ...loadout,
+            slots: cloneDefaultSlots(),
+            seededSkillIds: [],
+            clashedSkillIds: [],
+          },
         },
       };
     }),
@@ -358,7 +367,7 @@ export const createKeybindingsActions: SettingsSliceFactory<
     const state = get();
     const loadout = state.loadouts[loadoutId];
     if (!loadout || loadout.seededSkillIds.includes(skillId)) return "skipped";
-    const commit = (slots: HotbarSlot[]) =>
+    const commit = (slots: HotbarSlot[], clashed = false) =>
       set({
         loadouts: {
           ...state.loadouts,
@@ -366,6 +375,9 @@ export const createKeybindingsActions: SettingsSliceFactory<
             ...loadout,
             slots,
             seededSkillIds: [...loadout.seededSkillIds, skillId],
+            ...(clashed
+              ? { clashedSkillIds: [...(loadout.clashedSkillIds ?? []), skillId] }
+              : {}),
           },
         },
       });
@@ -405,6 +417,7 @@ export const createKeybindingsActions: SettingsSliceFactory<
       !slots.some((slot) => slot.gamepadButton === button)
         ? button
         : null;
+    const clashed = (wantsKey && key === null) || (wantsButton && gamepadButton === null);
     commit(
       slots.map((slot) =>
         slot.index === empty.index
@@ -416,10 +429,9 @@ export const createKeybindingsActions: SettingsSliceFactory<
             }
           : slot,
       ),
+      clashed,
     );
-    return (wantsKey && key === null) || (wantsButton && gamepadButton === null)
-      ? "unbound"
-      : "bound";
+    return clashed ? "unbound" : "bound";
   },
 
   setLoadoutLayout: (loadoutId, partial) =>
@@ -450,3 +462,12 @@ export const createKeybindingsActions: SettingsSliceFactory<
       };
     }),
 });
+
+/** Plugin skills in `loadout` whose suggested binding clashed and whose slot
+ * still has neither a key nor a gamepad button. */
+export function clashedUnboundSkills(loadout: Loadout | undefined): string[] {
+  if (!loadout?.clashedSkillIds) return [];
+  return loadout.clashedSkillIds.filter((id) =>
+    loadout.slots.some((slot) => slot.skillId === id && slot.key === null && slot.gamepadButton === null),
+  );
+}

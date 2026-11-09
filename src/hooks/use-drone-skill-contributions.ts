@@ -178,6 +178,33 @@ export function useDroneSkillGates(agentId: string | undefined): PluginSkillGate
   }, [agentId, rows]);
 }
 
+function pluginRunnable(status: InstallRowForDevice["status"]): boolean {
+  return status !== "removed" && status !== "disabled" && status !== "crashed";
+}
+
+/** An installed extension's name and lifecycle status on one drone. */
+export interface DronePluginStatus {
+  name: string;
+  status: InstallRowForDevice["status"];
+}
+
+/**
+ * Name and status per plugin id on the drone, from the same install rows the
+ * skills come from. Null while the source resolves; empty in demo mode.
+ */
+export function useDronePluginStatuses(
+  agentId: string | undefined,
+): Record<string, DronePluginStatus> | null {
+  const rows = useSkillInstallRows(agentId);
+  return useMemo(() => {
+    if (!agentId || isDemoMode()) return {};
+    if (!rows) return null;
+    const out: Record<string, DronePluginStatus> = {};
+    for (const row of rows) out[row.pluginId] = { name: row.name, status: row.status };
+    return out;
+  }, [agentId, rows]);
+}
+
 /**
  * Per-drone `flight.skill` contributions for `agentId`. Returns a stable,
  * memoized array once the source has resolved: empty when `agentId` is falsy,
@@ -202,7 +229,8 @@ export function useDroneSkillContributions(
 
     const out: DroneSkillContribution[] = [];
     for (const row of rows) {
-      if (row.status === "removed") continue;
+      // A stopped extension (disabled, crashed or removed) offers no skills.
+      if (!pluginRunnable(row.status)) continue;
       // Capability gate: the install must have granted ui.slot.flight-skill.
       const granted = new Set(row.grantedCapabilities ?? []);
       if (!granted.has(FLIGHT_SKILL_CAP)) continue;

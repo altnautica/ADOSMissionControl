@@ -7680,7 +7680,8 @@
       },
       "reason": {
         "noConfigSeam": "Extension not reachable on this drone",
-        "unavailable": "Skill unavailable"
+        "unavailable": "Skill unavailable",
+        "vehicleClass": "Not available on this vehicle type"
       }
     },
     "radial": {
@@ -8736,6 +8737,13 @@
     },
     "bindings": {
       "unbound": "Default keys left unbound to avoid a clash: {skills}"
+    },
+    "stopped": "{plugin} stopped: {reason}",
+    "stoppedReason": {
+      "disabled": "disabled",
+      "crashed": "crashed",
+      "removed": "removed",
+      "unavailable": "no longer available"
     }
   },
   "fcSigning": {

@@ -46,7 +46,7 @@ import {
   useControlsStore,
 } from "@/stores/controls-store";
 import { useInputStore } from "@/stores/input-store";
-import { CalibrationCard, PrefsRow, TestRow, Tour } from "./ControlsSettingsCards";
+import { CalibrationCard, ClashedSkills, PrefsRow, TestRow, Tour } from "./ControlsSettingsCards";
 
 type Art = { viewBox: number[]; stroke_width: number; paths: { id: string; d: string; role: string }[] };
 type Hotspot = {
@@ -382,6 +382,7 @@ export function ControlsSettings() {
       </header>
 
       {pad.connected && gamepadId && <Tour padId={gamepadId} />}
+      <ClashedSkills />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <div className="flex-1">

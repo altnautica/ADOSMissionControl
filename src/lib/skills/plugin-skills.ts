@@ -16,6 +16,7 @@
 
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { isDemoMode } from "@/lib/utils";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
 import {
   canWritePluginConfig,
   PLUGIN_REACH_REQUIRED_REASON,
@@ -145,6 +146,9 @@ function readPluginState(droneId: string, topic: string): SkillState {
  * skill is keyed to `droneId`: its closures read/write only that drone's
  * config + state, so the host registers one Skill per (drone, contribution).
  */
+/** Reason a plugin skill reads disabled on a vehicle class it excludes. */
+export const PLUGIN_VEHICLE_CLASS_REASON = "skills.plugin.reason.vehicleClass";
+
 export function buildPluginSkill(c: DroneSkillContribution): Skill {
   const id = pluginSkillId(c.pluginId, c.localId);
   const armRequirement: ArmRequirement =
@@ -168,6 +172,15 @@ export function buildPluginSkill(c: DroneSkillContribution): Skill {
     getState: (ctx) => {
       const deviceId = pluginDeviceId(ctx);
       const reported = readPluginState(deviceId, c.stateTopic);
+      // Manifest `vehicle_classes`: on an excluded class the skill reads
+      // disabled on every path (key, pad, bar), not only in the picker. A
+      // running skill keeps its Stop.
+      if (c.vehicleClasses && reported.kind !== "active") {
+        const cls = useNavStreamStore.getState().byDrone[ctx.droneId]?.pilot?.data?.vehicleClass;
+        if (cls && !c.vehicleClasses.includes(cls)) {
+          return { kind: "disabled", reason: PLUGIN_VEHICLE_CLASS_REASON };
+        }
+      }
       if (!isDemoMode() && !canWritePluginConfig(deviceId)) {
         // A skill last seen active stays ACTIVE (stale) on a lost link, never
         // disabled, so its Stop stays reachable.

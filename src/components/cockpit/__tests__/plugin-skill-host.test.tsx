@@ -6,16 +6,23 @@ import type * as HostStore from "@/lib/skills/plugin-skill-host-store";
 
 const writer = vi.fn();
 let resolved: Record<string, DroneSkillContribution[] | null> = {};
+let statuses: Record<string, { name: string; status: string }> = {};
+const toast = vi.fn();
 
 vi.mock("@/hooks/use-drone-skill-contributions", () => ({
   useDroneSkillContributions: (agentId: string | undefined) =>
     agentId ? (resolved[agentId] ?? null) : [],
+  useDronePluginStatuses: () => statuses,
+}));
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast }),
 }));
 vi.mock("@/hooks/use-plugin-skill-egress", () => ({
   usePluginSkillEgress: () => {},
 }));
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string, vals?: Record<string, string>) =>
+    vals ? `${key}(${Object.values(vals).join("|")})` : key,
 }));
 vi.mock("@/lib/skills/plugin-config-writer", async () => {
   const store = await vi.importActual<typeof HostStore>(
@@ -68,6 +75,8 @@ function followActiveOnA(): void {
 describe("PluginSkillHost", () => {
   beforeEach(() => {
     writer.mockClear();
+    toast.mockClear();
+    statuses = { "com.example.follow": { name: "Follow Me", status: "running" } };
     usePluginSkillHostStore.getState().clear();
     followActiveOnA();
   });
@@ -126,5 +135,23 @@ describe("PluginSkillHost", () => {
       configKey: "active",
       value: false,
     });
+  });
+
+  it("tells the operator which extension stopped and why", () => {
+    const { rerender } = render(<PluginSkillHost droneId="drone-a" />);
+    statuses = { "com.example.follow": { name: "Follow Me", status: "crashed" } };
+    resolved = { ...resolved, "drone-a": [] };
+    rerender(<PluginSkillHost droneId="drone-a" />);
+    expect(toast).toHaveBeenCalledWith(
+      "extensions.stopped(Follow Me|extensions.stoppedReason.crashed)",
+      "warning",
+    );
+    expect(toast).toHaveBeenCalledTimes(1);
+  });
+
+  it("says nothing when the operator switches drones", () => {
+    const { rerender } = render(<PluginSkillHost droneId="drone-a" />);
+    rerender(<PluginSkillHost droneId="drone-b" />);
+    expect(toast).not.toHaveBeenCalled();
   });
 });

@@ -31,6 +31,7 @@ vi.mock("idb-keyval", () => {
 
 import { useSettingsStore } from "@/stores/settings-store";
 import {
+  clashedUnboundSkills,
   cloneDefaultLoadout,
   DEFAULT_LOADOUT_ID,
 } from "@/stores/settings/keybindings-slice";
@@ -214,6 +215,14 @@ describe("keybindings slice", () => {
     it("reports a dropped colliding suggestion as unbound", () => {
       expect(seed("shift+a", null)).toBe("unbound");
       expect(slotOf()?.key).toBeNull();
+    });
+
+    it("lists a clashed skill for Settings › Controls until the operator binds it", () => {
+      seed("shift+a", null);
+      const loadout = () => useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID];
+      expect(clashedUnboundSkills(loadout())).toEqual(["plug:scan"]);
+      useSettingsStore.getState().setSlotKey(DEFAULT_LOADOUT_ID, slotOf()!.index, "g");
+      expect(clashedUnboundSkills(loadout())).toEqual([]);
     });
 
     it("never takes a built-in chord the operator has since unbound", () => {
