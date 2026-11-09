@@ -142,6 +142,10 @@ export interface TargetScene {
   /** Composited cockpit marks and the frame they map from. */
   marks: readonly CockpitMark[];
   markFrame: MarkFrame | null;
+  /** Browser clock (ms) the shown detection batch arrived, or null when no
+   * batch was received. The layer dims and hides on its age like every
+   * other layer. */
+  batchAt: number | null;
 }
 
 const RE_SNAP_MS = 320;
@@ -277,8 +281,9 @@ const snapStart = new Map<string, number>();
 const seen = new Set<string>();
 
 /**
- * Draw one target scene. Returns true while something animates (a lost fade,
- * a re-acquired snap or a search sweep), so the loop keeps drawing.
+ * Draw one target scene at `opacity` (the layer's staleness dim). Returns
+ * true while something animates (a lost fade, a re-acquired snap or a search
+ * sweep), so the loop keeps drawing.
  */
 export function drawTargets(
   ctx: CanvasRenderingContext2D,
@@ -287,6 +292,7 @@ export function drawTargets(
   now: number,
   cssW: number,
   cssH: number,
+  opacity = 1,
 ): boolean {
   let animating = false;
   seen.clear();
@@ -299,10 +305,10 @@ export function drawTargets(
     const item = l.item;
     const mods = item.modifiers;
     const color = kindColor(item.kind, s);
-    let alpha = 1;
+    let alpha = opacity;
     if (item.kind === "LOST" && item.lostProgress !== undefined && !scene.reducedMotion) {
       const p = item.lostProgress + (now - scene.at) / LOST_FADE_MS;
-      alpha = Math.max(0, 1 - p);
+      alpha = opacity * Math.max(0, 1 - p);
       if (alpha > 0) animating = true;
     }
     if (alpha <= 0) continue;

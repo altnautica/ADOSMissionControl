@@ -77,6 +77,8 @@ export class LayerEngine {
   private opts: LayerOptions | null = null;
   private style: TargetStyle | null = null;
   private targets: TargetScene | null = null;
+  /** The shown detection batch's arrival, as a slot for {@link age}. */
+  private readonly targetSlot = { receivedAt: 0 };
   private chipText: LayerChipText = DEFAULT_CHIP_TEXT;
   private readonly readFlight: (out: FlightContext) => void;
   private readonly flight: FlightContext = { mission: null, avoid: null, showLoaded: true };
@@ -263,7 +265,7 @@ export class LayerEngine {
 
   /** Staleness of a slot: 0 fresh, 1 dimmed, 2 hidden. Records the next
    * boundary so a stalled feed still dims and hides on time. */
-  private age(slot: FrameSlot<unknown> | null, now: number): 0 | 1 | 2 {
+  private age(slot: { readonly receivedAt: number } | null, now: number): 0 | 1 | 2 {
     if (!slot) return 2;
     const a = now - slot.receivedAt;
     if (a < LAYER_DIM_MS) {
@@ -383,9 +385,18 @@ export class LayerEngine {
       }
     }
 
-    // ── targets (z 40): detections, marks, lead ──
+    // ── targets (z 40): detections, marks, lead; dims and hides on the
+    // detection batch's age like every other layer ──
     if (on.has("targets") && this.targets && this.style) {
-      if (drawTargets(ctx, this.targets, this.style, now, this.cssW, this.cssH)) animating = true;
+      const at = this.targets.batchAt;
+      if (at !== null) this.targetSlot.receivedAt = at;
+      const st = this.age(at === null ? null : this.targetSlot, now);
+      if (st < 2) {
+        const opacity = st === 1 ? DIM_ALPHA : 1;
+        if (drawTargets(ctx, this.targets, this.style, now, this.cssW, this.cssH, opacity)) animating = true;
+      } else {
+        this.chip("targets", this.chipText.targetsUnavailable);
+      }
     }
 
     // ── AR route (z 50) + motion (z 60) ──

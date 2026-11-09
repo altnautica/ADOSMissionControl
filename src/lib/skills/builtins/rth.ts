@@ -34,6 +34,10 @@ export const rthSkill: Skill = {
   },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and neither spends the cooldown nor greys the control on it.
+  // A pilot that gives no answer at all hands the return to the flight
+  // controller.
   activate: async (ctx) =>
-    viaPilot(ctx) ? pilotActionResult("rth") : ctx.protocol?.returnToLaunch(),
+    viaPilot(ctx)
+      ? pilotActionResult("rth", undefined, () => ctx.protocol?.returnToLaunch())
+      : ctx.protocol?.returnToLaunch(),
 };

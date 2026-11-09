@@ -8,7 +8,8 @@
  * @license GPL-3.0-only
  */
 
-import type { Skill } from "../types";
+import type { Skill, SkillContext } from "../types";
+import type { CommandResult } from "@/lib/protocol/types";
 import { useMissionStateStore } from "@/lib/mission/mission-state";
 import {
   disabledIfNoBlindLink,
@@ -37,16 +38,23 @@ export const pauseSkill: Skill = {
     return withStaleLinkWarning(ctx, { kind: "idle" });
   },
   // Either branch's answer goes back to the dispatcher, which surfaces a
-  // refusal and spends nothing on it.
+  // refusal and spends nothing on it. A pilot that gives no answer at all
+  // hands the brake to the flight controller.
   activate: async (ctx) => {
-    if (viaPilot(ctx)) return pilotActionResult("pause");
-    const path = lastResortPath(ctx);
-    if (!path) return;
-    if (ctx.missionState === "active") {
-      const r = await path.pauseMission();
-      if (r.success) useMissionStateStore.getState().observe(ctx.droneId, { apPause: true });
-      return r;
-    }
-    return path.setFlightMode("LOITER");
+    if (viaPilot(ctx)) return pilotActionResult("pause", undefined, () => fcPause(ctx));
+    return fcPause(ctx);
   },
 };
+
+/** The flight-controller brake: pause an active mission, else LOITER. */
+function fcPause(ctx: SkillContext): Promise<CommandResult> | undefined {
+  const path = lastResortPath(ctx);
+  if (!path) return undefined;
+  if (ctx.missionState === "active") {
+    return path.pauseMission().then((r) => {
+      if (r.success) useMissionStateStore.getState().observe(ctx.droneId, { apPause: true });
+      return r;
+    });
+  }
+  return path.setFlightMode("LOITER");
+}

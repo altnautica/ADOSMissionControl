@@ -12,7 +12,13 @@ import type { DepthRange, DepthStyle } from "@/stores/cockpit-layers-store";
 
 /** The status chips the engine can draw; the shell passes localised text. */
 export type LayerChipText = Record<
-  "arUnavailable" | "arApprox" | "depthUnavailable" | "depthUnscaled" | "surfacesUnavailable" | "obstaclesUnavailable",
+  | "arUnavailable"
+  | "arApprox"
+  | "depthUnavailable"
+  | "depthUnscaled"
+  | "surfacesUnavailable"
+  | "obstaclesUnavailable"
+  | "targetsUnavailable",
   string
 >;
 export const DEFAULT_CHIP_TEXT: LayerChipText = {
@@ -22,6 +28,7 @@ export const DEFAULT_CHIP_TEXT: LayerChipText = {
   depthUnscaled: "Depth unscaled",
   surfacesUnavailable: "Surfaces unavailable",
   obstaclesUnavailable: "Obstacles unavailable",
+  targetsUnavailable: "Targets unavailable",
 };
 
 /** What the loop draws, set from React only when a toggle, the level, the

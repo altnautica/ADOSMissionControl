@@ -98,6 +98,7 @@ export const LayerStack = memo(function LayerStack({ droneId, cameraId, view }: 
       depthUnscaled: tChip("depthUnscaled"),
       surfacesUnavailable: tChip("surfacesUnavailable"),
       obstaclesUnavailable: tChip("obstaclesUnavailable"),
+      targetsUnavailable: tChip("targetsUnavailable"),
     });
   }, [engine, tChip]);
 

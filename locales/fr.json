@@ -9354,7 +9354,8 @@
       "depthUnavailable": "Depth unavailable",
       "depthUnscaled": "Depth unscaled",
       "surfacesUnavailable": "Surfaces unavailable",
-      "obstaclesUnavailable": "Obstacles unavailable"
+      "obstaclesUnavailable": "Obstacles unavailable",
+      "targetsUnavailable": "Targets unavailable"
     },
     "cycleHint": "Data layers: Full, Route, Off (O)",
     "levelAria": "Data layers: {level}",

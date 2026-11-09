@@ -9,11 +9,15 @@
  * match when:
  *
  *   - the drone's `id` is non-zero and equals the receipt's `opaque_id`; or
- *   - the drone's `id` is 0, its `total` equals the receipt's, and the agent
- *     has seen no other client's upload since this device's (the counter is
- *     at most one above the value recorded before the upload).
+ *   - the drone's `id` is 0, its `total` equals the number of mission items
+ *     the receipt sent (the ArduPilot home slot excluded, as MISSION_CURRENT
+ *     counts them), and the agent has seen no other client's upload since
+ *     this device's (the counter is at most one above the value recorded
+ *     before the upload).
  *
- * Without an agent mission state, or without a receipt, nothing is known.
+ * Without an agent mission state, or without a receipt, nothing is known. A
+ * flight controller that reports no `total` (0 or absent; older firmware)
+ * gives nothing to compare, so the plans are not claimed to differ.
  *
  * @license GPL-3.0-only
  */
@@ -28,12 +32,16 @@ export function planIdentity(
   mission: MissionState | null | undefined,
 ): PlanIdentity {
   if (!mission || mission.state === null) return "unknown";
-  const droneHasPlan = mission.state !== "none" && (mission.total ?? 0) > 0;
-  if (!receipt) return droneHasPlan ? "differs" : "unknown";
-  if (!droneHasPlan) return "differs";
   const id = mission.id ?? 0;
+  const totalReported = (mission.total ?? 0) > 0;
+  const droneHasPlan = mission.state !== "none" && totalReported;
+  if (!receipt) return droneHasPlan ? "differs" : "unknown";
   if (id !== 0) return receipt.opaqueId === id ? "match" : "differs";
-  if (receipt.total === undefined || mission.total !== receipt.total) return "differs";
+  if (!totalReported) return "unknown";
+  if (mission.state === "none") return "differs";
+  if (receipt.total === undefined) return "differs";
+  const sentItems = receipt.total - (receipt.homeSlot ? 1 : 0);
+  if (mission.total !== sentItems) return "differs";
   if (mission.uploadsSeen === null || receipt.uploadsSeenBefore === undefined) return "match";
   return mission.uploadsSeen <= receipt.uploadsSeenBefore + 1 ? "match" : "differs";
 }

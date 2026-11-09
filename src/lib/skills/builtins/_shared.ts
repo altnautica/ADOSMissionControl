@@ -9,7 +9,13 @@
  */
 
 import { specBuiltin, specConfirmGesture } from "@/lib/cockpit/spec-builtins";
-import { requestPilotAction, sticksRouteToPilot, type PilotActionName } from "@/lib/input/pilot-stream";
+import {
+  PILOT_NO_ANSWER,
+  requestPilotAction,
+  sticksRouteToPilot,
+  type PilotActionName,
+} from "@/lib/input/pilot-stream";
+import { PILOT_STALE_MS, useNavStreamStore } from "@/stores/nav-stream-store";
 import type { CommandResult } from "@/lib/protocol/types";
 import type {
   ConfirmGesture,
@@ -131,20 +137,41 @@ export function specConfirm(
 }
 
 /**
+ * True when the drone's pilot state arrived within the chip's staleness window
+ * (`PILOT_STALE_MS`): the pilot is answering, not just reachable over an open
+ * socket.
+ */
+export function pilotLive(droneId: string, now: number = Date.now()): boolean {
+  const at = useNavStreamStore.getState().byDrone[droneId]?.pilot?.receivedAt;
+  return at !== undefined && now - at <= PILOT_STALE_MS;
+}
+
+/**
  * True when this drone is flown by its ADOS pilot from this surface: an open
- * pilot stream and `control.mode == ados`. Built-ins then send pilot actions
- * instead of raw flight-controller commands.
+ * pilot stream, `control.mode == ados`, and a live pilot. Built-ins then send
+ * pilot actions instead of raw flight-controller commands. A stalled pilot
+ * (open socket, no fresh state) loses the route to the flight controller
+ * whenever a flight-controller path exists, so stop, kill and return home
+ * never wait on a pilot that stopped answering.
  */
 export function viaPilot(ctx: SkillContext): boolean {
-  return sticksRouteToPilot(ctx.droneId);
+  if (!sticksRouteToPilot(ctx.droneId)) return false;
+  return pilotLive(ctx.droneId) || lastResortPath(ctx) === null;
 }
 
 /** Send a built-in as a pilot action and wait for the pilot's answer, so a
- * refusal (or no answer) reaches the dispatcher as a failure. */
+ * refusal (or no answer) reaches the dispatcher as a failure. When the pilot
+ * gives no answer at all and `fallback` yields a flight-controller command,
+ * that command's result is returned instead. */
 export async function pilotActionResult(
   name: PilotActionName,
   args?: Record<string, unknown>,
+  fallback?: () => Promise<CommandResult> | undefined,
 ): Promise<CommandResult> {
   const r = await requestPilotAction(name, args);
+  if (!r.ok && r.err === PILOT_NO_ANSWER && fallback) {
+    const fb = fallback();
+    if (fb) return fb;
+  }
   return { success: r.ok, resultCode: r.ok ? 0 : 4, message: r.ok ? "" : (r.err ?? "refused") };
 }

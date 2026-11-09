@@ -156,6 +156,19 @@ describe("plan identity", () => {
     expect(planIdentity(undefined, mission({ state: "none", total: 0 }))).toBe("unknown");
     expect(planIdentity(undefined, mission({}))).toBe("differs");
   });
+  it("counts the ArduPilot home slot the way MISSION_CURRENT does", () => {
+    // Five mission items plus home in slot 0: the receipt sent six, the FC
+    // reports a total of five.
+    const ap = { ...receipt, total: 6, homeSlot: true };
+    expect(planIdentity(ap, mission({ total: 5, uploadsSeen: 4 }))).toBe("match");
+    expect(planIdentity(ap, mission({ total: 6, uploadsSeen: 4 }))).toBe("differs");
+  });
+  it("does not claim a difference when the flight controller reports no total", () => {
+    const ap = { ...receipt, total: 6, homeSlot: true };
+    expect(planIdentity(ap, mission({ total: null }))).toBe("unknown");
+    expect(planIdentity(ap, mission({ total: 0 }))).toBe("unknown");
+    expect(planIdentity(ap, mission({ state: "none", total: 0 }))).toBe("unknown");
+  });
 });
 
 describe("pre-flight checklist pilot items", () => {

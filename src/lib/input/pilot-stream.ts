@@ -195,6 +195,8 @@ export function sendPilotRelease(): boolean {
 
 /** How long an action waits for the pilot's `action_result`. */
 export const PILOT_ACTION_TIMEOUT_MS = 3000;
+/** The error an action resolves with when the pilot gave no answer in time. */
+export const PILOT_NO_ANSWER = "the pilot did not answer";
 
 /** The pilot's answer to one action. */
 export interface PilotActionOutcome {
@@ -248,7 +250,7 @@ export function requestPilotAction(
   actionSeq += 1;
   const id = `mc-${actionSeq}`;
   return new Promise((resolve) => {
-    const timer = setTimeout(() => settleAction(id, { ok: false, err: "the pilot did not answer" }), timeoutMs);
+    const timer = setTimeout(() => settleAction(id, { ok: false, err: PILOT_NO_ANSWER }), timeoutMs);
     pendingActions.set(id, { name, resolve, timer });
     if (!send(actionFrame(name, id, args))) settleAction(id, { ok: false, err: "the pilot stream is not open" });
   });

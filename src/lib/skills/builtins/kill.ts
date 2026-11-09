@@ -39,6 +39,9 @@ export const killSkill: Skill = {
   // refusal and spends nothing on it.
   // `true` is the confirm block above: the dispatcher only reaches activate
   // after the guard was armed and the hold inside its window completed.
+  // A pilot that gives no answer at all hands the cut to the flight controller.
   activate: async (ctx) =>
-    viaPilot(ctx) ? pilotActionResult("kill") : lastResortPath(ctx)?.killSwitch(true),
+    viaPilot(ctx)
+      ? pilotActionResult("kill", undefined, () => lastResortPath(ctx)?.killSwitch(true))
+      : lastResortPath(ctx)?.killSwitch(true),
 };

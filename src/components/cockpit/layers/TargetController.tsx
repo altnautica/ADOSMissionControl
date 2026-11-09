@@ -157,10 +157,12 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
     return list;
   }, [bySource]);
 
-  // Hand the scene to the canvas loop.
+  // Hand the scene to the canvas loop, with the batch's arrival so the layer
+  // dims at 500 ms and hides at 2 s on its own.
+  const batchAt = displayed?.receivedAt ?? null;
   useEffect(() => {
-    engine.setTargets({ layouts, at: Date.now(), focusKey, reducedMotion, marks, markFrame });
-  }, [engine, layouts, focusKey, reducedMotion, marks, markFrame]);
+    engine.setTargets({ layouts, at: Date.now(), focusKey, reducedMotion, marks, markFrame, batchAt });
+  }, [engine, layouts, focusKey, reducedMotion, marks, markFrame, batchAt]);
   useEffect(() => () => engine.setTargets(null), [engine]);
 
   const openFor = (item: DrawItem) => {
