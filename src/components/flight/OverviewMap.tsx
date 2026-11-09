@@ -1,5 +1,6 @@
 "use client";
 
+import { MissionPlanIdentityBanner } from "@/components/cockpit/v2/MissionPlanIdentityBanner";
 import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { useFreshTelemetry, useTelemetryLatest } from "@/hooks/use-telemetry-latest";
@@ -267,6 +268,7 @@ export function OverviewMap({
 
   return (
     <div className="relative w-full h-full border border-border-default overflow-hidden bg-bg-secondary isolate">
+      {!compact && selectedDroneId && <MissionPlanIdentityBanner droneId={selectedDroneId} className="absolute left-1/2 top-2 z-[1001] -translate-x-1/2" />}
       {!compact && (
         <>
           <span className={`absolute top-2 left-2 z-[1000] text-[10px] font-mono bg-bg-primary/80 backdrop-blur-md rounded px-1.5 py-0.5 border border-border-strong shadow-lg ${fixColor}`}>

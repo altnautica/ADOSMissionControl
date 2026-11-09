@@ -84,7 +84,7 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
       </button>
       <div className="mmap panel" data-frame={frame}>
         {frame === "local" ? (
-          <LocalFrameMap droneId={droneId} className="absolute inset-0" headerExtra={toggle} />
+          <LocalFrameMap droneId={droneId} className="absolute inset-0" headerExtra={toggle} compact />
         ) : (
           <>
             <div className="absolute inset-0">

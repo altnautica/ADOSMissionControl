@@ -6,13 +6,18 @@
  * waypoint it is heading to, inside a react-leaflet MapContainer. Drawn only
  * while MISSION_CURRENT maps onto the open plan, which the mission store does
  * only when the aircraft holds that plan (an upload or download receipt), so a
- * plan the vehicle does not hold is never drawn as its route.
+ * plan the vehicle does not hold is never drawn as its route. When the plan
+ * on the drone differs from this device's, the route is the agent's mirror of
+ * the drone's mission instead, with the waypoint the drone reports.
  * @license GPL-3.0-only
  */
 
 import { useMemo } from "react";
 import { CircleMarker, Polyline, Tooltip } from "react-leaflet";
 import { useMissionStore } from "@/stores/mission-store";
+import { useDroneManager } from "@/stores/drone-manager";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { useDronePlanIdentity, useMissionMirror } from "@/lib/mission/mission-mirror";
 import { useCssVarColors } from "@/hooks/use-css-var-colors";
 
 /** Route in the accent, the waypoint being flown to in the warning hue.
@@ -21,17 +26,27 @@ const ROUTE_TOKENS = ["--alt-accent-primary", "--alt-status-warning"] as const;
 
 export function MissionRouteOverlay() {
   const waypoints = useMissionStore((s) => s.waypoints);
-  const current = useMissionStore((s) => s.currentWaypoint);
+  const localCurrent = useMissionStore((s) => s.currentWaypoint);
+  const droneId = useDroneManager((s) => s.selectedDroneId);
+  const mirrored = useDronePlanIdentity(droneId) === "differs";
+  const mirror = useMissionMirror(droneId, mirrored);
+  const { pilot } = usePilotState(droneId);
   const [routeColor, activeColor] = useCssVarColors(ROUTE_TOKENS);
 
   // Waypoints with a position, keeping their mission index for the readout.
-  const points = useMemo(
-    () =>
-      waypoints.flatMap((wp, index) =>
-        wp.lat !== 0 || wp.lon !== 0 ? [{ index, pos: [wp.lat, wp.lon] as [number, number] }] : [],
-      ),
-    [waypoints],
-  );
+  const points = useMemo(() => {
+    if (mirrored) {
+      return (mirror ?? []).map((p, index) => ({ index, seq: p.seq, pos: [p.lat, p.lon] as [number, number] }));
+    }
+    return waypoints.flatMap((wp, index) =>
+      wp.lat !== 0 || wp.lon !== 0 ? [{ index, seq: index, pos: [wp.lat, wp.lon] as [number, number] }] : [],
+    );
+  }, [mirrored, mirror, waypoints]);
+  // The mirror counts in the FC's sequence; find the vertex the drone flies to.
+  const mirrorSeq = pilot?.mission?.seq ?? null;
+  const current = mirrored
+    ? (points.find((p) => p.seq === mirrorSeq)?.index ?? null)
+    : localCurrent;
   const route = useMemo(() => points.map((p) => p.pos), [points]);
 
   if (current === null || points.length === 0) return null;

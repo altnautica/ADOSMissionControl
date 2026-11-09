@@ -15,7 +15,6 @@ import dynamic from "next/dynamic";
 
 import { LocalFrameMap } from "@/components/map/local/LocalFrameMap";
 import { useMinimapFrame } from "@/components/map/local/use-minimap-frame";
-import { MissionPlanIdentityBanner } from "@/components/cockpit/v2/MissionPlanIdentityBanner";
 
 const OverviewMap = dynamic(
   () => import("@/components/flight/OverviewMap").then((m) => m.OverviewMap),
@@ -39,7 +38,6 @@ export function CockpitMapPane({ droneId, className }: { droneId: string; classN
           </OverviewMap>
         </div>
       )}
-      <MissionPlanIdentityBanner droneId={droneId} className="absolute left-1/2 top-2 z-[1001] -translate-x-1/2" />
     </div>
   );
 }

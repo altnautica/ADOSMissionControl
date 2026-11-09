@@ -2,27 +2,25 @@
 
 /**
  * @module cockpit/v2/MissionPlanIdentityBanner
- * @description On a map view: when the plan on the drone is not the plan
- * this device uploaded, say so and offer to load the drone's plan. The rule
- * is in `lib/mission/plan-identity`.
+ * @description On every map view: when the plan on the drone is not the
+ * plan this device uploaded, say so and offer to load the drone's plan (the
+ * maps then draw the agent's mirror of it). The rule is in
+ * `lib/mission/plan-identity`.
  *
  * @license GPL-3.0-only
  */
 
 import { useState } from "react";
 
-import { usePilotState } from "@/lib/cockpit/use-pilot-state";
-import { planIdentity } from "@/lib/mission/plan-identity";
+import { useDronePlanIdentity } from "@/lib/mission/mission-mirror";
 import { cn } from "@/lib/utils";
 import { useMissionStore } from "@/stores/mission-store";
-import { useUploadReceiptsStore } from "@/stores/upload-receipts-store";
 
 export function MissionPlanIdentityBanner({ droneId, className }: { droneId: string; className?: string }) {
-  const { pilot } = usePilotState(droneId);
-  const receipt = useUploadReceiptsStore((s) => s.receipts[droneId]?.mission);
+  const identity = useDronePlanIdentity(droneId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (planIdentity(receipt, pilot?.mission) !== "differs") return null;
+  if (identity !== "differs") return null;
 
   const load = async () => {
     setLoading(true);

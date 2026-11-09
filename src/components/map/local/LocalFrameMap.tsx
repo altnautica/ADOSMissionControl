@@ -12,6 +12,7 @@
  * @license GPL-3.0-only
  */
 
+import { MissionPlanIdentityBanner } from "@/components/cockpit/v2/MissionPlanIdentityBanner";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Minus, Plus } from "lucide-react";
@@ -38,6 +39,8 @@ interface LocalFrameMapProps {
   className?: string;
   /** Extra header content, right-aligned (the minimap's frame toggle). */
   headerExtra?: ReactNode;
+  /** A minimap: no plan-identity banner (the full map views carry it). */
+  compact?: boolean;
 }
 
 /** Resolve the painter's colours from the element's computed `--hud-*`. */
@@ -60,7 +63,7 @@ function inkRgba(ink: string, ctx: CanvasRenderingContext2D | null): Rgba | null
   return parseCssColor(String(ctx.fillStyle));
 }
 
-export function LocalFrameMap({ droneId, className, headerExtra }: LocalFrameMapProps) {
+export function LocalFrameMap({ droneId, className, headerExtra, compact = false }: LocalFrameMapProps) {
   const t = useTranslations("hud.map");
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -146,6 +149,7 @@ export function LocalFrameMap({ droneId, className, headerExtra }: LocalFrameMap
 
   return (
     <div ref={wrapRef} className={cn("lfmap", className)}>
+      {!compact && <MissionPlanIdentityBanner droneId={droneId} className="absolute left-1/2 top-2 z-[1001] -translate-x-1/2" />}
       <canvas
         ref={canvasRef}
         className="lfmap-canvas"
