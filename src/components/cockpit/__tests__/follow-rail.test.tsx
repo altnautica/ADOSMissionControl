@@ -49,12 +49,10 @@ function setSkills(ids: string[], states: Record<string, string> = {}) {
   } as never);
 }
 
-function renderRail(widthClass: CockpitWidthClass = "expanded", height = 720) {
+function renderRail(withRec = false) {
   return render(
     <NextIntlClientProvider locale="en" messages={messages}>
-      <CockpitLayoutContext.Provider value={{ widthClass, width: 1280, height }}>
-        <FollowRail droneId={DRONE} />
-      </CockpitLayoutContext.Provider>
+      <FollowRail droneId={DRONE} withRec={withRec} />
     </NextIntlClientProvider>,
   );
 }
@@ -89,19 +87,14 @@ describe("FollowRail", () => {
     expect(mocks.activateBound).toHaveBeenCalledWith(FOLLOW_SKILL_ID, { droneId: DRONE });
   });
 
-  it("reads TRACKING while following and mirrors HOLD / RTL / LAND at expanded only", () => {
+  it("reads TRACKING while following and never repeats hold, return or land", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState());
-    setSkills([FOLLOW_SKILL_ID, "pause", "rth", "land"], { land: "disabled" });
-    renderRail("expanded");
+    setSkills([FOLLOW_SKILL_ID, "pause", "rth", "land"]);
+    renderRail();
     expect(screen.getByTestId("frail-follow").textContent).toContain("TRACKING ×");
-    fireEvent.click(screen.getByTestId("frail-skill-rth"));
-    expect(mocks.activateBound).toHaveBeenCalledWith("rth", { droneId: DRONE });
-    // A disabled skill stays disabled on its mirror.
-    fireEvent.click(screen.getByTestId("frail-skill-land"));
-    expect(mocks.activateBound).not.toHaveBeenCalledWith("land", expect.anything());
-    cleanup();
-    renderRail("medium");
-    expect(screen.queryByTestId("frail-skill-rth")).toBeNull();
+    for (const id of ["pause", "rth", "land"]) {
+      expect(screen.queryByTestId(`frail-skill-${id}`)).toBeNull();
+    }
   });
 
   it("shows a pending mode until it echoes", async () => {
@@ -151,15 +144,12 @@ describe("FollowRail", () => {
     expect(st.pipStreamIdByDrone[DRONE]).toBe("eo");
   });
 
-  it("folds CAM and REC behind ⋯ on a short compact cockpit", () => {
+  it("adds REC only where the flight screen has no right column", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState());
-    renderRail("compact", 400);
+    renderRail(false);
     expect(screen.queryByTestId("frail-rec")).toBeNull();
-    fireEvent.click(screen.getByTestId("frail-more"));
-    expect(screen.getByTestId("frail-rec")).toBeTruthy();
     cleanup();
-    renderRail("compact", 720);
-    expect(screen.queryByTestId("frail-more")).toBeNull();
+    renderRail(true);
     expect(screen.getByTestId("frail-rec")).toBeTruthy();
   });
 });

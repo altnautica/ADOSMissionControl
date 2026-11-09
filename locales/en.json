@@ -9366,13 +9366,14 @@
       "obstaclesUnavailable": "Obstacles unavailable",
       "targetsUnavailable": "Targets unavailable"
     },
-    "cycleHint": "Data layers: Full, Route, Off (O)",
+    "cycleHint": "Data layers: Instruments, Full, Route, Off (O)",
     "levelAria": "Data layers: {level}",
     "menuAria": "Data layer switches",
     "level": {
       "full": "Full",
       "route": "Route",
-      "off": "Off"
+      "off": "Off",
+      "instruments": "Instruments"
     },
     "layer": {
       "depth": "Depth",
@@ -9380,7 +9381,9 @@
       "obstacles": "Obstacles",
       "targets": "Targets",
       "ar_route": "Route",
-      "ar_motion": "Motion"
+      "ar_motion": "Motion",
+      "centre_marks": "Centre marks",
+      "instruments": "Flight instruments"
     },
     "depthOptions": "Depth",
     "depthStyle": {
@@ -9441,5 +9444,73 @@
       "snapshots": "Parameter snapshots",
       "noSnapshots": "No snapshots yet."
     }
+  },
+  "flightScreen": {
+    "pill": {
+      "aria": "Status: {text}. Open the alert list",
+      "navSource": "Navigation source degraded ({kind})",
+      "storage": "Companion storage {pct}% full"
+    },
+    "battery": {
+      "title": "Battery: charge, time to the return reserve, and the reserve marker",
+      "aria": "Battery {pct}%, {left} to the return reserve"
+    },
+    "link": {
+      "title": "Link",
+      "rssi": "RSSI {v}",
+      "ok": "Live",
+      "age": "{age} ago",
+      "reducedRate": "Reduced update rate (radio)"
+    },
+    "controller": {
+      "lost": "Controller lost",
+      "connected": "Controller"
+    },
+    "menu": {
+      "view": "View",
+      "cameras": "Cameras",
+      "controls": "Controls",
+      "palette": "Command palette",
+      "quickSettings": "Extension settings",
+      "editControls": "Edit controls",
+      "immersive": "Immersive (fullscreen)",
+      "leaveImmersive": "Leave fullscreen",
+      "exit": "Exit flight screen"
+    },
+    "camera": {
+      "mode": "Capture mode",
+      "photo": "Photo",
+      "video": "Video",
+      "takePhoto": "Take photo",
+      "startVideo": "Start recording",
+      "stopVideo": "Stop recording",
+      "zoom": "Zoom {z}x",
+      "settings": "Camera settings",
+      "noPicture": "No live picture to capture",
+      "demoFeed": "Demo feed",
+      "offline": "No video"
+    },
+    "row": {
+      "d": "Distance from home",
+      "h": "Height above home",
+      "hs": "Horizontal speed",
+      "vs": "Vertical speed",
+      "agl": "Height above the ground"
+    },
+    "card": {
+      "roledescription": "Switchable card",
+      "switch": "Card",
+      "map": "Map",
+      "attitude": "Attitude radar",
+      "obstacles": "Obstacle radar",
+      "noObstacles": "No obstacle sensor",
+      "attitudeAria": "Pitch {pitch} degrees, roll {roll} degrees, heading {hdg} degrees",
+      "attitudeNone": "No attitude"
+    },
+    "follow": {
+      "rangeDetail": "Range detail"
+    },
+    "fly": "Fly",
+    "flyTitle": "Open the flight screen"
   }
 }

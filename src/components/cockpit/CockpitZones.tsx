@@ -2,31 +2,29 @@
 
 /**
  * @module fly/CockpitZones
- * @description Composes the registered cockpit widgets over the video. The
- * registry (`widget-registry`) owns the SET of widgets so a built-in OR a
- * plugin adds a cockpit surface by registering it; this composer renders the
- * visible ones and OWNS their placement:
+ * @description Composes the registered cockpit widgets inside the flight
+ * screen's centre zone. The registry (`widget-registry`) owns the SET of
+ * widgets so a built-in OR a plugin adds a cockpit surface by registering
+ * it; this composer renders the visible ones and OWNS their placement:
  *
  *   - an ARRANGEABLE widget (the chips + plugin widgets) is grouped by its
  *     effective zone (the operator's per-loadout override, else its default)
  *     and rendered inside one anchored zone container that the operator can
  *     move it between and hide. Each sits in a `data-widget="<id>"` wrapper so
- *     the stylesheet can relocate one widget (e.g. into the pillarbox of a
- *     very wide cockpit) without touching the others;
- *   - a non-arrangeable widget (the instrument HUD) self-positions and is
- *     rendered bare, unchanged.
+ *     the stylesheet can relocate one widget without touching the others;
+ *   - a non-arrangeable widget self-positions and is rendered bare.
+ *
+ * The flight instruments, the obstacle radar and the camera roster are not
+ * widgets: they belong to the grid's centre, bottom-left card and camera
+ * settings respectively.
  *
  * @license GPL-3.0-only
  */
 
 import { Fragment, useMemo } from "react";
 
-import { ProximityRadar } from "@/components/flight/ProximityRadar";
-import { TelemetryStrip } from "@/components/cockpit/TelemetryStrip";
 import { WhatsLockedChip } from "@/components/vision/WhatsLockedChip";
 import { CockpitPerceptionChip } from "@/components/vision/CockpitPerceptionChip";
-import { CockpitCameraRoster } from "@/components/vision/CockpitCameraRoster";
-import { HudLayer } from "@/components/cockpit/HudLayer";
 import type { CockpitLayout } from "@/stores/settings/keybindings-slice";
 import { zoneContainerClass, type CockpitZone } from "@/lib/cockpit/zones";
 import {
@@ -47,46 +45,6 @@ import {
  * self-anchoring.
  */
 export const BUILTIN_WIDGETS: readonly CockpitWidget[] = [
-  {
-    // The instrument HUD: horizon, flight-path marker, heading tape, speed and
-    // altitude tapes, vertical speed, wind. One widget so the telemetry is
-    // derived once per frame for every instrument in it.
-    id: "builtin.hud",
-    zone: "center",
-    source: "builtin",
-    order: 1,
-    render: () => <HudLayer />,
-  },
-  {
-    // Arrangeable, so it shares the bottom-right zone container with any
-    // operator or plugin widget there instead of self-anchoring on top of it:
-    // both used to sit at the same coordinates and the same z-index, leaving
-    // paint order (i.e. DOM order) to decide which one the operator saw.
-    id: "builtin.proximity-radar",
-    zone: "bottom-right",
-    source: "builtin",
-    arrangeable: true,
-    title: "Proximity radar",
-    layoutKey: "proximityRadar",
-    // Was the `.d-std` class on its own wrapper, which a widget composed into
-    // a shared container has nowhere to put.
-    minDensity: "standard",
-    order: 10,
-    render: (ctx) => <ProximityRadar droneId={ctx.droneId} />,
-  },
-  {
-    // Same, for the bottom-left container it shared with the camera roster.
-    id: "builtin.telemetry-strip",
-    zone: "bottom-left",
-    source: "builtin",
-    arrangeable: true,
-    title: "Telemetry strip",
-    layoutKey: "telemetryStrip",
-    // Was the `.d-full` class on its own wrapper.
-    minDensity: "full",
-    order: 10,
-    render: () => <TelemetryStrip />,
-  },
   {
     // The "what's locked" chip: the shared readout of the designated target's
     // live lock state. Shown only while a target is selected (self-gated).
@@ -109,19 +67,6 @@ export const BUILTIN_WIDGETS: readonly CockpitWidget[] = [
     title: "Perception health",
     order: 20,
     render: (ctx) => <CockpitPerceptionChip droneId={ctx.droneId} />,
-  },
-  {
-    // The multi-camera roster: the node's cameras (from the capability probe),
-    // each with a real live / idle badge. Default bottom-left so it never
-    // overlaps the top-right density / video-stats / camera-pill cluster.
-    // Self-gated — nothing to show for a single-camera drone. Arrangeable.
-    id: "builtin.camera-roster",
-    zone: "bottom-left",
-    source: "builtin",
-    arrangeable: true,
-    title: "Cameras",
-    order: 20,
-    render: () => <CockpitCameraRoster />,
   },
 ];
 

@@ -28,16 +28,19 @@ export interface BandReserve {
   etaS: number | null;
   /** The pack is already below its reserve. */
   past: boolean;
+  /** The engine's reserve threshold (% of capacity): the RTL-reserve marker. */
+  reservePct: number;
 }
 
 /** The band's reading of one battery-engine report. */
 export function reserveFromHealth(health: BatteryHealth): BandReserve | null {
   if (!health.enabled) return null;
+  const reservePct = health.thresholds.reserve_percent;
   const pack = health.packs.find((p) => p.prediction.state !== "idle") ?? health.packs[0];
-  if (!pack || health.stale || pack.stale) return { etaS: null, past: false };
+  if (!pack || health.stale || pack.stale) return { etaS: null, past: false, reservePct };
   const { state, eta_s } = pack.prediction;
-  if (state === "past") return { etaS: 0, past: true };
-  return { etaS: state === "idle" ? null : eta_s, past: false };
+  if (state === "past") return { etaS: 0, past: true, reservePct };
+  return { etaS: state === "idle" ? null : eta_s, past: false, reservePct };
 }
 
 interface ReserveRead {

@@ -3,9 +3,10 @@
 /**
  * @module cockpit/layers/LayerLevelButton
  * @description The top-bar data-layer control: one tap cycles the level
- * Full → Route → Off (the same as `O` and D-pad ↑/↓ with the picker closed);
- * the caret opens the per-layer switches, including the leased depth and
- * surfaces layers and the depth style and range.
+ * Instruments → Full → Route → Off (the same as `O` and D-pad ↑/↓ with the
+ * picker closed); the caret opens the per-layer switches, including the
+ * centre marks, the flight instruments, the leased depth and surfaces layers
+ * and the depth style and range. The switches show what the open view draws.
  *
  * @license GPL-3.0-only
  */
@@ -15,10 +16,11 @@ import { useTranslations } from "next-intl";
 import { Layers } from "lucide-react";
 
 import { LAYER_DEFS, effectiveLayers } from "@/lib/cockpit/layers/layer-spec";
+import { useCockpitView } from "@/lib/cockpit/views";
 import { cn } from "@/lib/utils";
 import {
   useCockpitLayersStore,
-  vehicleLayers,
+  useVehicleLayers,
   type DepthRange,
   type DepthStyle,
 } from "@/stores/cockpit-layers-store";
@@ -26,30 +28,31 @@ import {
 const DEPTH_RANGES: readonly DepthRange[] = ["off", "2", "5"];
 const DEPTH_STYLES: readonly DepthStyle[] = ["solid", "outline"];
 
-export function LayerLevelButton({ droneId }: { droneId: string }) {
+export function LayerLevelButton({ droneId, iconOnly = false }: { droneId: string; iconOnly?: boolean }) {
   const t = useTranslations("cockpitLayers");
-  const vl = useCockpitLayersStore((s) => vehicleLayers(s.byVehicle, droneId));
+  const vl = useVehicleLayers(droneId);
+  const view = useCockpitView(droneId);
   const cycleLevel = useCockpitLayersStore((s) => s.cycleLevel);
   const setLayer = useCockpitLayersStore((s) => s.setLayer);
   const setDepth = useCockpitLayersStore((s) => s.setDepth);
   const [open, setOpen] = useState(false);
-  const on = effectiveLayers(vl.level, vl.flips, "pilot");
+  const on = effectiveLayers(vl.level, vl.flips, view);
 
   return (
-    <div className="relative flex items-center" data-testid="layer-level-button">
+    <div className="fs-layer relative flex items-center" data-testid="layer-level-button" data-level={vl.level}>
       <button
         type="button"
-        className="flex min-h-12 items-center gap-1.5 rounded-l-md px-2 text-xs font-semibold text-text-primary hover:bg-white/10"
+        className="fs-btn fs-layer-cycle"
         onClick={() => cycleLevel(droneId)}
         title={t("cycleHint")}
         aria-label={t("levelAria", { level: t(`level.${vl.level}`) })}
       >
-        <Layers size={16} aria-hidden="true" />
-        <span>{t(`level.${vl.level}`)}</span>
+        <Layers className="fs-ico" aria-hidden="true" />
+        {!iconOnly && <span>{t(`level.${vl.level}`)}</span>}
       </button>
       <button
         type="button"
-        className="min-h-12 rounded-r-md px-1.5 text-xs text-text-secondary hover:bg-white/10"
+        className="fs-btn fs-layer-caret"
         aria-expanded={open}
         aria-label={t("menuAria")}
         onClick={() => setOpen((o) => !o)}
@@ -59,9 +62,9 @@ export function LayerLevelButton({ droneId }: { droneId: string }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-40 mt-1 w-56 rounded-md border border-border-default bg-bg-primary/95 p-2 shadow-lg"
+          className="fs-sheet absolute right-0 top-full z-40 mt-2 w-56 p-2"
         >
-          {LAYER_DEFS.filter((d) => d.id !== "hud").map((d) => (
+          {LAYER_DEFS.map((d) => (
             <label key={d.id} className="flex min-h-10 cursor-pointer items-center justify-between gap-2 px-1 text-xs">
               <span>{t(`layer.${d.id}`)}</span>
               <input

@@ -2,23 +2,21 @@
 
 /**
  * @module cockpit/CockpitMinimap
- * @description The cockpit's top-left minimap card. In the global frame it is
- * a clean, non-interactive tile overview (with any extension map overlays and
- * the follow target placed about the EKF origin) and a click opens the full
- * Flight tab; the basemap selector sits behind a
+ * @description The map face of the flight screen's bottom-left card. In the
+ * global frame it is a clean, non-interactive tile overview (with any
+ * extension map overlays and the follow target placed about the EKF origin)
+ * and a click opens the full Flight tab; the basemap selector sits behind a
  * layers icon. In the local frame (no GNSS position, an ExternalNav / None
  * horizontal source, or the operator's pin) it draws the north/east local
  * map, which pans and zooms in place. The `AUTO | LOCAL | MAP` toggle is
- * persisted per vehicle. On a narrow cockpit the card collapses to a chip
- * that expands it on demand (the container query lives in the cockpit
- * styles).
+ * persisted per vehicle. It fills the card it is placed in.
  * @license GPL-3.0-only
  */
 
 import { memo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { Layers, Map as MapIcon } from "lucide-react";
+import { Layers } from "lucide-react";
 import { MinimapBasemapSelector } from "@/components/map/MinimapBasemapSelector";
 import { LocalFrameMap } from "@/components/map/local/LocalFrameMap";
 import { useMinimapFrame } from "@/components/map/local/use-minimap-frame";
@@ -63,26 +61,11 @@ function FrameToggle({ pin, onPin }: { pin: MinimapPin; onPin: (p: MinimapPin) =
 export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneId: string }) {
   const t = useTranslations("cockpit");
   const [basemapOpen, setBasemapOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const { frame, pin, setPin } = useMinimapFrame(droneId);
   const toggle = <FrameToggle pin={pin} onPin={setPin} />;
 
   return (
-    <div
-      className="zone blc d-std pointer-events-auto"
-      data-expanded={expanded ? "true" : "false"}
-    >
-      <button
-        type="button"
-        className="mmap-chip glass-pill"
-        onClick={() => setExpanded((e) => !e)}
-        aria-expanded={expanded}
-        aria-label={t("mapToggle")}
-        title={t("mapToggle")}
-      >
-        <MapIcon size={14} aria-hidden="true" />
-      </button>
-      <div className="mmap panel" data-frame={frame}>
+    <div className="mmap" data-frame={frame} data-testid="cockpit-minimap">
         {frame === "local" ? (
           <LocalFrameMap droneId={droneId} className="absolute inset-0" headerExtra={toggle} compact />
         ) : (
@@ -127,6 +110,5 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
           </>
         )}
       </div>
-    </div>
   );
 });

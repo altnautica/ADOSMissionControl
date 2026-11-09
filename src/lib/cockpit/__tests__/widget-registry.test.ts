@@ -22,10 +22,6 @@ function widget(over: Partial<CockpitWidget> & { id: string }): CockpitWidget {
 }
 
 const LAYOUT: CockpitLayout = {
-  topBar: true,
-  minimap: true,
-  telemetryStrip: false,
-  proximityRadar: true,
   density: "standard",
 };
 
@@ -94,21 +90,6 @@ describe("effectiveWidgetZone", () => {
 });
 
 describe("isCockpitWidgetVisible", () => {
-  it("follows the mapped CockpitLayout flag", () => {
-    expect(
-      isCockpitWidgetVisible(
-        widget({ id: "r", layoutKey: "proximityRadar" }),
-        LAYOUT,
-      ),
-    ).toBe(true);
-    expect(
-      isCockpitWidgetVisible(
-        widget({ id: "t", layoutKey: "telemetryStrip" }),
-        LAYOUT,
-      ),
-    ).toBe(false);
-  });
-
   it("falls back to defaultVisible when unmapped (default true)", () => {
     expect(isCockpitWidgetVisible(widget({ id: "a" }), LAYOUT)).toBe(true);
     expect(
@@ -116,7 +97,7 @@ describe("isCockpitWidgetVisible", () => {
     ).toBe(false);
   });
 
-  it("a per-widget hidden override wins for a widget with no layoutKey", () => {
+  it("a per-widget hidden override wins over defaultVisible", () => {
     const w = widget({ id: "chip", arrangeable: true });
     expect(
       isCockpitWidgetVisible(w, { ...LAYOUT, widgets: { chip: { hidden: true } } }),
@@ -127,17 +108,6 @@ describe("isCockpitWidgetVisible", () => {
         widgets: { chip: { hidden: false } },
       }),
     ).toBe(true);
-  });
-
-  it("a chrome-flag widget still follows its layoutKey, not a per-widget override", () => {
-    // telemetryStrip is off in LAYOUT; a stray per-widget entry must not win.
-    const w = widget({ id: "builtin.telemetry-strip", layoutKey: "telemetryStrip" });
-    expect(
-      isCockpitWidgetVisible(w, {
-        ...LAYOUT,
-        widgets: { "builtin.telemetry-strip": { hidden: false } },
-      }),
-    ).toBe(false);
   });
 });
 
@@ -150,13 +120,17 @@ describe("density and the layout toggle are separate gates", () => {
   });
 
   it("the toggle only shows or hides, whatever the density", () => {
-    const w = widget({ id: "radar", layoutKey: "proximityRadar", minDensity: "full" });
+    const w = widget({ id: "radar", minDensity: "full" });
     // On in the layout, thinned out at standard: enabled, not visible.
     expect(isCockpitWidgetEnabled(w, LAYOUT)).toBe(true);
     expect(isCockpitWidgetVisible(w, LAYOUT)).toBe(false);
     expect(isCockpitWidgetVisible(w, { ...LAYOUT, density: "full" })).toBe(true);
     // Off in the layout: hidden at every density.
-    const off = { ...LAYOUT, proximityRadar: false, density: "full" as const };
+    const off: CockpitLayout = {
+      ...LAYOUT,
+      density: "full",
+      widgets: { radar: { hidden: true } },
+    };
     expect(isCockpitWidgetEnabled(w, off)).toBe(false);
     expect(isCockpitWidgetVisible(w, off)).toBe(false);
   });

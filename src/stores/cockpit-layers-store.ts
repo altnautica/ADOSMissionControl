@@ -1,8 +1,14 @@
 /**
- * The cockpit's data-layer level (Full / Route / Off) and per-layer switches,
- * persisted per vehicle. Which layers a level turns on comes from the cockpit
- * spec (`lib/cockpit/layers/layer-spec`); this store keeps only the operator's
- * choices: the level and the layers flipped away from it.
+ * The cockpit's data-layer level (Instruments / Full / Route / Off) and
+ * per-layer switches, persisted per vehicle. Which layers a level turns on
+ * comes from the cockpit spec (`lib/cockpit/layers/layer-spec`); this store
+ * keeps only the operator's choices: the level and the layers flipped away
+ * from it.
+ *
+ * A vehicle with no stored level shows the default of the cockpit's current
+ * layout class (`layout.json` `classes.*.default_layer_level`: Route on
+ * compact and portrait, Full otherwise), which the cockpit publishes with
+ * {@link CockpitLayersState.setClassDefault}.
  *
  * Changing the level drops the per-layer flips, so a level always means the
  * same thing on screen.
@@ -14,9 +20,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-export type LayerLevel = "full" | "route" | "off";
+import layersSpec from "@/lib/cockpit/spec/layers.json";
+import type { LayerLevel } from "@/lib/cockpit/layers/ar-layout";
 
-export const LAYER_LEVELS: readonly LayerLevel[] = ["full", "route", "off"];
+export type { LayerLevel };
+
+/** Most to least drawn, as every level control cycles them. */
+export const LAYER_LEVELS: readonly LayerLevel[] = layersSpec.levels.order as LayerLevel[];
 export const DEFAULT_LAYER_LEVEL: LayerLevel = "full";
 
 export type DepthStyle = "solid" | "outline";
@@ -31,13 +41,24 @@ export interface VehicleLayers {
   depthRange: DepthRange;
 }
 
-const DEFAULT_VEHICLE: VehicleLayers = { level: DEFAULT_LAYER_LEVEL, flips: {}, depthStyle: "solid", depthRange: "5" };
+/** One stable default entry per level, so a selector returning it is stable. */
+const DEFAULT_BY_LEVEL: Record<LayerLevel, VehicleLayers> = {
+  instruments: { level: "instruments", flips: {}, depthStyle: "solid", depthRange: "5" },
+  full: { level: "full", flips: {}, depthStyle: "solid", depthRange: "5" },
+  route: { level: "route", flips: {}, depthStyle: "solid", depthRange: "5" },
+  off: { level: "off", flips: {}, depthStyle: "solid", depthRange: "5" },
+};
 
 interface CockpitLayersState {
   byVehicle: Record<string, VehicleLayers>;
+  /** The level a vehicle without a stored one shows (the layout class's). */
+  classDefault: LayerLevel;
+  setClassDefault: (level: LayerLevel) => void;
   setLevel: (droneId: string, level: LayerLevel) => void;
-  /** Full → Route → Off → Full. */
+  /** One step down `levels.order`, wrapping: Instruments → Full → Route → Off → Instruments. */
   cycleLevel: (droneId: string) => void;
+  /** Step `by` places along `levels.order` (negative = towards Instruments), wrapping. */
+  stepLevel: (droneId: string, by: number) => void;
   /** Turn one layer on or off, overriding the level. */
   setLayer: (droneId: string, layerId: string, on: boolean) => void;
   setDepth: (droneId: string, style: DepthStyle, range: DepthRange) => void;
@@ -46,31 +67,50 @@ interface CockpitLayersState {
 export function vehicleLayers(
   byVehicle: Record<string, VehicleLayers>,
   droneId: string | null | undefined,
+  classDefault: LayerLevel = DEFAULT_LAYER_LEVEL,
 ): VehicleLayers {
-  return (droneId && byVehicle[droneId]) || DEFAULT_VEHICLE;
+  return (droneId && byVehicle[droneId]) || DEFAULT_BY_LEVEL[classDefault];
+}
+
+function stepped(cur: LayerLevel, by: number): LayerLevel {
+  const n = LAYER_LEVELS.length;
+  return LAYER_LEVELS[(((LAYER_LEVELS.indexOf(cur) + by) % n) + n) % n];
 }
 
 export const useCockpitLayersStore = create<CockpitLayersState>()(
   persist(
     (set) => ({
       byVehicle: {},
+      classDefault: DEFAULT_LAYER_LEVEL,
+      setClassDefault: (classDefault) => set((s) => (s.classDefault === classDefault ? s : { classDefault })),
       setLevel: (droneId, level) =>
-        set((s) => ({ byVehicle: { ...s.byVehicle, [droneId]: { ...vehicleLayers(s.byVehicle, droneId), level, flips: {} } } })),
+        set((s) => ({
+          byVehicle: { ...s.byVehicle, [droneId]: { ...vehicleLayers(s.byVehicle, droneId, s.classDefault), level, flips: {} } },
+        })),
       cycleLevel: (droneId) =>
         set((s) => {
-          const cur = vehicleLayers(s.byVehicle, droneId).level;
-          const level = LAYER_LEVELS[(LAYER_LEVELS.indexOf(cur) + 1) % LAYER_LEVELS.length];
-          return { byVehicle: { ...s.byVehicle, [droneId]: { ...vehicleLayers(s.byVehicle, droneId), level, flips: {} } } };
+          const cur = vehicleLayers(s.byVehicle, droneId, s.classDefault);
+          return { byVehicle: { ...s.byVehicle, [droneId]: { ...cur, level: stepped(cur.level, 1), flips: {} } } };
+        }),
+      stepLevel: (droneId, by) =>
+        set((s) => {
+          const cur = vehicleLayers(s.byVehicle, droneId, s.classDefault);
+          return { byVehicle: { ...s.byVehicle, [droneId]: { ...cur, level: stepped(cur.level, by), flips: {} } } };
         }),
       setLayer: (droneId, layerId, on) =>
         set((s) => {
-          const cur = vehicleLayers(s.byVehicle, droneId);
+          const cur = vehicleLayers(s.byVehicle, droneId, s.classDefault);
           return {
             byVehicle: { ...s.byVehicle, [droneId]: { ...cur, flips: { ...cur.flips, [layerId]: on } } },
           };
         }),
       setDepth: (droneId, depthStyle, depthRange) =>
-        set((s) => ({ byVehicle: { ...s.byVehicle, [droneId]: { ...vehicleLayers(s.byVehicle, droneId), depthStyle, depthRange } } })),
+        set((s) => ({
+          byVehicle: {
+            ...s.byVehicle,
+            [droneId]: { ...vehicleLayers(s.byVehicle, droneId, s.classDefault), depthStyle, depthRange },
+          },
+        })),
     }),
     {
       name: "altcmd:cockpit-layers",
@@ -110,7 +150,12 @@ export const useCockpitLayersStore = create<CockpitLayersState>()(
   ),
 );
 
+/** The layers state of one vehicle, the class default when none is stored. */
+export function useVehicleLayers(droneId: string | null | undefined): VehicleLayers {
+  return useCockpitLayersStore((s) => vehicleLayers(s.byVehicle, droneId, s.classDefault));
+}
+
 /** The level for one vehicle. */
 export function useLayerLevel(droneId: string | null | undefined): LayerLevel {
-  return useCockpitLayersStore((s) => vehicleLayers(s.byVehicle, droneId).level);
+  return useCockpitLayersStore((s) => vehicleLayers(s.byVehicle, droneId, s.classDefault).level);
 }

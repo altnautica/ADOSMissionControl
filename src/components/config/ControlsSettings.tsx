@@ -35,7 +35,7 @@ import {
   type Ds4Gesture,
 } from "@/lib/input/ds4-bindings";
 import { acquireGamepadPolling } from "@/lib/input/gamepad-poller";
-import { usePadStatusStore } from "@/lib/input/pad-status";
+import { shortPadName, usePadStatusStore } from "@/lib/input/pad-status";
 import { useSkillRegistry } from "@/lib/skills";
 import { cn } from "@/lib/utils";
 import {
@@ -47,6 +47,7 @@ import {
 } from "@/stores/controls-store";
 import { useInputStore } from "@/stores/input-store";
 import { CalibrationCard, ClashedSkills, PrefsRow, TestRow, Tour } from "./ControlsSettingsCards";
+import { layoutLeaderLabels } from "./leader-labels";
 
 type Art = { viewBox: number[]; stroke_width: number; paths: { id: string; d: string; role: string }[] };
 type Hotspot = {
@@ -66,6 +67,10 @@ const GROUP_LABEL: Record<string, string> = {
   none: "None",
 };
 const ACCENT = "#22D3EE";
+/** Leader labels: line pitch, gap from the artwork, and gutter width (art units). */
+const LABEL_PITCH = 36;
+const LABEL_GAP = 28;
+const LABEL_GUTTER = 280;
 
 /** The short label for a control: its first binding without held controls. */
 function controlLabel(bindings: readonly Ds4Binding[], control: string): string | null {
@@ -100,6 +105,15 @@ function ControllerDrawing({
   const deadzone = useInputStore((s) => s.deadzone);
   const pressed = (c: string) => buttons[WEB_BUTTON_INDEX[c] ?? -1] === true;
   const [vbX, vbY, vbW, vbH] = art.viewBox;
+  const leaders = useMemo(
+    () =>
+      layoutLeaderLabels(
+        Object.entries(hotspots).map(([id, h]) => ({ id, anchor: h.label_anchor, side: h.label_side })),
+        { art: [vbX, vbY, vbW, vbH], pitch: LABEL_PITCH, gap: LABEL_GAP, gutter: LABEL_GUTTER },
+      ),
+    [hotspots, vbX, vbY, vbW, vbH],
+  );
+  const leaderById = new Map(leaders.labels.map((l) => [l.id, l]));
   const stick = (id: "stick_l" | "stick_r", ax: number, ay: number) => {
     const h = hotspots[id];
     if (!h || h.shape !== "circle") return null;
@@ -113,8 +127,8 @@ function ControllerDrawing({
   };
   return (
     <svg
-      viewBox={`${vbX - 160} ${vbY - 20} ${vbW + 320} ${vbH + 40}`}
-      className="w-full max-w-[900px] text-text-primary"
+      viewBox={leaders.viewBox.join(" ")}
+      className="w-full max-w-[1040px] text-text-primary"
       data-testid="controller-drawing"
       role="img"
       aria-label="Controller"
@@ -144,10 +158,10 @@ function ControllerDrawing({
       {stick("stick_r", 2, 3)}
       {Object.entries(hotspots).map(([id, h]) => {
         const label = id === "stick_l" || id === "stick_r" ? (id === "stick_l" ? "Throttle / Yaw" : "Pitch / Roll") : controlLabel(bindings, id);
-        const [ax, ay] = h.label_anchor;
-        const off = 150;
-        const [lx, ly] =
-          h.label_side === "left" ? [ax - off, ay] : h.label_side === "right" ? [ax + off, ay] : h.label_side === "top" ? [ax, ay - 40] : [ax, ay + 40];
+        const leader = leaderById.get(id);
+        if (!leader) return null;
+        const [ax, ay] = leader.anchor;
+        const elbowX = leader.side === "left" ? leader.x + LABEL_GAP / 2 : leader.x - LABEL_GAP / 2;
         const locked = bindings.some((b) => b.control === id && b.locked);
         return (
           <g key={id} data-hotspot={id} data-conflict={conflicts.has(id) ? "true" : undefined} data-selected={selected === id ? "true" : undefined}>
@@ -161,11 +175,18 @@ function ControllerDrawing({
             />
             {label && (
               <>
-                <line x1={ax} y1={ay} x2={lx} y2={ly} stroke="rgba(255,255,255,0.35)" strokeWidth={1.5} pointerEvents="none" />
+                <polyline
+                  points={`${ax},${ay} ${elbowX},${leader.y} ${leader.x + (leader.side === "left" ? -2 : 2)},${leader.y}`}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.35)"
+                  strokeWidth={1.5}
+                  pointerEvents="none"
+                />
                 <text
-                  x={lx + (h.label_side === "left" ? -6 : h.label_side === "right" ? 6 : 0)}
-                  y={ly + 5}
-                  textAnchor={h.label_side === "left" ? "end" : h.label_side === "right" ? "start" : "middle"}
+                  x={leader.x + (leader.side === "left" ? -6 : 6)}
+                  y={leader.y + 7}
+                  textAnchor={leader.side === "left" ? "end" : "start"}
+                  data-label-side={leader.side}
                   className={cn("text-[22px]", conflicts.has(id) ? "fill-[#EF4444]" : "fill-current")}
                   onClick={() => onSelect(id)}
                 >
@@ -360,7 +381,7 @@ export function ControlsSettings() {
       <header className="flex flex-wrap items-center gap-3">
         <h2 className="text-sm font-semibold">{specString("controls.title")}</h2>
         <span className="text-xs text-text-secondary" data-testid="controls-pad-name">
-          {pad.connected ? (pad.name ?? "Controller") : specString("controls.press_any_button")}
+          {pad.connected ? (shortPadName(pad.name) ?? "Controller") : specString("controls.press_any_button")}
         </span>
         {pad.needsCalibration && <span className="text-xs text-status-warning">{specString("controls.not_standard")}</span>}
         <div className="ml-auto flex items-center gap-1" role="group" aria-label="Stick mode">

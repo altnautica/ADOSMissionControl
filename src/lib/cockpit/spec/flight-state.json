@@ -44,7 +44,8 @@
     "blocked": "Blocked",
     "obstacle-close": "Obstacle close",
     "input_stale": "CONTROLLER LOST · HOLDING",
-    "lease-busy": "Another skill has control"
+    "lease-busy": "Another skill has control",
+    "lease-revoked": "Skill stopped"
   },
   "stale_after_ms": 2000,
   "tap": "open_mode_sheet",

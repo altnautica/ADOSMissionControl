@@ -144,7 +144,7 @@ describe("keybindings slice", () => {
     const custom = s.createLoadout("Survey");
     s.setActiveLoadout(custom);
     s.renameLoadout(custom, "Survey A");
-    s.setLoadoutLayout(custom, { minimap: false });
+    s.setLoadoutLayout(custom, { density: "full" });
     s.setSlotKey(custom, 0, "ctrl+z");
     s.setSlotKey(DEFAULT_LOADOUT_ID, 1, "ctrl+y");
 
@@ -154,7 +154,7 @@ describe("keybindings slice", () => {
     const reset = after.loadouts[custom];
     expect(reset.slots.find((slot) => slot.index === 0)?.key).toBe("shift+a");
     expect(reset.name).toBe("Survey A");
-    expect(reset.layout.minimap).toBe(false);
+    expect(reset.layout.density).toBe("full");
     expect(after.activeLoadoutId).toBe(custom);
     // The Default preset the editor was not showing is untouched.
     expect(

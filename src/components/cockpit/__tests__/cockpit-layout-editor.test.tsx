@@ -82,12 +82,6 @@ describe("CockpitLayoutEditor", () => {
     clearRegistry();
   });
 
-  it("renders the chrome-card toggles", () => {
-    render(wrap(<CockpitLayoutEditor />));
-    expect(screen.getByText("Cockpit layout")).toBeTruthy();
-    expect(screen.getByText("Minimap")).toBeTruthy();
-  });
-
   it("lists only arrangeable widgets with a zone label", () => {
     render(wrap(<CockpitLayoutEditor />));
     expect(screen.getByText("Cockpit widgets")).toBeTruthy();
@@ -120,51 +114,5 @@ describe("CockpitLayoutEditor", () => {
         "test.chip"
       ]?.zone,
     ).toBe("bottom-right");
-  });
-
-  it("hides a built-in widget bound to a chrome flag through that flag", () => {
-    for (const widget of BUILTIN_WIDGETS) {
-      useCockpitWidgetRegistry.getState().register(widget);
-    }
-    const radar = BUILTIN_WIDGETS.find((w) => w.layoutKey === "proximityRadar");
-    expect(radar).toBeDefined();
-    render(wrap(<CockpitLayoutEditor />));
-    fireEvent.click(screen.getByRole("switch", { name: `Hide ${radar!.title}` }));
-    const layout =
-      useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].layout;
-    expect(layout.proximityRadar).toBe(false);
-    expect(
-      isCockpitWidgetVisible(radar!, { ...layout, density: "full" }),
-    ).toBe(false);
-    expect(
-      screen.getByRole("switch", { name: `Show ${radar!.title}` }),
-    ).toBeTruthy();
-  });
-
-  it("says 'hidden at this density' for a card that is on but thinned out", () => {
-    for (const widget of BUILTIN_WIDGETS) {
-      useCockpitWidgetRegistry.getState().register(widget);
-    }
-    const strip = BUILTIN_WIDGETS.find((w) => w.layoutKey === "telemetryStrip");
-    expect(strip?.minDensity).toBe("full");
-    const { setLoadoutLayout } = useSettingsStore.getState();
-    setLoadoutLayout(DEFAULT_LOADOUT_ID, { telemetryStrip: true, density: "standard" });
-    render(wrap(<CockpitLayoutEditor />));
-
-    // The chrome card and the widget row both stay "on" (the toggle is not
-    // touched by density) but neither claims the strip is showing.
-    const card = screen.getByRole("switch", {
-      name: "Telemetry strip, Hidden at this density",
-    });
-    expect(card.getAttribute("aria-checked")).toBe("true");
-    const row = screen.getByRole("switch", { name: `Hide ${strip!.title}` });
-    expect(row.textContent).toContain("Hidden at this density");
-    expect(row.textContent).not.toContain("On");
-
-    // At full density the same toggle reads On again.
-    cleanup();
-    setLoadoutLayout(DEFAULT_LOADOUT_ID, { density: "full" });
-    render(wrap(<CockpitLayoutEditor />));
-    expect(screen.getByRole("switch", { name: "Telemetry strip, On" })).toBeTruthy();
   });
 });

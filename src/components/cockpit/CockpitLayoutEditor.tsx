@@ -1,23 +1,12 @@
 /**
- * The cockpit layout section of the Skill Bar editor. Two parts:
+ * The cockpit layout section of the Skill Bar editor: for each widget the
+ * registry marks arrangeable (the chips + any plugin cockpit widget), a zone
+ * picker + a show/hide toggle, so the operator can place it in any corner or
+ * hide it. Both persist on the active loadout.
  *
- *   1. chrome cards — a set of toggle switches that show or hide each optional
- *      chrome card of the immersive cockpit (top bar, minimap PiP, telemetry
- *      strip, proximity radar);
- *   2. arrangeable widgets — for each widget the registry marks arrangeable
- *      (the chips + any plugin cockpit widget), a zone picker + a show/hide
- *      toggle, so the operator can place it in any corner or hide it.
- *
- * Both persist on the active loadout, so a loadout carries its bindings, its
- * chrome presentation, AND where its arrangeable widgets sit.
- *
- * The Skill Bar is deliberately absent — it is the action surface and is never
- * hideable.
- *
- * Accessible: each chrome row is a labelled switch button (role="switch",
- * aria-checked), reachable and toggleable by keyboard, with a non-colour state
- * cue (the knob position + an On/Off text label). Each widget row pairs a
- * labelled zone `<Select>` with the same switch pattern.
+ * Accessible: each widget row pairs a labelled zone `<Select>` with a labelled
+ * switch button (role="switch", aria-checked), reachable and toggleable by
+ * keyboard, with a non-colour state cue (the knob position + an On/Off label).
  *
  * A toggle only shows or hides; density is separate. A card that is on but
  * thinned out by the active density says "Hidden at this density" in place
@@ -48,22 +37,6 @@ import {
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-/** A boolean chrome flag on the cockpit layout (the toggleable cards). */
-type CockpitChromeFlag = keyof Pick<
-  CockpitLayout,
-  "topBar" | "minimap" | "telemetryStrip" | "proximityRadar"
->;
-
-/** The toggleable cards, in display order, with their i18n label keys. */
-const LAYOUT_CARDS: ReadonlyArray<{
-  key: CockpitChromeFlag;
-  labelKey: string;
-}> = [
-  { key: "topBar", labelKey: "layoutTopBar" },
-  { key: "minimap", labelKey: "layoutMinimap" },
-  { key: "telemetryStrip", labelKey: "layoutTelemetryStrip" },
-  { key: "proximityRadar", labelKey: "layoutProximityRadar" },
-];
 
 /** Each zone's i18n label key. */
 const ZONE_LABEL_KEY: Record<CockpitZone, string> = {
@@ -152,17 +125,13 @@ export function CockpitLayoutEditor() {
 
   const loadouts = useSettingsStore((s) => s.loadouts);
   const activeLoadoutId = useSettingsStore((s) => s.activeLoadoutId);
-  const setLoadoutLayout = useSettingsStore((s) => s.setLoadoutLayout);
   const setLoadoutWidget = useSettingsStore((s) => s.setLoadoutWidget);
 
-  // The registered widgets: the arrangeable ones get a row, and a chrome card
-  // bound to a widget reads that widget's density floor.
+  // The registered widgets: the arrangeable ones get a row.
   const items = useCockpitWidgetRegistry((s) => s.items);
-  const { arrangeable, byLayoutKey } = useMemo(() => {
+  const arrangeable = useMemo(() => {
     const all = items.size ? useCockpitWidgetRegistry.getState().resolve() : [];
-    const byLayoutKey = new Map<CockpitChromeFlag, CockpitWidget>();
-    for (const w of all) if (w.layoutKey) byLayoutKey.set(w.layoutKey, w);
-    return { arrangeable: all.filter((w) => w.arrangeable === true), byLayoutKey };
+    return all.filter((w) => w.arrangeable === true);
   }, [items]);
 
   const loadout = loadouts[activeLoadoutId] ?? loadouts[DEFAULT_LOADOUT_ID];
@@ -180,45 +149,6 @@ export function CockpitLayoutEditor() {
 
   return (
     <>
-      <section
-        className="rounded-xl border border-border-default bg-bg-secondary p-2.5"
-        aria-label={t("layoutSectionLabel")}
-      >
-        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-          {t("layoutSectionTitle")}
-        </h4>
-        <p className="mb-2 text-[11px] text-text-tertiary">{t("layoutHint")}</p>
-
-        <div
-          role="group"
-          aria-label={t("layoutSectionLabel")}
-          className="grid grid-cols-2 gap-1.5"
-        >
-          {LAYOUT_CARDS.map(({ key, labelKey }) => {
-            const on = layout[key];
-            const widget = byLayoutKey.get(key);
-            const densityHidden =
-              on && widget !== undefined && !widgetMeetsDensity(widget, layout.density);
-            const label = t(labelKey);
-            return (
-              <SwitchButton
-                key={key}
-                on={on}
-                densityHidden={densityHidden}
-                onClick={() => setLoadoutLayout(loadout.id, { [key]: !on })}
-                ariaLabel={t("layoutToggle", {
-                  card: label,
-                  state: stateLabel(on, densityHidden),
-                })}
-                stateLabel={stateLabel(on, densityHidden)}
-              >
-                {label}
-              </SwitchButton>
-            );
-          })}
-        </div>
-      </section>
-
       {arrangeable.length > 0 && (
         <section
           className="rounded-xl border border-border-default bg-bg-secondary p-2.5"
@@ -235,9 +165,6 @@ export function CockpitLayoutEditor() {
             {arrangeable.map((w) => {
               const name = w.title ?? w.id;
               const zone = effectiveWidgetZone(w, layout);
-              // A widget bound to a chrome flag shows by that flag alone, so
-              // its switch writes the flag.
-              const layoutKey = w.layoutKey;
               const on = isCockpitWidgetEnabled(w, layout);
               const densityHidden = on && !widgetMeetsDensity(w, layout.density);
               return (
@@ -258,9 +185,7 @@ export function CockpitLayoutEditor() {
                     on={on}
                     densityHidden={densityHidden}
                     onClick={() =>
-                      layoutKey
-                        ? setLoadoutLayout(loadout.id, { [layoutKey]: !on })
-                        : setLoadoutWidget(loadout.id, w.id, { hidden: on })
+                      setLoadoutWidget(loadout.id, w.id, { hidden: on })
                     }
                     ariaLabel={
                       on

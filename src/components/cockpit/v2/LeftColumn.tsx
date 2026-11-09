@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * The left column, vertically centred: Take off / Land, Return home
- * and Pause, 56 px targets. Each fires its built-in through the shared skill
+ * The left column, vertically centred in its grid zone: Take off / Land,
+ * Return home and Pause, 56 px targets (48 px at compact). In portrait it is
+ * a row under the video. Each fires its built-in through the shared skill
  * pipeline, so the spec's confirm tier and gates apply.
  *
  * @module cockpit/v2/LeftColumn
@@ -17,6 +18,8 @@ import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { pilotStreamOpen, usePilotLinkStore } from "@/lib/input/pilot-stream";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { useDroneStore } from "@/stores/drone-store";
+import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
+import { rectStyle } from "@/components/cockpit/flight/flight-grid";
 
 export function LeftColumn({ droneId }: { droneId: string }) {
   const armState = useDroneStore((s) => s.armState);
@@ -31,15 +34,21 @@ export function LeftColumn({ droneId }: { droneId: string }) {
   const [launchOpen, setLaunchOpen] = useState(false);
   const sequence = pilot?.sequence ?? null;
   const sequenceRunning = sequence !== null && sequence.step !== "done";
+  const grid = useFlightGrid();
+  const rect = grid.zones.left_column;
+  if (!rect) return null;
+  const row = grid.cls === "portrait";
 
-  const btn =
-    "glass-pill flex h-14 w-14 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-text-primary";
+  const btn = "fs-btn fs-col-target";
 
   return (
     <div
-      className="pointer-events-auto absolute left-3 top-1/2 z-30 flex -translate-y-1/2 flex-col gap-3"
+      className={`fs-col fs-col-left${row ? " fs-col-row" : ""}`}
+      data-zone="left_column"
       data-testid="left-column"
+      style={{ ...rectStyle(rect), "--fs-target": `${grid.target}px` } as React.CSSProperties}
     >
+      <div className="fs-col-stack">
       {onGround ? (
         <button
           type="button"
@@ -65,11 +74,12 @@ export function LeftColumn({ droneId }: { droneId: string }) {
         <Pause size={18} aria-hidden />
         Pause
       </button>
+      </div>
       {launchOpen && viaPilot && (
         <LaunchSheet droneId={droneId} pilot={pilot} onClose={() => setLaunchOpen(false)} />
       )}
       {!launchOpen && sequenceRunning && (
-        <div className="glass-panel absolute left-20 top-0 p-2">
+        <div className="fs-sheet fs-launch-steps">
           <LaunchStepStrip sequence={sequence} />
         </div>
       )}

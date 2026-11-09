@@ -31,7 +31,7 @@ import { sendPilotAction } from "@/lib/input/pilot-stream";
 import { GimbalRateDriver } from "@/lib/cockpit/gimbal-rate";
 import { reticleControl, toggleReticle } from "@/lib/cockpit/designate-reticle";
 import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
-import { useCockpitLayersStore, vehicleLayers, LAYER_LEVELS } from "@/stores/cockpit-layers-store";
+import { useCockpitLayersStore } from "@/stores/cockpit-layers-store";
 import { effectiveBindings, useControlsStore } from "@/stores/controls-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
@@ -41,14 +41,16 @@ import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { startRecording, stopRecording, captureScreenshot } from "@/lib/video/webrtc-client";
 import { useVideoStore } from "@/stores/video-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { useViewZoomStore } from "@/components/cockpit/flight/view-zoom-store";
 
 /** Engine tick for hold timing between button changes. */
 const TICK_MS = 50;
 const PROFILES = ["cine", "normal", "sport"] as const;
 const LOCKED: Record<string, true> = { pause: true, rth: true, rth_cancel: true, arm: true, kill: true };
 
-/** Fire the plugin camera skill whose manifest id is one of `ids`, if installed. */
-function firePluginSkill(droneId: string, ids: readonly string[]): boolean {
+/** Fire the first installed extension skill whose local id is in `ids`;
+ * false when none is installed. */
+export function firePluginSkill(droneId: string, ids: readonly string[]): boolean {
   for (const s of useSkillRegistry.getState().skills.values()) {
     if (s.source !== "plugin") continue;
     const local = s.id.slice(s.id.indexOf(":") + 1);
@@ -98,9 +100,7 @@ function runAction(droneId: string, b: Ds4Binding): void {
       break;
     case "layer_level_up":
     case "layer_level_down": {
-      const at = LAYER_LEVELS.indexOf(vehicleLayers(layers.byVehicle, droneId).level);
-      const step = b.action === "layer_level_up" ? -1 : 1;
-      layers.setLevel(droneId, LAYER_LEVELS[Math.min(LAYER_LEVELS.length - 1, Math.max(0, at + step))]);
+      layers.stepLevel(droneId, b.action === "layer_level_up" ? -1 : 1);
       break;
     }
     case "view_next":
@@ -135,10 +135,10 @@ function runAction(droneId: string, b: Ds4Binding): void {
       }
       break;
     case "zoom_in":
-      firePluginSkill(droneId, ["zoom-in"]);
+      if (!firePluginSkill(droneId, ["zoom-in"])) useViewZoomStore.getState().step(droneId, 1);
       break;
     case "zoom_out":
-      firePluginSkill(droneId, ["zoom-out"]);
+      if (!firePluginSkill(droneId, ["zoom-out"])) useViewZoomStore.getState().step(droneId, -1);
       break;
     case "gimbal_recenter":
       firePluginSkill(droneId, ["center", "recenter", "gimbal-recenter"]);

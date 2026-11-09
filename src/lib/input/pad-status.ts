@@ -40,3 +40,17 @@ export function patchPadStatus(p: Partial<PadStatus>): void {
     }
   }
 }
+
+/**
+ * The pad's product name without the browser's id decorations: Chromium
+ * appends "(STANDARD GAMEPAD Vendor: 054c Product: 09cc)" or "(Vendor: …
+ * Product: …)", Firefox prefixes "054c-09cc-". Null when nothing is left.
+ */
+export function shortPadName(id: string | null): string | null {
+  if (!id) return null;
+  const name = id
+    .replace(/\s*\((?:STANDARD GAMEPAD\s*)?(?:Vendor:[^)]*)?\)\s*$/i, "")
+    .replace(/^[0-9a-f]{1,4}-[0-9a-f]{1,4}-/i, "")
+    .trim();
+  return name || null;
+}

@@ -16,10 +16,6 @@ import { useCockpitWidgetRegistry } from "@/lib/cockpit/widget-registry";
 import type { CockpitLayout } from "@/stores/settings/keybindings-slice";
 
 const LAYOUT: CockpitLayout = {
-  topBar: true,
-  minimap: true,
-  telemetryStrip: false,
-  proximityRadar: true,
   density: "standard",
 };
 

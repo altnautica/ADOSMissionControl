@@ -134,14 +134,13 @@ describe("CockpitView", () => {
     useUiStore.setState({ immersiveMode: false });
   });
 
-  it("renders the video shell, instrument HUD, and minimap PiP", () => {
+  it("renders the video shell, the HUD layer and the minimap", () => {
     const { container, getByTestId } = renderCockpit();
     // L0 video shell.
     expect(getByTestId("video-canvas")).toBeInTheDocument();
-    // Instrument HUD: the glass attitude indicator (a registered cockpit widget,
-    // an SVG `.hud`) replaced the old OSD canvas.
-    expect(container.querySelector(".hud")).not.toBeNull();
-    // Minimap PiP card in the artifact `.mmap` glass frame (OverviewMap loads via
+    // The HUD layer on the measured grid's centre zone.
+    expect(getByTestId("hud-layer")).toBeInTheDocument();
+    // Minimap card in the `.mmap` glass frame (OverviewMap loads via
     // next/dynamic; the wrapper card is what this structural assertion checks).
     expect(container.querySelector(".mmap")).not.toBeNull();
   });
@@ -163,20 +162,20 @@ describe("CockpitView", () => {
     expect(getByTestId("flight-state-chip")).toBeInTheDocument();
   });
 
-  it("enters immersive mode from the cockpit control (does not self-mount bridges)", () => {
-    const { getByRole, queryByTestId } = renderCockpit();
+  it("enters immersive mode from the flight menu (does not self-mount bridges)", () => {
+    const { getByTestId, queryByTestId } = renderCockpit();
     // The embedded cockpit relies on CommandShell for the bridges — it must not
     // re-mount them itself.
     expect(queryByTestId("bridge-agent-mavlink")).toBeNull();
-    const btn = getByRole("button", { name: messages.cockpit.immersive });
-    fireEvent.click(btn);
+    fireEvent.click(getByTestId("fs-menu-button"));
+    fireEvent.click(getByTestId("fs-immersive"));
     expect(useUiStore.getState().immersiveMode).toBe(true);
   });
 
-  it("triggers a flight recording from the REC control", () => {
-    const { getByRole } = renderCockpit();
-    const rec = getByRole("button", { name: messages.cockpit.rec });
-    fireEvent.click(rec);
+  it("starts a flight recording from the shutter in video mode", () => {
+    const { getByRole, getByTestId } = renderCockpit();
+    fireEvent.click(getByRole("button", { name: messages.flightScreen.camera.video }));
+    fireEvent.click(getByTestId("fs-shutter"));
     expect(recToggle).toHaveBeenCalledTimes(1);
   });
 

@@ -40,7 +40,7 @@ import {
   type LeasedLayer,
   type ViewLeaseHandle,
 } from "@/lib/cockpit/layers/view-lease";
-import { useCockpitLayersStore, vehicleLayers } from "@/stores/cockpit-layers-store";
+import { useCockpitLayersStore, useVehicleLayers } from "@/stores/cockpit-layers-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 /** The draw cap on a kiosk / TV, whose GPU also decodes the video. */
@@ -83,7 +83,7 @@ export const LayerStack = memo(function LayerStack({ droneId, cameraId, view }: 
     () => false,
   );
 
-  const vl = useCockpitLayersStore((s) => vehicleLayers(s.byVehicle, droneId));
+  const vl = useVehicleLayers(droneId);
   const layers = useMemo(() => effectiveLayers(vl.level, vl.flips, view), [vl.level, vl.flips, view]);
 
   const droneRef = useRef(droneId);

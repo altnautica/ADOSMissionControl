@@ -29,7 +29,10 @@
 import type { ArCamera, AvoidState, MissionState } from "./cockpit-frames";
 import { DrawOpBuffer, LAYER_COLORS, type Rect } from "./layer-layout";
 
-export type LayerLevel = "full" | "route" | "off";
+/** The layer levels (`layers.json` `levels.order`), most to least drawn.
+ *  `instruments` draws the route like `full`; it adds only the flight
+ *  instruments, which this layout does not draw. */
+export type LayerLevel = "instruments" | "full" | "route" | "off";
 
 export interface ArLayoutOptions {
   level: LayerLevel;
@@ -61,7 +64,7 @@ function fmtDist(m: number): string {
 
 export function layoutAr(cam: ArCamera, rect: Rect, opts: ArLayoutOptions, out: DrawOpBuffer): void {
   if (opts.level === "off") return;
-  const full = opts.level === "full";
+  const full = opts.level === "full" || opts.level === "instruments";
   const ms = opts.mission?.state ?? null;
   const routeHidden = ms === "none" || ms === "complete" || ms === "returning" || (ms === "loaded" && !opts.showLoaded);
   const paused = ms === "paused";

@@ -1,8 +1,9 @@
 {
   "v": 1,
-  "$description": "Video data layers. All layers draw into one canvas per video in ascending z; the HUD chrome sits above every layer. Flags and the level persist per surface and per vehicle.",
+  "$description": "Video data layers. All layers draw into one canvas per video in ascending z; the HUD chrome sits above every layer. Flags and the level persist per surface and per vehicle. The centre stays a clean camera view: centre_marks draw at every level, the flight instruments only at the instruments level.",
   "layers": [
-    { "id": "hud", "label": "HUD", "default": true, "source": "telemetry", "lease": false, "z": 100, "kind": null, "groups": null },
+    { "id": "centre_marks", "label": "Centre marks", "default": true, "source": "telemetry", "lease": false, "z": 100, "kind": null, "groups": null, "parts": ["reticle", "heading_mark", "horizon_mark"] },
+    { "id": "instruments", "label": "Instruments", "default": true, "source": "telemetry", "lease": false, "z": 101, "kind": null, "groups": null, "parts": ["pitch_ladder", "roll_arc", "flight_path_marker", "speed_tape", "altitude_tape", "vertical_speed_bar", "heading_tape"] },
     { "id": "depth", "label": "Depth", "default": false, "source": "depth", "lease": true, "z": 10, "kind": "depth", "groups": null },
     { "id": "surfaces", "label": "Surfaces", "default": false, "source": "surfaces", "lease": true, "z": 20, "kind": "surfaces", "groups": null },
     { "id": "obstacles", "label": "Obstacles", "default": true, "source": "obstacles", "lease": false, "z": 30, "kind": "obstacles", "groups": null },
@@ -18,26 +19,33 @@
     "z": 70
   },
   "levels": {
-    "order": ["full", "route", "off"],
-    "full": {
+    "order": ["instruments", "full", "route", "off"],
+    "instruments": {
       "layers": "every layer whose default is true, plugin layers included",
       "ar_route_roles": { "wp": ["next", "after", "other"], "leg": ["active", "next", "future"] }
     },
+    "full": {
+      "layers": "every layer whose default is true, plugin layers included, except a layer listed in only_at_levels for other levels",
+      "ar_route_roles": { "wp": ["next", "after", "other"], "leg": ["active", "next", "future"] }
+    },
     "route": {
-      "layers": ["hud", "targets", "ar_route", "ar_motion", "obstacles"],
+      "layers": ["centre_marks", "targets", "ar_route", "ar_motion", "obstacles"],
       "ar_route_roles": { "wp": ["next", "after"], "leg": ["active", "next"] },
       "always": ["home", "edge"]
     },
     "off": {
-      "layers": ["hud"]
+      "layers": ["centre_marks"]
     },
+    "only_at_levels": { "instruments": ["instruments"] },
+    "only_at_levels_note": "layer id -> the levels it draws at; such a layer draws only at those levels, and its flag still turns it off there",
     "lease_layers_independent": true,
     "note": "depth and surfaces are toggled on their own; the level never turns them on or off"
   },
   "level_controls": {
     "keyboard": "o",
     "gamepad": ["dpad_up", "dpad_down"],
-    "top_bar_button": true
+    "top_bar_button": true,
+    "cycle": "every control steps through levels.order and wraps, so all four levels are reachable"
   },
   "staleness": {
     "dim_after_ms": 500,

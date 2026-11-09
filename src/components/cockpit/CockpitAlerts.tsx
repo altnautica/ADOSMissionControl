@@ -39,8 +39,9 @@ import { useHudCopy } from "@/hooks/use-hud-copy";
 import { reacquiredToast } from "@/lib/vision/target-format";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
-/** MAV_SEVERITY_CRITICAL; lower values are more severe. */
+/** MAV_SEVERITY_CRITICAL and MAV_SEVERITY_WARNING; lower values are more severe. */
 const MAV_SEVERITY_CRITICAL = 2;
+const MAV_SEVERITY_WARNING = 4;
 
 const LEVEL_STYLE: Record<CockpitAlertLevel, { color: string; Icon: typeof Info }> = {
   critical: { color: "var(--hud-crit)", Icon: OctagonAlert },
@@ -54,10 +55,11 @@ const LEVEL_CLASS: Record<CockpitAlertLevel, string> = {
   advisory: "cockpit-alert",
 };
 
-/** The latest critical and pre-arm STATUSTEXT lines from this drone's FC. */
+/** The latest critical, warning and pre-arm STATUSTEXT lines from this drone's FC. */
 function useFcTexts(droneId: string) {
   const protocol = useDroneManager((s) => s.drones.get(droneId)?.protocol);
   const [critical, setCritical] = useState<ReceivedText | null>(null);
+  const [warning, setWarning] = useState<ReceivedText | null>(null);
   const [prearm, setPrearm] = useState<ReceivedText | null>(null);
   useEffect(() => {
     if (!protocol) return;
@@ -66,10 +68,12 @@ function useFcTexts(droneId: string) {
       if (/^PreArm:/i.test(text)) setPrearm({ text: text.replace(/^PreArm:\s*/i, ""), at });
       else if (severity <= MAV_SEVERITY_CRITICAL || isFailsafeAnnouncement(severity, text)) {
         setCritical({ text, at });
+      } else if (severity <= MAV_SEVERITY_WARNING) {
+        setWarning({ text, at });
       }
     });
   }, [protocol]);
-  return { critical, prearm };
+  return { critical, warning, prearm };
 }
 
 /** How long the re-acquired advisory stays up. */
@@ -95,7 +99,15 @@ function useReacquiredAdvisory(droneId: string): string | null {
   return age < REACQUIRED_ADVISORY_MS ? reacquiredToast(event.data, copy) : null;
 }
 
-export function CockpitAlerts({ droneId }: { droneId: string }) {
+/**
+ * Every live cockpit alert for this drone, most severe first, with its
+ * display text. The critical ones are also drawn as banners under the top
+ * bar; the status pill counts and lists all of them.
+ */
+export function useCockpitAlertList(droneId: string): {
+  alerts: CockpitAlert[];
+  label: (a: CockpitAlert) => string;
+} {
   const t = useTranslations("cockpit.alerts");
   useThrottledTelemetryVersion();
   useClockTick();
@@ -107,8 +119,7 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
   const systemStatus = useDroneStore((s) => s.systemStatus);
   const flightMode = useDroneStore((s) => s.flightMode);
   const videoFrozen = useVideoStore((s) => s.isStreaming && s.degradedReason !== null);
-  const { critical, prearm } = useFcTexts(droneId);
-  const reacquired = useReacquiredAdvisory(droneId);
+  const { critical, warning, prearm } = useFcTexts(droneId);
 
   const buffers = useTelemetryStore.getState();
   const battery = buffers.battery.latest();
@@ -131,16 +142,29 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
         vibration: buffers.vibration.latest(),
         videoFrozen,
         criticalText: critical,
+        warningText: warning,
         prearmText: prearm,
       })
     : [];
 
   const label = (a: CockpitAlert): string => {
-    if (a.id === "statusText") return a.detail ?? "";
+    if (a.id === "statusText" || a.id === "statusTextWarn") return a.detail ?? "";
     if (a.id === "prearm") return t("prearm", { reason: a.detail ?? "" });
     if (a.id === "fcState") return t(a.detail ?? "fcCritical");
     return t(a.id);
   };
+  return { alerts, label };
+}
+
+/**
+ * Critical alerts as banners under the top bar, plus the short-lived
+ * re-acquired advisory. Warnings and advisories live in the status pill's
+ * list, so the centre stays clear unless something is critical.
+ */
+export function CockpitAlerts({ droneId }: { droneId: string }) {
+  const t = useTranslations("cockpit.alerts");
+  const { alerts, label } = useCockpitAlertList(droneId);
+  const reacquired = useReacquiredAdvisory(droneId);
 
   const render = (list: CockpitAlert[]) =>
     list.map((a) => {
@@ -167,14 +191,13 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
   return (
     <div
       className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5"
-      style={{ top: 72, zIndex: 45 }}
+      style={{ top: "calc(var(--fs-top-y, 60px))", zIndex: 45 }}
       data-testid="cockpit-alerts"
     >
       <div role="alert" aria-live="assertive" className="flex flex-col items-center gap-1.5">
         {render(alerts.filter((a) => a.level === "critical"))}
       </div>
       <div aria-live="polite" className="flex flex-col items-center gap-1.5">
-        {render(alerts.filter((a) => a.level !== "critical"))}
         {reacquired && (
           <div
             data-testid="cockpit-alert-reacquired"

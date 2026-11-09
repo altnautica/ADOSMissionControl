@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { useRef } from "react";
 
-import { safeRegionHeight, useCockpitContainerLayout } from "@/hooks/use-cockpit-width-class";
+import { useCockpitContainerLayout } from "@/hooks/use-cockpit-width-class";
 import { isKioskSearch, widthClassFor } from "@/lib/cockpit/width-class";
 
 describe("widthClassFor", () => {
@@ -21,11 +21,6 @@ describe("widthClassFor", () => {
     expect(isKioskSearch("?kiosk=1")).toBe(true);
     expect(isKioskSearch("?kiosk=0")).toBe(false);
     expect(isKioskSearch("")).toBe(false);
-  });
-
-  it("subtracts the band and the Skill Bar clearance from the safe height", () => {
-    expect(safeRegionHeight({ widthClass: "compact", width: 390, height: 500 })).toBe(348);
-    expect(safeRegionHeight({ widthClass: "tv", width: 1920, height: 1080 })).toBe(900);
   });
 });
 

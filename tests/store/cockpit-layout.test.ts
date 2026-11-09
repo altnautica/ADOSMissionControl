@@ -52,11 +52,7 @@ describe("cockpit layout slice", () => {
   it("ships the default cockpit layout on the default loadout", () => {
     const loadout = useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID];
     expect(loadout.layout).toEqual(DEFAULT_COCKPIT_LAYOUT);
-    // minimap + top bar + radar on, telemetry strip off by default.
-    expect(loadout.layout.topBar).toBe(true);
-    expect(loadout.layout.minimap).toBe(true);
-    expect(loadout.layout.proximityRadar).toBe(true);
-    expect(loadout.layout.telemetryStrip).toBe(false);
+    expect(loadout.layout).toEqual({ density: "standard" });
     // Density defaults to standard and is carried with the preset.
     expect(loadout.layout.density).toBe("standard");
   });
@@ -68,9 +64,7 @@ describe("cockpit layout slice", () => {
     const layout =
       useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].layout;
     expect(layout.density).toBe("minimal");
-    // A density write leaves the chrome flags untouched.
-    expect(layout.topBar).toBe(true);
-    expect(layout.minimap).toBe(true);
+    expect(layout.widgets).toBeUndefined();
   });
 
   it("createLoadout carries the source loadout's density", () => {
@@ -88,51 +82,39 @@ describe("cockpit layout slice", () => {
     const b = cloneDefaultCockpitLayout();
     expect(a).toEqual(DEFAULT_COCKPIT_LAYOUT);
     expect(a).not.toBe(DEFAULT_COCKPIT_LAYOUT);
-    a.minimap = false;
-    expect(b.minimap).toBe(true);
-    expect(DEFAULT_COCKPIT_LAYOUT.minimap).toBe(true);
+    a.density = "full";
+    expect(b.density).toBe("standard");
+    expect(DEFAULT_COCKPIT_LAYOUT.density).toBe("standard");
   });
 
   it("setLoadoutLayout merges a partial onto the loadout layout", () => {
     const store = useSettingsStore.getState();
-    store.setLoadoutLayout(DEFAULT_LOADOUT_ID, { minimap: false });
+    store.setLoadoutLayout(DEFAULT_LOADOUT_ID, { pipPosition: { x: 5, y: 6 } });
     const layout =
       useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].layout;
-    expect(layout.minimap).toBe(false);
-    // Untouched flags are preserved.
-    expect(layout.topBar).toBe(true);
-    expect(layout.proximityRadar).toBe(true);
-    expect(layout.telemetryStrip).toBe(false);
-  });
-
-  it("setLoadoutLayout can toggle the telemetry strip on", () => {
-    useSettingsStore
-      .getState()
-      .setLoadoutLayout(DEFAULT_LOADOUT_ID, { telemetryStrip: true });
-    expect(
-      useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].layout
-        .telemetryStrip,
-    ).toBe(true);
+    expect(layout.pipPosition).toEqual({ x: 5, y: 6 });
+    // Untouched fields are preserved.
+    expect(layout.density).toBe("standard");
   });
 
   it("setLoadoutLayout is a no-op for an unknown loadout id", () => {
     const before = useSettingsStore.getState().loadouts;
-    useSettingsStore.getState().setLoadoutLayout("nope", { minimap: false });
+    useSettingsStore.getState().setLoadoutLayout("nope", { density: "full" });
     expect(useSettingsStore.getState().loadouts).toEqual(before);
   });
 
   it("createLoadout carries the source loadout's layout", () => {
     const store = useSettingsStore.getState();
     store.setLoadoutLayout(DEFAULT_LOADOUT_ID, {
-      minimap: false,
-      telemetryStrip: true,
+      density: "minimal",
+      pipPosition: { x: 3, y: 4 },
     });
     const id = useSettingsStore
       .getState()
       .createLoadout("Custom", DEFAULT_LOADOUT_ID);
     const created = useSettingsStore.getState().loadouts[id];
-    expect(created.layout.minimap).toBe(false);
-    expect(created.layout.telemetryStrip).toBe(true);
+    expect(created.layout.density).toBe("minimal");
+    expect(created.layout.pipPosition).toEqual({ x: 3, y: 4 });
     // Distinct object reference from the source (mutation-safe).
     expect(created.layout).not.toBe(
       useSettingsStore.getState().loadouts[DEFAULT_LOADOUT_ID].layout,
@@ -166,9 +148,8 @@ describe("setLoadoutWidget (per-widget placement)", () => {
     expect(layout.widgets?.["builtin.perception-health"]).toEqual({
       zone: "bottom-right",
     });
-    // The chrome flags are untouched.
-    expect(layout.topBar).toBe(true);
-    expect(layout.minimap).toBe(true);
+    // The density is untouched.
+    expect(layout.density).toBe("standard");
   });
 
   it("merges partial writes for the same widget (zone then hidden)", () => {
@@ -243,11 +224,8 @@ describe("v37 layout migration", () => {
       name: "Default",
       slots: [],
       layout: {
-        topBar: false,
-        minimap: false,
-        telemetryStrip: true,
-        proximityRadar: false,
-        density: "standard",
+        density: "full",
+        pipPosition: { x: 1, y: 2 },
       },
       seededSkillIds: [],
     };
@@ -256,8 +234,10 @@ describe("v37 layout migration", () => {
       36,
     ) as unknown as Record<string, unknown>;
     const loadouts = result.loadouts as Record<string, Loadout>;
-    expect(loadouts[DEFAULT_LOADOUT_ID].layout.telemetryStrip).toBe(true);
-    expect(loadouts[DEFAULT_LOADOUT_ID].layout.topBar).toBe(false);
+    expect(loadouts[DEFAULT_LOADOUT_ID].layout).toEqual({
+      density: "full",
+      pipPosition: { x: 1, y: 2 },
+    });
   });
 
   it("v49 records slotted plugin skills as already seeded", () => {
@@ -291,10 +271,7 @@ describe("v37 layout migration", () => {
 describe("v45 density migration", () => {
   it("backfills the default density onto a pre-v45 loadout layout lacking it", () => {
     const legacyLayout = {
-      topBar: true,
-      minimap: false,
-      telemetryStrip: true,
-      proximityRadar: true,
+      pipPosition: { x: 4, y: 8 },
       // no `density` field (v44 shape)
     };
     const result = migrateSettings(
@@ -313,9 +290,8 @@ describe("v45 density migration", () => {
     const loadouts = result.loadouts as Record<string, Loadout>;
     const layout = loadouts[DEFAULT_LOADOUT_ID].layout;
     expect(layout.density).toBe("standard");
-    // Other chrome flags are preserved through the backfill.
-    expect(layout.minimap).toBe(false);
-    expect(layout.telemetryStrip).toBe(true);
+    // Other layout fields are preserved through the backfill.
+    expect(layout.pipPosition).toEqual({ x: 4, y: 8 });
   });
 
   it("preserves an already-set density through the v45 migration", () => {

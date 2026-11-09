@@ -190,14 +190,19 @@ describe("view lease", () => {
 });
 
 describe("level rules (cockpit spec layers.json)", () => {
-  it("Full draws every default layer, Route the route list, Off the HUD only", () => {
+  it("Instruments draws every default layer, Full all but the instruments, Route the route list, Off the centre marks", () => {
+    expect([...effectiveLayers("instruments", {}, "pilot")].sort()).toEqual(
+      ["ar_motion", "ar_route", "centre_marks", "instruments", "obstacles", "targets"].sort(),
+    );
     expect([...effectiveLayers("full", {}, "pilot")].sort()).toEqual(
-      ["ar_motion", "ar_route", "hud", "obstacles", "targets"].sort(),
+      ["ar_motion", "ar_route", "centre_marks", "obstacles", "targets"].sort(),
     );
     expect([...effectiveLayers("route", {}, "pilot")].sort()).toEqual(
-      ["ar_motion", "ar_route", "hud", "obstacles", "targets"].sort(),
+      ["ar_motion", "ar_route", "centre_marks", "obstacles", "targets"].sort(),
     );
-    expect([...effectiveLayers("off", {}, "pilot")]).toEqual(["hud"]);
+    expect([...effectiveLayers("off", {}, "pilot")]).toEqual(["centre_marks"]);
+    // The instruments never draw outside Instruments, flip or not.
+    expect(effectiveLayers("full", { instruments: true }, "pilot").has("instruments")).toBe(false);
   });
 
   it("leased layers ignore the level; a flip or the vision view turns them on", () => {

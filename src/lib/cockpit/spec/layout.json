@@ -25,8 +25,17 @@
   "zones": [
     {
       "id": "top_bar",
-      "items": ["flight_state_chip", "status_pill", "battery", "link", "nav_source", "controller", "layer_button", "settings"],
-      "battery": { "show": ["percent", "time_left", "rtl_reserve_marker"] }
+      "items": ["flight_state_chip", "status_pill", "battery", "link", "nav_source", "controller", "layer_button", "settings", "stop"],
+      "battery": { "show": ["percent", "time_left", "rtl_reserve_marker"] },
+      "settings": "the Menu button: navigation to every other screen and the settings live behind it",
+      "stop": { "action": "kill", "visible": "fully inside the viewport at every class, never scrolled or clipped" },
+      "overflow": {
+        "scroll": false,
+        "rows": 1,
+        "to_menu_order": ["controller", "nav_source", "link_detail"],
+        "to_menu_note": "when the row runs out of room, items move into the Menu lowest priority first in this order; link_detail is the link's text, its icon stays",
+        "never_move": ["flight_state_chip", "status_pill", "battery", "stop"]
+      }
     },
     {
       "id": "left_column",
@@ -41,7 +50,7 @@
     {
       "id": "bottom_left_card",
       "cards": ["map", "attitude_radar", "obstacle_radar"],
-      "switch": ["swipe", "l3"]
+      "switch": ["swipe", "dots"]
     },
     {
       "id": "bottom_row",
@@ -53,9 +62,26 @@
     },
     {
       "id": "center",
-      "items": ["hud", "layers"]
+      "items": ["centre_marks", "instruments", "layers"],
+      "clean": "a clean camera view: reticle, heading and horizon marks, AR route and detection boxes; the instruments draw only at the instruments level"
     }
   ],
+  "status_pill": {
+    "text": { "ok": "cockpit.status.ok", "one": "cockpit.status.one", "many": "cockpit.status.many", "top_alert": "the newest alert's text when exactly one alert is active" },
+    "severity": ["ok", "warning", "critical"],
+    "colors": { "ok": "chrome.severity_ok", "warning": "chrome.severity_warning", "critical": "chrome.severity_critical" },
+    "sources": ["pilot_readiness", "fc_prearm", "fc_status_text", "battery", "link", "nav_source", "storage"],
+    "fc_status_text_min_severity": "warning",
+    "fc_status_text_note": "MAVLink severity 4 (WARNING) or more severe (lower number)",
+    "new_alert": "flash",
+    "flash_until": "acknowledged",
+    "press": "open_alert_list",
+    "opening_list_acknowledges": true
+  },
+  "orientation_lock": { "android_flight_screen": "landscape" },
+  "orientation_lock_note": "browsers keep the portrait class; Home, Settings and Planner on Android still rotate",
+  "legacy_chrome": "none",
+  "legacy_chrome_rule": "the flight screen draws no status band, no telemetry strip, no navigation rail and no hint bar; controller button hints appear only inside sheets and menus while a gamepad is active",
   "classes": {
     "compact": {
       "orientation": "landscape",

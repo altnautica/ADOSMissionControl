@@ -47,20 +47,20 @@ export function FlightStateChip({
 
   return (
     <>
-      <div className="flex items-center gap-1.5" data-testid="flight-state-chip" data-chip={chip.id}>
+      <div className="fs-chip-wrap" data-testid="flight-state-chip" data-chip={chip.id}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className="glass-pill flex min-h-12 flex-col items-start justify-center px-3 py-1 text-left"
-          style={{ opacity: chip.dim ? 0.55 : 1, boxShadow: `inset 3px 0 0 ${chip.color}` }}
+          className="fs-chip"
+          style={{ opacity: chip.dim ? 0.55 : 1, "--chip-color": chip.color } as React.CSSProperties}
         >
-          <span className="text-xs font-bold tracking-wide" style={{ color: chip.color }}>
+          <span className="fs-chip-text" style={{ color: chip.color }}>
             {chip.text}
           </span>
           {chip.secondary.length > 0 && (
-            <span className="flex gap-2 text-[10px] font-semibold uppercase tracking-wide">
+            <span className="fs-chip-sub">
               {chip.secondary.map((s) => (
                 <span key={s.text} style={{ color: s.color }}>
                   {s.text}
@@ -72,7 +72,7 @@ export function FlightStateChip({
         {button && (
           <button
             type="button"
-            className="glass-pill min-h-12 px-3 text-xs font-semibold text-text-primary"
+            className="fs-btn fs-chip-action"
             onClick={() => void activate(button.skill, buildSkillContext(droneId))}
           >
             {button.label}
@@ -82,7 +82,7 @@ export function FlightStateChip({
           <Link
             href={AIRCRAFT_SETUP_HREF}
             data-testid="chip-setup-link"
-            className="glass-pill flex min-h-12 items-center px-3 text-xs font-semibold text-text-primary"
+            className="fs-btn fs-chip-action"
           >
             {specString("setup.wizard.entry.set_up_aircraft")}
           </Link>

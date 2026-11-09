@@ -27,6 +27,7 @@ vi.mock("@/lib/hud-readings", async (importOriginal) => {
 
 import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 import { HudLayer } from "@/components/cockpit/HudLayer";
+import { useCockpitLayersStore } from "@/stores/cockpit-layers-store";
 import { HUD_SUMMARY_PERIOD_MS } from "@/components/cockpit/hud/HudSummary";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 
@@ -71,7 +72,8 @@ describe("HudLayer frame cadence", () => {
 
   it("derives once per frame however many samples or instruments there are", () => {
     pushAttitude(1, Date.now() - 100);
-    renderWithIntl(<HudLayer />);
+    useCockpitLayersStore.getState().setLevel("hud-test", "instruments");
+    renderWithIntl(<HudLayer droneId="hud-test" />);
     // One derivation seeds the first paint for every instrument in the layer.
     expect(derive.calls).toBe(1);
 
@@ -89,7 +91,7 @@ describe("HudLayer frame cadence", () => {
   it("refreshes the screen-reader summary at most once a second", () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
     pushAttitude(10, Date.now());
-    renderWithIntl(<HudLayer />);
+    renderWithIntl(<HudLayer droneId="hud-test" />);
     const summary = screen.getByTestId("hud-summary");
     expect(summary.getAttribute("role")).toBe("status");
     expect(summary.getAttribute("aria-live")).toBe("polite");

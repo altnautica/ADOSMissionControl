@@ -18,12 +18,19 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 
 import { AttitudeIndicator } from "@/components/cockpit/AttitudeIndicator";
+import { useCockpitLayersStore } from "@/stores/cockpit-layers-store";
 import { HudLayer } from "@/components/cockpit/HudLayer";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 
+
+/** The full HUD draws its instruments only at the Instruments level. */
+function InstrumentHud() {
+  useCockpitLayersStore.getState().setLevel("hud-test", "instruments");
+  return <HudLayer droneId="hud-test" />;
+}
 const FLAG = "[data-testid='attitude-flag']";
 const HORIZON = "[data-testid='hud-horizon']";
 
@@ -147,7 +154,7 @@ describe("cockpit HUD layer from telemetry", () => {
 
   it("flies the instruments from fresh telemetry", () => {
     pushFlight(0);
-    const { container } = renderWithIntl(<HudLayer />);
+    const { container } = renderWithIntl(<InstrumentHud />);
     expect(container.querySelector(FLAG)).toBeNull();
     expect(container.querySelector(HORIZON)?.getAttribute("transform")).toContain(
       "rotate(-15 600 350)",
@@ -162,7 +169,7 @@ describe("cockpit HUD layer from telemetry", () => {
 
   it("switches the altitude tape to MSL and persists the choice", () => {
     pushFlight(0);
-    renderWithIntl(<HudLayer />);
+    renderWithIntl(<InstrumentHud />);
     fireEvent.click(screen.getAllByRole("button", { name: /Altitude reference REL/ })[0]);
     expect(useCockpitStore.getState().altitudeRef).toBe("msl");
     expect(altValue()).toBe("420");
@@ -170,7 +177,7 @@ describe("cockpit HUD layer from telemetry", () => {
 
   it("flags the horizon and blanks the tapes once telemetry goes stale", () => {
     pushFlight(TELEMETRY_STALE_MS + 1_000);
-    const { container } = renderWithIntl(<HudLayer />);
+    const { container } = renderWithIntl(<InstrumentHud />);
 
     // The sample is still in the ring; the HUD must not present it.
     expect(useTelemetryStore.getState().attitude.latest()?.roll).toBe(15);
@@ -186,7 +193,7 @@ describe("cockpit HUD layer from telemetry", () => {
 
   it("hides the wind indicator without a wind estimate", () => {
     pushFlight(0);
-    renderWithIntl(<HudLayer />);
+    renderWithIntl(<InstrumentHud />);
     expect(screen.queryByTestId("hud-wind")).toBeNull();
   });
 });

@@ -31,6 +31,7 @@ export type CockpitAlertId =
   | "ekfFailsafe"
   | "fenceBreach"
   | "statusText"
+  | "statusTextWarn"
   | "linkStale"
   | "battLow"
   | "gpsNo3d"
@@ -68,6 +69,8 @@ export interface CockpitAlertInputs {
   vibration: VibrationData | undefined;
   videoFrozen: boolean;
   criticalText: ReceivedText | null;
+  /** The latest STATUSTEXT at MAV_SEVERITY_ERROR or WARNING (3-4). */
+  warningText?: ReceivedText | null;
   prearmText: ReceivedText | null;
 }
 
@@ -125,6 +128,9 @@ export function deriveCockpitAlerts(
 
   if (i.criticalText && now - i.criticalText.at < STATUS_TEXT_HOLD_MS) {
     alerts.push({ id: "statusText", level: "critical", detail: i.criticalText.text });
+  }
+  if (i.warningText && now - i.warningText.at < STATUS_TEXT_HOLD_MS) {
+    alerts.push({ id: "statusTextWarn", level: "warning", detail: i.warningText.text });
   }
 
   const gps = fresh(i.gps);

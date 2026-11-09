@@ -18,7 +18,7 @@ import { useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
 import { cn } from "@/lib/utils";
 import {
   useCockpitLayersStore,
-  vehicleLayers,
+  useVehicleLayers,
   type DepthRange,
   type DepthStyle,
 } from "@/stores/cockpit-layers-store";
@@ -31,7 +31,7 @@ const MAX_ROWS = 12;
 export function VisionViewPanel({ droneId }: { droneId: string }) {
   const t = useTranslations("cockpitLayers");
   const batch = useDisplayedDetectionBatch(droneId);
-  const vl = useCockpitLayersStore((s) => vehicleLayers(s.byVehicle, droneId));
+  const vl = useVehicleLayers(droneId);
   const setDepth = useCockpitLayersStore((s) => s.setDepth);
   const detections = batch?.detections ?? [];
 

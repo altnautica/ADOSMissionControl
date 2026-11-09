@@ -42,20 +42,12 @@ export interface CockpitWidgetPlacement {
 }
 
 /**
- * Which cockpit chrome cards are shown for a loadout. The Skill Bar itself is
- * never toggleable (it is the action surface); the four booleans are the
- * optional read-only chrome an operator can hide for a cleaner immersive view.
- *
- * `widgets` carries per-widget overrides (zone placement + hide) for the
- * arrangeable widgets that the registry composes — the chips and any plugin
- * cockpit widget — so a loadout persists both WHICH cards show and WHERE the
- * arrangeable ones sit. Absent for a loadout that has never rearranged one.
+ * A loadout's cockpit layout: its density, its inset position, and
+ * `widgets`, the per-widget overrides (zone placement + hide) for the
+ * arrangeable widgets the registry composes (the chips and any plugin cockpit
+ * widget). `widgets` is absent for a loadout that has never rearranged one.
  */
 export interface CockpitLayout {
-  topBar: boolean;
-  minimap: boolean;
-  telemetryStrip: boolean;
-  proximityRadar: boolean;
   /** Information density — how much read-only chrome the cockpit shows.
    * Persisted with the loadout so a saved preset restores its own density. */
   density: CockpitDensity;
@@ -107,16 +99,8 @@ export type SeedOutcome = "bound" | "unbound" | "skipped";
 
 export const DEFAULT_LOADOUT_ID = "default";
 
-/**
- * Factory-default cockpit layout: the minimap, top bar, and proximity radar are
- * on; the numeric readout strip is off because the instrument HUD canvas
- * already paints alt/speed/heading.
- */
+/** Factory-default cockpit layout. */
 export const DEFAULT_COCKPIT_LAYOUT: CockpitLayout = Object.freeze({
-  topBar: true,
-  minimap: true,
-  telemetryStrip: false,
-  proximityRadar: true,
   density: DEFAULT_DENSITY,
 }) as CockpitLayout;
 

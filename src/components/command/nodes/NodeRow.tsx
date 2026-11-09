@@ -14,7 +14,8 @@
 
 import { memo } from "react";
 import { useClockTick } from "@/lib/agent/freshness";
-import { MoreHorizontal, Wifi } from "lucide-react";
+import { MoreHorizontal, Plane, Wifi } from "lucide-react";
+import { openFlightScreen } from "@/components/cockpit/flight/open-flight-screen";
 import { cn } from "@/lib/utils";
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import {
@@ -142,6 +143,7 @@ interface NodeRowProps {
 export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onContext }: NodeRowProps) {
   useClockTick();
   const t = useTranslations("nodeConsole");
+  const tFly = useTranslations("flightScreen");
   // A paired node in the sidebar always carries an agent, so a `drone`-profile
   // entry is a `drone` here; the bare flight controller is a node-detail concern.
   const effProfile = agentEffProfile(node.profile);
@@ -247,6 +249,23 @@ export const NodeRow = memo(function NodeRow({ node, selected, onSelect, onConte
           <p className="min-w-0 flex-1 truncate text-xs font-medium text-text-primary">
             {displayName}
           </p>
+          {effProfile === "drone" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openFlightScreen(node._id);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+              title={tFly("flyTitle")}
+              aria-label={`${tFly("fly")}: ${displayName}`}
+              data-testid="fly-button-row"
+              className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-accent-primary px-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-accent-primary/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-1"
+            >
+              <Plane size={12} aria-hidden="true" />
+              {tFly("fly")}
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();

@@ -15,9 +15,8 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { MonitorPlay, RotateCcw, Trash2 } from "lucide-react";
-import { useUiStore } from "@/stores/ui-store";
-import { requestImmersiveCockpit } from "@/lib/cockpit/immersive-request";
+import { Plane, RotateCcw, Trash2 } from "lucide-react";
+import { openFlightScreen } from "@/components/cockpit/flight/open-flight-screen";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -30,12 +29,6 @@ import { ConnectionQualityMeter } from "@/components/indicators/ConnectionQualit
 import { NavStatePill } from "@/components/indicators/NavStatePill";
 import { RuntimeModeBadge } from "@/components/indicators/RuntimeModeBadge";
 import { TrafficPill } from "@/components/indicators/TrafficPill";
-
-/** Show this node's Cockpit tab and take it full-screen once it is showing. */
-function openCockpit(): void {
-  useUiStore.getState().setPendingDetailTab("cockpit");
-  requestImmersiveCockpit();
-}
 
 export function NodeHeaderActions({
   droneId,
@@ -115,17 +108,19 @@ export function NodeHeaderActions({
       {isConnected && <TrafficPill />}
       {isConnected && <ConnectionQualityMeter />}
       {isDroneProfile && (
-        // Opens this node's Cockpit tab full-screen (immersive); the band's
-        // exit control and Escape return to the dashboard.
-        <button
-          type="button"
-          onClick={openCockpit}
-          title={t("openCockpit")}
-          aria-label={t("openCockpit")}
-          className="flex h-7 shrink-0 items-center gap-1 px-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary focus-ring"
+        // Opens this node's flight screen over the whole viewport; its Menu
+        // has the way back.
+        <Button
+          variant="primary"
+          size="sm"
+          icon={<Plane size={14} aria-hidden="true" />}
+          onClick={() => openFlightScreen(droneId)}
+          title={tRoot("flightScreen.flyTitle")}
+          data-testid="fly-button-header"
+          className="shrink-0 px-4 font-semibold"
         >
-          <MonitorPlay size={12} aria-hidden="true" />
-        </button>
+          {tRoot("flightScreen.fly")}
+        </Button>
       )}
       {isConnected && (
         <Button

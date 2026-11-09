@@ -2,11 +2,12 @@
 
 /**
  * @module cockpit/FollowRangePanel
- * @description The read-only range panel of following mode (instrument layer,
- * bottom-centre above the Skill Bar). Rows by width class: `compact` one
- * merged line, `medium` range + interval bar + height, `expanded`/`tv` add
- * geometry and the cue/latency row. A `follow.state` older than 2 s blanks
- * every value, dims the plate and reads STALE.
+ * @description The read-only range panel of following mode. It docks in the
+ * follow dock above the bottom row as one merged line (`variant="line"`);
+ * the full panel (range + interval bar + height, then geometry and the
+ * cue/latency row at `expanded`/`tv`) opens as a sheet from that line. A
+ * `follow.state` older than 2 s blanks every value, dims the plate and reads
+ * STALE.
  *
  * @license GPL-3.0-only
  */
@@ -42,9 +43,17 @@ function fixed1(v: number | null): string {
   return v === null ? NO_DATA_GLYPH : v.toFixed(1);
 }
 
-export function FollowRangePanel({ droneId }: { droneId: string }) {
+export function FollowRangePanel({
+  droneId,
+  variant,
+}: {
+  droneId: string;
+  /** `line` forces the one-line form; `detail` the full panel at any width. */
+  variant?: "line" | "detail";
+}) {
   const t = useTranslations("hud.range");
-  const widthClass = useCockpitWidthClass();
+  const cockpitClass = useCockpitWidthClass();
+  const widthClass = variant === "detail" && cockpitClass === "compact" ? "medium" : cockpitClass;
   const { follow, stale, following } = useFollowingMode(droneId);
   if (!following) return null;
 
@@ -64,16 +73,16 @@ export function FollowRangePanel({ droneId }: { droneId: string }) {
   const dep = live?.depressionDeg ?? null;
   const brg = live?.bearingDeg ?? null;
 
-  if (widthClass === "compact") {
+  if (variant === "line" || widthClass === "compact") {
     return (
       <div className="frp" data-width-class="compact" data-stale={blank ? "true" : undefined}
         role="status" aria-label={t("label")} data-testid="follow-range-panel">
         <div className="frp-line">
           <span className="frp-range">{rangeText}</span>
-          {sigma !== null && range !== null && <span>±{sigma.toFixed(1)}</span>}
-          <span className="frp-sep">·</span>
-          <span>{t("agl")} {agl}</span>
-          {sourceWord && <span style={sourceStyle}>{sourceWord}</span>}
+          {sigma !== null && range !== null && <span className="frp-aux">±{sigma.toFixed(1)}</span>}
+          <span className="frp-sep frp-aux">·</span>
+          <span className="frp-aux">{t("agl")} {agl}</span>
+          {sourceWord && <span className="frp-aux" style={sourceStyle}>{sourceWord}</span>}
           <span className="frp-phase" style={{ color: phaseColor }}>{phaseWord}</span>
         </div>
       </div>

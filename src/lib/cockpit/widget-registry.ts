@@ -56,17 +56,7 @@ export interface CockpitWidget {
   arrangeable?: boolean;
   /** Short human label for the layout editor / accessibility. */
   title?: string;
-  /**
-   * Maps this widget to an operator-toggleable `CockpitLayout` visibility flag
-   * (the minimap / top bar / telemetry strip / radar chrome cards). Absent =
-   * governed by the per-widget hidden override, then `defaultVisible`.
-   */
-  layoutKey?: keyof Pick<
-    CockpitLayout,
-    "topBar" | "minimap" | "telemetryStrip" | "proximityRadar"
-  >;
-  /** Visibility when no `layoutKey` and no per-widget override governs it.
-   * Defaults to visible. */
+  /** Visibility when no per-widget override governs it. Defaults to visible. */
   defaultVisible?: boolean;
   /**
    * Least dense cockpit mode at which this widget shows. Absent = every mode.
@@ -118,15 +108,13 @@ export function effectiveWidgetZone(
 /**
  * Whether the operator's layout toggles a widget ON. Toggles only show/hide;
  * density is a separate question ({@link widgetMeetsDensity}). Precedence:
- *  1. a widget bound to a `CockpitLayout` chrome flag follows that toggle;
- *  2. else a per-widget `hidden` override (the chips + plugin widgets) wins;
- *  3. else its own `defaultVisible` (default true).
+ *  1. a per-widget `hidden` override (the chips + plugin widgets) wins;
+ *  2. else its own `defaultVisible` (default true).
  */
 export function isCockpitWidgetEnabled(
   widget: CockpitWidget,
   layout: CockpitLayout,
 ): boolean {
-  if (widget.layoutKey) return layout[widget.layoutKey];
   const hidden = layout.widgets?.[widget.id]?.hidden;
   if (hidden !== undefined) return !hidden;
   return widget.defaultVisible ?? true;

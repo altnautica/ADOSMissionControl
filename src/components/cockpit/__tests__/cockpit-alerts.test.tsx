@@ -1,7 +1,9 @@
 /**
  * @module cockpit/cockpit-alerts.test
- * @description The cockpit alert stack must describe the aircraft now, rank
- * what it says, and make the link alert reachable.
+ * @description The cockpit alert list must describe the aircraft now, rank
+ * what it says, and make the link alert reachable. The list feeds both the
+ * critical banners under the top bar and the status pill's list; the probe
+ * below renders all of it the way the pill does, critical first.
  *
  * Pinned:
  *
@@ -13,18 +15,18 @@
  *   after 10 s while armed (critical). It is driven through the real
  *   drone-manager bridge, where an armed heartbeat leaves the connection state
  *   "armed" and a declared link loss turns it "disconnected".
- * - Critical alerts sit in the assertive live region, the rest in the polite
- *   one, and every alert carries a spoken level, not colour alone.
+ * - Critical alerts are announced assertively, the rest politely, and every
+ *   alert carries a spoken level, not colour alone.
  *
  * @license GPL-3.0-only
  */
 
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NextIntlClientProvider } from "next-intl";
+import { NextIntlClientProvider, useTranslations } from "next-intl";
 
 import messages from "../../../../locales/en.json";
-import { CockpitAlerts } from "@/components/cockpit/CockpitAlerts";
+import { useCockpitAlertList } from "@/components/cockpit/CockpitAlerts";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -36,10 +38,28 @@ import { LINK_LOST_MS, LINK_STALE_MS } from "@/components/cockpit/band/link-stat
 
 const A = messages.cockpit.alerts;
 
+/** Every alert the list holds, critical ones in the assertive region. */
+function AlertProbe({ droneId }: { droneId: string }) {
+  const t = useTranslations("cockpit.alerts");
+  const { alerts, label } = useCockpitAlertList(droneId);
+  const row = (a: (typeof alerts)[number]) => (
+    <div key={`${a.id}:${a.detail ?? ""}`} data-testid={`cockpit-alert-${a.id}`} data-level={a.level}>
+      <span>{t(`level.${a.level}`)}: </span>
+      {label(a)}
+    </div>
+  );
+  return (
+    <>
+      <div aria-live="assertive">{alerts.filter((a) => a.level === "critical").map(row)}</div>
+      <div aria-live="polite">{alerts.filter((a) => a.level !== "critical").map(row)}</div>
+    </>
+  );
+}
+
 function renderAlerts(droneId: string) {
   return render(
     <NextIntlClientProvider locale="en" messages={messages}>
-      <CockpitAlerts droneId={droneId} />
+      <AlertProbe droneId={droneId} />
     </NextIntlClientProvider>,
   );
 }
