@@ -6,6 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Cockpit camera: photo and zoom follow one order (camera extension, then the vehicle's MAVLink camera, then the shown video: a saved frame and digital ×1/×2/×4), with the spec's "Photo saved" and "No video" texts.
 - Demo: the demo pilot mirrors and drives the demo drone (a mission in AUTO reads MISSION · WP n/N; Pause, Resume, Land, Return home and Kill act on the vehicle; MISSION PAUSED is reachable); `__adosDemo.freezeTelemetry()` also stalls the pilot, and `__adosDemo.blockNavStream(true)` shows the reduced-rate radio fallback.
 - Maps: the local-frame map (no GNSS fix) offers Fly here on right-click and long-press, converting the point through the EKF origin; touch long-press on every map follows the spec's press time; on the ground, Launch here sends the point to the Launch sheet as its go-to.
 - Aircraft setup: the offer to set up a new flight controller is a small banner with Open and Later, shown once per flight controller on this device, on the ground and never over the flight screen. The Meet ADOS Pilot step shows its step state like every other step.
