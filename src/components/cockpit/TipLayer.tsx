@@ -66,6 +66,21 @@ function measure(layer: HTMLElement): Measured {
   const origin = layer.getBoundingClientRect();
   const rects: Record<string, TipRect | null> = {};
   for (const [id, sel] of Object.entries(TIP_ANCHOR_SELECTORS)) rects[id] = rectOf(scope.querySelector(sel), origin);
+  // The alert stack is drawn in two places (critical alerts and the flow
+  // banners); a tip avoids, and waits for, every part of it.
+  rects.alert_stack = null;
+  for (const el of scope.querySelectorAll(TIP_ANCHOR_SELECTORS.alert_stack)) {
+    const r = rectOf(el, origin);
+    const u = rects.alert_stack;
+    if (!r) continue;
+    if (!u) {
+      rects.alert_stack = r;
+      continue;
+    }
+    const x = Math.min(u.x, r.x);
+    const y = Math.min(u.y, r.y);
+    rects.alert_stack = { x, y, w: Math.max(u.x + u.w, r.x + r.w) - x, h: Math.max(u.y + u.h, r.y + r.h) - y };
+  }
   return {
     viewport: { x: 0, y: 0, w: origin.width, h: origin.height },
     rects,

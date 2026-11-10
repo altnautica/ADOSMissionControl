@@ -139,4 +139,23 @@ describe("TipLayer", () => {
     expect(mocks.ui?.anchorsVisible.skill_picker_chip).toBe(false);
     expect(mocks.ui?.sheetOrMenuOpen).toBe(false);
   });
+
+  it("reports an alert banner from either part of the alert stack, and none when both are empty", () => {
+    const { unmount } = render(
+      <div>
+        <div data-zone="alert_stack" data-rect={JSON.stringify({ x: 0, y: 0, w: 0, h: 0 })} />
+        <div data-zone="alert_stack" data-rect={JSON.stringify({ x: 400, y: 60, w: 200, h: 30 })} />
+        <TipLayer droneId="drone-1" />
+      </div>,
+    );
+    expect(mocks.ui?.alertBannerVisible).toBe(true);
+    unmount();
+    render(
+      <div>
+        <div data-zone="alert_stack" data-rect={JSON.stringify({ x: 0, y: 0, w: 0, h: 0 })} />
+        <TipLayer droneId="drone-1" />
+      </div>,
+    );
+    expect(mocks.ui?.alertBannerVisible).toBe(false);
+  });
 });

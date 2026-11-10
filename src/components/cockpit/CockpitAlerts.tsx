@@ -206,6 +206,7 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
       className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5"
       style={{ top: "calc(var(--fs-top-y, 60px))", zIndex: 45 }}
       data-testid="cockpit-alerts"
+      data-zone="alert_stack"
     >
       <div role="alert" aria-live="assertive" className="flex flex-col items-center gap-1.5">
         {render(alerts.filter((a) => a.level === "critical"))}
