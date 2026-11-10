@@ -24,7 +24,7 @@ describe("flight screen shell", () => {
     useCockpitStore.getState().setEnabled(false);
     renderWithIntl(<CockpitView droneId="shell-drone" />);
     const col = screen.getByTestId("left-column");
-    expect(col.querySelector("[aria-label='Pause']")).not.toBeNull();
+    expect(col.querySelector("[aria-label='Pause (brake)']")).not.toBeNull();
     expect(col.querySelector("[aria-label='Return home']")).not.toBeNull();
     expect(col.querySelector("[aria-label='Take off']")).not.toBeNull();
   });

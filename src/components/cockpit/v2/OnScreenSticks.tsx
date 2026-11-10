@@ -16,6 +16,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import ds4Spec from "@/lib/cockpit-spec/ds4.json";
 import {
   PILOT_INPUT_PERIOD_MS,
   sendPilotInput,
@@ -29,7 +30,10 @@ import { useCockpitPrefsStore } from "@/stores/cockpit-prefs-store";
 
 const SPEC = layoutSpec.on_screen_sticks;
 const PAD = SPEC.pad_size;
-const DEADZONE = 0.08;
+/** The width classes the pads show in (`layout.json` `on_screen_sticks.classes`). */
+export const STICK_CLASSES: readonly string[] = SPEC.classes;
+/** The stick deadzone (`ds4.json` `conditioning.radial_deadzone`). */
+export const STICK_DEADZONE: number = ds4Spec.conditioning.radial_deadzone;
 
 type Vec = [number, number];
 
@@ -42,7 +46,7 @@ export function padVector(dx: number, dy: number, radius: number): Vec {
     x /= m;
     y /= m;
   }
-  return radialDeadzone(x, y, DEADZONE);
+  return radialDeadzone(x, y, STICK_DEADZONE);
 }
 
 function Pad({ side, onMove }: { side: "left" | "right"; onMove: (v: Vec | null) => void }) {
@@ -117,7 +121,7 @@ export function OnScreenSticks({ droneId }: { droneId: string }) {
     };
   }, [active, droneId]);
 
-  const show = enabled && routed && !padConnected && (SPEC.classes as string[]).includes(widthClass);
+  const show = enabled && routed && !padConnected && STICK_CLASSES.includes(widthClass);
   if (!show) return null;
   const move = (side: "left" | "right") => (v: Vec | null) => {
     axes.current[side] = v;

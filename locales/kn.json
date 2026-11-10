@@ -883,7 +883,9 @@
     "manualControlLinkBlocked": "ಸ್ಟಿಕ್ ಇನ್‌ಪುಟ್ ಈ ವಿಮಾನವನ್ನು ತಲುಪುತ್ತಿಲ್ಲ: {reason}. ಏನೂ ರವಾನೆಯಾಗುತ್ತಿಲ್ಲ.",
     "stickMode": "Stick mode",
     "stickMode2": "Mode 2 (throttle on the left stick)",
-    "stickMode1": "Mode 1 (throttle on the right stick)"
+    "stickMode1": "Mode 1 (throttle on the right stick)",
+    "groundStationEmpty": "No controllers on the ground station.",
+    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
   },
   "data": {
     "title": "Data Management",

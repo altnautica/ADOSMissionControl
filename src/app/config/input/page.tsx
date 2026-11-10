@@ -29,6 +29,7 @@ const POLL_INTERVAL_MS = 2000;
 
 export default function InputDevicesPage() {
   const t = useTranslations("status");
+  const ti = useTranslations("inputDevices");
   const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
   const apiKey = useAgentConnectionStore((s) => s.apiKey);
 
@@ -142,14 +143,10 @@ export default function InputDevicesPage() {
               </div>
 
               {gamepads.devices.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <div className="flex flex-col items-center gap-2 py-8 text-center" data-testid="ground-station-controllers-empty">
                   <Gamepad2 className="h-6 w-6 text-text-tertiary" />
-                  <p className="text-sm text-text-secondary">
-                    No controllers detected.
-                  </p>
-                  <p className="max-w-xs text-xs text-text-tertiary">
-                    Connect a USB or Bluetooth gamepad, joystick, or HOTAS to the ground station.
-                  </p>
+                  <p className="text-sm text-text-secondary">{ti("groundStationEmpty")}</p>
+                  <p className="max-w-xs text-xs text-text-tertiary">{ti("groundStationEmptyHint")}</p>
                 </div>
               ) : (
                 <div className="overflow-hidden rounded border border-border-default">

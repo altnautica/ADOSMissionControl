@@ -746,10 +746,16 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-bar-items { display: flex; align-items: center; gap: var(--fs-gap); width: max-content; }
 /* Every movable item is in the Menu: the pill may now shrink to its icon so
    the chip and the battery stay whole. */
-.ados-cockpit .fs-bar[data-overflow-stage="3"] .fs-bar-items { width: auto; min-width: 0; }
+.ados-cockpit .fs-bar[data-overflow="full"] .fs-bar-items { width: auto; min-width: 0; }
+.ados-cockpit .fs-bar[data-overflow="full"] .fs-pill-text { white-space: nowrap; }
+/* Hit areas: at least touch_target.min (--fs-hit, set on the top bar), centred on the control. */
+.ados-cockpit .fs-hit { position: relative; }
+.ados-cockpit .fs-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, var(--fs-hit, 48px)); height: max(100%, var(--fs-hit, 48px)); transform: translate(-50%, -50%); }
+/* The chip's button clips its text, so its hit area is a transparent border instead. */
+.ados-cockpit .fs-chip { box-sizing: content-box; height: 32px; border-block: calc((var(--fs-hit, 48px) - 32px) / 2) solid transparent; margin-block: calc((32px - var(--fs-hit, 48px)) / 2); background-clip: padding-box; }
+/* Focus rings on every flight-screen control. */
+.ados-cockpit :is(.fs-hit, .fs-focus, .fs-menu-actions :is(button, a), .fs-seg button, .navpop button):focus-visible { outline: 2px solid var(--fs-text); outline-offset: 2px; }
 .ados-cockpit .fs-bar-end { flex: none; display: flex; align-items: center; gap: 6px; }
-/* The first-connect tour opens under the bar, left of the right column. */
-.ados-cockpit .fs-ctl-tour { position: absolute; right: 64px; top: calc(100% + 8px); z-index: 50; width: min(18rem, calc(100% - 16px)); white-space: normal; }
 .ados-cockpit .fs-cell { flex: none; display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 0 2px; color: var(--fs-text); }
 .ados-cockpit .fs-sub { color: var(--fs-text-dim); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 4px; }
 .ados-cockpit .fs-val { font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -810,8 +816,8 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-menu-sec { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
 .ados-cockpit .fs-menu-sec + .fs-menu-sec { border-top: 1px solid var(--fs-border); }
 .ados-cockpit .fs-menu-h { font-size: var(--fs-label-px); letter-spacing: .08em; text-transform: uppercase; color: var(--fs-text-dim); }
-.ados-cockpit .fs-menu-actions button { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 8px; border-radius: var(--fs-radius-sm); text-align: left; color: var(--fs-text); background: transparent; border: 0; cursor: pointer; }
-.ados-cockpit .fs-menu-actions button:hover { background: color-mix(in srgb, var(--fs-text) 8%, transparent); }
+.ados-cockpit .fs-menu-actions :is(button, a) { display: flex; align-items: center; gap: 10px; min-height: var(--fs-hit, 48px); padding: 0 8px; border-radius: var(--fs-radius-sm); text-align: left; color: var(--fs-text); background: transparent; border: 0; cursor: pointer; text-decoration: none; }
+.ados-cockpit .fs-menu-actions :is(button, a):hover { background: color-mix(in srgb, var(--fs-text) 8%, transparent); }
 .ados-cockpit .fs-menu-actions kbd { margin-left: auto; font-size: var(--fs-label-px); color: var(--fs-text-dim); }
 .ados-cockpit .fs-seg { display: flex; gap: 2px; padding: 2px; border-radius: var(--fs-radius-sm); background: color-mix(in srgb, var(--fs-text) 6%, transparent); }
 .ados-cockpit .fs-seg button { flex: 1; min-height: 32px; border-radius: 6px; border: 0; background: transparent; color: var(--fs-text-dim); cursor: pointer; font-weight: 600; }
@@ -823,7 +829,11 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-sheet-empty { padding: 8px; color: var(--fs-text-dim); }
 .ados-cockpit .fs-camera { display: flex; flex-direction: column; gap: 8px; }
 .ados-cockpit .fs-figures { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--fs-label-px); color: var(--fs-text-dim); font-variant-numeric: tabular-nums; }
-.ados-cockpit .fs-camera-sheet { position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%); width: 260px; padding: 10px; }
+.ados-cockpit .fs-camera-sheet { position: absolute; width: 260px; max-height: calc(100% - var(--fs-bar-b, 0px) - 16px); overflow-y: auto; padding: 10px; }
+.ados-cockpit .fs-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -6px -6px 6px 0; }
+.ados-cockpit .fs-sheet-head h2 { font-size: var(--fs-top-px); font-weight: 600; margin: 0; }
+.ados-cockpit .fs-sheet-close { display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--fs-radius-sm); background: transparent; color: var(--fs-text); cursor: pointer; }
+.ados-cockpit .fs-sheet-close:hover { background: color-mix(in srgb, var(--fs-text) 8%, transparent); }
 
 /* columns: vertically centred stacks of targets */
 .ados-cockpit .fs-col { position: absolute; z-index: 30; display: flex; align-items: center; justify-content: center; pointer-events: none; }
@@ -833,10 +843,11 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-col-row .fs-col-stack { flex-direction: row; width: 100%; justify-content: space-around; }
 .ados-cockpit .fs-col-target { width: var(--fs-target); height: var(--fs-target); min-height: 0; padding: 0; flex-direction: column; gap: 2px; font-size: var(--fs-label-px); border-radius: var(--fs-radius); }
 .ados-cockpit .fs-col-row .fs-col-target { flex: 1; max-width: 120px; }
-.ados-cockpit .fs-col-btn { width: 40px; height: 32px; padding: 0; font-variant-numeric: tabular-nums; }
-.ados-cockpit .fs-gimbal-pad { display: grid; grid-template-areas: ". up ." "left . right" ". down ."; grid-template-columns: repeat(3, 24px); grid-template-rows: repeat(3, 24px); gap: 2px; padding: 2px; border-radius: var(--fs-radius-sm); background: color-mix(in srgb, var(--fs-text) 6%, transparent); }
-.ados-cockpit .fs-gimbal-pad button { display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--fs-text); cursor: pointer; touch-action: none; }
-.ados-cockpit .fs-gimbal-pad button:active { background: color-mix(in srgb, var(--fs-text) 16%, transparent); }
+.ados-cockpit .fs-col-btn { min-width: 48px; min-height: 48px; padding: 0; font-variant-numeric: tabular-nums; }
+.ados-cockpit .fs-gimbal-pad { position: relative; flex-shrink: 0; border-radius: 50%; touch-action: none; background: var(--fs-bg); border: var(--fs-border-px) solid var(--fs-border); -webkit-backdrop-filter: blur(var(--fs-blur)); backdrop-filter: blur(var(--fs-blur)); }
+.ados-cockpit .fs-gimbal-pad:focus-visible { outline: 3px solid var(--fs-text); outline-offset: 3px; }
+.ados-cockpit .fs-gimbal-tick { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 6px solid var(--fs-text-dim); }
+.ados-cockpit .fs-gimbal-knob { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 1px solid var(--fs-border); background: color-mix(in srgb, var(--fs-text) 15%, transparent); color: var(--fs-text); cursor: pointer; transition: transform 100ms ease-out; }
 .ados-cockpit .fs-shutter { position: relative; border-radius: 50%; border: 3px solid var(--fs-text); background: transparent; padding: 0; cursor: pointer; display: grid; place-items: center; }
 .ados-cockpit .fs-shutter > i { width: 72%; height: 72%; border-radius: 50%; background: var(--fs-text); transition: all 180ms ease-out; }
 .ados-cockpit .fs-shutter[data-mode="video"] > i { background: var(--fs-crit); }
@@ -844,7 +855,7 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-shutter:active > i { transform: scale(.9); }
 .ados-cockpit .fs-rec { font-size: var(--fs-label-px); color: var(--fs-crit); font-variant-numeric: tabular-nums; }
 .ados-cockpit .fs-mode { display: flex; flex-direction: column; gap: 2px; padding: 2px; border-radius: var(--fs-radius-sm); background: color-mix(in srgb, var(--fs-text) 6%, transparent); }
-.ados-cockpit .fs-mode button { width: 36px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--fs-text-dim); cursor: pointer; }
+.ados-cockpit .fs-mode button { min-width: 48px; min-height: 48px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--fs-text-dim); cursor: pointer; }
 .ados-cockpit .fs-mode button[aria-pressed="true"] { background: color-mix(in srgb, var(--fs-text) 16%, transparent); color: var(--fs-text); }
 .ados-cockpit .fs-launch-steps { position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%); padding: 8px; pointer-events: auto; }
 .ados-cockpit .fs-col-row .fs-launch-steps { left: 0; top: calc(100% + 8px); transform: none; }
@@ -864,8 +875,8 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-batt :is(.fs-gauge, .fs-sub) { display: none; }
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-pill-text { display: none; }
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar :is(.fs-chip-wrap, .fs-chip, .fs-chip-text),
-.ados-cockpit .fs-bar[data-overflow-stage="3"] :is(.fs-chip-wrap, .fs-chip, .fs-chip-text) { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ados-cockpit .fs-bar[data-overflow-stage="3"] .fs-pill-wrap { flex-shrink: 100; }
+.ados-cockpit .fs-bar[data-overflow="full"] :is(.fs-chip-wrap, .fs-chip, .fs-chip-text) { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ados-cockpit .fs-bar[data-overflow="full"] .fs-pill-wrap { flex-shrink: 100; }
 
 /* bottom-left card */
 .ados-cockpit .fs-card { position: absolute; z-index: 25; overflow: hidden; touch-action: pan-y; }
@@ -873,23 +884,33 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-card-radar { display: grid; place-items: center; }
 .ados-cockpit .fs-card-radar:empty::after { content: attr(data-empty); font-size: var(--fs-label-px); color: var(--fs-text-dim); }
 .ados-cockpit .fs-card .radar { border: 0; background: transparent; }
-.ados-cockpit .fs-dots { position: absolute; left: 0; right: 0; bottom: 6px; z-index: 1002; display: flex; justify-content: center; gap: 6px; }
-.ados-cockpit .fs-dots button { width: 18px; height: 18px; padding: 6px; border: 0; background: transparent; cursor: pointer; }
+.ados-cockpit .fs-card-title { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); z-index: 1002; padding: 1px 6px; border-radius: var(--fs-radius-sm); background: var(--fs-bg); font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--fs-text-dim); white-space: nowrap; pointer-events: none; }
+.ados-cockpit .fs-card[data-chip="true"] .fs-card-title { top: 8px; font-size: 8px; }
+.ados-cockpit .fs-dots { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1002; display: flex; justify-content: center; gap: 0; pointer-events: none; }
+.ados-cockpit .fs-dots button { width: 48px; height: 48px; padding: 0; display: grid; place-items: center; border: 0; background: transparent; cursor: pointer; pointer-events: auto; }
+.ados-cockpit .fs-card[data-chip="true"] .fs-dots button { width: 32px; height: 40px; }
 .ados-cockpit .fs-dots button::before { content: ""; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--fs-text-dim); }
 .ados-cockpit .fs-dots button[aria-selected="true"]::before { background: var(--fs-text); }
 .ados-cockpit .fs-card[data-chip="true"] { border-radius: 50%; }
-.ados-cockpit .fs-card[data-chip="true"] .fs-dots { bottom: 2px; gap: 0; }
+.ados-cockpit .fs-map-pane[data-split="map"] { border-left: 2px solid color-mix(in srgb, var(--fs-text) 30%, transparent); }
+.ados-cockpit .fs-divider { position: absolute; z-index: 27; cursor: col-resize; touch-action: none; }
+.ados-cockpit .fs-divider::after { content: ""; position: absolute; top: 50%; left: 50%; width: 6px; height: 40px; margin: -20px 0 0 -3px; border-radius: 3px; background: var(--fs-text); opacity: .7; }
+.ados-cockpit .fs-divider:focus-visible { outline: 2px solid var(--fs-text); outline-offset: -2px; }
 .ados-cockpit .fs-attitude .fs-att-n { font-size: 10px; font-weight: 700; fill: var(--fs-text); }
 .ados-cockpit .fs-video-pip { z-index: 26; border-radius: var(--fs-radius); border: 1px solid var(--fs-border); }
 
-/* follow dock (above the bottom row) */
-.ados-cockpit .fs-follow { position: absolute; z-index: 30; display: flex; align-items: center; gap: 8px; padding: 0 6px; }
-.ados-cockpit .fs-follow-range { flex: 1 1 auto; min-width: 0; display: flex; justify-content: flex-end; overflow: hidden; container-type: inline-size; border: 0; background: transparent; color: inherit; cursor: pointer; }
+/* follow strip (under the top bar, between the columns) */
+.ados-cockpit .fs-follow { --rail-btn: 48px; position: absolute; z-index: 30; display: flex; align-items: center; gap: 8px; padding: 0 4px; }
+.ados-cockpit .fs-follow .reacq { padding: 0; }
+.ados-cockpit .fs-follow .reacq button { min-height: 48px; min-width: 48px; }
+.ados-cockpit .fs-follow-range { flex: 1 1 auto; min-width: 0; min-height: 48px; display: flex; align-items: center; justify-content: flex-end; overflow: hidden; container-type: inline-size; border: 0; background: transparent; color: inherit; cursor: pointer; }
 /* A narrow dock keeps the range and the phase; sigma, AGL and source give way first. */
 @container (max-width: 260px) { .ados-cockpit .fs-follow-range .frp-aux { display: none; } }
 @container (max-width: 130px) { .ados-cockpit .fs-follow-range .frp-phase { display: none; } }
-.ados-cockpit .fs-follow-sheet { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); padding: 4px; }
+.ados-cockpit .fs-follow-sheet-slot { z-index: 35; display: flex; justify-content: center; pointer-events: none; }
+.ados-cockpit .fs-follow-sheet { position: static; transform: none; max-width: 100%; padding: 4px; pointer-events: auto; }
 .ados-cockpit .fs-follow-sheet .frp { position: static; transform: none; }
+.ados-cockpit .fs-video[data-zone="video"] [data-video-placeholder] { align-items: flex-start; padding-top: var(--fs-ph-top, 0px); }
 .ados-cockpit .fs-enable { padding: 10px; max-width: 240px; }
 
 /* centre: reticle, short horizon mark, small heading readout */
@@ -1055,7 +1076,7 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .ados-cockpit[data-density="minimal"] .tgt-layer .tgt-ghost { display: none; }
 /* Hit areas: transparent buttons, at least 44 px square. */
 .tgt-layer .tgt-hit { position: absolute; pointer-events: auto; padding: 0; border: 0; background: transparent; cursor: pointer; }
-.tgt-layer .tgt-hit:focus-visible { outline: none; }
+.tgt-layer .tgt-hit:focus-visible { outline: 2px solid var(--fs-text, var(--hud-ink)); outline-offset: 2px; }
 /* Drag-to-designate selection: 1 px dashed ink with a 12 % ink fill. */
 .tgt-layer .tgt-select { position: absolute; border: 1px dashed var(--hud-ink); background: color-mix(in oklch, var(--hud-ink) 12%, transparent); }
 @keyframes tgt-fade { from { opacity: 1; } to { opacity: 0; } }
@@ -1236,9 +1257,9 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
    Default corner: the top-right of the centre zone, clear of the columns and
    the bars. A drag stores an explicit left/top instead. */
 .ados-cockpit .pipinset { position: absolute; top: calc(var(--fs-cy) + 8px); left: calc(var(--fs-cx) + var(--fs-cw) - 216px); z-index: 25; width: 208px; padding: 0; overflow: hidden; }
-.ados-cockpit .pipinset .piphead { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 5px 4px 9px; cursor: move; touch-action: none; background: var(--hud-glass-strong); border-bottom: 1px solid var(--hud-hair); }
+.ados-cockpit .pipinset .piphead { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 48px; padding: 0 5px 0 9px; cursor: move; touch-action: none; background: var(--hud-glass-strong); border-bottom: 1px solid var(--hud-hair); }
 .ados-cockpit .pipinset .piphead .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--hud-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ados-cockpit .pipinset .pipclose { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; border: 0; background: transparent; color: var(--hud-muted); cursor: pointer; flex: none; }
+.ados-cockpit .pipinset .pipclose { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 5px; border: 0; background: transparent; color: var(--hud-muted); cursor: pointer; flex: none; }
 .ados-cockpit .pipinset .pipclose:hover { color: var(--hud-ink); background: color-mix(in oklch, var(--hud-ink) 6%, transparent); }
 .ados-cockpit .pipinset .pipbody { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--color-media); }
 
@@ -1341,22 +1362,7 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .ados-cockpit .reacq button[data-pending="true"] { outline: 1px dashed var(--hud-primary); outline-offset: 1px; }
 .ados-cockpit .reacq button:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
 
-/* follow skill caret + popover on the Skill Bar */
-.ados-cockpit .skill-wrap { position: relative; flex: none; }
-.ados-cockpit .fskill-caret {
-  position: absolute; top: -9px; left: 50%; transform: translateX(-50%); z-index: 1; width: 20px; height: 14px;
-  display: grid; place-items: center; border: 1px solid var(--hud-hair); border-radius: 5px;
-  background: var(--hud-glass-strong); color: var(--hud-ink-2); cursor: pointer;
-}
-.ados-cockpit .fskill-caret:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 2px; }
-.ados-cockpit .fskill-pop {
-  position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); z-index: 50; width: 240px;
-  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; font-family: var(--mono); font-size: 11px; white-space: normal;
-}
-.ados-cockpit .fskill-row { display: flex; align-items: baseline; justify-content: space-between; }
-.ados-cockpit .fskill-k, .ados-cockpit .navpop-k { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-muted); }
-.ados-cockpit .fskill-phase { font-weight: 600; letter-spacing: .12em; }
-.ados-cockpit .fskill-hint { font-size: 10px; line-height: 1.35; color: var(--hud-ink-2); }
+.ados-cockpit .navpop-k { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-muted); }
 
 /* nav-source chip (safety band item 6) + its popover (modal layer) */
 .ados-cockpit .navchip-btn { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; pointer-events: auto; }

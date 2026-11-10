@@ -15,12 +15,15 @@ import { ArrowDownToLine, ArrowUpFromLine, Home, Pause } from "lucide-react";
 
 import { LaunchSheet, LaunchStepStrip } from "@/components/cockpit/v2/LaunchSheet";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
-import { pilotStreamOpen, usePilotLinkStore } from "@/lib/input/pilot-stream";
+import { pilotStreamOpen, requestPilotAction, usePilotLinkStore } from "@/lib/input/pilot-stream";
+import { specBuiltin } from "@/lib/cockpit/spec-builtins";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { rectStyle } from "@/components/cockpit/flight/flight-grid";
 import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
+import { useLaunchRequestStore } from "@/stores/launch-request-store";
 
 export function LeftColumn({ droneId }: { droneId: string }) {
   const armState = useDroneStore((s) => s.armState);
@@ -37,6 +40,14 @@ export function LeftColumn({ droneId }: { droneId: string }) {
   useEffect(() => {
     if (!onGround) setLaunchOpen(false);
   }, [onGround, setLaunchOpen]);
+  // "Launch here" on a map: open the sheet, which takes the point. A request
+  // the sheet cannot use (flying, or no pilot) is dropped.
+  const launchRequested = useLaunchRequestStore((s) => s.pending?.droneId === droneId);
+  useEffect(() => {
+    if (!launchRequested) return;
+    if (onGround && viaPilot) setLaunchOpen(true);
+    else useLaunchRequestStore.getState().consume();
+  }, [launchRequested, onGround, viaPilot, setLaunchOpen]);
   const sequence = pilot?.sequence ?? null;
   const sequenceRunning = sequence !== null && sequence.step !== "done";
   const grid = useFlightGrid();
@@ -60,23 +71,23 @@ export function LeftColumn({ droneId }: { droneId: string }) {
           className={btn}
           data-sheet-trigger="launch"
           onClick={() => (viaPilot ? setLaunchOpen((o) => !o) : fire("takeoff"))}
-          aria-label="Take off"
+          aria-label={specBuiltin("takeoff").label}
           aria-expanded={viaPilot ? launchOpen : undefined}
         >
           <ArrowUpFromLine size={18} aria-hidden />
           Take off
         </button>
       ) : (
-        <button type="button" className={btn} onClick={() => fire("land")} aria-label="Land">
+        <button type="button" className={btn} onClick={() => fire("land")} aria-label={specBuiltin("land").label}>
           <ArrowDownToLine size={18} aria-hidden />
           Land
         </button>
       )}
-      <button type="button" className={btn} onClick={() => fire("rth")} aria-label="Return home">
+      <button type="button" className={btn} onClick={() => fire("rth")} aria-label={specBuiltin("rth").label}>
         <Home size={18} aria-hidden />
         RTH
       </button>
-      <button type="button" className={btn} onClick={() => fire("pause")} aria-label="Pause">
+      <button type="button" className={btn} onClick={() => fire("pause")} aria-label={specBuiltin("pause").label}>
         <Pause size={18} aria-hidden />
         Pause
       </button>
@@ -85,8 +96,16 @@ export function LeftColumn({ droneId }: { droneId: string }) {
         <LaunchSheet droneId={droneId} pilot={pilot} onClose={() => setLaunchOpen(false)} />
       )}
       {!launchOpen && sequenceRunning && (
-        <div className="fs-sheet fs-launch-steps">
+        <div className="fs-sheet fs-launch-steps flex items-center gap-2" data-testid="launch-steps-running">
           <LaunchStepStrip sequence={sequence} />
+          <button
+            type="button"
+            data-testid="launch-steps-abort"
+            onClick={() => void requestPilotAction("pause")}
+            className="min-h-[40px] rounded bg-status-error/25 px-3 text-xs font-semibold text-status-error"
+          >
+            {specString("flow.launch.abort")}
+          </button>
         </div>
       )}
     </div>

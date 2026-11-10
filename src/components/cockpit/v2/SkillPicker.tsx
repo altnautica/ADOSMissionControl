@@ -26,15 +26,15 @@ import { skillDisplayLabel } from "@/lib/skills/skill-label";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { onPickerCommand, usePickerStore } from "@/lib/cockpit/picker-commands";
+import { specString } from "@/lib/cockpit/spec-strings";
+import tokens from "@/lib/cockpit-spec/tokens.json";
+import { useDronePluginParameters } from "@/hooks/use-drone-plugin-contributions";
 
 export const PICKER_TABS = ["behavior", "camera", "navigation", "utility"] as const;
 export type PickerTab = (typeof PICKER_TABS)[number];
-const TAB_LABEL: Record<PickerTab, string> = {
-  behavior: "Behaviors",
-  camera: "Camera",
-  navigation: "Navigation",
-  utility: "Utility",
-};
+
+/** The skill state colour (`tokens.json` `state.skill`). */
+export const SKILL_COLOR = tokens.state.skill;
 
 /** A write is pending until the state echo; after this it reverts. */
 export const ECHO_TIMEOUT_MS = 3000;
@@ -47,7 +47,7 @@ export const SKILL_STATE_STALE_MS = 3000;
 export function lastSeenText(seenAt: number | undefined, now: number): string | null {
   if (seenAt === undefined) return null;
   const age = now - seenAt;
-  return age > SKILL_STATE_STALE_MS ? `last seen ${Math.floor(age / 1000)} s` : null;
+  return age > SKILL_STATE_STALE_MS ? specString("skill.last_seen", { n: Math.floor(age / 1000) }) : null;
 }
 
 /** Skills the picker offers for a vehicle class (manifest `vehicle_classes`). */
@@ -116,7 +116,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
     const left = ECHO_TIMEOUT_MS - (Date.now() - pending.at);
     const timer = setTimeout(() => {
       const s = skills.find((k) => k.id === pending.id);
-      notify?.(`${s ? skillDisplayLabel(s, t) : pending.id} did not respond`);
+      notify?.(specString("skill.did_not_respond", { skill: s ? skillDisplayLabel(s, t) : pending.id }));
       setPending(null);
     }, Math.max(0, left));
     return () => clearTimeout(timer);
@@ -143,7 +143,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
     async (skill: Skill) => {
       if (stateOf(skill.id).linkLost) {
         setQueuedStop(skill.id);
-        notify?.(`${skillDisplayLabel(skill, t)}: Stop queued until the link returns`);
+        notify?.(specString("skill.stop_queued_link", { skill: skillDisplayLabel(skill, t) }));
         return;
       }
       setPending({ id: skill.id, want: false, at: Date.now() });
@@ -211,13 +211,15 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
     usePickerStore.getState().setOpen(open);
   }, [open]);
 
+  const groups = groupByPlugin(skills, tab);
+
   return (
     <div className="relative flex flex-col items-end gap-2" data-testid="skill-picker">
       {open && (
         <div
           ref={sheetRef}
           role="dialog"
-          aria-label="Skills"
+          aria-label={specString("skill.picker.title")}
           data-testid="skill-picker-sheet"
           className="glass-panel flex max-h-[min(60vh,calc(100vh-var(--fs-bar-b,0px)-120px))] w-[340px] max-w-[92vw] flex-col gap-3 overflow-y-auto p-3"
         >
@@ -230,15 +232,20 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
                 aria-selected={tab === k}
                 onClick={() => setTab(k)}
                 className={cn(
-                  "min-h-10 flex-1 rounded px-2 text-xs font-semibold",
+                  "min-h-12 flex-1 rounded px-2 text-xs font-semibold",
                   tab === k ? "bg-accent-primary/25 text-text-primary" : "text-text-secondary",
                 )}
               >
-                {TAB_LABEL[k]}
+                {specString(`skill.picker.tab.${k}`)}
               </button>
             ))}
           </div>
-          {groupByPlugin(skills, tab).map(([pid, list]) => (
+          {groups.length === 0 && (
+            <p className="text-xs text-text-secondary" data-testid="skill-picker-empty">
+              {specString("skill.picker.empty")}
+            </p>
+          )}
+          {groups.map(([pid, list]) => (
             <section key={pid} className="flex flex-col gap-1">
               <h4 className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
                 {pid}
@@ -267,10 +274,12 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
                       {pending?.id === s.id && (
                         <span aria-label="pending" className="h-3 w-3 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
                       )}
-                      {queuedStop === s.id && <span>Stop queued</span>}
+                      {queuedStop === s.id && <span>{specString("skill.stop_queued")}</span>}
                       {seen !== null && <span className="normal-case text-text-secondary">{seen}</span>}
                       {st.kind === "active" && (
-                        <span className="text-[#22D3EE]">{st.linkLost ? "Active (stale)" : "Active"}</span>
+                        <span style={{ color: SKILL_COLOR }}>
+                          {specString(st.linkLost ? "skill.active_stale" : "skill.active")}
+                        </span>
                       )}
                     </span>
                   </button>
@@ -283,6 +292,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
               droneId={droneId}
               skill={sel}
               active={stateOf(sel.id).kind === "active"}
+              starting={pending?.id === sel.id && pending.want}
               onGo={() => void go(sel)}
               onStop={() => void stop(sel)}
             />
@@ -292,34 +302,47 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
       <button
         type="button"
         data-sheet-trigger="skills"
+        data-testid="skill-picker-chip"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="glass-pill flex min-h-12 items-center gap-2 px-4 text-xs font-semibold text-text-primary"
-        style={active ? { boxShadow: "inset 0 0 0 2px #22D3EE" } : undefined}
+        style={active ? { boxShadow: `inset 0 0 0 2px ${SKILL_COLOR}` } : undefined}
       >
         <Sparkles size={14} aria-hidden />
-        {active ? skillDisplayLabel(active, t) : "Skills"}
+        {active ? skillDisplayLabel(active, t) : specString("skill.picker.title")}
       </button>
     </div>
   );
+}
+
+/** The Tweak row label: the manifest parameter's `ui.label`, else its key. */
+export function paramLabel(
+  params: readonly { key: string; ui?: { label?: string } }[] | undefined,
+  key: string,
+): string {
+  const label = params?.find((p) => p.key === key)?.ui?.label;
+  return label ? label : key;
 }
 
 function TweakPanel({
   droneId,
   skill,
   active,
+  starting,
   onGo,
   onStop,
 }: {
   droneId: string;
   skill: Skill;
   active: boolean;
+  starting: boolean;
   onGo: () => void;
   onStop: () => void;
 }) {
   const deviceId = deviceIdFromNodeId(droneId) ?? droneId;
   const pluginId = skill.pluginId ?? "";
   const values = usePluginConfigCache((s) => s.values[pluginConfigKey(deviceId, pluginId)]);
+  const manifestParams = useDronePluginParameters(deviceId).find((p) => p.pluginId === pluginId)?.parameters;
 
   const write = (key: string, value: unknown) => {
     usePluginConfigCache.getState().record(deviceId, pluginId, key, value);
@@ -328,25 +351,38 @@ function TweakPanel({
 
   return (
     <div className="flex flex-col gap-2 border-t border-border-default pt-2" data-testid="tweak-panel">
+      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">{specString("skill.tweak")}</h4>
       {(skill.params ?? []).map((key) => {
         const v = values?.[key];
         const numeric = typeof v === "number";
+        const label = paramLabel(manifestParams, key);
         return (
-          <label key={key} className="flex items-center justify-between gap-2 text-xs">
-            <span className="text-text-secondary">{key}</span>
+          <label key={key} className="flex items-center justify-between gap-2 text-xs" data-param={key}>
+            <span className="text-text-secondary">{label}</span>
             {numeric ? (
               <span className="flex items-center gap-1">
-                <button type="button" className="min-h-10 min-w-10 rounded border" onClick={() => write(key, v - 1)}>
+                <button
+                  type="button"
+                  aria-label={`${label} −`}
+                  className="min-h-12 min-w-12 rounded border"
+                  onClick={() => write(key, v - 1)}
+                >
                   −
                 </button>
                 <span className="w-10 text-center tabular-nums">{v}</span>
-                <button type="button" className="min-h-10 min-w-10 rounded border" onClick={() => write(key, v + 1)}>
+                <button
+                  type="button"
+                  aria-label={`${label} +`}
+                  className="min-h-12 min-w-12 rounded border"
+                  onClick={() => write(key, v + 1)}
+                >
                   +
                 </button>
               </span>
             ) : (
               <input
-                className="w-28 rounded border bg-transparent px-2 py-1"
+                aria-label={label}
+                className="min-h-12 w-28 rounded border bg-transparent px-2 py-1"
                 defaultValue={v === undefined ? "" : String(v)}
                 onBlur={(e) => write(key, e.target.value)}
               />
@@ -358,10 +394,10 @@ function TweakPanel({
         <button
           type="button"
           onClick={onGo}
-          disabled={active}
+          disabled={active || starting}
           className="min-h-12 flex-1 rounded-md bg-accent-primary text-sm font-bold text-white disabled:opacity-40"
         >
-          GO
+          {specString(starting ? "skill.starting" : "skill.go")}
         </button>
         <button
           type="button"
@@ -369,7 +405,7 @@ function TweakPanel({
           disabled={!active}
           className="min-h-12 flex-1 rounded-md border text-sm font-bold disabled:opacity-40"
         >
-          Stop
+          {specString("skill.stop")}
         </button>
       </div>
     </div>

@@ -883,7 +883,9 @@
     "manualControlLinkBlocked": "Sticks will not reach this aircraft: {reason}. Nothing is being transmitted.",
     "stickMode": "Stick mode",
     "stickMode2": "Mode 2 (throttle on the left stick)",
-    "stickMode1": "Mode 1 (throttle on the right stick)"
+    "stickMode1": "Mode 1 (throttle on the right stick)",
+    "groundStationEmpty": "No controllers on the ground station.",
+    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
   },
   "data": {
     "title": "Data Management",
@@ -7705,7 +7707,7 @@
         "landed": "Fly Here refused: the drone is on the ground",
         "tuning": "Fly Here refused: a setup step is running",
         "no_home": "Fly Here refused: the drone has no home position yet",
-          "launching": "Fly Here refused: the drone is still taking off",
+        "launching": "Fly Here refused: the drone is still taking off",
         "control_mode": "Fly Here refused: the flight controller has control",
         "failsafe": "Fly Here refused: the drone is in a failsafe return or landing; change mode first"
       }

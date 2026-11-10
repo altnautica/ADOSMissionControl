@@ -883,7 +883,9 @@
     "manualControlLinkBlocked": "조종간 입력이 이 기체에 전달되지 않습니다: {reason}. 전송되는 것이 없습니다.",
     "stickMode": "Stick mode",
     "stickMode2": "Mode 2 (throttle on the left stick)",
-    "stickMode1": "Mode 1 (throttle on the right stick)"
+    "stickMode1": "Mode 1 (throttle on the right stick)",
+    "groundStationEmpty": "No controllers on the ground station.",
+    "groundStationEmptyHint": "Connect a USB or Bluetooth gamepad, joystick or HOTAS to the ground station. A controller plugged into this computer shows under Browser Input."
   },
   "data": {
     "title": "데이터 관리",

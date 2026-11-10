@@ -13,6 +13,7 @@
  */
 
 import { useMemo, useRef, useState } from "react";
+import { useLaunchRequestStore } from "@/stores/launch-request-store";
 import { Rocket, X } from "lucide-react";
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
@@ -20,7 +21,11 @@ import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "@/components/cockpit/flight/flight-sheet";
 import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
-import { requestPilotAction, sendPilotAction } from "@/lib/input/pilot-stream";
+import { refusalText } from "@/lib/hud/refusal";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import { specBuiltin } from "@/lib/cockpit/spec-builtins";
+import { specString } from "@/lib/cockpit/spec-strings";
+import { requestPilotAction } from "@/lib/input/pilot-stream";
 import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useSkillRegistry } from "@/lib/skills";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
@@ -30,18 +35,20 @@ import { useTranslations } from "next-intl";
 export type LaunchAfter = "hold" | "skill" | "mission" | "goto";
 export type LaunchWhenDone = "none" | "land" | "rth";
 
-/** Default take-off altitude for a copter (m); a plane uses its TKOFF_ALT. */
-export const LAUNCH_DEFAULT_ALT_M = 3;
-/** The Launch hold (spec: 1.5 s). */
-export const LAUNCH_HOLD_MS = 1500;
+const LAUNCH = layoutSpec.launch;
+/** Default take-off altitude for a copter (m, spec `launch.alt_default_m`);
+ * a plane uses its TKOFF_ALT. */
+export const LAUNCH_DEFAULT_ALT_M = LAUNCH.alt_default_m;
+/** The Launch hold: the take-off built-in's confirm hold. */
+export const LAUNCH_HOLD_MS = specBuiltin("takeoff").confirm.ms ?? 1500;
 
 const STEPS = ["checks", "arm", "takeoff", "after", "done"] as const;
-const STEP_LABEL: Record<(typeof STEPS)[number], string> = {
-  checks: "Checks",
-  arm: "Arm",
-  takeoff: "Take off",
-  after: "After take-off",
-  done: "Done",
+const STEP_KEY: Record<(typeof STEPS)[number], string> = {
+  checks: "flow.launch.step.checks",
+  arm: "flow.launch.step.arm",
+  takeoff: "flow.launch.step.takeoff",
+  after: "flow.launch.step.after_label",
+  done: "flow.launch.step.done",
 };
 
 export interface LaunchArgs {
@@ -92,10 +99,10 @@ export function LaunchStepStrip({ sequence }: { sequence: PilotState["sequence"]
                   : "bg-white/5 text-text-tertiary",
           )}
         >
-          {STEP_LABEL[s]}
+          {specString(STEP_KEY[s])}
         </li>
       ))}
-      {sequence.error && <span className="ml-2 text-[11px] text-status-error">{sequence.error}</span>}
+      {sequence.error && <span className="ml-2 text-[11px] text-status-error">{refusalText(sequence.error)}</span>}
     </ol>
   );
 }
@@ -118,10 +125,18 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
       ),
     [registry, pilot?.vehicleClass],
   );
-  const [after, setAfter] = useState<LaunchAfter>("hold");
+  // A point picked on a map ("Launch here") prefills the go-to once; with
+  // none, there is no default go-to offset and the operator enters the point.
+  const [picked] = useState(() => {
+    const req = useLaunchRequestStore.getState().pending;
+    if (req?.droneId !== droneId || req.north === undefined || req.east === undefined) return null;
+    useLaunchRequestStore.getState().consume();
+    return [Math.round(req.north * 10) / 10, Math.round(req.east * 10) / 10] as [number, number];
+  });
+  const [after, setAfter] = useState<LaunchAfter>(picked ? "goto" : "hold");
   const [alt, setAlt] = useState<number>(LAUNCH_DEFAULT_ALT_M);
   const [skillId, setSkillId] = useState<string | null>(null);
-  const [gotoNE, setGotoNE] = useState<[number, number]>([10, 0]);
+  const [gotoNE, setGotoNE] = useState<[number | null, number | null]>(picked ?? [null, null]);
   const [whenDone, setWhenDone] = useState<LaunchWhenDone>("none");
   const [sent, setSent] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -130,16 +145,29 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
   const place = sheetPlacement(useFlightGrid(), "left");
 
   const missionLoaded = mission?.state === "loaded";
-  const ready = after !== "skill" || skillId !== null;
+  const gotoSet = gotoNE[0] !== null && gotoNE[1] !== null;
+  const ready = (after !== "skill" || skillId !== null) && (after !== "goto" || gotoSet);
   const running = pilot?.sequence != null && pilot.sequence.step !== "done";
 
   const launch = () => {
-    setSent("Launch sent");
+    setSent(specString("flow.launch.sent"));
     void requestPilotAction(
       "launch",
-      launchArgs({ after, altM: fixedWing ? null : alt, skillId, gotoNE, whenDone }) as unknown as Record<string, unknown>,
-    ).then((r) => setSent(r.ok ? "Launch accepted" : `Launch refused: ${r.err ?? "no reason given"}`));
+      launchArgs({
+        after,
+        altM: fixedWing ? null : alt,
+        skillId,
+        gotoNE: [gotoNE[0] ?? 0, gotoNE[1] ?? 0],
+        whenDone,
+      }) as unknown as Record<string, unknown>,
+    ).then((r) =>
+      setSent(r.ok ? specString("flow.launch.accepted") : specString("flow.launch.refused", { reason: refusalText(r.err) })),
+    );
   };
+  const abort = () =>
+    void requestPilotAction("pause").then((r) =>
+      setSent(r.ok ? null : specString("flow.launch.abort_refused", { reason: refusalText(r.err) })),
+    );
 
   const choice = (on: boolean) =>
     cn(
@@ -152,67 +180,67 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
     <div
       ref={ref}
       role="dialog"
-      aria-label="Launch"
+      aria-label={specString("flow.launch.title")}
       data-testid="launch-sheet"
       style={place}
       className="glass-panel pointer-events-auto absolute z-50 max-h-[calc(100%-var(--fs-bar-b)-16px)] w-[min(380px,calc(100%-16px))] overflow-y-auto p-4 text-text-primary"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Rocket size={15} aria-hidden="true" /> Launch
+          <Rocket size={15} aria-hidden="true" /> {specString("flow.launch.title")}
         </h2>
-        <button type="button" aria-label="Close" onClick={onClose} className="rounded p-1 hover:bg-white/10">
+        <button type="button" aria-label={specString("cockpit.close")} onClick={onClose} className="rounded p-1 hover:bg-white/10">
           <X size={14} aria-hidden="true" />
         </button>
       </div>
 
       <label className="mb-3 block text-xs">
-        <span className="mb-1 block text-text-secondary">Take-off altitude</span>
+        <span className="mb-1 block text-text-secondary">{specString("flow.launch.alt_m")}</span>
         {fixedWing ? (
-          <span className="text-text-tertiary">The plane climbs to its TKOFF_ALT</span>
+          <span className="text-text-tertiary">{specString("flow.launch.plane_alt")}</span>
         ) : (
           <span className="flex items-center gap-2">
             <input
               type="range"
-              min={1.5}
-              max={20}
+              min={LAUNCH.alt_min_m}
+              max={LAUNCH.alt_max_m}
               step={0.5}
               value={alt}
               onChange={(e) => setAlt(Number(e.target.value))}
               className="flex-1"
-              aria-label="Take-off altitude"
+              aria-label={specString("flow.launch.alt_m")}
             />
-            <span className="w-12 text-right font-mono tabular-nums">{alt.toFixed(1)} m</span>
+            <span className="w-14 text-right font-mono tabular-nums">{alt.toFixed(1)} m</span>
           </span>
         )}
       </label>
 
       <fieldset className="mb-3">
-        <legend className="mb-1 text-xs text-text-secondary">After take-off</legend>
+        <legend className="mb-1 text-xs text-text-secondary">{specString("flow.launch.after")}</legend>
         <div className="flex flex-wrap gap-1">
           <button type="button" className={choice(after === "hold")} onClick={() => setAfter("hold")}>
-            Hold
+            {specString("flow.launch.after.hold")}
           </button>
           <button
             type="button"
             className={choice(after === "skill")}
             onClick={() => setAfter("skill")}
             disabled={behaviors.length === 0}
-            title={behaviors.length === 0 ? "No behaviour skill is installed" : undefined}
+            title={behaviors.length === 0 ? specString("flow.launch.after.skill_none") : undefined}
           >
-            Skill
+            {specString("flow.launch.after.skill")}
           </button>
           <button
             type="button"
             className={choice(after === "mission")}
             onClick={() => setAfter("mission")}
             disabled={!missionLoaded}
-            title={missionLoaded ? undefined : "Upload a mission first"}
+            title={missionLoaded ? undefined : specString("flow.launch.after.mission_none")}
           >
-            Start mission
+            {specString("flow.launch.after.mission")}
           </button>
           <button type="button" className={choice(after === "goto")} onClick={() => setAfter("goto")}>
-            Go to
+            {specString("flow.launch.after.goto")}
           </button>
         </div>
         {after === "skill" && (
@@ -228,14 +256,14 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
         )}
         {after === "goto" && (
           <div className="mt-2 flex gap-2 text-xs">
-            {(["North", "East"] as const).map((axis, i) => (
-              <label key={axis} className="flex flex-1 flex-col gap-1">
-                <span className="text-text-secondary">{axis} of home (m)</span>
+            {(["flow.launch.goto.north", "flow.launch.goto.east"] as const).map((key, i) => (
+              <label key={key} className="flex flex-1 flex-col gap-1">
+                <span className="text-text-secondary">{specString(key)} (m)</span>
                 <input
                   type="number"
-                  value={gotoNE[i]}
+                  value={gotoNE[i] ?? ""}
                   onChange={(e) => {
-                    const v = Number(e.target.value);
+                    const v = e.target.value === "" ? null : Number(e.target.value);
                     setGotoNE((p) => (i === 0 ? [v, p[1]] : [p[0], v]));
                   }}
                   className="rounded bg-white/10 px-2 py-1 font-mono"
@@ -247,11 +275,11 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
       </fieldset>
 
       <fieldset className="mb-4">
-        <legend className="mb-1 text-xs text-text-secondary">When done</legend>
+        <legend className="mb-1 text-xs text-text-secondary">{specString("flow.launch.when_done")}</legend>
         <div className="flex gap-1">
           {(["none", "land", "rth"] as const).map((w) => (
             <button key={w} type="button" className={choice(whenDone === w)} onClick={() => setWhenDone(w)}>
-              {w === "none" ? "Nothing" : w === "land" ? "Land" : "Return home"}
+              {specString(`flow.launch.when_done.${w}`)}
             </button>
           ))}
         </div>
@@ -263,20 +291,21 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
         {running ? (
           <button
             type="button"
-            onClick={() => sendPilotAction("pause")}
+            data-testid="launch-abort"
+            onClick={abort}
             className="min-h-[48px] flex-1 rounded bg-status-error/25 text-sm font-semibold text-status-error"
           >
-            Abort (Pause)
+            {specString("flow.launch.abort")}
           </button>
         ) : (
           <HoldButton
             holdMs={LAUNCH_HOLD_MS}
             onFire={launch}
             disabled={!ready}
-            title="Hold to launch"
+            title={specString("flow.launch.hold_aria")}
             className="min-h-[48px] flex-1 rounded bg-accent-primary/25 text-sm font-semibold text-accent-primary"
           >
-            Hold to launch
+            {specString("flow.launch.hold_to_launch")}
           </HoldButton>
         )}
       </div>

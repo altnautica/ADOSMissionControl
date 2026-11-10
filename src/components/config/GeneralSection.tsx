@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useGcsLocationStore } from "@/stores/gcs-location-store";
 import { JURISDICTIONS, type Jurisdiction } from "@/lib/jurisdiction";
+import { specString } from "@/lib/cockpit/spec-strings";
+import { useCockpitTipsStore } from "@/stores/cockpit-tips-store";
 
 export function GeneralSection() {
   const t = useTranslations("general");
@@ -26,6 +28,7 @@ export function GeneralSection() {
   const setAutoConnectOnLoad = useSettingsStore((s) => s.setAutoConnectOnLoad);
   const setLocationEnabled = useSettingsStore((s) => s.setLocationEnabled);
   const setOnboarded = useSettingsStore((s) => s.setOnboarded);
+  const resetTips = useCockpitTipsStore((s) => s.reset);
 
   const permission = useGcsLocationStore((s) => s.permission);
   const position = useGcsLocationStore((s) => s.position);
@@ -187,10 +190,28 @@ export function GeneralSection() {
           <Button
             variant="ghost"
             size="sm"
+            className="min-h-12"
             icon={<RotateCcw size={12} />}
             onClick={() => setOnboarded(false)}
           >
             {t("rerun")}
+          </Button>
+        </div>
+      </Card>
+
+      {/* Flight-screen tips show again from the first one. */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-text-secondary">{specString("tips.reset")}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-h-12"
+            icon={<RotateCcw size={12} />}
+            onClick={() => resetTips()}
+            data-testid="reset-tips"
+          >
+            {specString("tips.reset")}
           </Button>
         </div>
       </Card>

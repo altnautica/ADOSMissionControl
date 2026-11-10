@@ -10,7 +10,7 @@
  * "Press a control" and press it), choose an action per gesture, move a
  * locked safety binding, resolve conflicts before Save. Also the stick mode,
  * stick calibration with the deadzone, the rumble / lightbar test row,
- * reset, export and import, and the first-connect tour.
+ * reset, export and import, and "Replay controller tour".
  *
  * It reads the same input store the stick stream reads: no second poller.
  *
@@ -46,7 +46,7 @@ import {
   useControlsStore,
 } from "@/stores/controls-store";
 import { useInputStore } from "@/stores/input-store";
-import { CalibrationCard, ClashedSkills, PrefsRow, TestRow, Tour } from "./ControlsSettingsCards";
+import { CalibrationCard, ClashedSkills, PrefsRow, ReplayTourRow, TestRow } from "./ControlsSettingsCards";
 import { layoutLeaderLabels } from "./leader-labels";
 
 type Art = { viewBox: number[]; stroke_width: number; paths: { id: string; d: string; role: string }[] };
@@ -210,7 +210,7 @@ function ActionPicker({ value, onChange, disabled }: { value: string; onChange: 
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded border border-border-default bg-bg-secondary px-2 py-1.5 text-xs"
+      className="min-h-12 w-full rounded border border-border-default bg-bg-secondary px-2 text-xs"
       aria-label="Action"
     >
       {Object.keys(GROUP_LABEL).map((g) =>
@@ -267,7 +267,7 @@ function ControlSheet({
     <aside role="dialog" aria-label={`Control ${control}`} data-testid="control-sheet" className="glass-panel w-full max-w-sm p-4 text-sm">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-semibold">{control}</h3>
-        <button type="button" onClick={onClose} className="rounded px-2 py-1 text-xs hover:bg-white/10">
+        <button type="button" onClick={onClose} className="min-h-12 min-w-12 rounded px-2 text-xs hover:bg-white/10">
           Close
         </button>
       </div>
@@ -286,7 +286,7 @@ function ControlSheet({
                 <select
                   value={b.control}
                   onChange={(e) => setRow(i, { control: e.target.value })}
-                  className="flex-1 rounded border border-border-default bg-bg-secondary px-2 py-1"
+                  className="min-h-12 flex-1 rounded border border-border-default bg-bg-secondary px-2"
                   aria-label="Move to control"
                   title={specString("controls.locked")}
                 >
@@ -391,7 +391,7 @@ export function ControlsSettings() {
               type="button"
               aria-pressed={txMode === m}
               onClick={() => setTxMode(m)}
-              className={cn("rounded px-2 py-1 text-xs", txMode === m ? "bg-accent-primary/25 text-accent-primary" : "bg-white/5")}
+              className={cn("min-h-12 rounded px-2 text-xs", txMode === m ? "bg-accent-primary/25 text-accent-primary" : "bg-white/5")}
             >
               {specString(`controls.mode${m}`)}
             </button>
@@ -402,7 +402,6 @@ export function ControlsSettings() {
         </span>
       </header>
 
-      {pad.connected && gamepadId && <Tour padId={gamepadId} />}
       <ClashedSkills />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
@@ -417,11 +416,11 @@ export function ControlsSettings() {
           type="button"
           onClick={() => setCapture((c) => !c)}
           aria-pressed={capture}
-          className="rounded border px-3 py-1.5 text-xs"
+          className="min-h-12 rounded border px-3 text-xs"
         >
           {specString("controls.press_a_control")}
         </button>
-        <button type="button" onClick={save} disabled={!!saveError || !dirty} data-testid="controls-save" className="rounded bg-accent-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+        <button type="button" onClick={save} disabled={!!saveError || !dirty} data-testid="controls-save" className="min-h-12 rounded bg-accent-primary px-3 text-xs font-semibold text-white disabled:opacity-40">
           {specString("controls.save")}
         </button>
         <button
@@ -430,14 +429,14 @@ export function ControlsSettings() {
             resetBindings();
             setDraft([...effectiveBindings({ bindings: null })]);
           }}
-          className="rounded border px-3 py-1.5 text-xs"
+          className="min-h-12 rounded border px-3 text-xs"
         >
           {specString("controls.reset")}
         </button>
-        <button type="button" onClick={download} className="rounded border px-3 py-1.5 text-xs">
+        <button type="button" onClick={download} className="min-h-12 rounded border px-3 text-xs">
           {specString("controls.export")}
         </button>
-        <button type="button" onClick={() => fileRef.current?.click()} className="rounded border px-3 py-1.5 text-xs">
+        <button type="button" onClick={() => fileRef.current?.click()} className="min-h-12 rounded border px-3 text-xs">
           {specString("controls.import")}
         </button>
         <input
@@ -458,6 +457,7 @@ export function ControlsSettings() {
       <CalibrationCard />
       <TestRow />
       <PrefsRow />
+      <ReplayTourRow />
     </section>
   );
 }

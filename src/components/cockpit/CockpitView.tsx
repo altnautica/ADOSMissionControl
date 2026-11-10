@@ -89,6 +89,8 @@ import {
   cloneDefaultCockpitLayout,
 } from "@/stores/settings/keybindings-slice";
 import { Button } from "@/components/ui/button";
+import { TipLayer } from "@/components/cockpit/TipLayer";
+import { ControllerTourCard } from "@/components/cockpit/ControllerTourCard";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 
 // Sheets and editors are opened on demand; keep them out of the cockpit's
@@ -266,6 +268,11 @@ export function CockpitView({ droneId }: CockpitViewProps) {
             on-screen sticks. */}
         <FlightFlowOverlays droneId={droneId} pilot={pilot} />
         <OnScreenSticks droneId={droneId} />
+
+        {/* Contextual tips and the controller tour: non-modal, ground only,
+            never over STOP, the left column or the flight-state chip. */}
+        <TipLayer droneId={droneId} />
+        <ControllerTourCard droneId={droneId} />
 
         {/* Quick settings (extension parameters + the vision model picker). */}
         {cockpitEnabled && quickOpen && (

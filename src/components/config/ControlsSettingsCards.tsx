@@ -4,7 +4,8 @@
  * @module config/ControlsSettingsCards
  * @description The smaller cards of Settings › Controls: stick calibration
  * with the deadzone, the rumble / lightbar test row, the cockpit prefs row and
- * the first-connect tour.
+ * the "Replay controller tour" row (the tour itself is a card on the flight
+ * screen).
  *
  * @license GPL-3.0-only
  */
@@ -49,17 +50,17 @@ export function CalibrationCard() {
       <p className="mt-1 text-[11px] text-text-secondary">{specString("controls.calibrate.body")}</p>
       <div className="mt-2 flex items-center gap-2">
         {rec ? (
-          <button type="button" onClick={finish} className="rounded bg-accent-primary/25 px-3 py-1.5 text-xs font-semibold text-accent-primary">
+          <button type="button" onClick={finish} className="min-h-12 rounded bg-accent-primary/25 px-3 text-xs font-semibold text-accent-primary">
             Done (sticks released)
           </button>
         ) : (
-          <button type="button" disabled={!gamepadId} onClick={() => setRec({ min: [], max: [] })} className="rounded border px-3 py-1.5 text-xs disabled:opacity-40">
+          <button type="button" disabled={!gamepadId} onClick={() => setRec({ min: [], max: [] })} className="min-h-12 rounded border px-3 text-xs disabled:opacity-40">
             Start
           </button>
         )}
         <label className="ml-auto flex items-center gap-2 text-xs">
           {specString("controls.deadzone")}
-          <input type="range" min={0.04} max={0.2} step={0.01} value={deadzone} onChange={(e) => setDeadzone(Number(e.target.value))} aria-label={specString("controls.deadzone")} />
+          <input type="range" min={0.04} max={0.2} step={0.01} value={deadzone} onChange={(e) => setDeadzone(Number(e.target.value))} aria-label={specString("controls.deadzone")} className="min-h-12" />
           <span className="w-10 font-mono tabular-nums">{deadzone.toFixed(2)}</span>
         </label>
       </div>
@@ -91,7 +92,7 @@ export function TestRow() {
           setTimeout(() => rumble("critical"), 1200);
         }}
         disabled={!canRumble()}
-        className="rounded border px-3 py-1.5 text-xs disabled:opacity-40"
+        className="min-h-12 rounded border px-3 text-xs disabled:opacity-40"
       >
         {specString("controls.test.rumble")}
       </button>
@@ -100,11 +101,11 @@ export function TestRow() {
         onClick={() => void cycle()}
         disabled={!supported}
         title={supported ? undefined : specString("controls.test.lightbar_unavailable")}
-        className="rounded border px-3 py-1.5 text-xs disabled:opacity-40"
+        className="min-h-12 rounded border px-3 text-xs disabled:opacity-40"
       >
         {specString("controls.test.lightbar")}
       </button>
-      <span className="text-[11px] text-text-secondary">{specString("controls.test.sticks")}: move the sticks; the dots follow.</span>
+      <span className="text-[11px] text-text-secondary">{specString("controls.test.sticks.hint", { sticks: specString("controls.test.sticks") })}</span>
       {lightbar && <span className="text-[11px] text-status-warning">{lightbar}</span>}
     </section>
   );
@@ -115,11 +116,11 @@ export function PrefsRow() {
   const prefs = useCockpitPrefsStore();
   return (
     <section className="flex flex-wrap gap-4 text-xs" data-testid="cockpit-prefs">
-      <label className="flex items-center gap-2">
+      <label className="flex min-h-12 items-center gap-2">
         <input type="checkbox" checked={prefs.onScreenSticks} onChange={(e) => prefs.setOnScreenSticks(e.target.checked)} />
         {specString("flow.on_screen_sticks")}
       </label>
-      <label className="flex items-center gap-2">
+      <label className="flex min-h-12 items-center gap-2">
         <input type="checkbox" checked={prefs.voicePrompts} onChange={(e) => prefs.setVoicePrompts(e.target.checked)} />
         {specString("voice.setting")}
       </label>
@@ -127,24 +128,15 @@ export function PrefsRow() {
   );
 }
 
-const TOUR = ["sticks", "safety", "skills"] as const;
-
-export function Tour({ padId }: { padId: string }) {
-  const seen = useControlsStore((s) => s.tourSeen);
-  const mark = useControlsStore((s) => s.markTourSeen);
-  const [at, setAt] = useState(0);
-  if (seen) return null;
-  const card = TOUR[at];
+/** Settings › Controls › Replay controller tour: the flight screen shows the
+ *  tour card again on the next ground visit. */
+export function ReplayTourRow() {
+  const replay = useControlsStore((s) => s.replayTour);
   return (
-    <section role="dialog" aria-label="Controller tour" data-testid="controls-tour" className="rounded-lg border border-accent-primary/50 bg-accent-primary/10 p-3 text-xs">
-      <h4 className="font-semibold">{specString(`controls.tour.${card}.title`)}</h4>
-      <p className="mt-1">{specString(`controls.tour.${card}.body`)}</p>
-      <button
-        type="button"
-        onClick={() => (at + 1 < TOUR.length ? setAt(at + 1) : mark())}
-        className="mt-2 rounded bg-accent-primary/25 px-3 py-1 font-semibold text-accent-primary"
-      >
-        {at + 1 < TOUR.length ? "Next" : "Done"}
+    <section className="flex items-center justify-between gap-2 text-xs" data-testid="controls-tour-replay-row">
+      <span>{specString("controls.tour.title")}</span>
+      <button type="button" onClick={() => replay()} data-testid="controls-tour-replay" className="min-h-12 rounded border px-3 text-xs">
+        {specString("controls.tour.replay")}
       </button>
     </section>
   );
