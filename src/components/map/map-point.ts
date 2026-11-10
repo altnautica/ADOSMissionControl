@@ -3,7 +3,7 @@
  * @description What a picked map point offers, shared by the tile maps and
  * the local-frame map. A right-click (mouse) or a long-press (touch, held
  * `map_long_press_ms` without moving) picks a point. In the air it offers Fly
- * here (the ADOS pilot accepts a goto now, or the FC is in a guided mode); on
+ * here (the ADOS pilot accepts a goto now, or the FC flies GUIDED); on
  * the ground, with the pilot advertising `goto`, it offers Launch here, which
  * opens the cockpit Launch sheet with the point as its go-to. Points convert
  * between latitude/longitude and local north/east metres about the vehicle's
@@ -22,7 +22,6 @@ import { bearing } from "@/lib/telemetry-utils";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
-import { GUIDED_MODES } from "./map-context-menu-icons";
 
 /** How long a touch is held without moving before it picks a map point. */
 export const MAP_LONG_PRESS_MS: number = layoutSpec.map_long_press_ms;
@@ -84,7 +83,7 @@ export function flyHereRoute(droneId: string | null, now: number = Date.now()): 
   const fcFacts =
     useDroneManager.getState().selectedDroneId === droneId && connected
       ? {
-          guided: GUIDED_MODES.has(fc.flightMode),
+          guided: fc.flightMode === "GUIDED",
           armed: fc.armState === "armed",
           landed: vehicleLanded(droneId, now) === true,
         }

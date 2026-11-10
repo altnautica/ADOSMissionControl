@@ -8,7 +8,9 @@
  * left pad throttle (up climbs, centre holds) and yaw, right pad forward and
  * right. They send the same pilot `input` frames as a gamepad at 50 Hz while
  * touched, and `release` when let go (a lost pointer capture included), when
- * the pads leave the screen mid-touch, or when the tab is hidden.
+ * the pads leave the screen mid-touch, or when the tab is hidden. While
+ * shown they stand in for a controller in the pre-flight checklist
+ * (`on-screen-sticks-shown`).
  *
  * @license GPL-3.0-only
  */
@@ -29,6 +31,7 @@ import { specString } from "@/lib/cockpit/spec-strings";
 import { radialDeadzone } from "@/lib/input/gamepad-axes";
 import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useCockpitPrefsStore } from "@/stores/cockpit-prefs-store";
+import { useOnScreenSticksShown } from "@/lib/cockpit/on-screen-sticks-shown";
 
 const SPEC = layoutSpec.on_screen_sticks;
 const PAD = SPEC.pad_size;
@@ -135,6 +138,10 @@ export function OnScreenSticks({ droneId }: { droneId: string }) {
   }, []);
 
   const show = enabled && routed && !padConnected && STICK_CLASSES.includes(widthClass);
+  useEffect(() => {
+    useOnScreenSticksShown.getState().setShown(show);
+    return () => useOnScreenSticksShown.getState().setShown(false);
+  }, [show]);
   if (!show) return null;
   return (
     <>

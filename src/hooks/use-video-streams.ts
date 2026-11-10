@@ -246,7 +246,8 @@ export function useVideoStreams(droneId: string): void {
             appliedRef.current = previousId;
             streamsStore.selectStream(droneId, previousId);
           }
-          toastRef.current(specString("cockpit.toast.stream_switch_failed"), "error");
+          const reason = specString("cockpit.toast.stream_switch_failed");
+          toastRef.current(specString("flow.mode.result.failed", { label: target.label, reason }), "error");
         },
       );
     }

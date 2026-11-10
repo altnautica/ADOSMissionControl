@@ -8,7 +8,9 @@
  * quick settings and the profile steps, Square Photo and R1 / L1 Zoom (the
  * same camera route as the on-screen buttons), plus rumble on each action
  * and the lightbar following the flight state. While the controller tour
- * shows, the bare D-pad and Cross drive the tour only.
+ * shows, the bare D-pad and Cross drive the tour only, and a press that
+ * began under the tour stays the tour's through its release (the Cross that
+ * closes the tour never reaches the picker).
  *
  * Built-in flight actions go through the shared skill pipeline, so their
  * gates still apply; a controller hold confirms a hold-tier action by itself
@@ -197,6 +199,9 @@ export function useDs4Dispatcher(droneId: string): void {
       }
     };
     const lastTick = new Map<Ds4Binding, number>();
+    /** Tour controls down now, and those whose press began under the tour. */
+    const tourDown = new Set<string>();
+    const tourOwned = new Set<string>();
     const engine = new GestureEngine(effectiveBindings({ bindings }), {
       when,
       fire: (b) => {
@@ -205,8 +210,14 @@ export function useDs4Dispatcher(droneId: string): void {
         // The open designate reticle takes the bare D-pad, Cross and Circle;
         // chords (Options + Circle, the kill hold) still reach their actions.
         if (b.with.length === 0 && !LOCKED[b.action] && reticleControl(b.control)) return;
-        // The controller tour takes the bare D-pad and Cross the same way.
-        if (b.with.length === 0 && !LOCKED[b.action] && TOUR_CONTROLS[b.control] && useControlsStore.getState().tourVisible) {
+        // The controller tour takes the bare D-pad and Cross the same way,
+        // through the release of a press that began while it showed.
+        if (
+          b.with.length === 0 &&
+          !LOCKED[b.action] &&
+          TOUR_CONTROLS[b.control] &&
+          (useControlsStore.getState().tourVisible || tourOwned.has(b.control))
+        ) {
           return;
         }
         if (b.rumble && b.rumble !== "ramp" && b.rumble !== "countdown") rumble(b.rumble);
@@ -237,7 +248,19 @@ export function useDs4Dispatcher(droneId: string): void {
     const step = () => {
       const { buttons, triggers } = useInputStore.getState();
       const now = Date.now();
-      engine.update((c) => buttons[WEB_BUTTON_INDEX[c] ?? -1] === true, now);
+      const pressed = (c: string) => buttons[WEB_BUTTON_INDEX[c] ?? -1] === true;
+      const tour = useControlsStore.getState().tourVisible;
+      for (const c of Object.keys(TOUR_CONTROLS)) {
+        if (!pressed(c) || tourDown.has(c)) continue;
+        tourDown.add(c);
+        if (tour) tourOwned.add(c);
+      }
+      engine.update(pressed, now);
+      for (const c of tourDown) {
+        if (pressed(c)) continue;
+        tourDown.delete(c);
+        tourOwned.delete(c);
+      }
       gimbal?.tick(trigger(down, triggers), trigger(up, triggers));
     };
     const unsub = useInputStore.subscribe((s, prev) => {

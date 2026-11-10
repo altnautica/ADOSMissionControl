@@ -12,7 +12,7 @@
 
 import type { ArmState } from "@/lib/types";
 import type { SkillContext } from "./types";
-import { vehicleLanded } from "./flight-facts";
+import { hasLandedSource, vehicleLanded } from "./flight-facts";
 
 /** The context fields the resolver reads. */
 export type BoundSkillContext = Pick<SkillContext, "missionState"> & { droneId?: string | null };
@@ -30,9 +30,11 @@ export function resolveBoundSkillId(
 ): string {
   // Disarm only on the ground: in the air, or with the landed state unknown,
   // the arm binding stays `arm`, which is disabled while armed, so the press
-  // does nothing.
+  // does nothing. Firmware with no landed state at all (MSP) flips to disarm,
+  // as Disarm itself is not gated there.
   if (skillId === "arm" && armState === "armed") {
-    return ctx.droneId && vehicleLanded(ctx.droneId) === true ? "disarm" : "arm";
+    if (!ctx.droneId) return "arm";
+    return vehicleLanded(ctx.droneId) === true || !hasLandedSource(ctx.droneId) ? "disarm" : "arm";
   }
   if (skillId === "pause" && isMissionPaused(ctx)) return "resume";
   return skillId;

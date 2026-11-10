@@ -93,10 +93,7 @@ describe("zoom route", () => {
   });
 
   it("labels the digital steps from the spec", () => {
-    expect(digitalZoomLabel(1)).toBe("Digital ×1");
-    expect(digitalZoomLabel(2)).toBe("Digital ×2");
-    expect(digitalZoomLabel(4)).toBe("Digital ×4");
-    expect(digitalZoomLabel(3)).toBe("Digital ×2");
+    expect([1, 2, 4, 3].map(digitalZoomLabel)).toEqual(["Digital ×1", "Digital ×2", "Digital ×4", "Digital ×2"]);
   });
 
   it("steps the extension's zoom over a vehicle camera's", () => {
@@ -121,11 +118,7 @@ describe("zoom route", () => {
       await settle();
     }
     const steps = calls.map((c) => Number(c.split(" ")[1]));
-    expect(steps).toEqual([
-      ...Array<number>(VEHICLE_ZOOM_STEPS).fill(1),
-      ...Array<number>(VEHICLE_ZOOM_STEPS).fill(-1),
-      1,
-    ]);
+    expect(steps).toEqual([...Array<number>(VEHICLE_ZOOM_STEPS).fill(1), ...Array<number>(VEHICLE_ZOOM_STEPS).fill(-1), 1]);
   });
 
   it("holds the cycle's position when the camera refuses a step, and says why", async () => {
@@ -138,10 +131,10 @@ describe("zoom route", () => {
         },
       },
     });
-    stepZoom("d1", "cycle", d);
-    await settle();
-    stepZoom("d1", "cycle", d);
-    await settle();
+    for (let i = 0; i < 2; i += 1) {
+      stepZoom("d1", "cycle", d);
+      await settle();
+    }
     expect(calls).toEqual(["mavlink.zoom 1", "mavlink.zoom 1"]);
     expect(failures).toEqual(["Denied", "Denied"]);
   });
@@ -159,10 +152,8 @@ describe("cockpit zoom on the live view", () => {
   beforeEach(() => useViewZoomStore.setState({ byDrone: {} }));
 
   it("cycles and steps the shared view zoom without an extension", () => {
-    expect(cockpitZoom("d1", "cycle")).toEqual({ digital: 2 });
-    expect(cockpitZoom("d1", 1)).toEqual({ digital: 4 });
-    expect(cockpitZoom("d1", 1)).toEqual({ digital: 4 });
-    expect(cockpitZoom("d1", -1)).toEqual({ digital: 2 });
+    expect([cockpitZoom("d1", "cycle"), cockpitZoom("d1", 1)]).toEqual([{ digital: 2 }, { digital: 4 }]);
+    expect([cockpitZoom("d1", 1), cockpitZoom("d1", -1)]).toEqual([{ digital: 4 }, { digital: 2 }]);
     expect(useViewZoomStore.getState().byDrone.d1).toBe(2);
   });
 });
@@ -206,19 +197,15 @@ describe("photo", () => {
     expect(failed.calls).toEqual(["frame"]);
   });
 
-  it("grabs the shown frame with no camera at all", async () => {
+  it("grabs the shown frame with no camera at all, or reads No video with no picture", async () => {
     const { d, calls } = deps();
     const r = await takePhoto("d1", d);
     expect(r).toBe("saved");
     expect(calls).toEqual(["frame"]);
     expect(photoResultText(r)).toBe("Photo saved");
-  });
-
-  it("reads No video with no picture and no camera", async () => {
-    const { d } = deps({ frame: null });
-    const r = await takePhoto("d1", d);
-    expect(r).toBe("no_video");
-    expect(photoResultText(r)).toBe("No video");
+    const blank = await takePhoto("d1", deps({ frame: null }).d);
+    expect(blank).toBe("no_video");
+    expect(photoResultText(blank)).toBe("No video");
     expect(photoResultText("extension")).toBeNull();
   });
 });
@@ -248,14 +235,12 @@ describe("the live vehicle camera", () => {
     useDroneManager.setState({ drones: new Map() });
   });
 
-  it("is absent until the drone advertises a camera", () => {
+  it("is absent until the drone advertises a camera, and while it is not connected", () => {
     connect(cameraProtocol().protocol);
     expect(LIVE_CAMERA_DEPS.mavlinkCamera("d1")).toBeNull();
     useMavlinkCameraStore.getState().setCamera("d1", { capture: false, zoom: false });
     expect(LIVE_CAMERA_DEPS.mavlinkCamera("d1")).toBeNull();
-  });
-
-  it("is absent when the advertising drone is not connected", () => {
+    useDroneManager.setState({ drones: new Map() });
     useMavlinkCameraStore.getState().setCamera("d1", { capture: true, zoom: true });
     expect(LIVE_CAMERA_DEPS.mavlinkCamera("d1")).toBeNull();
   });
@@ -284,6 +269,17 @@ describe("the live vehicle camera", () => {
     const { protocol } = cameraProtocol({ success: false, resultCode: -1, message: "Command 2000 timed out after 3000ms" });
     const cam = mavlinkCameraFor({ capture: true, zoom: true }, protocol);
     expect(await cam?.capture()).toEqual({ ok: false, answered: false, reason: "Command 2000 timed out after 3000ms" });
+  });
+
+  it("counts IN_PROGRESS then a timeout as answered: no frame grab and no Photo saved", async () => {
+    const late = "Command 2000 timed out after IN_PROGRESS";
+    const { protocol } = cameraProtocol({ success: false, resultCode: -1, message: late, acknowledged: true });
+    const cam = mavlinkCameraFor({ capture: true, zoom: false }, protocol);
+    const { d, calls } = deps({ camera: cam });
+    const r = await takePhoto("d1", d);
+    expect(r).toEqual({ failed: late });
+    expect(calls).toEqual([]);
+    expect(photoResultText(r)).not.toBe("Photo saved");
   });
 
   it("is absent for a protocol without the camera commands", () => {

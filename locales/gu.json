@@ -7328,23 +7328,6 @@
     "liveUnknown": "Not reported by this node yet."
   },
   "cockpit": {
-    "hud": {
-      "attFlag": "ATT",
-      "gs": "GS",
-      "ias": "IAS",
-      "alt": "ALT",
-      "vs": "V/S",
-      "rel": "REL",
-      "msl": "MSL",
-      "altRefToggle": "ઊંચાઈ સંદર્ભ {ref}, {next} પર બદલો",
-      "cardN": "N",
-      "cardE": "E",
-      "cardS": "S",
-      "cardW": "W",
-      "wind": "WIND",
-      "noData": "કોઈ ડેટા નથી",
-      "summary": "પિચ {pitch}, રોલ {roll}, ઝડપ {speed}, ઊંચાઈ {alt}, દિશા {heading}"
-    },
     "layout": {
       "hiddenAtDensity": "આ ઘનતા પર છુપાયેલું"
     },
@@ -7385,18 +7368,6 @@
     "immersive": "Immersive",
     "immersiveTitle": "Expand to full screen",
     "exitImmersiveTitle": "Exit immersive",
-    "band": {
-      "stickOn": "ચાલુ",
-      "stickOff": "બંધ",
-      "stickBlocked": "અવરોધિત",
-      "stickNoGamepad": "સ્ટિક નિયંત્રણ ચાલુ કરવા ગેમપેડ જોડો",
-      "stickNoSession": "No flight controller session for this drone",
-      "stickEnableTitle": "સ્ટિક નિયંત્રણ ચાલુ કરો",
-      "stickDisableTitle": "સ્ટિક નિયંત્રણ બંધ કરો",
-      "picHolder": "PIC {holder}",
-      "picTitle": "Pilot in command: {holder}",
-      "stickFc": "STICKS → FC"
-    },
     "mapLayer": "Map layer",
     "command": {
       "label": "CMD",
@@ -7406,18 +7377,6 @@
     },
     "openFlight": "ફ્લાઇટ ખોલો",
     "mapToggle": "મિનીમેપ બતાવો અથવા છુપાવો",
-    "confirm": {
-      "cancel": "રદ કરો",
-      "checklistOverrideHint": "ઓવરરાઇડ સુરક્ષા ઘટના તરીકે નોંધાય છે.",
-      "altitude": "ટેક-ઓફ ઊંચાઈ",
-      "staleLink": "The vehicle may not receive this"
-    },
-    "groundStation": {
-      "openCarried": "જોડાયેલા ડ્રોન",
-      "carried": "આ ગ્રાઉન્ડ સ્ટેશન {name} ને લઈ જાય છે",
-      "carriedBody": "તેનું કોકપિટ એ ડ્રોન પસંદ કરીને ખુલે છે, આ ગ્રાઉન્ડ સ્ટેશન મારફતે.",
-      "fly": "{name} ઉડાડો"
-    },
     "video": {
       "connecting": "જોડાઈ રહ્યું છે...",
       "cameraRecovering": "CAMERA RECOVERING...",
@@ -7436,41 +7395,23 @@
   "skills": {
     "arm": {
       "label": "Arm",
-      "effect": "Enables motor output",
-      "confirm": {
-        "button": "Arm"
-      }
+      "effect": "Enables motor output"
     },
     "disarm": {
       "label": "Disarm",
-      "effect": "Cuts motor output",
-      "confirm": {
-        "button": "Disarm"
-      }
+      "effect": "Cuts motor output"
     },
     "takeoff": {
       "label": "Take Off",
-      "effect": "Arms and climbs to the set altitude",
-      "confirm": {
-        "title": "Take off to {altitude} m",
-        "button": "Take off"
-      }
+      "effect": "Arms and climbs to the set altitude"
     },
     "land": {
       "label": "Land",
-      "effect": "Lands at the current position",
-      "confirm": {
-        "title": "Land vehicle",
-        "button": "Land"
-      }
+      "effect": "Lands at the current position"
     },
     "rth": {
       "label": "Return to Home",
-      "effect": "Flies to home and lands",
-      "confirm": {
-        "title": "Return to Home",
-        "button": "Return Home"
-      }
+      "effect": "Flies to home and lands"
     },
     "pause": {
       "label": "Pause",
@@ -7496,10 +7437,7 @@
     },
     "kill": {
       "label": "Kill Motors",
-      "effect": "Immediately cuts all motors",
-      "confirm": {
-        "button": "I understand, proceed"
-      }
+      "effect": "Immediately cuts all motors"
     },
     "modeLoiter": {
       "label": "Loiter",
@@ -7524,16 +7462,6 @@
     "setMode": {
       "label": "મોડ સેટ કરો",
       "effect": "વાહનને પસંદ કરેલા ફ્લાઇટ મોડમાં બદલે છે"
-    },
-    "reason": {
-      "alreadyArmed": "Already armed",
-      "notArmed": "Needs armed",
-      "alreadyDisarmed": "Already disarmed",
-      "linkStale": "Link stale: sent without confirmation of receipt",
-      "changedSincePrompt": "The vehicle changed while the confirmation was open. Nothing was sent.",
-      "noPausedMission": "No paused mission",
-      "noPilot": "ADOS Pilot is not flying this drone",
-      "linkStaleDisabled": "Link stale: needs a fresh link"
     },
     "state": {
       "ready": "Ready",
@@ -7564,11 +7492,6 @@
       "hotkey": "Hotkey",
       "gamepad": "Button {button}",
       "none": "Unbound"
-    },
-    "modeChange": {
-      "confirm": {
-        "button": "મોડ બદલો"
-      }
     },
     "flyModeFlag": "Cockpit",
     "plugin": {
@@ -7755,16 +7678,6 @@
     "remove": "રસનું સ્થળ દૂર કરો",
     "clear": "બધા રસના સ્થળો સાફ કરો",
     "clearAllConfirm": "Delete all {count} points of interest? Undo restores them."
-  },
-  "cockpitQuickSettings": {
-    "close": "Close",
-    "subtitle": "Adjust extension parameters and the active vision model",
-    "subtitleFocused": "Adjust this extension's parameters",
-    "noDrone": "No drone selected",
-    "empty": "No adjustable settings for this drone",
-    "emptyFocused": "This extension has no adjustable settings",
-    "modelSection": "Vision model",
-    "pluginPanelsSection": "Extension panels"
   },
   "mcp": {
     "title": "Control your fleet from your AI assistant",
@@ -8101,20 +8014,6 @@
       "dockerHint": "Pulls a ready-built image. Needs Docker; no Node.js, git or pnpm.",
       "sourceHint": "Clones and builds the repo. Needs Node.js 20 or newer, git and pnpm."
     }
-  },
-  "cockpitStreams": {
-    "switcherLabel": "Video streams",
-    "selectStream": "Select {label}",
-    "roleEo": "EO Zoom",
-    "roleEoWide": "EO Wide",
-    "roleIr": "Thermal",
-    "roleSplit": "Split",
-    "switching": "Switching…",
-    "pipHide": "Hide picture-in-picture",
-    "pipConnecting": "Connecting…",
-    "pipNoSignal": "No signal",
-    "pipRetry": "Retry",
-    "pipMove": "Move picture-in-picture"
   },
   "cameras": {
     "title": "Cameras",
@@ -9026,22 +8925,6 @@
     "fieldPackSelect": "Field pack"
   },
   "hud": {
-    "target": {
-      "searching": "SEARCHING",
-      "lost": "LOST",
-      "holdBare": "HOLD",
-      "gt": "GT {cls} #{id}"
-    },
-    "rail": {
-      "label": "Follow controls",
-      "follow": "FOLLOW",
-      "stopFollow": "Stop following",
-      "strict": "STRICT",
-      "smart": "SMART",
-      "rec": "REC",
-      "stop": "STOP",
-      "pending": "Applying"
-    },
     "range": {
       "label": "Follow range",
       "following": "FOLLOWING",
@@ -9064,18 +8947,6 @@
       "strict": "STRICT",
       "smart": "SMART"
     },
-    "lock": {
-      "following": "Following",
-      "acquiring": "Acquiring",
-      "searching": "Searching",
-      "holdingBare": "Holding",
-      "lost": "Lost",
-      "untracked": "Untracked",
-      "waitingFeed": "Waiting for feed",
-      "release": "Release target",
-      "conf": "conf",
-      "targetFallback": "TARGET"
-    },
     "nav": {
       "q": {
         "good": "GOOD",
@@ -9088,11 +8959,7 @@
         "holdOk": "HOLD OK",
         "noFlow": "NO FLOW",
         "drift": "DRIFT"
-      },
-      "popoverTitle": "Navigation sources"
-    },
-    "radar": {
-      "clear": "CLEAR"
+      }
     },
     "mapTab": {
       "title": "Map",
@@ -9199,19 +9066,12 @@
       "storage": "Companion storage {pct}% full",
       "pilotStale": "ADOS Pilot not answering"
     },
-    "menu": {
-      "exitToOverview": "Exit to Overview"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
       "hs": "Horizontal speed",
       "vs": "Vertical speed",
       "agl": "Height above the ground"
-    },
-    "card": {
-      "attitudeAria": "Pitch {pitch} degrees, roll {roll} degrees, heading {hdg} degrees",
-      "attitudeNone": "No attitude"
     },
     "fly": "Fly",
     "flyTitle": "Open the flight screen"

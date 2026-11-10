@@ -16,7 +16,6 @@
  * @license GPL-3.0-only
  */
 
-import { useTranslations } from "next-intl";
 import { Gamepad2 } from "lucide-react";
 import flightStateSpec from "@/lib/cockpit-spec/flight-state.json";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
@@ -28,7 +27,6 @@ import { useGroundStationStore } from "@/stores/ground-station-store";
 const CONTROL = flightStateSpec.mode_sheet.control_mode;
 
 export function StickControlChip({ droneId }: { droneId: string }) {
-  const t = useTranslations("cockpit.band");
   const hasGamepad = useInputStore((s) => s.activeController === "gamepad");
   const enabled = useInputStore((s) => s.manualControlEnabled);
   const setEnabled = useInputStore((s) => s.setManualControlEnabled);
@@ -39,8 +37,8 @@ export function StickControlChip({ droneId }: { droneId: string }) {
   const mode = pilot?.controlMode ?? null;
 
   const pic = picHolder && (
-    <span className="k keep" title={t("picTitle", { holder: picHolder })}>
-      {t("picHolder", { holder: picHolder })}
+    <span className="k keep" title={specString("cockpit.pic_title", { holder: picHolder })}>
+      {specString("cockpit.pic", { holder: picHolder })}
     </span>
   );
 
@@ -74,14 +72,14 @@ export function StickControlChip({ droneId }: { droneId: string }) {
   const blocked = enabled && linkBlock !== null;
   const color = blocked ? "var(--hud-warn)" : enabled ? "var(--hud-good)" : "var(--hud-ink-2)";
   const title = !hasGamepad
-    ? t("stickNoGamepad")
+    ? specString("cockpit.sticks.no_gamepad")
     : !hasSession
-      ? t("stickNoSession")
+      ? specString("cockpit.sticks.no_session")
       : blocked
         ? linkBlock
         : enabled
-          ? t("stickDisableTitle")
-          : t("stickEnableTitle");
+          ? specString("cockpit.sticks.disable")
+          : specString("cockpit.sticks.enable");
 
   return (
     <div className="stat" data-testid="cockpit-stick" data-route="fc">
@@ -89,7 +87,7 @@ export function StickControlChip({ droneId }: { droneId: string }) {
         type="button"
         role="switch"
         aria-checked={enabled}
-        aria-label={t("stickFc")}
+        aria-label={specString("cockpit.sticks.to_fc")}
         title={title}
         disabled={!available && !enabled}
         onClick={() => setEnabled(!enabled)}
@@ -98,10 +96,10 @@ export function StickControlChip({ droneId }: { droneId: string }) {
       >
         <Gamepad2 size={13} aria-hidden="true" />
         <span className="k" style={{ color: "inherit" }}>
-          {t("stickFc")}
+          {specString("cockpit.sticks.to_fc")}
         </span>
         <span className="v" style={{ color: "inherit", fontSize: 11 }}>
-          {blocked ? t("stickBlocked") : enabled ? t("stickOn") : t("stickOff")}
+          {specString(blocked ? "skill.avoid.blocked" : enabled ? "cockpit.sticks.state_on" : "cockpit.sticks.state_off")}
         </span>
       </button>
       {pic}

@@ -107,7 +107,7 @@ describe("skill dispatch gate", () => {
     const ctx = makeCtx({ armState: "armed" });
     await activate("fake", ctx);
 
-    expect(ctx.notify).toHaveBeenCalledWith("skills.reason.alreadyArmed", "warning");
+    expect(ctx.notify).toHaveBeenCalledWith("refusal.already_armed", "warning");
     expect(activateFn).not.toHaveBeenCalled();
   });
 
@@ -122,7 +122,7 @@ describe("skill dispatch gate", () => {
     const ctx = makeCtx({ armState: "disarmed" });
     await activate("fake", ctx);
 
-    expect(ctx.notify).toHaveBeenCalledWith("skills.reason.notArmed", "warning");
+    expect(ctx.notify).toHaveBeenCalledWith("refusal.needs_armed", "warning");
     expect(activateFn).not.toHaveBeenCalled();
   });
 
@@ -349,7 +349,7 @@ describe("built-in arm adapter", () => {
     const ctx = makeCtx({ protocol, armState: "armed" });
     const state = armSkill.getState(ctx);
     expect(state.kind).toBe("disabled");
-    expect(state.reason).toBe("skills.reason.alreadyArmed");
+    expect(state.reason).toBe("refusal.already_armed");
   });
 
   it("never arms when the arm state is unknown, and says the link is missing", async () => {

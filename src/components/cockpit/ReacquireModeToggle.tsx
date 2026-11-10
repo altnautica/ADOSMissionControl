@@ -10,8 +10,6 @@
  * @license GPL-3.0-only
  */
 
-import { useTranslations } from "next-intl";
-
 import type { ReacquireMode } from "@/lib/hud/nav-types";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { cn } from "@/lib/utils";
@@ -34,7 +32,6 @@ export function ReacquireModeToggle({
   vertical = false,
   className,
 }: ReacquireModeToggleProps) {
-  const t = useTranslations("hud.rail");
   const { mode, pending, select } = useReacquireMode(droneId, echoed);
   return (
     <div
@@ -49,10 +46,10 @@ export function ReacquireModeToggle({
           type="button"
           aria-pressed={mode === m}
           data-pending={pending === m ? "true" : undefined}
-          title={pending === m ? t("pending") : undefined}
+          title={pending === m ? specString("follow.pending") : undefined}
           onClick={() => select(m)}
         >
-          {t(m)}
+          {specString(`follow.mode.${m}`)}
         </button>
       ))}
     </div>

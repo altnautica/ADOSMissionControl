@@ -261,10 +261,12 @@ export class CommandQueue {
       clearTimeout(entry.timer);
       entry.timer = setTimeout(() => {
         this.pending.delete(ticket);
+        // The vehicle did answer (IN_PROGRESS); only its final result never came.
         entry.resolve({
           success: false,
           resultCode: -1,
           message: `Command ${command} timed out after IN_PROGRESS`,
+          acknowledged: true,
         });
       }, entry.timeoutMs);
       return;

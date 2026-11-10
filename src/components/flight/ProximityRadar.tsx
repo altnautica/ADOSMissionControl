@@ -14,7 +14,6 @@
  */
 
 import { useState, type KeyboardEvent } from "react";
-import { useTranslations } from "next-intl";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
@@ -42,7 +41,6 @@ interface ProximityRadarProps {
 }
 
 export function ProximityRadar({ droneId = null, size }: ProximityRadarProps) {
-  const t = useTranslations("hud.radar");
   // The OBSTACLE_DISTANCE ring keeps its last sample forever: `_version` says
   // new data arrived and the clock tick says time passed, which is the only
   // signal after a link loss. Both re-run the freshness checks below.
@@ -82,8 +80,8 @@ export function ProximityRadar({ droneId = null, size }: ProximityRadarProps) {
     model.nearestM === null
       ? model.stale
         ? "—"
-        : t("clear")
-      : `${specString("cockpit.unit.m", { n: model.nearestM.toFixed(1) })} ${model.band === "clear" ? t("clear") : specString(`radar.${model.band}`)}`;
+        : specString("skill.avoid.clear")
+      : `${specString("cockpit.unit.m", { n: model.nearestM.toFixed(1) })} ${model.band === "clear" ? specString("skill.avoid.clear") : specString(`radar.${model.band}`)}`;
 
   return (
     <div

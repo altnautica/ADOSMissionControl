@@ -9,6 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 
 import { disarmSkill } from "../builtins/disarm";
 import { pauseSkill } from "../builtins/pause";
@@ -201,5 +202,41 @@ describe("Disarm only on the ground", () => {
     pilotLanded(true, 10_000 - 2000);
     expect(vehicleLanded("d1")).toBeNull();
     expect(disarmSkill.getState(ctx())).toEqual(LANDED_UNKNOWN);
+  });
+});
+
+describe("Disarm on firmware with no landed state", () => {
+  const armBinding = () => resolveBoundSkillId("arm", "armed", { missionState: null, droneId: "d1" });
+
+  function manageAs(protocolName: string) {
+    useDroneManager.setState({
+      drones: new Map([["d1", { id: "d1", name: "d1", protocol: { protocolName, isConnected: true, disarm } }]]) as unknown as Map<
+        string,
+        ManagedDrone
+      >,
+    });
+  }
+
+  beforeEach(() => {
+    useNavStreamStore.setState({ byDrone: {} });
+    forgetDrone("d1");
+    disarm.mockClear();
+  });
+  afterEach(() => useDroneManager.setState({ drones: new Map() }));
+
+  it("is reachable on an armed MSP drone with no pilot, behind its confirm", async () => {
+    manageAs("msp");
+    expect(disarmSkill.getState(ctx()).kind).toBe("idle");
+    expect(armBinding()).toBe("disarm");
+    await disarmSkill.activate(ctx());
+    expect(disarm).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays refused on an armed MAVLink drone whose landed state is unknown", async () => {
+    manageAs("mavlink");
+    expect(disarmSkill.getState(ctx())).toEqual({ kind: "disabled", reason: refusalText("landed_unknown") });
+    expect(armBinding()).toBe("arm");
+    await disarmSkill.activate(ctx());
+    expect(disarm).not.toHaveBeenCalled();
   });
 });

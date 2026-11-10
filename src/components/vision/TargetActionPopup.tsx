@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { useToast } from "@/components/ui/toast";
+import { specString } from "@/lib/cockpit/spec-strings";
 import {
   resolveTargetActions,
   type TargetAction,
@@ -30,7 +31,6 @@ export function TargetActionPopup({
 }) {
   const { toast } = useToast();
   const t = useTranslations("vision");
-  const tHud = useTranslations("hud");
   const tRoot = useTranslations();
   // Labels and messages are i18n keys for host actions and literal text for
   // plugin-contributed ones.
@@ -52,7 +52,7 @@ export function TargetActionPopup({
     }
   };
 
-  const cls = target.classLabel || tHud("lock.targetFallback");
+  const cls = target.classLabel || specString("lock.target_fallback");
   const title = target.trackId != null ? `${cls} #${target.trackId}` : cls;
 
   return (

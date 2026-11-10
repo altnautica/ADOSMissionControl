@@ -14,7 +14,6 @@
  */
 
 import { specString } from "@/lib/cockpit/spec-strings";
-import { useTranslations } from "next-intl";
 import { Gamepad2, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
@@ -30,7 +29,6 @@ interface GroundStationCockpitProps {
 }
 
 export function GroundStationCockpit({ groundDeviceId }: GroundStationCockpitProps) {
-  const t = useTranslations("cockpit.groundStation");
   const peerDeviceId = useCommandFleetStore((s) =>
     groundDeviceId
       ? (extractLinkedPeers(s.cloudStatuses[groundDeviceId])[0]?.deviceId ?? null)
@@ -52,7 +50,7 @@ export function GroundStationCockpit({ groundDeviceId }: GroundStationCockpitPro
           size="sm"
           onClick={() => useUiStore.getState().setPendingDetailTab("carriedDrones")}
         >
-          {t("openCarried")}
+          {specString("cockpit.carried.open")}
         </Button>
       </div>
     );
@@ -62,8 +60,8 @@ export function GroundStationCockpit({ groundDeviceId }: GroundStationCockpitPro
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
       <Gamepad2 size={28} className="text-accent-primary" aria-hidden="true" />
-      <p className="text-sm font-medium text-text-primary">{t("carried", { name })}</p>
-      <p className="max-w-sm text-xs text-text-secondary">{t("carriedBody")}</p>
+      <p className="text-sm font-medium text-text-primary">{specString("cockpit.carried.title", { name })}</p>
+      <p className="max-w-sm text-xs text-text-secondary">{specString("cockpit.carried.message")}</p>
       <Button
         variant="primary"
         size="sm"
@@ -72,7 +70,7 @@ export function GroundStationCockpit({ groundDeviceId }: GroundStationCockpitPro
           useUiStore.getState().setPendingDetailTab("cockpit");
         }}
       >
-        {t("fly", { name })}
+        {specString("cockpit.carried.fly", { name })}
       </Button>
     </div>
   );

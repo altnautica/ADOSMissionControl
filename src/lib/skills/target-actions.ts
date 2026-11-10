@@ -289,8 +289,8 @@ export function buildPluginTargetAction(
             ctx.armState === "unknown"
               ? "refusal.no_fc_link"
               : armReq === "armed"
-                ? "skills.reason.notArmed"
-                : "skills.reason.alreadyArmed",
+                ? "refusal.needs_armed"
+                : "refusal.already_armed",
             "warning",
           );
           return;

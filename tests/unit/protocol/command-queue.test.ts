@@ -135,6 +135,14 @@ describe('CommandQueue', () => {
     expect(result.message).toContain('IN_PROGRESS');
   });
 
+  it('an IN_PROGRESS that then times out still reports the vehicle acknowledged it', async () => {
+    const promise = queue.sendCommand(400, params, sendFn, 1, 1, 255, 190);
+    queue.handleAck(400, MAV_RESULT.IN_PROGRESS);
+    vi.advanceTimersByTime(3000);
+    const result = await promise;
+    expect(result).toMatchObject({ success: false, resultCode: -1, acknowledged: true });
+  });
+
   // ── Concurrent same-id commands ──
 
   it('two commands with the same id both stay in flight; acks resolve FIFO', async () => {

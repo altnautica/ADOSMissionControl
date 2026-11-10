@@ -24,6 +24,7 @@ function inputs(over: Partial<PreflightInputs> = {}): PreflightInputs {
     batteryLowPct: 20,
     controlMode: null,
     controller: { connected: false, name: null },
+    onScreenSticks: false,
     storagePct: 40,
     ...over,
   };

@@ -111,6 +111,29 @@ describe("Menu in the top bar", () => {
     expect(screen.getByTestId("fs-menu")).toBeTruthy();
   });
 
+  it("keeps focus and the popover's Escape order when the bar re-renders", () => {
+    mainWidth = 250;
+    const view = mount();
+    const menu = openMenu();
+    const chip = within(menu).getByTestId("cockpit-nav");
+    fireEvent.click(chip.querySelector("button")!);
+    const modes = within(menu).getByTestId("fs-menu-modes");
+    modes.focus();
+    // A fresh grid object re-renders the bar with the same layout.
+    view.rerender(
+      <FlightGridContext.Provider value={flightGrid({ width: 1280, height: 800, widthClass: "expanded" })}>
+        <div className="ados-cockpit" data-testid="flight-screen">
+          <FlightTopBar droneId={DRONE} />
+        </div>
+      </FlightGridContext.Provider>,
+    );
+    expect(document.activeElement).toBe(modes);
+    // Escape closes the popover first; the Menu stays.
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByTestId("nav-source-popover")).toBeNull();
+    expect(screen.getByTestId("fs-menu")).toBeTruthy();
+  });
+
   it("lists only the link's text when its icon is still on the bar", () => {
     // Without controller, nav source and the link text the row needs 160 px.
     mainWidth = 170;

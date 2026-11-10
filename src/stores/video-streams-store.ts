@@ -42,32 +42,21 @@ export type StreamSwitchKind = "concurrent" | "switchable";
  * `down` is a downward-facing (belly) camera. */
 export type StreamRole = "eo" | "eo_wide" | "ir" | "split" | "down" | (string & {});
 
-/** i18n key suffix (namespace `cockpitStreams`) for a known role's short tab
- * label. An unknown role has no entry → the tab renders the descriptor's raw
- * `label` (the camera name) instead. */
-const ROLE_LABEL_KEY: Readonly<Record<string, string>> = {
-  eo: "roleEo",
-  eo_wide: "roleEoWide",
-  ir: "roleIr",
-  split: "roleSplit",
-};
-
-/** Roles whose short label is shared cockpit spec text. */
+/** Spec text key for a known role's short tab label. An unknown role has no
+ * entry → the tab renders the descriptor's raw `label` (the camera name). */
 const ROLE_SPEC_KEY: Readonly<Record<string, string>> = {
+  eo: "hud.leg.eo",
+  eo_wide: "hud.leg.eo_wide",
+  ir: "hud.leg.ir",
+  split: "hud.leg.split",
   down: "hud.leg.belly",
 };
 
-/** Short label for a known role: the spec text, else the `cockpitStreams`
- * translation; undefined for an unknown role (render the camera name). */
-export function streamRoleLabel(
-  role: StreamRole | undefined,
-  t: (key: string) => string,
-): string | undefined {
-  if (!role) return undefined;
-  const spec = ROLE_SPEC_KEY[role];
-  if (spec) return specString(spec);
-  const key = ROLE_LABEL_KEY[role];
-  return key ? t(key) : undefined;
+/** Short label for a known role; undefined for an unknown role (render the
+ * camera name). */
+export function streamRoleLabel(role: StreamRole | undefined): string | undefined {
+  const key = role ? ROLE_SPEC_KEY[role] : undefined;
+  return key ? specString(key) : undefined;
 }
 
 /** One selectable video stream a node exposes. */

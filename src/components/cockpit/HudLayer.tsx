@@ -20,7 +20,6 @@
  */
 
 import { useMemo, type CSSProperties } from "react";
-import { useTranslations } from "next-intl";
 import { useHudInstruments } from "@/hooks/use-hud-instruments";
 import { useFirmwareCapabilities } from "@/hooks/use-firmware-capabilities";
 import { useCockpitStore, type AltitudeReference } from "@/stores/cockpit-store";
@@ -36,6 +35,9 @@ import { effectiveLayers } from "@/lib/cockpit/layers/layer-spec";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { useCockpitView } from "@/lib/cockpit/views";
 import { useVehicleLayers } from "@/stores/cockpit-layers-store";
+
+const CARDINALS = [specString("hud.card.n"), specString("hud.card.e"), specString("hud.card.s"), specString("hud.card.w")] as const;
+const refText = (ref: AltitudeReference) => specString(`hud.alt_ref.${ref}`);
 
 function AltRefToggle({
   altitudeRef,
@@ -62,7 +64,6 @@ function AltRefToggle({
 }
 
 export function HudLayer({ droneId }: { droneId: string }) {
-  const t = useTranslations("cockpit.hud");
   const reading = useHudInstruments();
   const grid = useFlightGrid();
   const layers = useVehicleLayers(droneId);
@@ -77,14 +78,9 @@ export function HudLayer({ droneId }: { droneId: string }) {
   const fixedWing = vehicleClass === "plane" || vehicleClass === "vtol";
   const useAirspeed = fixedWing && reading.airspeed !== null;
   const speed = useAirspeed ? reading.airspeed : reading.speedMps;
-  const speedLabel = useAirspeed ? t("ias") : t("gs");
+  const speedLabel = specString(useAirspeed ? "hud.ias" : "hud.gs");
   const alt = altitudeRef === "msl" ? reading.altMsl : reading.alt;
-  const refLabel = altitudeRef === "msl" ? t("msl") : t("rel");
-
-  const cardinals = useMemo(
-    () => [t("cardN"), t("cardE"), t("cardS"), t("cardW")] as const,
-    [t],
-  );
+  const refLabel = refText(altitudeRef);
 
   const toggle = useMemo(() => {
     const next: AltitudeReference = altitudeRef === "msl" ? "rel" : "msl";
@@ -92,14 +88,11 @@ export function HudLayer({ droneId }: { droneId: string }) {
       <AltRefToggle
         altitudeRef={altitudeRef}
         label={refLabel}
-        ariaLabel={t("altRefToggle", {
-          ref: refLabel,
-          next: next === "msl" ? t("msl") : t("rel"),
-        })}
+        ariaLabel={specString("hud.alt_ref.toggle", { ref: refLabel, next: refText(next) })}
         onToggle={() => setAltitudeRef(next)}
       />
     );
-  }, [altitudeRef, refLabel, setAltitudeRef, t]);
+  }, [altitudeRef, refLabel, setAltitudeRef]);
 
   const on = effectiveLayers(layers.level, layers.flips, view);
   const instruments = on.has("instruments");
@@ -134,7 +127,7 @@ export function HudLayer({ droneId }: { droneId: string }) {
               pitch={reading.pitch}
               roll={reading.roll}
               flightPath={reading.flightPath}
-              attFlagLabel={t("attFlag")}
+              attFlagLabel={specString("hud.flag.att")}
             />
           )}
         </div>
@@ -144,13 +137,13 @@ export function HudLayer({ droneId }: { droneId: string }) {
           <HeadingTape
             heading={reading.heading}
             homeBearing={reading.homeBearing}
-            cardinals={cardinals}
+            cardinals={CARDINALS}
             homeLabel={specString("layer.home")}
           />
           <SpeedTape value={speed} caption={speedLabel} />
-          <AltTape value={alt} caption={`${t("alt")} ${refLabel}`} refToggle={toggle} />
-          <VerticalSpeedIndicator value={reading.climb} caption={t("vs")} />
-          <WindIndicator wind={reading.wind} heading={reading.heading} label={t("wind")} />
+          <AltTape value={alt} caption={`${specString("hud.alt")} ${refLabel}`} refToggle={toggle} />
+          <VerticalSpeedIndicator value={reading.climb} caption={specString("hud.vs_label")} />
+          <WindIndicator wind={reading.wind} heading={reading.heading} label={specString("hud.wind")} />
         </div>
       )}
       <HudSummary reading={reading} speed={speed} alt={alt} altitudeRef={altitudeRef} />

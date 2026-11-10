@@ -248,7 +248,7 @@ describe("resolveBoardSkillState", () => {
       reachable(),
       "live",
     );
-    expect(state).toEqual({ kind: "disabled", reason: "skills.reason.notArmed" });
+    expect(state).toEqual({ kind: "disabled", reason: "refusal.needs_armed" });
   });
 
   it("leaves a runnable control idle", () => {

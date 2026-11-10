@@ -204,12 +204,13 @@ describe("video-streams-store", () => {
     expect(st.streamsForDrone("node:d2")).toHaveLength(2);
   });
 
-  it("labels known roles: the belly leg from the spec, the rest translated", () => {
-    const t = (key: string) => `t:${key}`;
-    expect(streamRoleLabel("eo", t)).toBe("t:roleEo");
-    expect(streamRoleLabel("ir", t)).toBe("t:roleIr");
-    expect(streamRoleLabel("down", t)).toBe(specString("hud.leg.belly"));
-    expect(streamRoleLabel("unknownRole", t)).toBeUndefined();
-    expect(streamRoleLabel(undefined, t)).toBeUndefined();
+  it("labels known roles from the spec strings", () => {
+    expect(streamRoleLabel("eo")).toBe(specString("hud.leg.eo"));
+    expect(streamRoleLabel("eo_wide")).toBe("EO Wide");
+    expect(streamRoleLabel("ir")).toBe("Thermal");
+    expect(streamRoleLabel("split")).toBe(specString("hud.leg.split"));
+    expect(streamRoleLabel("down")).toBe(specString("hud.leg.belly"));
+    expect(streamRoleLabel("unknownRole")).toBeUndefined();
+    expect(streamRoleLabel(undefined)).toBeUndefined();
   });
 });

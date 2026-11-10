@@ -138,7 +138,7 @@ describe("FollowRail", () => {
     ]);
     renderRail();
     const swap = screen.getByTestId("frail-camswap");
-    expect(swap.textContent).toContain(specString("follow.cam_swap", { from: messages.cockpitStreams.roleEo, to: specString("hud.leg.belly") }));
+    expect(swap.textContent).toContain(specString("follow.cam_swap", { from: specString("hud.leg.eo"), to: specString("hud.leg.belly") }));
     fireEvent.click(swap);
     const st = useVideoStreamsStore.getState();
     expect(st.activeStreamIdByDrone[DRONE]).toBe("belly");

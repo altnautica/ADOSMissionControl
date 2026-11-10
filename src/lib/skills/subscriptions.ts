@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import { asFlightMode } from "@/lib/flight-mode";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { usePluginSkillHostStore } from "@/lib/skills/plugin-skill-host-store";
 import { useChecklistStore } from "@/stores/checklist-store";
@@ -33,9 +34,10 @@ let teardown: (() => void) | null = null;
  * pilot's and the landed state's freshness, checklist readiness, the
  * Follow-Me behavior store, cooldown ends) and recompute the selected drone's
  * state on any change, coalesced to animation-frame cadence so a 10 Hz
- * telemetry stream does not thrash the bar. Each managed drone's
- * EXTENDED_SYS_STATE feeds its landed state, and a drone that goes away is
- * forgotten. Idempotent; returns the teardown, which stops all of it.
+ * telemetry stream does not thrash the bar. Each managed drone's heartbeat
+ * feeds the mode it is seen flying and its EXTENDED_SYS_STATE its landed
+ * state, and a drone that goes away is forgotten. Idempotent; returns the
+ * teardown, which stops all of it.
  */
 export function initSkillSubscriptions(): () => void {
   if (teardown) return teardown;
@@ -132,20 +134,28 @@ export function initSkillSubscriptions(): () => void {
     }),
   );
 
-  // Each managed drone's flight controller reports its landed state; a drone
-  // that goes away (removed or disconnected) takes its facts with it.
-  const landedSubs = new Map<string, () => void>();
+  // Each managed drone's own heartbeat reports the mode it flies (a commanded
+  // mode is seen, or ends) and its flight controller its landed state; a
+  // drone that goes away (removed or disconnected) takes its facts with it.
+  const droneSubs = new Map<string, () => void>();
   const syncDrones = (drones: ReadonlyMap<string, ManagedDrone>) => {
-    for (const [id, unsub] of landedSubs) {
+    for (const [id, unsub] of droneSubs) {
       if (drones.has(id)) continue;
       unsub();
-      landedSubs.delete(id);
+      droneSubs.delete(id);
       forgetDrone(id);
     }
     for (const [id, drone] of drones) {
-      if (landedSubs.has(id)) continue;
-      const unsub = drone.protocol.onExtendedSysState?.((d) => noteFcLandedState(id, d.landedState, d.timestamp));
-      landedSubs.set(id, unsub ?? (() => undefined));
+      if (droneSubs.has(id)) continue;
+      const unsubLanded = drone.protocol.onExtendedSysState?.((d) => noteFcLandedState(id, d.landedState, d.timestamp));
+      const unsubBeat = drone.protocol.onHeartbeat?.((d) => {
+        const mode = asFlightMode(d.mode);
+        if (mode) observeFlightMode(id, mode);
+      });
+      droneSubs.set(id, () => {
+        unsubLanded?.();
+        unsubBeat?.();
+      });
     }
   };
   syncDrones(useDroneManager.getState().drones);
@@ -159,8 +169,8 @@ export function initSkillSubscriptions(): () => void {
     }),
   );
   stops.push(() => {
-    for (const unsub of landedSubs.values()) unsub();
-    landedSubs.clear();
+    for (const unsub of droneSubs.values()) unsub();
+    droneSubs.clear();
   });
 
   stops.push(

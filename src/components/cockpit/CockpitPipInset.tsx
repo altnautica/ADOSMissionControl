@@ -25,10 +25,8 @@ import { useTranslations } from "next-intl";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { usePipVideo } from "@/hooks/use-pip-video";
 import { useConnectedWhepKey } from "@/hooks/use-whep-key";
-import {
-  streamRoleLabel,
-  useVideoStreamsStore,
-} from "@/stores/video-streams-store";
+import { specString } from "@/lib/cockpit/spec-strings";
+import { streamRoleLabel, useVideoStreamsStore } from "@/stores/video-streams-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
 import { CockpitDemoStream } from "@/components/cockpit/CockpitDemoStream";
@@ -56,7 +54,6 @@ export function clampToBounds(
 }
 
 export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
-  const t = useTranslations("cockpitStreams");
   const tPip = useTranslations("cockpit.pip");
   const demo = useDemoMode();
   const pipId = useVideoStreamsStore((s) => s.pipStreamIdByDrone[droneId]);
@@ -169,7 +166,7 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
 
   if (!pip) return null;
 
-  const label = streamRoleLabel(pip.role, t) ?? pip.label;
+  const label = streamRoleLabel(pip.role) ?? pip.label;
 
   const onPointerDown = (e: React.PointerEvent) => {
     const el = rootRef.current;
@@ -266,7 +263,7 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
           className="lbl"
           role="button"
           tabIndex={0}
-          aria-label={t("pipMove")}
+          aria-label={specString("cockpit.pip.move")}
           onKeyDown={onHandleKeyDown}
         >
           {label}
@@ -274,8 +271,8 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
         <button
           type="button"
           className="pipclose"
-          aria-label={t("pipHide")}
-          title={t("pipHide")}
+          aria-label={specString("cockpit.pip.hide")}
+          title={specString("cockpit.pip.hide")}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => setPip(droneId, null)}
         >
@@ -301,23 +298,23 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
                 {pipStatus === "error" ? (
                   <>
                     <span className="text-[9px] font-mono uppercase tracking-wider text-status-error">
-                      {t("pipNoSignal")}
+                      {specString("cockpit.pip.no_signal")}
                     </span>
                     <button
                       type="button"
                       onClick={pipRetry}
-                      aria-label={t("pipRetry")}
+                      aria-label={specString("video.state.retry")}
                       className="flex min-h-12 min-w-12 items-center justify-center gap-1 border border-border-default px-3 text-[9px] font-mono text-text-secondary transition-colors hover:border-accent-primary hover:text-accent-primary"
                     >
                       <RefreshCw size={9} aria-hidden="true" />
-                      {t("pipRetry")}
+                      {specString("video.state.retry")}
                     </button>
                   </>
                 ) : (
                   <Loader2
                     size={16}
                     className="animate-spin text-text-tertiary"
-                    aria-label={pipStatus === "lost" ? tPip("reconnecting") : t("pipConnecting")}
+                    aria-label={pipStatus === "lost" ? tPip("reconnecting") : specString("cockpit.pip.connecting")}
                   />
                 )}
                 {pipStatus === "lost" && (

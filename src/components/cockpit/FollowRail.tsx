@@ -15,7 +15,6 @@
  */
 
 import type { ReactNode } from "react";
-import { useTranslations } from "next-intl";
 import { ArrowLeftRight, Circle, Crosshair, X } from "lucide-react";
 
 import { activateBound, buildSkillContext, useSkillRegistry } from "@/lib/skills";
@@ -61,22 +60,14 @@ function RailButton({ icon, word, label, onClick, disabled, pressed, tone, testI
   );
 }
 
-function useLegLabel(): (leg: StreamDescriptor) => string {
-  const t = useTranslations("cockpitStreams");
-  return (leg) => {
-    return streamRoleLabel(leg.role, t) ?? leg.label;
-  };
-}
-
 export function FollowRail({ droneId, withRec = false }: { droneId: string; withRec?: boolean }) {
-  const t = useTranslations("hud.rail");
   const { follow, following, installed } = useFollowingMode(droneId);
   const followKind = useSkillRegistry((s) => s.states.get(droneId)?.get(FOLLOW_SKILL_ID)?.kind);
   const streams = useVideoStreamsStore((s) => s.streamsByDrone[droneId]);
   const activeId = useVideoStreamsStore((s) => s.activeStreamIdByDrone[droneId]);
   const pipId = useVideoStreamsStore((s) => s.pipStreamIdByDrone[droneId]);
   const { isRecording, toggle: toggleRec } = useFlightRecording(droneId);
-  const legLabel = useLegLabel();
+  const legLabel = (leg: StreamDescriptor) => streamRoleLabel(leg.role) ?? leg.label;
 
   if (!following) return null;
 
@@ -84,12 +75,12 @@ export function FollowRail({ droneId, withRec = false }: { droneId: string; with
   const swap = camSwapPlan(streams ?? [], activeId ?? streams?.[0]?.id, pipId);
 
   return (
-    <nav className="frail" aria-label={t("label")} data-testid="follow-rail">
+    <nav className="frail" aria-label={specString("follow.controls")} data-testid="follow-rail">
       {installed && (
         <RailButton
           icon={tracking ? <X size={16} /> : <Crosshair size={16} />}
-          word={tracking ? specString("follow.tracking_close") : `${t("follow")} ▸`}
-          label={tracking ? t("stopFollow") : t("follow")}
+          word={tracking ? specString("follow.tracking_close") : `${specString("follow.chip")} ▸`}
+          label={tracking ? specString("follow.stop_following") : specString("follow.chip")}
           pressed={tracking}
           tone={tracking ? "track" : undefined}
           disabled={followKind === "disabled"}
@@ -115,7 +106,7 @@ export function FollowRail({ droneId, withRec = false }: { droneId: string; with
       {withRec && (
         <RailButton
           icon={<Circle size={16} fill={isRecording ? "currentColor" : "none"} />}
-          word={isRecording ? t("stop") : t("rec")}
+          word={isRecording ? specString("cockpit.stop") : specString("follow.rec")}
           pressed={isRecording}
           tone={isRecording ? "crit" : undefined}
           testId="frail-rec"

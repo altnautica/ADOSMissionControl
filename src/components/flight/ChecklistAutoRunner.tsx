@@ -10,10 +10,10 @@
  * shared 1 Hz clock, and an item whose telemetry goes stale falls back. The
  * pilot's readiness, FC status texts and control mode count only while its
  * frame is fresh (`pilotFresh`); a stale pilot fails its readiness as "Pilot
- * not answering", so a frozen frame never passes the first-arm gate. It
- * also opens the session for whichever drone is selected; `selectDrone`
- * resets the session on a switch, so a checklist never carries from one
- * aircraft to another. Renders nothing.
+ * not answering", so a frozen frame never passes the first-arm gate. Shown
+ * on-screen sticks stand in for a controller. It also opens the session for
+ * whichever drone is selected; `selectDrone` resets the session on a switch,
+ * so a checklist never carries from one aircraft to another. Renders nothing.
  *
  * @license GPL-3.0-only
  */
@@ -45,6 +45,7 @@ import { batteryLowPct, batteryReading } from "@/lib/hud/battery";
 import { decodeSensorHealth } from "@/lib/sensor-health";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import { fcPrearmTexts, preflightItems } from "@/lib/cockpit/preflight";
+import { useOnScreenSticksShown } from "@/lib/cockpit/on-screen-sticks-shown";
 
 /** MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` label key. */
 const GPS_FIX_KEYS: Record<number, string> = {
@@ -110,6 +111,7 @@ export function ChecklistAutoRunner(): null {
   const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
   const padUsable = usePadStatusStore((s) => s.connected && s.usable);
   const padName = usePadStatusStore((s) => s.name);
+  const sticksShown = useOnScreenSticksShown((s) => s.shown);
   const diskPercent = useAgentSystemStore((s) => s.resources?.disk_percent ?? null);
   const prearmLines = usePrearmBufferStore((s) => (droneId ? s.buffers[droneId] : undefined));
   const nav = useNavSource(droneId).result;
@@ -136,6 +138,7 @@ export function ChecklistAutoRunner(): null {
           pilot: live ? { readiness: live.readiness, controlMode: live.controlMode } : null,
           linkFresh: lastHeartbeat > 0 ? isSkillLinkFresh(lastHeartbeat, now) : null,
           controllerConnected: padUsable,
+          onScreenSticks: sticksShown,
           diskPercent,
         },
         now,
@@ -144,7 +147,7 @@ export function ChecklistAutoRunner(): null {
   }, [
     droneId, sessionDroneId, sessionId, applyAutoVerdicts, version, tick, battery, knownCellCount,
     gpsBuf, ekfBuf, sysStatusBuf, missionOnVehicle, fenceOnVehicle, tFix,
-    pilot, receivedAt, lastHeartbeat, padUsable, diskPercent,
+    pilot, receivedAt, lastHeartbeat, padUsable, sticksShown, diskPercent,
   ]);
 
   // The spec checklist that gates the first arm.
@@ -170,12 +173,13 @@ export function ChecklistAutoRunner(): null {
         batteryLowPct: batteryLowPct(null),
         controlMode: live?.controlMode ?? null,
         controller: { connected: padUsable, name: shortPadName(padName) },
+        onScreenSticks: sticksShown,
         storagePct: diskPercent,
       }),
     );
   }, [
     droneId, sessionDroneId, sessionId, setPreflightItems, version, tick, battery, sysStatusBuf,
-    pilot, receivedAt, prearmLines, lastHeartbeat, nav, padUsable, padName, diskPercent,
+    pilot, receivedAt, prearmLines, lastHeartbeat, nav, padUsable, padName, sticksShown, diskPercent,
   ]);
 
   return null;

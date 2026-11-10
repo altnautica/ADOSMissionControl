@@ -29,6 +29,7 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { demoNavStreamBlockedAt, demoTelemetryFrozen } from "./demo-link";
 import { MockProtocol } from "./mock-protocol";
+import { DEMO_DRONES } from "./drones";
 import { DEMO_SURFACE_OPS, PilotPins, demoPilotWire, type Json } from "./mock-pilot-wire";
 import { DemoVehicleDriver } from "./mock-pilot-vehicle";
 
@@ -75,7 +76,9 @@ export class MockPilot {
     this.wire = this.freshWire();
     this.pins.clear();
     this.lastInputAt = 0;
-    this.driver.reset();
+    const device = deviceIdFromNodeId(droneId) ?? droneId;
+    const cfg = DEMO_DRONES.find((d) => d.id === device);
+    this.driver.reset(cfg ? { lat: cfg.homeLat, lon: cfg.homeLon } : null);
     setPilotSender((f) => this.receive(f), droneId);
     this.timer = setInterval(() => this.publish(), PILOT_MS);
     // Demo scenarios (and the cockpit screenshot run) pin chip states, e.g.
@@ -217,7 +220,12 @@ export class MockPilot {
       this.lastInputAt > 0 &&
       now - this.lastInputAt > INPUT_STALE_MS;
     this.wire.hold_reason = lost ? "controller-lost" : null;
-    return this.pins.over(this.wire);
+    // The goal is the goto's own: any other owner flies none.
+    if (this.wire.owner !== "goto") this.wire.goal_ned = null;
+    const seen = this.pins.over(this.wire);
+    // Outside `ados` the FC flies, and a surface repositions it directly.
+    if (seen.control_mode !== "ados") seen.surface_ops = [];
+    return seen;
   }
 
   private publish(): void {

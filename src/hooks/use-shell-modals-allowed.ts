@@ -5,11 +5,13 @@
  * reports armed: a modal must not cover a cockpit or STOP. Callers keep their
  * modal queued and open it once this turns true.
  *
- * A vehicle whose link drops reads arm state "unknown"; when it was last
- * known armed it may still be flying, so it keeps holding the modals for
- * {@link ARMED_LINK_LOST_HOLD_MS} after its last heartbeat. The seeded demo
- * fleet boots armed in its missions and never holds them; a demo cockpit
- * still does, through the flight screen.
+ * A vehicle whose link drops reads arm state "unknown", and one whose
+ * transport closes has no arm state at all; when it was last known armed it
+ * may still be flying, so it keeps holding the modals for
+ * {@link ARMED_LINK_LOST_HOLD_MS} after its last armed heartbeat. Only a
+ * disarmed report releases it early. The seeded demo fleet boots armed in its
+ * missions and never holds them; a demo cockpit still does, through the
+ * flight screen.
  * @license GPL-3.0-only
  */
 
@@ -51,7 +53,7 @@ function holdUntil(nodes: Record<string, NodeEntry>): number {
     const arm = n.fc?.armState;
     if (arm === "armed") return Infinity;
     const at = lastArmedAt.get(id);
-    if (arm === "unknown" && at !== undefined) until = Math.max(until, at + ARMED_LINK_LOST_HOLD_MS);
+    if (arm !== "disarmed" && at !== undefined) until = Math.max(until, at + ARMED_LINK_LOST_HOLD_MS);
   }
   return until;
 }

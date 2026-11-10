@@ -122,7 +122,7 @@ describe("per-node state sourcing", () => {
     expect(armSkill.getState(ctx).kind).toBe("idle");
     expect(disarmSkill.getState(ctx)).toEqual({
       kind: "disabled",
-      reason: "skills.reason.alreadyDisarmed",
+      reason: "refusal.already_disarmed",
     });
   });
 

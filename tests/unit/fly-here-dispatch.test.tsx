@@ -97,7 +97,7 @@ describe("Fly Here altitude", () => {
     const ctx = makeCtx({ armState: "disarmed" });
     await activate("fly-here", ctx, { lat: 10, lon: 20, altitudeM: 30 });
     expect(guidedGoto).not.toHaveBeenCalled();
-    expect(ctx.notify).toHaveBeenCalledWith("skills.reason.notArmed", "warning");
+    expect(ctx.notify).toHaveBeenCalledWith("refusal.needs_armed", "warning");
   });
 
   it("repositions an armed vehicle and supervises the target", async () => {

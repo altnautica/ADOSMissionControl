@@ -104,7 +104,7 @@ export function TipLayer({ droneId }: { droneId: string }) {
   const [tipH, setTipH] = useState(TIP_H_GUESS);
   const sheetOpen = useFlightSheetStore((s) => s.open !== null);
   // Overlays outside the sheet store count as open sheets too.
-  const paletteOrEditor = useSkillInputStore((s) => s.paletteOpen || s.editorOpen);
+  const inputOverlay = useSkillInputStore((s) => s.paletteOpen || s.editorOpen || s.radialOpen);
   const quickOpen = useFlyQuickSettingsStore((s) => s.isOpen);
   const confirmPending = useSkillConfirmStore((s) => s.pending !== null);
   const vehicleClass = usePilotState(droneId).pilot?.vehicleClass ?? null;
@@ -134,7 +134,7 @@ export function TipLayer({ droneId }: { droneId: string }) {
   for (const a of ANCHORS) anchorsVisible[a] = placeAt(m?.rects[a]) !== null;
   const { tip, dismiss } = useCockpitTips(droneId, {
     anchorsVisible,
-    sheetOrMenuOpen: sheetOpen || m?.menuOpen === true || paletteOrEditor || quickOpen || confirmPending,
+    sheetOrMenuOpen: sheetOpen || m?.menuOpen === true || inputOverlay || quickOpen || confirmPending,
     skillsAvailable,
     gimbalAvailable: Boolean(m?.rects.gimbal_pad),
     alertBannerVisible: Boolean(m?.rects.alert_stack),

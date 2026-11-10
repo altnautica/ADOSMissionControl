@@ -22,6 +22,7 @@ vi.mock("next/dynamic", () => ({
 }));
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import { specString } from "@/lib/cockpit/spec-strings";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
 import { useMinimapModeStore } from "@/stores/minimap-mode-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -101,10 +102,11 @@ describe("card dot hit areas", () => {
     });
   }
 
-  it("steps through every face from the compact chip's dots", () => {
+  it("steps through every face from the compact chip's dots, named Next card", () => {
     const grid = renderCard(640, 360, "compact");
     expect(grid.cardIsChip).toBe(true);
     const step = card().querySelector(".fs-dots button") as HTMLElement;
+    expect(step.getAttribute("aria-label")).toBe(specString("cockpit.card.next"));
     const seen = [card().getAttribute("data-face")];
     for (let i = 1; i < CARD_FACES.length; i++) {
       fireEvent.click(step);

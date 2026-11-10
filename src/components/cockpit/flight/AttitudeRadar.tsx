@@ -12,7 +12,7 @@
  */
 
 import { memo } from "react";
-import { useTranslations } from "next-intl";
+import { specString } from "@/lib/cockpit/spec-strings";
 
 import { useHudInstruments } from "@/hooks/use-hud-instruments";
 
@@ -20,7 +20,6 @@ import { useHudInstruments } from "@/hooks/use-hud-instruments";
 const PITCH_FULL_DEG = 45;
 
 export const AttitudeRadar = memo(function AttitudeRadar({ size }: { droneId: string; size: number }) {
-  const t = useTranslations("flightScreen.card");
   const r = useHudInstruments();
   // Room above for the face's title and below for the page dots.
   const s = Math.max(64, size - 44);
@@ -49,7 +48,11 @@ export const AttitudeRadar = memo(function AttitudeRadar({ size }: { droneId: st
       viewBox={`0 0 ${s} ${s}`}
       className="fs-attitude"
       role="img"
-      aria-label={known ? t("attitudeAria", { pitch: Math.round(pitch), roll: Math.round(roll), hdg: Math.round(hdg) }) : t("attitudeNone")}
+      aria-label={
+        known
+          ? specString("cockpit.card.attitude_aria", { pitch: Math.round(pitch), roll: Math.round(roll), hdg: Math.round(hdg) })
+          : specString("cockpit.card.attitude_none")
+      }
       data-testid="fs-attitude-radar"
       data-known={known ? "true" : "false"}
     >

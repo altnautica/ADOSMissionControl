@@ -85,7 +85,7 @@ describe("dispatchSkillForNodes", () => {
 
     expect(performed.sort()).toEqual(["node:armed-a", "node:armed-c"]);
     expect(notify).toHaveBeenCalledWith("skills.reason.test-locked", "warning");
-    expect(notify).toHaveBeenCalledWith("skills.reason.notArmed", "warning");
+    expect(notify).toHaveBeenCalledWith("refusal.needs_armed", "warning");
     // The batch confirmation replaces the per-node dialog; none opens.
     expect(confirmDialog).not.toHaveBeenCalled();
   });

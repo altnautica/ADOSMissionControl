@@ -161,8 +161,8 @@ export async function activate(
       ctx.armState === "unknown"
         ? "refusal.no_fc_link"
         : armReq === "armed"
-          ? "skills.reason.notArmed"
-          : "skills.reason.alreadyArmed",
+          ? "refusal.needs_armed"
+          : "refusal.already_armed",
       "warning",
     );
     return;
@@ -225,7 +225,7 @@ export async function activate(
     if (ctx.refresh) {
       sendCtx = { ...ctx.refresh(), notify: ctx.notify, confirm: ctx.confirm };
       if (changedSincePrompt(skill, ctx, sendCtx)) {
-        ctx.notify("skills.reason.changedSincePrompt", "warning");
+        ctx.notify("refusal.changed_since_prompt", "warning");
         return;
       }
     }

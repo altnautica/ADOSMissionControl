@@ -8,14 +8,16 @@
 
 import type { Skill } from "../types";
 import { refusalText } from "@/lib/hud/refusal";
-import { vehicleLanded } from "../flight-facts";
+import { hasLandedSource, vehicleLanded } from "../flight-facts";
 import { disabledIfNoLink, pilotActionResult, REASON, specConfirm, viaPilot } from "./_shared";
 
 /** The spec's `armed_landed` landed half: why Disarm is refused now, or null
  *  while the vehicle is known to be on the ground. Never disarm in the air (on
  *  some firmware that cuts the motors), and an unknown landed state is refused
- *  like the air. Kill is the in-flight stop. */
+ *  like the air. Kill is the in-flight stop. Firmware that reports no landed
+ *  state at all (MSP) is not gated: the danger confirm is all that stands. */
 function notLandedReason(droneId: string): string | null {
+  if (!hasLandedSource(droneId)) return null;
   const landed = vehicleLanded(droneId);
   if (landed === true) return null;
   return refusalText(landed === null ? "landed_unknown" : "not_landed");

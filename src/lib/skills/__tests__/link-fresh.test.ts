@@ -50,8 +50,8 @@ function stateOf(skillId: string) {
 }
 
 const NO_LINK = { kind: "disabled", reason: "refusal.no_fc_link" };
-const STALE = { kind: "idle", warning: "skills.reason.linkStale" };
-const STALE_DISABLED = { kind: "disabled", reason: "skills.reason.linkStaleDisabled" };
+const STALE = { kind: "idle", warning: "refusal.link_stale" };
+const STALE_DISABLED = { kind: "disabled", reason: "refusal.link_stale_disabled" };
 
 describe("skill link freshness", () => {
   beforeEach(() => {

@@ -102,7 +102,7 @@ export function BottomLeftCard({ droneId }: { droneId: string }) {
           <button
             type="button"
             className="fs-dots-step"
-            aria-label={specString("cockpit.card.switch")}
+            aria-label={specString("cockpit.card.next")}
             data-testid="fs-card-step"
             onClick={() => step(1)}
           >

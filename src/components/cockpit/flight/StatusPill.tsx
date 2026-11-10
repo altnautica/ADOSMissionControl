@@ -74,6 +74,12 @@ const PREFLIGHT_SOURCE: Readonly<Record<string, PillSource>> = {
   controller: "controller",
 };
 
+/** Spec key naming each pill source in the list. The video source reuses
+ *  the camera's "Video" word; every other source has its own key. */
+export function pillSourceLabel(source: PillSource): string {
+  return specString(source === "video" ? "cockpit.camera.video" : `cockpit.status.source.${source}`);
+}
+
 const PREARM = /^(PreArm|Arm):/;
 
 /** Agent polls failing this many times in a row (about 9 s) read as an
@@ -268,7 +274,7 @@ export function StatusPill({ droneId }: { droneId: string }) {
                   <li key={a.id} data-severity={a.severity}>
                     <A className="fs-ico" style={{ color: COLOR[a.severity] }} aria-hidden="true" />
                     <span className="fs-pill-item">{a.text}</span>
-                    <span className="fs-pill-src">{specString(`cockpit.status.source.${a.source}`)}</span>
+                    <span className="fs-pill-src">{pillSourceLabel(a.source)}</span>
                   </li>
                 );
               })}

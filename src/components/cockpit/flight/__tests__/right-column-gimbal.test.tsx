@@ -250,6 +250,20 @@ describe("right column gimbal pad", () => {
     expect(posts.every((p) => p.pitch_dps === 0 && p.yaw_dps === 0)).toBe(true);
   });
 
+  it("recentres on a tap off the knob's centre and sends no rate", async () => {
+    renderPad();
+    const knob = screen.getByTestId("fs-gimbal-recentre");
+    const at = { pointerId: 1, buttons: 1, clientX: PAD / 2 + 20, clientY: PAD / 2 };
+    fireEvent.pointerDown(knob, at);
+    // A finger wobbles a pixel or two without dragging.
+    fireEvent.pointerMove(knob, { ...at, clientX: at.clientX + 2 });
+    fireEvent.pointerUp(knob, { pointerId: 1 });
+    fireEvent.click(knob, { detail: 1 });
+    await flush(150);
+    expect(fire).toHaveBeenCalledWith("gimbal-drone", ["center", "recenter", "gimbal-recenter"]);
+    expect(posts.every((p) => p.pitch_dps === 0 && p.yaw_dps === 0)).toBe(true);
+  });
+
   it("keeps the knob out of the tab order and ignores Space on it", async () => {
     renderPad();
     const knob = screen.getByTestId("fs-gimbal-recentre");

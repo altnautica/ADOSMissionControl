@@ -80,8 +80,9 @@ export function announcePhoto(r: PhotoResult): void {
   if (text) notifySkill(text, r === "saved" || r === "mavlink" ? "success" : "warning");
 }
 
-/** A vehicle camera's answer to one command. `answered` is false when no
- *  COMMAND_ACK came back (timeout, no link); `reason` is the result's text. */
+/** A vehicle camera's answer to one command. `answered` is false only when no
+ *  COMMAND_ACK came back at all (timeout, no link); a camera that acknowledged
+ *  IN_PROGRESS and then went quiet did answer. `reason` is the result's text. */
 export interface CameraAnswer {
   ok: boolean;
   answered: boolean;
@@ -107,7 +108,9 @@ export interface MavlinkCamera {
  * The camera a drone advertised, driven through its protocol: null unless it
  * advertised still capture or zoom and the protocol can send that command.
  * An answer is `ok` only when the advertised command was accepted; a result
- * code of 0 or more is the camera's answer, -1 is none (timeout, no link).
+ * code of 0 or more is the camera's answer, and so is an acknowledged command
+ * with no final result (IN_PROGRESS, then a timeout); -1 unacknowledged is
+ * none (timeout, no link).
  */
 export function mavlinkCameraFor(
   advertised: MavlinkCameraCapabilities | undefined,
@@ -119,7 +122,7 @@ export function mavlinkCameraFor(
   if (!capture && !zoomStep) return null;
   const answer = (r: CommandResult): CameraAnswer => ({
     ok: r.success,
-    answered: r.success || r.resultCode >= 0,
+    answered: r.success || r.resultCode >= 0 || r.acknowledged === true,
     reason: r.message,
   });
   const unadvertised = noAnswer(new Error("not advertised"));

@@ -39,8 +39,6 @@ export const NAV_STATE_STALE_MS = 2000;
 export const SCAN_STALE_MS = 500;
 export const POSE_STALE_MS = 500;
 export const OCCUPANCY_DIM_MS = 5000;
-/** The flight-state chip dims and reads LINK after this (cockpit spec). */
-export const PILOT_STALE_MS = 2000;
 
 export interface Stamped<T> {
   data: T;

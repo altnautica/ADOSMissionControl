@@ -1,9 +1,9 @@
 /**
  * Shared helpers for the built-in skills. Each built-in is a thin adapter over
  * an existing protocol call; these helpers express the common getState gates
- * (no FC link, wrong arm state, missing mode) and the reason keys (spec
- * `refusal.*` where the spec names the reason, app i18n otherwise) so the
- * 14 adapters stay short and consistent.
+ * (no FC link, wrong arm state, missing mode), the reason keys (the spec's
+ * `refusal.*`) and the confirm sheet text (spec keys) so the 14 adapters stay
+ * short and consistent.
  *
  * @module skills/builtins/_shared
  * @license GPL-3.0-only
@@ -11,7 +11,6 @@
 
 import { specBuiltin, specConfirmGesture } from "@/lib/cockpit/spec-builtins";
 import { refusalText } from "@/lib/hud/refusal";
-import { hasSpecText } from "@/lib/hud/spec-text";
 import {
   PILOT_NO_ANSWER,
   requestPilotAction,
@@ -29,30 +28,33 @@ import type {
   SkillState,
 } from "../types";
 
-/**
- * The sheet text key of a built-in: the spec's `confirm.<key>.<part>` where
- * the spec carries it, else the app's `skills.<key>.confirm.<part>`.
- */
-function confirmTextKey(key: string, part: "title" | "message"): string {
-  const spec = `confirm.${key}.${part}`;
-  return hasSpecText(spec) ? spec : `skills.${key}.confirm.${part}`;
-}
+/** The spec key of each confirmed built-in's button label. */
+const CONFIRM_BUTTON = {
+  arm: "builtin.short.arm",
+  disarm: "builtin.short.disarm",
+  takeoff: "builtin.short.takeoff",
+  land: "builtin.short.land",
+  rth: "pilot.link_loss_action.rth",
+  kill: "confirm.kill.button",
+} as const;
+
+/** A built-in that may ask for a confirm. */
+export type ConfirmedBuiltin = keyof typeof CONFIRM_BUTTON;
 
 /**
- * The confirm policy of a built-in. The title and message come from the spec
- * (`confirm.<key>.*`) where it names them; the button label, which the spec
- * does not name, is the app's `skills.<key>.confirm.button`.
+ * The confirm policy of a built-in, all spec text: the title and message are
+ * the spec's `confirm.<key>.*`, the button its label for that built-in.
  */
 export function builtinConfirm(
-  key: string,
+  key: ConfirmedBuiltin,
   gesture: ConfirmGesture,
   variant: ConfirmPolicy["variant"],
   extra?: Pick<ConfirmPolicy, "checklistAware" | "altitude">,
 ): ConfirmPolicy {
   return {
-    title: confirmTextKey(key, "title"),
-    message: confirmTextKey(key, "message"),
-    confirmLabel: `skills.${key}.confirm.button`,
+    title: `confirm.${key}.title`,
+    message: `confirm.${key}.message`,
+    confirmLabel: CONFIRM_BUTTON[key],
     variant,
     gesture,
     ...extra,
@@ -82,25 +84,26 @@ export function modeChangeConfirm(mode: string): ConfirmPolicy | undefined {
   if (RECOVERY_MODES[mode] === true) return undefined;
   const gesture: ConfirmGesture = mode === "AUTO" ? "slide" : "hold";
   return {
-    ...builtinConfirm("modeChange", gesture, "primary"),
     title: "confirm.mode.title",
     message: "confirm.mode.to",
+    confirmLabel: "confirm.mode.button",
+    variant: "primary",
+    gesture,
     values: { mode },
   };
 }
 
-/** Reason keys surfaced when a skill is disabled: the spec's `refusal.*`
- *  text where the spec names the reason, the app's `skills.reason.*` else. */
+/** Reason keys surfaced when a skill is disabled: the spec's `refusal.*`. */
 export const REASON = {
   noFcLink: "refusal.no_fc_link",
-  alreadyArmed: "skills.reason.alreadyArmed",
-  notArmed: "skills.reason.notArmed",
-  alreadyDisarmed: "skills.reason.alreadyDisarmed",
+  alreadyArmed: "refusal.already_armed",
+  notArmed: "refusal.needs_armed",
+  alreadyDisarmed: "refusal.already_disarmed",
   modeUnavailable: "refusal.mode_unavailable",
-  linkStale: "skills.reason.linkStale",
-  linkStaleDisabled: "skills.reason.linkStaleDisabled",
-  noPausedMission: "skills.reason.noPausedMission",
-  noPilot: "skills.reason.noPilot",
+  linkStale: "refusal.link_stale",
+  linkStaleDisabled: "refusal.link_stale_disabled",
+  noPausedMission: "refusal.no_paused_mission",
+  noPilot: "refusal.no_pilot",
 } as const;
 
 /** A drone has no live FC link when its protocol is absent. */
@@ -146,7 +149,7 @@ export function disabledUnlessDisarmed(ctx: SkillContext): SkillState | null {
  * cockpit spec names for it. Sheet text as in `builtinConfirm`.
  */
 export function specConfirm(
-  id: string,
+  id: ConfirmedBuiltin,
   variant: ConfirmPolicy["variant"],
   extra?: Pick<ConfirmPolicy, "checklistAware" | "altitude">,
 ): ConfirmPolicy | undefined {

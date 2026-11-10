@@ -11,9 +11,11 @@
  *   Enter recentres the gimbal. Space is never handled here: it stays the
  *   Pause hotkey.
  * - The centre knob recentres the gimbal through the camera extension when
- *   it is tapped; a drag that starts on it aims like any other drag. The
- *   knob is not a tab stop and ignores keyboard clicks, so Space on it does
- *   nothing (Enter on the pad recentres).
+ *   it is tapped. A press on the knob sends no rate: its drag is measured
+ *   from the press point, so only a move past the dead zone from where the
+ *   finger landed aims, and anything less is a tap. The knob is not a tab
+ *   stop and ignores keyboard clicks, so Space on it does nothing (Enter on
+ *   the pad recentres).
  *
  * Rates go through the gimbal rate driver (`@/lib/cockpit/gimbal-rate`): at
  * most one change per 100 ms, one request in flight, the latest rate wins,
@@ -163,9 +165,14 @@ export function GimbalPad({ droneId, scale = 1 }: { droneId: string; scale?: num
         // click to the pad and a tap on the knob would never recentre. Any
         // other press captures at once, so the release always reaches the pad.
         const onKnob = (e.target as Element).closest("button") !== null;
-        if (!onKnob) e.currentTarget.setPointerCapture?.(e.pointerId);
         dragged.current = false;
-        origin.current = { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2, captured: !onKnob };
+        if (onKnob) {
+          // Measured from the press point, and no rate until it moves.
+          origin.current = { x: e.clientX, y: e.clientY, r: r.width / 2, captured: false };
+          return;
+        }
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        origin.current = { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2, captured: true };
         dragTo(e.clientX, e.clientY, e.currentTarget, e.pointerId);
       }}
       onPointerMove={(e) => {

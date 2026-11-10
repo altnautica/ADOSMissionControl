@@ -169,7 +169,7 @@ describe("gated plugin target action", () => {
     const action = buildPluginTargetAction(gated, "node:drone-1", writeConfig, () => c);
     await action.activate({ target: PERSON, notify: vi.fn() });
     expect(writeConfig).not.toHaveBeenCalled();
-    expect(c.notify).toHaveBeenCalledWith("skills.reason.notArmed", "warning");
+    expect(c.notify).toHaveBeenCalledWith("refusal.needs_armed", "warning");
   });
 
   it("writes only after the operator confirms", async () => {

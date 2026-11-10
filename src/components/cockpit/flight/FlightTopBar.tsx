@@ -94,6 +94,8 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
   const bar = grid.zones.top_bar;
   const barRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useFlightSheet("menu");
+  // Stable, so a bar re-render never re-runs the Menu's focus and key setup.
+  const closeMenu = useCallback(() => setMenuOpen(false), [setMenuOpen]);
   // The stage is kept with the bar width it was measured at, so a wider bar
   // starts again from "everything on the bar".
   const [fit, setFit] = useState({ room: 0, stage: 0 });
@@ -187,7 +189,7 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
           <span>{specString("cockpit.stop")}</span>
         </button>
       </div>
-      {menuOpen && <FlightMenu droneId={droneId} hidden={hidden} onClose={() => setMenuOpen(false)} />}
+      {menuOpen && <FlightMenu droneId={droneId} hidden={hidden} onClose={closeMenu} />}
     </div>
   );
 }

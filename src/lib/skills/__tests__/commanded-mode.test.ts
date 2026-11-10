@@ -169,3 +169,97 @@ describe("every route that commands a return records it", () => {
     expect(fcFailsafeActive("fc-1", "SMART_RTL", 0)).toBe(false);
   });
 });
+
+describe("a commanded mode the drone never reports does not last", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("reads a return that appears 11 s after an accepted, never-seen return as a failsafe", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_000_000);
+    await rthSkill.activate(ctx());
+    expect(fcFailsafeActive("d1", "RTL", 0)).toBe(false);
+    vi.setSystemTime(1_011_000);
+    observe("RTL");
+    expect(fcFailsafeActive("d1", "RTL", 0)).toBe(true);
+  });
+});
+
+describe("every drone's own heartbeat is observed, selected or not", () => {
+  type Beat = { armed: boolean; mode: string; systemStatus: number };
+  const beats = new Map<string, (b: Beat) => void>();
+
+  function manageWithHeartbeats(...ids: string[]): void {
+    if (typeof stop === "function") stop();
+    useDroneManager.setState({
+      drones: new Map(
+        ids.map((id) => [
+          id,
+          {
+            id,
+            name: id,
+            protocol: {
+              isConnected: true,
+              returnToLaunch,
+              setFlightMode,
+              onHeartbeat: (cb: (b: Beat) => void) => {
+                beats.set(id, cb);
+                return () => beats.delete(id);
+              },
+            },
+          },
+        ]),
+      ) as unknown as Map<string, ManagedDrone>,
+      selectedDroneId: ids[0] ?? null,
+    });
+    stop = initSkillSubscriptions();
+  }
+
+  function beat(id: string, mode: string): void {
+    beats.get(id)?.({ armed: true, mode, systemStatus: 4 });
+  }
+
+  const fleetRow = (id: string): FleetDrone =>
+    ({
+      id,
+      name: id,
+      status: "in_mission",
+      connectionState: "armed",
+      flightMode: "AUTO",
+      armState: "armed",
+      lastHeartbeat: Date.now(),
+      fcAttached: true,
+      fcLinkLost: false,
+    }) as FleetDrone;
+
+  afterEach(() => vi.useRealTimers());
+
+  it("a recalled drone that is not selected, switched to LOITER, then returning on its own is in failsafe", async () => {
+    manageWithHeartbeats("sel", "f1");
+    setFixtureFleet({ drones: [fleetRow("f1")] });
+    expect((await returnFleetToLaunch()).acknowledged).toEqual(["f1"]);
+    beat("f1", "RTL");
+    beat("f1", "LOITER");
+    beat("f1", "RTL");
+    expect(fcFailsafeActive("f1", "RTL", 4)).toBe(true);
+    expect(pauseSkill.getState(ctx({ droneId: "f1", flightMode: "RTL", systemStatus: 4 }))).toEqual({
+      kind: "disabled",
+      reason: refusalText("failsafe"),
+    });
+  });
+
+  it("a recalled drone whose heartbeat shows LOITER, and RTL much later, is in failsafe", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(2_000_000);
+    manageWithHeartbeats("sel", "f1");
+    setFixtureFleet({ drones: [fleetRow("f1")] });
+    expect((await returnFleetToLaunch()).acknowledged).toEqual(["f1"]);
+    beat("f1", "LOITER");
+    vi.setSystemTime(2_030_000);
+    beat("f1", "RTL");
+    expect(fcFailsafeActive("f1", "RTL", 4)).toBe(true);
+    expect(pauseSkill.getState(ctx({ droneId: "f1", flightMode: "RTL", systemStatus: 4 }))).toEqual({
+      kind: "disabled",
+      reason: refusalText("failsafe"),
+    });
+  });
+});

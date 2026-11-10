@@ -25,7 +25,11 @@ import { DEMO_AGENTS, buildDemoStatus, seedDemoLanNodes } from "@/mock/demo-seed
 import { seedGroundStationStore } from "@/mock/demo-seed/ground-station";
 import { seedVisorReadings } from "@/mock/demo-seed/visor";
 import { useNodeSensorsStore } from "@/stores/node-sensors-store";
-import { seedFocusedAgentSystem, seedFocusedCapabilities } from "@/mock/demo-seed/agent-system";
+import {
+  focusDemoAgentNode,
+  seedFocusedAgentSystem,
+  seedFocusedCapabilities,
+} from "@/mock/demo-seed/agent-system";
 import { getDemoMcpPlugins } from "@/mock/mock-mcp-plugins";
 import { useMcpPluginStore } from "@/lib/plugins/mcp-plugin-tools";
 
@@ -71,8 +75,11 @@ export function DemoProvider() {
   // capability stores) on every node switch to stop one node's data bleeding
   // onto the next. In demo that wipes the ground-station overview data we seed
   // once below, so re-seed the profile-specific stores after each switch — the
-  // ground-station overview then stays populated whenever opened.
+  // ground-station overview then stays populated whenever opened. The demo
+  // agent connection follows the selection too, as focusing a real node
+  // connects its agent under that node's device id.
   useEffect(() => {
+    focusDemoAgentNode();
     seedGroundStationStore();
     seedVisorReadings();
     seedFocusedAgentSystem(Date.now());

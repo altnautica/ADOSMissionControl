@@ -14,7 +14,6 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 import { CONFIRM_HOLD_DEFAULT_MS } from "@/lib/skills/types";
@@ -69,7 +68,6 @@ interface NavSourcePopoverProps {
 }
 
 export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePopoverProps) {
-  const t = useTranslations("hud.nav");
   const { toast } = useToast();
   const rootRef = useRef<HTMLDivElement>(null);
   const [host, setHost] = useState<HTMLElement | null>(null);
@@ -152,13 +150,13 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
     <div
       ref={rootRef}
       role="dialog"
-      aria-label={t("popoverTitle")}
+      aria-label={specString("nav_source.popover_title")}
       className="navpop glass-panel"
       style={{ top: pos.top, left: pos.left, width: POPOVER_W }}
       data-testid="nav-source-popover"
     >
       <div className="navpop-head">
-        <span>{t("popoverTitle")}</span>
+        <span>{specString("nav_source.popover_title")}</span>
         <button type="button" onClick={onClose} aria-label={specString("cockpit.close")} className="navpop-x fs-hit">
           <X size={14} aria-hidden="true" />
         </button>

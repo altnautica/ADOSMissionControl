@@ -16,7 +16,6 @@
 
 import { Fragment, useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
 import { Command, Expand, Gauge, LogOut, Minimize, Settings, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
@@ -76,7 +75,6 @@ export function FlightMenu({
   hidden: ReadonlySet<TopBarItem>;
   onClose: () => void;
 }) {
-  const t = useTranslations("flightScreen.menu");
   const view = useCockpitView(droneId);
   const setView = useCockpitViewStore((s) => s.setView);
   const { pilot } = usePilotState(droneId);
@@ -229,7 +227,7 @@ export function FlightMenu({
       <section className="fs-menu-sec fs-menu-actions" data-section="exit">
         <button type="button" data-testid="fs-exit" onClick={run(exitFlightScreen)}>
           <LogOut className="fs-ico" aria-hidden="true" />
-          {t("exitToOverview")}
+          {specString("cockpit.menu.exit_overview")}
         </button>
       </section>
     ),

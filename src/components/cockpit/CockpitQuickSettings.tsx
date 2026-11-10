@@ -92,7 +92,6 @@ export function CockpitQuickSettings({
   onClose,
   focusPluginId,
 }: CockpitQuickSettingsProps) {
-  const t = useTranslations("cockpitQuickSettings");
   const tVision = useTranslations("vision");
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -159,7 +158,7 @@ export function CockpitQuickSettings({
       {/* Scrim — a click outside the drawer closes it. */}
       <button
         type="button"
-        aria-label={t("close")}
+        aria-label={specString("cockpit.close")}
         onClick={onClose}
         className="absolute inset-0 cursor-default bg-scrim/50 backdrop-blur-[1px]"
         tabIndex={-1}
@@ -179,14 +178,14 @@ export function CockpitQuickSettings({
               {specString("cockpit.quick_settings")}
             </h3>
             <p className="text-[11px] text-text-tertiary">
-              {focusPluginId ? t("subtitleFocused") : t("subtitle")}
+              {specString(focusPluginId ? "cockpit.quick_settings.subtitle_focused" : "cockpit.quick_settings.subtitle")}
             </p>
           </div>
           {/* A 48 px hit area (layout.json touch_target.min) around the 28 px box. */}
           <button
             type="button"
             onClick={onClose}
-            aria-label={t("close")}
+            aria-label={specString("cockpit.close")}
             className="group -my-2.5 -mr-2.5 flex h-12 w-12 shrink-0 items-center justify-center text-text-secondary focus:outline-none"
           >
             <span className="flex h-7 w-7 items-center justify-center border border-border-default transition-colors group-hover:border-accent-primary group-hover:text-text-primary group-focus-visible:ring-2 group-focus-visible:ring-accent-primary">
@@ -198,11 +197,11 @@ export function CockpitQuickSettings({
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
           {!droneId ? (
             <p className="py-6 text-center text-xs text-text-tertiary">
-              {t("noDrone")}
+              {specString("cockpit.quick_settings.no_drone")}
             </p>
           ) : !hasContent ? (
             <p className="py-6 text-center text-xs text-text-tertiary">
-              {focusPluginId ? t("emptyFocused") : t("empty")}
+              {specString(focusPluginId ? "cockpit.quick_settings.empty_focused" : "cockpit.quick_settings.empty")}
             </p>
           ) : (
             <div className="flex flex-col gap-5">
@@ -210,7 +209,7 @@ export function CockpitQuickSettings({
               {showModelPicker ? (
                 <section className="flex flex-col gap-2">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-                    {t("modelSection")}
+                    {specString("cockpit.quick_settings.model")}
                   </h4>
                   <span className="text-xs text-text-secondary">
                     {tVision("detector")}
@@ -232,7 +231,7 @@ export function CockpitQuickSettings({
               {visiblePanels.length > 0 ? (
                 <section className="flex flex-col gap-2">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-                    {t("pluginPanelsSection")}
+                    {specString("cockpit.menu.extension_panels")}
                   </h4>
                   <PluginHostProvider
                     deviceId={pluginDeviceId}

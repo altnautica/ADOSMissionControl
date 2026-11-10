@@ -21,29 +21,15 @@
 
 import { useRef } from "react";
 import { VideoOff } from "lucide-react";
-import { useTranslations } from "next-intl";
 
-import {
-  streamRoleLabel,
-  useVideoStreamsStore,
-  type StreamDescriptor,
-} from "@/stores/video-streams-store";
-
-/** Short display label for a stream: the localized role name when known, else
- * the raw camera name the agent advertised. */
-function streamLabel(
-  s: StreamDescriptor,
-  t: (key: string) => string,
-): string {
-  return streamRoleLabel(s.role, t) ?? s.label;
-}
+import { specString } from "@/lib/cockpit/spec-strings";
+import { streamRoleLabel, useVideoStreamsStore } from "@/stores/video-streams-store";
 
 interface CockpitStreamTabsProps {
   droneId: string;
 }
 
 export function CockpitStreamTabs({ droneId }: CockpitStreamTabsProps) {
-  const t = useTranslations("cockpitStreams");
   const streams = useVideoStreamsStore((s) => s.streamsByDrone[droneId]);
   const activeId = useVideoStreamsStore((s) => s.activeStreamIdByDrone[droneId]);
   const switching = useVideoStreamsStore((s) => s.switchingByDrone[droneId]);
@@ -102,21 +88,21 @@ export function CockpitStreamTabs({ droneId }: CockpitStreamTabsProps) {
       <div
         className="strmtabs panel"
         role="tablist"
-        aria-label={t("switcherLabel")}
+        aria-label={specString("cockpit.streams.label")}
         aria-orientation="horizontal"
         aria-busy={switching || undefined}
         data-cockpit-layer="stream-tabs"
         onKeyDown={onKeyDown}
       >
         {streams.map((s, i) => {
-          const label = streamLabel(s, t);
+          const label = streamRoleLabel(s.role) ?? s.label;
           const isActive = s.id === active;
           const isDead = s.live === false;
           // A dead leg names its state so the reason it is disabled is not a
           // silent gray-out (the surface says why).
           const hint = isDead
-            ? `${t("selectStream", { label })} — ${t("pipNoSignal")}`
-            : t("selectStream", { label });
+            ? `${specString("cockpit.streams.select", { label })} — ${specString("cockpit.pip.no_signal")}`
+            : specString("cockpit.streams.select", { label });
           return (
             <button
               key={s.id}
@@ -161,7 +147,7 @@ export function CockpitStreamTabs({ droneId }: CockpitStreamTabsProps) {
           shimmer alone is a silent visual cue). Outside the tablist so it never
           reads as a tab. */}
       <span className="sr-only" role="status" aria-live="polite">
-        {switching ? t("switching") : ""}
+        {switching ? specString("nav_source.switching") : ""}
       </span>
     </>
   );

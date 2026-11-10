@@ -22,13 +22,9 @@ import {
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useInputStore } from "@/stores/input-store";
 
-const STALE_TEXT = "The vehicle may not receive this";
+const STALE_TEXT = specString("confirm.stale_link");
 const TEST_MESSAGES = {
   ...messages,
-  cockpit: {
-    ...messages.cockpit,
-    confirm: { ...messages.cockpit.confirm, staleLink: STALE_TEXT },
-  },
   testSheet: { title: "Arm {drone}", message: "Confirm", button: "Go" },
 };
 

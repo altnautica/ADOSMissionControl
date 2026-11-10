@@ -181,7 +181,7 @@ describe("useVideoStreams", () => {
     );
   });
 
-  it("reverts the active tab and toasts when a camera switch fails", async () => {
+  it("reverts the active tab and toasts the camera's name when a camera switch fails", async () => {
     toastSpy.mockClear();
     const spy = vi.fn(async () => {
       throw new Error("switch refused");
@@ -204,7 +204,10 @@ describe("useVideoStreams", () => {
     expect(spy).toHaveBeenCalledWith("/dev/video1");
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("/dev/video0");
     expect(useVideoStreamsStore.getState().switchingByDrone[DRONE]).toBeFalsy();
-    expect(toastSpy).toHaveBeenCalledWith(specString("cockpit.toast.stream_switch_failed"), "error");
+    expect(toastSpy).toHaveBeenCalledWith(
+      `Thermal: ${specString("cockpit.toast.stream_switch_failed")}`,
+      "error",
+    );
     // The revert is not itself a user switch: no second switchCamera fires.
     expect(spy).toHaveBeenCalledTimes(1);
   });

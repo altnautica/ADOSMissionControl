@@ -199,6 +199,9 @@ export class MAVLinkAdapter implements DroneProtocol {
     // before this connection.
     this.sendCommandLong(512, [49, 0, 0, 0, 0, 0, 0]).catch(() => {})
     this.sendCommandLong(512, [148, 0, 0, 0, 0, 0, 0]).catch(() => {})
+    // EXTENDED_SYS_STATE (245) at 1 Hz is the flight controller's landed state,
+    // which Disarm gates on; a refusal or no answer just leaves it unknown.
+    this.sendCommandLong(511, [245, 1_000_000, 0, 0, 0, 0, 0]).catch(() => {})
     this.camera.start()
     // COMPONENT_METADATA (397) is a PX4-only "component information" message;
     // ArduPilot does not implement it, so only request it for PX4 vehicles.

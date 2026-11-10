@@ -102,6 +102,8 @@ export interface PreflightInputs {
   /** Who flies the sticks; the controller item shows only for `ados`. */
   controlMode: "ados" | "fc_manual" | "elrs" | null;
   controller: { connected: boolean; name: string | null };
+  /** The cockpit's on-screen sticks are shown: they stand in for a controller. */
+  onScreenSticks: boolean;
   /** On-board storage use (percent), or null when not reported. */
   storagePct: number | null;
 }
@@ -131,7 +133,7 @@ export function preflightItems(i: PreflightInputs): PreflightItem[] {
           ? specText("flow.preflight.controller_named", { name })
           : specText("flow.preflight.controller")
         : specText("flow.preflight.controller_optional"),
-      state: connected ? "pass" : "warn",
+      state: connected || i.onScreenSticks ? "pass" : "warn",
     });
   }
   items.push(storageItem(i.storagePct));

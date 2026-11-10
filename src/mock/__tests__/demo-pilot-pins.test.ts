@@ -1,7 +1,9 @@
 /**
  * @module mock/demo-pilot-pins.test
  * @description The demo pilot reaches the cockpit states a real pilot
- * reports: it advertises the `goto` surface op and flies Fly Here, and an FC
+ * reports: it advertises the `goto` surface op under `ados` control only and
+ * flies Fly Here as the pilot does (owner `goto` with its goal, the pilot's
+ * refusal order and codes), and an FC
  * failsafe and a tuning step pinned through `window.__adosDemoPilot.pin` reach
  * the pilot frame and the flight-state chip, with Pause refused during the
  * failsafe. Pins and stick input never carry over from one drone's session to
@@ -67,16 +69,50 @@ afterEach(() => {
 });
 
 describe("demo pilot surface ops", () => {
-  it("advertises goto and flies Fly Here itself", async () => {
+  const POINT = { lat: 12.97, lon: 77.59, alt_m: 30 };
+
+  it("advertises goto and flies Fly Here as owner goto with its goal from home", async () => {
     expect(pilot().surfaceOps).toContain("goto");
-    expect((await requestPilotAction("goto", { lat: 12.97, lon: 77.59, alt_m: 30 })).ok).toBe(true);
+    expect((await requestPilotAction("goto", POINT)).ok).toBe(true);
     expect(vehicle().flight.mode).toBe("GUIDED");
-    expect(pilot().owner).toBe("pilot");
+    vi.advanceTimersByTime(100);
+    expect(pilot().owner).toBe("goto");
+    // alpha-1's home is 12.950, 77.668: the point lies north-west of it.
+    const [n, e, d] = pilot().goalNed!;
+    expect(n).toBeCloseTo(2226.39, 1);
+    expect(e).toBeCloseTo(-8462.08, 1);
+    expect(d).toBe(-30);
+    expect(chip().ruleId).toBe("goto");
   });
 
-  it("refuses a goto on the ground", async () => {
-    await requestPilotAction("land");
-    expect(await requestPilotAction("goto", { lat: 12.97, lon: 77.59, alt_m: 30 })).toEqual({ ok: false, err: "landed" });
+  it("drops the goal once another owner flies", async () => {
+    await requestPilotAction("goto", POINT);
+    await requestPilotAction("rth");
+    vi.advanceTimersByTime(100);
+    expect(pilot().owner).toBe("fc_mode");
+    expect(pilot().goalNed).toBeNull();
+  });
+
+  it("refuses in the pilot's order: bad args, not armed, landed", async () => {
+    vehicle().flight.init({ armed: false, airborne: false, mode: "LOITER" });
+    expect(await requestPilotAction("goto", { lat: 12.97, lon: 77.59 })).toEqual({ ok: false, err: "bad_args" });
+    expect(await requestPilotAction("goto", { lat: 91, lon: 77.59, alt_m: 30 })).toEqual({ ok: false, err: "bad_args" });
+    expect(await requestPilotAction("goto", POINT)).toEqual({ ok: false, err: "not_armed" });
+    vehicle().flight.init({ armed: true, airborne: false, mode: "LOITER" });
+    expect(await requestPilotAction("goto", POINT)).toEqual({ ok: false, err: "landed" });
+  });
+
+  it("refuses while a launch is still climbing", async () => {
+    handle()!.pin({ launch: { step: "climb", after: "hold", error: null } });
+    expect(await requestPilotAction("goto", POINT)).toEqual({ ok: false, err: "launching" });
+    expect(vehicle().flight.mode).toBe("AUTO");
+  });
+
+  it("advertises no surface op and refuses goto outside ados control", async () => {
+    expect((await requestPilotAction("control_mode:fc_manual")).ok).toBe(true);
+    vi.advanceTimersByTime(100);
+    expect(pilot().surfaceOps).toEqual([]);
+    expect(await requestPilotAction("goto", POINT)).toEqual({ ok: false, err: "control_mode" });
   });
 });
 

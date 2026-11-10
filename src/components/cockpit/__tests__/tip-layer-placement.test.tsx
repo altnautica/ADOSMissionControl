@@ -191,12 +191,13 @@ describe("TipLayer", () => {
     expect(intersects(r, LEFT)).toBe(false);
   });
 
-  it("counts the palette, the binding editor, quick settings, a skill confirm and the pill list as open sheets", () => {
+  it("counts the palette, the binding editor, the radial, quick settings, a skill confirm and the pill list as open sheets", () => {
     renderScreen();
     expect(mocks.ui?.sheetOrMenuOpen).toBe(false);
     const cases: [string, () => void, () => void][] = [
       ["palette", () => useSkillInputStore.setState({ paletteOpen: true }), () => useSkillInputStore.setState({ paletteOpen: false })],
       ["editor", () => useSkillInputStore.setState({ editorOpen: true }), () => useSkillInputStore.setState({ editorOpen: false })],
+      ["radial", () => useSkillInputStore.setState({ radialOpen: true }), () => useSkillInputStore.setState({ radialOpen: false })],
       ["quick settings", () => useFlyQuickSettingsStore.setState({ isOpen: true }), () => useFlyQuickSettingsStore.setState({ isOpen: false })],
       [
         "skill confirm",

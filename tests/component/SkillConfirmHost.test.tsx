@@ -64,9 +64,9 @@ async function flush() {
 }
 
 const HOLD_POLICY: ConfirmPolicy = {
-  title: "skills.land.confirm.title",
+  title: "confirm.land.title",
   message: "confirm.land.message",
-  confirmLabel: "skills.land.confirm.button",
+  confirmLabel: "builtin.short.land",
   variant: "danger",
   gesture: "hold",
 };
@@ -74,7 +74,7 @@ const HOLD_POLICY: ConfirmPolicy = {
 const ARM_POLICY: ConfirmPolicy = {
   title: "confirm.arm.title",
   message: "confirm.arm.message",
-  confirmLabel: "skills.arm.confirm.button",
+  confirmLabel: "builtin.short.arm",
   variant: "danger",
   gesture: "slide",
   checklistAware: true,
@@ -83,7 +83,7 @@ const ARM_POLICY: ConfirmPolicy = {
 const KILL_POLICY: ConfirmPolicy = {
   title: "confirm.kill.title",
   message: "confirm.kill.message",
-  confirmLabel: "skills.kill.confirm.button",
+  confirmLabel: "confirm.kill.button",
   variant: "danger",
   gesture: "guarded",
 };

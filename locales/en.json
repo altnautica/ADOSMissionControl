@@ -7333,23 +7333,6 @@
     "liveUnknown": "Not reported by this node yet."
   },
   "cockpit": {
-    "hud": {
-      "attFlag": "ATT",
-      "gs": "GS",
-      "ias": "IAS",
-      "alt": "ALT",
-      "vs": "V/S",
-      "rel": "REL",
-      "msl": "MSL",
-      "altRefToggle": "Altitude reference {ref}, switch to {next}",
-      "cardN": "N",
-      "cardE": "E",
-      "cardS": "S",
-      "cardW": "W",
-      "wind": "WIND",
-      "noData": "no data",
-      "summary": "Pitch {pitch}, roll {roll}, speed {speed}, altitude {alt}, heading {heading}"
-    },
     "layout": {
       "hiddenAtDensity": "Hidden at this density"
     },
@@ -7390,18 +7373,6 @@
     "immersive": "Immersive",
     "immersiveTitle": "Expand to full screen",
     "exitImmersiveTitle": "Exit immersive",
-    "band": {
-      "stickFc": "STICKS → FC",
-      "stickOn": "ON",
-      "stickOff": "OFF",
-      "stickBlocked": "BLOCKED",
-      "stickNoGamepad": "Connect a gamepad to enable stick control",
-      "stickNoSession": "No flight controller session for this drone",
-      "stickEnableTitle": "Enable stick control",
-      "stickDisableTitle": "Disable stick control",
-      "picHolder": "PIC {holder}",
-      "picTitle": "Pilot in command: {holder}"
-    },
     "mapLayer": "Map layer",
     "command": {
       "label": "CMD",
@@ -7411,18 +7382,6 @@
     },
     "openFlight": "Open Flight",
     "mapToggle": "Show or hide the minimap",
-    "confirm": {
-      "cancel": "Cancel",
-      "checklistOverrideHint": "The override is recorded as a safety event.",
-      "altitude": "Take-off altitude",
-      "staleLink": "The vehicle may not receive this"
-    },
-    "groundStation": {
-      "openCarried": "Carried drones",
-      "carried": "This ground station carries {name}",
-      "carriedBody": "Its cockpit opens with that drone selected, fed through this ground station.",
-      "fly": "Fly {name}"
-    },
     "video": {
       "connecting": "CONNECTING...",
       "cameraRecovering": "CAMERA RECOVERING...",
@@ -7441,41 +7400,23 @@
   "skills": {
     "arm": {
       "label": "Arm",
-      "effect": "Enables motor output",
-      "confirm": {
-        "button": "Arm"
-      }
+      "effect": "Enables motor output"
     },
     "disarm": {
       "label": "Disarm",
-      "effect": "Cuts motor output",
-      "confirm": {
-        "button": "Disarm"
-      }
+      "effect": "Cuts motor output"
     },
     "takeoff": {
       "label": "Take Off",
-      "effect": "Arms and climbs to the set altitude",
-      "confirm": {
-        "title": "Take {drone} off to {altitude} m",
-        "button": "Take off"
-      }
+      "effect": "Arms and climbs to the set altitude"
     },
     "land": {
       "label": "Land",
-      "effect": "Lands at the current position",
-      "confirm": {
-        "title": "Land {drone}",
-        "button": "Land"
-      }
+      "effect": "Lands at the current position"
     },
     "rth": {
       "label": "Return to Home",
-      "effect": "Flies to home and lands",
-      "confirm": {
-        "title": "Return {drone} to home",
-        "button": "Return Home"
-      }
+      "effect": "Flies to home and lands"
     },
     "pause": {
       "label": "Pause",
@@ -7501,10 +7442,7 @@
     },
     "kill": {
       "label": "Kill Motors",
-      "effect": "Immediately cuts all motors",
-      "confirm": {
-        "button": "I understand, proceed"
-      }
+      "effect": "Immediately cuts all motors"
     },
     "modeLoiter": {
       "label": "Loiter",
@@ -7529,16 +7467,6 @@
     "setMode": {
       "label": "Set Mode",
       "effect": "Switches the vehicle to the selected flight mode"
-    },
-    "reason": {
-      "alreadyArmed": "Already armed",
-      "notArmed": "Needs armed",
-      "alreadyDisarmed": "Already disarmed",
-      "linkStale": "Link stale: sent without confirmation of receipt",
-      "changedSincePrompt": "The vehicle changed while the confirmation was open. Nothing was sent.",
-      "noPausedMission": "No paused mission",
-      "noPilot": "ADOS Pilot is not flying this drone",
-      "linkStaleDisabled": "Link stale: needs a fresh link"
     },
     "state": {
       "ready": "Ready",
@@ -7569,11 +7497,6 @@
       "hotkey": "Hotkey",
       "gamepad": "Button {button}",
       "none": "Unbound"
-    },
-    "modeChange": {
-      "confirm": {
-        "button": "Switch mode"
-      }
     },
     "flyModeFlag": "Cockpit",
     "plugin": {
@@ -7760,16 +7683,6 @@
     "remove": "Remove point of interest",
     "clear": "Clear all points of interest",
     "clearAllConfirm": "Delete all {count} points of interest? Undo restores them."
-  },
-  "cockpitQuickSettings": {
-    "close": "Close",
-    "subtitle": "Adjust extension parameters and the active vision model",
-    "subtitleFocused": "Adjust this extension's parameters",
-    "noDrone": "No drone selected",
-    "empty": "No adjustable settings for this drone",
-    "emptyFocused": "This extension has no adjustable settings",
-    "modelSection": "Vision model",
-    "pluginPanelsSection": "Extension panels"
   },
   "mcp": {
     "title": "Control your drones from your AI assistant",
@@ -8106,20 +8019,6 @@
     "watchPointSee": "Every tool call, live — the effect in plain language, not a black box.",
     "watchPointLocal": "Local-first: control and the activity feed both stay on your machine.",
     "watchPointAudit": "Timestamped and recorded — the live feed doubles as your audit trail."
-  },
-  "cockpitStreams": {
-    "switcherLabel": "Video streams",
-    "selectStream": "Select {label}",
-    "roleEo": "EO Zoom",
-    "roleEoWide": "EO Wide",
-    "roleIr": "Thermal",
-    "roleSplit": "Split",
-    "switching": "Switching…",
-    "pipHide": "Hide picture-in-picture",
-    "pipConnecting": "Connecting…",
-    "pipNoSignal": "No signal",
-    "pipRetry": "Retry",
-    "pipMove": "Move picture-in-picture"
   },
   "cameras": {
     "title": "Cameras",
@@ -9026,28 +8925,12 @@
     }
   },
   "hud": {
-    "target": {
-      "searching": "SEARCHING",
-      "lost": "LOST",
-      "holdBare": "HOLD",
-      "gt": "GT {cls} #{id}"
-    },
     "detector": {
       "idle": "DETECTOR IDLE",
       "rejected": "NO DETECTOR ON THIS CAMERA",
       "unauthorized": "DRONE REFUSED THE PAIRING KEY",
       "noLink": "DETECTION NEEDS A DIRECT LINK",
       "unreachable": "DETECTOR UNREACHABLE"
-    },
-    "rail": {
-      "label": "Follow controls",
-      "follow": "FOLLOW",
-      "stopFollow": "Stop following",
-      "strict": "STRICT",
-      "smart": "SMART",
-      "rec": "REC",
-      "stop": "STOP",
-      "pending": "Applying"
     },
     "range": {
       "label": "Follow range",
@@ -9071,18 +8954,6 @@
       "strict": "STRICT",
       "smart": "SMART"
     },
-    "lock": {
-      "following": "Following",
-      "acquiring": "Acquiring",
-      "searching": "Searching",
-      "holdingBare": "Holding",
-      "lost": "Lost",
-      "untracked": "Untracked",
-      "waitingFeed": "Waiting for feed",
-      "release": "Release target",
-      "conf": "conf",
-      "targetFallback": "TARGET"
-    },
     "nav": {
       "q": {
         "good": "GOOD",
@@ -9095,11 +8966,7 @@
         "holdOk": "HOLD OK",
         "noFlow": "NO FLOW",
         "drift": "DRIFT"
-      },
-      "popoverTitle": "Navigation sources"
-    },
-    "radar": {
-      "clear": "CLEAR"
+      }
     },
     "mapTab": {
       "title": "Map",
@@ -9199,19 +9066,12 @@
       "storage": "Companion storage {pct}% full",
       "pilotStale": "ADOS Pilot not answering"
     },
-    "menu": {
-      "exitToOverview": "Exit to Overview"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
       "hs": "Horizontal speed",
       "vs": "Vertical speed",
       "agl": "Height above the ground"
-    },
-    "card": {
-      "attitudeAria": "Pitch {pitch} degrees, roll {roll} degrees, heading {hdg} degrees",
-      "attitudeNone": "No attitude"
     },
     "fly": "Fly",
     "flyTitle": "Open the flight screen"

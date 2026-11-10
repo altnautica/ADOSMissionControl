@@ -13,30 +13,26 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { specString } from "@/lib/cockpit/spec-strings";
 import type { HudInstruments } from "@/lib/hud-readings";
 import type { AltitudeReference } from "@/stores/cockpit-store";
 
 /** Summary refresh period, ms. */
 export const HUD_SUMMARY_PERIOD_MS = 1000;
 
-/** The `cockpit.hud` translator, as far as the summary uses it. */
-type HudTranslator = (key: string, values?: Record<string, string>) => string;
-
 interface SummaryInput {
   reading: HudInstruments;
   speed: number | null;
   alt: number | null;
   altitudeRef: AltitudeReference;
-  t: HudTranslator;
 }
 
-function summaryText({ reading, speed, alt, altitudeRef, t }: SummaryInput): string {
+function summaryText({ reading, speed, alt, altitudeRef }: SummaryInput): string {
   // Each value carries its unit, or reads "no data" without one.
   const n = (v: number | null, digits: number, unit: string) =>
-    v === null || !Number.isFinite(v) ? t("noData") : `${v.toFixed(digits)}${unit}`;
-  const ref = altitudeRef === "msl" ? t("msl") : t("rel");
-  return t("summary", {
+    v === null || !Number.isFinite(v) ? specString("hud.no_data") : `${v.toFixed(digits)}${unit}`;
+  const ref = specString(`hud.alt_ref.${altitudeRef}`);
+  return specString("hud.summary", {
     pitch: n(reading.pitch, 0, "°"),
     roll: n(reading.roll, 0, "°"),
     speed: n(speed, 1, " m/s"),
@@ -45,18 +41,13 @@ function summaryText({ reading, speed, alt, altitudeRef, t }: SummaryInput): str
   });
 }
 
-type HudSummaryProps = Omit<SummaryInput, "t">;
-
-export function HudSummary({ reading, speed, alt, altitudeRef }: HudSummaryProps) {
-  const t = useTranslations("cockpit.hud");
-  const latest = useRef<SummaryInput>({ reading, speed, alt, altitudeRef, t });
+export function HudSummary({ reading, speed, alt, altitudeRef }: SummaryInput) {
+  const latest = useRef<SummaryInput>({ reading, speed, alt, altitudeRef });
   useEffect(() => {
-    latest.current = { reading, speed, alt, altitudeRef, t };
-  }, [reading, speed, alt, altitudeRef, t]);
+    latest.current = { reading, speed, alt, altitudeRef };
+  }, [reading, speed, alt, altitudeRef]);
 
-  const [text, setText] = useState(() =>
-    summaryText({ reading, speed, alt, altitudeRef, t }),
-  );
+  const [text, setText] = useState(() => summaryText({ reading, speed, alt, altitudeRef }));
 
   useEffect(() => {
     const id = window.setInterval(

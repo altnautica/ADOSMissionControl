@@ -9,10 +9,10 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../locales/en.json";
-import { usePillAlerts } from "@/components/cockpit/flight/StatusPill";
+import { StatusPill, usePillAlerts } from "@/components/cockpit/flight/StatusPill";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
@@ -98,6 +98,16 @@ describe("usePillAlerts", () => {
     useVideoStore.setState({ isStreaming: true, degradedReason: "ice-disconnect" });
     const { result } = renderHook(() => usePillAlerts("drone-pill"), { wrapper });
     expect(result.current.find((a) => a.id.startsWith("alert:videoFrozen"))?.source).toBe("video");
+  });
+
+  it("labels a frozen video's source in words, never as a raw key", () => {
+    useDroneManager.setState({ selectedDroneId: "drone-pill" });
+    useVideoStore.setState({ isStreaming: true, degradedReason: "ice-disconnect" });
+    render(<StatusPill droneId="drone-pill" />, { wrapper });
+    fireEvent.click(screen.getByTestId("status-pill"));
+    const labels = [...screen.getByTestId("status-pill-list").querySelectorAll(".fs-pill-src")].map((e) => e.textContent);
+    expect(labels).toContain("Video");
+    expect(labels.filter((t) => t?.startsWith("cockpit."))).toEqual([]);
   });
 
   it("warns that the pilot is not answering when this drone's agent sent no pilot state", () => {

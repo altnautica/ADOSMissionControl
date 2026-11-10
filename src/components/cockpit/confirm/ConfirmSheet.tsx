@@ -79,8 +79,8 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
 
   const complete = useCallback(() => {
     if (checklistIncomplete) {
-      // The skill id from a spec title (`confirm.<id>.title`) or an app one
-      // (`skills.<id>.confirm.title`).
+      // The action from a built-in's spec title (`confirm.<key>.title`, keyed
+      // in `lib/skills/builtins/_shared.ts`) or an app skill's (`skills.<id>.confirm.title`).
       const m = /^(?:confirm\.([^.]+)|skills\.([^.]+)\.confirm)\./.exec(policy.title);
       const action = m?.[1] ?? m?.[2] ?? "skill";
       recordSafetyOverride(action, "preflight_incomplete");
@@ -193,7 +193,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
           <button
             type="button"
             onClick={() => resolve(false)}
-            aria-label={t("cockpit.confirm.cancel")}
+            aria-label={specString("setup.action.cancel")}
             className="rounded-md p-1 text-text-tertiary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
           >
             <X size={16} aria-hidden="true" />
@@ -209,7 +209,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
             className="flex items-center gap-1.5 rounded-md border border-status-warning/60 bg-status-warning/10 p-2 text-xs font-semibold text-status-warning"
           >
             <ShieldAlert size={14} aria-hidden="true" />
-            {t("cockpit.confirm.staleLink")}
+            {specString("confirm.stale_link")}
           </p>
         )}
 
@@ -243,7 +243,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
               {specString("confirm.override")}
             </label>
             <p className="text-[11px] text-text-tertiary">
-              {t("cockpit.confirm.checklistOverrideHint")}
+              {specString("confirm.override_hint")}
             </p>
           </div>
         )}
@@ -282,7 +282,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
           onClick={() => resolve(false)}
           className="h-10 rounded-md border border-border-default text-sm text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
         >
-          {t("cockpit.confirm.cancel")}
+          {specString("setup.action.cancel")}
         </button>
       </div>
     </div>

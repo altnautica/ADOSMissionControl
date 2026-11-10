@@ -7,7 +7,6 @@
  * @license GPL-3.0-only
  */
 
-import { useTranslations } from "next-intl";
 import { Minus, Plus } from "lucide-react";
 import type { ConfirmAltitude } from "@/lib/skills/types";
 import { specString } from "@/lib/cockpit/spec-strings";
@@ -23,7 +22,6 @@ interface AltitudeStepperProps {
 }
 
 export function AltitudeStepper({ spec, value, onChange }: AltitudeStepperProps) {
-  const t = useTranslations("cockpit.confirm");
   const set = (next: number) =>
     onChange(Math.max(spec.minM, Math.min(spec.maxM, Math.round(next))));
 
@@ -33,7 +31,7 @@ export function AltitudeStepper({ spec, value, onChange }: AltitudeStepperProps)
   return (
     <div className="flex items-center justify-between gap-3">
       <label htmlFor="skill-confirm-altitude" className="text-xs text-text-secondary">
-        {t("altitude")}
+        {specString("flow.launch.alt_m")}
       </label>
       <div className="flex items-center gap-2">
         <button

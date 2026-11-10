@@ -122,4 +122,20 @@ describe("controller while the tour shows", () => {
     tap("cross");
     expect(spies.picker).toHaveBeenCalledWith("select");
   });
+
+  it("swallows the Cross that closes the tour through its release", () => {
+    useControlsStore.setState({ tourVisible: true });
+    const view = render(<Dispatcher />);
+    const down: boolean[] = [];
+    down[WEB_BUTTON_INDEX.cross] = true;
+    act(() => useInputStore.setState({ buttons: down }));
+    // The tour's last card finished on that press and hid itself.
+    act(() => useControlsStore.setState({ tourVisible: false }));
+    view.rerender(<Dispatcher />);
+    act(() => useInputStore.setState({ buttons: [] }));
+    expect(spies.picker).not.toHaveBeenCalled();
+    // The next Cross is the picker's again.
+    tap("cross");
+    expect(spies.picker).toHaveBeenCalledWith("select");
+  });
 });

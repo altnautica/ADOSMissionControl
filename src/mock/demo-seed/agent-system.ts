@@ -11,7 +11,7 @@ import { useAgentSystemStore } from "@/stores/agent-system-store";
 import type { PairedDrone } from "@/stores/pairing-store";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import type { AgentStatus, ServiceInfo, SystemResources, LogEntry } from "@/lib/agent/types";
-import { DEMO_WORKSTATION } from "@/mock/drones";
+import { DEMO_DRONES, DEMO_WORKSTATION } from "@/mock/drones";
 import { setMockAgentOverride } from "@/mock/agent/client";
 import { setMockConfigProfile } from "@/mock/agent/config";
 import {
@@ -22,6 +22,7 @@ import {
 } from "@/mock/agent/capabilities";
 import { VISION_OFF_DEMO_DRONE } from "@/mock/mock-detections";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
 /** A small +/- wobble so seeded metrics read as live rather than pinned. */
 function demoJitter(base: number, amp: number): number {
@@ -244,6 +245,20 @@ export function seedFocusedAgentSystem(now: number): void {
     resources,
     logs: (agent.profile ?? "drone") === "drone" ? null : logs,
   });
+}
+
+/**
+ * Name the focused demo drone as the node the demo agent connection serves, as
+ * focusing a real node connects its agent with that node's device id. The
+ * cockpit then reads the demo agent's reachability (and its failed polls) for
+ * the drone on screen. An FC-only drone has no agent, so nothing is focused;
+ * the non-flying nodes keep their seeded stores.
+ */
+export function focusDemoAgentNode(): void {
+  const selId = useDroneManager.getState().selectedDroneId;
+  const devId = selId ? (deviceIdFromNodeId(selId) ?? selId) : null;
+  const drone = DEMO_DRONES.find((d) => d.id === devId && d.hasAgent !== false);
+  useAgentConnectionStore.setState({ nodeDeviceId: drone?.id ?? null });
 }
 
 /**

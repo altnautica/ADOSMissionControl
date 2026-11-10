@@ -17,6 +17,7 @@ import type { BatteryData, EkfData, GpsData, SysStatusData } from "@/lib/types/t
 import { freshOnly } from "@/lib/telemetry/freshness";
 import { knownRemainingPct, plausibleCellVoltages, resolveCellCount } from "@/lib/battery";
 import { decodeSensorHealth, sensorCounts } from "@/lib/sensor-health";
+import { specText } from "@/lib/hud/spec-text";
 
 /**
  * Lowest resting voltage per cell accepted before flight. It sits above the
@@ -83,6 +84,8 @@ export interface AutoCheckInputs {
   linkFresh?: boolean | null;
   /** Whether a usable controller is connected to this surface. */
   controllerConnected?: boolean | null;
+  /** The cockpit's on-screen sticks are shown: they stand in for a controller. */
+  onScreenSticks?: boolean;
   /** Disk use (percent) reported by the drone's agent, when known. */
   diskPercent?: number | null;
 }
@@ -146,11 +149,14 @@ function pilotReadiness(pilot: PilotChecklistInput | null): AutoCheckVerdict {
   return { status: "pass", displayValue: warns > 0 ? `${warns} warning${warns === 1 ? "" : "s"}` : "Ready" };
 }
 
-/** A controller is required only when the pilot flies the sticks (`ados`). */
-function controllerCheck(pilot: PilotChecklistInput | null, connected: boolean | null): AutoCheckVerdict {
+/** A controller is required only when the pilot flies the sticks (`ados`);
+ *  shown on-screen sticks stand in for one. */
+function controllerCheck(pilot: PilotChecklistInput | null, connected: boolean | null, sticks: boolean): AutoCheckVerdict {
   if (!pilot || pilot.controlMode !== "ados") return { status: "pass", displayValue: "Not needed" };
+  if (connected) return { status: "pass", displayValue: "Connected" };
+  if (sticks) return { status: "pass", displayValue: specText("flow.preflight.controller_optional") };
   if (connected === null) return UNKNOWN;
-  return connected ? { status: "pass", displayValue: "Connected" } : { status: "fail", displayValue: "Not connected" };
+  return { status: "fail", displayValue: "Not connected" };
 }
 
 function storageCheck(diskPercent: number | null): AutoCheckVerdict {
@@ -235,7 +241,7 @@ export function evaluateAutoChecks(inputs: AutoCheckInputs, now: number): AutoCh
         : inputs.linkFresh
           ? { status: "pass", displayValue: "Live" }
           : { status: "fail", displayValue: "Stale" },
-    controller: controllerCheck(inputs.pilot ?? null, inputs.controllerConnected ?? null),
+    controller: controllerCheck(inputs.pilot ?? null, inputs.controllerConnected ?? null, inputs.onScreenSticks ?? false),
     storage: storageCheck(inputs.diskPercent ?? null),
   };
 }

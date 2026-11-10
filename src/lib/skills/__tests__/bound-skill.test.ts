@@ -107,7 +107,7 @@ describe("bound dispatch", () => {
     expect(policies[0].gesture).toBe("hold");
     expect(disarm).toHaveBeenCalledTimes(1);
     expect(arm).not.toHaveBeenCalled();
-    expect(notify).not.toHaveBeenCalledWith("skills.reason.alreadyArmed", "warning");
+    expect(notify).not.toHaveBeenCalledWith("refusal.already_armed", "warning");
   });
 
   it("a pause binding resumes a paused mission", async () => {
@@ -146,6 +146,6 @@ describe("bound dispatch", () => {
       }, notify),
     );
     expect(arm).not.toHaveBeenCalled();
-    expect(notify).toHaveBeenCalledWith("skills.reason.changedSincePrompt", "warning");
+    expect(notify).toHaveBeenCalledWith("refusal.changed_since_prompt", "warning");
   });
 });

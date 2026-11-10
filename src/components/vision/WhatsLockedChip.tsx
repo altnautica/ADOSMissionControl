@@ -23,7 +23,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { Crosshair, X } from "lucide-react";
 
 import { specString } from "@/lib/cockpit/spec-strings";
@@ -43,48 +42,46 @@ import type { LockState } from "@/stores/vision-detections-store";
 export const REACQUIRED_WORD_MS = 4000;
 
 /** The `hud` namespace translator. */
-type HudTranslate = (key: string, values?: Record<string, string>) => string;
 
 /** Word for a live lock state. */
-function lockLabel(state: LockState | null | undefined, t: HudTranslate): string {
+function lockLabel(state: LockState | null | undefined): string {
   switch (state) {
     case "locked":
       return specString("lock.locked");
     case "uncertain":
       return specString("lock.uncertain");
     case "lost":
-      return t("lock.lost");
+      return specString("nav_source.q.lost");
     default:
       return specString("follow.tracking");
   }
 }
 
 /** The follow-me phase word, or null for idle. */
-function phaseWord(f: FollowState, t: HudTranslate): string | null {
+function phaseWord(f: FollowState): string | null {
   switch (f.phase) {
     case "following":
-      return t("lock.following");
+      return specString("lock.following");
     case "acquiring":
-      return t("lock.acquiring");
+      return specString("lock.acquiring");
     case "coasting":
       return specString("lock.coasting", { s: (f.coastRemainingS ?? 0).toFixed(1) });
     case "searching":
-      return t("lock.searching");
+      return specString("lock.searching");
     case "holding": {
       const reason = holdReasonWord(f.holdReason);
       return reason
         ? specString("lock.holding", { label: reason.charAt(0) + reason.slice(1).toLowerCase() })
-        : t("lock.holdingBare");
+        : specString("lock.holding_bare");
     }
     case "lost":
-      return t("lock.lost");
+      return specString("nav_source.q.lost");
     default:
       return null;
   }
 }
 
 export function WhatsLockedChip({ droneId }: { droneId: string }) {
-  const t = useTranslations("hud");
   const designated = useSelectedTargetStore((s) => s.designated);
   const release = useSelectedTargetStore((s) => s.release);
   const here = designated && designated.droneId === droneId ? designated : null;
@@ -112,7 +109,7 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
   const notInView = feed === "fresh" && !live;
 
   const followWord =
-    follow && now - follow.receivedAt <= FOLLOW_STALE_MS ? phaseWord(follow.data, t) : null;
+    follow && now - follow.receivedAt <= FOLLOW_STALE_MS ? phaseWord(follow.data) : null;
   const reacquired =
     event && event.data.topic === "follow.reacquired" && now - event.receivedAt <= REACQUIRED_WORD_MS
       ? event.data
@@ -122,13 +119,13 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
   if (stale) label = staleReason(tier);
   else if (followWord) label = followWord;
   else if (reacquired) label = specString("lock.reacquired", { sim: reacquired.similarity.toFixed(2) });
-  else if (here.trackId == null) label = t("lock.untracked");
-  else if (live) label = lockLabel(live.lockState, t);
-  else label = feed === "fresh" ? specString("lock.not_in_view") : t("lock.waitingFeed");
+  else if (here.trackId == null) label = specString("lock.untracked");
+  else if (live) label = lockLabel(live.lockState);
+  else label = feed === "fresh" ? specString("lock.not_in_view") : specString("target.waiting_for_feed");
 
   const warnColor = stale && tier === "offload" ? "var(--hud-crit)" : "var(--hud-warn)";
   const warn = stale || (notInView && !followWord);
-  const cls = classWord(here.classLabel).trim() || t("lock.targetFallback");
+  const cls = classWord(here.classLabel).trim() || specString("lock.target_fallback");
   const who = here.trackId != null ? specString("lock.who", { label: cls, id: here.trackId }) : cls;
 
   return (
@@ -153,13 +150,13 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
       </div>
       <div className="rng">
         {live ? `${Math.round(live.confidence * 100)}%` : "—"}
-        <small>{t("lock.conf")}</small>
+        <small>{specString("lock.conf")}</small>
       </div>
       <button
         type="button"
         onClick={release}
-        aria-label={t("lock.release")}
-        title={t("lock.release")}
+        aria-label={specString("target.release_target")}
+        title={specString("target.release_target")}
         className="text-on-media/60 hover:text-on-media"
         style={{ pointerEvents: "auto" }}
       >

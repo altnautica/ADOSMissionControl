@@ -6,8 +6,9 @@
  * modes (owner `fc_mode`), disarmed is `idle`. Land lands and disarms, RTH
  * flies home, Pause in a mission puts the FC in a hold mode (mission paused)
  * and Resume puts it back in AUTO, Fly Here (`goto`) takes the vehicle to a
- * point in GUIDED, Kill stops the motors. During an FC failsafe Pause and Fly
- * Here are refused: the operator changes mode first.
+ * point in GUIDED as owner `goto`, Kill stops the motors. Fly Here refuses in
+ * the agent's order and with its codes: during an FC failsafe the operator
+ * changes mode first.
  * @license GPL-3.0-only
  */
 
@@ -36,11 +37,60 @@ const FC_HOLD_MODES: Partial<Record<UnifiedFlightMode, true>> = { LOITER: true, 
  * while the pilot flies (a stick takeover); either resumes in AUTO. */
 type HeldMission = "paused" | "loaded";
 
-/** A Fly Here target from the action's args, or null when one is missing. */
+/** Metres per degree of latitude, as the pilot converts a map point. */
+const M_PER_DEG = 111_319.49;
+
+/** The demo vehicle's home, the origin of its local NED frame. */
+export interface DemoHome {
+  lat: number;
+  lon: number;
+}
+
+/** A Fly Here target from the action's args, or null when one is missing or out of range. */
 function gotoTarget(args: Json): { lat: number; lon: number; alt: number } | null {
   const { lat, lon, alt_m: alt } = args;
   if (typeof lat !== "number" || typeof lon !== "number" || typeof alt !== "number") return null;
+  if (!(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 180) || !Number.isFinite(alt)) return null;
   return { lat, lon, alt };
+}
+
+/** The target in local NED from home, its height clamped to 1-120 m above home. */
+function goalNed(home: DemoHome, t: { lat: number; lon: number; alt: number }): [number, number, number] {
+  let dlon = t.lon - home.lon;
+  if (dlon > 180) dlon -= 360;
+  else if (dlon < -180) dlon += 360;
+  const n = (t.lat - home.lat) * M_PER_DEG;
+  const e = dlon * M_PER_DEG * Math.cos((home.lat * Math.PI) / 180);
+  return [n, e, -Math.min(120, Math.max(1, t.alt))];
+}
+
+/** A launch that has not reached its last step. */
+function launching(seen: Json): boolean {
+  const launch = seen.launch as Json | null | undefined;
+  return typeof launch === "object" && launch !== null && launch.step !== "done";
+}
+
+/**
+ * The pilot's Fly Here refusal, in its order and with its codes, or null when
+ * the goto is accepted: bad args, not armed, landed, tuning, outside `ados`
+ * control, an FC failsafe, a launch still climbing, no home.
+ */
+function gotoRefusal(seen: Json, args: Json, armed: boolean, landed: boolean, home: DemoHome | null): string | null {
+  if (!gotoTarget(args)) return "bad_args";
+  if (!armed) return "not_armed";
+  if (landed) return "landed";
+  if (seen.owner === "tuning") return "tuning";
+  if (seen.control_mode !== "ados") return "control_mode";
+  if (seen.fc_failsafe === true) return "failsafe";
+  if (launching(seen)) return "launching";
+  if (!home) return "no_home";
+  return null;
+}
+
+/** Fly the pilot's goto on the wire: owner `goto` with its goal. */
+function startGoto(wire: Json, home: DemoHome, args: Json): void {
+  wire.owner = "goto";
+  wire.goal_ned = goalNed(home, gotoTarget(args)!);
 }
 
 export class DemoVehicleDriver {
@@ -48,11 +98,14 @@ export class DemoVehicleDriver {
   private lastMode: UnifiedFlightMode | null = null;
   private lastArmed: boolean | null = null;
   private held: HeldMission | null = null;
+  private home: DemoHome | null = null;
 
-  reset(): void {
+  /** Start a drone's session; `home` is its local frame origin, if it has one. */
+  reset(home: DemoHome | null = null): void {
     this.lastMode = null;
     this.lastArmed = null;
     this.held = null;
+    this.home = home;
   }
 
   /**
@@ -106,16 +159,12 @@ export class DemoVehicleDriver {
         f.setMode("AUTO");
         return null;
       case "goto": {
-        if (!f.airborne) return "landed";
-        if (!f.armed) return "disarmed";
-        if (seen.owner === "tuning") return "tuning";
-        if (seen.control_mode !== "ados") return "control_mode";
-        if (seen.fc_failsafe === true) return "failsafe";
-        const target = gotoTarget(args);
-        if (!target) return "bad_args";
+        const err = gotoRefusal(seen, args, f.armed, !f.airborne, this.home);
+        if (err) return err;
+        const target = gotoTarget(args)!;
         f.setMode("GUIDED");
         void p.guidedGoto(target.lat, target.lon, target.alt);
-        wire.owner = "pilot";
+        startGoto(wire, this.home!, args);
         return null;
       }
       case "hand_to_fc": {
@@ -143,12 +192,19 @@ export class DemoVehicleDriver {
   wireOnly(wire: Json, seen: Json, verb: string, args: Json): string | null {
     switch (verb) {
       case "pause":
-      case "goto":
         if (seen.fc_failsafe === true) return "failsafe";
         wire.owner = "pilot";
         wire.fc_mode = 4;
         wire.fc_mode_name = "GUIDED";
         break;
+      case "goto": {
+        const err = gotoRefusal(seen, args, seen.armed === true, seen.landed !== false, this.home);
+        if (err) return err;
+        startGoto(wire, this.home!, args);
+        wire.fc_mode = 4;
+        wire.fc_mode_name = "GUIDED";
+        break;
+      }
       case "take_control":
       case "takeoff":
       case "launch":

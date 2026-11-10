@@ -41,7 +41,7 @@ if (typeof SPEC_CHIP_MAX_FRAC !== "number") throw new Error("layout.json: top_ba
 
 /** The largest share of the top bar's width the chip may take (spec
  *  `top_bar.chip.max_frac`). */
-export const CHIP_MAX_FRAC: number = SPEC_CHIP_MAX_FRAC;
+const CHIP_MAX_FRAC: number = SPEC_CHIP_MAX_FRAC;
 
 /** The chip's button: its spec text key and what it does. Abort is the
  *  launch Abort every launch surface shares ({@link useLaunchAbort}). */

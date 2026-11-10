@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import messages from "../../../../locales/en.json";
 import { CockpitStreamTabs } from "@/components/cockpit/CockpitStreamTabs";
+import { specString } from "@/lib/cockpit/spec-strings";
 import {
   useVideoStreamsStore,
   type StreamDescriptor,
@@ -46,9 +47,9 @@ describe("CockpitStreamTabs", () => {
     renderTabs();
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(3);
-    // Role → localized label; unknown role → the raw camera name.
-    expect(screen.getByText(messages.cockpitStreams.roleEo)).toBeTruthy();
-    expect(screen.getByText(messages.cockpitStreams.roleIr)).toBeTruthy();
+    // Role → spec label; unknown role → the raw camera name.
+    expect(screen.getByText(specString("hud.leg.eo"))).toBeTruthy();
+    expect(screen.getByText(specString("hud.leg.ir"))).toBeTruthy();
     expect(screen.getByText("Belly Cam")).toBeTruthy();
     // Digits are shown for 1..N.
     expect(screen.getByText("1")).toBeTruthy();
