@@ -4,13 +4,13 @@
  * @module ChecklistAutoRunner
  * @description Keeps the pre-flight checklist live for the selected drone.
  *
- * Mounted once by the shell, so the auto items follow telemetry whether or not
- * the checklist modal is open: the readiness the Arm and Take-off confirms read
- * is re-evaluated on every telemetry push and on the shared 1 Hz clock, and an
- * item whose telemetry goes stale falls back to pending. It also opens the
- * session for whichever drone is selected; `selectDrone` resets the session on
- * a switch, so a checklist never carries from one aircraft to another.
- * Renders nothing.
+ * Mounted once by the shell, so the items follow telemetry whether or not a
+ * checklist is open: the spec checklist that gates the first arm and the
+ * detailed auto items are re-evaluated on every telemetry push and on the
+ * shared 1 Hz clock, and an item whose telemetry goes stale falls back. It
+ * also opens the session for whichever drone is selected; `selectDrone`
+ * resets the session on a switch, so a checklist never carries from one
+ * aircraft to another. Renders nothing.
  *
  * @license GPL-3.0-only
  */
@@ -32,6 +32,13 @@ import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useDroneStore } from "@/stores/drone-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
+import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
+import { useNavSource } from "@/hooks/use-nav-source";
+import { shortPadName } from "@/lib/input/pad-status";
+import { batteryLowPct, batteryReading } from "@/lib/hud/battery";
+import { decodeSensorHealth } from "@/lib/sensor-health";
+import { freshOnly } from "@/lib/telemetry/freshness";
+import { fcPrearmTexts, preflightItems } from "@/lib/cockpit/preflight";
 
 /** MAVLink GPS_FIX_TYPE -> its `indicators.gpsFix.*` label key. */
 const GPS_FIX_KEYS: Record<number, string> = {
@@ -51,6 +58,7 @@ export function ChecklistAutoRunner(): null {
   const startSession = useChecklistStore((s) => s.startSession);
   const sessionId = useChecklistStore((s) => s.sessionId);
   const applyAutoVerdicts = useChecklistStore((s) => s.applyAutoVerdicts);
+  const setPreflightItems = useChecklistStore((s) => s.setPreflightItems);
 
   // The throttled `_version` says new telemetry arrived (at most 4 Hz, so the
   // shell does not re-render per frame); the clock tick says time passed,
@@ -74,7 +82,10 @@ export function ChecklistAutoRunner(): null {
   const { pilot } = usePilotState(droneId);
   const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
   const padUsable = usePadStatusStore((s) => s.connected && s.usable);
+  const padName = usePadStatusStore((s) => s.name);
   const diskPercent = useAgentSystemStore((s) => s.resources?.disk_percent ?? null);
+  const prearmLines = usePrearmBufferStore((s) => (droneId ? s.buffers[droneId] : undefined));
+  const nav = useNavSource(droneId).result;
 
   useEffect(() => {
     if (droneId && sessionDroneId !== droneId) startSession(droneId);
@@ -105,6 +116,36 @@ export function ChecklistAutoRunner(): null {
     droneId, sessionDroneId, sessionId, applyAutoVerdicts, version, tick, battery, knownCellCount,
     gpsBuf, ekfBuf, sysStatusBuf, missionOnVehicle, fenceOnVehicle, tFix,
     pilot, lastHeartbeat, padUsable, diskPercent,
+  ]);
+
+  // The spec checklist that gates the first arm.
+  useEffect(() => {
+    if (!droneId || sessionDroneId !== droneId) return;
+    const now = Date.now();
+    const sysStatus = freshOnly(sysStatusBuf.latest(), now);
+    const prearmBit = sysStatus ? decodeSensorHealth(sysStatus).find((s) => s.name === "pre_arm_check") : undefined;
+    const fcBattery = freshOnly(battery, now);
+    setPreflightItems(
+      droneId,
+      preflightItems({
+        readiness: pilot?.readiness ?? [],
+        prearm: fcPrearmTexts({
+          pilotStatustext: pilot?.statustext ?? null,
+          sysStatusPrearmOk: prearmBit?.present ? prearmBit.healthy : null,
+          directLines: prearmLines ?? [],
+        }),
+        live: lastHeartbeat > 0 && isSkillLinkFresh(lastHeartbeat, now),
+        nav,
+        battery: batteryReading(null, fcBattery ? { battery: { remaining: fcBattery.remaining, voltage: fcBattery.voltage } } : null),
+        batteryLowPct: batteryLowPct(null),
+        controlMode: pilot?.controlMode ?? null,
+        controller: { connected: padUsable, name: shortPadName(padName) },
+        storagePct: diskPercent,
+      }),
+    );
+  }, [
+    droneId, sessionDroneId, sessionId, setPreflightItems, version, tick, battery, sysStatusBuf,
+    pilot, prearmLines, lastHeartbeat, nav, padUsable, padName, diskPercent,
   ]);
 
   return null;

@@ -290,12 +290,7 @@ describe("state that cannot be sourced per node", () => {
   });
 
   it("reports the checklist as not ready when it was completed for another drone", () => {
-    useChecklistStore.setState({
-      droneId: "some-other-drone",
-      items: useChecklistStore
-        .getState()
-        .items.map((item) => ({ ...item, status: "pass" as const })),
-    });
+    useChecklistStore.setState({ droneId: "some-other-drone", completedAt: Date.now() });
     publishTelemetry(DEVICE_ID, { armed: false });
 
     const ctx = buildSkillContextForNode(NODE, { originIsHttps: false });

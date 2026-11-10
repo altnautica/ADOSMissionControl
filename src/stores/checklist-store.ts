@@ -1,19 +1,22 @@
 /**
  * @module checklist-store
- * @description Zustand store for pre-flight checklist state. Manages auto-verified
- * telemetry checks and manual pilot confirmation items. Provides go/no-go status
- * for arming.
+ * @description Zustand store for pre-flight checklist state: the spec
+ * checklist (`@/lib/cockpit/preflight`) that gates the first arm, and the
+ * auto-verified telemetry and manual pilot items of the detailed list.
  *
  * A session belongs to one drone. Readiness is only ever reported for the drone
  * the session was started for, and `selectDrone` resets the session, so a
- * checklist completed on one aircraft never vouches for another. Auto items are
- * written by `ChecklistAutoRunner` from fresh telemetry whether or not the
- * checklist modal is open.
+ * checklist passed on one aircraft never vouches for another. The first arm
+ * follows the spec rule: the operator passes the checklist once no item
+ * fails (warnings are accepted by passing), and later arms of the session
+ * go ahead directly. `ChecklistAutoRunner` writes the items from fresh
+ * telemetry whether or not a checklist is open.
  * @license GPL-3.0-only
  */
 
 import { create } from "zustand";
 import type { AutoCheckId, AutoCheckVerdicts } from "@/lib/checklist/auto-checks";
+import { firstArmAllowed, type PreflightItem } from "@/lib/cockpit/preflight";
 
 export type ChecklistCategory = "hardware" | "software" | "environment" | "mission";
 export type ChecklistItemType = "auto" | "manual";
@@ -69,7 +72,10 @@ interface ChecklistStoreState {
   droneId: string | null;
   sessionId: string | null;
   startedAt: number | null;
+  /** When the operator passed the spec checklist this session, else null. */
   completedAt: number | null;
+  /** The spec checklist for the session's drone; null before the first evaluation. */
+  preflight: PreflightItem[] | null;
 
   /** Open a fresh session (every item pending) for `droneId`. */
   startSession: (droneId: string) => void;
@@ -80,9 +86,17 @@ interface ChecklistStoreState {
    * measured pass or fail always replaces it.
    */
   applyAutoVerdicts: (verdicts: AutoCheckVerdicts) => void;
+  /** Write the spec checklist for `droneId`; ignored for any other drone. */
+  setPreflightItems: (droneId: string, items: PreflightItem[]) => void;
+  /**
+   * The operator passes the spec checklist for `droneId`. Refused (false)
+   * while the session is another drone's, the items are not evaluated yet, or
+   * an item fails.
+   */
+  passPreflight: (droneId: string) => boolean;
   /** Skip a manual item, or an auto item while it has no verdict. Toggles. */
   skipItem: (id: string) => void;
-  /** Whether the open session belongs to `droneId` and every item is done. */
+  /** Whether the open session belongs to `droneId` and its checklist was passed. */
   isReadyToArm: (droneId: string | null) => boolean;
   getProgress: () => { total: number; checked: number; failed: number };
   getCategoryProgress: (category: ChecklistCategory) => { total: number; checked: number; failed: number };
@@ -93,14 +107,14 @@ function isDone(item: ChecklistItem): boolean {
 }
 
 /**
- * Selector-friendly readiness: true only when the session was started for
- * `droneId` and every item is passed or skipped.
+ * Selector-friendly readiness, the first-arm gate: true only when the session
+ * was started for `droneId` and the operator passed its checklist.
  */
 export function checklistReadyFor(
-  state: Pick<ChecklistStoreState, "droneId" | "items">,
+  state: Pick<ChecklistStoreState, "droneId" | "completedAt">,
   droneId: string | null,
 ): boolean {
-  return droneId !== null && state.droneId === droneId && state.items.every(isDone);
+  return droneId !== null && state.droneId === droneId && state.completedAt !== null;
 }
 
 function freshItems(): ChecklistItem[] {
@@ -113,6 +127,7 @@ export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
   sessionId: null,
   startedAt: null,
   completedAt: null,
+  preflight: null,
 
   startSession: (droneId) => {
     set({
@@ -121,6 +136,7 @@ export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
       sessionId: crypto.randomUUID(),
       startedAt: Date.now(),
       completedAt: null,
+      preflight: null,
     });
   },
 
@@ -131,6 +147,7 @@ export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
       sessionId: null,
       startedAt: null,
       completedAt: null,
+      preflight: null,
     });
   },
 
@@ -160,6 +177,27 @@ export const useChecklistStore = create<ChecklistStoreState>((set, get) => ({
       return { ...item, status, displayValue: verdict.displayValue };
     });
     if (changed) set({ items: next });
+  },
+
+  setPreflightItems: (droneId, items) => {
+    const { droneId: owner, preflight } = get();
+    if (owner !== droneId) return;
+    // Re-evaluated on every telemetry push: skip the write when nothing moved.
+    if (
+      preflight &&
+      preflight.length === items.length &&
+      preflight.every((p, i) => p.id === items[i].id && p.state === items[i].state && p.label === items[i].label)
+    ) {
+      return;
+    }
+    set({ preflight: items });
+  },
+
+  passPreflight: (droneId) => {
+    const { droneId: owner, preflight } = get();
+    if (owner !== droneId || preflight === null || !firstArmAllowed(preflight)) return false;
+    set({ completedAt: Date.now() });
+    return true;
   },
 
   skipItem: (id) => {

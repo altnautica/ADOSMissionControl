@@ -153,13 +153,13 @@ describe("checklist readiness is live and per drone", () => {
     expect(item("battery-voltage")?.status).toBe("pass");
   });
 
-  it("never reports one drone's completed checklist as another drone's", () => {
+  it("never reports one drone's passed checklist as another drone's", () => {
     useDroneManager.setState({ selectedDroneId: "drone-a" });
     const store = useChecklistStore.getState();
     store.startSession("drone-a");
-    useChecklistStore.setState((s) => ({
-      items: s.items.map((i) => ({ ...i, status: "skipped" as const })),
-    }));
+    store.setPreflightItems("drone-a", [{ id: "link", label: "Link", state: "pass" }]);
+    expect(useChecklistStore.getState().passPreflight("drone-b")).toBe(false);
+    expect(useChecklistStore.getState().passPreflight("drone-a")).toBe(true);
     expect(useChecklistStore.getState().isReadyToArm("drone-a")).toBe(true);
     expect(useChecklistStore.getState().isReadyToArm("drone-b")).toBe(false);
 
@@ -167,7 +167,7 @@ describe("checklist readiness is live and per drone", () => {
 
     const after = useChecklistStore.getState();
     expect(after.droneId).toBeNull();
-    expect(after.items.every((i) => i.status === "pending")).toBe(true);
+    expect(after.preflight).toBeNull();
     expect(after.isReadyToArm("drone-a")).toBe(false);
     expect(after.isReadyToArm("drone-b")).toBe(false);
   });
