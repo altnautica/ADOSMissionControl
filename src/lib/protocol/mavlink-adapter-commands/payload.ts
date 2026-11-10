@@ -20,10 +20,12 @@ const ZOOM_TYPE_STEP = 0
 
 /**
  * MAV_CMD_IMAGE_START_CAPTURE (2000): one image from every camera on
- * `cameraCompId` (id 0, no interval, one image, no sequence number).
+ * `cameraCompId` (id 0, no interval, one image). `sequence` is param 4, the
+ * capture sequence number: common.xml asks single captures to count up from
+ * 1, so the camera can tell a repeat of the command from a new photo.
  */
-export function cmdImageStartCapture(ctx: CommandContext, cameraCompId?: number): Promise<CommandResult> {
-  return ctx.sendCommandLong(2000, [0, 0, 1, 0, 0, 0, 0], undefined, cameraCompId)
+export function cmdImageStartCapture(ctx: CommandContext, sequence: number, cameraCompId?: number): Promise<CommandResult> {
+  return ctx.sendCommandLong(2000, [0, 0, 1, sequence, 0, 0, 0], undefined, cameraCompId)
 }
 
 /** MAV_CMD_SET_CAMERA_ZOOM (531), one step in (1) or out (-1). */

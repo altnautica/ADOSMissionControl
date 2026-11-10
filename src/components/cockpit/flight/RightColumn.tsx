@@ -8,12 +8,14 @@
  *
  * What each control really does on this ground station:
  * - Photo: a camera extension's capture, else the vehicle camera, else a
- *   still of the received picture (PNG download).
+ *   still of the received picture (PNG download). A vehicle camera that
+ *   refuses says why.
  * - Video: starts and stops the flight recording (the received video plus
  *   the telemetry log), the same recorder as everywhere else in the app.
- * - Zoom: a camera extension's zoom, else the vehicle camera, else a digital
- *   zoom of the view, 1x / 2x / 4x; the data layers scale with the picture so
- *   boxes stay on their targets.
+ * - Zoom: a camera extension's zoom, else the vehicle camera (one step in to
+ *   the end of its travel, then back out, the label naming the next step),
+ *   else a digital zoom of the view, 1x / 2x / 4x; the data layers scale
+ *   with the picture so boxes stay on their targets.
  * - Gimbal pad: drag to aim the camera through the drone agent's rate route
  *   (`POST /api/v1/gimbal/rate`). Shown only while `GET` on that route
  *   reports the drone takes rates.
@@ -27,10 +29,19 @@
  */
 
 import { Fragment, useCallback, useState } from "react";
-import { Camera, SlidersHorizontal, Video, ZoomIn } from "lucide-react";
+import { Camera, SlidersHorizontal, Video, ZoomIn, ZoomOut } from "lucide-react";
 
-import { cockpitPhoto, cockpitZoom, digitalZoomLabel, photoResultText } from "@/lib/cockpit/camera-actions";
-import { notifySkill } from "@/lib/skills/registry";
+import {
+  EXTENSION_RECORD_IDS,
+  announcePhoto,
+  cockpitPhoto,
+  cockpitZoom,
+  cockpitZoomRoute,
+  digitalZoomLabel,
+} from "@/lib/cockpit/camera-actions";
+import { useSkillRegistry } from "@/lib/skills";
+import { useDroneManager } from "@/stores/drone-manager";
+import { VEHICLE_ZOOM_START, useMavlinkCameraStore } from "@/stores/mavlink-camera-store";
 import { specString } from "@/lib/cockpit/spec-strings";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { useFlightRecording } from "@/hooks/use-flight-recording";
@@ -101,6 +112,11 @@ export function RightColumn({ droneId }: { droneId: string }) {
   const closeSheet = useCallback(() => setSheetOpen(false), [setSheetOpen]);
   const { isRecording, toggle } = useFlightRecording(droneId);
   const zoom = useViewZoomStore((s) => s.byDrone[droneId] ?? 1);
+  // The zoom route turns on the skills, the advertised camera and the link.
+  useSkillRegistry((s) => s.skills);
+  useMavlinkCameraStore((s) => s.byDrone[droneId]);
+  useDroneManager((s) => s.drones.get(droneId)?.protocol);
+  const vehicleZoom = useMavlinkCameraStore((s) => s.zoomByDrone[droneId] ?? VEHICLE_ZOOM_START);
   const gimbal = useGimbalRateAvailable(droneId);
   if (!rect) return null;
   const items = rightColumnItems(rect.h, grid.scale, { gimbal, recording: isRecording });
@@ -111,13 +127,10 @@ export function RightColumn({ droneId }: { droneId: string }) {
   // the ground station captures the received picture itself.
   const shoot = () => {
     if (mode === "video") {
-      if (!firePluginSkill(droneId, ["record", "record-toggle"])) toggle();
+      if (!firePluginSkill(droneId, EXTENSION_RECORD_IDS)) toggle();
       return;
     }
-    void cockpitPhoto(droneId).then((r) => {
-      const text = photoResultText(r);
-      if (text) notifySkill(text, r === "no_video" ? "warning" : "success");
-    });
+    void cockpitPhoto(droneId).then(announcePhoto);
   };
 
   const shutterLabel =
@@ -126,7 +139,13 @@ export function RightColumn({ droneId }: { droneId: string }) {
       : isRecording
         ? specString("cockpit.camera.stop_recording")
         : specString("cockpit.camera.start_recording");
-  const zoomLabel = digitalZoomLabel(zoom);
+  const zoomRoute = cockpitZoomRoute(droneId);
+  const zoomLabel =
+    zoomRoute === "mavlink"
+      ? specString(vehicleZoom.dir === 1 ? "cockpit.zoom.in" : "cockpit.zoom.out")
+      : zoomRoute === "extension"
+        ? specString("cockpit.zoom")
+        : digitalZoomLabel(zoom);
 
   const render = (item: RightItem) => {
     switch (item) {
@@ -200,8 +219,12 @@ export function RightColumn({ droneId }: { droneId: string }) {
             title={zoomLabel}
             onClick={() => cockpitZoom(droneId, "cycle")}
           >
-            {zoom === 1 ? <ZoomIn className="fs-ico-sm" aria-hidden="true" /> : null}
-            <span aria-hidden="true">{zoom}×</span>
+            {zoomRoute === "mavlink" && vehicleZoom.dir === -1 ? (
+              <ZoomOut className="fs-ico-sm" aria-hidden="true" />
+            ) : zoomRoute !== "digital" || zoom === 1 ? (
+              <ZoomIn className="fs-ico-sm" aria-hidden="true" />
+            ) : null}
+            {zoomRoute === "digital" ? <span aria-hidden="true">{zoom}×</span> : null}
           </button>
         );
       case "gimbal_pad":

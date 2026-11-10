@@ -10,7 +10,10 @@
  * - Keyboard, while the pad has focus: the arrow keys hold a fixed rate,
  *   Enter recentres the gimbal. Space is never handled here: it stays the
  *   Pause hotkey.
- * - The centre button recentres the gimbal through the camera extension.
+ * - The centre knob recentres the gimbal through the camera extension when
+ *   it is tapped; a drag that starts on it aims like any other drag. The
+ *   knob is not a tab stop and ignores keyboard clicks, so Space on it does
+ *   nothing (Enter on the pad recentres).
  *
  * Rates go through the gimbal rate driver (`@/lib/cockpit/gimbal-rate`): at
  * most one change per 100 ms, one request in flight, the latest rate wins,
@@ -25,6 +28,7 @@ import { Crosshair } from "lucide-react";
 import { notifySkill } from "@/lib/skills/registry";
 import { firePluginSkill } from "@/hooks/use-ds4-dispatcher";
 import { specString } from "@/lib/cockpit/spec-strings";
+import { EXTENSION_RECENTRE_IDS } from "@/lib/cockpit/camera-actions";
 import { GimbalRateDriver, gimbalRateAvailable } from "@/lib/cockpit/gimbal-rate";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 
@@ -38,8 +42,6 @@ export const GIMBAL_PAD_PX = 108;
 const DEAD_ZONE = 0.15;
 /** How often the pad re-asks whether the drone takes gimbal rates. */
 const AVAILABILITY_POLL_MS = 5000;
-/** The extension skills that recentre the gimbal (the controller's order). */
-const RECENTRE_SKILLS = ["center", "recenter", "gimbal-recenter"] as const;
 
 const ARROWS: Record<string, { p: number; y: number }> = {
   ArrowUp: { p: 1, y: 0 },
@@ -82,12 +84,14 @@ export function padRate(dx: number, dy: number): { pitch: number; yaw: number } 
 
 /** Recentre the gimbal through the camera extension. */
 function recentre(droneId: string): void {
-  if (!firePluginSkill(droneId, RECENTRE_SKILLS)) notifySkill(specString("cockpit.camera.no_extension"), "warning");
+  if (!firePluginSkill(droneId, EXTENSION_RECENTRE_IDS)) notifySkill(specString("cockpit.camera.no_extension"), "warning");
 }
 
 export function GimbalPad({ droneId, scale = 1 }: { droneId: string; scale?: number }) {
   const driver = useRef<GimbalRateDriver | null>(null);
-  const origin = useRef<{ x: number; y: number; r: number } | null>(null);
+  const origin = useRef<{ x: number; y: number; r: number; captured: boolean } | null>(null);
+  /** This press moved the gimbal: the release is not a tap on the knob. */
+  const dragged = useRef(false);
   const held = useRef(new Set<string>());
   const [rate, setRate] = useState({ pitch: 0, yaw: 0 });
 
@@ -118,10 +122,19 @@ export function GimbalPad({ droneId, scale = 1 }: { droneId: string; scale?: num
     }
     send(p * GIMBAL_PAD_KEY_DPS, y * GIMBAL_PAD_KEY_DPS);
   };
-  const dragTo = (clientX: number, clientY: number) => {
+  const dragTo = (clientX: number, clientY: number, el: Element, pointerId: number) => {
     const o = origin.current;
     if (!o || o.r <= 0) return;
     const r = padRate((clientX - o.x) / o.r, (clientY - o.y) / o.r);
+    if (r.pitch !== 0 || r.yaw !== 0) {
+      dragged.current = true;
+      // Capture on the first move past the dead zone, so a drag that began
+      // on the knob keeps reaching the pad.
+      if (!o.captured) {
+        o.captured = true;
+        el.setPointerCapture?.(pointerId);
+      }
+    }
     send(r.pitch, r.yaw);
   };
 
@@ -145,12 +158,15 @@ export function GimbalPad({ droneId, scale = 1 }: { droneId: string; scale?: num
       data-yaw-dps={rate.yaw}
       style={{ width: size, height: size, touchAction: "none" }}
       onPointerDown={(e) => {
-        // A press on the recentre button stays a click on it.
-        if ((e.target as Element).closest("button")) return;
         const r = e.currentTarget.getBoundingClientRect();
-        e.currentTarget.setPointerCapture?.(e.pointerId);
-        origin.current = { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 };
-        dragTo(e.clientX, e.clientY);
+        // A press on the knob is not captured yet: capture retargets the
+        // click to the pad and a tap on the knob would never recentre. Any
+        // other press captures at once, so the release always reaches the pad.
+        const onKnob = (e.target as Element).closest("button") !== null;
+        if (!onKnob) e.currentTarget.setPointerCapture?.(e.pointerId);
+        dragged.current = false;
+        origin.current = { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2, captured: !onKnob };
+        dragTo(e.clientX, e.clientY, e.currentTarget, e.pointerId);
       }}
       onPointerMove={(e) => {
         if (!origin.current) return;
@@ -159,7 +175,7 @@ export function GimbalPad({ droneId, scale = 1 }: { droneId: string; scale?: num
           release();
           return;
         }
-        dragTo(e.clientX, e.clientY);
+        dragTo(e.clientX, e.clientY, e.currentTarget, e.pointerId);
       }}
       onPointerUp={release}
       onPointerCancel={release}
@@ -200,12 +216,22 @@ export function GimbalPad({ droneId, scale = 1 }: { droneId: string; scale?: num
       ))}
       <button
         type="button"
+        tabIndex={-1}
         className="fs-gimbal-knob"
         data-testid="fs-gimbal-recentre"
         aria-label={specString("cockpit.gimbal.recentre")}
         title={specString("cockpit.gimbal.recentre")}
         style={{ width: knob, height: knob, transform: `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))` }}
-        onClick={() => recentre(droneId)}
+        onClick={(e) => {
+          // A keyboard click (Space or Enter on a focused knob) is not a tap.
+          if (e.detail === 0) return;
+          // The press was a drag that ended on the knob: no recentre.
+          if (dragged.current) {
+            dragged.current = false;
+            return;
+          }
+          recentre(droneId);
+        }}
       >
         <Crosshair className="fs-ico-sm" aria-hidden="true" />
       </button>

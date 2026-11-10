@@ -24,6 +24,7 @@ import { sheetPlacement } from "@/components/cockpit/flight/flight-sheet";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { WEB_BUTTON_INDEX } from "@/lib/input/ds4-bindings";
 import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useControlsStore } from "@/stores/controls-store";
@@ -33,17 +34,30 @@ import { useInputStore } from "@/stores/input-store";
 /** The tour cards, in order (`controls.tour.<id>.title` / `.body`). */
 export const TOUR_CARDS = ["sticks", "safety", "skills"] as const;
 
-/** Whether the drone is flying: the pilot's `armed && !landed`, else the
- *  heartbeat's armed state. */
-export function tourAirborne(pilot: { armed: boolean; landed: boolean } | null, heartbeatArmed: boolean): boolean {
-  return pilot ? pilot.armed && !pilot.landed : heartbeatArmed;
+/** How often the card re-reads whether the pilot frame is still fresh. */
+const FRESH_TICK_MS = 500;
+
+/** Whether the drone is flying: a fresh pilot's `armed && !landed`, else
+ *  (no pilot, or its newest frame is stale) the heartbeat's armed state. */
+export function tourAirborne(
+  pilot: { armed: boolean; landed: boolean } | null,
+  receivedAt: number | null,
+  heartbeatArmed: boolean,
+  now: number,
+): boolean {
+  return pilot && pilotFresh(receivedAt, now) ? pilot.armed && !pilot.landed : heartbeatArmed;
 }
 
 type Focus = "skip" | "next";
 
 export function ControllerTourCard({ droneId }: { droneId: string }) {
   const grid = useFlightGrid();
-  const { pilot } = usePilotState(droneId);
+  const { pilot, receivedAt } = usePilotState(droneId);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), FRESH_TICK_MS);
+    return () => clearInterval(t);
+  }, []);
   const heartbeatArmed = useDroneStore((s) => s.armState === "armed");
   const padUsable = usePadStatusStore((s) => s.connected && s.usable);
   const seen = useControlsStore((s) => s.tourSeen);
@@ -52,7 +66,7 @@ export function ControllerTourCard({ droneId }: { droneId: string }) {
   const [card, setCard] = useState(0);
   const [focus, setFocus] = useState<Focus>("next");
 
-  const visible = padUsable && !seen && !tourAirborne(pilot, heartbeatArmed);
+  const visible = padUsable && !seen && !tourAirborne(pilot, receivedAt, heartbeatArmed, now);
   const last = card === TOUR_CARDS.length - 1;
 
   useEffect(() => {

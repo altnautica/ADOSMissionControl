@@ -133,6 +133,8 @@ export class MAVLinkAdapter implements DroneProtocol {
     }
   })()
   private readonly camera = new CameraDiscovery(this.st, (cmd, p, comp) => this.sendCommandLong(cmd, p, undefined, comp))
+  /** The last IMAGE_START_CAPTURE sequence number sent (single captures count from 1). */
+  private captureSequence = 0
 
   // ── Connection ─────────────────────────────────────────
   async connect(transport: Transport): Promise<VehicleInfo> {
@@ -342,7 +344,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   async setGimbalROI(lat: number, lon: number, alt: number) { return cmds.cmdSetRoiLocation(this.cc, lat, lon, alt) }
   async setRoiLocation(lat: number, lon: number, alt: number) { return cmds.cmdSetRoiLocation(this.cc, lat, lon, alt) }
   async clearRoi() { return cmds.cmdSetRoiNone(this.cc) }
-  async imageStartCapture() { return cmds.cmdImageStartCapture(this.cc, this.camera.commandCompId) }
+  async imageStartCapture() { return cmds.cmdImageStartCapture(this.cc, ++this.captureSequence, this.camera.commandCompId) }
   async setCameraZoom(step: 1 | -1) { return cmds.cmdSetCameraZoom(this.cc, step, this.camera.commandCompId) }
   async orbit(radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number) { return cmds.cmdOrbit(this.cc, radius, velocity, yawBehavior, lat, lon, alt) }
   async setEkfOrigin(lat: number, lon: number, alt: number) { return cmds.cmdSetEkfOrigin(this.cc, lat, lon, alt) }

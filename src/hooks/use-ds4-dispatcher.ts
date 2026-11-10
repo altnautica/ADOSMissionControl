@@ -5,8 +5,10 @@
  * 2 s RTH hold, the L1 + R1 arm hold, the L2 + R2 + Circle kill hold, the
  * D-pad skill-picker focus and parameter steps (layer level with the picker
  * closed), Cross GO, Circle Stop, Triangle view / take-off / land, Options
- * quick settings and the profile steps, plus rumble on each action and the
- * lightbar following the flight state.
+ * quick settings and the profile steps, Square Photo and R1 / L1 Zoom (the
+ * same camera route as the on-screen buttons), plus rumble on each action
+ * and the lightbar following the flight state. While the controller tour
+ * shows, the bare D-pad and Cross drive the tour only.
  *
  * Built-in flight actions go through the shared skill pipeline, so their
  * gates still apply; a controller hold confirms a hold-tier action by itself
@@ -38,15 +40,29 @@ import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import { useInputStore } from "@/stores/input-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
-import { startRecording, stopRecording, captureScreenshot } from "@/lib/video/webrtc-client";
+import { startRecording, stopRecording } from "@/lib/video/webrtc-client";
 import { useVideoStore } from "@/stores/video-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
-import { useViewZoomStore } from "@/components/cockpit/flight/view-zoom-store";
+import {
+  EXTENSION_RECENTRE_IDS,
+  EXTENSION_RECORD_IDS,
+  announcePhoto,
+  cockpitPhoto,
+  cockpitZoom,
+} from "@/lib/cockpit/camera-actions";
 
 /** Engine tick for hold timing between button changes. */
 const TICK_MS = 50;
 const PROFILES = ["cine", "normal", "sport"] as const;
 const LOCKED: Record<string, true> = { pause: true, rth: true, rth_cancel: true, arm: true, kill: true };
+/** The controls the controller tour drives (focus and press). */
+const TOUR_CONTROLS: Record<string, true> = {
+  cross: true,
+  dpad_left: true,
+  dpad_right: true,
+  dpad_up: true,
+  dpad_down: true,
+};
 
 /** Fire the first installed extension skill whose local id is in `ids`;
  * false when none is installed. */
@@ -126,22 +142,22 @@ function runAction(droneId: string, b: Ds4Binding): void {
       sendPilotAction(pilot?.vehicleClass === "vtol" && /^Q/i.test(pilot.fcModeName ?? "") ? "vtol:fw" : "vtol:mc");
       break;
     case "photo":
-      if (!firePluginSkill(droneId, ["capture", "photo", "take-photo"])) void captureScreenshot();
+      void cockpitPhoto(droneId).then(announcePhoto);
       break;
     case "record_toggle":
-      if (!firePluginSkill(droneId, ["record", "record-toggle"])) {
+      if (!firePluginSkill(droneId, EXTENSION_RECORD_IDS)) {
         if (useVideoStore.getState().isRecording) stopRecording();
         else startRecording();
       }
       break;
     case "zoom_in":
-      if (!firePluginSkill(droneId, ["zoom-in"])) useViewZoomStore.getState().step(droneId, 1);
+      cockpitZoom(droneId, 1);
       break;
     case "zoom_out":
-      if (!firePluginSkill(droneId, ["zoom-out"])) useViewZoomStore.getState().step(droneId, -1);
+      cockpitZoom(droneId, -1);
       break;
     case "gimbal_recenter":
-      firePluginSkill(droneId, ["center", "recenter", "gimbal-recenter"]);
+      firePluginSkill(droneId, EXTENSION_RECENTRE_IDS);
       break;
     case "designate":
       toggleReticle();
@@ -189,6 +205,10 @@ export function useDs4Dispatcher(droneId: string): void {
         // The open designate reticle takes the bare D-pad, Cross and Circle;
         // chords (Options + Circle, the kill hold) still reach their actions.
         if (b.with.length === 0 && !LOCKED[b.action] && reticleControl(b.control)) return;
+        // The controller tour takes the bare D-pad and Cross the same way.
+        if (b.with.length === 0 && !LOCKED[b.action] && TOUR_CONTROLS[b.control] && useControlsStore.getState().tourVisible) {
+          return;
+        }
         if (b.rumble && b.rumble !== "ramp" && b.rumble !== "countdown") rumble(b.rumble);
         runAction(droneId, b);
       },

@@ -5,11 +5,11 @@
  * flight-screen tour again, and no tour card of its own.
  */
 
-import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
+import { ControlsSettings } from "../ControlsSettings";
 import { ReplayTourRow, TestRow } from "../ControlsSettingsCards";
 import { useControlsStore } from "@/stores/controls-store";
 
@@ -31,10 +31,13 @@ describe("Replay controller tour row", () => {
     expect(screen.getByTestId("controls-tour-replay").className).toContain("min-h-12");
   });
 
-  it("is mounted in Settings › Controls, which no longer draws a tour card", () => {
-    const src = readFileSync("src/components/config/ControlsSettings.tsx", "utf8");
-    expect(src).toContain("<ReplayTourRow />");
-    expect(src).not.toMatch(/<Tour\b/);
+  it("is mounted in Settings › Controls, which draws no tour card of its own", () => {
+    useControlsStore.setState({ tourSeen: true });
+    renderWithIntl(<ControlsSettings />);
+    expect(screen.getByTestId("controls-tour-replay")).toBeTruthy();
+    expect(screen.queryByTestId("controls-tour")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Replay controller tour" }));
+    expect(useControlsStore.getState().tourSeen).toBe(false);
   });
 });
 

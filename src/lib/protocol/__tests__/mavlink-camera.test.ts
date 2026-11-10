@@ -64,10 +64,10 @@ describe("camera commands", () => {
     } as CommandContext;
   }
 
-  it("captures one image with MAV_CMD_IMAGE_START_CAPTURE", async () => {
+  it("captures one image with MAV_CMD_IMAGE_START_CAPTURE and its sequence number", async () => {
     const sent: Sent[] = [];
-    await cmdImageStartCapture(ctx(sent), CAMERA_COMPID);
-    expect(sent).toEqual([{ command: 2000, params: [0, 0, 1, 0, 0, 0, 0], targetCompId: CAMERA_COMPID }]);
+    await cmdImageStartCapture(ctx(sent), 7, CAMERA_COMPID);
+    expect(sent).toEqual([{ command: 2000, params: [0, 0, 1, 7, 0, 0, 0], targetCompId: CAMERA_COMPID }]);
   });
 
   it("steps the zoom with MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP", async () => {
@@ -193,11 +193,16 @@ describe("adapter camera discovery", () => {
     const zoom = adapter.setCameraZoom(-1);
     link.emit(commandAck(531, CAMERA_COMPID));
     expect(await zoom).toMatchObject({ success: true });
+    const second = adapter.imageStartCapture();
+    link.emit(commandAck(2000, CAMERA_COMPID));
+    expect(await second).toMatchObject({ success: true });
 
+    // Single captures count up from 1 (common.xml, param 4).
     const sent = link.commands().filter((c) => c.command === 2000 || c.command === 531);
     expect(sent).toEqual([
-      { command: 2000, params: [0, 0, 1, 0, 0, 0, 0], targetComp: CAMERA_COMPID },
+      { command: 2000, params: [0, 0, 1, 1, 0, 0, 0], targetComp: CAMERA_COMPID },
       { command: 531, params: [0, -1, 0, 0, 0, 0, 0], targetComp: CAMERA_COMPID },
+      { command: 2000, params: [0, 0, 1, 2, 0, 0, 0], targetComp: CAMERA_COMPID },
     ]);
   });
 

@@ -5,10 +5,14 @@
  *
  * - Photo: a camera extension's own capture, else the vehicle's MAVLink
  *   camera (image capture) when it advertises one, else a grab of the shown
- *   video frame saved as a download. Never refused for want of a camera;
- *   with no video and no camera the result is "No video".
+ *   video frame saved as a download. A vehicle camera that refuses the
+ *   capture says why (`camera.capture_failed`) and no frame is grabbed in its
+ *   place; only a camera that never answered falls back to the frame. With
+ *   no video and no camera the result is "No video".
  * - Zoom: a camera extension's zoom, else the vehicle's MAVLink camera zoom
  *   when it advertises one, else the digital zoom of the view (1x / 2x / 4x).
+ *   The zoom button steps a vehicle camera in to the end of its travel, then
+ *   back out; a refused step says why (`camera.zoom_failed`).
  *
  * The routing is pure over `CameraDeps`; `cockpitPhoto` / `cockpitZoom` run
  * it against the live skill registry, video element and view zoom.
@@ -18,21 +22,28 @@
 
 import { specText } from "@/lib/hud/spec-text";
 import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
+import { notifySkill } from "@/lib/skills/registry";
 import { captureScreenshot } from "@/lib/video/webrtc-client";
 import { ZOOM_STEPS, useViewZoomStore, type ViewZoom } from "@/components/cockpit/flight/view-zoom-store";
-import type { DroneProtocol } from "@/lib/protocol/types";
+import type { CommandResult, DroneProtocol } from "@/lib/protocol/types";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useMavlinkCameraStore, type MavlinkCameraCapabilities } from "@/stores/mavlink-camera-store";
+import {
+  VEHICLE_ZOOM_START,
+  useMavlinkCameraStore,
+  type MavlinkCameraCapabilities,
+} from "@/stores/mavlink-camera-store";
 
 /** Extension skill ids (the part after `plugin:`) for each camera action. */
 export const EXTENSION_CAPTURE_IDS = ["capture", "photo", "take-photo"] as const;
 export const EXTENSION_ZOOM_IN_IDS = ["zoom-in"] as const;
 export const EXTENSION_ZOOM_OUT_IDS = ["zoom-out"] as const;
+export const EXTENSION_RECORD_IDS = ["record", "record-toggle"] as const;
+export const EXTENSION_RECENTRE_IDS = ["center", "recenter", "gimbal-recenter"] as const;
 
 export type ZoomRoute = "extension" | "mavlink" | "digital";
 export type ZoomStep = "cycle" | 1 | -1;
 export type ZoomResult = "extension" | "mavlink" | { digital: ViewZoom };
-export type PhotoResult = "extension" | "mavlink" | "saved" | "no_video";
+export type PhotoResult = "extension" | "mavlink" | "saved" | "no_video" | { failed: string };
 
 /** Which zoom a step drives: the extension's, else the vehicle camera's, else digital. */
 export function zoomRoute(c: { extensionZoom: boolean; mavlinkCameraZoom: boolean }): ZoomRoute {
@@ -53,12 +64,32 @@ export function digitalZoomLabel(n: number): string {
   return specText("camera.digital_zoom", { n: digitalZoomStep(n) });
 }
 
-/** The toast for a photo result: the spec's "Photo saved" / "No video", or
- *  null for an extension capture, whose skill reports its own outcome. */
+/** The toast for a photo result: the spec's "Photo saved" / "No video" /
+ *  "Photo failed: {reason}", or null for an extension capture, whose skill
+ *  reports its own outcome. */
 export function photoResultText(r: PhotoResult): string | null {
+  if (typeof r === "object") return specText("camera.capture_failed", { reason: r.failed });
   if (r === "saved" || r === "mavlink") return specText("camera.saved");
   if (r === "no_video") return specText("camera.no_video");
   return null;
+}
+
+/** Toast a photo result, alike on every surface (shutter and controller). */
+export function announcePhoto(r: PhotoResult): void {
+  const text = photoResultText(r);
+  if (text) notifySkill(text, r === "saved" || r === "mavlink" ? "success" : "warning");
+}
+
+/** A vehicle camera's answer to one command. `answered` is false when no
+ *  COMMAND_ACK came back (timeout, no link); `reason` is the result's text. */
+export interface CameraAnswer {
+  ok: boolean;
+  answered: boolean;
+  reason: string;
+}
+
+function noAnswer(e: unknown): CameraAnswer {
+  return { ok: false, answered: false, reason: e instanceof Error ? e.message : String(e) };
 }
 
 /** A vehicle camera reached over MAVLink, as advertised by its
@@ -66,16 +97,17 @@ export function photoResultText(r: PhotoResult): string | null {
 export interface MavlinkCamera {
   /** The camera advertises zoom control (CAMERA_CAP_FLAGS_HAS_BASIC_ZOOM). */
   zoom: boolean;
-  /** MAV_CMD_IMAGE_START_CAPTURE for one image; resolves true when accepted. */
-  capture: () => Promise<boolean>;
-  /** MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP; resolves true when accepted. */
-  zoomStep: (by: 1 | -1) => Promise<boolean>;
+  /** MAV_CMD_IMAGE_START_CAPTURE for one image. */
+  capture: () => Promise<CameraAnswer>;
+  /** MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP. */
+  zoomStep: (by: 1 | -1) => Promise<CameraAnswer>;
 }
 
 /**
  * The camera a drone advertised, driven through its protocol: null unless it
  * advertised still capture or zoom and the protocol can send that command.
- * Each action resolves true only when the advertised command was accepted.
+ * An answer is `ok` only when the advertised command was accepted; a result
+ * code of 0 or more is the camera's answer, -1 is none (timeout, no link).
  */
 export function mavlinkCameraFor(
   advertised: MavlinkCameraCapabilities | undefined,
@@ -85,10 +117,16 @@ export function mavlinkCameraFor(
   const capture = advertised.capture ? protocol.imageStartCapture?.bind(protocol) : undefined;
   const zoomStep = advertised.zoom ? protocol.setCameraZoom?.bind(protocol) : undefined;
   if (!capture && !zoomStep) return null;
+  const answer = (r: CommandResult): CameraAnswer => ({
+    ok: r.success,
+    answered: r.success || r.resultCode >= 0,
+    reason: r.message,
+  });
+  const unadvertised = noAnswer(new Error("not advertised"));
   return {
     zoom: zoomStep !== undefined,
-    capture: async () => (capture ? (await capture()).success : false),
-    zoomStep: async (by) => (zoomStep ? (await zoomStep(by)).success : false),
+    capture: async () => (capture ? answer(await capture()) : unadvertised),
+    zoomStep: async (by) => (zoomStep ? answer(await zoomStep(by)) : unadvertised),
   };
 }
 
@@ -106,6 +144,15 @@ export interface CameraDeps {
     cycle: (droneId: string) => void;
     step: (droneId: string, by: 1 | -1) => void;
   };
+  /** Where the zoom button has stepped the vehicle camera. */
+  vehicleZoom: {
+    /** The button's next step. */
+    next: (droneId: string) => 1 | -1;
+    /** The camera accepted a step. */
+    moved: (droneId: string, by: 1 | -1) => void;
+  };
+  /** The vehicle camera refused a zoom step, or never answered it. */
+  zoomFailed: (reason: string) => void;
 }
 
 /** Take a photo by the first route that can. */
@@ -113,22 +160,32 @@ export async function takePhoto(droneId: string, deps: CameraDeps): Promise<Phot
   if (deps.fireExtension(droneId, EXTENSION_CAPTURE_IDS)) return "extension";
   const cam = deps.mavlinkCamera(droneId);
   if (cam) {
-    // A refused or unanswered capture falls through to the shown frame.
-    const ok = await cam.capture().catch(() => false);
-    if (ok) return "mavlink";
+    const a = await cam.capture().catch(noAnswer);
+    if (a.ok) return "mavlink";
+    // A camera that answered with a refusal says why; a frame grab in its
+    // place would read as the photo it did not take.
+    if (a.answered) return { failed: a.reason };
   }
   return (await deps.grabFrame()) ? "saved" : "no_video";
 }
 
-/** Step the zoom by the first route that can. On an extension or a vehicle
- *  camera, "cycle" (the on-screen button) steps in. */
+/** Step the zoom by the first route that can. On an extension "cycle" (the
+ *  on-screen button) steps in; on a vehicle camera it steps in to the end of
+ *  the travel, then back out. */
 export function stepZoom(droneId: string, step: ZoomStep, deps: CameraDeps): ZoomResult {
   const ids = step === -1 ? EXTENSION_ZOOM_OUT_IDS : EXTENSION_ZOOM_IN_IDS;
   const cam = deps.mavlinkCamera(droneId);
   const route = zoomRoute({ extensionZoom: deps.extensionOffers(ids), mavlinkCameraZoom: cam?.zoom === true });
   if (route === "extension" && deps.fireExtension(droneId, ids)) return "extension";
   if (route === "mavlink" && cam) {
-    void cam.zoomStep(step === -1 ? -1 : 1).catch(() => false);
+    const by = step === "cycle" ? deps.vehicleZoom.next(droneId) : step;
+    void cam
+      .zoomStep(by)
+      .catch(noAnswer)
+      .then((a) => {
+        if (a.ok) deps.vehicleZoom.moved(droneId, by);
+        else deps.zoomFailed(a.reason);
+      });
     return "mavlink";
   }
   if (step === "cycle") deps.digitalZoom.cycle(droneId);
@@ -166,7 +223,20 @@ export const LIVE_CAMERA_DEPS: CameraDeps = {
     cycle: (droneId) => useViewZoomStore.getState().cycle(droneId),
     step: (droneId, by) => useViewZoomStore.getState().step(droneId, by),
   },
+  vehicleZoom: {
+    next: (droneId) => (useMavlinkCameraStore.getState().zoomByDrone[droneId] ?? VEHICLE_ZOOM_START).dir,
+    moved: (droneId, by) => useMavlinkCameraStore.getState().zoomMoved(droneId, by),
+  },
+  zoomFailed: (reason) => notifySkill(specText("camera.zoom_failed", { reason }), "warning"),
 };
+
+/** Which zoom the cockpit's zoom button drives for this drone now. */
+export function cockpitZoomRoute(droneId: string): ZoomRoute {
+  return zoomRoute({
+    extensionZoom: LIVE_CAMERA_DEPS.extensionOffers(EXTENSION_ZOOM_IN_IDS),
+    mavlinkCameraZoom: LIVE_CAMERA_DEPS.mavlinkCamera(droneId)?.zoom === true,
+  });
+}
 
 /** The cockpit's Photo (shutter and controller). */
 export function cockpitPhoto(droneId: string): Promise<PhotoResult> {

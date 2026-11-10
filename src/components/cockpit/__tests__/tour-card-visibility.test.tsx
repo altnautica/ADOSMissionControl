@@ -11,10 +11,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   pilot: null as null | { armed: boolean; landed: boolean },
+  /** When the pilot frame arrived; null means just now. */
+  receivedAt: null as number | null,
 }));
 
 vi.mock("@/lib/cockpit/use-pilot-state", () => ({
-  usePilotState: () => ({ pilot: mocks.pilot, receivedAt: mocks.pilot ? 1 : null }),
+  usePilotState: () => ({
+    pilot: mocks.pilot,
+    receivedAt: mocks.pilot ? (mocks.receivedAt ?? Date.now()) : null,
+  }),
 }));
 
 import { ControllerTourCard, tourAirborne } from "@/components/cockpit/ControllerTourCard";
@@ -34,6 +39,7 @@ function press(control: string) {
 
 beforeEach(() => {
   mocks.pilot = null;
+  mocks.receivedAt = null;
   usePadStatusStore.getState().set({ seen: true, connected: true, usable: true, needsCalibration: false, name: "Pad" });
   useControlsStore.setState({ tourSeen: false, tourVisible: false });
   useDroneStore.setState({ armState: "disarmed" });
@@ -65,10 +71,34 @@ describe("controller tour card", () => {
     expect(screen.queryByTestId("controls-tour")).toBeNull();
   });
 
-  it("reads the pilot over the heartbeat: armed on the ground still shows", () => {
-    expect(tourAirborne({ armed: true, landed: true }, true)).toBe(false);
-    expect(tourAirborne(null, true)).toBe(true);
-    expect(tourAirborne(null, false)).toBe(false);
+  it("reads a fresh pilot over the heartbeat: armed on the ground still shows", () => {
+    const now = 10_000;
+    expect(tourAirborne({ armed: true, landed: true }, now - 100, true, now)).toBe(false);
+    expect(tourAirborne({ armed: true, landed: false }, now - 100, false, now)).toBe(true);
+    expect(tourAirborne(null, null, true, now)).toBe(true);
+    expect(tourAirborne(null, null, false, now)).toBe(false);
+  });
+
+  it("falls back to the heartbeat once the pilot frame is stale", () => {
+    const now = 10_000;
+    expect(tourAirborne({ armed: true, landed: true }, now - 5000, true, now)).toBe(true);
+    expect(tourAirborne({ armed: true, landed: false }, now - 5000, false, now)).toBe(false);
+  });
+
+  it("is hidden in flight when a frozen pilot frame still says landed", () => {
+    mocks.pilot = { armed: true, landed: true };
+    mocks.receivedAt = Date.now() - 60_000;
+    useDroneStore.setState({ armState: "armed" });
+    render(<ControllerTourCard droneId="drone-1" />);
+    expect(screen.queryByTestId("controls-tour")).toBeNull();
+    expect(useControlsStore.getState().tourVisible).toBe(false);
+  });
+
+  it("shows armed on the ground while the pilot frame is fresh", () => {
+    mocks.pilot = { armed: true, landed: true };
+    useDroneStore.setState({ armState: "armed" });
+    render(<ControllerTourCard droneId="drone-1" />);
+    expect(screen.getByTestId("controls-tour")).toBeTruthy();
   });
 
   it("is hidden once seen", () => {

@@ -224,4 +224,59 @@ describe("right column gimbal pad", () => {
       window.removeEventListener("keydown", onKey);
     }
   });
+
+  it("aims on a drag that starts on the knob and does not recentre on its release", async () => {
+    const pad = renderPad();
+    const knob = screen.getByTestId("fs-gimbal-recentre");
+    fireEvent.pointerDown(knob, { pointerId: 1, buttons: 1, clientX: PAD / 2, clientY: PAD / 2 });
+    drag(pad, PAD / 2, 0);
+    await flush(150);
+    expect(posts[0]).toMatchObject({ pitch_dps: 60, yaw_dps: 0 });
+    fireEvent.pointerUp(knob, { pointerId: 1 });
+    fireEvent.click(knob, { detail: 1 });
+    await flush(150);
+    expect(posts.at(-1)).toMatchObject({ pitch_dps: 0, yaw_dps: 0 });
+    expect(fire).not.toHaveBeenCalled();
+  });
+
+  it("recentres on a tap on the knob", async () => {
+    renderPad();
+    const knob = screen.getByTestId("fs-gimbal-recentre");
+    fireEvent.pointerDown(knob, { pointerId: 1, buttons: 1, clientX: PAD / 2, clientY: PAD / 2 });
+    fireEvent.pointerUp(knob, { pointerId: 1 });
+    fireEvent.click(knob, { detail: 1 });
+    await flush(150);
+    expect(fire).toHaveBeenCalledWith("gimbal-drone", ["center", "recenter", "gimbal-recenter"]);
+    expect(posts.every((p) => p.pitch_dps === 0 && p.yaw_dps === 0)).toBe(true);
+  });
+
+  it("keeps the knob out of the tab order and ignores Space on it", async () => {
+    renderPad();
+    const knob = screen.getByTestId("fs-gimbal-recentre");
+    expect(knob.getAttribute("tabindex")).toBe("-1");
+    knob.focus();
+    const notPrevented = fireEvent.keyDown(knob, { key: " ", code: "Space" });
+    fireEvent.keyUp(knob, { key: " ", code: "Space" });
+    // A browser turns Space on a focused button into a click with no pointer.
+    fireEvent.click(knob, { detail: 0 });
+    await flush(150);
+    expect(notPrevented).toBe(true);
+    expect(fire).not.toHaveBeenCalled();
+    expect(posts).toEqual([]);
+  });
+
+  it.each([
+    ["pointercancel", (pad: HTMLElement) => void fireEvent.pointerCancel(pad, { pointerId: 1 })],
+    ["lost capture", (pad: HTMLElement) => void fireEvent.lostPointerCapture(pad, { pointerId: 1 })],
+    ["unmount", () => cleanup()],
+  ])("sends a zero rate on %s", async (_name, end: (pad: HTMLElement) => void) => {
+    const pad = renderPad();
+    fireEvent.pointerDown(pad, { pointerId: 1, buttons: 1, clientX: PAD / 2, clientY: PAD / 2 });
+    drag(pad, PAD, PAD / 2);
+    await flush(150);
+    expect(posts.at(-1)).toMatchObject({ pitch_dps: 0, yaw_dps: 60 });
+    end(pad);
+    await flush(150);
+    expect(posts.at(-1)).toMatchObject({ pitch_dps: 0, yaw_dps: 0 });
+  });
 });
