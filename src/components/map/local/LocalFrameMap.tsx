@@ -7,13 +7,26 @@
  * devicePixelRatio-aware canvas. Shared by the cockpit minimap's local mode
  * and the node-detail Map tab. Zoom 2–80 px/m by wheel or the `+` / `−`
  * buttons; drag pans, and the view recentres on the drone 10 s after the
- * last pan.
+ * last pan. A right-click or a long-press picks a point: in the air it opens
+ * the Fly here hold-confirm, on the ground it requests the Launch sheet with
+ * the point as its go-to. The point converts to latitude/longitude about the
+ * vehicle's EKF origin.
  *
  * @license GPL-3.0-only
  */
 
 import { MissionPlanIdentityBanner } from "@/components/cockpit/v2/MissionPlanIdentityBanner";
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { GuidedConfirmDialog } from "@/components/flight/GuidedConfirmDialog";
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import { Minus, Plus } from "lucide-react";
 
@@ -24,6 +37,8 @@ import {
   paintLocalScene,
   type LocalSceneColours,
 } from "@/components/map/local/paint-local-scene";
+import { attachLongPress, isTouchContextMenu, mapPointOffer, screenToLocal } from "@/components/map/map-point";
+import { useToast } from "@/components/ui/toast";
 import {
   DEFAULT_LOCAL_ZOOM,
   buildLocalScene,
@@ -32,7 +47,11 @@ import {
   wheelZoom,
 } from "@/lib/hud/local-scene";
 import { parseCssColor, type Rgba } from "@/lib/hud/occupancy-bitmap";
+import { nedToLatLon } from "@/lib/nav/ned-geo";
 import { cn } from "@/lib/utils";
+import { useGpsOriginStore } from "@/stores/gps-origin-store";
+import { useGuidedStore } from "@/stores/guided-store";
+import { useLaunchRequestStore } from "@/stores/launch-request-store";
 
 interface LocalFrameMapProps {
   droneId: string;
@@ -87,6 +106,46 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
     target: data.target,
     drone: data.drone,
   });
+
+  const { toast } = useToast();
+
+  /** Act on a point picked at a client pixel. Returns whether the point
+   *  offered anything. */
+  const pick = (clientX: number, clientY: number): boolean => {
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
+    const offer = mapPointOffer(droneId);
+    if (!offer.flyHere && !offer.launchHere) return false;
+    const origin = useGpsOriginStore.getState().byDrone[droneId];
+    if (!origin) {
+      toast(
+        offer.launchHere ? "Launch here needs the vehicle's EKF origin" : "Fly here needs the vehicle's EKF origin",
+        "warning",
+      );
+      return true;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const view = { centreNorth: centre.north, centreEast: centre.east, pxPerM: zoom, ...size };
+    const { north, east } = screenToLocal(view, clientX - rect.left, clientY - rect.top);
+    const [lat, lon] = nedToLatLon(origin, north, east);
+    if (offer.launchHere) {
+      useLaunchRequestStore.getState().requestLaunch({ droneId, lat, lon, north, east });
+    } else {
+      useGuidedStore.getState().showConfirm({ droneId, lat, lon, screenX: clientX, screenY: clientY });
+    }
+    return true;
+  };
+
+  // Touch long-press; a mouse picks with the right button (onContextMenu).
+  const onLongPress = useEffectEvent((clientX: number, clientY: number) => {
+    // A picked point ends the drag the press began.
+    if (pick(clientX, clientY)) dragRef.current = null;
+  });
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    return attachLongPress(canvas, (x, y) => onLongPress(x, y));
+  }, []);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -146,6 +205,14 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
   const endDrag = () => {
     dragRef.current = null;
   };
+  const onContextMenu = (e: MouseEvent<HTMLCanvasElement>) => {
+    // The browser's own touch long-press: the spec-timed one handles touch.
+    if (isTouchContextMenu(e.nativeEvent)) {
+      e.preventDefault();
+      return;
+    }
+    if (pick(e.clientX, e.clientY)) e.preventDefault();
+  };
 
   return (
     <div ref={wrapRef} className={cn("lfmap", className)}>
@@ -158,6 +225,7 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onContextMenu={onContextMenu}
         aria-label={t("local")}
         role="img"
       />
@@ -179,6 +247,8 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
         <span className="bar" style={{ width: scene.scaleBar.px }} />
         <span>{t("scaleBar", { m: scene.scaleBar.m })}</span>
       </div>
+      {/* The Fly here hold-confirm, as the full tile map carries it. */}
+      {!compact && <GuidedConfirmDialog />}
     </div>
   );
 }

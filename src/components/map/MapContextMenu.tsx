@@ -1,6 +1,7 @@
 /**
  * @module MapContextMenu
- * @description Right-click context menu on the flight map. Context-aware menu
+ * @description Context menu on the flight map, opened by a right-click or a
+ * touch long-press held `map_long_press_ms`. Context-aware menu
  * that shows different commands based on connection state, arm state, flight mode,
  * and vehicle capabilities. Supports navigation, camera/gimbal, home/origin,
  * rally points, POI markers, heading, and utility commands.
@@ -40,6 +41,7 @@ import {
 } from "./context-menu/actions/markers";
 import { useRallyStore } from "@/stores/rally-store";
 import { haversineDistance } from "@/lib/geo/distance";
+import { attachLongPress, isTouchContextMenu } from "./map-point";
 
 export function MapContextMenu() {
   const map = useMap();
@@ -94,23 +96,52 @@ export function MapContextMenu() {
     if (confirmPending) closeMenu();
   }, [confirmPending, closeMenu]);
 
-  // ── Right-click handler ─────────────────────────────────
+  // ── Right-click and long-press handlers ────────────────
 
   useEffect(() => {
-    const onContextMenu = (e: L.LeafletMouseEvent) => {
-      e.originalEvent.preventDefault();
-      const containerPoint = map.latLngToContainerPoint(e.latlng);
-      setMenuPos({
-        x: containerPoint.x,
-        y: containerPoint.y,
-        lat: e.latlng.lat,
-        lon: e.latlng.lng,
-      });
+    const open = (x: number, y: number, lat: number, lon: number) => {
+      setMenuPos({ x, y, lat, lon });
       setHighlightIdx(-1);
       setOrbitOpen(false);
       setPoiInput(false);
       setConfirmHomeOpen(false);
       setRallyOpen(false);
+    };
+
+    const onContextMenu = (e: L.LeafletMouseEvent) => {
+      e.originalEvent.preventDefault();
+      // The browser's own touch long-press: the spec-timed one below opens
+      // the menu for touch.
+      if (isTouchContextMenu(e.originalEvent)) return;
+      const containerPoint = map.latLngToContainerPoint(e.latlng);
+      open(containerPoint.x, containerPoint.y, e.latlng.lat, e.latlng.lng);
+    };
+
+    // Leaflet's own tap-hold (mobile Safari) fires a contextmenu at a fixed
+    // delay; the long-press here reads the spec's duration instead.
+    map.tapHold?.disable();
+    const container = map.getContainer();
+    // The release that ends a long-press must not close the menu it opened.
+    let pressed = false;
+    const onDown = () => {
+      pressed = false;
+    };
+    container.addEventListener("pointerdown", onDown);
+    const detachLongPress = attachLongPress(container, (clientX, clientY, target) => {
+      // A press on the menu itself or a map control is not a map point.
+      if (target instanceof Node && menuRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest(".leaflet-control")) return;
+      const pt = map.mouseEventToContainerPoint({ clientX, clientY } as MouseEvent);
+      const latlng = map.containerPointToLatLng(pt);
+      pressed = true;
+      open(pt.x, pt.y, latlng.lat, latlng.lng);
+    });
+    const onClick = () => {
+      if (pressed) {
+        pressed = false;
+        return;
+      }
+      closeMenu();
     };
 
     // Keep the menu anchored to its map point while the map moves under it
@@ -124,17 +155,19 @@ export function MapContextMenu() {
       });
 
     map.on("contextmenu", onContextMenu);
-    map.on("click", closeMenu);
+    map.on("click", onClick);
     map.on("dragstart", closeMenu);
     map.on("zoomstart", closeMenu);
     map.on("move", reproject);
 
     return () => {
       map.off("contextmenu", onContextMenu);
-      map.off("click", closeMenu);
+      map.off("click", onClick);
       map.off("dragstart", closeMenu);
       map.off("zoomstart", closeMenu);
       map.off("move", reproject);
+      container.removeEventListener("pointerdown", onDown);
+      detachLongPress();
     };
   }, [map, closeMenu]);
 

@@ -12,7 +12,9 @@ import { useCallback } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import { useDroneManager, selectSelectedProtocol } from "@/stores/drone-manager";
 import { useGuidedStore } from "@/stores/guided-store";
-import { handleFlyHere } from "./actions/navigation";
+import { handleFlyHere, handleLaunchHere } from "./actions/navigation";
+import { useGpsOriginStore } from "@/stores/gps-origin-store";
+import { useLaunchRequestStore } from "@/stores/launch-request-store";
 import { landAtPoint, loiterAtPoint } from "@/lib/skills/guided-target";
 import { handlePointCamera, handleClearRoi, handleTriggerCamera } from "./actions/camera";
 import { handleSetEkfOrigin } from "./actions/home";
@@ -77,6 +79,16 @@ export function useMenuActions({
             rectLeft: rect.left,
             rectTop: rect.top,
             showConfirm,
+            report,
+          });
+          return true;
+        }
+        case "launch-here": {
+          handleLaunchHere({
+            droneId: selectedDroneId,
+            menuPos,
+            origin: selectedDroneId ? (useGpsOriginStore.getState().byDrone[selectedDroneId] ?? null) : null,
+            requestLaunch: useLaunchRequestStore.getState().requestLaunch,
             report,
           });
           return true;

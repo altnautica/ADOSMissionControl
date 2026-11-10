@@ -6,6 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Maps: the local-frame map (no GNSS fix) offers Fly here on right-click and long-press, converting the point through the EKF origin; touch long-press on every map follows the spec's press time; on the ground, Launch here sends the point to the Launch sheet as its go-to.
 - Aircraft setup: the offer to set up a new flight controller is a small banner with Open and Later, shown once per flight controller on this device, on the ground and never over the flight screen. The Meet ADOS Pilot step shows its step state like every other step.
 - Cockpit: the shared chip, status-pill, refusal and tips case files run against Mission Control's copies of the shared modules; layer chips start from the spec's words.
 - Shell: on the flight screen Ctrl+K opens only the cockpit's command palette.

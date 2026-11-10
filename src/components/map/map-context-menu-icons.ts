@@ -8,6 +8,7 @@
 export const ICONS: Record<string, string> = {
   flyHere: '<polygon points="7,1 13,13 7,9 1,13" fill="#3A82FF" fill-opacity="0.6" stroke="#3A82FF" stroke-width="1"/>',
   flyHereAlt: '<polygon points="7,3 11,11 7,8 3,11" fill="none" stroke="#3A82FF" stroke-width="1.2"/><line x1="12" y1="2" x2="12" y2="6" stroke="#3A82FF" stroke-width="1.2"/>',
+  launch: '<path d="M7,1 L10,6 L10,10 L4,10 L4,6 Z" fill="none" stroke="#22c55e" stroke-width="1.2"/><path d="M5,12 L7,10 L9,12" fill="none" stroke="#22c55e" stroke-width="1"/>',
   orbit: '<circle cx="7" cy="7" r="5" fill="none" stroke="#3A82FF" stroke-width="1.2" stroke-dasharray="3 2"/><circle cx="7" cy="2" r="1.5" fill="#3A82FF"/>',
   loiter: '<circle cx="7" cy="7" r="5" fill="none" stroke="#f59e0b" stroke-width="1.2"/><circle cx="7" cy="7" r="1.5" fill="#f59e0b"/>',
   land: '<path d="M3,11 L11,11 M7,3 L7,9 M4,7 L7,10 L10,7" fill="none" stroke="#22c55e" stroke-width="1.2"/>',

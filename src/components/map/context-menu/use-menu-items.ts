@@ -13,6 +13,8 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { flyHereOffered } from "@/lib/hud/fly-here-offer";
+import { useGpsOriginStore } from "@/stores/gps-origin-store";
+import { launchHereOffered } from "../map-point";
 import { GUIDED_MODES } from "../map-context-menu-icons";
 import type { MenuItemDef } from "./types";
 
@@ -30,6 +32,9 @@ export interface MenuContext {
    *  state listing `goto`, ADOS control, armed and flying), whatever the FC
    *  mode: a mission or skill hands over to the goto. */
   pilotGoto: boolean;
+  /** The selected drone is on the ground with its pilot advertising `goto`
+   *  and its EKF origin known: the point can be the Launch go-to. */
+  launchHere: boolean;
 }
 
 /** Modes in which the autopilot applies MAV_CMD_CONDITION_YAW (ArduCopter's
@@ -52,6 +57,11 @@ export function useMenuContext(): MenuContext {
     const stamped = selectedId ? s.byDrone[selectedId]?.pilot : undefined;
     return stamped ? flyHereOffered(stamped.data, Date.now() - stamped.receivedAt) : false;
   });
+  const launchHere = useNavStreamStore((s) => {
+    const stamped = selectedId ? s.byDrone[selectedId]?.pilot : undefined;
+    return stamped ? launchHereOffered(stamped.data, Date.now() - stamped.receivedAt) : false;
+  });
+  const hasOrigin = useGpsOriginStore((s) => (selectedId ? selectedId in s.byDrone : false));
 
   const isConnected =
     connectionState === "connected" ||
@@ -61,7 +71,17 @@ export function useMenuContext(): MenuContext {
   const canNavigate = isConnected && isArmed && GUIDED_MODES.has(flightMode);
   const isCopter = frameType === "copter" || frameType === "heli";
 
-  return { isConnected, isArmed, canNavigate, isCopter, flightMode, canRally, canOrbit, pilotGoto };
+  return {
+    isConnected,
+    isArmed,
+    canNavigate,
+    isCopter,
+    flightMode,
+    canRally,
+    canOrbit,
+    pilotGoto,
+    launchHere: launchHere && hasOrigin,
+  };
 }
 
 export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
@@ -69,13 +89,17 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
   const latestPos = posBuffer.latest();
   const hasDronePos = !!(latestPos && latestPos.lat !== 0);
 
-  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, pilotGoto } = ctx;
+  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, pilotGoto, launchHere } = ctx;
 
   return useMemo<MenuItemDef[]>(() => {
     const items: MenuItemDef[] = [];
 
     // Group 0: Navigation. Fly here goes to the ADOS pilot when it offers a
-    // goto (any FC mode), else to the FC, which takes it only in GUIDED.
+    // goto (any FC mode), else to the FC, which takes it only in GUIDED. On
+    // the ground the point can instead be the Launch sheet's go-to.
+    if (launchHere) {
+      items.push({ id: "launch-here", label: "Launch here", icon: "launch", group: 0 });
+    }
     if (canNavigate || pilotGoto) {
       items.push({ id: "fly-here", label: "Fly Here", icon: "flyHere", group: 0, shortcut: "G" });
       items.push({ id: "fly-here-alt", label: "Fly Here at Alt...", icon: "flyHereAlt", group: 0 });
@@ -117,5 +141,5 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
     }
 
     return items;
-  }, [canNavigate, pilotGoto, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, hasDronePos]);
+  }, [canNavigate, pilotGoto, launchHere, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, hasDronePos]);
 }
