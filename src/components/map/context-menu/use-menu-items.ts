@@ -11,6 +11,8 @@ import { useMemo } from "react";
 import { useDroneStore } from "@/stores/drone-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
+import { flyHereOffered } from "@/lib/hud/fly-here-offer";
 import { GUIDED_MODES } from "../map-context-menu-icons";
 import type { MenuItemDef } from "./types";
 
@@ -24,6 +26,10 @@ export interface MenuContext {
   canRally: boolean;
   /** The selected FC handles MAV_CMD_DO_ORBIT (PX4; ArduCopter has no handler). */
   canOrbit: boolean;
+  /** The selected drone's ADOS pilot accepts a Fly here goto now (live pilot
+   *  state listing `goto`, ADOS control, armed and flying), whatever the FC
+   *  mode: a mission or skill hands over to the goto. */
+  pilotGoto: boolean;
 }
 
 /** Modes in which the autopilot applies MAV_CMD_CONDITION_YAW (ArduCopter's
@@ -41,6 +47,12 @@ export function useMenuContext(): MenuContext {
     return !!protocol?.orbit && protocol.getVehicleInfo()?.firmwareType === "px4";
   });
 
+  const selectedId = useDroneManager((s) => s.selectedDroneId);
+  const pilotGoto = useNavStreamStore((s) => {
+    const stamped = selectedId ? s.byDrone[selectedId]?.pilot : undefined;
+    return stamped ? flyHereOffered(stamped.data, Date.now() - stamped.receivedAt) : false;
+  });
+
   const isConnected =
     connectionState === "connected" ||
     connectionState === "armed" ||
@@ -49,7 +61,7 @@ export function useMenuContext(): MenuContext {
   const canNavigate = isConnected && isArmed && GUIDED_MODES.has(flightMode);
   const isCopter = frameType === "copter" || frameType === "heli";
 
-  return { isConnected, isArmed, canNavigate, isCopter, flightMode, canRally, canOrbit };
+  return { isConnected, isArmed, canNavigate, isCopter, flightMode, canRally, canOrbit, pilotGoto };
 }
 
 export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
@@ -57,13 +69,14 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
   const latestPos = posBuffer.latest();
   const hasDronePos = !!(latestPos && latestPos.lat !== 0);
 
-  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit } = ctx;
+  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, pilotGoto } = ctx;
 
   return useMemo<MenuItemDef[]>(() => {
     const items: MenuItemDef[] = [];
 
-    // Group 0: Navigation
-    if (canNavigate) {
+    // Group 0: Navigation. Fly here goes to the ADOS pilot when it offers a
+    // goto (any FC mode), else to the FC, which takes it only in GUIDED.
+    if (canNavigate || pilotGoto) {
       items.push({ id: "fly-here", label: "Fly Here", icon: "flyHere", group: 0, shortcut: "G" });
       items.push({ id: "fly-here-alt", label: "Fly Here at Alt...", icon: "flyHereAlt", group: 0 });
     }
@@ -104,5 +117,5 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
     }
 
     return items;
-  }, [canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, hasDronePos]);
+  }, [canNavigate, pilotGoto, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, hasDronePos]);
 }
