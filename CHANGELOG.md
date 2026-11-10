@@ -6,6 +6,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.63.0] - 2026-11-10
+
 This release covers everything since 0.62.0: fifty-four commits, all on
 2026-11-10. It is a second pass over the cockpit that 0.62.0 rebuilt, with
 three threads running through it.
