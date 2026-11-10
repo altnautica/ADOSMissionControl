@@ -69,12 +69,15 @@ export function countdownColor(banner: keyof typeof SEVERITY): string {
 }
 
 /** The banner's args with the spec's sub-keys resolved (`source: "rc"` →
- * "RC switch") and the profile in the chip's upper case. */
+ * "RC switch", `cause: "rc_or_failsafe"` → "RC switch or failsafe") and the
+ * profile in the chip's upper case. */
 export function bannerText(banner: NonNullable<PilotState["banner"]>): string {
   const args: Record<string, unknown> = { ...banner.args };
-  const src = args.source;
-  if (typeof src === "string" && hasSpecString(`pilot.banner.source.${src}`)) {
-    args.source = specString(`pilot.banner.source.${src}`);
+  for (const name of ["source", "cause"] as const) {
+    const code = args[name];
+    if (typeof code === "string" && hasSpecString(`pilot.banner.${name}.${code}`)) {
+      args[name] = specString(`pilot.banner.${name}.${code}`);
+    }
   }
   if (typeof args.profile === "string") args.profile = args.profile.toUpperCase();
   return specString(banner.textKey, args);

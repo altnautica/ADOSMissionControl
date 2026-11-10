@@ -229,6 +229,15 @@ describe("launch, banners and voice", () => {
     );
   });
 
+  it("names the FC mode change cause in words, never the raw code", () => {
+    const text = bannerText({
+      textKey: "pilot.banner.fc_mode_change",
+      args: { mode: "RTL", cause: "rc_or_failsafe" },
+      untilMs: null,
+    });
+    expect(text).toBe("FC switched to RTL: RC switch or failsafe");
+  });
+
   it("speaks handovers, RTH, low battery and mission changes", () => {
     const s = (owner: string | null, mission: string | null = null, rth = false, fcModeName: string | null = null) => ({ owner, fcModeName, mission, rth });
     expect(voiceLine(s("fc_mode"), s("pilot"))).toBe(specString("voice.ados_control"));
