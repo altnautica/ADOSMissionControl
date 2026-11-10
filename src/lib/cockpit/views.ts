@@ -23,10 +23,33 @@ export interface CockpitViewDef {
   label: string;
   /** What fills the cockpit: the video or the map. */
   main: "video" | "map";
-  /** The second pane: the video as a PiP, the map beside the video, or none. */
-  secondary: "video_pip" | "map" | null;
+  /** The second pane: the video in the bottom-left card, the video as a
+   * PiP, the map beside the video, or none. */
+  secondary: CockpitViewSecondary;
   /** The vision view's side panel. */
   sidePanel: boolean;
+  /** The Split view's divider: the video's share of the width, draggable
+   * between `min` and `max`; null for a view without one. */
+  divider: CockpitViewDivider | null;
+}
+
+export type CockpitViewSecondary = "video_card" | "video_pip" | "map" | null;
+
+export interface CockpitViewDivider {
+  draggable: boolean;
+  default: number;
+  min: number;
+  max: number;
+}
+
+const SECONDARIES: readonly string[] = ["video_card", "video_pip", "map"];
+
+function parseDivider(d: unknown): CockpitViewDivider | null {
+  if (!d || typeof d !== "object") return null;
+  const o = d as Record<string, unknown>;
+  const num = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
+  if (!num(o.default) || !num(o.min) || !num(o.max)) return null;
+  return { draggable: o.draggable === true, default: o.default, min: o.min, max: o.max };
 }
 
 const VIEW_IDS: readonly CockpitViewId[] = ["pilot", "map", "split", "vision"];
@@ -41,8 +64,9 @@ export const COCKPIT_VIEWS: readonly CockpitViewDef[] = viewsSpec.views
     id: v.id as CockpitViewId,
     label: v.label,
     main: v.main === "map" ? "map" : "video",
-    secondary: v.secondary === "video_pip" ? "video_pip" : v.secondary === "map" ? "map" : null,
+    secondary: SECONDARIES.includes(v.secondary ?? "") ? (v.secondary as CockpitViewSecondary) : null,
     sidePanel: Array.isArray(v.side_panel) && v.side_panel.length > 0,
+    divider: "divider" in v ? parseDivider(v.divider) : null,
   }));
 
 export const VIEW_CYCLE: readonly CockpitViewId[] = viewsSpec.cycle.filter(isViewId);
