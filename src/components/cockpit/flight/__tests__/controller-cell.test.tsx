@@ -30,7 +30,7 @@ afterEach(() => {
   cleanup();
   pad({});
   useInputStore.setState({ gamepadId: null });
-  useControlsStore.setState({ tourSeen: {} });
+  useControlsStore.setState({ tourSeen: false });
 });
 
 describe("top bar controller cell", () => {
@@ -72,6 +72,6 @@ describe("top bar controller cell", () => {
     renderWithIntl(<ControllerTour />);
     for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole("button"));
     expect(screen.queryByTestId("controls-tour")).toBeNull();
-    expect(useControlsStore.getState().tourSeen["pad-1"]).toBe(true);
+    expect(useControlsStore.getState().tourSeen).toBe(true);
   });
 });

@@ -130,7 +130,7 @@ export function PrefsRow() {
 const TOUR = ["sticks", "safety", "skills"] as const;
 
 export function Tour({ padId }: { padId: string }) {
-  const seen = useControlsStore((s) => s.tourSeen[padId] === true);
+  const seen = useControlsStore((s) => s.tourSeen);
   const mark = useControlsStore((s) => s.markTourSeen);
   const [at, setAt] = useState(0);
   if (seen) return null;
@@ -141,7 +141,7 @@ export function Tour({ padId }: { padId: string }) {
       <p className="mt-1">{specString(`controls.tour.${card}.body`)}</p>
       <button
         type="button"
-        onClick={() => (at + 1 < TOUR.length ? setAt(at + 1) : mark(padId))}
+        onClick={() => (at + 1 < TOUR.length ? setAt(at + 1) : mark())}
         className="mt-2 rounded bg-accent-primary/25 px-3 py-1 font-semibold text-accent-primary"
       >
         {at + 1 < TOUR.length ? "Next" : "Done"}

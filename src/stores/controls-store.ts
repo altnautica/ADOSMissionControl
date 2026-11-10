@@ -1,8 +1,9 @@
 /**
  * @module controls-store
  * @description Settings › Controls on this surface: the controller binding
- * list (the spec defaults until the operator edits it), and which pads have
- * seen the first-connect tour. Stick mode, deadzone and stick calibration
+ * list (the spec defaults until the operator edits it), and whether this
+ * device has seen the controller tour (one flag per device, any pad; Settings
+ * › Controls can replay it). Stick mode, deadzone and stick calibration
  * live in the input store, which the stick stream reads.
  *
  * The export file is the spec's `export_format` (`kind: "ados-controls"`):
@@ -37,25 +38,46 @@ export interface ControlsExport {
 interface ControlsState {
   /** The operator's binding list, or null for the spec defaults. */
   bindings: Ds4Binding[] | null;
-  tourSeen: Record<string, true>;
+  /** The controller tour was finished, skipped or closed on this device. */
+  tourSeen: boolean;
+  /** The tour card is on screen now (not persisted; tips wait for it). */
+  tourVisible: boolean;
   setBindings: (bindings: Ds4Binding[]) => void;
   reset: () => void;
-  markTourSeen: (padId: string) => void;
+  markTourSeen: () => void;
+  /** Show the tour again (Settings › Controls › Replay controller tour). */
+  replayTour: () => void;
+  setTourVisible: (visible: boolean) => void;
+}
+
+/** Earlier versions kept one flag per pad id; any pad that saw it counts. */
+export function migrateTourSeen(persisted: unknown): boolean {
+  if (typeof persisted === "boolean") return persisted;
+  if (persisted && typeof persisted === "object") return Object.values(persisted).some((v) => v === true);
+  return false;
 }
 
 export const useControlsStore = create<ControlsState>()(
   persist(
     (set) => ({
       bindings: null,
-      tourSeen: {},
+      tourSeen: false,
+      tourVisible: false,
       setBindings: (bindings) => set({ bindings }),
       reset: () => set({ bindings: null }),
-      markTourSeen: (padId) => set((s) => ({ tourSeen: { ...s.tourSeen, [padId]: true } })),
+      markTourSeen: () => set({ tourSeen: true }),
+      replayTour: () => set({ tourSeen: false }),
+      setTourVisible: (tourVisible) => set({ tourVisible }),
     }),
     {
       name: "altcmd:cockpit-controls",
+      version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ bindings: s.bindings, tourSeen: s.tourSeen }),
+      migrate: (persisted, version) => {
+        const p = (persisted ?? {}) as { bindings?: Ds4Binding[] | null; tourSeen?: unknown };
+        return { bindings: p.bindings ?? null, tourSeen: version < 1 ? migrateTourSeen(p.tourSeen) : p.tourSeen === true } as ControlsState;
+      },
     },
   ),
 );
