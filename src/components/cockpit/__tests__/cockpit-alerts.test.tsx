@@ -35,6 +35,7 @@ import { MockProtocol } from "@/mock/mock-protocol";
 import type { Transport } from "@/lib/protocol/types";
 import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import { LINK_LOST_MS, LINK_STALE_MS } from "@/components/cockpit/band/link-state";
+import { specString } from "@/lib/cockpit/spec-strings";
 
 const A = messages.cockpit.alerts;
 
@@ -149,7 +150,8 @@ describe("cockpit alert stack", () => {
     expect(el).not.toBeNull();
     expect(el!.getAttribute("data-level")).toBe("critical");
     expect(el!.closest("[aria-live]")?.getAttribute("aria-live")).toBe("assertive");
-    expect(el!.textContent).toContain(A.battCrit);
+    // Shared alert ids read their title from the spec, the same on every surface.
+    expect(el!.textContent).toContain(specString("alert.batt_crit"));
     expect(el!.textContent).toContain(A.level.critical);
   });
 
@@ -160,6 +162,7 @@ describe("cockpit alert stack", () => {
     const el = alertEl(container, "battLow");
     expect(el?.getAttribute("data-level")).toBe("warning");
     expect(el?.closest("[aria-live]")?.getAttribute("aria-live")).toBe("polite");
+    expect(el?.textContent).toContain(specString("alert.batt_low"));
     expect(has(container, "battCrit")).toBe(false);
   });
 
@@ -208,7 +211,7 @@ describe("cockpit alert stack", () => {
     vi.setSystemTime(1_000_000 + LINK_LOST_MS + 500);
     const lost = renderAlerts("drone-armed");
     expect(alertEl(lost.container, "linkLost")?.getAttribute("data-level")).toBe("critical");
-    expect(lost.container.textContent).toContain(A.linkLost);
+    expect(lost.container.textContent).toContain(specString("alert.link_lost"));
     lost.unmount();
 
     // The adapter declares the link lost; the alert must stay up.

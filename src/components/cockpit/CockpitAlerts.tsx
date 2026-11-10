@@ -38,6 +38,18 @@ import {
 import { useHudCopy } from "@/hooks/use-hud-copy";
 import { reacquiredToast } from "@/lib/vision/target-format";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
+import { specString } from "@/lib/cockpit/spec-strings";
+
+/** The alert rules every surface shares read their titles from the spec
+ *  (`alert.*`, the same ids as the shared pill rules); the rest are this
+ *  surface's own. */
+export const SPEC_ALERT_KEY: Partial<Record<CockpitAlert["id"], string>> = {
+  linkLost: "alert.link_lost",
+  linkStale: "alert.link_stale",
+  battCrit: "alert.batt_crit",
+  battLow: "alert.batt_low",
+  videoFrozen: "alert.video_frozen",
+};
 
 /** MAV_SEVERITY_CRITICAL and MAV_SEVERITY_WARNING; lower values are more severe. */
 const MAV_SEVERITY_CRITICAL = 2;
@@ -151,7 +163,8 @@ export function useCockpitAlertList(droneId: string): {
     if (a.id === "statusText" || a.id === "statusTextWarn") return a.detail ?? "";
     if (a.id === "prearm") return t("prearm", { reason: a.detail ?? "" });
     if (a.id === "fcState") return t(a.detail ?? "fcCritical");
-    return t(a.id);
+    const shared = SPEC_ALERT_KEY[a.id];
+    return shared ? specString(shared) : t(a.id);
   };
   return { alerts, label };
 }
