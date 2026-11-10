@@ -707,5 +707,132 @@
         "storage"
       ]
     }
+  },
+  {
+    "name": "fc_failsafe_fresh_is_critical",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "fc_failsafe": true,
+      "failsafe_cause": "fc"
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "Failsafe: flight controller",
+      "count": 1,
+      "ids": [
+        "failsafe"
+      ]
+    }
+  },
+  {
+    "name": "fc_failsafe_rc_cause_reads_its_label",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "fc_failsafe": true,
+      "failsafe_cause": "rc_or_failsafe"
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "Failsafe: RC switch or failsafe",
+      "count": 1,
+      "ids": [
+        "failsafe"
+      ]
+    }
+  },
+  {
+    "name": "fc_failsafe_without_cause_reads_flight_controller",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "fc_failsafe": true,
+      "failsafe_cause": null
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "Failsafe: flight controller",
+      "count": 1,
+      "ids": [
+        "failsafe"
+      ]
+    }
+  },
+  {
+    "name": "fc_failsafe_sorts_before_warnings",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [
+        {
+          "severity": 4,
+          "text": "EKF variance",
+          "age_ms": 1000
+        }
+      ],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "fc_failsafe": true,
+      "failsafe_cause": "fc"
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "2 warnings",
+      "count": 2,
+      "ids": [
+        "failsafe",
+        "fcst:EKF variance"
+      ]
+    }
+  },
+  {
+    "name": "fc_failsafe_on_stale_pilot_reads_not_answering",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 5000,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [],
+      "fc_failsafe": true,
+      "failsafe_cause": "fc"
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Pilot not answering",
+      "count": 1,
+      "ids": [
+        "pilot_not_answering"
+      ]
+    }
   }
 ]

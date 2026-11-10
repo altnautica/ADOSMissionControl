@@ -121,6 +121,14 @@ describe("status pill: pilot freshness, agent and controller", () => {
     expect(texts({ pilot: lost })).toEqual([specString("alert.controller_lost")]);
     expect(texts({ pilot: lost, pilotAgeMs: 2500 })).toEqual([specString("alert.pilot_not_answering")]);
   });
+
+  it("lists the FC's own failsafe as critical from a fresh pilot, so the pill never reads OK under FAILSAFE", () => {
+    const fs = { ...flying, readiness: [], statustext: [], fcFailsafe: true, failsafeCause: "rc_or_failsafe" } as unknown as PilotState;
+    const out = pillAlertsFor(sources({ pilot: fs }));
+    expect(out[0]).toMatchObject({ id: "failsafe", severity: "critical" });
+    expect(out[0].text).toContain(specString("pilot.banner.cause.rc_or_failsafe"));
+    expect(texts({ pilot: fs, pilotAgeMs: 2500 })).toEqual([specString("alert.pilot_not_answering")]);
+  });
 });
 
 describe("status pill: pre-flight checks", () => {

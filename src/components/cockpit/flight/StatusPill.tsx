@@ -35,6 +35,7 @@ import type { PilotState } from "@/lib/hud/cockpit-frames";
 import {
   controllerLost,
   pillAlerts,
+  pilotFailsafe,
   pillSummary,
   type PillAlert,
   type PillSource,
@@ -120,6 +121,7 @@ export function pillAlertsFor(s: PillSources): PillAlert[] {
     pilotAgeMs: s.pilotAgeMs,
     agentReachable: s.agentReachable,
     controllerLost: fresh && controllerLost(s.pilot),
+    ...pilotFailsafe(s.pilot),
   }).filter((a) => !(a.source === "fc_status_text" && surfaceTexts.has(a.text)));
   const listed = new Set<PillSource>([...s.surface, ...shared].map((a) => a.source));
   const failing = s.disarmed

@@ -77,6 +77,8 @@ describe("pill cases", () => {
         agentReachable: i.agent_reachable,
         controllerLost: i.controller_lost,
         preflightFailing: i.preflight_failing,
+        fcFailsafe: (i as { fc_failsafe?: boolean }).fc_failsafe,
+        failsafeCause: (i as { failsafe_cause?: string | null }).failsafe_cause,
       });
       const s = pillSummary(alerts, new Set());
       expect({ severity: s.severity, text: s.text, count: s.count, ids: alerts.map((a) => a.id) }).toEqual(c.expected);

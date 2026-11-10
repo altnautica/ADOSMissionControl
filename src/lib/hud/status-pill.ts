@@ -9,7 +9,8 @@
 //
 // Alert levels:
 //   critical: vehicle link lost > 10 s while armed, battery at or below the
-//             critical band, a critical battery-engine anomaly
+//             critical band, a critical battery-engine anomaly, a fresh
+//             pilot state reporting the FC's own failsafe RTL or land
 //   warning:  vehicle link stale > 3 s, battery at or below the low band, a
 //             GPS fix below 3D while armed, frozen video, a battery-engine
 //             warning
@@ -20,7 +21,7 @@ import layoutJson from "../cockpit-spec/layout.json";
 import { BATTERY_CRITICAL_PCT, batteryLowPct, batteryReading, type BatteryHealthInput, type FcBatteryInput } from "./battery";
 import type { FcStatusText, PilotState, ReadinessItem } from "./cockpit-frames";
 import { CHIP_STALE_AFTER_MS } from "./flight-state";
-import { specText } from "./spec-text";
+import { hasSpecText, specText } from "./spec-text";
 
 /** On-board storage use that warns, and that is critical (percent). */
 export const STORAGE_WARN_PCT: number = layoutJson.status_pill.storage_warn_pct;
@@ -168,6 +169,25 @@ export interface PillInputs {
   /** The failing pre-flight checklist items. The checklist is a ground
    *  surface: pass them only while on the ground. */
   preflightFailing?: readonly { id: string; label: string }[];
+  /** The fresh pilot state reports the FC flying a failsafe RTL or land of
+   *  its own (`fc_failsafe`): one critical `failsafe` item. Ignored while
+   *  the pilot state is stale. */
+  fcFailsafe?: boolean;
+  /** Why (`failsafe_cause`: `fc`, `rc_or_failsafe`); null reads as `fc`. */
+  failsafeCause?: string | null;
+}
+
+/** The pill's failsafe inputs from a pilot state. */
+export function pilotFailsafe(p: Pick<PilotState, "fcFailsafe" | "failsafeCause"> | null): { fcFailsafe: boolean; failsafeCause: string | null } {
+  return { fcFailsafe: p?.fcFailsafe === true, failsafeCause: p?.failsafeCause ?? null };
+}
+
+/** `Failsafe: <cause>`, the cause worded by `pilot.banner.cause.*`; an
+ *  unknown cause reads as itself. */
+export function failsafeText(cause: string | null | undefined): string {
+  const c = cause || "fc";
+  const key = `pilot.banner.cause.${c}`;
+  return specText("alert.failsafe", { cause: hasSpecText(key) ? specText(key) : c });
 }
 
 /** The pilot holds for a lost controller while armed and airborne (spec
@@ -198,6 +218,8 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
   const pilotStale = i.pilotAgeMs === null || (i.pilotAgeMs !== undefined && i.pilotAgeMs >= CHIP_STALE_AFTER_MS);
   if (pilotStale) {
     out.push({ id: "pilot_not_answering", source: "pilot", severity: "warning", text: specText("alert.pilot_not_answering") });
+  } else if (i.fcFailsafe) {
+    out.push({ id: "failsafe", source: "pilot", severity: "critical", text: failsafeText(i.failsafeCause) });
   }
   for (const r of pilotStale ? [] : i.readiness) {
     if (r.ok) continue;
