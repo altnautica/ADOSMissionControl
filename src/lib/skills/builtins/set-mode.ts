@@ -17,7 +17,7 @@
  */
 
 import type { Skill } from "../types";
-import { noteCommandedMode } from "../flight-facts";
+import { noteModeOnSuccess } from "../flight-facts";
 import { disabledIfNoLink, modeChangeConfirm, REASON } from "./_shared";
 
 export const setModeSkill: Skill = {
@@ -58,7 +58,6 @@ export const setModeSkill: Skill = {
     // The vehicle's own answer goes back to the dispatcher, which surfaces a
     // refusal. Nothing writes the mode locally: the mode label moves when a
     // heartbeat reports the vehicle in it, and not before.
-    noteCommandedMode(ctx.droneId, target);
-    return ctx.protocol?.setFlightMode(target);
+    return noteModeOnSuccess(ctx.droneId, target, ctx.protocol?.setFlightMode(target));
   },
 };

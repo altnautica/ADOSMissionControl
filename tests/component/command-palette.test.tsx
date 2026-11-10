@@ -42,6 +42,7 @@ import type { FleetDrone } from "@/lib/types";
 import { useUiStore } from "@/stores/ui-store";
 import { consumeImmersiveRequest } from "@/lib/cockpit/immersive-request";
 import { setFixtureFleet } from "../helpers/fleet-drones";
+import { MAV_LANDED_STATE_ON_GROUND, noteFcLandedState } from "@/lib/skills/flight-facts";
 
 const DRONE = "drone-1";
 const arm = vi.fn(async () => ({ success: true, resultCode: 0, message: "" }));
@@ -131,12 +132,14 @@ describe("CommandPalette flight commands", () => {
 
   it("an armed drone's Arm entry resolves to Disarm through the bound pipeline", async () => {
     useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
+    // Disarm is offered only while the vehicle is known to be on the ground.
+    noteFcLandedState(DRONE, MAV_LANDED_STATE_ON_GROUND);
     openPalette();
     await act(async () => {
       fireEvent.click(screen.getByText(messages.skills.arm.label));
     });
     expect(useSkillConfirmStore.getState().pending?.policy.title).toBe(
-      "skills.disarm.confirm.title",
+      "confirm.disarm.title",
     );
     expect(arm).not.toHaveBeenCalled();
   });

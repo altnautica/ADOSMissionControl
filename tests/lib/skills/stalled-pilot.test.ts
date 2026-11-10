@@ -89,6 +89,16 @@ describe("built-ins with a stalled pilot", () => {
     expect(viaPilot(ctxWith(fc))).toBe(false);
   });
 
+  it("loses the route at exactly 2 s, the age the chip turns to LINK", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(50_000);
+    const fc = fcPath();
+    pilotStateAt(50_000 - 1999);
+    expect(viaPilot(ctxWith(fc))).toBe(true);
+    pilotStateAt(50_000 - 2000);
+    expect(viaPilot(ctxWith(fc))).toBe(false);
+  });
+
   it("with no flight-controller path a stalled pilot still gets the action", () => {
     pilotStateAt(Date.now() - 5000);
     const ctx = { ...ctxWith(fcPath()), protocol: null, blindProtocol: null };

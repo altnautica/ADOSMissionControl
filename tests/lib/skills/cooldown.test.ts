@@ -170,7 +170,7 @@ describe("charge budget", () => {
     (Date.now as unknown as ReturnType<typeof vi.fn>).mockReturnValue(3_000);
     await activate("ch-1", makeCtx({ droneId: "drone-c", notify }));
     expect(activateFn).toHaveBeenCalledTimes(2);
-    expect(notify).toHaveBeenCalledWith("skills.reason.noCharges", "warning");
+    expect(notify).toHaveBeenCalledWith("refusal.no_charges", "warning");
   });
 
   it("recharges one charge per rechargeMs and surfaces it as the badge", async () => {

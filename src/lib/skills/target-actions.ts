@@ -287,7 +287,7 @@ export function buildPluginTargetAction(
         if (armReq !== "any" && ctx.armState !== armReq) {
           ctx.notify(
             ctx.armState === "unknown"
-              ? "skills.reason.noFcLink"
+              ? "refusal.no_fc_link"
               : armReq === "armed"
                 ? "skills.reason.notArmed"
                 : "skills.reason.alreadyArmed",

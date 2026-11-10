@@ -36,7 +36,7 @@ function makeCtx(over: Partial<SkillContext> = {}): SkillContext {
     droneId: drone,
     protocol,
     armState: "armed",
-    flightMode: "LOITER",
+    flightMode: "GUIDED",
     availableModes: [],
     missionState: null,
     supports: () => true,
@@ -65,7 +65,8 @@ beforeEach(() => {
     selectedDroneId: drone,
     drones: new Map([[drone, { id: drone, name: "Alpha", protocol } as unknown as ManagedDrone]]),
   });
-  useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
+  // Without the pilot, Fly Here repositions an FC that already flies GUIDED.
+  useDroneStore.setState({ armState: "armed", connectionState: "armed", flightMode: "GUIDED", lastHeartbeat: Date.now() });
 });
 
 afterEach(() => {
@@ -101,7 +102,7 @@ describe("Fly Here altitude", () => {
 
   it("repositions an armed vehicle and supervises the target", async () => {
     await activate("fly-here", makeCtx(), { lat: 10, lon: 20, altitudeM: 30 });
-    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 30);
+    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 30, { changeMode: false });
     expect(useGuidedStore.getState().target).toMatchObject({ droneId: drone, alt: 30 });
   });
 });
@@ -135,7 +136,7 @@ describe("Fly Here dialog", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000);
     });
-    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25);
+    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25, { changeMode: false });
   });
 
   it("confirms after the spec's Fly Here hold, not before", async () => {
@@ -150,7 +151,7 @@ describe("Fly Here dialog", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(400);
     });
-    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25);
+    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25, { changeMode: false });
   });
 
   it("warns that the hold takes over a running mission or skill", () => {

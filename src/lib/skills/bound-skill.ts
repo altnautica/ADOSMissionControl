@@ -1,7 +1,7 @@
 /**
  * The binding resolver: one slot can stand for a pair of skills whose meaning
  * flips with the vehicle's state. An `arm` binding fires `disarm` while the
- * vehicle is armed and not airborne, and a `pause` binding fires `resume` while the mission is
+ * vehicle is armed and known to be on the ground, and a `pause` binding fires `resume` while the mission is
  * paused (the mission state, never a flight-mode name). Every surface that
  * fires or labels a binding (keyboard, gamepad, skill picker, palette,
  * radial, tooltips) resolves through here so they all agree.
@@ -28,10 +28,11 @@ export function resolveBoundSkillId(
   armState: ArmState,
   ctx: BoundSkillContext,
 ): string {
-  // Disarm only on the ground: in the air the arm binding stays `arm`, which
-  // is disabled while armed, so the press does nothing.
+  // Disarm only on the ground: in the air, or with the landed state unknown,
+  // the arm binding stays `arm`, which is disabled while armed, so the press
+  // does nothing.
   if (skillId === "arm" && armState === "armed") {
-    return ctx.droneId && vehicleLanded(ctx.droneId) === false ? "arm" : "disarm";
+    return ctx.droneId && vehicleLanded(ctx.droneId) === true ? "disarm" : "arm";
   }
   if (skillId === "pause" && isMissionPaused(ctx)) return "resume";
   return skillId;

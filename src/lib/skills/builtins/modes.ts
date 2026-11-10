@@ -11,7 +11,7 @@
  */
 
 import type { Skill } from "../types";
-import { noteCommandedMode } from "../flight-facts";
+import { noteModeOnSuccess } from "../flight-facts";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 import { disabledIfNoLink, modeChangeConfirm, REASON } from "./_shared";
 
@@ -54,8 +54,7 @@ function makeModeSkill(preset: ModePreset): Skill {
       // vehicle's answer goes back to the dispatcher, which surfaces a
       // refused mode change and spends nothing on it.
       const target = args?.targetMode ?? preset.mode;
-      noteCommandedMode(ctx.droneId, target);
-      return ctx.protocol?.setFlightMode(target);
+      return noteModeOnSuccess(ctx.droneId, target, ctx.protocol?.setFlightMode(target));
     },
   };
 }

@@ -207,6 +207,6 @@ describe("skill registry", () => {
     expect(() => useSkillRegistry.getState().recomputeSelected()).not.toThrow();
     const state = useSkillRegistry.getState().getState("drone-1", "boom");
     expect(state.kind).toBe("disabled");
-    expect(state.reason).toBe("skills.reason.stateError");
+    expect(state.reason).toBe("refusal.state_error");
   });
 });

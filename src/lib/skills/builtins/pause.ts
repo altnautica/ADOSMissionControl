@@ -59,7 +59,7 @@ function inFailsafe(ctx: SkillContext): boolean {
 function fcPause(ctx: SkillContext): Promise<CommandResult> | undefined {
   const now = ctx.refresh?.() ?? ctx;
   if (inFailsafe(now)) {
-    return Promise.resolve({ success: false, resultCode: 4, message: "failsafe" });
+    return Promise.resolve({ success: false, resultCode: 4, message: refusalText("failsafe") });
   }
   const path = lastResortPath(ctx);
   if (!path) return undefined;

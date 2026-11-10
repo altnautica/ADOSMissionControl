@@ -266,7 +266,7 @@ export const useSkillRegistry = create<SkillRegistryState>((set, get) => ({
       } catch {
         // A misbehaving plugin getState must never crash the bar; fall back to
         // a benign disabled state rather than tear down the recompute.
-        state = { kind: "disabled", reason: "skills.reason.stateError" };
+        state = { kind: "disabled", reason: "refusal.state_error" };
       }
       next.set(skill.id, mergeDispatcherState(droneId, skill, state));
     }

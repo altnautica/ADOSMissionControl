@@ -1,7 +1,7 @@
 /**
  * The skill module surface: the single gating pipeline (`activate`/
  * `deactivate`), the per-drone context builder, the built-in registration, and
- * the subscription wiring that keeps the selected drone's state cache fresh.
+ * (from `./subscriptions`) the wiring that keeps the selected drone's state cache fresh.
  * The keyboard/gamepad dispatcher, the Skill Bar, and the action panel all
  * funnel presses through `activate` so confirm, arm-gating, and idempotency
  * live in one place.
@@ -10,7 +10,6 @@
  * @license GPL-3.0-only
  */
 
-import { usePluginSkillHostStore } from "@/lib/skills/plugin-skill-host-store";
 import type {
   Skill,
   SkillContext,
@@ -21,16 +20,13 @@ import {
   useSkillRegistry,
   buildSkillContextFor,
   setSkillNotifier,
-  isSkillLinkFresh,
 } from "./registry";
 import { builtinSkills } from "./builtins";
 import {
   hasCharge,
   spendCharge,
   startCooldown,
-  setCooldownTick,
 } from "./cooldown";
-import { useDroneStore } from "@/stores/drone-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { resolveBoundSkillId } from "./bound-skill";
@@ -83,6 +79,7 @@ export type {
   SkillTargetNode,
   NodeSkillContextOptions,
 } from "./node-context";
+export { initSkillSubscriptions } from "./subscriptions";
 
 /**
  * Build the per-drone SkillContext the dispatcher hands to a skill. Re-exported
@@ -94,9 +91,6 @@ export function buildSkillContext(droneId: string): SkillContext {
 
 /** Default one-shot debounce window (ms) — swallows a stuttered double-press. */
 const DEBOUNCE_MS = 750;
-
-/** How often the FC heartbeat age is sampled for link freshness (ms). */
-const LINK_FRESH_POLL_MS = 500;
 
 /**
  * Per-(droneId, skillId) dispatch guards. `busy` blocks re-entrant presses
@@ -165,7 +159,7 @@ export async function activate(
   if (armReq !== "any" && ctx.armState !== armReq) {
     ctx.notify(
       ctx.armState === "unknown"
-        ? "skills.reason.noFcLink"
+        ? "refusal.no_fc_link"
         : armReq === "armed"
           ? "skills.reason.notArmed"
           : "skills.reason.alreadyArmed",
@@ -177,7 +171,7 @@ export async function activate(
   // Charge gate — a one-shot skill with a charge budget refuses when empty,
   // before any confirm dialog opens. Toggles never consume charges.
   if (!skill.toggle && !hasCharge(ctx.droneId, skill)) {
-    ctx.notify("skills.reason.noCharges", "warning");
+    ctx.notify("refusal.no_charges", "warning");
     return;
   }
 
@@ -262,7 +256,7 @@ export async function activate(
       ctx.notify(
         typeof result.message === "string" && result.message.trim() !== ""
           ? result.message
-          : "skills.reason.commandRejected",
+          : "refusal.command_rejected",
         "error",
       );
     }
@@ -369,96 +363,4 @@ export function registerBuiltins(): void {
   for (const skill of builtinSkills) {
     register(skill);
   }
-}
-
-let subscriptionsInitialised = false;
-
-/**
- * Subscribe the stores that drive skill state (arm/mode/connection, the
- * selected drone, FC link freshness, checklist readiness, the Follow-Me
- * behavior store, cooldown ends) and recompute the selected drone's state on
- * any change, coalesced to animation-frame cadence so a 10 Hz telemetry stream
- * does not thrash the bar. Idempotent; app-lifetime singletons, no teardown.
- */
-export function initSkillSubscriptions(): void {
-  if (subscriptionsInitialised) return;
-  subscriptionsInitialised = true;
-
-  let frame: number | null = null;
-  const schedule = () => {
-    if (frame !== null) return;
-    const run = () => {
-      frame = null;
-      useSkillRegistry.getState().recomputeSelected();
-    };
-    if (typeof requestAnimationFrame === "function") {
-      frame = requestAnimationFrame(run);
-    } else {
-      // Non-browser/test environment: recompute synchronously.
-      run();
-    }
-  };
-
-  // The cooldown/charge clock recomputes the bar once at each window end and
-  // recharge boundary; the sweep in between animates in CSS.
-  setCooldownTick(schedule);
-
-  // Link freshness. A heartbeat that stops arriving changes no store field, so
-  // without a clock the bar would keep offering commands over a dead link. The
-  // ticker samples the selected drone's heartbeat age and recomputes only when
-  // freshness (or the selection it was sampled for) flips.
-  let linkDroneId: string | null = null;
-  let linkFresh: boolean | null = null;
-  setInterval(() => {
-    const droneId = useDroneManager.getState().selectedDroneId;
-    const fresh = isSkillLinkFresh(
-      useDroneStore.getState().lastHeartbeat,
-      Date.now(),
-    );
-    if (droneId === linkDroneId && fresh === linkFresh) return;
-    linkDroneId = droneId;
-    linkFresh = fresh;
-    schedule();
-  }, LINK_FRESH_POLL_MS);
-
-  // Checklist readiness gates arm/take-off; recompute when it flips for the
-  // selected drone.
-  let checklistReady: boolean | null = null;
-  useChecklistStore.subscribe((state) => {
-    const droneId = useDroneManager.getState().selectedDroneId;
-    const ready = droneId ? state.isReadyToArm(droneId) : false;
-    if (ready === checklistReady) return;
-    checklistReady = ready;
-    schedule();
-  });
-
-  useDroneStore.subscribe((next, prev) => {
-    if (
-      next.armState !== prev.armState ||
-      next.flightMode !== prev.flightMode ||
-      next.connectionState !== prev.connectionState
-    ) {
-      schedule();
-    }
-  });
-
-  // Selection lives in the drone manager, so it needs its own subscription
-  // rather than riding the flight-state store.
-  useDroneManager.subscribe((next, prev) => {
-    if (next.selectedDroneId !== prev.selectedDroneId) {
-      schedule();
-    }
-  });
-
-  useFollowMeStore.subscribe((next, prev) => {
-    if (next.isActive !== prev.isActive || next.isPaused !== prev.isPaused) {
-      schedule();
-    }
-  });
-
-  // A plugin's own state report (active, idle, disabled, and when it was last
-  // seen) is what its picker entry shows.
-  usePluginSkillHostStore.subscribe((next, prev) => {
-    if (next.states !== prev.states) schedule();
-  });
 }

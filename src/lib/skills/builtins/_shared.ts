@@ -1,7 +1,8 @@
 /**
  * Shared helpers for the built-in skills. Each built-in is a thin adapter over
  * an existing protocol call; these helpers express the common getState gates
- * (no FC link, wrong arm state, missing mode) and the i18n reason keys so the
+ * (no FC link, wrong arm state, missing mode) and the reason keys (spec
+ * `refusal.*` where the spec names the reason, app i18n otherwise) so the
  * 14 adapters stay short and consistent.
  *
  * @module skills/builtins/_shared
@@ -10,13 +11,15 @@
 
 import { specBuiltin, specConfirmGesture } from "@/lib/cockpit/spec-builtins";
 import { refusalText } from "@/lib/hud/refusal";
+import { hasSpecText } from "@/lib/hud/spec-text";
 import {
   PILOT_NO_ANSWER,
   requestPilotAction,
   sticksRouteToPilot,
   type PilotActionName,
 } from "@/lib/input/pilot-stream";
-import { PILOT_STALE_MS, useNavStreamStore } from "@/stores/nav-stream-store";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
 import type { CommandResult } from "@/lib/protocol/types";
 import type {
   ConfirmGesture,
@@ -27,8 +30,18 @@ import type {
 } from "../types";
 
 /**
- * The confirm policy of a built-in whose sheet text lives at
- * `skills.<key>.confirm.{title,message,button}`.
+ * The sheet text key of a built-in: the spec's `confirm.<key>.<part>` where
+ * the spec carries it, else the app's `skills.<key>.confirm.<part>`.
+ */
+function confirmTextKey(key: string, part: "title" | "message"): string {
+  const spec = `confirm.${key}.${part}`;
+  return hasSpecText(spec) ? spec : `skills.${key}.confirm.${part}`;
+}
+
+/**
+ * The confirm policy of a built-in. The title and message come from the spec
+ * (`confirm.<key>.*`) where it names them; the button label, which the spec
+ * does not name, is the app's `skills.<key>.confirm.button`.
  */
 export function builtinConfirm(
   key: string,
@@ -37,8 +50,8 @@ export function builtinConfirm(
   extra?: Pick<ConfirmPolicy, "checklistAware" | "altitude">,
 ): ConfirmPolicy {
   return {
-    title: `skills.${key}.confirm.title`,
-    message: `skills.${key}.confirm.message`,
+    title: confirmTextKey(key, "title"),
+    message: confirmTextKey(key, "message"),
     confirmLabel: `skills.${key}.confirm.button`,
     variant,
     gesture,
@@ -68,17 +81,22 @@ const RECOVERY_MODES: Readonly<Record<string, true>> = {
 export function modeChangeConfirm(mode: string): ConfirmPolicy | undefined {
   if (RECOVERY_MODES[mode] === true) return undefined;
   const gesture: ConfirmGesture = mode === "AUTO" ? "slide" : "hold";
-  return { ...builtinConfirm("modeChange", gesture, "primary"), values: { mode } };
+  return {
+    ...builtinConfirm("modeChange", gesture, "primary"),
+    title: "confirm.mode.title",
+    message: "confirm.mode.to",
+    values: { mode },
+  };
 }
 
-/** i18n reason keys surfaced when a skill is disabled. */
+/** Reason keys surfaced when a skill is disabled: the spec's `refusal.*`
+ *  text where the spec names the reason, the app's `skills.reason.*` else. */
 export const REASON = {
-  noFcLink: "skills.reason.noFcLink",
+  noFcLink: "refusal.no_fc_link",
   alreadyArmed: "skills.reason.alreadyArmed",
   notArmed: "skills.reason.notArmed",
   alreadyDisarmed: "skills.reason.alreadyDisarmed",
-  modeUnavailable: "skills.reason.modeUnavailable",
-  noAutonomousNav: "skills.reason.noAutonomousNav",
+  modeUnavailable: "refusal.mode_unavailable",
   linkStale: "skills.reason.linkStale",
   linkStaleDisabled: "skills.reason.linkStaleDisabled",
   noPausedMission: "skills.reason.noPausedMission",
@@ -125,7 +143,7 @@ export function disabledUnlessDisarmed(ctx: SkillContext): SkillState | null {
 
 /**
  * The confirm policy of a built-in, with the tier and hold time the shared
- * cockpit spec names for it. Sheet text lives at `skills.<key>.confirm.*`.
+ * cockpit spec names for it. Sheet text as in `builtinConfirm`.
  */
 export function specConfirm(
   id: string,
@@ -138,13 +156,12 @@ export function specConfirm(
 }
 
 /**
- * True when the drone's pilot state arrived within the chip's staleness window
- * (`PILOT_STALE_MS`): the pilot is answering, not just reachable over an open
- * socket.
+ * True when the drone's pilot state is fresh (`pilotFresh`, the age at which
+ * the chip turns to LINK): the pilot is answering, not just reachable over an
+ * open socket.
  */
 export function pilotLive(droneId: string, now: number = Date.now()): boolean {
-  const at = useNavStreamStore.getState().byDrone[droneId]?.pilot?.receivedAt;
-  return at !== undefined && now - at <= PILOT_STALE_MS;
+  return pilotFresh(useNavStreamStore.getState().byDrone[droneId]?.pilot?.receivedAt, now);
 }
 
 /**

@@ -12,6 +12,11 @@ import { launchLimits } from "@/lib/cockpit/launch-spec";
 import { takeoffSkill, TAKEOFF_ALTITUDE_M, parseTakeoffAltitude } from "@/lib/skills/builtins/takeoff";
 
 describe("launch limits", () => {
+  it("are 1 to 120 m, starting at 3 m", () => {
+    expect([launchLimits.altMinM, launchLimits.altMaxM, launchLimits.altDefaultM]).toEqual([1, 120, 3]);
+    expect([TAKEOFF_ALTITUDE_M.min, TAKEOFF_ALTITUDE_M.max, TAKEOFF_ALTITUDE_M.default]).toEqual([1, 120, 3]);
+  });
+
   it("equal layout.json's launch block, with no default go-to offset", () => {
     expect(launchLimits).toEqual({
       altMinM: layout.launch.alt_min_m,

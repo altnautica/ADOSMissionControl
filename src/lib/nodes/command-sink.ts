@@ -35,6 +35,7 @@
 
 import type { CommandResult, UnifiedFlightMode } from "@/lib/protocol/types";
 import type { SkillProtocol } from "@/lib/skills";
+import { noteModeOnSuccess } from "@/lib/skills/flight-facts";
 import {
   runCommand,
   type AgentCommandName,
@@ -355,18 +356,19 @@ function makeSink(
  * `reportsVehicleAck` is true and every method is carried (the autonomous-nav
  * gate, handled upstream, decides which are offered — not the lane). The
  * protocol is used only through its command surface; a live `DroneProtocol`
- * satisfies that surface directly.
+ * satisfies that surface directly. An accepted mode, return or landing is
+ * recorded for `droneId` (its drone-manager id) as this station's command.
  */
-function makeDirectFcSink(protocol: SkillProtocol): NodeCommandSink {
+function makeDirectFcSink(protocol: SkillProtocol, droneId: string): NodeCommandSink {
   return {
     transport: "direct-fc",
     reportsVehicleAck: true,
     supports: () => true,
     arm: () => protocol.arm(),
     disarm: () => protocol.disarm(),
-    setFlightMode: (mode: UnifiedFlightMode) => protocol.setFlightMode(mode),
-    returnToLaunch: () => protocol.returnToLaunch(),
-    land: () => protocol.land(),
+    setFlightMode: (mode: UnifiedFlightMode) => noteModeOnSuccess(droneId, mode, protocol.setFlightMode(mode)),
+    returnToLaunch: () => noteModeOnSuccess(droneId, "RTL", protocol.returnToLaunch()),
+    land: () => noteModeOnSuccess(droneId, "LAND", protocol.land()),
     takeoff: (altitude: number) => protocol.takeoff(altitude),
     killSwitch: (confirmed: boolean) => protocol.killSwitch(confirmed),
     pauseMission: () => protocol.pauseMission(),
@@ -390,7 +392,7 @@ export function resolveNodeCommandReach(
     // does it fall back to the honest "no reach" state.
     const liveFc = resolveDirectFcProtocol(node.deviceId);
     if (liveFc) {
-      return { sink: makeDirectFcSink(liveFc) };
+      return { sink: makeDirectFcSink(liveFc, node.deviceId) };
     }
     return { sink: null, blockedReason: "direct-fc" };
   }
@@ -404,9 +406,10 @@ export function resolveNodeCommandReach(
     // background against the ground station's republish endpoint and keyed by
     // this same `node:<deviceId>` id in the drone manager. That is the vehicle's
     // own protocol speaking, so it keeps precedence over any HTTP lane.
-    const liveFc = resolveDirectFcProtocol(nodeIdForDevice(node.deviceId));
+    const relayedId = nodeIdForDevice(node.deviceId);
+    const liveFc = resolveDirectFcProtocol(relayedId);
     if (liveFc) {
-      return { sink: makeDirectFcSink(liveFc) };
+      return { sink: makeDirectFcSink(liveFc, relayedId) };
     }
 
     // Second, the ground station's relay-proxy route, which forwards an HTTP

@@ -7,7 +7,7 @@
  */
 
 import { renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import pilotFixture from "@/lib/cockpit/layers/fixtures/pilot-frame.json";
 import { parsePilotState, type PilotState } from "@/lib/hud/cockpit-frames";
@@ -36,7 +36,10 @@ function itemIds(): string[] {
 }
 
 describe("Fly here on the map context menu", () => {
-  afterEach(() => useNavStreamStore.setState({ byDrone: {} }));
+  afterEach(() => {
+    vi.useRealTimers();
+    useNavStreamStore.setState({ byDrone: {} });
+  });
 
   it("is offered through the pilot outside the FC guided modes", () => {
     useDroneManager.setState({ selectedDroneId: "d1" });
@@ -50,6 +53,17 @@ describe("Fly here on the map context menu", () => {
     useDroneManager.setState({ selectedDroneId: "d1" });
     useDroneStore.setState({ connectionState: "armed", armState: "armed", flightMode: "ALT_HOLD" });
     setPilot(flying, 5000);
+    expect(itemIds()).not.toContain("fly-here");
+  });
+
+  it("is hidden once the pilot state is exactly 2 s old", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(80_000);
+    useDroneManager.setState({ selectedDroneId: "d1" });
+    useDroneStore.setState({ connectionState: "armed", armState: "armed", flightMode: "ALT_HOLD" });
+    setPilot(flying, 1999);
+    expect(itemIds()).toContain("fly-here");
+    setPilot(flying, 2000);
     expect(itemIds()).not.toContain("fly-here");
   });
 

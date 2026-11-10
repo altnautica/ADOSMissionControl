@@ -14,6 +14,7 @@
 import { getFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { useDroneManager } from "@/stores/drone-manager";
 import { nodeCanFly } from "@/lib/nodes/node-profile";
+import { noteModeOnSuccess } from "@/lib/skills/flight-facts";
 
 export interface FleetCommandOutcome {
   /** Drones that acknowledged the command. */
@@ -54,7 +55,8 @@ export async function returnFleetToLaunch(): Promise<FleetCommandOutcome> {
     targets.map(async (drone) => {
       const protocol = managed.get(drone.id)?.protocol;
       if (!protocol) throw new Error("no command link");
-      return protocol.returnToLaunch();
+      // A recall the drone accepted is this station's return, not a failsafe.
+      return noteModeOnSuccess(drone.id, "RTL", protocol.returnToLaunch());
     }),
   );
   results.forEach((settled, i) => {

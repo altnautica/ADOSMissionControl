@@ -13,11 +13,13 @@
  */
 
 import type { CommandResult } from "@/lib/protocol/types";
-import type { Skill, SkillActivateArgs, SkillContext } from "../types";
-import { disabledIfNoLink, pilotActionResult, REASON, viaPilot } from "./_shared";
+import { refusalText } from "@/lib/hud/refusal";
+import { specText } from "@/lib/hud/spec-text";
+import { flyHereRoute } from "@/components/map/map-point";
+import type { Skill, SkillActivateArgs } from "../types";
+import { disabledIfNoLink, pilotActionResult, REASON } from "./_shared";
 import { superviseGuidedTarget } from "../guided-target";
 import { useDroneManager } from "@/stores/drone-manager";
-import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 /**
  * Fly Here altitude bounds, metres relative to home. The target is sent in a
@@ -54,14 +56,6 @@ function flyHereTarget(args?: SkillActivateArgs): FlyHereTarget | null {
   return { lat, lon, altitudeM };
 }
 
-/** True when this drone's ADOS pilot flies it from this surface and accepts a
- * `goto` from a surface. */
-function pilotFliesGoto(ctx: SkillContext): boolean {
-  if (!viaPilot(ctx)) return false;
-  const ops = useNavStreamStore.getState().byDrone[ctx.droneId]?.pilot?.data.surfaceOps;
-  return ops?.includes("goto") === true;
-}
-
 export const flyHereSkill: Skill = {
   id: "fly-here",
   label: "skills.flyHere",
@@ -81,22 +75,27 @@ export const flyHereSkill: Skill = {
   activate: async (ctx, args) => {
     const target = flyHereTarget(args);
     if (!target) {
-      return refusal(
-        `Fly Here needs a point and an altitude of ${FLY_HERE_ALTITUDE_M.min}-${FLY_HERE_ALTITUDE_M.max} m`,
-      );
+      return refusal(specText("refusal.fly_here_target"));
     }
     const protocol = useDroneManager.getState().drones.get(ctx.droneId)?.protocol;
+    // The route is the one the map offers, read again at the press: the
+    // confirm hold runs for a while, and the pilot can stop answering, take a
+    // failsafe or hand over meanwhile.
+    const route = flyHereRoute(ctx.droneId);
     let result: CommandResult;
-    if (pilotFliesGoto(ctx)) {
+    if (route === "pilot") {
       // The pilot owns the aircraft: it flies to the point itself (altitude
       // above home) and answers with an action result; a refusal arrives as
       // the spec's text for its code.
       result = await pilotActionResult("goto", { lat: target.lat, lon: target.lon, alt_m: target.altitudeM });
-    } else {
+    } else if (route === "fc" && ctx.flightMode === "GUIDED") {
       // The reposition needs the full protocol (guided goto and its
-      // supervisor), which only a live connection to this drone provides.
+      // supervisor), which only a live connection to this drone provides. The
+      // FC already flies GUIDED; the reposition never switches it into it.
       if (!protocol?.isConnected) return refusal(REASON.noFcLink);
-      result = await protocol.guidedGoto(target.lat, target.lon, target.altitudeM);
+      result = await protocol.guidedGoto(target.lat, target.lon, target.altitudeM, { changeMode: false });
+    } else {
+      return refusal(refusalText("bad_state"));
     }
     if (result.success && protocol?.isConnected) {
       // The map shows the target until the vehicle arrives or leaves the

@@ -114,7 +114,7 @@ describe("flight-mode dispatch", () => {
 
     await activate("set-mode", ctx, { targetMode: "LOITER" });
 
-    expect(ctx.notify).toHaveBeenCalledWith("skills.reason.noFcLink", "warning");
+    expect(ctx.notify).toHaveBeenCalledWith("refusal.no_fc_link", "warning");
     expect(useDroneStore.getState().flightMode).toBe("STABILIZE");
     expect(useDroneStore.getState().previousMode).toBe("STABILIZE");
   });
@@ -130,7 +130,7 @@ describe("flight-mode dispatch", () => {
 
     expect(s.setFlightMode).not.toHaveBeenCalled();
     expect(ctx.notify).toHaveBeenCalledWith(
-      "skills.reason.modeUnavailable",
+      "refusal.mode_unavailable",
       "error",
     );
     expect(useDroneStore.getState().flightMode).toBe("STABILIZE");

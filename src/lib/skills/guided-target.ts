@@ -25,6 +25,7 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useGuidedStore, type GuidedTarget } from "@/stores/guided-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { haversineDistance } from "@/lib/geo/distance";
+import { noteModeOnSuccess } from "./flight-facts";
 
 /** Supervision cadence. */
 export const GUIDED_POLL_MS = 1_000;
@@ -88,7 +89,12 @@ async function descend(s: Session): Promise<void> {
   let success = false;
   let message = "";
   try {
-    const result = await s.protocol.land({ lat: s.target.lat, lon: s.target.lon });
+    // A landing the vehicle accepted is this station's, not a failsafe.
+    const result = await noteModeOnSuccess(
+      s.target.droneId,
+      "LAND",
+      s.protocol.land({ lat: s.target.lat, lon: s.target.lon }),
+    );
     success = result.success;
     message = result.message;
   } catch (err) {

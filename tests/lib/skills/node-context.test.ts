@@ -37,12 +37,13 @@ import {
   firmwareTypeForNode,
   type SkillTargetNode,
 } from "@/lib/skills/node-context";
-import { armSkill, disarmSkill, modeSkills } from "@/lib/skills/builtins";
+import { armSkill, disarmSkill, modeSkills, rthSkill } from "@/lib/skills/builtins";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useLocalNodesStore, type LocalNode } from "@/stores/local-nodes-store";
+import { refusalText } from "@/lib/hud/refusal";
 
 const DEVICE_ID = "device-alpha";
 
@@ -173,7 +174,9 @@ describe("cloud command lane", () => {
     expect(ctx.protocol).not.toBeNull();
     expect(ctx.armState).toBe("armed");
     expect(ctx.flightMode).toBe("GUIDED");
-    expect(disarmSkill.getState(ctx).kind).toBe("idle");
+    expect(rthSkill.getState(ctx).kind).toBe("idle");
+    // Nothing streamed says the drone is on the ground: Disarm is refused.
+    expect(disarmSkill.getState(ctx)).toEqual({ kind: "disabled", reason: refusalText("landed_unknown") });
   });
 
   it("prefers the live stream over the heartbeat row, like the display", () => {
@@ -207,7 +210,7 @@ describe("state that cannot be sourced per node", () => {
     expect(ctx.protocol).toBeNull();
     expect(armSkill.getState(ctx)).toEqual({
       kind: "disabled",
-      reason: "skills.reason.noFcLink",
+      reason: "refusal.no_fc_link",
     });
   });
 
@@ -390,7 +393,7 @@ describe("available modes", () => {
     // Not provable across builds: disabled with the mode reason, not offered.
     expect(stateOf("mode.stabilize")).toEqual({
       kind: "disabled",
-      reason: "skills.reason.modeUnavailable",
+      reason: "refusal.mode_unavailable",
     });
   });
 

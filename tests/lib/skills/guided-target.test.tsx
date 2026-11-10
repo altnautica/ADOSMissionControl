@@ -25,6 +25,7 @@ import {
   superviseGuidedTarget,
 } from "@/lib/skills/guided-target";
 import { GuidedTargetOverlay } from "@/components/flight/GuidedTargetOverlay";
+import { fcFailsafeActive, resetCommandedModes } from "@/lib/skills/flight-facts";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useGuidedStore } from "@/stores/guided-store";
@@ -80,6 +81,7 @@ beforeEach(() => {
   setFlightMode.mockClear();
   report.mockClear();
   (activate as unknown as ReturnType<typeof vi.fn>).mockClear();
+  resetCommandedModes();
   useTelemetryStore.getState().clear();
   useDroneManager.setState({ selectedDroneId: DRONE });
   useDroneStore.setState({ flightMode: "GUIDED" });
@@ -114,6 +116,23 @@ describe("Land Here", () => {
     expect(land).toHaveBeenCalledWith(TARGET);
     expect(report).toHaveBeenLastCalledWith("Landing at the selected point", "success");
     expect(useGuidedStore.getState().target).toBeNull();
+  });
+
+  it("records the accepted landing as commanded, so it does not read as a failsafe", async () => {
+    await startLandHere();
+    at(1.5, 0.4);
+    await tick();
+    expect(land).toHaveBeenCalledTimes(1);
+    expect(fcFailsafeActive(DRONE, "LAND", 0)).toBe(false);
+  });
+
+  it("does not record a landing the vehicle refused", async () => {
+    land.mockResolvedValueOnce({ success: false, resultCode: 4, message: "denied" });
+    await startLandHere();
+    at(1.5, 0.4);
+    await tick();
+    expect(land).toHaveBeenCalledTimes(1);
+    expect(fcFailsafeActive(DRONE, "LAND", 0)).toBe(true);
   });
 
   it("does not land when the reposition is rejected", async () => {

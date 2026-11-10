@@ -19,6 +19,7 @@ import {
   SKILL_LINK_FRESH_MS,
   type ConfirmPolicy,
 } from "@/lib/skills";
+import { MAV_LANDED_STATE_ON_GROUND, noteFcLandedState } from "../flight-facts";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
@@ -48,7 +49,7 @@ function stateOf(skillId: string) {
   return useSkillRegistry.getState().getState(DRONE, skillId);
 }
 
-const NO_LINK = { kind: "disabled", reason: "skills.reason.noFcLink" };
+const NO_LINK = { kind: "disabled", reason: "refusal.no_fc_link" };
 const STALE = { kind: "idle", warning: "skills.reason.linkStale" };
 const STALE_DISABLED = { kind: "disabled", reason: "skills.reason.linkStaleDisabled" };
 
@@ -139,6 +140,8 @@ describe("skill link freshness", () => {
 
   it("notices a heartbeat going stale with no store change", () => {
     initSkillSubscriptions();
+    // On the ground, as the flight controller reports it: Disarm's own gate holds.
+    noteFcLandedState(DRONE, MAV_LANDED_STATE_ON_GROUND);
     useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
     vi.advanceTimersByTime(600);
     expect(stateOf("disarm").kind).toBe("idle");
@@ -150,6 +153,7 @@ describe("skill link freshness", () => {
     expect(stateOf("kill")).toEqual(STALE);
 
     // The link comes back: the next sample re-enables the skill.
+    noteFcLandedState(DRONE, MAV_LANDED_STATE_ON_GROUND);
     useDroneStore.setState({ lastHeartbeat: Date.now() });
     vi.advanceTimersByTime(600);
     expect(stateOf("disarm").kind).toBe("idle");

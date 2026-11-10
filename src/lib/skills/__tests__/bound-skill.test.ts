@@ -19,6 +19,7 @@ import {
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
+import { forgetDrone, MAV_LANDED_STATE_ON_GROUND, noteFcLandedState } from "@/lib/skills/flight-facts";
 
 const DRONE = "drone-bound";
 const OK = { success: true, resultCode: 0, message: "" };
@@ -55,10 +56,15 @@ function ctxWith(confirm: SkillContext["confirm"], notify = vi.fn()): SkillConte
 const noMission = { missionState: null } as const;
 
 describe("resolveBoundSkillId", () => {
-  it("flips arm to disarm only while armed", () => {
-    expect(resolveBoundSkillId("arm", "armed", noMission)).toBe("disarm");
-    expect(resolveBoundSkillId("arm", "disarmed", noMission)).toBe("arm");
-    expect(resolveBoundSkillId("arm", "unknown", noMission)).toBe("arm");
+  it("flips arm to disarm only while armed and known to be on the ground", () => {
+    const onGround = { missionState: null, droneId: DRONE } as const;
+    noteFcLandedState(DRONE, MAV_LANDED_STATE_ON_GROUND);
+    expect(resolveBoundSkillId("arm", "armed", onGround)).toBe("disarm");
+    expect(resolveBoundSkillId("arm", "disarmed", onGround)).toBe("arm");
+    expect(resolveBoundSkillId("arm", "unknown", onGround)).toBe("arm");
+    forgetDrone(DRONE);
+    expect(resolveBoundSkillId("arm", "armed", onGround)).toBe("arm");
+    expect(resolveBoundSkillId("arm", "armed", noMission)).toBe("arm");
   });
 
   it("flips pause to resume only while the mission state is paused", () => {
@@ -80,12 +86,14 @@ describe("bound dispatch", () => {
 
   afterEach(() => {
     useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
+    forgetDrone(DRONE);
     vi.useRealTimers();
   });
 
   it("an arm binding disarms an armed vehicle through the disarm hold confirm", async () => {
     selectDrone();
     useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
+    noteFcLandedState(DRONE, MAV_LANDED_STATE_ON_GROUND);
     const policies: ConfirmPolicy[] = [];
     const notify = vi.fn();
     await activateBound(
@@ -95,7 +103,7 @@ describe("bound dispatch", () => {
         return true;
       }, notify),
     );
-    expect(policies[0].title).toBe("skills.disarm.confirm.title");
+    expect(policies[0].title).toBe("confirm.disarm.title");
     expect(policies[0].gesture).toBe("hold");
     expect(disarm).toHaveBeenCalledTimes(1);
     expect(arm).not.toHaveBeenCalled();

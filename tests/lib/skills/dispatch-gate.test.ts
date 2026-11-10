@@ -83,7 +83,7 @@ describe("skill dispatch gate", () => {
   it("disabled gate surfaces the reason and never opens a dialog", async () => {
     const activateFn = vi.fn(async () => {});
     const skill = makeFakeSkill({
-      getState: () => ({ kind: "disabled", reason: "skills.reason.noFcLink" }),
+      getState: () => ({ kind: "disabled", reason: "refusal.no_fc_link" }),
       activate: activateFn,
     });
     useSkillRegistry.getState().register(skill);
@@ -91,7 +91,7 @@ describe("skill dispatch gate", () => {
     const ctx = makeCtx();
     await activate("fake", ctx);
 
-    expect(ctx.notify).toHaveBeenCalledWith("skills.reason.noFcLink", "warning");
+    expect(ctx.notify).toHaveBeenCalledWith("refusal.no_fc_link", "warning");
     expect(ctx.confirm).not.toHaveBeenCalled();
     expect(activateFn).not.toHaveBeenCalled();
   });
@@ -280,7 +280,7 @@ describe("rejected command results", () => {
     await activate("rejected-b", ctx);
 
     expect(ctx.notify).toHaveBeenCalledWith(
-      "skills.reason.commandRejected",
+      "refusal.command_rejected",
       "error",
     );
   });
@@ -341,7 +341,7 @@ describe("built-in arm adapter", () => {
     const ctx = makeCtx({ protocol: null });
     const state = armSkill.getState(ctx);
     expect(state.kind).toBe("disabled");
-    expect(state.reason).toBe("skills.reason.noFcLink");
+    expect(state.reason).toBe("refusal.no_fc_link");
   });
 
   it("reports disabled-already-armed when the vehicle is armed", () => {
@@ -358,10 +358,10 @@ describe("built-in arm adapter", () => {
     const protocol = { arm } as unknown as SkillContext["protocol"];
     const ctx = makeCtx({ protocol, armState: "unknown" });
 
-    expect(armSkill.getState(ctx)).toEqual({ kind: "disabled", reason: "skills.reason.noFcLink" });
+    expect(armSkill.getState(ctx)).toEqual({ kind: "disabled", reason: "refusal.no_fc_link" });
     await activate("arm", ctx);
     expect(ctx.confirm).not.toHaveBeenCalled();
     expect(arm).not.toHaveBeenCalled();
-    expect(ctx.notify).toHaveBeenCalledWith("skills.reason.noFcLink", "warning");
+    expect(ctx.notify).toHaveBeenCalledWith("refusal.no_fc_link", "warning");
   });
 });

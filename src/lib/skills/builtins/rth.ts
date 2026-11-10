@@ -9,7 +9,7 @@
  */
 
 import type { Skill } from "../types";
-import { noteCommandedMode } from "../flight-facts";
+import { noteModeOnSuccess } from "../flight-facts";
 import { disabledIfNoLink, pilotActionResult, REASON, specConfirm, viaPilot } from "./_shared";
 
 export const rthSkill: Skill = {
@@ -37,11 +37,14 @@ export const rthSkill: Skill = {
   // refusal and neither spends the cooldown nor greys the control on it.
   // A pilot that gives no answer at all hands the return to the flight
   // controller.
-  activate: async (ctx) => {
-    // An operator return is not a failsafe (Pause stays available in it).
-    noteCommandedMode(ctx.droneId, "RTL");
-    return viaPilot(ctx)
-      ? pilotActionResult("rth", undefined, () => ctx.protocol?.returnToLaunch())
-      : ctx.protocol?.returnToLaunch();
-  },
+  activate: async (ctx) =>
+    // An operator return the drone accepted is not a failsafe (Pause stays
+    // available in it while it lasts).
+    noteModeOnSuccess(
+      ctx.droneId,
+      "RTL",
+      viaPilot(ctx)
+        ? pilotActionResult("rth", undefined, () => ctx.protocol?.returnToLaunch())
+        : ctx.protocol?.returnToLaunch(),
+    ),
 };
