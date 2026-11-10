@@ -3,12 +3,19 @@
   "$description": "Contextual tips on the flight screen. One at a time, ground only, never over STOP, the left column or the flight-state chip.",
   "rules": {
     "max_visible": 1,
-    "show_only_when": { "armed": false, "airborne": false, "flight_screen": true, "sheet_or_menu_open": false, "tour_visible": false },
+    "show_only_when": {
+      "armed": false,
+      "airborne": false,
+      "flight_screen": true,
+      "sheet_or_menu_open": false,
+      "tour_visible": false,
+      "alert_banner_visible": false
+    },
     "first_delay_ms": 2500,
     "gap_between_ms": 4000,
     "auto_dismiss_ms": 9000,
     "dismiss_on": ["tap_tip", "tap_anchor", "any_controller_button", "arm"],
-    "never_cover_zones": ["stop", "left_column", "flight_state_chip"],
+    "never_cover_zones": ["stop", "left_column", "flight_state_chip", "alert_stack"],
     "kiosk": "show",
     "persist": "per_device",
     "reset_setting_key": "tips.reset"

@@ -51,6 +51,9 @@ export interface TipsContext {
    *  hidden when they stopped being allowed): not offered again until the
    *  next open. */
   hiddenThisOpen?: readonly string[];
+  /** An alert banner or countdown shows in the top-centre alert stack.
+   *  Omitted reads as none showing. */
+  alertBannerVisible?: boolean;
 }
 
 export type TipDecision =
@@ -65,6 +68,7 @@ const CONDITION_FIELDS: Readonly<Record<string, keyof TipsContext>> = {
   flight_screen: "flightScreen",
   sheet_or_menu_open: "sheetOrMenuOpen",
   tour_visible: "tourVisible",
+  alert_banner_visible: "alertBannerVisible",
 };
 
 /** Whether every `show_only_when` condition holds. A condition this surface
@@ -72,7 +76,9 @@ const CONDITION_FIELDS: Readonly<Record<string, keyof TipsContext>> = {
 function allowed(ctx: TipsContext): boolean {
   return Object.entries(RULES.show_only_when).every(([k, want]) => {
     const field = CONDITION_FIELDS[k];
-    return field !== undefined && ctx[field] === want;
+    if (field === undefined) return false;
+    const have = field === "alertBannerVisible" ? (ctx.alertBannerVisible ?? false) : ctx[field];
+    return have === want;
   });
 }
 

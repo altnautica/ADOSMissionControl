@@ -2,11 +2,7 @@
   "v": 1,
   "$description": "Cockpit grid. Width classes are measured on the cockpit container in Mission Control and on the window or viewport on Android and the agent cockpit. A kiosk surface is always tv.",
   "breakpoints": {
-    "measure": {
-      "mission_control": "cockpit_container",
-      "android": "window",
-      "agent_cockpit": "viewport"
-    },
+    "measure": { "mission_control": "cockpit_container", "android": "window", "agent_cockpit": "viewport" },
     "classes": [
       { "id": "compact", "min": 0, "max": 599 },
       { "id": "medium", "min": 600, "max": 839 },
@@ -16,17 +12,15 @@
     "kiosk_forces": "tv",
     "portrait": "height > width"
   },
-  "touch_target": {
-    "min": 48,
-    "left_column": 56,
-    "shutter": 56,
-    "unit": "dp_or_css_px"
-  },
+  "touch_target": { "min": 48, "left_column": 56, "shutter": 56, "unit": "dp_or_css_px" },
   "zones": [
     {
       "id": "top_bar",
       "items": ["flight_state_chip", "status_pill", "battery", "link", "nav_source", "controller", "layer_button", "settings", "stop"],
-      "battery": { "show": ["percent", "time_left", "rtl_reserve_marker"] },
+      "battery": {
+        "show": ["percent", "time_left", "rtl_reserve_marker"],
+        "time_to_reserve": { "text": "battery.to_reserve", "short": "battery.to_reserve_short", "short_when": "the bar is short of room" }
+      },
       "settings": "the Menu button: navigation to every other screen and the settings live behind it",
       "stop": { "action": "kill", "visible": "fully inside the viewport at every class, never scrolled or clipped" },
       "overflow": {
@@ -36,12 +30,31 @@
         "to_menu_note": "when the row runs out of room, items move into the Menu lowest priority first in this order; link_text is the link's text, link_icon its icon",
         "never_move": ["flight_state_chip", "status_pill", "battery", "settings", "stop"],
         "pill_when_short": "the status pill truncates with an ellipsis once every movable item is in the Menu"
+      },
+      "chip": {
+        "max_frac": 0.4,
+        "overflow": "ellipsis",
+        "full_text_on": "tap_or_hover",
+        "note": "the chip never takes more than max_frac of the bar width; the full text shows in its tooltip or on tap (chip.full_text)"
+      },
+      "link": {
+        "metric": "newest_vehicle_frame_age",
+        "text": "cockpit.link.age",
+        "never": "cockpit.link.never",
+        "icon_color": { "ok_below_ms": 3000, "warning_below_ms": 10000, "else": "critical" },
+        "detail": "RSSI and link quality live in the link popover (cockpit.link.rssi)"
       }
     },
     {
       "id": "left_column",
       "align": "vertical_center",
-      "items": ["takeoff_land", "rth", "pause"]
+      "items": ["takeoff_land", "rth", "pause"],
+      "labels": {
+        "source": "builtins.json short_label",
+        "show_at": ["medium", "expanded", "tv"],
+        "compact": "icon_only",
+        "note": "icon with its short label under it; the full label stays the accessible name"
+      }
     },
     {
       "id": "right_column",
@@ -71,16 +84,28 @@
       "range_panel": "sheet opened from the strip"
     },
     {
+      "id": "alert_stack",
+      "below": "top_bar",
+      "span": "between_columns",
+      "items": ["alert_banners", "flow_countdowns", "agent_offline_banner", "prearm_text", "launch_sequence", "toasts"],
+      "note": "the top-centre overlay stack; tips never cover it"
+    },
+    {
       "id": "center",
       "items": ["centre_marks", "instruments", "layers"],
       "clean": "a clean camera view: reticle, heading and horizon marks, AR route and detection boxes; the instruments draw only at the instruments level"
     }
   ],
   "status_pill": {
-    "text": { "ok": "cockpit.status.ok", "one": "cockpit.status.one", "many": "cockpit.status.many", "top_alert": "the newest alert's text when exactly one alert is active" },
+    "text": {
+      "ok": "cockpit.status.ok",
+      "one": "cockpit.status.one",
+      "many": "cockpit.status.many",
+      "top_alert": "the newest alert's text when exactly one alert is active"
+    },
     "severity": ["ok", "warning", "critical"],
     "colors": { "ok": "chrome.severity_ok", "warning": "chrome.severity_warning", "critical": "chrome.severity_critical" },
-    "sources": ["pilot_readiness", "fc_prearm", "fc_status_text", "battery", "link", "nav_source", "storage"],
+    "sources": ["pilot_readiness", "fc_prearm", "fc_status_text", "battery", "link", "nav_source", "storage", "pilot", "controller", "preflight"],
     "fc_status_text_min_severity": "warning",
     "fc_status_text_note": "MAVLink severity 4 (WARNING) or more severe (lower number)",
     "new_alert": "flash",
@@ -89,28 +114,19 @@
     "opening_list_acknowledges": true,
     "storage_warn_pct": 90,
     "storage_crit_pct": 97,
-    "storage_note": "percent of on-board storage used: warning at or above storage_warn_pct, critical at or above storage_crit_pct"
+    "storage_note": "percent of on-board storage used: warning at or above storage_warn_pct, critical at or above storage_crit_pct",
+    "storage_text": "cockpit.status.storage_used",
+    "pilot_rule": "a pilot state absent or older than flight-state.json stale_after_ms is a warning item alert.pilot_not_answering (source pilot), and its readiness and statustext items are dropped; the pill never reads OK without a fresh pilot state",
+    "link_rule": "the agent unreachable is a critical link item alert.agent_unreachable",
+    "controller_rule": "hold_reason controller-lost while armed and airborne is a warning item alert.controller_lost (source controller)",
+    "preflight_rule": "on the ground, every failing pre-flight checklist item is a warning item alert.preflight_failing (source preflight)"
   },
-  "battery": {
-    "low_fallback_pct": 20,
-    "low_fallback_note": "the low-battery threshold when the flight controller reports none"
-  },
-  "holds_ms": {
-    "take_control": 1500,
-    "hand_to_fc": 1500,
-    "vtol_transition": 1500,
-    "fly_here": 800,
-    "stop": 3000
-  },
+  "battery": { "low_fallback_pct": 20, "low_fallback_note": "the low-battery threshold when the flight controller reports none" },
+  "holds_ms": { "take_control": 1500, "hand_to_fc": 1500, "vtol_transition": 1500, "fly_here": 800, "stop": 3000 },
   "holds_note": "every confirm hold reads its duration here; fly_here keeps the value the agent cockpit and Android already use",
   "map_long_press_ms": 600,
   "map_long_press_note": "a press held this long without moving on any map (card, full map, split pane) picks a point; right-click does the same with a mouse",
-  "launch": {
-    "alt_min_m": 1,
-    "alt_max_m": 120,
-    "alt_default_m": 3,
-    "goto_default": null
-  },
+  "launch": { "alt_min_m": 1, "alt_max_m": 120, "alt_default_m": 3, "goto_default": null },
   "menu": {
     "order": ["overflow", "view", "cameras", "layers", "preflight", "modes", "controls", "extension_panels", "setup", "settings", "exit"],
     "overflow_note": "overflow lists only the top-bar items actually hidden; setup shows only when setup is needed; the kiosk has no exit",
@@ -154,7 +170,8 @@
       "default_layer_level": "full",
       "scale": 1.33,
       "focus_rings": "always",
-      "overlay_fps_cap": 30
+      "overlay_fps_cap": 30,
+      "label_min_px": 16
     },
     "portrait": {
       "orientation": "portrait",
@@ -174,6 +191,15 @@
   },
   "banners": {
     "handover_ms": 3000,
-    "low_battery_rth_countdown_s": 10
+    "low_battery_rth_countdown_s": 10,
+    "severity": { "low_battery_rth": "critical", "link_loss": "critical" },
+    "severity_note": "both countdowns end in an automatic manoeuvre; colours from tokens.json chrome.severity_<level>"
+  },
+  "sheets": {
+    "top_inset": "top_bar",
+    "never_cover_zones": ["stop"],
+    "scrim_excludes": "top_bar",
+    "close_button": "inside the sheet header, below the top bar",
+    "note": "sheets, dialogs and scrims on the flight screen start below the top bar, so STOP takes the first press with any sheet open"
   }
 }

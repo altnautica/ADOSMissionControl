@@ -77,7 +77,9 @@ describe("AircraftSetupBanner", () => {
   it("offers a new uid with Open to the wizard and Later, once per uid", () => {
     engine.status = statusFor("fc-2", "not_started");
     const first = render(<AircraftSetupBanner />);
-    expect(banner()?.textContent).toContain("Set up aircraft");
+    expect(banner()?.textContent).toContain("Set up this aircraft");
+    expect(screen.getByTestId("aircraft-setup-banner-open").textContent).toBe("Open");
+    expect(screen.getByTestId("aircraft-setup-banner-later").textContent).toBe("Later");
     expect(screen.getByTestId("aircraft-setup-banner-open").getAttribute("href")).toBe("/config/aircraft-setup");
     fireEvent.click(screen.getByTestId("aircraft-setup-banner-later"));
     expect(banner()).toBeNull();

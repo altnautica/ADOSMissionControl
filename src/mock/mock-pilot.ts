@@ -37,7 +37,7 @@ import { MockProtocol } from "./mock-protocol";
 const PILOT_MS = 100;
 
 /** Stick input older than this, with a session streaming, is a lost
- * controller (the real pilot's input-stale window). */
+ * controller: the real pilot brakes with hold reason `controller-lost`. */
 const INPUT_STALE_MS = 300;
 
 /** Height a demo takeoff climbs to when the action names none, metres. */

@@ -35,7 +35,7 @@ describe("useCockpitTips", () => {
     advance(tipsJson.rules.first_delay_ms - 300);
     expect(result.current.tip).toBeNull();
     advance(600);
-    expect(result.current.tip).toMatchObject({ id: "status_pill", text: "Warnings collect here. Tap to see them." });
+    expect(result.current.tip).toMatchObject({ id: "status_pill", text: "Warnings collect here. Select to see them." });
 
     act(() => result.current.dismiss());
     expect(result.current.tip).toBeNull();

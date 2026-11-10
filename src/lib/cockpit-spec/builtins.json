@@ -25,7 +25,8 @@
       "keyboard": "shift+a",
       "arms_first": false,
       "pilot_action": "arm",
-      "notes": null
+      "notes": null,
+      "short_label": "Arm"
     },
     {
       "id": "disarm",
@@ -38,7 +39,8 @@
       "keyboard": null,
       "arms_first": false,
       "pilot_action": "disarm",
-      "notes": null
+      "notes": null,
+      "short_label": "Disarm"
     },
     {
       "id": "takeoff",
@@ -51,7 +53,8 @@
       "keyboard": "shift+t",
       "arms_first": true,
       "pilot_action": "takeoff",
-      "notes": "Arms first"
+      "notes": "Arms first",
+      "short_label": "Take off"
     },
     {
       "id": "land",
@@ -64,7 +67,8 @@
       "keyboard": "shift+l",
       "arms_first": false,
       "pilot_action": "land",
-      "notes": null
+      "notes": null,
+      "short_label": "Land"
     },
     {
       "id": "rth",
@@ -77,7 +81,8 @@
       "keyboard": "shift+r",
       "arms_first": false,
       "pilot_action": "rth",
-      "notes": "Stale link: disabled with a reason"
+      "notes": "Stale link: disabled with a reason",
+      "short_label": "RTH"
     },
     {
       "id": "pause",
@@ -90,7 +95,8 @@
       "keyboard": "space",
       "arms_first": false,
       "pilot_action": "pause",
-      "notes": null
+      "notes": null,
+      "short_label": "Pause"
     },
     {
       "id": "resume",
@@ -103,7 +109,8 @@
       "keyboard": "shift+p",
       "arms_first": false,
       "pilot_action": "resume",
-      "notes": null
+      "notes": null,
+      "short_label": "Resume"
     },
     {
       "id": "take_control",
@@ -116,27 +123,25 @@
       "keyboard": "shift+c",
       "arms_first": false,
       "pilot_action": "take_control",
-      "notes": null
+      "notes": null,
+      "short_label": "Control"
     },
     {
       "id": "kill",
       "label": "Emergency stop",
       "icon": "octagon-alert",
-      "arm_requirement": "armed",
+      "arm_requirement": "any",
       "confirm": { "kind": "hold_confirm", "ms": 3000 },
       "needs_fresh_link": false,
       "stale_link": "send_blind",
       "keyboard": "shift+x",
       "arms_first": false,
       "pilot_action": "kill",
-      "notes": null
+      "notes": null,
+      "short_label": "STOP"
     }
   ],
   "removed": ["abort"],
-  "profile_keys": {
-    "f1": "profile:cine",
-    "f2": "profile:normal",
-    "f3": "profile:sport"
-  },
+  "profile_keys": { "f1": "profile:cine", "f2": "profile:normal", "f3": "profile:sport" },
   "fc_mode_presets": "mode_sheet"
 }

@@ -50,7 +50,7 @@ export function AircraftSetupBanner(): React.ReactElement | null {
     >
       <div className="flex min-w-0 items-center gap-2">
         <Wrench size={12} className="shrink-0 text-accent-primary" aria-hidden />
-        <span className="truncate font-semibold">{specString("setup.wizard.entry.set_up_aircraft")}</span>
+        <span className="truncate font-semibold">{specString("setup.banner.title")}</span>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Link
@@ -59,7 +59,7 @@ export function AircraftSetupBanner(): React.ReactElement | null {
           data-testid="aircraft-setup-banner-open"
           className="border border-accent-primary/60 px-2 py-0.5 text-[10px] font-semibold text-accent-primary hover:bg-accent-primary/20"
         >
-          {specString("setup.action.start")}
+          {specString("setup.banner.open")}
         </Link>
         <button
           type="button"
@@ -68,7 +68,7 @@ export function AircraftSetupBanner(): React.ReactElement | null {
           className="flex cursor-pointer items-center gap-1 px-2 py-0.5 text-[10px] text-text-secondary hover:text-text-primary"
         >
           <X size={10} aria-hidden />
-          {specString("setup.action.skip")}
+          {specString("setup.banner.later")}
         </button>
       </div>
     </div>
