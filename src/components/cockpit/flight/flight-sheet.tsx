@@ -66,8 +66,18 @@ export function closeFlightSheets(): void {
 }
 
 /**
+ * Open a sheet from a component that does not render it (the Menu opening
+ * the Mode sheet). Closes whichever sheet was open.
+ */
+export function openFlightSheet(id: string): void {
+  useFlightSheetStore.getState().set(id);
+}
+
+/**
  * A sheet's open state, one sheet at a time. Same shape as `useState`, so
- * `setOpen((o) => !o)` toggles.
+ * `setOpen((o) => !o)` toggles. Only the component that renders the sheet
+ * uses it: it closes the sheet when that component unmounts. Others open it
+ * with {@link openFlightSheet}.
  */
 export function useFlightSheet(
   id: string,

@@ -4,10 +4,13 @@
  * @module cockpit/TipLayer
  * @description The flight screen's contextual tips (cockpit spec
  * `tips.json`): one small panel at a time, beside the element it explains,
- * on the side with the most room and never over STOP, the left column or the
- * flight-state chip. No scrim: only the panel takes input, so taps elsewhere
- * reach the screen. A tap on the tip, on its anchor, or any controller button
- * dismisses it. Mount once inside the flight-screen root.
+ * on the side with the most room and never over the spec's
+ * `never_cover_zones` (STOP, the left column, the flight-state chip, the
+ * alert stack, the top bar). An anchor with no room for the panel beside it
+ * reports as not laid out, so the queue skips its tip without marking it
+ * seen. No scrim: only the panel takes input, so taps elsewhere reach the
+ * screen. A tap on the tip, on its anchor, or any controller button
+ * dismisses a drawn tip. Mount once inside the flight-screen root.
  *
  * @license GPL-3.0-only
  */
@@ -15,12 +18,17 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 
 import { useFlightSheetStore } from "@/components/cockpit/flight/flight-sheet";
+import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
 import { useCockpitTips } from "@/hooks/use-cockpit-tips";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { specString } from "@/lib/cockpit/spec-strings";
 import tipsJson from "@/lib/cockpit-spec/tips.json";
 import { placeTip, type TipPlacement, type TipRect } from "@/lib/hud/tips";
 import { useSkillRegistry } from "@/lib/skills";
+import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import { useInputStore } from "@/stores/input-store";
+import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
+import { useSkillInputStore } from "@/stores/skill-input-store";
 
 /** Each tip anchor (and avoided zone) to the element that draws it on the
  *  flight screen. */
@@ -34,6 +42,7 @@ export const TIP_ANCHOR_SELECTORS: Readonly<Record<string, string>> = {
   gimbal_pad: "[data-testid='fs-gimbal_pad']",
   left_column: "[data-zone='left_column']",
   alert_stack: "[data-zone='alert_stack']",
+  top_bar: "[data-zone='top_bar']",
 };
 
 /** The zones a tip never covers (`rules.never_cover_zones`). */
@@ -94,7 +103,12 @@ export function TipLayer({ droneId }: { droneId: string }) {
   const [m, setM] = useState<Measured | null>(null);
   const [tipH, setTipH] = useState(TIP_H_GUESS);
   const sheetOpen = useFlightSheetStore((s) => s.open !== null);
-  const skillsAvailable = useSkillRegistry((s) => [...s.skills.values()].some((k) => k.source === "plugin"));
+  // Overlays outside the sheet store count as open sheets too.
+  const paletteOrEditor = useSkillInputStore((s) => s.paletteOpen || s.editorOpen);
+  const quickOpen = useFlyQuickSettingsStore((s) => s.isOpen);
+  const confirmPending = useSkillConfirmStore((s) => s.pending !== null);
+  const vehicleClass = usePilotState(droneId).pilot?.vehicleClass ?? null;
+  const skillsAvailable = useSkillRegistry((s) => pickerSkills([...s.skills.values()], vehicleClass).length > 0);
 
   useEffect(() => {
     const layer = layerRef.current;
@@ -112,19 +126,25 @@ export function TipLayer({ droneId }: { droneId: string }) {
     return () => clearInterval(id);
   }, []);
 
+  const avoid = m ? NEVER_COVER.map((z) => m.rects[z]).filter((r): r is TipRect => Boolean(r)) : [];
+  const placeAt = (anchor: TipRect | null | undefined): TipPlacement | null =>
+    m && anchor ? placeTip(anchor, { w: TIP_W, h: tipH }, m.viewport, avoid) : null;
+  // An anchor counts as shown only with room for the panel beside it.
   const anchorsVisible: Record<string, boolean> = {};
-  for (const a of ANCHORS) anchorsVisible[a] = Boolean(m?.rects[a]);
+  for (const a of ANCHORS) anchorsVisible[a] = placeAt(m?.rects[a]) !== null;
   const { tip, dismiss } = useCockpitTips(droneId, {
     anchorsVisible,
-    sheetOrMenuOpen: sheetOpen || m?.menuOpen === true,
+    sheetOrMenuOpen: sheetOpen || m?.menuOpen === true || paletteOrEditor || quickOpen || confirmPending,
     skillsAvailable,
-    gimbalAvailable: anchorsVisible.gimbal_pad === true,
+    gimbalAvailable: Boolean(m?.rects.gimbal_pad),
     alertBannerVisible: Boolean(m?.rects.alert_stack),
   });
+  const placement = tip ? placeAt(m?.rects[tip.anchor]) : null;
+  const drawn = tip !== null && placement !== null;
 
-  // A tap on the anchor, or any controller button, dismisses the tip.
+  // A tap on the anchor, or any controller button, dismisses a drawn tip.
   useEffect(() => {
-    if (!tip) return;
+    if (!tip || !drawn) return;
     const sel = TIP_ANCHOR_SELECTORS[tip.anchor];
     const onDown = (e: PointerEvent) => {
       if (sel && e.target instanceof Element && e.target.closest(sel)) dismiss();
@@ -137,19 +157,12 @@ export function TipLayer({ droneId }: { droneId: string }) {
       document.removeEventListener("pointerdown", onDown, true);
       unsub();
     };
-  }, [tip, dismiss]);
+  }, [tip, drawn, dismiss]);
 
   useLayoutEffect(() => {
     const h = panelRef.current?.offsetHeight ?? 0;
     if (h > 0 && h !== tipH) setTipH(h);
   });
-
-  let placement: TipPlacement | null = null;
-  const anchorRect = tip && m ? m.rects[tip.anchor] : null;
-  if (tip && m && anchorRect) {
-    const avoid = NEVER_COVER.map((z) => m.rects[z]).filter((r): r is TipRect => Boolean(r));
-    placement = placeTip(anchorRect, { w: TIP_W, h: tipH }, m.viewport, avoid);
-  }
 
   const onPanelClick = (e: MouseEvent) => {
     e.stopPropagation();

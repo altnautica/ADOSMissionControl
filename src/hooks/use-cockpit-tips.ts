@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { nextTip, type TipsContext } from "@/lib/hud/tips";
 import { specText } from "@/lib/hud/spec-text";
 import { gotoAdvertised } from "@/lib/hud/fly-here-offer";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { vehicleLanded } from "@/lib/skills/flight-facts";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useCockpitTipsStore } from "@/stores/cockpit-tips-store";
@@ -85,26 +86,35 @@ export function tipsContext(
 }
 
 export function useCockpitTips(droneId: string, ui: CockpitTipsUi): CockpitTips {
-  const { pilot } = usePilotState(droneId);
+  const { pilot, receivedAt } = usePilotState(droneId);
   const armState = useDroneStore((s) => s.armState);
   const tourVisible = useControlsStore((s) => s.tourVisible);
   const open = useRef<OpenState>({ openedAt: 0, lastDismissedAt: null, shown: null, hidden: [] });
+  const counted = useRef(false);
   const [tip, setTip] = useState<CockpitTip | null>(null);
 
-  // One flight-screen open per mount (the second-open tip counts these).
+  // One flight-screen open per mount (the second-open tip counts these),
+  // counted once even when the effect runs again on the same mount.
   useEffect(() => {
     open.current = { openedAt: Date.now(), lastDismissedAt: null, shown: null, hidden: [] };
+    if (counted.current) return;
+    counted.current = true;
     useCockpitTipsStore.getState().opened();
   }, []);
 
-  const armed = armState === "armed" || pilot?.armed === true;
-  const airborne = (pilot ? pilot.armed && !pilot.landed : false) || vehicleLanded(droneId) === false;
-  const facts = { armed, airborne, tourVisible, gotoOffered: gotoAdvertised(pilot) };
   const step = useRef<() => void>(() => undefined);
   // The latest render's inputs, read by the interval below.
   useEffect(() => {
     step.current = () => {
       const now = Date.now();
+      // A pilot state past the shared staleness limit says nothing about now.
+      const live = receivedAt !== null && pilotFresh(receivedAt, now) ? pilot : null;
+      const facts = {
+        armed: armState === "armed" || live?.armed === true,
+        airborne: (live ? live.armed && !live.landed : false) || vehicleLanded(droneId) === false,
+        tourVisible,
+        gotoOffered: gotoAdvertised(live),
+      };
       const o = open.current;
       const state = useCockpitTipsStore.getState();
       const d = nextTip(state, tipsContext(ui, facts, o), now);

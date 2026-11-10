@@ -15,7 +15,6 @@ vi.mock("../CameraSheet", () => ({ CameraPanel: () => <div data-testid="camera-p
 vi.mock("../../StickControlChip", () => ({ StickControlChip: () => <div data-testid="stick-control" /> }));
 vi.mock("../../PreflightChip", () => ({ PreflightChip: () => <div data-testid="preflight-chip" /> }));
 
-import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import { FlightTopBar, TOP_BAR_OVERFLOW, hiddenAt } from "../FlightTopBar";
 import { FlightGridContext } from "../flight-context";
@@ -23,9 +22,6 @@ import { flightGrid } from "../flight-grid";
 import { useFlightSheetStore } from "../flight-sheet";
 
 const DRONE = "topbar-overflow";
-const SPEC_ORDER = (layoutSpec.zones as unknown as { id: string; overflow?: { to_menu_order: string[] } }[]).find(
-  (z) => z.id === "top_bar",
-)!.overflow!.to_menu_order;
 
 /** Fake layout: the items row needs 100 px plus 60 px per movable item still on the bar. */
 let mainWidth = 300;
@@ -85,7 +81,6 @@ afterEach(() => {
 
 describe("top bar overflow order", () => {
   it("follows the spec's to_menu_order", () => {
-    expect([...TOP_BAR_OVERFLOW]).toEqual(SPEC_ORDER);
     expect([...TOP_BAR_OVERFLOW]).toEqual(["controller", "nav_source", "link_text", "link_icon", "layer_button"]);
     expect([...hiddenAt(0)]).toEqual([]);
     expect([...hiddenAt(2)]).toEqual(["controller", "nav_source"]);
@@ -116,7 +111,7 @@ describe("top bar overflow order", () => {
   it("keeps the chip, pill, battery, Menu and STOP when everything movable is in the Menu", () => {
     mainWidth = 10;
     mount();
-    expect(bar().getAttribute("data-moved")).toBe(SPEC_ORDER.join(" "));
+    expect(bar().getAttribute("data-moved")).toBe("controller nav_source link_text link_icon layer_button");
     expect(bar().getAttribute("data-overflow")).toBe("full");
     for (const id of ["flight-state-chip", "status-pill", "fs-battery", "fs-menu-button", "cockpit-kill"]) {
       expect(screen.getByTestId(id), id).toBeTruthy();

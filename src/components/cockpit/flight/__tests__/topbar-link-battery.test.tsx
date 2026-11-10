@@ -10,7 +10,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 
 const reserve = vi.hoisted(() => ({ value: null as null | { etaS: number | null; past: boolean; reservePct: number } }));
 vi.mock("../../band/use-band-reserve", () => ({ useBandReserve: () => reserve.value }));
@@ -76,15 +76,31 @@ describe("link age", () => {
   });
 
   it.each([
-    [1_000, "var(--fs-ok)"],
-    [4_000, "var(--fs-warn)"],
-    [12_000, "var(--fs-crit)"],
-  ] as const)("colours the lit icon bars by the age of the newest frame (%i ms)", (age, color) => {
+    [1_000, "var(--fs-ok)", "var(--fs-ok)"],
+    [4_000, "var(--fs-warn)", "var(--fs-warn)"],
+    [12_000, "var(--fs-crit)", "var(--fs-text-crit)"],
+  ] as const)("colours the lit icon bars by the age of the newest frame (%i ms), the text by the text tokens", (age, icon, text) => {
     useDroneStore.setState({ lastHeartbeat: Date.now() - age } as never);
     renderWithIntl(<LinkCell droneId={DRONE} detail />);
     const bars = [...screen.getByTestId("fs-link-icon").children].map((b) => (b as HTMLElement).style.background);
-    expect(bars).toContain(color);
-    expect(screen.getByTestId("fs-link-detail").style.color).toBe(color);
+    expect(bars).toContain(icon);
+    expect(screen.getByTestId("fs-link-detail").style.color).toBe(text);
+  });
+
+  it("ages the link text as time passes with no new frame", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(NOW);
+      useDroneStore.setState({ lastHeartbeat: NOW - 1_000 } as never);
+      renderWithIntl(<LinkCell droneId={DRONE} detail />);
+      expect(screen.getByTestId("fs-link-detail").textContent).toBe(specString("cockpit.link.age", { s: 1 }));
+      act(() => void vi.advanceTimersByTime(11_000));
+      expect(screen.getByTestId("fs-link-detail").textContent).toBe(specString("cockpit.link.age", { s: 12 }));
+      expect(screen.getByTestId("fs-link-icon").getAttribute("data-severity")).toBe("critical");
+      expect(screen.getByTestId("fs-link-detail").style.color).toBe("var(--fs-text-crit)");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("reads no link with no frame yet", () => {

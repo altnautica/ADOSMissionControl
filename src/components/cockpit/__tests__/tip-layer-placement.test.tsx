@@ -26,6 +26,15 @@ vi.mock("@/hooks/use-cockpit-tips", () => ({
 
 import { TipLayer } from "@/components/cockpit/TipLayer";
 import { useInputStore } from "@/stores/input-store";
+import { useSkillInputStore } from "@/stores/skill-input-store";
+import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
+import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
+import { useFlightSheetStore } from "@/components/cockpit/flight/flight-sheet";
+import { useSkillRegistry } from "@/lib/skills";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
+import { parsePilotState } from "@/lib/hud/cockpit-frames";
+import { demoPilotWire } from "@/mock/mock-pilot";
+import type { Skill } from "@/lib/skills/types";
 
 interface R {
   x: number;
@@ -158,5 +167,74 @@ describe("TipLayer", () => {
       </div>,
     );
     expect(mocks.ui?.alertBannerVisible).toBe(false);
+  });
+
+  it("places a tip on a top-bar anchor below the top bar, never over it", () => {
+    const BAR: R = { x: 0, y: 0, w: 1000, h: 56 };
+    const BAR_STOP: R = { x: 880, y: 0, w: 112, h: 56 };
+    mocks.tip = { id: "status_pill", anchor: "status_pill", text: "tip" };
+    render(
+      <div>
+        <div data-zone="top_bar" data-rect={JSON.stringify(BAR)}>
+          <button type="button" data-testid="cockpit-kill" data-rect={JSON.stringify(BAR_STOP)}>STOP</button>
+          <div data-testid="status-pill" data-rect={JSON.stringify(PILL)}>pill</div>
+          <div data-testid="flight-state-chip" data-rect={JSON.stringify(CHIP)}>chip</div>
+        </div>
+        <div data-zone="left_column" data-rect={JSON.stringify(LEFT)} />
+        <TipLayer droneId="drone-1" />
+      </div>,
+    );
+    const r = panelRect();
+    expect(screen.getByTestId("cockpit-tip").dataset.side).toBe("bottom");
+    expect(r.y).toBeGreaterThanOrEqual(BAR.y + BAR.h);
+    expect(intersects(r, BAR)).toBe(false);
+    expect(intersects(r, LEFT)).toBe(false);
+  });
+
+  it("counts the palette, the binding editor, quick settings, a skill confirm and the pill list as open sheets", () => {
+    renderScreen();
+    expect(mocks.ui?.sheetOrMenuOpen).toBe(false);
+    const cases: [string, () => void, () => void][] = [
+      ["palette", () => useSkillInputStore.setState({ paletteOpen: true }), () => useSkillInputStore.setState({ paletteOpen: false })],
+      ["editor", () => useSkillInputStore.setState({ editorOpen: true }), () => useSkillInputStore.setState({ editorOpen: false })],
+      ["quick settings", () => useFlyQuickSettingsStore.setState({ isOpen: true }), () => useFlyQuickSettingsStore.setState({ isOpen: false })],
+      [
+        "skill confirm",
+        () => useSkillConfirmStore.setState({ pending: { id: 1, droneId: "drone-1", policy: {} as never, resolve: () => {} } }),
+        () => useSkillConfirmStore.setState({ pending: null }),
+      ],
+      ["pill list", () => useFlightSheetStore.setState({ open: "status" }), () => useFlightSheetStore.setState({ open: null })],
+    ];
+    for (const [name, open, close] of cases) {
+      act(open);
+      expect(mocks.ui?.sheetOrMenuOpen, name).toBe(true);
+      act(close);
+      expect(mocks.ui?.sheetOrMenuOpen, name).toBe(false);
+    }
+  });
+
+  it("counts only the skills the picker offers this vehicle class", () => {
+    const pilot = parsePilotState(demoPilotWire({ vehicle_class: "multirotor" }));
+    if (!pilot) throw new Error("demo pilot wire did not parse");
+    useNavStreamStore.getState().setPilot("drone-1", pilot, Date.now());
+    const skill = {
+      id: "com.example.glide:glide",
+      label: "Glide",
+      icon: "Plane",
+      category: "behavior",
+      source: "plugin",
+      pluginId: "com.example.glide",
+      pickerCategory: "behavior",
+      vehicleClasses: ["fixedwing"],
+    } as unknown as Skill;
+    const before = useSkillRegistry.getState().skills;
+    useSkillRegistry.setState({ skills: new Map([[skill.id, skill]]) });
+    try {
+      renderScreen();
+      expect(mocks.ui?.skillsAvailable).toBe(false);
+    } finally {
+      useSkillRegistry.setState({ skills: before });
+      useNavStreamStore.getState().clear("drone-1");
+    }
   });
 });

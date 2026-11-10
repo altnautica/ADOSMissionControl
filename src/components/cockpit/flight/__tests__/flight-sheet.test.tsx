@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act, fireEvent, screen } from "@testing-library/react";
+import { render, act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { useRef } from "react";
 
 vi.mock("next-intl", () => {
@@ -139,7 +139,7 @@ describe("confirm sheet on the flight screen", () => {
     expect(useFlightSheetStore.getState().open).toBeNull();
   });
 
-  it("starts below the STOP slot at every landscape class (hit-test on the grid)", () => {
+  it("starts its scrim below the STOP slot at every landscape class (hit-test on the grid)", () => {
     for (const [w, h, cls] of [
       [580, 360, "compact"],
       [760, 480, "medium"],
@@ -148,10 +148,30 @@ describe("confirm sheet on the flight screen", () => {
     ] as const) {
       const grid = flightGrid({ width: w, height: h, widthClass: cls });
       const bar = grid.zones.top_bar!;
-      const scrimTop = bar.y + bar.h;
+      // The flight frame sets the top bar's bottom edge on its root.
+      render(
+        <div data-testid="flight-screen" style={{ ["--fs-bar-b" as string]: `${bar.y + bar.h}px` }} />,
+      );
+      act(() => {
+        render(
+          <ConfirmSheet
+            policy={{ title: "Land", message: "Land now", confirmLabel: "Hold to land", variant: "primary", gesture: "hold", holdMs: 500 }}
+            droneId="d1"
+            onResolve={() => {}}
+          />,
+        );
+      });
+      const root = screen.getByTestId("flight-screen");
+      const scrim = screen.getByTestId("confirm-scrim");
+      // Resolve the scrim's `top` against the root's custom property.
+      const ref = /^var\((--[\w-]+)(?:,\s*([^)]+))?\)$/.exec(scrim.style.top);
+      const topCss = ref ? root.style.getPropertyValue(ref[1]) || (ref[2] ?? "") : scrim.style.top;
+      const scrimTop = parseFloat(topCss);
+      expect(Number.isFinite(scrimTop), `${cls} ${w}x${h}: scrim top ${scrim.style.top}`).toBe(true);
       const stopCentreY = grid.stop.y + grid.stop.h / 2;
       expect(stopCentreY).toBeLessThan(scrimTop);
       expect(grid.stop.y + grid.stop.h).toBeLessThanOrEqual(scrimTop);
+      cleanup();
     }
   });
 });

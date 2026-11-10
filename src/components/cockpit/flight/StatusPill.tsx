@@ -27,6 +27,7 @@ import type { PreflightItem } from "@/lib/cockpit/preflight";
 import { useNavSource } from "@/hooks/use-nav-source";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
+import { resolveNodeId, useNodeRegistryStore } from "@/stores/node-registry";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useCockpitAlertList } from "../CockpitAlerts";
 import type { CockpitAlertId } from "../band/cockpit-alert-rules";
@@ -40,6 +41,7 @@ import {
 } from "@/lib/hud/status-pill";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { useDroneStore } from "@/stores/drone-store";
+import { useFlightSheet } from "./flight-sheet";
 
 export type { PillAlert } from "@/lib/hud/status-pill";
 
@@ -47,7 +49,7 @@ export type { PillAlert } from "@/lib/hud/status-pill";
 const ALERT_SOURCE: Record<CockpitAlertId, PillSource> = {
   linkLost: "link",
   linkStale: "link",
-  videoFrozen: "link",
+  videoFrozen: "video",
   battCrit: "battery",
   battLow: "battery",
   prearm: "fc_prearm",
@@ -81,10 +83,11 @@ export interface PillSources {
   /** This surface's cockpit alert rules and navigation source, labelled. */
   surface: readonly PillAlert[];
   pilot: PilotState | null;
-  /** Age of the newest pilot state; null when none arrived from a paired
-   *  agent; undefined when no agent is paired (the pilot rule is off). */
+  /** Age of the newest pilot state; null when none arrived from this
+   *  drone's agent; undefined when this drone has no agent (the pilot rule
+   *  is off). */
   pilotAgeMs: number | null | undefined;
-  /** Undefined when no agent is paired. */
+  /** Undefined unless the focused agent is this drone's. */
   agentReachable: boolean | undefined;
   disarmed: boolean;
   /** The pre-flight checklist, or null before it was evaluated. */
@@ -147,7 +150,13 @@ export function usePillAlerts(droneId: string): PillAlert[] {
   const nav = useNavSource(droneId).result;
   const navText = t("navSource", { kind: nav.kind });
   const disk = useAgentSystemStore((s) => s.status?.health?.disk_percent ?? null);
-  const paired = useAgentConnectionStore((s) => s.agentUrl !== null);
+  // The focused agent's polls describe its own node; another drone (a direct
+  // flight controller, or a node that is not focused) has no say in them.
+  const focused = useAgentConnectionStore(
+    (s) => s.agentUrl !== null && Boolean(s.nodeDeviceId) && resolveNodeId(s.nodeDeviceId ?? undefined) === droneId,
+  );
+  const agentNode = useNodeRegistryStore((s) => s.nodes[droneId]?.presence.agentIdentityKnown === true);
+  const paired = focused || agentNode;
   const failures = useAgentConnectionStore((s) => s.consecutiveFailures);
   const preflight = useChecklistStore((s) => (s.droneId === droneId ? s.preflight : null));
   const [now, setNow] = useState(() => Date.now());
@@ -174,7 +183,7 @@ export function usePillAlerts(droneId: string): PillAlert[] {
     surface,
     pilot,
     pilotAgeMs: receivedAt !== null ? now - receivedAt : paired ? null : undefined,
-    agentReachable: paired ? failures < AGENT_UNREACHABLE_FAILURES : undefined,
+    agentReachable: focused ? failures < AGENT_UNREACHABLE_FAILURES : undefined,
     disarmed,
     preflight,
     storagePct: typeof disk === "number" ? disk : null,
@@ -187,7 +196,8 @@ const COLOR = { ok: "var(--fs-ok)", warning: "var(--fs-warn)", critical: "var(--
 export function StatusPill({ droneId }: { droneId: string }) {
   const alerts = usePillAlerts(droneId);
   const [acked, setAcked] = useState<ReadonlySet<string>>(() => new Set());
-  const [open, setOpen] = useState(false);
+  // The list is a flight-screen sheet: one at a time, and the tips see it.
+  const [open, setOpen] = useFlightSheet("status");
   const rootRef = useRef<HTMLDivElement>(null);
   const keys = useMemo(() => alerts.map((a) => a.id).join("|"), [alerts]);
   // While the list is open every alert in it counts as seen; opening and
@@ -221,7 +231,7 @@ export function StatusPill({ droneId }: { droneId: string }) {
       window.removeEventListener("pointerdown", onDown);
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, keys, ackShown]);
+  }, [open, keys, ackShown, setOpen]);
 
   const Icon = ICON[summary.severity];
   return (

@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
-import { ControllerCell } from "../TopBarCells";
+import { ControllerCell } from "../ControllerCell";
 import { usePadStatusStore, type PadStatus } from "@/lib/input/pad-status";
 
 function pad(p: Partial<PadStatus>): void {

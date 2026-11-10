@@ -15,7 +15,6 @@ vi.mock("../CameraSheet", () => ({ CameraPanel: () => <div data-testid="camera-p
 vi.mock("../../StickControlChip", () => ({ StickControlChip: () => <div data-testid="stick-control" /> }));
 vi.mock("../../PreflightChip", () => ({ PreflightChip: () => <div data-testid="preflight-chip" /> }));
 
-import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { LAYER_DEFS } from "@/lib/cockpit/layers/layer-spec";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
@@ -54,7 +53,6 @@ describe("flight Menu order", () => {
   it("lists its sections in the spec's menu.order, leaving out setup when not needed", () => {
     pinReadiness([]);
     mount(["controller", "nav_source"]);
-    expect(sectionOrder()).toEqual(layoutSpec.menu.order.filter((s) => s !== "setup"));
     expect(sectionOrder()).toEqual([
       "overflow",
       "view",
@@ -72,7 +70,18 @@ describe("flight Menu order", () => {
   it("offers Set up aircraft between the extension panels and the settings while setup is needed", () => {
     pinReadiness([{ id: "setup_needed", ok: false, severity: "block", msg: "Aircraft setup needed" }]);
     mount();
-    expect(sectionOrder()).toEqual(layoutSpec.menu.order.filter((s) => s !== "overflow"));
+    expect(sectionOrder()).toEqual([
+      "view",
+      "cameras",
+      "layers",
+      "preflight",
+      "modes",
+      "controls",
+      "extension_panels",
+      "setup",
+      "settings",
+      "exit",
+    ]);
     const setup = screen.getByTestId("fs-menu-setup");
     expect(setup.getAttribute("href")).toBe("/config/aircraft-setup");
     expect(setup.textContent).toBe("Set up aircraft");
@@ -101,7 +110,8 @@ describe("flight Menu order", () => {
     expect(screen.getByTestId("fs-menu-modes").textContent).toBe("Flight modes");
     expect(screen.getByTestId("fs-menu-extensions").textContent).toBe("Extension panels");
     expect(screen.getByTestId("fs-menu-settings").textContent).toBe("Settings");
-    expect(screen.getByTestId("fs-exit").textContent).toBe("Exit to dashboard");
+    // Mission Control leaves the flight screen for the drone page's Overview.
+    expect(screen.getByTestId("fs-exit").textContent).toBe("Exit to Overview");
   });
 
   it("lists every layer flag as a checkbox in the Layers section", () => {

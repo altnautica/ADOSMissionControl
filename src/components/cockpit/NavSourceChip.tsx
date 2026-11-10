@@ -6,18 +6,20 @@
  * (source icon, source label, quality word), coloured by quality. Replaces
  * the band's GPS cell. A report older than 2 s reads `NAV —` (muted). At the
  * `compact` width the quality word moves into the popover; the label is
- * never truncated. Click, tap or Enter opens {@link NavSourcePopover}.
+ * never truncated. Click, tap or Enter opens {@link NavSourcePopover}. In the
+ * Menu the chip keeps its own open state, so the popover opens over the Menu
+ * without closing it.
  *
  * @license GPL-3.0-only
  */
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
-import { useTranslations } from "next-intl";
 import { Compass, Satellite, ScanLine, Waves, type LucideIcon } from "lucide-react";
 
 import { specString } from "@/lib/cockpit/spec-strings";
-import type { NavSourceKind, NavSourceResult, NavTone } from "@/lib/hud/nav-source";
+import type { NavSourceKind, NavTone } from "@/lib/hud/nav-source";
+import { navSourceText } from "./nav-source-text";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useNavSource } from "@/hooks/use-nav-source";
 import { NavSourcePopover } from "./NavSourcePopover";
@@ -37,36 +39,13 @@ export const NAV_TONE_COLOR: Readonly<Record<NavTone, string>> = {
   muted: "var(--hud-muted)",
 };
 
-/** Translated chip label and quality word for a resolved source. */
-export function useNavSourceText(): (r: NavSourceResult) => { label: string; word: string | null } {
-  const t = useTranslations("hud.nav");
-  return (r) => {
-    const word = r.quality ? t(`q.${r.quality}`) : null;
-    switch (r.kind) {
-      case "stale":
-        return { label: t("stale"), word: null };
-      case "dr":
-        return { label: t("dr"), word };
-      case "ext":
-        return { label: t("ext"), word };
-      case "flow":
-        return { label: t("flow"), word };
-      case "gps": {
-        const fix = t(`fix.${r.fix ?? "none"}`);
-        return {
-          label: r.sats !== undefined ? t("gps", { fix, sats: r.sats }) : t("gpsNoSats", { fix }),
-          word,
-        };
-      }
-    }
-  };
-}
-
-export function NavSourceChip({ droneId }: { droneId: string }) {
+export function NavSourceChip({ droneId, inMenu = false }: { droneId: string; inMenu?: boolean }) {
   const view = useNavSource(droneId);
   const widthClass = useCockpitWidthClass();
-  const text = useNavSourceText()(view.result);
-  const [open, setOpen] = useFlightSheet("nav_source");
+  const text = navSourceText(view.result);
+  const sheet = useFlightSheet("nav_source");
+  const local = useState(false);
+  const [open, setOpen] = inMenu ? local : sheet;
   const anchorRef = useRef<HTMLButtonElement>(null);
 
   const { kind, tone } = view.result;

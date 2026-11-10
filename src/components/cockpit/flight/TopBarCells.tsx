@@ -3,16 +3,17 @@
 /**
  * @module cockpit/flight/TopBarCells
  * @description The top bar's read-only cells: battery (percent, time to the
- * reserve and the RTL-reserve marker on the gauge), link (signal bars and
+ * reserve and the RTL-reserve marker on the gauge) and link (signal bars and
  * the age of the newest vehicle frame, the text being the detail that may
- * move into the Menu; RSSI lives in the link popover) and the controller.
- * Each subscribes to its own source so a telemetry tick re-renders only it.
+ * move into the Menu; RSSI lives in the link popover). The controller cell
+ * is `ControllerCell`. Each subscribes to its own source so a telemetry tick
+ * re-renders only it.
  *
  * @license GPL-3.0-only
  */
 
 import { useRef, useState, type CSSProperties } from "react";
-import { Gamepad2, Radio } from "lucide-react";
+import { Radio } from "lucide-react";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { useDroneStore } from "@/stores/drone-store";
@@ -21,7 +22,6 @@ import { useHudTopBarData } from "@/hooks/use-hud-topbar-data";
 import { deriveHudStatus } from "@/lib/hud-readings";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { useBatteryBand, type BatteryBand } from "@/lib/battery-bands";
-import { shortPadName, usePadStatusStore } from "@/lib/input/pad-status";
 import { useClockTick } from "@/lib/agent/freshness";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { linkStateFromHeartbeat, type LinkState } from "../band/link-state";
@@ -122,6 +122,8 @@ export function linkAgeView(lastFrameAt: number, now: number): { text: string; s
 }
 
 const LINK_COLOR: Record<LinkSeverity, string> = { none: "var(--fs-text-dim)", ...SEVERITY_VAR };
+/** The age text's colours: the critical one is the text contrast token, not the icon's. */
+const LINK_TEXT_COLOR: Record<LinkSeverity, string> = { ...LINK_COLOR, critical: "var(--fs-text-crit)" };
 
 /** The link's detail lines: RSSI, and the reduced update rate when polled. */
 function LinkDetail({ droneId }: { droneId: string }) {
@@ -145,9 +147,11 @@ function LinkDetail({ droneId }: { droneId: string }) {
 /**
  * The link cell. On the bar it is a button that opens the link popover (RSSI
  * and the update rate) below the top bar; in the Menu's overflow section the
- * same lines show inline.
+ * same lines show inline, the age text alone (`textOnly`) while the icon is
+ * still on the bar.
  */
-export function LinkCell({ droneId, detail, inMenu = false }: { droneId: string; detail: boolean; inMenu?: boolean }) {
+export function LinkCell(props: { droneId: string; detail: boolean; inMenu?: boolean; textOnly?: boolean }) {
+  const { droneId, detail, inMenu = false, textOnly = false } = props;
   useClockTick();
   const { radio } = useHudTopBarData();
   const armState = useDroneStore((s) => s.armState);
@@ -162,6 +166,7 @@ export function LinkCell({ droneId, detail, inMenu = false }: { droneId: string;
   const bars = signalBars ?? (link === "ok" ? 4 : link === "stale" ? 1 : 0);
   const level = severity === "none" ? bars : Math.max(1, bars);
   const color = LINK_COLOR[severity];
+  const textColor = LINK_TEXT_COLOR[severity];
   const named = specString("cockpit.link.named", { label: text });
   const [open, setOpen] = useFlightSheet("link");
   const cellRef = useRef<HTMLButtonElement>(null);
@@ -178,7 +183,7 @@ export function LinkCell({ droneId, detail, inMenu = false }: { droneId: string;
         ))}
       </span>
       {detail && (
-        <span className="fs-sub" data-testid="fs-link-detail" data-item="link_text" style={{ color }}>
+        <span className="fs-sub" data-testid="fs-link-detail" data-item="link_text" style={{ color: textColor }}>
           {text}
         </span>
       )}
@@ -189,6 +194,17 @@ export function LinkCell({ droneId, detail, inMenu = false }: { droneId: string;
       )}
     </>
   );
+
+  if (inMenu && textOnly) {
+    return (
+      <div className="fs-cell" data-testid="fs-link-text" data-item="link_text" aria-label={named}>
+        <span className="fs-sub" data-testid="fs-link-detail" style={{ color: textColor }}>
+          {text}
+        </span>
+        <LinkDetail droneId={droneId} />
+      </div>
+    );
+  }
 
   if (inMenu) {
     return (
@@ -234,7 +250,7 @@ export function LinkCell({ droneId, detail, inMenu = false }: { droneId: string;
             data-testid="fs-link-popover"
             style={{ position: "absolute", left: popLeft, top: "calc(var(--fs-bar-b, 0px) + 8px)" } as CSSProperties}
           >
-            <span className="fs-val" style={{ color }}>
+            <span className="fs-val" style={{ color: textColor }}>
               {text}
             </span>
             <LinkDetail droneId={droneId} />
@@ -242,47 +258,5 @@ export function LinkCell({ droneId, detail, inMenu = false }: { droneId: string;
         </FlightSheetPortal>
       )}
     </>
-  );
-}
-
-/**
- * The controller's state in the shared spec's words. Browsers expose a pad
- * only after its first button press: before any pad has reported this
- * session the cell reads "no controller"; once one has and is gone again it
- * asks for a press. A connected pad reads as a pad, or as not standard when
- * its layout never streams sticks.
- */
-export function ControllerCell() {
-  const pad = usePadStatusStore();
-  const name = shortPadName(pad.name);
-  const label = name ? specString("cockpit.controller.named", { name }) : specString("cockpit.controller");
-  const state: "none" | "seen" | "connected" | "not_standard" = !pad.connected
-    ? pad.seen
-      ? "seen"
-      : "none"
-    : pad.needsCalibration
-      ? "not_standard"
-      : "connected";
-  const text =
-    state === "none"
-      ? specString("controls.no_controller")
-      : state === "seen"
-        ? specString("controls.press_any_button")
-        : state === "not_standard"
-          ? specString("controls.pad.not_standard")
-          : specString("controls.pad.connected", { battery: "" });
-  return (
-    <div
-      className={`fs-cell${state === "not_standard" ? " fs-warn" : ""}`}
-      data-testid="cockpit-controller-chip"
-      data-item="controller"
-      data-connected={pad.connected}
-      data-pad={state}
-      aria-label={`${label}: ${text}`}
-      title={label}
-    >
-      <Gamepad2 className="fs-ico" aria-hidden="true" />
-      <span className="fs-sub fs-trunc">{text}</span>
-    </div>
   );
 }

@@ -15,7 +15,7 @@ import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
-import { CHIP_MAX_FRAC, FlightStateChip } from "../../v2/FlightStateChip";
+import { FlightStateChip } from "../../v2/FlightStateChip";
 
 const DRONE = "topbar-chip";
 
@@ -34,7 +34,6 @@ describe("flight-state chip in the top bar", () => {
   it("is capped at 40 % of the bar with an ellipsis and the full text in title and aria", () => {
     pin();
     renderWithIntl(<FlightStateChip droneId={DRONE} barWidth={1000} />);
-    expect(CHIP_MAX_FRAC).toBe(0.4);
     const wrap = screen.getByTestId("flight-state-chip");
     expect(wrap.getAttribute("data-max-frac")).toBe("0.4");
     expect(wrap.style.maxWidth).toBe("400px");
