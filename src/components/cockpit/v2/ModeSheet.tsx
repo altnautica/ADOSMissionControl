@@ -19,12 +19,11 @@ import { useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 import flightStateSpec from "@/lib/cockpit-spec/flight-state.json";
-import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { refusalText } from "@/lib/hud/refusal";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { requestPilotAction, type PilotActionName } from "@/lib/input/pilot-stream";
-import { activate, buildSkillContext, stopMotionSkills } from "@/lib/skills";
+import { activate, buildSkillContext, SPEC_HOLD_MS, stopMotionSkills } from "@/lib/skills";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { HoldButton } from "./HoldButton";
@@ -32,7 +31,6 @@ import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "@/components/cockpit/flight/flight-sheet";
 
 const SHEET = flightStateSpec.mode_sheet;
-const HOLDS = layoutSpec.holds_ms;
 
 interface ModeSheetProps {
   droneId: string;
@@ -188,7 +186,7 @@ export function ModeSheet({ droneId, pilot, groundStationLink, onClose }: ModeSh
               return (
                 <HoldButton
                   key={v}
-                  holdMs={HOLDS.hand_to_fc}
+                  holdMs={SPEC_HOLD_MS.hand_to_fc}
                   className={pill(false, pending === `hand_to_fc:${v}`)}
                   onFire={() => act("hand_to_fc", label, { mode: v })}
                   title={specString("flow.mode.hand_to_fc_aria", { mode: label })}
@@ -198,7 +196,7 @@ export function ModeSheet({ droneId, pilot, groundStationLink, onClose }: ModeSh
               );
             })}
             <HoldButton
-              holdMs={HOLDS.take_control}
+              holdMs={SPEC_HOLD_MS.take_control}
               className={pill(false, pending === "take_control")}
               onFire={() => act("take_control", specString("flow.take_control"))}
             >
@@ -211,14 +209,14 @@ export function ModeSheet({ droneId, pilot, groundStationLink, onClose }: ModeSh
           <Section title={specString("flow.mode.section.vtol")}>
             <div className="flex gap-2">
               <HoldButton
-                holdMs={HOLDS.vtol_transition}
+                holdMs={SPEC_HOLD_MS.vtol_transition}
                 className={pill(false, pending === "vtol:fw")}
                 onFire={() => act("vtol:fw", specString("flow.mode.vtol.to_fw"))}
               >
                 {specString("flow.mode.vtol.to_fw")}
               </HoldButton>
               <HoldButton
-                holdMs={HOLDS.vtol_transition}
+                holdMs={SPEC_HOLD_MS.vtol_transition}
                 className={pill(false, pending === "vtol:mc")}
                 onFire={() => act("vtol:mc", specString("flow.mode.vtol.to_mc"))}
               >

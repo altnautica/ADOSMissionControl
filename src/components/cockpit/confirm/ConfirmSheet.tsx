@@ -27,7 +27,7 @@ import {
   type ConfirmChoice,
   type ConfirmPolicy,
 } from "@/lib/skills/types";
-import { useChecklistStore } from "@/stores/checklist-store";
+import { checklistReadyFor, useChecklistStore } from "@/stores/checklist-store";
 import { cn } from "@/lib/utils";
 import { useConfirmHold } from "./use-confirm-hold";
 import { HoldControl } from "./HoldControl";
@@ -46,18 +46,17 @@ interface ConfirmSheetProps {
 export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) {
   const t = useTranslations();
   const holdMs = confirmHoldMs(policy);
-  // Open checklist items for the drone this request targets. A checklist run
-  // for another aircraft vouches for nothing here.
-  const checklistDroneId = useChecklistStore((s) => s.droneId);
-  const checklistItems = useChecklistStore((s) => s.items);
+  // The first-arm gate: the spec pre-flight checklist passed for the drone
+  // this request targets. A checklist run for another aircraft vouches for
+  // nothing here. The list names the spec items not yet passing.
+  const ready = useChecklistStore((s) => checklistReadyFor(s, droneId));
+  const preflightDroneId = useChecklistStore((s) => s.droneId);
+  const preflight = useChecklistStore((s) => s.preflight);
   const openItems = useMemo(
-    () =>
-      checklistDroneId === droneId
-        ? checklistItems.filter((i) => i.status === "pending" || i.status === "fail")
-        : checklistItems,
-    [checklistDroneId, checklistItems, droneId],
+    () => (preflightDroneId === droneId && preflight ? preflight.filter((i) => i.state !== "pass") : []),
+    [preflightDroneId, preflight, droneId],
   );
-  const checklistIncomplete = Boolean(policy.checklistAware) && openItems.length > 0;
+  const checklistIncomplete = Boolean(policy.checklistAware) && !ready;
   const [override, setOverride] = useState(false);
   const gestureEnabled = !checklistIncomplete || override;
 

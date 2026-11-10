@@ -39,6 +39,7 @@ function checklistReady(droneId: string, ready = true) {
       ...item,
       status: ready || i > 0 ? ("skipped" as const) : ("pending" as const),
     })),
+    completedAt: ready ? Date.now() : null,
   }));
 }
 

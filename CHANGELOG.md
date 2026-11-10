@@ -6,6 +6,11 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Cockpit top bar: items move into the Menu in the shared order; STOP is always enabled and always opens the 3 s hold; the Menu lists its sections in the shared order with a per-layer list; the controller cell says "No controller" until a pad has been seen.
+- Cockpit card, map and follow: the bottom-left card switches by swipe and dots; Split has a draggable divider (30–70 %); the follow strip sits under the top bar; flow banners stack in one column; a narrow bottom row shows distance and height only.
+- Cockpit right column: a drag-to-aim gimbal pad; the column drops items in the shared order when short; the camera sheet opens below the top bar.
+- Cockpit tips and controller tour: one-line tips on the ground, never over STOP; the controller tour is a card without a scrim; Settings has Reset tips and Replay controller tour.
+- Cockpit pre-flight: the Menu's pre-flight list is the shared checklist, and "Checks done" passes the first-arm gate.
 - Cockpit camera: photo and zoom follow one order (camera extension, then the vehicle's MAVLink camera, then the shown video: a saved frame and digital ×1/×2/×4), with the spec's "Photo saved" and "No video" texts.
 - Demo: the demo pilot mirrors and drives the demo drone (a mission in AUTO reads MISSION · WP n/N; Pause, Resume, Land, Return home and Kill act on the vehicle; MISSION PAUSED is reachable); `__adosDemo.freezeTelemetry()` also stalls the pilot, and `__adosDemo.blockNavStream(true)` shows the reduced-rate radio fallback.
 - Maps: the local-frame map (no GNSS fix) offers Fly here on right-click and long-press, converting the point through the EKF origin; touch long-press on every map follows the spec's press time; on the ground, Launch here sends the point to the Launch sheet as its go-to.

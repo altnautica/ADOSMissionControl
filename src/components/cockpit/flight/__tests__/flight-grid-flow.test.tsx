@@ -7,7 +7,6 @@
  * below the centre marks, so the horizon never strikes its text.
  */
 
-import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
@@ -26,7 +25,7 @@ describe("flow overlay column", () => {
       const grid = flightGrid({ width: 1280, height: 800, widthClass: "expanded", following });
       const pilot = parsePilotState(demoPilotWire({ link_loss_in_s: 4, link_loss_action: "rtl", gate: { pending: true, progress: 0.4 } }));
       render(
-        createElement(FlightGridContext.Provider, { value: grid }, createElement(FlightFlowOverlays, { droneId: "flow-stack", pilot })),
+        <FlightGridContext.Provider value={grid}><FlightFlowOverlays droneId="flow-stack" pilot={pilot} /></FlightGridContext.Provider>,
       );
       const stack = screen.getByTestId("flow-stack");
       const col = flowColumn(grid);
@@ -61,11 +60,11 @@ describe("no-video placeholder", () => {
   it("is set on the main picture's frame, not on the card in the Map view", () => {
     const grid = flightGrid({ width: 1280, height: 800, widthClass: "expanded" });
     const { container, rerender } = render(
-      createElement(FlightGridContext.Provider, { value: grid }, createElement(FlightVideoFrame, { droneId: "ph", view: "pilot" }, null)),
+      <FlightGridContext.Provider value={grid}><FlightVideoFrame droneId="ph" view="pilot">{null}</FlightVideoFrame></FlightGridContext.Provider>,
     );
     const frame = () => container.querySelector(".fs-video") as HTMLElement;
     expect(frame().style.getPropertyValue("--fs-ph-top")).toBe(`${placeholderTop(videoRect("pilot", grid).h)}px`);
-    rerender(createElement(FlightGridContext.Provider, { value: grid }, createElement(FlightVideoFrame, { droneId: "ph", view: "map" }, null)));
+    rerender(<FlightGridContext.Provider value={grid}><FlightVideoFrame droneId="ph" view="map">{null}</FlightVideoFrame></FlightGridContext.Provider>);
     expect(frame().style.getPropertyValue("--fs-ph-top")).toBe("");
   });
 });

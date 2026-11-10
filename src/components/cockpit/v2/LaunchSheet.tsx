@@ -22,7 +22,7 @@ import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "@/components
 import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { refusalText } from "@/lib/hud/refusal";
-import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import { launchLimits } from "@/lib/cockpit/launch-spec";
 import { specBuiltin } from "@/lib/cockpit/spec-builtins";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { requestPilotAction } from "@/lib/input/pilot-stream";
@@ -35,10 +35,9 @@ import { useTranslations } from "next-intl";
 export type LaunchAfter = "hold" | "skill" | "mission" | "goto";
 export type LaunchWhenDone = "none" | "land" | "rth";
 
-const LAUNCH = layoutSpec.launch;
 /** Default take-off altitude for a copter (m, spec `launch.alt_default_m`);
  * a plane uses its TKOFF_ALT. */
-export const LAUNCH_DEFAULT_ALT_M = LAUNCH.alt_default_m;
+export const LAUNCH_DEFAULT_ALT_M = launchLimits.altDefaultM;
 /** The Launch hold: the take-off built-in's confirm hold. */
 export const LAUNCH_HOLD_MS = specBuiltin("takeoff").confirm.ms ?? 1500;
 
@@ -202,8 +201,8 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
           <span className="flex items-center gap-2">
             <input
               type="range"
-              min={LAUNCH.alt_min_m}
-              max={LAUNCH.alt_max_m}
+              min={launchLimits.altMinM}
+              max={launchLimits.altMaxM}
               step={0.5}
               value={alt}
               onChange={(e) => setAlt(Number(e.target.value))}
