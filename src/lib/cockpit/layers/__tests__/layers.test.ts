@@ -101,6 +101,13 @@ describe("nav-frame parsers on the golden fixtures", () => {
     expect(p.aglSource).toBe("rangefinder");
     expect(p.statustext).toEqual([{ severity: 4, text: "PreArm: Compass not calibrated", ageMs: 1200 }]);
   });
+
+  it("carries the active setup step the tuning chip reads", () => {
+    expect(pilotFixture).toHaveProperty("setup_step", null);
+    expect(parsePilotState(pilotFixture)!.setupStep).toBeNull();
+    const tuning = parsePilotState({ ...pilotFixture, setup_step: "autotune_roll" })!;
+    expect(tuning.setupStep).toBe("autotune_roll");
+  });
 });
 
 describe("nav-stream routing", () => {

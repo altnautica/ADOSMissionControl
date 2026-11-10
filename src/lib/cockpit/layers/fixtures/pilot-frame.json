@@ -106,5 +106,6 @@
    "text": "PreArm: Compass not calibrated",
    "age_ms": 1200
   }
- ]
+ ],
+ "setup_step": null
 }
