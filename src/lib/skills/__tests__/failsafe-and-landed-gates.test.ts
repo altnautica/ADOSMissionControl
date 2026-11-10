@@ -29,6 +29,7 @@ import pilotFixture from "@/lib/cockpit/layers/fixtures/pilot-frame.json";
 import type { SkillContext } from "../types";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
+import { px4Handler } from "@/lib/protocol/firmware/px4";
 
 const OK = { success: true, resultCode: 0, message: "" };
 
@@ -131,6 +132,25 @@ describe("the fresh pilot's failsafe flag decides", () => {
     pilotSays(false, 2000);
     expect(fcFailsafeActive("d1", "RTL", 0)).toBe(true);
   });
+
+  it("refuses Pause in a PX4 AUTO.RTL once the pilot is stale", () => {
+    pilotSays(false, 2500);
+    // PX4 custom_mode: main AUTO (4), sub RTL (5).
+    const mode = px4Handler.decodeFlightMode(((5 << 24) | (4 << 16)) >>> 0);
+    expect(mode).toBe("RTL");
+    expect(pauseSkill.getState(ctx({ flightMode: mode }))).toEqual({
+      kind: "disabled",
+      reason: refusalText("failsafe"),
+    });
+  });
+
+  it.each(["RTL", "SMART_RTL", "QRTL", "AUTO_RTL", "LAND", "QLAND", "LOITER_TO_QLAND", "PRECLAND", "AUTOLAND"] as const)(
+    "counts an uncommanded %s as a failsafe with a stale pilot",
+    (mode) => {
+      pilotSays(false, 2500);
+      expect(fcFailsafeActive("d1", mode, 0)).toBe(true);
+    },
+  );
 });
 
 describe("Disarm only on the ground", () => {

@@ -12,6 +12,7 @@
 import { GroundStationApiError } from "@/lib/api/ground-station-api";
 import type { GroundStationRole } from "@/lib/api/ground-station/types";
 import { AgentArmedRefusal, AgentHttpError } from "@/lib/agent/agent-client/transport";
+import { refusalText } from "@/lib/hud/refusal";
 
 interface ErrorEnvelope {
   error?: { code?: string; message?: string };
@@ -20,6 +21,7 @@ interface ErrorEnvelope {
 interface ErrorBody {
   detail?: string | ErrorEnvelope;
   message?: string;
+  code?: unknown;
 }
 
 function parseBody(body: string): ErrorBody | null {
@@ -31,17 +33,24 @@ function parseBody(body: string): ErrorBody | null {
   }
 }
 
-/** The agent's machine-readable error code (`detail.error.code`), if any. */
+/** The agent's machine-readable error code: `detail.error.code`, else the
+ *  top-level `code` of a `{"detail","code"}` refusal body. */
 export function errorCode(err: unknown): string | null {
   if (!(err instanceof GroundStationApiError || err instanceof AgentHttpError)) return null;
-  const detail = parseBody(err.body)?.detail;
-  if (detail && typeof detail === "object") return detail.error?.code ?? null;
-  return null;
+  const parsed = parseBody(err.body);
+  const detail = parsed?.detail;
+  if (detail && typeof detail === "object" && detail.error?.code) return detail.error.code;
+  return typeof parsed?.code === "string" ? parsed.code : null;
 }
 
 export function errorMessage(err: unknown): { message: string; status: number | null } {
   if (err instanceof GroundStationApiError || err instanceof AgentHttpError) {
     const parsed = parseBody(err.body);
+    // A 409 refusal names its code at the top level (`{"detail","code"}`):
+    // the operator reads it through the shared refusal text.
+    if (err.status === 409 && typeof parsed?.code === "string" && parsed.code) {
+      return { message: refusalText(parsed.code), status: err.status };
+    }
     let parsedMsg: string | undefined = err.body;
     if (parsed) {
       const detail = parsed.detail;

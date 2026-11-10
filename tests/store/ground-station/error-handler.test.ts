@@ -10,9 +10,12 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  errorCode,
   errorMessage,
   roleSwitchErrorMessage,
 } from "@/stores/ground-station/error-handler";
+import { AgentHttpError } from "@/lib/agent/agent-client/transport";
+import { refusalText } from "@/lib/hud/refusal";
 import { GroundStationApiError } from "@/lib/api/ground-station-api";
 
 function coded(status: number, code: string, message?: string) {
@@ -60,5 +63,19 @@ describe("errorMessage with nested detail", () => {
     const { message } = errorMessage(coded(409, "E_MESH_NOT_CAPABLE"));
     expect(message).toBe("E_MESH_NOT_CAPABLE");
     expect(typeof message).toBe("string");
+  });
+});
+
+describe("agent 409 refusal bodies with a top-level code", () => {
+  it("reads the code and renders it through the shared refusal text", () => {
+    const err = new AgentHttpError(409, JSON.stringify({ detail: "not in GUIDED", code: "bad_state" }));
+    expect(errorCode(err)).toBe("bad_state");
+    expect(errorMessage(err)).toEqual({ message: refusalText("bad_state"), status: 409 });
+    expect(errorMessage(err).message).not.toContain("bad_state");
+  });
+
+  it("keeps an unknown code readable through the lookup's fallback", () => {
+    const err = new AgentHttpError(409, JSON.stringify({ detail: "x", code: "brand_new" }));
+    expect(errorMessage(err).message).toBe(refusalText("brand_new"));
   });
 });

@@ -15,12 +15,21 @@ import type { RefObject } from "react";
 import { CircleCheck, OctagonAlert, TriangleAlert } from "lucide-react";
 
 import { specString } from "@/lib/cockpit/spec-strings";
+import tokens from "@/lib/cockpit-spec/tokens.json";
 import type { PillAlert, PillSource } from "@/lib/hud/status-pill";
 import { useFlightGrid } from "./flight-context";
 import { FlightSheetPortal, sheetPlacement } from "./flight-sheet";
 
 export const PILL_ICON = { ok: CircleCheck, warning: TriangleAlert, critical: OctagonAlert } as const;
 export const PILL_COLOR = { ok: "var(--fs-ok)", warning: "var(--fs-warn)", critical: "var(--fs-crit)" } as const;
+
+/** Each list item's glyph from the spec (`chrome.severity_icon`), drawn in its
+ *  severity colour; an item that is neither warning nor critical is info. */
+export const SEVERITY_GLYPH = {
+  ok: tokens.chrome.severity_icon.info,
+  warning: tokens.chrome.severity_icon.warning,
+  critical: tokens.chrome.severity_icon.critical,
+} as const;
 
 /** Spec key naming each pill source in the list. */
 export function pillSourceLabel(source: PillSource): string {
@@ -50,10 +59,17 @@ export function StatusPillList({
         ) : (
           <ul>
             {alerts.map((a) => {
-              const Icon = PILL_ICON[a.severity];
+              const glyph = SEVERITY_GLYPH[a.severity];
               return (
                 <li key={a.id} data-severity={a.severity}>
-                  <Icon className="fs-ico" style={{ color: PILL_COLOR[a.severity] }} aria-hidden="true" />
+                  <span
+                    className="fs-ico fs-pill-glyph"
+                    data-testid="status-pill-glyph"
+                    style={{ color: PILL_COLOR[a.severity] }}
+                    aria-hidden="true"
+                  >
+                    {glyph}
+                  </span>
                   <span className="fs-pill-item">{a.text}</span>
                   <span className="fs-pill-src">{pillSourceLabel(a.source)}</span>
                 </li>

@@ -502,5 +502,32 @@
     "expected": {
       "text": "Refused"
     }
+  },
+  {
+    "name": "template_key_unknown",
+    "input": {
+      "code": "unknown"
+    },
+    "expected": {
+      "text": "Refused: unknown"
+    }
+  },
+  {
+    "name": "template_key_not_ready",
+    "input": {
+      "code": "not_ready"
+    },
+    "expected": {
+      "text": "Refused: not_ready"
+    }
+  },
+  {
+    "name": "template_key_fly_here_prefix",
+    "input": {
+      "code": "fly_here_prefix"
+    },
+    "expected": {
+      "text": "Refused: fly_here_prefix"
+    }
   }
 ]

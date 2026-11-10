@@ -27,14 +27,20 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
-/** FC modes that fly a return or a landing on their own. */
+/** FC modes that fly a return or a landing on their own, the same list as
+ *  the agent's shared failsafe-mode table, by this app's unified names:
+ *  return RTL (PX4 AUTO.RTL decodes to it), SMART_RTL, QRTL, AUTO_RTL;
+ *  land LAND (PX4 AUTO.LAND), QLAND, LOITER_TO_QLAND (ArduPilot's
+ *  LOITER_ALT_QLAND), PRECLAND (PX4 AUTO.PRECLAND), AUTOLAND. */
 const RETURN_OR_LAND: Partial<Record<FlightMode, true>> = {
   RTL: true,
   SMART_RTL: true,
-  LAND: true,
   QRTL: true,
+  AUTO_RTL: true,
+  LAND: true,
   QLAND: true,
   LOITER_TO_QLAND: true,
+  PRECLAND: true,
   AUTOLAND: true,
 };
 

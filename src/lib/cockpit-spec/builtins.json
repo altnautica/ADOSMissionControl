@@ -11,7 +11,7 @@
   "confirm_kinds": {
     "tap": "Fires on tap",
     "hold": "Press and hold for ms; releasing early cancels",
-    "hold_confirm": "Press and hold for ms, then a confirm dialog"
+    "hold_confirm": "The emergency stop: press and hold for ms in the STOP sheet, which fires when the hold completes (no second confirm)"
   },
   "builtins": [
     {

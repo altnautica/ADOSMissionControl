@@ -177,7 +177,7 @@
     "controls.not_standard": "Controller layout not supported",
     "controls.pad.connected": "Pad{battery}",
     "controls.pad.native": "Native{battery}",
-    "controls.pad.none": "No pad",
+    "controls.pad.none": "No controller",
     "controls.pad.not_standard": "Not standard",
     "controls.pick_hint": "Pick a control on the drawing to change what it does.",
     "controls.press_a_control": "Press a control",
