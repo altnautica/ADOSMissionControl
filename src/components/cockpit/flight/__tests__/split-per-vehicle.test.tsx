@@ -12,7 +12,8 @@ import { useRef } from "react";
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import { SPLIT_DIVIDER, useCockpitViewStore } from "@/lib/cockpit/views";
-import { FlightFrame, FlightMapFrame } from "../FlightFrame";
+import { FlightFrame } from "../FlightFrame";
+import { FlightMapFrame } from "../FlightVideoFrame";
 
 const A = "split-a";
 const B = "split-b";

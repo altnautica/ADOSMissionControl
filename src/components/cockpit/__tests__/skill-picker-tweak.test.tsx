@@ -38,7 +38,7 @@ vi.mock("@/hooks/use-drone-plugin-contributions", () => ({
 import messages from "../../../../locales/en.json";
 import tokens from "@/lib/cockpit-spec/tokens.json";
 import { useSkillRegistry } from "@/lib/skills";
-import { SKILL_COLOR, SkillPicker, paramLabel } from "@/components/cockpit/v2/SkillPicker";
+import { SkillPicker, paramLabel } from "@/components/cockpit/v2/SkillPicker";
 import { closeFlightSheets } from "@/components/cockpit/flight/flight-sheet";
 
 const DRONE = "drone-1";
@@ -120,14 +120,29 @@ describe("skill picker Tweak panel", () => {
 });
 
 describe("skill picker colours", () => {
-  it("takes the skill colour from tokens.json state.skill", () => {
-    expect(SKILL_COLOR).toBe(tokens.state.skill);
+  /** `#RRGGBB` as the `rgb(r, g, b)` the DOM reports. */
+  function rgb(hex: string): string {
+    const n = (i: number) => parseInt(hex.slice(i, i + 2), 16);
+    return `rgb(${n(1)}, ${n(3)}, ${n(5)})`;
+  }
+
+  it("draws the active chip ring and its state text in tokens.json state.skill", () => {
+    // The DOM keeps the colour as written or as rgb(); either is the token.
+    const forms = [tokens.state.skill.toLowerCase(), rgb(tokens.state.skill)];
     setSkill("active");
     renderPicker();
     const chip = screen.getByTestId("skill-picker-chip");
-    expect(chip.getAttribute("style") ?? "").toMatch(/inset 0 0 0 2px/);
+    const shadow = chip.style.boxShadow.toLowerCase();
+    expect(shadow).toMatch(/inset 0 0 0 2px/);
+    expect(forms.some((c) => shadow.includes(c)), shadow).toBe(true);
     fireEvent.click(chip);
-    expect(screen.getByText("ACTIVE")).toBeTruthy();
+    expect(forms).toContain(screen.getByText("ACTIVE").style.color.toLowerCase());
+  });
+
+  it("draws no skill ring while no skill runs", () => {
+    setSkill("idle");
+    renderPicker();
+    expect(screen.getByTestId("skill-picker-chip").style.boxShadow).toBe("");
   });
 
   it("has no hex colour literal in the source", () => {

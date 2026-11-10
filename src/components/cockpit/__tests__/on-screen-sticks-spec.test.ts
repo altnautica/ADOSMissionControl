@@ -1,27 +1,30 @@
 /**
  * @license GPL-3.0-only
  *
- * The on-screen sticks read their width classes from `layout.json` and their
- * deadzone from `ds4.json` conditioning.
+ * The on-screen sticks show in the compact and expanded width classes
+ * (`layout.json` `on_screen_sticks.classes`) and condition a pad with the
+ * 0.08 radial deadzone (`ds4.json` `conditioning.radial_deadzone`).
  */
 
 import { describe, expect, it } from "vitest";
 
-import ds4Spec from "@/lib/cockpit-spec/ds4.json";
-import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { STICK_CLASSES, STICK_DEADZONE, padVector } from "@/components/cockpit/v2/OnScreenSticks";
 
 describe("on-screen sticks spec values", () => {
-  it("shows in the layout spec's width classes", () => {
-    expect(STICK_CLASSES).toEqual(layoutSpec.on_screen_sticks.classes);
+  it("shows in the compact and expanded width classes only", () => {
+    expect([...STICK_CLASSES]).toEqual(["compact", "expanded"]);
   });
 
-  it("uses the ds4 conditioning deadzone", () => {
-    expect(STICK_DEADZONE).toBe(ds4Spec.conditioning.radial_deadzone);
+  it("uses the 0.08 radial deadzone", () => {
+    expect(STICK_DEADZONE).toBe(0.08);
     const r = 100;
-    const inside = STICK_DEADZONE * r * 0.9;
-    expect(Math.hypot(...padVector(inside, 0, r))).toBe(0);
-    const [x] = padVector(r, 0, r);
+    // 7 px of a 100 px radius is inside the deadzone; 9 px is outside it.
+    expect(Math.hypot(...padVector(7, 0, r))).toBe(0);
+    expect(padVector(9, 0, r)[0]).toBeGreaterThan(0);
+    const [x, y] = padVector(r, 0, r);
     expect(x).toBeCloseTo(1, 5);
+    expect(y).toBeCloseTo(0, 5);
+    // Up on the pad is positive y.
+    expect(padVector(0, -r, r)[1]).toBeCloseTo(1, 5);
   });
 });

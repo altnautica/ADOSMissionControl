@@ -14,10 +14,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import viewsSpec from "@/lib/cockpit-spec/views.json";
 import { widthClassFor } from "@/lib/cockpit/width-class";
 import { FlightGridContext } from "../flight-context";
-import { SplitContext, SplitDivider, mapPlacement } from "../FlightFrame";
+import { SPLIT_DIVIDER, clampSplit } from "@/lib/cockpit/views";
+import { SplitContext, SplitDivider } from "../SplitDivider";
+import { mapPlacement } from "../FlightVideoFrame";
 import {
-  SPLIT_DIVIDER,
-  clampSplit,
   flightGrid,
   rectInside,
   rectsIntersect,
@@ -35,8 +35,8 @@ function gridAt(w: number, h: number, splitRatio?: number, following = false): F
 describe("split divider limits", () => {
   it("reads the spec's default and limits", () => {
     const d = viewsSpec.views.find((v) => v.id === "split") as { divider: { default: number; min: number; max: number } };
-    expect(SPLIT_DIVIDER).toEqual({ default: d.divider.default, min: d.divider.min, max: d.divider.max });
-    expect(SPLIT_DIVIDER).toEqual({ default: 0.5, min: 0.3, max: 0.7 });
+    expect(SPLIT_DIVIDER).toMatchObject({ default: d.divider.default, min: d.divider.min, max: d.divider.max });
+    expect(SPLIT_DIVIDER).toMatchObject({ default: 0.5, min: 0.3, max: 0.7 });
   });
 
   it("clamps a ratio to 0.3–0.7 and defaults a missing one to 0.5", () => {

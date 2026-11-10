@@ -11,12 +11,13 @@
  * @license GPL-3.0-only
  */
 
-import { useTranslations } from "next-intl";
 
 import { ModelPicker } from "@/components/vision/ModelPicker";
 import { VisionSummaryCard } from "@/components/vision/VisionSummaryCard";
 import { useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { cn } from "@/lib/utils";
+import { depthRangeText } from "./LayerLevelButton";
 import {
   useCockpitLayersStore,
   useVehicleLayers,
@@ -30,7 +31,6 @@ const DEPTH_STYLES: readonly DepthStyle[] = ["solid", "outline"];
 const MAX_ROWS = 12;
 
 export function VisionViewPanel({ droneId }: { droneId: string }) {
-  const t = useTranslations("cockpitLayers");
   const batch = useDisplayedDetectionBatch(droneId);
   const vl = useVehicleLayers(droneId);
   const setDepth = useCockpitLayersStore((s) => s.setDepth);
@@ -39,21 +39,19 @@ export function VisionViewPanel({ droneId }: { droneId: string }) {
   return (
     <aside className="flex h-full w-full flex-col gap-4 overflow-y-auto p-3 text-xs" data-testid="vision-view-panel">
       <section>
-        <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{t("detections")}</h3>
+        <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{specString("vision.detections")}</h3>
         {detections.length === 0 ? (
-          <p className="text-text-tertiary">{t("noDetections")}</p>
+          <p className="text-text-tertiary">{specString("vision.no_detections_camera")}</p>
         ) : (
           <ul className="flex flex-col gap-1" data-testid="vision-detection-list">
             {detections.slice(0, MAX_ROWS).map((d, i) => (
               <li
                 key={d.trackId ?? `i${i}`}
-                className="flex items-center justify-between rounded bg-white/5 px-2 py-1 font-mono"
+                className="rounded bg-white/5 px-2 py-1 font-mono tabular-nums"
               >
-                <span>
-                  {d.classLabel}
-                  {d.trackId != null && <span className="text-text-tertiary"> #{d.trackId}</span>}
-                </span>
-                <span className="tabular-nums text-text-secondary">{Math.round(d.confidence * 100)}%</span>
+                {d.trackId != null
+                  ? specString("vision.detection_row_track", { id: d.trackId, label: d.classLabel, pct: Math.round(d.confidence * 100) })
+                  : specString("vision.detection_row", { label: d.classLabel, pct: Math.round(d.confidence * 100) })}
               </li>
             ))}
           </ul>
@@ -61,31 +59,31 @@ export function VisionViewPanel({ droneId }: { droneId: string }) {
       </section>
 
       <section>
-        <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{t("model")}</h3>
+        <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{specString("vision.model")}</h3>
         <ModelPicker droneId={droneId} mode="compact" />
       </section>
 
       <section>
-        <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{t("depthOptions")}</h3>
-        <p className="mb-2 text-text-tertiary">{t("visionForced")}</p>
+        <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{specString("vision.depth")}</h3>
+        <p className="mb-2 text-text-tertiary">{specString("vision.forced_note")}</p>
         <div className="flex gap-1">
           {DEPTH_STYLES.map((v) => (
             <Choice key={v} on={vl.depthStyle === v} onClick={() => setDepth(droneId, v, vl.depthRange)}>
-              {t(`depthStyle.${v}`)}
+              {specString(`vision.depth_style.${v}`)}
             </Choice>
           ))}
         </div>
         <div className="mt-1 flex gap-1">
           {DEPTH_RANGES.map((v) => (
             <Choice key={v} on={vl.depthRange === v} onClick={() => setDepth(droneId, vl.depthStyle, v)}>
-              {t(`depthRange.${v}`)}
+              {depthRangeText(v)}
             </Choice>
           ))}
         </div>
       </section>
 
       <section>
-        <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{t("engine")}</h3>
+        <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{specString("vision.engine")}</h3>
         <VisionSummaryCard droneId={droneId} />
       </section>
     </aside>

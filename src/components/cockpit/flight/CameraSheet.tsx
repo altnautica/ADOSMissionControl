@@ -13,7 +13,6 @@
  */
 
 import { useRef } from "react";
-import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 import { useVideoStore } from "@/stores/video-store";
@@ -31,7 +30,6 @@ import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "./flight-she
 export const CAMERA_SHEET_TRIGGER = "[data-sheet-trigger='camera']";
 
 function VideoFigures({ droneId }: { droneId: string }) {
-  const t = useTranslations("cockpit.topRight");
   const demoFeed = useDemoFeedActive(droneId);
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const fps = useVideoStore((s) => s.fps);
@@ -44,14 +42,14 @@ function VideoFigures({ droneId }: { droneId: string }) {
     <p className="fs-figures" data-testid="fs-video-figures">
       <span>{resolution || "—"}</span>
       <span>
-        {fps === null ? "—" : Math.round(fps)} {t("fps")}
+        {fps === null ? "—" : Math.round(fps)} {specString("camera.fps")}
       </span>
       <span data-frame-age-source={frameAge?.source ?? "unknown"}>
-        {t("video")} {frameAge ? `+${frameAgeLabel(frameAge)}` : "—"}
+        {specString("cockpit.camera.video")} {frameAge ? `+${frameAgeLabel(frameAge)}` : "—"}
       </span>
-      <span title={t("netTitle")}>
+      <span title={specString("camera.net_title")}>
         {latencyMs === null ? "—" : Math.round(latencyMs)}
-        {t("msNet")}
+        {specString("camera.net")}
       </span>
     </p>
   );

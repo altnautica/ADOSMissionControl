@@ -84,7 +84,9 @@ export function nextView(id: CockpitViewId): CockpitViewId {
   return VIEW_CYCLE[(i + 1) % VIEW_CYCLE.length] ?? DEFAULT_VIEW;
 }
 
-/** The Split view's divider from the spec (the fallback keeps it centred). */
+/** The Split view's divider from the spec (the fallback keeps it centred).
+ * The one definition: the flight screen's grid, its divider and the view
+ * store all clamp with it. */
 export const SPLIT_DIVIDER: CockpitViewDivider = viewDef("split").divider ?? {
   draggable: false,
   default: 0.5,
@@ -92,9 +94,10 @@ export const SPLIT_DIVIDER: CockpitViewDivider = viewDef("split").divider ?? {
   max: 0.5,
 };
 
-/** A divider position clamped to the spec's range; non-finite → the default. */
-export function clampSplit(ratio: number): number {
-  if (!Number.isFinite(ratio)) return SPLIT_DIVIDER.default;
+/** A divider position clamped to the spec's range; no ratio, or a
+ * non-finite one, is the default. */
+export function clampSplit(ratio: number | null | undefined): number {
+  if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) return SPLIT_DIVIDER.default;
   return Math.min(SPLIT_DIVIDER.max, Math.max(SPLIT_DIVIDER.min, ratio));
 }
 

@@ -14,7 +14,6 @@
 
 import { useRef } from "react";
 import { useFlightSheet, useSheetDismiss } from "@/components/cockpit/flight/flight-sheet";
-import { useTranslations } from "next-intl";
 import { Layers } from "lucide-react";
 
 import { specString } from "@/lib/cockpit/spec-strings";
@@ -30,6 +29,11 @@ import {
 } from "@/stores/cockpit-layers-store";
 
 const DEPTH_RANGES: readonly DepthRange[] = ["off", "2", "5"];
+
+/** A depth range choice: Off, or its distance in metres. */
+export function depthRangeText(v: DepthRange): string {
+  return v === "off" ? specString("cockpit.level.off") : specString("cockpit.unit.m", { n: v });
+}
 const DEPTH_STYLES: readonly DepthStyle[] = ["solid", "outline"];
 
 export function LayerLevelButton({
@@ -42,13 +46,12 @@ export function LayerLevelButton({
   /** Offer the caret that opens the layer switches. */
   caret?: boolean;
 }) {
-  const t = useTranslations("cockpitLayers");
   const vl = useVehicleLayers(droneId);
   const cycleLevel = useCockpitLayersStore((s) => s.cycleLevel);
   const [open, setOpen] = useFlightSheet("layers");
   const menuRef = useRef<HTMLDivElement>(null);
   useSheetDismiss(menuRef, () => setOpen(false), "[data-sheet-trigger='layers']", open && caret);
-  const level = t(`level.${vl.level}`);
+  const level = specString(`cockpit.level.${vl.level}`);
 
   return (
     <div
@@ -98,7 +101,6 @@ export function LayerLevelButton({
 
 /** Every layer flag as a checkbox, then the depth style and range. */
 export function LayerFlags({ droneId }: { droneId: string }) {
-  const t = useTranslations("cockpitLayers");
   const vl = useVehicleLayers(droneId);
   const view = useCockpitView(droneId);
   const setLayer = useCockpitLayersStore((s) => s.setLayer);
@@ -108,7 +110,7 @@ export function LayerFlags({ droneId }: { droneId: string }) {
     <div data-testid="layer-flags">
       {LAYER_DEFS.map((d) => (
         <label key={d.id} className="flex min-h-12 cursor-pointer items-center justify-between gap-2 px-1 text-xs">
-          <span>{t(`layer.${d.id}`)}</span>
+          <span>{specString(`layer.name.${d.id}`)}</span>
           <input
             type="checkbox"
             role="menuitemcheckbox"
@@ -120,17 +122,17 @@ export function LayerFlags({ droneId }: { droneId: string }) {
           />
         </label>
       ))}
-      <div className="mt-2 border-t border-border-default pt-2 text-[11px] text-text-secondary">{t("depthOptions")}</div>
+      <div className="mt-2 border-t border-border-default pt-2 text-[11px] text-text-secondary">{specString("vision.depth")}</div>
       <Segment
         values={DEPTH_STYLES}
         selected={vl.depthStyle}
-        label={(v) => t(`depthStyle.${v}`)}
+        label={(v) => specString(`vision.depth_style.${v}`)}
         onSelect={(v) => setDepth(droneId, v, vl.depthRange)}
       />
       <Segment
         values={DEPTH_RANGES}
         selected={vl.depthRange}
-        label={(v) => t(`depthRange.${v}`)}
+        label={depthRangeText}
         onSelect={(v) => setDepth(droneId, vl.depthStyle, v)}
       />
     </div>

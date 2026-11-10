@@ -75,8 +75,10 @@ vi.mock("@/stores/cockpit-store", async () => {
 });
 
 import { CockpitView } from "@/components/cockpit/CockpitView";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { useDroneManager } from "@/stores/drone-manager";
+import { useCockpitViewStore } from "@/lib/cockpit/views";
 import { useUiStore } from "@/stores/ui-store";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 
@@ -174,7 +176,7 @@ describe("CockpitView", () => {
 
   it("starts a flight recording from the shutter in video mode", () => {
     const { getByRole, getByTestId } = renderCockpit();
-    fireEvent.click(getByRole("button", { name: messages.flightScreen.camera.video }));
+    fireEvent.click(getByRole("button", { name: specString("cockpit.camera.video") }));
     fireEvent.click(getByTestId("fs-shutter"));
     expect(recToggle).toHaveBeenCalledTimes(1);
   });
@@ -198,6 +200,24 @@ describe("CockpitView", () => {
       rec.isRecording = false;
       rec.startedAt = null;
       vi.useRealTimers();
+    }
+  });
+
+  it("draws the data layers on the main video only, never on the Map view's PiP", () => {
+    try {
+      useCockpitViewStore.setState({ byDrone: { "drone-1": "pilot" } });
+      const { container, unmount } = renderCockpit();
+      expect(container.querySelector("[data-zone='video'] [data-cockpit-layer='layer-stack']")).not.toBeNull();
+      unmount();
+
+      useCockpitViewStore.setState({ byDrone: { "drone-1": "map" } });
+      const pip = renderCockpit().container;
+      const card = pip.querySelector(".fs-video-pip");
+      expect(card).not.toBeNull();
+      expect(card!.querySelector("[data-testid='video-canvas']")).not.toBeNull();
+      expect(pip.querySelector("[data-cockpit-layer='layer-stack']")).toBeNull();
+    } finally {
+      useCockpitViewStore.setState({ byDrone: {} });
     }
   });
 });

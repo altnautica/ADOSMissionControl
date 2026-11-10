@@ -68,12 +68,8 @@ import { RightColumn } from "@/components/cockpit/flight/RightColumn";
 import { BottomRow } from "@/components/cockpit/flight/BottomRow";
 import { BottomLeftCard } from "@/components/cockpit/flight/BottomLeftCard";
 import { FollowDock } from "@/components/cockpit/flight/FollowDock";
-import {
-  FlightFrame,
-  FlightMapFrame,
-  FlightVideoFrame,
-  ZoneBox,
-} from "@/components/cockpit/flight/FlightFrame";
+import { FlightFrame, ZoneBox } from "@/components/cockpit/flight/FlightFrame";
+import { FlightMapFrame, FlightVideoFrame } from "@/components/cockpit/flight/FlightVideoFrame";
 import {
   CockpitLayoutContext,
   useCockpitContainerLayout,

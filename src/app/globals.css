@@ -900,9 +900,16 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-card[data-chip="true"] .fs-card-title { top: 8px; font-size: 8px; }
 .ados-cockpit .fs-dots { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1002; display: flex; justify-content: center; gap: 0; pointer-events: none; }
 .ados-cockpit .fs-dots button { width: 48px; height: 48px; padding: 0; display: grid; place-items: center; border: 0; background: transparent; cursor: pointer; pointer-events: auto; }
-.ados-cockpit .fs-card[data-chip="true"] .fs-dots button { width: 32px; height: 40px; }
+/* The map face's dots stay clear of the local map's zoom column (48 px at the right edge). */
+.ados-cockpit .fs-card[data-face="map"] .fs-dots { right: 48px; }
 .ados-cockpit .fs-dots button::before { content: ""; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--fs-text-dim); }
 .ados-cockpit .fs-dots button[aria-selected="true"]::before { background: var(--fs-text); }
+/* The chip's dots: one 48 px strip that steps to the next face. */
+.ados-cockpit .fs-card[data-chip="true"] .fs-dots { right: 0; }
+.ados-cockpit .fs-dots .fs-dots-step { width: 100%; height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.ados-cockpit .fs-dots .fs-dots-step::before { content: none; }
+.ados-cockpit .fs-dots .fs-dots-step > span { width: 6px; height: 6px; border-radius: 50%; background: var(--fs-text-dim); }
+.ados-cockpit .fs-dots .fs-dots-step > span[data-on="true"] { background: var(--fs-text); }
 .ados-cockpit .fs-card[data-chip="true"] { border-radius: 50%; }
 .ados-cockpit .fs-map-pane[data-split="map"] { border-left: 2px solid color-mix(in srgb, var(--fs-text) 30%, transparent); }
 .ados-cockpit .fs-divider { position: absolute; z-index: 27; cursor: col-resize; touch-action: none; }
@@ -1061,8 +1068,8 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 /* Keyboard focus ring: 2 px dashed ink, 3 px outside the box. */
 .tgt-layer .tgt-focus { stroke: var(--hud-ink); stroke-width: 2px; stroke-dasharray: 4 3; }
 /* Tags: mono plates on glass; filled TRACK and HOLD plates use black text.
-   Tag copy arrives in its canonical case (state and class words uppercase,
-   units `m` / `s` lowercase), so no text-transform is applied here. */
+   Tag copy mixes words with units (`m`, `s`) that must stay lowercase, so
+   the tag renders its text as given; no text-transform is applied here. */
 .tgt-layer .tgt-tag {
   position: absolute; box-sizing: border-box; display: inline-flex; align-items: center; white-space: nowrap;
   padding: calc(var(--hud-target-tag-pad) / 2) var(--hud-target-tag-pad); border-radius: var(--radius-sm, 4px);
@@ -1382,7 +1389,7 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .ados-cockpit .navpop-k { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-muted); }
 
 /* nav-source chip (safety band item 6) + its popover (modal layer) */
-.ados-cockpit .navchip-btn { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; pointer-events: auto; }
+.ados-cockpit .navchip-btn { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-transform: uppercase; cursor: pointer; pointer-events: auto; }
 .ados-cockpit .navchip-btn:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 3px; border-radius: 3px; }
 .ados-cockpit .navchip-q { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .12em; }
 .ados-cockpit .navpop {
@@ -1393,7 +1400,7 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .ados-cockpit .navpop-x { border: 0; background: none; color: var(--hud-muted); cursor: pointer; }
 .ados-cockpit .navpop-sets { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .ados-cockpit .navpop-sets th, .ados-cockpit .navpop-sets td { padding: 3px 4px; text-align: left; font-weight: 400; }
-.ados-cockpit .navpop-sets thead th { font-size: 9px; letter-spacing: .12em; color: var(--hud-muted); }
+.ados-cockpit .navpop-sets thead th { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--hud-muted); }
 .ados-cockpit .navpop-sets tr[data-active="true"] { background: color-mix(in oklch, var(--hud-good) 10%, transparent); }
 .ados-cockpit .navpop-active { font-size: 9.5px; font-weight: 600; letter-spacing: .12em; color: var(--hud-good); }
 .ados-cockpit .navpop-use { padding: 2px 6px; border: 1px solid var(--hud-hair); border-radius: 5px; background: transparent; color: var(--hud-ink-2); font: inherit; font-size: 9.5px; white-space: nowrap; cursor: pointer; }

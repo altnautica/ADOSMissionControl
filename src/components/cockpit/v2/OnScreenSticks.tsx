@@ -7,12 +7,13 @@
  * 120 px pads sit at the bottom corners in the spec's width classes; Mode 2:
  * left pad throttle (up climbs, centre holds) and yaw, right pad forward and
  * right. They send the same pilot `input` frames as a gamepad at 50 Hz while
- * touched, and `release` when let go or when the tab is hidden.
+ * touched, and `release` when let go (a lost pointer capture included), when
+ * the pads leave the screen mid-touch, or when the tab is hidden.
  *
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
@@ -24,6 +25,7 @@ import {
   sticksRouteToPilot,
   usePilotLinkStore,
 } from "@/lib/input/pilot-stream";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { radialDeadzone } from "@/lib/input/gamepad-axes";
 import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useCockpitPrefsStore } from "@/stores/cockpit-prefs-store";
@@ -49,26 +51,31 @@ export function padVector(dx: number, dy: number, radius: number): Vec {
   return radialDeadzone(x, y, STICK_DEADZONE);
 }
 
-function Pad({ side, onMove }: { side: "left" | "right"; onMove: (v: Vec | null) => void }) {
+type Side = "left" | "right";
+
+function Pad({ side, onMove }: { side: Side; onMove: (side: Side, v: Vec | null) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [knob, setKnob] = useState<Vec>([0, 0]);
+  // A pad leaving mid-touch (a controller connected) gets no pointer events
+  // any more: its stick goes neutral as it unmounts.
+  useEffect(() => () => onMove(side, null), [onMove, side]);
   const update = (e: ReactPointerEvent<HTMLDivElement>) => {
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
     const v = padVector(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2), r.width / 2);
     setKnob(v);
-    onMove(v);
+    onMove(side, v);
   };
   const end = () => {
     setKnob([0, 0]);
-    onMove(null);
+    onMove(side, null);
   };
   return (
     <div
       ref={ref}
       role="slider"
-      aria-label={side === "left" ? "Throttle and yaw" : "Forward and sideways"}
+      aria-label={specString(side === "left" ? "cockpit.sticks.left_aria" : "cockpit.sticks.right_aria")}
       aria-valuenow={Math.round(knob[1] * 100)}
       data-testid={`on-screen-stick-${side}`}
       className="relative touch-none select-none rounded-full border border-white/30 bg-black/35 backdrop-blur-sm"
@@ -100,7 +107,7 @@ export function OnScreenSticks({ droneId }: { droneId: string }) {
   const widthClass = useCockpitWidthClass();
   const routed = usePilotLinkStore((s) => s.connected && s.controlMode === "ados");
   const padConnected = usePadStatusStore((s) => s.connected);
-  const axes = useRef<{ left: Vec | null; right: Vec | null }>({ left: null, right: null });
+  const axes = useRef<Record<Side, Vec | null>>({ left: null, right: null });
   const [active, setActive] = useState(false);
 
   // While a pad is held: 50 Hz frames; on lift or a hidden tab: release.
@@ -121,19 +128,21 @@ export function OnScreenSticks({ droneId }: { droneId: string }) {
     };
   }, [active, droneId]);
 
-  const show = enabled && routed && !padConnected && STICK_CLASSES.includes(widthClass);
-  if (!show) return null;
-  const move = (side: "left" | "right") => (v: Vec | null) => {
+  // Stable, so a pad's unmount cleanup always reaches the live axes.
+  const move = useCallback((side: Side, v: Vec | null) => {
     axes.current[side] = v;
     setActive(axes.current.left !== null || axes.current.right !== null);
-  };
+  }, []);
+
+  const show = enabled && routed && !padConnected && STICK_CLASSES.includes(widthClass);
+  if (!show) return null;
   return (
     <>
       <div className="pointer-events-auto absolute bottom-6 left-6 z-30">
-        <Pad side="left" onMove={move("left")} />
+        <Pad side="left" onMove={move} />
       </div>
       <div className="pointer-events-auto absolute bottom-6 right-6 z-30">
-        <Pad side="right" onMove={move("right")} />
+        <Pad side="right" onMove={move} />
       </div>
     </>
   );

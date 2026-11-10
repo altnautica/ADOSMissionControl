@@ -34,7 +34,7 @@ export const PICKER_TABS = ["behavior", "camera", "navigation", "utility"] as co
 export type PickerTab = (typeof PICKER_TABS)[number];
 
 /** The skill state colour (`tokens.json` `state.skill`). */
-export const SKILL_COLOR = tokens.state.skill;
+const SKILL_COLOR = tokens.state.skill;
 
 /** A write is pending until the state echo; after this it reverts. */
 export const ECHO_TIMEOUT_MS = 3000;

@@ -80,7 +80,7 @@ export class LayerEngine {
   private targets: TargetScene | null = null;
   /** The shown detection batch's arrival, as a slot for {@link age}. */
   private readonly targetSlot = { receivedAt: 0 };
-  private chipText: LayerChipText = specLayerChipText();
+  private readonly chipText: LayerChipText = specLayerChipText();
   private readonly readFlight: (out: FlightContext) => void;
   private readonly flight: FlightContext = { mission: null, avoid: null, showLoaded: true };
 
@@ -181,12 +181,6 @@ export class LayerEngine {
   setOptions(opts: LayerOptions): void {
     this.opts = opts;
     this.relayout();
-  }
-
-  /** Localised chip text (set from the shell when the locale changes). */
-  setChipText(text: LayerChipText): void {
-    this.chipText = text;
-    this.invalidate();
   }
 
   setStyle(style: TargetStyle): void {

@@ -4,20 +4,20 @@
  * @module cockpit/flight/BottomLeftCard
  * @description The bottom-left card (cockpit spec `layout.json`
  * `bottom_left_card`): the map, the attitude radar or the obstacle radar,
- * switched by a horizontal swipe on the card or its page dots (the spec's
- * `switch`), never by arrows. The radar faces carry their own small title
- * inside the card; the map face draws its own header (the AUTO | LOCAL |
- * MAP frame toggle and its buttons), so the card's title stays off it and
- * the face is named by the card's accessible name. The map's own controls
- * (frame toggle, zoom, scale) belong to the
- * map face and leave with it. On a compact cockpit it is a small square chip
- * showing the same face.
+ * switched by a horizontal swipe on the card (a drag that starts on the
+ * map pans the map instead) or its page dots (the spec's `switch`), never
+ * by arrows. The radar faces carry their own small title inside the card;
+ * the map face draws its own header (the AUTO | LOCAL | MAP frame toggle
+ * and its buttons), so the card's title stays off it and the face is named
+ * by the card's accessible name. The map's own controls (frame toggle,
+ * zoom, scale) belong to the map face and leave with it. On a compact
+ * cockpit it is a small square chip showing the same face, its dots one
+ * touch-size strip that steps to the next face.
  *
  * @license GPL-3.0-only
  */
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { useTranslations } from "next-intl";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { specString } from "@/lib/cockpit/spec-strings";
@@ -46,7 +46,6 @@ export function cardFaceTitle(face: CardFace): string {
 const SWIPE_PX = 40;
 
 export function BottomLeftCard({ droneId }: { droneId: string }) {
-  const t = useTranslations("flightScreen.card");
   const grid = useFlightGrid();
   const rect = grid.zones.bottom_left_card;
   const [face, setFace] = useState<CardFace>(CARD_FACES[0] ?? "map");
@@ -55,8 +54,10 @@ export function BottomLeftCard({ droneId }: { droneId: string }) {
 
   const step = (by: number) =>
     setFace((f) => CARD_FACES[(CARD_FACES.indexOf(f) + by + CARD_FACES.length) % CARD_FACES.length]);
+  // Panning the map is not a card swipe: a drag that starts inside it stays
+  // with the map.
   const onDown = (e: ReactPointerEvent) => {
-    start.current = e.clientX;
+    start.current = (e.target as Element).closest?.(".mmap") ? null : e.clientX;
   };
   const onUp = (e: ReactPointerEvent) => {
     const from = start.current;
@@ -77,7 +78,7 @@ export function BottomLeftCard({ droneId }: { droneId: string }) {
       style={rectStyle(rect)}
       onPointerDownCapture={onDown}
       onPointerUpCapture={onUp}
-      aria-roledescription={t("roledescription")}
+      aria-roledescription={specString("cockpit.card.roledescription")}
       aria-label={title}
     >
       <div className="fs-card-face" data-testid={`fs-card-face-${face}`}>
@@ -94,19 +95,37 @@ export function BottomLeftCard({ droneId }: { droneId: string }) {
           {title}
         </span>
       )}
-      <div className="fs-dots" role="tablist" aria-label={t("switch")}>
-        {CARD_FACES.map((f) => (
+      {grid.cardIsChip ? (
+        // The chip is too small for three touch-size dots: one touch-size
+        // strip steps through the faces, the dots showing the page.
+        <div className="fs-dots">
           <button
-            key={f}
             type="button"
-            role="tab"
-            aria-selected={face === f}
-            aria-label={cardFaceTitle(f)}
-            data-testid={`fs-card-${f}`}
-            onClick={() => setFace(f)}
-          />
-        ))}
-      </div>
+            className="fs-dots-step"
+            aria-label={specString("cockpit.card.switch")}
+            data-testid="fs-card-step"
+            onClick={() => step(1)}
+          >
+            {CARD_FACES.map((f) => (
+              <span key={f} data-on={face === f} />
+            ))}
+          </button>
+        </div>
+      ) : (
+        <div className="fs-dots" role="tablist" aria-label={specString("cockpit.card.switch")}>
+          {CARD_FACES.map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={face === f}
+              aria-label={cardFaceTitle(f)}
+              data-testid={`fs-card-${f}`}
+              onClick={() => setFace(f)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

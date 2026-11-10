@@ -13,11 +13,11 @@ import { followState } from "./follow-fixtures";
 
 const DRONE = "node:frp-test";
 
-function renderPanel(widthClass: CockpitWidthClass) {
+function renderPanel(widthClass: CockpitWidthClass, variant?: "line" | "detail") {
   return render(
     <NextIntlClientProvider locale="en" messages={messages}>
       <CockpitLayoutContext.Provider value={{ widthClass, width: 1280, height: 720 }}>
-        <FollowRangePanel droneId={DRONE} />
+        <FollowRangePanel droneId={DRONE} variant={variant} />
       </CockpitLayoutContext.Provider>
     </NextIntlClientProvider>,
   );
@@ -94,5 +94,37 @@ describe("FollowRangePanel", () => {
     expect(screen.getByText("STALE")).toBeTruthy();
     expect(panel.textContent).not.toContain("10.2");
     expect(panel.querySelector(".frp-range")?.textContent).toBe(NO_DATA_GLYPH);
+  });
+
+  // The follow strip's readout and its sheet (FollowDock) force a variant.
+  it("keeps the strip's line variant on one line at expanded", () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState());
+    renderPanel("expanded", "line");
+    const panel = screen.getByTestId("follow-range-panel");
+    expect(panel.querySelector(".frp-line")).not.toBeNull();
+    expect(rows()).toEqual([]);
+    expect(screen.getByTestId("follow-range-value").textContent).toBe("10.2 m");
+    expect(panel.textContent).toContain("±0.3");
+    expect(panel.textContent).toContain("FOLLOWING");
+  });
+
+  it("blanks the line variant's range when stale, keeping its slot", () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState(), Date.now() - 3000);
+    renderPanel("expanded", "line");
+    expect(screen.getByTestId("follow-range-value").textContent).toBe(NO_DATA_GLYPH);
+    expect(screen.getByText("STALE")).toBeTruthy();
+  });
+
+  it("opens the sheet's detail variant as rows even on a compact cockpit", () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState());
+    renderPanel("compact", "detail");
+    expect(rows()).toEqual(["range", "interval", "height"]);
+    expect(screen.getByText("9.6 – 10.8 m")).toBeTruthy();
+  });
+
+  it("shows every row in the detail variant at expanded", () => {
+    useNavStreamStore.getState().setFollow(DRONE, followState());
+    renderPanel("expanded", "detail");
+    expect(rows()).toEqual(["range", "interval", "height", "geometry", "cues"]);
   });
 });

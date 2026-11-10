@@ -12,7 +12,7 @@ import type { LayerLevel } from "@/lib/hud/ar-layout";
 import type { AvoidState, MissionState } from "@/lib/hud/cockpit-frames";
 import type { DepthRange, DepthStyle } from "@/stores/cockpit-layers-store";
 
-/** The status chips the engine can draw; the shell passes localised text. */
+/** The status chips the engine can draw, in the shared spec text. */
 export type LayerChipText = Record<
   | "arUnavailable"
   | "arApprox"
@@ -24,8 +24,7 @@ export type LayerChipText = Record<
   string
 >;
 /** The chip texts from the spec (`layer.unavailable` with the layer's label,
- *  `layer.ar_approx`, `layer.depth_unscaled`): what the engine draws until the
- *  flight screen hands it the same values. */
+ *  `layer.ar_approx`, `layer.depth_unscaled`). */
 export function specLayerChipText(): LayerChipText {
   const label = (id: string) => (layersSpec.layers as { id: string; label: string }[]).find((l) => l.id === id)?.label ?? id;
   const unavailable = (layer: string) => specText("layer.unavailable", { layer });

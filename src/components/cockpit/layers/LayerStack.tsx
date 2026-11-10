@@ -23,8 +23,6 @@
 
 import { isDemoMode } from "@/lib/utils";
 import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import layersSpec from "@/lib/cockpit-spec/layers.json";
-import { specString } from "@/lib/cockpit/spec-strings";
 
 import { TargetController } from "@/components/cockpit/layers/TargetController";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
@@ -43,11 +41,6 @@ import {
 } from "@/lib/cockpit/layers/view-lease";
 import { useCockpitLayersStore, useVehicleLayers } from "@/stores/cockpit-layers-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
-
-/** A layer's label from `layers.json`. */
-function layerLabel(id: string): string {
-  return layersSpec.layers.find((l) => l.id === id)?.label ?? id;
-}
 
 /** The draw cap on a kiosk / TV, whose GPU also decodes the video. */
 const TV_FPS_CAP = 30;
@@ -95,20 +88,6 @@ export const LayerStack = memo(function LayerStack({ droneId, cameraId, view }: 
   const droneRef = useRef(droneId);
   droneRef.current = droneId;
   const [engine] = useState(() => new LayerEngine((out) => readFlight(droneRef.current, out)));
-  useEffect(() => {
-    // Layer chips read the shared spec text: "{layer} unavailable" with the
-    // layer's spec label.
-    const unavailable = (layer: string) => specString("layer.unavailable", { layer });
-    engine.setChipText({
-      arUnavailable: unavailable(specString("layer.name.ar")),
-      arApprox: specString("layer.ar_approx"),
-      depthUnavailable: unavailable(layerLabel("depth")),
-      depthUnscaled: specString("layer.depth_unscaled"),
-      surfacesUnavailable: unavailable(layerLabel("surfaces")),
-      obstaclesUnavailable: unavailable(layerLabel("obstacles")),
-      targetsUnavailable: unavailable(layerLabel("targets")),
-    });
-  }, [engine]);
 
   useEffect(() => {
     layerStackStats.commits += 1;

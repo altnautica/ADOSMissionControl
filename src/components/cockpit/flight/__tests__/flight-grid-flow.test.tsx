@@ -15,7 +15,7 @@ import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { FlightGridContext } from "../flight-context";
-import { FlightVideoFrame, placeholderTop } from "../FlightFrame";
+import { FlightVideoFrame, placeholderTop } from "../FlightVideoFrame";
 import { PLACEHOLDER_DROP_PX, flightGrid, flowColumn, videoRect } from "../flight-grid";
 
 afterEach(cleanup);

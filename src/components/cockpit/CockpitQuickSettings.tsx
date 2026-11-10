@@ -33,6 +33,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { X } from "lucide-react";
 
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
@@ -168,26 +169,29 @@ export function CockpitQuickSettings({
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
-        aria-label={t("title")}
+        aria-label={specString("cockpit.quick_settings")}
         tabIndex={-1}
         className="glass-panel relative flex h-full w-[360px] max-w-[90vw] flex-col outline-none"
       >
         <header className="flex items-center justify-between border-b border-border-default px-4 py-3">
           <div className="flex flex-col">
             <h3 className="text-sm font-semibold text-text-primary">
-              {t("title")}
+              {specString("cockpit.quick_settings")}
             </h3>
             <p className="text-[11px] text-text-tertiary">
               {focusPluginId ? t("subtitleFocused") : t("subtitle")}
             </p>
           </div>
+          {/* A 48 px hit area (layout.json touch_target.min) around the 28 px box. */}
           <button
             type="button"
             onClick={onClose}
             aria-label={t("close")}
-            className="flex h-7 w-7 items-center justify-center border border-border-default text-text-secondary transition-colors hover:border-accent-primary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+            className="group -my-2.5 -mr-2.5 flex h-12 w-12 shrink-0 items-center justify-center text-text-secondary focus:outline-none"
           >
-            <X size={15} aria-hidden="true" />
+            <span className="flex h-7 w-7 items-center justify-center border border-border-default transition-colors group-hover:border-accent-primary group-hover:text-text-primary group-focus-visible:ring-2 group-focus-visible:ring-accent-primary">
+              <X size={15} aria-hidden="true" />
+            </span>
           </button>
         </header>
 

@@ -27,7 +27,7 @@ import { useMinimapModeStore } from "@/stores/minimap-mode-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { BottomLeftCard, CARD_FACES } from "../BottomLeftCard";
 import { FlightGridContext } from "../flight-context";
-import { FlightVideoFrame } from "../FlightFrame";
+import { FlightVideoFrame } from "../FlightVideoFrame";
 import { flightGrid } from "../flight-grid";
 
 const DRONE = "node:card-faces-test";
@@ -53,9 +53,9 @@ function card(): HTMLElement {
 function mapControls(root: HTMLElement) {
   const q = within(root);
   return {
-    zoomIn: q.queryByRole("button", { name: messages.hud.map.zoomIn }),
-    zoomOut: q.queryByRole("button", { name: messages.hud.map.zoomOut }),
-    frameToggle: q.queryByRole("group", { name: messages.hud.map.modeLabel }),
+    zoomIn: q.queryByRole("button", { name: specString("cockpit.zoom.in") }),
+    zoomOut: q.queryByRole("button", { name: specString("cockpit.zoom.out") }),
+    frameToggle: q.queryByRole("group", { name: specString("minimap.mode_label") }),
     scale: root.querySelector(".lfmap-scale"),
   };
 }
