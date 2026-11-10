@@ -38,6 +38,7 @@ import { StatusPill } from "./StatusPill";
 import { BatteryCell, LinkCell } from "./TopBarCells";
 import { ControllerCell } from "./ControllerCell";
 import { FlightMenu } from "./FlightMenu";
+import { PreflightSheet } from "../PreflightSheet";
 import { useFlightSheet } from "./flight-sheet";
 import { useFlightGrid } from "./flight-context";
 import { rectStyle } from "./flight-grid";
@@ -190,6 +191,7 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
         </button>
       </div>
       {menuOpen && <FlightMenu droneId={droneId} hidden={hidden} onClose={closeMenu} />}
+      <PreflightSheet droneId={droneId} />
     </div>
   );
 }

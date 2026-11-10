@@ -59,7 +59,7 @@ export function StickControlChip({ droneId }: { droneId: string }) {
           </span>
           {mode === "ados" && (
             <span className="v" style={{ color: "inherit", fontSize: 11 }}>
-              {pilot?.inputSrc ?? specString("controls.pad.none")}
+              {pilot?.inputSrc ?? specString("controls.no_controller")}
             </span>
           )}
         </span>

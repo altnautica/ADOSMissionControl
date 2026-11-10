@@ -14,8 +14,10 @@
  * one-shot effects: it designates the followed track (and later its
  * re-acquired successor) in the selected-target store, pushes the
  * `follow.reacquired` / `follow.lost` events, and releases the designation
- * when the cycle restarts. The matching follow / nav / pose / scan / map feed
- * runs in `mock-nav` on the same clock, started and stopped from here.
+ * when the cycle restarts. Those effects run only while the demo pilot flies
+ * the Follow-Me skill; when it ends the stream drops its designation. The
+ * matching follow / nav / pose / scan / map feed runs in `mock-nav` on the
+ * same clock, started and stopped from here.
  *
  * One demo drone ({@link VISION_OFF_DEMO_DRONE}) models a node whose vision
  * engine is not running: instead of batches it records the agent's
@@ -45,6 +47,7 @@ import {
   type HudDemoState,
 } from "./mock-hud-script";
 import { demoActiveCameraId, mockNavStream } from "./mock-nav";
+import { mockPilot } from "./mock-pilot";
 
 /** The demo drone whose agent reports its vision engine unreachable. */
 export const VISION_OFF_DEMO_DRONE = "kilo-11";
@@ -64,6 +67,8 @@ class MockDetectionStream {
   private enteredState: string | null = null;
   /** The current drone models a node whose vision engine is not running. */
   private visionOff = false;
+  /** The follow skill flew at the last tick. */
+  private following = false;
 
   /** Start (or retarget) the stream onto a drone id. Idempotent per drone. */
   start(droneId: string): void {
@@ -95,6 +100,7 @@ class MockDetectionStream {
     this.droneId = null;
     this.visionOff = false;
     this.enteredState = null;
+    this.following = false;
   }
 
   isRunning(): boolean {
@@ -139,6 +145,15 @@ class MockDetectionStream {
       });
     }
 
+    // The follow-me journey's designation and events belong to the follow
+    // skill: outside it they stay quiet, and its end drops the designation.
+    if (!mockPilot.followSkillActive()) {
+      if (this.following) this.releaseDesignation(droneId);
+      this.following = false;
+      this.enteredState = null;
+      return;
+    }
+    this.following = true;
     const at = hudStateAt(tSec);
     const key = `${at.cycle}:${at.index}`;
     if (key === this.enteredState) return;

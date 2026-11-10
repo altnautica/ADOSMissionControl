@@ -19,7 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "r
 
 import { useFlightSheetStore } from "@/components/cockpit/flight/flight-sheet";
 import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
-import { useCockpitTips } from "@/hooks/use-cockpit-tips";
+import { useCockpitTips, type CockpitTipsUi } from "@/hooks/use-cockpit-tips";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { specString } from "@/lib/cockpit/spec-strings";
 import tipsJson from "@/lib/cockpit-spec/tips.json";
@@ -53,8 +53,6 @@ const MENU_SELECTOR = "[data-testid='fs-menu']";
 /** Panel width (px) and the height used before the panel is measured. */
 const TIP_W = 260;
 const TIP_H_GUESS = 88;
-/** How often anchors are measured, in ms. */
-const MEASURE_MS = 250;
 
 interface Measured {
   /** The layer's own box, the viewport tips are placed in. */
@@ -102,44 +100,51 @@ export function TipLayer({ droneId }: { droneId: string }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [m, setM] = useState<Measured | null>(null);
   const [tipH, setTipH] = useState(TIP_H_GUESS);
-  const sheetOpen = useFlightSheetStore((s) => s.open !== null);
-  // Overlays outside the sheet store count as open sheets too.
-  const inputOverlay = useSkillInputStore((s) => s.paletteOpen || s.editorOpen || s.radialOpen);
-  const quickOpen = useFlyQuickSettingsStore((s) => s.isOpen);
-  const confirmPending = useSkillConfirmStore((s) => s.pending !== null);
+  const tipHRef = useRef(TIP_H_GUESS);
+  const lastKey = useRef("");
   const vehicleClass = usePilotState(droneId).pilot?.vehicleClass ?? null;
-  const skillsAvailable = useSkillRegistry((s) => pickerSkills([...s.skills.values()], vehicleClass).length > 0);
 
-  useEffect(() => {
+  const placeIn = (at: Measured | null, anchor: TipRect | null | undefined, h: number): TipPlacement | null => {
+    if (!at || !anchor) return null;
+    const avoid = NEVER_COVER.map((z) => at.rects[z]).filter((r): r is TipRect => Boolean(r));
+    return placeTip(anchor, { w: TIP_W, h }, at.viewport, avoid);
+  };
+
+  // Called by the queue inside its own tick: the DOM and the open overlays
+  // are read at that instant, never from an earlier measurement.
+  const readUi = (): CockpitTipsUi => {
     const layer = layerRef.current;
-    if (!layer) return;
-    let last = "";
-    const tick = () => {
-      const next = measure(layer);
-      const key = JSON.stringify(next);
-      if (key === last) return;
-      last = key;
-      setM(next);
+    const now = layer ? measure(layer) : null;
+    if (now) {
+      const key = JSON.stringify(now);
+      if (key !== lastKey.current) {
+        lastKey.current = key;
+        setM(now);
+      }
+    }
+    // An anchor counts as shown only with room for the panel beside it.
+    const anchorsVisible: Record<string, boolean> = {};
+    for (const a of ANCHORS) anchorsVisible[a] = placeIn(now, now?.rects[a], tipHRef.current) !== null;
+    const input = useSkillInputStore.getState();
+    const skills = [...useSkillRegistry.getState().skills.values()];
+    return {
+      anchorsVisible,
+      // Overlays outside the sheet store count as open sheets too.
+      sheetOrMenuOpen:
+        useFlightSheetStore.getState().open !== null ||
+        now?.menuOpen === true ||
+        input.paletteOpen ||
+        input.editorOpen ||
+        input.radialOpen ||
+        useFlyQuickSettingsStore.getState().isOpen ||
+        useSkillConfirmStore.getState().pending !== null,
+      skillsAvailable: pickerSkills(skills, vehicleClass).length > 0,
+      gimbalAvailable: Boolean(now?.rects.gimbal_pad),
+      alertBannerVisible: Boolean(now?.rects.alert_stack),
     };
-    tick();
-    const id = setInterval(tick, MEASURE_MS);
-    return () => clearInterval(id);
-  }, []);
-
-  const avoid = m ? NEVER_COVER.map((z) => m.rects[z]).filter((r): r is TipRect => Boolean(r)) : [];
-  const placeAt = (anchor: TipRect | null | undefined): TipPlacement | null =>
-    m && anchor ? placeTip(anchor, { w: TIP_W, h: tipH }, m.viewport, avoid) : null;
-  // An anchor counts as shown only with room for the panel beside it.
-  const anchorsVisible: Record<string, boolean> = {};
-  for (const a of ANCHORS) anchorsVisible[a] = placeAt(m?.rects[a]) !== null;
-  const { tip, dismiss } = useCockpitTips(droneId, {
-    anchorsVisible,
-    sheetOrMenuOpen: sheetOpen || m?.menuOpen === true || inputOverlay || quickOpen || confirmPending,
-    skillsAvailable,
-    gimbalAvailable: Boolean(m?.rects.gimbal_pad),
-    alertBannerVisible: Boolean(m?.rects.alert_stack),
-  });
-  const placement = tip ? placeAt(m?.rects[tip.anchor]) : null;
+  };
+  const { tip, dismiss } = useCockpitTips(droneId, readUi);
+  const placement = tip ? placeIn(m, m?.rects[tip.anchor], tipH) : null;
   const drawn = tip !== null && placement !== null;
 
   // A tap on the anchor, or any controller button, dismisses a drawn tip.
@@ -161,7 +166,10 @@ export function TipLayer({ droneId }: { droneId: string }) {
 
   useLayoutEffect(() => {
     const h = panelRef.current?.offsetHeight ?? 0;
-    if (h > 0 && h !== tipH) setTipH(h);
+    if (h > 0 && h !== tipH) {
+      tipHRef.current = h;
+      setTipH(h);
+    }
   });
 
   const onPanelClick = (e: MouseEvent) => {

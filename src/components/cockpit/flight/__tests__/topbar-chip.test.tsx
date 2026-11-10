@@ -7,6 +7,8 @@
  * text alone). Its action button reads the spec's words.
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 
@@ -65,6 +67,20 @@ describe("flight-state chip in the top bar", () => {
     pin();
     renderWithIntl(<FlightStateChip droneId={DRONE} barWidth={1000} />);
     expect(screen.getByTestId("flight-state-chip").querySelector(".fs-chip-sub")?.textContent).toContain("ADOS PILOT");
+  });
+
+  it("puts the state on line 1 and the secondary facts on line 2, joined by ' · ', in the spec's casing", () => {
+    pin();
+    renderWithIntl(<FlightStateChip droneId={DRONE} barWidth={1000} />);
+    const text = screen.getByTestId("flight-state-chip-text").textContent!;
+    const title = screen.getByTestId("flight-state-chip").querySelector("button")!.getAttribute("title")!;
+    expect(screen.getByTestId("flight-state-chip-sub").textContent).toBe(title.slice(text.length + " · ".length));
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    // Every rule for exactly this selector, joined.
+    const rule = (sel: string) =>
+      [...css.matchAll(new RegExp(`\\.ados-cockpit ${sel} \\{([^}]*)\\}`, "g"))].map((m) => m[1]).join(";");
+    expect(rule("\\.fs-chip")).toContain("flex-direction: column");
+    expect(rule("\\.fs-chip-sub")).not.toContain("text-transform");
   });
 
   it("labels its take-control button from the spec", () => {

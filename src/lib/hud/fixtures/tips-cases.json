@@ -1220,5 +1220,326 @@
       "y": 372,
       "side": "left"
     }
+  },
+  {
+    "name": "place_status_pill_1280x800_beside_alert_stack",
+    "input": {
+      "place": {
+        "anchor": {
+          "x": 114,
+          "y": 14,
+          "w": 114,
+          "h": 36
+        },
+        "tip": {
+          "w": 260,
+          "h": 101
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 800
+        },
+        "avoid": [
+          {
+            "x": 1183,
+            "y": 12,
+            "w": 84,
+            "h": 40
+          },
+          {
+            "x": 18,
+            "y": 216,
+            "w": 56,
+            "h": 236
+          },
+          {
+            "x": 15,
+            "y": 12,
+            "w": 87,
+            "h": 40
+          },
+          {
+            "x": 366,
+            "y": 72,
+            "w": 560,
+            "h": 40
+          },
+          {
+            "x": 8,
+            "y": 8,
+            "w": 1264,
+            "h": 48
+          }
+        ]
+      }
+    },
+    "expected": {
+      "x": 41,
+      "y": 64,
+      "side": "bottom"
+    }
+  },
+  {
+    "name": "place_status_pill_1280x800_below_alert_stack_across_columns",
+    "input": {
+      "place": {
+        "anchor": {
+          "x": 114,
+          "y": 14,
+          "w": 114,
+          "h": 36
+        },
+        "tip": {
+          "w": 260,
+          "h": 101
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 800
+        },
+        "avoid": [
+          {
+            "x": 1183,
+            "y": 12,
+            "w": 84,
+            "h": 40
+          },
+          {
+            "x": 18,
+            "y": 216,
+            "w": 56,
+            "h": 236
+          },
+          {
+            "x": 15,
+            "y": 12,
+            "w": 87,
+            "h": 40
+          },
+          {
+            "x": 82,
+            "y": 72,
+            "w": 1128,
+            "h": 40
+          },
+          {
+            "x": 8,
+            "y": 8,
+            "w": 1264,
+            "h": 48
+          }
+        ]
+      }
+    },
+    "expected": {
+      "x": 82,
+      "y": 120,
+      "side": "bottom"
+    }
+  },
+  {
+    "name": "place_status_pill_1920x1080_beside_alert_stack",
+    "input": {
+      "place": {
+        "anchor": {
+          "x": 150,
+          "y": 19,
+          "w": 156,
+          "h": 48
+        },
+        "tip": {
+          "w": 346,
+          "h": 134
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080
+        },
+        "avoid": [
+          {
+            "x": 1791,
+            "y": 16,
+            "w": 112,
+            "h": 53
+          },
+          {
+            "x": 24,
+            "y": 295,
+            "w": 74,
+            "h": 314
+          },
+          {
+            "x": 20,
+            "y": 16,
+            "w": 115,
+            "h": 53
+          },
+          {
+            "x": 596,
+            "y": 96,
+            "w": 744,
+            "h": 53
+          },
+          {
+            "x": 11,
+            "y": 11,
+            "w": 1899,
+            "h": 64
+          }
+        ]
+      }
+    },
+    "expected": {
+      "x": 55,
+      "y": 83,
+      "side": "bottom"
+    }
+  },
+  {
+    "name": "place_status_pill_1920x1080_below_alert_stack_across_columns",
+    "input": {
+      "place": {
+        "anchor": {
+          "x": 150,
+          "y": 19,
+          "w": 156,
+          "h": 48
+        },
+        "tip": {
+          "w": 346,
+          "h": 134
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "w": 1920,
+          "h": 1080
+        },
+        "avoid": [
+          {
+            "x": 1791,
+            "y": 16,
+            "w": 112,
+            "h": 53
+          },
+          {
+            "x": 24,
+            "y": 295,
+            "w": 74,
+            "h": 314
+          },
+          {
+            "x": 20,
+            "y": 16,
+            "w": 115,
+            "h": 53
+          },
+          {
+            "x": 109,
+            "y": 96,
+            "w": 1718,
+            "h": 53
+          },
+          {
+            "x": 11,
+            "y": 11,
+            "w": 1899,
+            "h": 64
+          }
+        ]
+      }
+    },
+    "expected": {
+      "x": 55,
+      "y": 157,
+      "side": "bottom"
+    }
+  },
+  {
+    "name": "banner_hide_requeues_first_tip_waits_gap",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "alertBannerVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": 3000,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 5000
+    },
+    "expected": {
+      "kind": "wait",
+      "tipId": "status_pill",
+      "atMs": 7000
+    }
+  },
+  {
+    "name": "banner_hide_requeues_first_tip",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "alertBannerVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": 3000,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 7000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "status_pill",
+      "textKey": "tips.status_pill",
+      "anchor": "status_pill"
+    }
   }
 ]

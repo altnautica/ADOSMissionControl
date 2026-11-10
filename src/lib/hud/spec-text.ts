@@ -20,6 +20,11 @@ export function hasSpecText(key: string): boolean {
   return STRINGS[key] !== undefined;
 }
 
+/** Whether the spec text at `key` is a template that takes `{arg}`s. */
+export function specTakesArgs(key: string): boolean {
+  return /\{[a-z_]+\}/.test(STRINGS[key] ?? "");
+}
+
 /** A string by key with `{arg}` filled; an unknown key reads as itself. A
  *  missing arg fills as empty; `profile` and `mode` read upper case. */
 export function specText(key: string, args: Readonly<Record<string, unknown>> = {}): string {

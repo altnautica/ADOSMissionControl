@@ -105,7 +105,7 @@
     },
     "severity": ["ok", "warning", "critical"],
     "colors": { "ok": "chrome.severity_ok", "warning": "chrome.severity_warning", "critical": "chrome.severity_critical" },
-    "sources": ["pilot_readiness", "fc_prearm", "fc_status_text", "battery", "link", "nav_source", "storage", "pilot", "controller", "preflight"],
+    "sources": ["pilot_readiness", "fc_prearm", "fc_status_text", "battery", "link", "nav_source", "storage", "pilot", "controller", "preflight", "video"],
     "fc_status_text_min_severity": "warning",
     "fc_status_text_note": "MAVLink severity 4 (WARNING) or more severe (lower number)",
     "new_alert": "flash",

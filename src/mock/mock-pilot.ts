@@ -18,6 +18,7 @@
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { usePluginSkillHostStore } from "@/lib/skills/plugin-skill-host-store";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
+import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
 import {
   handlePilotServerFrame,
   setPilotSender,
@@ -111,6 +112,18 @@ export class MockPilot {
   pin(fields: Json): void {
     this.pins.set(fields);
     this.publish();
+  }
+
+  /**
+   * The pilot flies the Follow-Me skill: armed, owner `skill`, the skill the
+   * Follow-Me plugin's. Only then does the demo follow-me feed report, as an
+   * agent's does; a mission, a failsafe return or the ground report none.
+   */
+  followSkillActive(): boolean {
+    if (!this.droneId) return false;
+    const seen = this.pins.over(this.wire);
+    const skill = seen.skill as Json | null | undefined;
+    return seen.armed === true && seen.owner === "skill" && skill?.plugin_id === FOLLOW_ME_PLUGIN_ID;
   }
 
   /**

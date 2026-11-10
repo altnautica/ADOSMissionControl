@@ -118,10 +118,11 @@ export function FlightStateChip({
             {chip.text}
           </span>
           {secondary.length > 0 && (
-            <span className="fs-chip-sub" aria-hidden="true">
-              {secondary.map((s) => (
+            // Line 2: the secondary facts and the control mode, joined by " · ".
+            <span className="fs-chip-sub" data-testid="flight-state-chip-sub" aria-hidden="true">
+              {secondary.map((s, i) => (
                 <span key={s.text} style={{ color: s.color }}>
-                  {s.text}
+                  {i > 0 ? ` · ${s.text}` : s.text}
                 </span>
               ))}
             </span>

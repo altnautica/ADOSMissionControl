@@ -98,4 +98,35 @@ describe("TipLayer with the tip queue", () => {
     expect(screen.getByTestId("status-pill-list")).toBeTruthy();
     expect(screen.queryByTestId("cockpit-tip")).toBeNull();
   });
+
+  it("never draws the first tip over a banner that appears as the tip falls due", () => {
+    const bar = JSON.stringify({ x: 0, y: 0, w: 1000, h: 56 });
+    const pill = JSON.stringify({ x: 300, y: 8, w: 100, h: 40 });
+    const banner = JSON.stringify({ x: 420, y: 70, w: 300, h: 40 });
+    const Screen = ({ withBanner }: { withBanner: boolean }) => (
+      <div>
+        <div data-zone="top_bar" data-rect={bar}>
+          <div data-testid="status-pill" data-rect={pill}>pill</div>
+          <div data-testid="flight-state-chip" data-rect={JSON.stringify(CHIP)}>chip</div>
+        </div>
+        {withBanner && <div data-zone="alert_stack" data-rect={banner}>KILL</div>}
+        <TipLayer droneId="tips-race" />
+      </div>
+    );
+    const view = render(<Screen withBanner={false} />);
+    // One queue tick before the first tip is due, a banner comes up (the
+    // disarm after a kill raises one in the same instant).
+    for (let t = 0; t < tipsJson.rules.first_delay_ms - 250; t += 250) advance(250);
+    view.rerender(<Screen withBanner />);
+    let drawnOverBanner = false;
+    for (let t = 0; t < 2_000; t += 250) {
+      advance(250);
+      if (screen.queryByTestId("cockpit-tip")) drawnOverBanner = true;
+    }
+    expect(drawnOverBanner).toBe(false);
+    // Once the banner is gone the queue starts with the status pill's tip.
+    view.rerender(<Screen withBanner={false} />);
+    for (let t = 0; t < tipsJson.rules.gap_between_ms + 1_000; t += 250) advance(250);
+    expect(screen.getByTestId("cockpit-tip").dataset.tip).toBe("status_pill");
+  });
 });

@@ -124,18 +124,21 @@ export function baseAlerts(i: BaseAlertInputs): BaseAlert[] {
   return sortAlerts(out);
 }
 
-export type PillSource =
-  | "pilot_readiness"
-  | "fc_prearm"
-  | "fc_status_text"
-  | "battery"
-  | "link"
-  | "nav_source"
-  | "storage"
-  | "video"
-  | "pilot"
-  | "controller"
-  | "preflight";
+/** Every pill source, each worded by `cockpit.status.source.<source>`. */
+export const PILL_SOURCES = [
+  "pilot_readiness",
+  "fc_prearm",
+  "fc_status_text",
+  "battery",
+  "link",
+  "nav_source",
+  "storage",
+  "video",
+  "pilot",
+  "controller",
+  "preflight",
+] as const;
+export type PillSource = (typeof PILL_SOURCES)[number];
 export type PillSeverity = "ok" | "warning" | "critical";
 
 export interface PillAlert {

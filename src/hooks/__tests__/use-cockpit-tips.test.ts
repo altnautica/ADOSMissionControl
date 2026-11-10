@@ -55,7 +55,7 @@ describe("useCockpitTips", () => {
   });
 
   it("shows the status pill tip after the first delay, then the chip tip after the gap", () => {
-    const { result } = renderHook(() => useCockpitTips("d1", ui));
+    const { result } = renderHook(() => useCockpitTips("d1", () => ui));
     advance(tipsJson.rules.first_delay_ms - 300);
     expect(result.current.tip).toBeNull();
     advance(600);
@@ -69,7 +69,7 @@ describe("useCockpitTips", () => {
   });
 
   it("hides the tip on arm, marks it seen, and shows none while armed", () => {
-    const { result } = renderHook(() => useCockpitTips("d1", ui));
+    const { result } = renderHook(() => useCockpitTips("d1", () => ui));
     advance(3000);
     expect(result.current.tip?.id).toBe("status_pill");
     act(() => useDroneStore.setState({ armState: "armed" }));
@@ -81,25 +81,25 @@ describe("useCockpitTips", () => {
   it("waits for the controller tour, and a reset shows seen tips again", () => {
     useCockpitTipsStore.setState({ seen: ["status_pill"], openCount: 3 });
     useControlsStore.setState({ tourVisible: true });
-    const { result, unmount } = renderHook(() => useCockpitTips("d1", ui));
+    const { result, unmount } = renderHook(() => useCockpitTips("d1", () => ui));
     advance(5000);
     expect(result.current.tip).toBeNull();
     unmount();
 
     useControlsStore.setState({ tourVisible: false });
     useCockpitTipsStore.getState().reset();
-    const again = renderHook(() => useCockpitTips("d1", ui));
+    const again = renderHook(() => useCockpitTips("d1", () => ui));
     advance(3000);
     expect(again.result.current.tip?.id).toBe("status_pill");
   });
 
   it("auto-dismisses without marking seen, and shows the tip again on the next open", () => {
-    const { result, unmount } = renderHook(() => useCockpitTips("d1", ui));
+    const { result, unmount } = renderHook(() => useCockpitTips("d1", () => ui));
     advance(3000 + tipsJson.rules.auto_dismiss_ms);
     expect(result.current.tip?.id).not.toBe("status_pill");
     expect(useCockpitTipsStore.getState().seen).not.toContain("status_pill");
     unmount();
-    const again = renderHook(() => useCockpitTips("d1", ui));
+    const again = renderHook(() => useCockpitTips("d1", () => ui));
     advance(3000);
     expect(again.result.current.tip?.id).toBe("status_pill");
   });
@@ -107,7 +107,7 @@ describe("useCockpitTips", () => {
   it("counts one flight-screen open per mount under StrictMode", () => {
     configure({ reactStrictMode: true });
     try {
-      renderHook(() => useCockpitTips("d1", ui));
+      renderHook(() => useCockpitTips("d1", () => ui));
       expect(useCockpitTipsStore.getState().openCount).toBe(1);
     } finally {
       configure({ reactStrictMode: false });
@@ -117,12 +117,12 @@ describe("useCockpitTips", () => {
   it("offers the Fly here tip only from a fresh pilot state", () => {
     useCockpitTipsStore.setState({ seen: BEFORE_FLY_HERE, openCount: 0 });
     pinPilot({ surface_ops: ["goto"] }, 3_000);
-    const stale = renderHook(() => useCockpitTips("d1", ui));
+    const stale = renderHook(() => useCockpitTips("d1", () => ui));
     advance(5000);
     expect(stale.result.current.tip).toBeNull();
     stale.unmount();
 
-    const fresh = renderHook(() => useCockpitTips("d1", ui));
+    const fresh = renderHook(() => useCockpitTips("d1", () => ui));
     advance(tipsJson.rules.first_delay_ms - 500);
     act(() => pinPilot({ surface_ops: ["goto"] }, 0));
     advance(800);
@@ -131,13 +131,13 @@ describe("useCockpitTips", () => {
 
   it("does not read a stale pilot's armed flag as armed", () => {
     pinPilot({ armed: true, landed: true }, 3_000);
-    const { result } = renderHook(() => useCockpitTips("d1", ui));
+    const { result } = renderHook(() => useCockpitTips("d1", () => ui));
     advance(3000);
     expect(result.current.tip?.id).toBe("status_pill");
   });
 
   it("shows no tip while an alert banner is up, and hides one when a banner arrives", () => {
-    const { result, rerender } = renderHook((u: CockpitTipsUi) => useCockpitTips("d1", u), {
+    const { result, rerender } = renderHook((u: CockpitTipsUi) => useCockpitTips("d1", () => u), {
       initialProps: { ...ui, alertBannerVisible: true },
     });
     advance(5000);

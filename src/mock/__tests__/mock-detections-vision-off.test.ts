@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockDetectionStream, VISION_OFF_DEMO_DRONE } from "@/mock/mock-detections";
-import { seedFocusedCapabilities } from "@/mock/demo-seed/agent-system";
+import { seedFocusedCapabilities } from "@/mock/demo-seed/agent-focus";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useDroneManager } from "@/stores/drone-manager";

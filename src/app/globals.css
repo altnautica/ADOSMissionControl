@@ -773,13 +773,15 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
 .ados-cockpit .fs-sig > b { width: 3px; border-radius: 1px; }
 .ados-cockpit .fs-chip-wrap { flex: none; display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* Two lines, as on every cockpit: the state on line 1, the secondary facts
+   and the control mode on line 2, in the spec's own casing. */
 .ados-cockpit .fs-chip {
-  display: inline-flex; align-items: baseline; gap: 8px; height: 32px; padding: 0 10px; border-radius: var(--fs-radius-sm);
+  display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; height: 32px; padding: 0 10px; border-radius: var(--fs-radius-sm);
   background: color-mix(in srgb, var(--chip-color) 16%, transparent); box-shadow: inset 3px 0 0 var(--chip-color);
-  font-size: var(--fs-chip-px); font-weight: var(--fs-chip-weight); align-items: center; cursor: pointer; border: 0;
+  font-size: var(--fs-chip-px); font-weight: var(--fs-chip-weight); line-height: 1.15; cursor: pointer; border: 0;
 }
-.ados-cockpit .fs-chip-text { letter-spacing: .02em; }
-.ados-cockpit .fs-chip-sub { display: inline-flex; gap: 6px; font-size: var(--fs-label-px); text-transform: uppercase; letter-spacing: .06em; }
+.ados-cockpit .fs-chip-text { letter-spacing: .02em; max-width: 100%; }
+.ados-cockpit .fs-chip-sub { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-label-px); font-weight: 500; letter-spacing: .02em; }
 .ados-cockpit .fs-chip-action { min-height: 32px; }
 .ados-cockpit .fs-pill-wrap { position: relative; flex: 0 1 auto; min-width: 32px; display: flex; }
 .ados-cockpit .fs-pill {
@@ -832,7 +834,7 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-seg { display: flex; gap: 2px; padding: 2px; border-radius: var(--fs-radius-sm); background: color-mix(in srgb, var(--fs-text) 6%, transparent); }
 .ados-cockpit .fs-seg button { flex: 1; min-height: 32px; border-radius: 6px; border: 0; background: transparent; color: var(--fs-text-dim); cursor: pointer; font-weight: 600; }
 .ados-cockpit .fs-seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--fs-text) 16%, transparent); color: var(--fs-text); }
-.ados-cockpit .fs-pill-list { position: absolute; left: 0; top: calc(100% + 10px); width: min(360px, calc(100vw - 16px)); padding: 6px; }
+.ados-cockpit .fs-pill-list { width: min(360px, calc(100vw - 16px)); max-height: calc(100% - var(--fs-bar-b, 0px) - 16px); overflow-y: auto; padding: 6px; }
 .ados-cockpit .fs-link-pop { display: flex; flex-direction: column; gap: 4px; min-width: 140px; padding: 10px 12px; }
 .ados-cockpit .fs-pill-list li { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 8px; }
 .ados-cockpit .fs-pill-list li + li { border-top: 1px solid var(--fs-border); }
@@ -841,6 +843,13 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 .ados-cockpit .fs-camera { display: flex; flex-direction: column; gap: 8px; }
 .ados-cockpit .fs-figures { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--fs-label-px); color: var(--fs-text-dim); font-variant-numeric: tabular-nums; }
 .ados-cockpit .fs-camera-sheet { position: absolute; width: 260px; max-height: calc(100% - var(--fs-bar-b, 0px) - 16px); overflow-y: auto; padding: 10px; }
+/* emergency stop confirm: a sheet below the top bar beside the right column */
+.ados-cockpit .fs-stop-sheet { z-index: 60; width: min(320px, calc(100vw - 16px)); display: flex; flex-direction: column; gap: 10px; padding: 10px; border-color: var(--fs-stop-bg); }
+.ados-cockpit .fs-stop-sheet-body { font-size: var(--fs-top-px); color: var(--fs-text); }
+.ados-cockpit .fs-stop-hold { position: relative; overflow: hidden; width: 100%; padding: 0 12px; border-radius: var(--fs-radius-sm); border: 2px solid var(--fs-stop-bg); background: transparent; color: var(--fs-text); font-weight: 700; font-size: var(--fs-top-px); touch-action: none; user-select: none; cursor: pointer; }
+.ados-cockpit .fs-stop-hold:focus-visible { outline: 3px solid var(--fs-text); outline-offset: 2px; }
+.ados-cockpit .fs-stop-hold-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--fs-stop-bg) 45%, transparent); }
+.ados-cockpit .fs-stop-hold-label { position: relative; }
 .ados-cockpit .fs-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -6px -6px 6px 0; }
 .ados-cockpit .fs-sheet-head h2 { font-size: var(--fs-top-px); font-weight: 600; margin: 0; }
 .ados-cockpit .fs-sheet-close { display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--fs-radius-sm); background: transparent; color: var(--fs-text); cursor: pointer; }

@@ -12,7 +12,6 @@ import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 
 vi.mock("../CameraSheet", () => ({ CameraPanel: () => <div data-testid="camera-panel" /> }));
 vi.mock("../../StickControlChip", () => ({ StickControlChip: () => <div data-testid="stick-control" /> }));
-vi.mock("../../PreflightChip", () => ({ PreflightChip: () => <div data-testid="preflight-chip" /> }));
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import { FlightTopBar } from "../FlightTopBar";
@@ -92,6 +91,21 @@ describe("Menu in the top bar", () => {
     expect(screen.queryByTestId("fs-menu")).toBeNull();
     expect(useFlightSheetStore.getState().open).toBe("mode");
     expect(screen.getByTestId("mode-sheet")).toBeTruthy();
+  });
+
+  it("opens the pre-flight checklist sheet from the Pre-flight row", () => {
+    mount();
+    const menu = openMenu();
+    fireEvent.click(within(menu).getByTestId("fs-menu-preflight"));
+    expect(screen.queryByTestId("fs-menu")).toBeNull();
+    expect(useFlightSheetStore.getState().open).toBe("preflight");
+    const sheet = screen.getByTestId("preflight-sheet");
+    expect(sheet.parentElement).toBe(screen.getByTestId("flight-screen"));
+    // A press inside the sheet keeps it open; Escape closes it.
+    fireEvent.pointerDown(sheet);
+    expect(screen.getByTestId("preflight-sheet")).toBeTruthy();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByTestId("preflight-sheet")).toBeNull();
   });
 
   it("opens the navigation source's popover from the Menu once the chip has moved there", () => {

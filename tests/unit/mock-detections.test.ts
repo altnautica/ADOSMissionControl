@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mockDetectionStream } from "@/mock/mock-detections";
+import { mockPilot } from "@/mock/mock-pilot";
 import { REACQUIRED_TRACK, TARGET_TRACK } from "@/mock/mock-hud-script";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useSelectedTargetStore } from "@/stores/selected-target-store";
@@ -23,6 +24,7 @@ describe("mock detection stream", () => {
 
   afterEach(() => {
     mockDetectionStream.stop();
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -99,6 +101,8 @@ describe("mock detection stream", () => {
   });
 
   it("designates, re-designates and releases along the scripted cycle", () => {
+    // The demo designates only while its pilot flies the Follow-Me skill.
+    vi.spyOn(mockPilot, "followSkillActive").mockReturnValue(true);
     mockDetectionStream.start("drone-1");
     vi.advanceTimersByTime(8_100);
     let designated = useSelectedTargetStore.getState().designated;
@@ -121,6 +125,8 @@ describe("mock detection stream", () => {
   });
 
   it("releases its designation on stop", () => {
+    // The demo designates only while its pilot flies the Follow-Me skill.
+    vi.spyOn(mockPilot, "followSkillActive").mockReturnValue(true);
     mockDetectionStream.start("drone-1");
     vi.advanceTimersByTime(8_100);
     expect(useSelectedTargetStore.getState().designated).not.toBeNull();

@@ -13,7 +13,7 @@ import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 
 vi.mock("../CameraSheet", () => ({ CameraPanel: () => <div data-testid="camera-panel" /> }));
 vi.mock("../../StickControlChip", () => ({ StickControlChip: () => <div data-testid="stick-control" /> }));
-vi.mock("../../PreflightChip", () => ({ PreflightChip: () => <div data-testid="preflight-chip" /> }));
+vi.mock("../../PreflightSheet", () => ({ PREFLIGHT_SHEET: "preflight", PreflightMenuRow: () => <div data-testid="preflight-row" />, PreflightSheet: () => null }));
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
 import { FlightTopBar, TOP_BAR_OVERFLOW, hiddenAt } from "../FlightTopBar";

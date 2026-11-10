@@ -1,9 +1,10 @@
 /**
  * @module protocol/extended-sys-state-request.test
- * @description On connect the adapter asks the flight controller once for
+ * @description On connect, and on every stream re-request (link restored or
+ * flight-controller reboot), the adapter asks the flight controller for
  * EXTENDED_SYS_STATE at 1 Hz (MAV_CMD_SET_MESSAGE_INTERVAL), the landed state
  * Disarm gates on. A refusal is ignored: the connection carries on and the
- * request is not repeated.
+ * request is not repeated until the next re-request.
  *
  * @license GPL-3.0-only
  */
@@ -80,6 +81,12 @@ function commandAck(command: number, result: number): Uint8Array {
   return buildFrame(77, p, 1, 1, 0);
 }
 
+function systemTime(timeBootMs: number): Uint8Array {
+  const p = new Uint8Array(12);
+  new DataView(p.buffer).setUint32(8, timeBootMs, true);
+  return buildFrame(2, p, 1, 1, 0);
+}
+
 const open: MAVLinkAdapter[] = [];
 
 async function connected(): Promise<{ adapter: MAVLinkAdapter; link: FakeTransport }> {
@@ -116,6 +123,34 @@ describe("landed-state stream on connect", () => {
     link.emit(commandAck(SET_MESSAGE_INTERVAL, MAV_RESULT_DENIED));
     await Promise.resolve();
     expect(adapter.isConnected).toBe(true);
+    expect(landedStateRequests(link)).toHaveLength(1);
+  });
+
+  it("asks again after the flight controller reboots", async () => {
+    const { link } = await connected();
+    link.emit(systemTime(60_000));
+    link.emit(systemTime(61_000));
+    expect(landedStateRequests(link)).toHaveLength(1);
+    // time_boot_ms going backwards: the FC rebooted and lost the interval.
+    link.emit(systemTime(500));
+    expect(landedStateRequests(link)).toEqual([
+      { command: SET_MESSAGE_INTERVAL, params: [EXTENDED_SYS_STATE, 1_000_000, 0, 0, 0, 0, 0] },
+      { command: SET_MESSAGE_INTERVAL, params: [EXTENDED_SYS_STATE, 1_000_000, 0, 0, 0, 0, 0] },
+    ]);
+  });
+
+  it("does not double-send when the PX4 stream set already carries it", async () => {
+    useSettingsStore.setState({ gcsManagesTelemetryRates: true });
+    const link = new FakeTransport();
+    const adapter = new MAVLinkAdapter();
+    open.push(adapter);
+    const pending = adapter.connect(link);
+    const hb = new Uint8Array(9);
+    hb[4] = 2;
+    hb[5] = 12; // PX4
+    hb[8] = 3;
+    link.emit(buildFrame(0, hb, 1, 1, 0));
+    await pending;
     expect(landedStateRequests(link)).toHaveLength(1);
   });
 });

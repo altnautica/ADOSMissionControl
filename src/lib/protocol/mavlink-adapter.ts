@@ -23,6 +23,7 @@ import type { MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat } from './encoders'
 import { CommandQueue } from './command-queue'
 import { TELEMETRY_STALE_MS } from '@/lib/telemetry/freshness'
+import { useSettingsStore } from '@/stores/settings-store'
 import { createFirmwareHandler } from './firmware/ardupilot'
 import { createCallbackStore, bindCallbackMethods } from './mavlink-adapter-callbacks'
 import {
@@ -199,9 +200,6 @@ export class MAVLinkAdapter implements DroneProtocol {
     // before this connection.
     this.sendCommandLong(512, [49, 0, 0, 0, 0, 0, 0]).catch(() => {})
     this.sendCommandLong(512, [148, 0, 0, 0, 0, 0, 0]).catch(() => {})
-    // EXTENDED_SYS_STATE (245) at 1 Hz is the flight controller's landed state,
-    // which Disarm gates on; a refusal or no answer just leaves it unknown.
-    this.sendCommandLong(511, [245, 1_000_000, 0, 0, 0, 0, 0]).catch(() => {})
     this.camera.start()
     // COMPONENT_METADATA (397) is a PX4-only "component information" message;
     // ArduPilot does not implement it, so only request it for PX4 vehicles.
@@ -259,6 +257,13 @@ export class MAVLinkAdapter implements DroneProtocol {
     } catch (err) {
       console.warn('[MAVLinkAdapter] stream-rate request failed:', err)
     }
+    // EXTENDED_SYS_STATE (245) at 1 Hz is the flight controller's landed state,
+    // which Disarm gates on. A reboot drops the interval, so it rides every
+    // re-request; the PX4 stream set already carries it when the GCS manages
+    // rates. A refusal or no answer just leaves the landed state unknown.
+    const px4Streams = this.st.firmwareHandler?.firmwareType === 'px4'
+      && useSettingsStore.getState().gcsManagesTelemetryRates
+    if (!px4Streams) this.sendCommandLong(511, [245, 1_000_000, 0, 0, 0, 0, 0]).catch(() => {})
   }
 
   async disconnect(): Promise<void> {

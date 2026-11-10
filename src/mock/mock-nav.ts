@@ -172,6 +172,18 @@ export class MockNavStream {
   private tickFollow(): void {
     const droneId = this.droneId;
     if (!droneId) return;
+    // Follow-me reports only while its skill flies; once it ends, the last
+    // report goes too, so no follow chrome outlives the skill.
+    if (!mockPilot.followSkillActive()) {
+      useNavStreamStore.setState((s) => {
+        const feed = s.byDrone[droneId];
+        if (!feed?.follow) return s;
+        const rest = { ...feed };
+        delete rest.follow;
+        return { byDrone: { ...s.byDrone, [droneId]: rest } };
+      });
+      return;
+    }
     const loop = demoLoopAt(Date.now() / 1000);
     const yaw = useTelemetryStore.getState().attitude.latest()?.yaw ?? (loop.yawRad * 180) / Math.PI;
     const mode = usePluginConfigCache.getState().values[pluginConfigKey(droneId, FOLLOW_ME_PLUGIN_ID)]

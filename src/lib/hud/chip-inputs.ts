@@ -62,6 +62,16 @@ export function goalDistanceM(
   return Math.hypot(goal[0] - lp.x, goal[1] - lp.y);
 }
 
+/** The FC's LOCAL_POSITION_NED older than this is not used (ms). */
+export const LOCAL_POSITION_FRESH_MS = 2000;
+
+/** The local position while its `age_ms` is at most
+ *  `LOCAL_POSITION_FRESH_MS`, else null (an unknown age is not fresh). The
+ *  agent passes a local position through until it is 5 s old. */
+export function freshLocalPos(lp: { x: number; y: number; age_ms?: number | null } | null | undefined): { x: number; y: number } | null {
+  return lp && typeof lp.age_ms === "number" && lp.age_ms <= LOCAL_POSITION_FRESH_MS ? { x: lp.x, y: lp.y } : null;
+}
+
 /** What a surface knows beside the pilot kind. A surface without one of
  *  these passes null (and 0 for `arAgeMs` with no frame). */
 export interface ChipContext {

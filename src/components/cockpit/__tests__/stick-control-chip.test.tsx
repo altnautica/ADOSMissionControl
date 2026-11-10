@@ -33,4 +33,10 @@ describe("StickControlChip", () => {
     expect(sw.getAttribute("aria-label")).toBe(specString("cockpit.sticks.to_fc"));
     expect(screen.getByTestId("cockpit-stick").dataset.route).toBe("fc");
   });
+
+  it("in ados control with no input session says No controller, the same words as the controller cell", () => {
+    pilotState.pilot = { controlMode: "ados", inputSrc: null };
+    render(<StickControlChip droneId="d1" />);
+    expect(screen.getByTestId("cockpit-stick").textContent).toContain(specString("controls.no_controller"));
+  });
 });

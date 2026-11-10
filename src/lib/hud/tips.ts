@@ -47,9 +47,12 @@ export interface TipsContext {
   /** The tip on screen now, and since when. */
   shownTipId: string | null;
   shownAtMs: number | null;
-  /** Tips hidden on this screen open without being seen (auto-dismissed, or
-   *  hidden when they stopped being allowed): not offered again until the
-   *  next open. */
+  /** Tips auto-dismissed on this screen open without being seen: not
+   *  offered again until the next open. A tip hidden because it stopped
+   *  being allowed for a moment (a banner, a sheet, a menu, the tour, its
+   *  anchor gone) is not listed: it goes back to the head of the queue and
+   *  shows again `gap_between_ms` after it was hidden, once allowed. Record
+   *  a hidden tip here only when `hiddenThisOpenAfter` says so. */
   hiddenThisOpen?: readonly string[];
   /** An alert banner or countdown shows in the top-centre alert stack.
    *  Omitted reads as none showing. */
@@ -61,6 +64,13 @@ export type TipDecision =
   | { kind: "wait"; tipId: string; atMs: number }
   | { kind: "show"; tipId: string; textKey: string; anchor: string }
   | { kind: "hide"; tipId: string; markSeen: boolean; reason: "auto_dismiss" | "arm" | "not_allowed" };
+
+/** Whether a decision puts its tip in `hiddenThisOpen`: only an unseen
+ *  auto-dismissal does. Arming marks the tip seen, and a tip hidden because
+ *  it stopped being allowed stays in the queue. */
+export function hiddenThisOpenAfter(d: TipDecision): boolean {
+  return d.kind === "hide" && d.reason === "auto_dismiss";
+}
 
 const CONDITION_FIELDS: Readonly<Record<string, keyof TipsContext>> = {
   armed: "armed",

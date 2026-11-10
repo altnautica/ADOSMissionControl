@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { nextTip, type TipsContext } from "@/lib/hud/tips";
+import { hiddenThisOpenAfter, nextTip, type TipsContext } from "@/lib/hud/tips";
 import { specText } from "@/lib/hud/spec-text";
 import { gotoAdvertised } from "@/lib/hud/fly-here-offer";
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
@@ -85,7 +85,12 @@ export function tipsContext(
   };
 }
 
-export function useCockpitTips(droneId: string, ui: CockpitTipsUi): CockpitTips {
+/**
+ * `readUi` is called inside every queue tick, so the anchors and the alert
+ * stack it reports are measured at the same instant as the arm facts: a
+ * banner that appears with a disarm is seen before a tip is drawn over it.
+ */
+export function useCockpitTips(droneId: string, readUi: () => CockpitTipsUi): CockpitTips {
   const { pilot, receivedAt } = usePilotState(droneId);
   const armState = useDroneStore((s) => s.armState);
   const tourVisible = useControlsStore((s) => s.tourVisible);
@@ -117,13 +122,15 @@ export function useCockpitTips(droneId: string, ui: CockpitTipsUi): CockpitTips 
       };
       const o = open.current;
       const state = useCockpitTipsStore.getState();
-      const d = nextTip(state, tipsContext(ui, facts, o), now);
+      const d = nextTip(state, tipsContext(readUi(), facts, o), now);
       if (d.kind === "show") {
         if (o.shown?.id !== d.tipId) o.shown = { id: d.tipId, anchor: d.anchor, at: now };
         setTip((t) => (t?.id === d.tipId ? t : { id: d.tipId, anchor: d.anchor, text: specText(d.textKey) }));
       } else if (d.kind === "hide") {
         if (d.markSeen) state.dismiss(d.tipId);
-        else o.hidden = [...o.hidden, d.tipId];
+        // Only an unseen auto-dismissal waits for the next open; a tip hidden
+        // because it stopped being allowed stays at the head of the queue.
+        if (hiddenThisOpenAfter(d)) o.hidden = [...o.hidden, d.tipId];
         o.shown = null;
         o.lastDismissedAt = now;
         setTip(null);

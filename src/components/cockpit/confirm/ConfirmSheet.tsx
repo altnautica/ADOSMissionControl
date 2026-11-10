@@ -37,6 +37,7 @@ import { recordSafetyOverride, translatePolicyText } from "./confirm-text";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { BELOW_TOP_BAR, closeFlightSheets, useFlightRoot } from "../flight/flight-sheet";
 import { createPortal } from "react-dom";
+import { StopSheet } from "./StopSheet";
 
 interface ConfirmSheetProps {
   policy: ConfirmPolicy;
@@ -62,6 +63,10 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
   const gestureEnabled = !checklistIncomplete || override;
 
   const [altitudeM, setAltitudeM] = useState(policy.altitude?.defaultM ?? 0);
+
+  // On the flight screen the emergency stop has its own sheet (no guard window).
+  const flightRoot = useFlightRoot();
+  const stopSheet = flightRoot !== null && policy.gesture === "guarded";
 
   // Guarded tier: the window opens with the sheet.
   const [guardEndsAt] = useState(() => Date.now() + GUARD_WINDOW_MS);
@@ -98,7 +103,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
   // The guard lapses unless a hold is running when its window closes; a hold
   // started inside the window is allowed to finish.
   useEffect(() => {
-    if (policy.gesture !== "guarded" || hold.holding) return;
+    if (policy.gesture !== "guarded" || hold.holding || stopSheet) return;
     const remaining = guardEndsAt - Date.now();
     if (remaining <= 0) {
       resolve(false);
@@ -112,7 +117,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
       clearTimeout(lapse);
       clearInterval(tick);
     };
-  }, [policy.gesture, hold.holding, guardEndsAt, resolve]);
+  }, [policy.gesture, hold.holding, guardEndsAt, resolve, stopSheet]);
 
   // A guarded hold counts down the time left to cut the motors.
   const [holdLeftMs, setHoldLeftMs] = useState(holdMs);
@@ -159,10 +164,14 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
   // On the flight screen the dialog sits below the top bar over a
   // translucent scrim, so the picture stays visible and STOP keeps the first
   // press; it replaces any open flight-screen sheet.
-  const flightRoot = useFlightRoot();
   useEffect(() => {
     if (flightRoot) closeFlightSheets();
   }, [flightRoot]);
+
+  if (stopSheet && flightRoot) {
+    const stop = <StopSheet hold={hold} holdMs={holdMs} holdLeftMs={holdLeftMs} sheetRef={sheetRef} onCancel={() => resolve(false)} />;
+    return createPortal(stop, flightRoot);
+  }
 
   const dialog = (
     <div

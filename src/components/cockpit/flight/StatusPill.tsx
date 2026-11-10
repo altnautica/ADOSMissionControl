@@ -19,7 +19,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CircleCheck, OctagonAlert, TriangleAlert } from "lucide-react";
 
 import { specString } from "@/lib/cockpit/spec-strings";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
@@ -43,6 +42,7 @@ import {
 import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlightSheet } from "./flight-sheet";
+import { PILL_COLOR, PILL_ICON, StatusPillList } from "./StatusPillList";
 
 export type { PillAlert } from "@/lib/hud/status-pill";
 
@@ -73,12 +73,6 @@ const PREFLIGHT_SOURCE: Readonly<Record<string, PillSource>> = {
   nav_source: "nav_source",
   controller: "controller",
 };
-
-/** Spec key naming each pill source in the list. The video source reuses
- *  the camera's "Video" word; every other source has its own key. */
-export function pillSourceLabel(source: PillSource): string {
-  return specString(source === "video" ? "cockpit.camera.video" : `cockpit.status.source.${source}`);
-}
 
 const PREARM = /^(PreArm|Arm):/;
 
@@ -198,15 +192,13 @@ export function usePillAlerts(droneId: string): PillAlert[] {
   });
 }
 
-const ICON = { ok: CircleCheck, warning: TriangleAlert, critical: OctagonAlert } as const;
-const COLOR = { ok: "var(--fs-ok)", warning: "var(--fs-warn)", critical: "var(--fs-crit)" } as const;
-
 export function StatusPill({ droneId }: { droneId: string }) {
   const alerts = usePillAlerts(droneId);
   const [acked, setAcked] = useState<ReadonlySet<string>>(() => new Set());
   // The list is a flight-screen sheet: one at a time, and the tips see it.
   const [open, setOpen] = useFlightSheet("status");
   const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const keys = useMemo(() => alerts.map((a) => a.id).join("|"), [alerts]);
   // While the list is open every alert in it counts as seen; opening and
   // closing it record them as acknowledged, so one that arrived while it was
@@ -228,7 +220,8 @@ export function StatusPill({ droneId }: { droneId: string }) {
       setOpen(false);
     };
     const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) close();
+      const t = e.target as Node;
+      if (!rootRef.current?.contains(t) && !listRef.current?.contains(t)) close();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -241,7 +234,7 @@ export function StatusPill({ droneId }: { droneId: string }) {
     };
   }, [open, keys, ackShown, setOpen]);
 
-  const Icon = ICON[summary.severity];
+  const Icon = PILL_ICON[summary.severity];
   return (
     <div ref={rootRef} className="fs-pill-wrap">
       <button
@@ -257,31 +250,12 @@ export function StatusPill({ droneId }: { droneId: string }) {
           ackShown(keys);
           setOpen((o) => !o);
         }}
-        style={{ "--pill-color": COLOR[summary.severity] } as React.CSSProperties}
+        style={{ "--pill-color": PILL_COLOR[summary.severity] } as React.CSSProperties}
       >
         <Icon className="fs-ico" aria-hidden="true" />
         <span className="fs-pill-text" title={summary.text}>{summary.text}</span>
       </button>
-      {open && (
-        <div role="dialog" aria-label={specString("cockpit.menu.status")} className="fs-sheet fs-pill-list" data-testid="status-pill-list">
-          {alerts.length === 0 ? (
-            <p className="fs-sheet-empty">{specString("cockpit.status.ok")}</p>
-          ) : (
-            <ul>
-              {alerts.map((a) => {
-                const A = ICON[a.severity];
-                return (
-                  <li key={a.id} data-severity={a.severity}>
-                    <A className="fs-ico" style={{ color: COLOR[a.severity] }} aria-hidden="true" />
-                    <span className="fs-pill-item">{a.text}</span>
-                    <span className="fs-pill-src">{pillSourceLabel(a.source)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      )}
+      {open && <StatusPillList alerts={alerts} listRef={listRef} />}
     </div>
   );
 }

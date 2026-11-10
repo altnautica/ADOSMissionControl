@@ -14,15 +14,25 @@ import type { CockpitTipsUi } from "@/hooks/use-cockpit-tips";
 const mocks = vi.hoisted(() => ({
   tip: null as { id: string; anchor: string; text: string } | null,
   dismiss: vi.fn(),
-  ui: null as null | CockpitTipsUi,
-}));
-
-vi.mock("@/hooks/use-cockpit-tips", () => ({
-  useCockpitTips: (_droneId: string, ui: CockpitTipsUi) => {
-    mocks.ui = ui;
-    return { tip: mocks.tip, dismiss: mocks.dismiss };
+  readUi: null as null | (() => CockpitTipsUi),
+  /** What the layer reports now (the queue reads it inside its tick). */
+  get ui(): CockpitTipsUi | null {
+    return this.readUi ? this.readUi() : null;
   },
 }));
+
+vi.mock("@/hooks/use-cockpit-tips", async () => {
+  // vi.mock factories run before the file's static imports are bound.
+  const { useEffect } = await import("react");
+  return {
+    useCockpitTips: (_droneId: string, readUi: () => CockpitTipsUi) => {
+      mocks.readUi = readUi;
+      // Stands in for the queue tick, which measures the screen.
+      useEffect(() => void readUi());
+      return { tip: mocks.tip, dismiss: mocks.dismiss };
+    },
+  };
+});
 
 import { TipLayer } from "@/components/cockpit/TipLayer";
 import { useInputStore } from "@/stores/input-store";
@@ -64,7 +74,7 @@ beforeEach(() => {
   };
   mocks.dismiss.mockReset();
   mocks.tip = null;
-  mocks.ui = null;
+  mocks.readUi = null;
 });
 
 afterEach(() => {

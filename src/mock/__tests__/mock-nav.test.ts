@@ -12,6 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_OCCUPANCY, mergeOccupancy, tileFootprint } from "@/lib/hud/local-frame";
 import { getMockEkfSourceSet, mockEkfFlags, setMockEkfSourceSet } from "@/mock/mock-ekf-source";
 import { MockNavStream, demoMapStatus } from "@/mock/mock-nav";
+import { mockPilot } from "@/mock/mock-pilot";
+import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
 import { demoLoopAt, obstacleSectorsCm, rayCast, scanRanges, yawMatrix } from "@/mock/mock-nav-world";
 import {
   GREY_FREE,
@@ -140,6 +142,12 @@ describe("MockNavStream", () => {
 
   it("fills follow, nav, pose, scan, map and occupancy for the drone", () => {
     stream.start("node:demo", Date.now());
+    // Follow-me reports only while the pilot flies its skill.
+    mockPilot.pin({
+      armed: true,
+      owner: "skill",
+      skill: { plugin_id: FOLLOW_ME_PLUGIN_ID, skill_id: "follow-me", label: "Follow-Me" },
+    });
     vi.advanceTimersByTime(1000);
     const feed = useNavStreamStore.getState().byDrone["node:demo"];
     expect(feed?.follow?.data.phase).toBe("idle");

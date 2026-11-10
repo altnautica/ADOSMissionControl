@@ -25,11 +25,8 @@ import { DEMO_AGENTS, buildDemoStatus, seedDemoLanNodes } from "@/mock/demo-seed
 import { seedGroundStationStore } from "@/mock/demo-seed/ground-station";
 import { seedVisorReadings } from "@/mock/demo-seed/visor";
 import { useNodeSensorsStore } from "@/stores/node-sensors-store";
-import {
-  focusDemoAgentNode,
-  seedFocusedAgentSystem,
-  seedFocusedCapabilities,
-} from "@/mock/demo-seed/agent-system";
+import { seedFocusedAgentSystem } from "@/mock/demo-seed/agent-system";
+import { focusDemoAgentNode, seedFocusedCapabilities } from "@/mock/demo-seed/agent-focus";
 import { getDemoMcpPlugins } from "@/mock/mock-mcp-plugins";
 import { useMcpPluginStore } from "@/lib/plugins/mcp-plugin-tools";
 

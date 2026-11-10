@@ -33,7 +33,7 @@ import { LayerFlags, LayerLevelButton } from "../layers/LayerLevelButton";
 import { LinkCell } from "./TopBarCells";
 import { ControllerCell } from "./ControllerCell";
 import { StickControlChip } from "../StickControlChip";
-import { PreflightChip } from "../PreflightChip";
+import { PREFLIGHT_SHEET, PreflightMenuRow } from "../PreflightSheet";
 import type { TopBarItem } from "./FlightTopBar";
 
 /** The Menu's sections, in the shared spec's order. */
@@ -156,9 +156,8 @@ export function FlightMenu({
       </section>
     ),
     preflight: (
-      <section className="fs-menu-sec" data-testid="fs-menu-preflight" data-section="preflight">
-        <h3 className="fs-menu-h">{specString("cockpit.menu.preflight")}</h3>
-        <PreflightChip droneId={droneId} />
+      <section className="fs-menu-sec fs-menu-actions" data-section="preflight">
+        <PreflightMenuRow droneId={droneId} onOpen={run(() => openFlightSheet(PREFLIGHT_SHEET))} />
       </section>
     ),
     modes: (

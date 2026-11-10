@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { PreflightChip } from "@/components/cockpit/PreflightChip";
+import { PreflightMenuRow, PreflightSheet } from "@/components/cockpit/PreflightSheet";
+import { openFlightSheet, useFlightSheetStore } from "@/components/cockpit/flight/flight-sheet";
 import { checklistReadyFor, useChecklistStore } from "@/stores/checklist-store";
 import type { PreflightItem } from "@/lib/cockpit/preflight";
 
@@ -10,19 +11,21 @@ const FAIL: PreflightItem = { id: "fc_prearm", label: "Flight controller: GPS no
 
 function open() {
   render(
-    <div className="ados-cockpit">
-      <PreflightChip droneId="d1" />
+    <div className="ados-cockpit" data-testid="flight-screen">
+      <PreflightMenuRow droneId="d1" onOpen={() => openFlightSheet("preflight")} />
+      <PreflightSheet droneId="d1" />
     </div>,
   );
-  fireEvent.click(screen.getByTitle("Pre-flight checklist"));
+  fireEvent.click(screen.getByTestId("fs-menu-preflight"));
 }
 
 beforeEach(() => {
   useChecklistStore.setState({ droneId: "d1", preflight: null, completedAt: null });
+  useFlightSheetStore.setState({ open: null });
 });
 afterEach(cleanup);
 
-describe("pre-flight chip", () => {
+describe("pre-flight Menu row and sheet", () => {
   it("lists the spec checklist items, not the old manual checklist", () => {
     useChecklistStore.setState({ preflight: [PASS, WARN] });
     open();

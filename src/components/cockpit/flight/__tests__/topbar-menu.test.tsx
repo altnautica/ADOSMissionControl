@@ -13,7 +13,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react";
 
 vi.mock("../CameraSheet", () => ({ CameraPanel: () => <div data-testid="camera-panel" /> }));
 vi.mock("../../StickControlChip", () => ({ StickControlChip: () => <div data-testid="stick-control" /> }));
-vi.mock("../../PreflightChip", () => ({ PreflightChip: () => <div data-testid="preflight-chip" /> }));
+vi.mock("../../PreflightSheet", () => ({ PREFLIGHT_SHEET: "preflight", PreflightMenuRow: () => <div data-testid="preflight-row" />, PreflightSheet: () => null }));
 
 import { LAYER_DEFS } from "@/lib/cockpit/layers/layer-spec";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
