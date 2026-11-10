@@ -6,6 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Aircraft setup: the offer to set up a new flight controller is a small banner with Open and Later, shown once per flight controller on this device, on the ground and never over the flight screen. The Meet ADOS Pilot step shows its step state like every other step.
 - Cockpit: the shared chip, status-pill, refusal and tips case files run against Mission Control's copies of the shared modules; layer chips start from the spec's words.
 - Shell: on the flight screen Ctrl+K opens only the cockpit's command palette.
 - Cockpit sheets: confirm dialogs and every flight-screen sheet open below the top bar over a translucent scrim, so the picture stays visible and STOP takes the first press; the Launch sheet opens beside the left column at full width (Hold to launch was unreachable); one sheet at a time, and Escape or a press outside closes it. Toasts on the flight screen stack above the bottom row, clear of the card, the skills chip and STOP. The controls row says where the sticks go: with ADOS Pilot in control it names that route and the live input session, and the FC stick switch shows only when the sticks reach the flight controller. The link-loss countdown names the configured action (Return home, Land, Hold), and the low-battery return shows its cancel warning inline; both countdowns use the critical colour.

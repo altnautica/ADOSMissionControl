@@ -145,10 +145,7 @@ export function StepCard({ step, busy, error, onAction }: StepCardProps) {
     <section className="flex flex-col gap-3 rounded-lg border border-border-default bg-bg-secondary p-4" data-testid="setup-step-card" data-step={step.step} data-state={step.state}>
       <header className="flex items-start justify-between gap-2">
         <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
-        <span className="flex items-center gap-1 text-xs text-text-secondary">
-          <StepStateIcon state={step.state} />
-          {t(`stepState.${step.state}`)}
-        </span>
+        <StepStateBadge state={step.state} />
       </header>
 
       {step.body_key && <p className="whitespace-pre-line text-sm text-text-secondary">{setupText(step.body_key, step.args)}</p>}
@@ -296,8 +293,20 @@ function InputField({ input, value, onChange }: { input: StepInput; value: Setup
 
 const INTRO_ICONS = [Navigation, ShieldCheck, Gamepad2];
 
+/** The step's state as an icon and its word, in a card header. */
+function StepStateBadge({ state }: { state: StepState }) {
+  const t = useTranslations("aircraftSetup");
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-xs text-text-secondary">
+      <StepStateIcon state={state} />
+      {t(`stepState.${state}`)}
+    </span>
+  );
+}
+
 /** The `ados_intro` step: three lines on what ADOS flies, what the FC still
- *  does and how to take over, then the choice, recommended option first. */
+ *  does and how to take over, then the choice, recommended option first.
+ *  The same layout and order as the agent's own wizard. */
 function MeetAdosPilot({ step, busy, error, onFire }: { step: SetupStep; busy: boolean; error: string | null; onFire: (id: string) => void }) {
   const lines = step.body_key
     ? setupText(step.body_key, step.args)
@@ -308,7 +317,10 @@ function MeetAdosPilot({ step, busy, error, onFire }: { step: SetupStep; busy: b
   const ordered = [...step.actions].sort((a, b) => Number(b.style === "primary") - Number(a.style === "primary"));
   return (
     <section className="mx-auto flex w-full max-w-xl flex-col gap-4 rounded-xl border border-accent-primary/40 bg-bg-secondary p-6" data-testid="setup-step-card" data-step={step.step} data-state={step.state}>
-      <h2 className="text-2xl font-semibold text-text-primary">{setupText(step.title_key, step.args)}</h2>
+      <header className="flex items-start justify-between gap-2">
+        <h2 className="text-2xl font-semibold text-text-primary">{setupText(step.title_key, step.args)}</h2>
+        <StepStateBadge state={step.state} />
+      </header>
       <ol className="flex flex-col gap-3">
         {lines.map((line, i) => {
           const Icon = INTRO_ICONS[i % INTRO_ICONS.length];
