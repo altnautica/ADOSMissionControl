@@ -8,6 +8,7 @@
  */
 
 import type { Skill } from "../types";
+import { noteCommandedMode } from "../flight-facts";
 import { disabledIfNoLink, pilotActionResult, REASON, specConfirm, viaPilot } from "./_shared";
 
 export const landSkill: Skill = {
@@ -31,5 +32,8 @@ export const landSkill: Skill = {
   },
   // The vehicle's answer goes back to the dispatcher, which surfaces a
   // refusal and spends nothing on it.
-  activate: async (ctx) => (viaPilot(ctx) ? pilotActionResult("land") : ctx.protocol?.land()),
+  activate: async (ctx) => {
+    noteCommandedMode(ctx.droneId, "LAND");
+    return viaPilot(ctx) ? pilotActionResult("land") : ctx.protocol?.land();
+  },
 };

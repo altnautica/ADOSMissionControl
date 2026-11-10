@@ -156,6 +156,8 @@ export interface SkillContext {
   refresh?: () => SkillContext;
   armState: ArmState;
   flightMode: FlightMode;
+  /** HEARTBEAT system_status (MAV_STATE) of the targeted drone, when known. */
+  systemStatus?: number | null;
   /**
    * Mode preset gating uses this — TRUE iff the connected firmware handler's
    * getAvailableModes() includes the target UnifiedFlightMode. Built by the

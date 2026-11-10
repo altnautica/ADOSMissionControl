@@ -6,6 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Flight actions: Pause is refused while the flight controller flies a failsafe return or landing (a return or landing commanded from Mission Control is not one), on the pilot and flight-controller routes alike, so a pause can no longer cancel a failsafe. Disarm is offered only on the ground, and the arm key never turns into Disarm in the air.
 - Shell: the welcome, disclaimer and What's New modals wait while a cockpit is on screen or any vehicle is armed, and open once both clear.
 - Cockpit: the flight-state chip uses the shared chip rules and inputs the drone's own cockpit uses (mission waypoint, ETA and completion from the pilot state, `TUNING · <step>`, `NO PILOT` before the first pilot state); the cockpit spec copy moves to `src/lib/cockpit-spec/` beside the shared HUD modules (spec text, refusal texts, chip inputs, battery, link loss, status pill, tips, Fly here offer). A controller-lost hold lights the DS4 failsafe colour.
 

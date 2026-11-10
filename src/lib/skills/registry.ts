@@ -118,6 +118,7 @@ export function buildSkillContextFor(droneId: string): SkillContext {
     refresh: () => buildSkillContextFor(droneId),
     armState: droneState.armState,
     flightMode: droneState.flightMode,
+    systemStatus: droneState.systemStatus,
     availableModes,
     missionState: readMissionStatus(droneId)?.state ?? null,
     supports,

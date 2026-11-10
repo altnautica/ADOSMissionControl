@@ -31,8 +31,8 @@ export function useBoundSkillResolver(droneId?: string | null): (skillId: string
   const missionState = useMissionStatus(target)?.state ?? null;
 
   return useCallback(
-    (skillId: string) => resolveBoundSkillId(skillId, armState, { missionState }),
-    [armState, missionState],
+    (skillId: string) => resolveBoundSkillId(skillId, armState, { missionState, droneId: target }),
+    [armState, missionState, target],
   );
 }
 
