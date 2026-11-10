@@ -1,0 +1,6345 @@
+[
+  {
+    "name": "link_stale",
+    "input": {
+      "pilot": {
+        "owner": "skill",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 2500,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "link_stale",
+      "text": "LINK",
+      "color": "stale",
+      "dim": true,
+      "button": null,
+      "secondary": []
+    }
+  },
+  {
+    "name": "link_stale_boundary_2000_is_fresh",
+    "input": {
+      "pilot": {
+        "owner": "skill",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 2000,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": "ORBIT 8 m",
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "skill",
+      "text": "FOLLOW · ORBIT 8 m",
+      "color": "skill",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "idle_ready_warn_items_do_not_block",
+    "input": {
+      "pilot": {
+        "owner": "idle",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "idle_ready",
+      "text": "READY",
+      "color": "ready",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "idle_not_ready",
+    "input": {
+      "pilot": {
+        "owner": "idle",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "position",
+            "ok": false,
+            "severity": "block",
+            "msg": "No position estimate"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "idle_not_ready",
+      "text": "NOT READY · No position estimate",
+      "color": "not_ready",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "idle_not_ready_setup_needed_link",
+    "input": {
+      "pilot": {
+        "owner": "idle",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "setup_needed",
+            "ok": false,
+            "severity": "block",
+            "msg": "Aircraft setup needed"
+          },
+          {
+            "id": "position",
+            "ok": false,
+            "severity": "block",
+            "msg": "No position estimate"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "idle_not_ready",
+      "text": "NOT READY · Aircraft setup needed",
+      "color": "not_ready",
+      "dim": false,
+      "button": "setup",
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "pilot_sport",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "sport",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · SPORT",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "pilot_no_profile_reads_normal",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": null,
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "skill_with_detail",
+    "input": {
+      "pilot": {
+        "owner": "skill",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": "ORBIT 8 m",
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "skill",
+      "text": "FOLLOW · ORBIT 8 m",
+      "color": "skill",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "skill_without_detail",
+    "input": {
+      "pilot": {
+        "owner": "skill",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "skill",
+      "text": "FOLLOW · ACTIVE",
+      "color": "skill",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "goto_distance",
+    "input": {
+      "pilot": {
+        "owner": "goto",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": {
+        "x": 9,
+        "y": 0.5
+      },
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "goto",
+      "text": "GOTO · 5 m",
+      "color": "goto",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "goto_no_local_position",
+    "input": {
+      "pilot": {
+        "owner": "goto",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "goto",
+      "text": "GOTO · — m",
+      "color": "goto",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "swarm",
+    "input": {
+      "pilot": {
+        "owner": "swarm",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "swarm",
+      "text": "SWARM",
+      "color": "swarm",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "tuning_with_setup_step",
+    "input": {
+      "pilot": {
+        "owner": "tuning",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ],
+        "setup_step": "autotune_roll"
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "tuning",
+      "text": "TUNING · AUTOTUNE_ROLL",
+      "color": "tuning",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "tuning_without_setup_step",
+    "input": {
+      "pilot": {
+        "owner": "tuning",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ],
+        "setup_step": null
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "tuning",
+      "text": "TUNING",
+      "color": "tuning",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "mission_paused",
+    "input": {
+      "pilot": {
+        "owner": "mission_fc",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "paused",
+          "seq": 3,
+          "total": 6,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "mission_paused",
+      "text": "MISSION PAUSED · WP 3/6",
+      "color": "mission",
+      "dim": false,
+      "button": "resume",
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "mission_active_wp4_of6_eta37",
+    "input": {
+      "pilot": {
+        "owner": "mission_fc",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "active",
+          "seq": 4,
+          "total": 6,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": 37,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "mission_active",
+      "text": "MISSION · WP 4/6 · ETA 37 s",
+      "color": "mission",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "mission_active_eta_minutes",
+    "input": {
+      "pilot": {
+        "owner": "mission_fc",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "active",
+          "seq": 4,
+          "total": 6,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": 65,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "mission_active",
+      "text": "MISSION · WP 4/6 · ETA 1:05",
+      "color": "mission",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "mission_active_no_eta",
+    "input": {
+      "pilot": {
+        "owner": "mission_fc",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "active",
+          "seq": 4,
+          "total": 6,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "mission_active",
+      "text": "MISSION · WP 4/6",
+      "color": "mission",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "mission_active_landing",
+    "input": {
+      "pilot": {
+        "owner": "mission_fc",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "active",
+          "seq": 6,
+          "total": 6,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": true
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": 12,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "mission_active",
+      "text": "MISSION · WP 6/6 · ETA 12 s · LANDING",
+      "color": "mission",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "mission_complete_recent",
+    "input": {
+      "pilot": {
+        "owner": "mission_fc",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "complete",
+          "seq": 6,
+          "total": 6,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": 3000
+    },
+    "expected": {
+      "rule": "mission_complete",
+      "text": "MISSION COMPLETE",
+      "color": "mission",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "mission_complete_expired",
+    "input": {
+      "pilot": {
+        "owner": "mission_fc",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "complete",
+          "seq": 6,
+          "total": 6,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": 10000
+    },
+    "expected": {
+      "rule": "mission_fc",
+      "text": "MISSION · WP 6/6",
+      "color": "mission",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "mission_fc_not_active",
+    "input": {
+      "pilot": {
+        "owner": "mission_fc",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 2,
+          "total": 5,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "mission_fc",
+      "text": "MISSION · WP 2/5",
+      "color": "mission",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "vtol_transition",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "vtol",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 17,
+        "fc_mode_name": "QSTABILIZE",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": true,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "vtol_transition",
+      "text": "TRANSITION",
+      "color": "rth",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_rth_copter_rtl",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 6,
+        "fc_mode_name": "RTL",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": 123.4,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_rth",
+      "text": "RTH · 123 m",
+      "color": "rth",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_rth_copter_smart_rtl",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 21,
+        "fc_mode_name": "SMART_RTL",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": 40,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_rth",
+      "text": "RTH · 40 m",
+      "color": "rth",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_rth_plane_rtl",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "fixedwing",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 11,
+        "fc_mode_name": "RTL",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": 800.6,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_rth",
+      "text": "RTH · 801 m",
+      "color": "rth",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_rth_quadplane_qrtl",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "vtol",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 21,
+        "fc_mode_name": "QRTL",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": 55,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_rth",
+      "text": "RTH · 55 m",
+      "color": "rth",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_rth_no_home_distance",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 6,
+        "fc_mode_name": "RTL",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_rth",
+      "text": "RTH · — m",
+      "color": "rth",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_land_copter",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 9,
+        "fc_mode_name": "LAND",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_land",
+      "text": "LANDING",
+      "color": "rth",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_land_quadplane_qland",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "vtol",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 20,
+        "fc_mode_name": "QLAND",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_land",
+      "text": "LANDING",
+      "color": "rth",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_other_ados_standby",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 5,
+        "fc_mode_name": "Loiter",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_other_ados_standby",
+      "text": "FC · LOITER · ADOS STANDING BY",
+      "color": "fc",
+      "dim": false,
+      "button": "take_control",
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "fc_other_fc_manual",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "fc_manual",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 2,
+        "fc_mode_name": "AltHold",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_other",
+      "text": "FC · ALTHOLD",
+      "color": "fc",
+      "dim": false,
+      "button": "take_control",
+      "secondary": [
+        "AVOIDING",
+        "FC MANUAL"
+      ]
+    }
+  },
+  {
+    "name": "fc_other_plane_mode_9_is_not_land",
+    "input": {
+      "pilot": {
+        "owner": "fc_mode",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "fixedwing",
+        "control_mode": "elrs",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 9,
+        "fc_mode_name": "TRAINING",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": null,
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "fc_other",
+      "text": "FC · TRAINING",
+      "color": "fc",
+      "dim": false,
+      "button": "take_control",
+      "secondary": [
+        "AVOIDING",
+        "ELRS"
+      ]
+    }
+  },
+  {
+    "name": "hold_reason_blocked",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": "blocked",
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "Blocked",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "hold_reason_controller-lost",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": "controller-lost",
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "Controller lost",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "hold_reason_lease-busy",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": "lease-busy",
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "Another skill has control",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "hold_reason_lease-revoked",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": "lease-revoked",
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "Skill stopped",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "hold_reason_link-loss",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": "link-loss",
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "Link lost",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "hold_reason_obstacle-close",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": "obstacle-close",
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "Obstacle close",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "hold_reason_new_reason",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": "new_reason",
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "new reason",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "avoid_state_detour",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDING",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "avoid_state_blocked",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "blocked",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "BLOCKED",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "avoid_state_off",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "off",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "AVOIDANCE OFF",
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "avoid_state_clear",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "control_mode_ados",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "ADOS PILOT"
+      ]
+    }
+  },
+  {
+    "name": "control_mode_fc_manual",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "fc_manual",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "FC MANUAL"
+      ]
+    }
+  },
+  {
+    "name": "control_mode_elrs",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "elrs",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": [
+        "ELRS"
+      ]
+    }
+  },
+  {
+    "name": "control_mode_absent",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": null,
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": null,
+        "avoid_state": "clear",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 100,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "pilot",
+      "text": "PILOT · NORMAL",
+      "color": "pilot",
+      "dim": false,
+      "button": null,
+      "secondary": []
+    }
+  },
+  {
+    "name": "stale_drops_secondary",
+    "input": {
+      "pilot": {
+        "owner": "pilot",
+        "owner_label": "FOLLOW · ORBIT 8 m",
+        "skill": {
+          "plugin_id": "com.example.follow",
+          "skill_id": "follow-me",
+          "label": "Follow"
+        },
+        "vehicle_class": "multirotor",
+        "control_mode": "ados",
+        "profile": "normal",
+        "avoid": "brake",
+        "fc_mode": 4,
+        "fc_mode_name": "GUIDED",
+        "armed": true,
+        "landed": false,
+        "vtol_transitioning": false,
+        "input_src": "mc",
+        "input_age_ms": 40,
+        "hold_reason": "link-loss",
+        "avoid_state": "detour",
+        "min_clearance_m": 2.4,
+        "goal_ned": [
+          12,
+          -3.5,
+          -4
+        ],
+        "plan_ned": [
+          [
+            10,
+            -2
+          ],
+          [
+            10.8,
+            -2.6
+          ],
+          [
+            11.5,
+            -3.1
+          ],
+          [
+            12,
+            -3.5
+          ]
+        ],
+        "setpoint_ned": [
+          10.8,
+          -2.6,
+          -4
+        ],
+        "readiness": [
+          {
+            "id": "fc_profile",
+            "ok": true,
+            "severity": "block",
+            "msg": "FC failsafe parameters match the ADOS profile"
+          },
+          {
+            "id": "position",
+            "ok": true,
+            "severity": "block",
+            "msg": "Position estimate available"
+          },
+          {
+            "id": "agl",
+            "ok": false,
+            "severity": "warn",
+            "msg": "No downward rangefinder: height reference is EKF altitude"
+          }
+        ],
+        "link_loss_in_s": null,
+        "link_loss_action": "rth",
+        "mission": {
+          "state": "none",
+          "seq": 0,
+          "total": 0,
+          "item_reached": null,
+          "id": null,
+          "source": "fallback",
+          "age_ms": 0,
+          "landing_seq": false
+        },
+        "input_session": {
+          "src": "mc",
+          "session": 7,
+          "label": "Mission Control"
+        },
+        "gate": null,
+        "sequence": null,
+        "banner": {
+          "text_key": "pilot.banner.ados_engaged",
+          "args": {
+            "source": "GCS"
+          },
+          "until_ms": 1793960003000
+        },
+        "rth_countdown_s": null,
+        "surface_ops": [
+          "goto"
+        ],
+        "agl_m": 4.2,
+        "agl_source": "rangefinder",
+        "statustext": [
+          {
+            "severity": 4,
+            "text": "PreArm: Compass not calibrated",
+            "age_ms": 1200
+          }
+        ]
+      },
+      "pilot_age_ms": 5000,
+      "home_dist_m": null,
+      "local_pos": null,
+      "ar_eta_s": null,
+      "mode_detail": null,
+      "complete_age_ms": null
+    },
+    "expected": {
+      "rule": "link_stale",
+      "text": "LINK",
+      "color": "stale",
+      "dim": true,
+      "button": null,
+      "secondary": []
+    }
+  }
+]

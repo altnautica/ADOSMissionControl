@@ -1,0 +1,406 @@
+[
+  {
+    "name": "ok",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
+    "name": "one_alert_reads_its_title",
+    "input": {
+      "alerts": [
+        {
+          "id": "batt_low",
+          "level": "warning",
+          "title": "Battery low"
+        }
+      ],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Battery low",
+      "count": 1,
+      "ids": [
+        "alert:batt_low"
+      ]
+    }
+  },
+  {
+    "name": "many_counts_and_takes_worst",
+    "input": {
+      "alerts": [
+        {
+          "id": "batt_low",
+          "level": "warning",
+          "title": "Battery low"
+        },
+        {
+          "id": "link_lost",
+          "level": "critical",
+          "title": "Vehicle link lost"
+        }
+      ],
+      "readiness": [],
+      "prearm": [
+        "PreArm: Compass not calibrated"
+      ],
+      "fc_status": [],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "3 warnings",
+      "count": 3,
+      "ids": [
+        "alert:link_lost",
+        "alert:batt_low",
+        "fc:Compass not calibrated"
+      ]
+    }
+  },
+  {
+    "name": "advisory_excluded",
+    "input": {
+      "alerts": [
+        {
+          "id": "uplink",
+          "level": "advisory",
+          "title": "Uplink offline"
+        }
+      ],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
+    "name": "prearm_newest_wins",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [
+        "PreArm: Gyros inconsistent",
+        "PreArm: RC not calibrated"
+      ],
+      "fc_status": [],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Flight controller: RC not calibrated",
+      "count": 1,
+      "ids": [
+        "fc:RC not calibrated"
+      ]
+    }
+  },
+  {
+    "name": "prearm_unknown_is_absent",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": null,
+      "fc_status": [],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
+    "name": "statustext_critical_and_prearm_skipped",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [
+        {
+          "severity": 2,
+          "text": "Crash: Disarming",
+          "age_ms": 0
+        },
+        {
+          "severity": 4,
+          "text": "PreArm: Compass not calibrated",
+          "age_ms": 100
+        },
+        {
+          "severity": 4,
+          "text": "EKF3 lane switch 1",
+          "age_ms": 900
+        }
+      ],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "2 warnings",
+      "count": 2,
+      "ids": [
+        "fcst:Crash: Disarming",
+        "fcst:EKF3 lane switch 1"
+      ]
+    }
+  },
+  {
+    "name": "statustext_dedupe_upgrades_to_critical",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [
+        {
+          "severity": 4,
+          "text": "Vibration compensation ON",
+          "age_ms": 0
+        },
+        {
+          "severity": 4,
+          "text": "Vibration compensation ON",
+          "age_ms": 2000
+        },
+        {
+          "severity": 2,
+          "text": "Vibration compensation ON",
+          "age_ms": 4000
+        }
+      ],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "Vibration compensation ON",
+      "count": 1,
+      "ids": [
+        "fcst:Vibration compensation ON"
+      ]
+    }
+  },
+  {
+    "name": "storage_89_ok",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 89
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
+    "name": "storage_90_warning",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 90
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Storage 90%",
+      "count": 1,
+      "ids": [
+        "storage"
+      ]
+    }
+  },
+  {
+    "name": "storage_96_warning",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 96.4
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Storage 96%",
+      "count": 1,
+      "ids": [
+        "storage"
+      ]
+    }
+  },
+  {
+    "name": "storage_97_critical",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 97
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "Storage 97%",
+      "count": 1,
+      "ids": [
+        "storage"
+      ]
+    }
+  },
+  {
+    "name": "storage_unknown",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": null
+    },
+    "expected": {
+      "severity": "ok",
+      "text": "All systems OK",
+      "count": 0,
+      "ids": []
+    }
+  },
+  {
+    "name": "readiness_block_vs_warn",
+    "input": {
+      "alerts": [],
+      "readiness": [
+        {
+          "id": "position",
+          "ok": false,
+          "severity": "block",
+          "msg": "No position estimate"
+        },
+        {
+          "id": "agl",
+          "ok": false,
+          "severity": "warn",
+          "msg": "No height source"
+        },
+        {
+          "id": "fc_link",
+          "ok": true,
+          "severity": "block",
+          "msg": "Flight controller connected"
+        }
+      ],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "2 warnings",
+      "count": 2,
+      "ids": [
+        "pilot:position",
+        "pilot:agl"
+      ]
+    }
+  },
+  {
+    "name": "readiness_without_msg_reads_id",
+    "input": {
+      "alerts": [],
+      "readiness": [
+        {
+          "id": "controller",
+          "ok": false,
+          "severity": "warn",
+          "msg": ""
+        }
+      ],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "controller",
+      "count": 1,
+      "ids": [
+        "pilot:controller"
+      ]
+    }
+  },
+  {
+    "name": "everything_worst_first",
+    "input": {
+      "alerts": [
+        {
+          "id": "gps_no_3d",
+          "level": "warning",
+          "title": "GPS fix below 3D"
+        },
+        {
+          "id": "batt_crit",
+          "level": "critical",
+          "title": "Battery critical"
+        },
+        {
+          "id": "uplink",
+          "level": "advisory",
+          "title": "Uplink offline"
+        }
+      ],
+      "readiness": [
+        {
+          "id": "agl",
+          "ok": false,
+          "severity": "warn",
+          "msg": "No height source"
+        }
+      ],
+      "prearm": [
+        "Arm: Throttle too high"
+      ],
+      "fc_status": [
+        {
+          "severity": 3,
+          "text": "EKF variance",
+          "age_ms": 10
+        }
+      ],
+      "storage_pct": 98
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "6 warnings",
+      "count": 6,
+      "ids": [
+        "alert:batt_crit",
+        "storage",
+        "alert:gps_no_3d",
+        "pilot:agl",
+        "fc:Throttle too high",
+        "fcst:EKF variance"
+      ]
+    }
+  }
+]

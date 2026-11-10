@@ -1,0 +1,92 @@
+/**
+ * The shared behaviour case files (chip, status pill, refusal texts, tips)
+ * run against Mission Control's copies of the shared HUD modules, so this
+ * surface computes exactly what every other cockpit computes.
+ *
+ * @license GPL-3.0-only
+ */
+
+import { describe, expect, it } from "vitest";
+
+import chipCases from "../fixtures/chip-cases.json";
+import pillCases from "../fixtures/pill-cases.json";
+import refusalCases from "../fixtures/refusal-cases.json";
+import tipsCases from "../fixtures/tips-cases.json";
+import flightStateJson from "@/lib/cockpit-spec/flight-state.json";
+import tokensJson from "@/lib/cockpit-spec/tokens.json";
+import { parsePilotState, type ArFrame } from "../cockpit-frames";
+import { chipInputs } from "../chip-inputs";
+import { flightStateChip } from "../flight-state";
+import { pillAlerts, pillSummary, type PillInputs } from "../status-pill";
+import { refusalText } from "../refusal";
+import { nextTip, type TipsContext } from "../tips";
+
+describe("chip cases", () => {
+  const colors = tokensJson.state as Record<string, string>;
+
+  it("covers every chip rule", () => {
+    const covered = new Set(chipCases.map((c) => c.expected.rule));
+    expect(flightStateJson.rules.filter((r) => !covered.has(r.id)).map((r) => r.id)).toEqual([]);
+  });
+
+  for (const c of chipCases) {
+    it(c.name, () => {
+      const i = c.input;
+      const p = parsePilotState(i.pilot);
+      expect(p).not.toBeNull();
+      const arFrame: ArFrame | null =
+        i.ar_eta_s === null ? null : ({ cameras: { c: { items: [{ t: "wp", role: "next", etaS: i.ar_eta_s }] } } } as unknown as ArFrame);
+      const v = flightStateChip(
+        chipInputs(p!, i.pilot_age_ms, 0, {
+          homeDistM: i.home_dist_m,
+          localPos: i.local_pos,
+          arFrame,
+          arAgeMs: 0,
+          modeDetail: i.mode_detail,
+          completeAgeMs: i.complete_age_ms,
+        }),
+      );
+      expect({
+        rule: v.ruleId,
+        text: v.text,
+        color: v.color,
+        dim: v.dim,
+        button: v.button,
+        secondary: v.secondary.map((s) => s.text),
+      }).toEqual({ ...c.expected, color: colors[c.expected.color] });
+    });
+  }
+});
+
+describe("pill cases", () => {
+  for (const c of pillCases) {
+    it(c.name, () => {
+      const i = c.input;
+      const alerts = pillAlerts({
+        alerts: i.alerts as PillInputs["alerts"],
+        readiness: i.readiness as PillInputs["readiness"],
+        prearm: i.prearm ?? undefined,
+        storagePct: i.storage_pct,
+        fcStatus: i.fc_status.map((s) => ({ severity: s.severity, text: s.text, ageMs: s.age_ms })),
+      });
+      const s = pillSummary(alerts, new Set());
+      expect({ severity: s.severity, text: s.text, count: s.count, ids: alerts.map((a) => a.id) }).toEqual(c.expected);
+    });
+  }
+});
+
+describe("refusal cases", () => {
+  for (const c of refusalCases) {
+    it(c.name, () => {
+      expect(refusalText(c.input.code)).toBe(c.expected.text);
+    });
+  }
+});
+
+describe("tips cases", () => {
+  for (const c of tipsCases) {
+    it(c.name, () => {
+      expect(nextTip(c.input.state, c.input.ctx as TipsContext, c.input.now_ms)).toEqual(c.expected);
+    });
+  }
+});

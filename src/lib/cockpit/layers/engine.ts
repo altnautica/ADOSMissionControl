@@ -44,7 +44,7 @@ import { paintOps } from "@/lib/hud/layer-paint";
 import { LAYER_DIM_MS, LAYER_HIDE_MS } from "./layer-spec";
 import cockpitTokens from "@/lib/cockpit-spec/tokens.json";
 import {
-  DEFAULT_CHIP_TEXT,
+  specLayerChipText,
   type FlightContext,
   type GridScratch,
   type LayerChipText,
@@ -80,7 +80,7 @@ export class LayerEngine {
   private targets: TargetScene | null = null;
   /** The shown detection batch's arrival, as a slot for {@link age}. */
   private readonly targetSlot = { receivedAt: 0 };
-  private chipText: LayerChipText = DEFAULT_CHIP_TEXT;
+  private chipText: LayerChipText = specLayerChipText();
   private readonly readFlight: (out: FlightContext) => void;
   private readonly flight: FlightContext = { mission: null, avoid: null, showLoaded: true };
 

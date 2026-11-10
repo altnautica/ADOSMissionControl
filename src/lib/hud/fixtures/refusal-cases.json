@@ -1,0 +1,506 @@
+[
+  {
+    "name": "unknown_kind",
+    "input": {
+      "code": "unknown_kind"
+    },
+    "expected": {
+      "text": "Not supported by this drone"
+    }
+  },
+  {
+    "name": "disarmed",
+    "input": {
+      "code": "disarmed"
+    },
+    "expected": {
+      "text": "Not armed"
+    }
+  },
+  {
+    "name": "vehicle_class",
+    "input": {
+      "code": "vehicle_class"
+    },
+    "expected": {
+      "text": "Not available for this vehicle"
+    }
+  },
+  {
+    "name": "not_guided_capable",
+    "input": {
+      "code": "not_guided_capable"
+    },
+    "expected": {
+      "text": "The flight controller cannot take guided commands"
+    }
+  },
+  {
+    "name": "failsafe",
+    "input": {
+      "code": "failsafe"
+    },
+    "expected": {
+      "text": "The drone is in a failsafe return or landing; change mode first"
+    }
+  },
+  {
+    "name": "busy",
+    "input": {
+      "code": "busy"
+    },
+    "expected": {
+      "text": "Another command has control"
+    }
+  },
+  {
+    "name": "no_fc",
+    "input": {
+      "code": "no_fc"
+    },
+    "expected": {
+      "text": "No flight controller"
+    }
+  },
+  {
+    "name": "not_landed",
+    "input": {
+      "code": "not_landed"
+    },
+    "expected": {
+      "text": "Still flying; land first"
+    }
+  },
+  {
+    "name": "unknown_action",
+    "input": {
+      "code": "unknown_action"
+    },
+    "expected": {
+      "text": "Not supported by this drone"
+    }
+  },
+  {
+    "name": "bad_value",
+    "input": {
+      "code": "bad_value"
+    },
+    "expected": {
+      "text": "Invalid value"
+    }
+  },
+  {
+    "name": "not_ready:position",
+    "input": {
+      "code": "not_ready:position"
+    },
+    "expected": {
+      "text": "Not ready: Position estimate"
+    }
+  },
+  {
+    "name": "armed",
+    "input": {
+      "code": "armed"
+    },
+    "expected": {
+      "text": "Armed; disarm first"
+    }
+  },
+  {
+    "name": "tuning",
+    "input": {
+      "code": "tuning"
+    },
+    "expected": {
+      "text": "Tuning flight in progress"
+    }
+  },
+  {
+    "name": "landed",
+    "input": {
+      "code": "landed"
+    },
+    "expected": {
+      "text": "On the ground"
+    }
+  },
+  {
+    "name": "no_position",
+    "input": {
+      "code": "no_position"
+    },
+    "expected": {
+      "text": "No position from the flight controller"
+    }
+  },
+  {
+    "name": "nothing_paused",
+    "input": {
+      "code": "nothing_paused"
+    },
+    "expected": {
+      "text": "Nothing is paused"
+    }
+  },
+  {
+    "name": "bad_args",
+    "input": {
+      "code": "bad_args"
+    },
+    "expected": {
+      "text": "Invalid value"
+    }
+  },
+  {
+    "name": "not_armed",
+    "input": {
+      "code": "not_armed"
+    },
+    "expected": {
+      "text": "Not armed"
+    }
+  },
+  {
+    "name": "control_mode",
+    "input": {
+      "code": "control_mode"
+    },
+    "expected": {
+      "text": "The flight controller has control"
+    }
+  },
+  {
+    "name": "launching",
+    "input": {
+      "code": "launching"
+    },
+    "expected": {
+      "text": "Taking off; wait for the climb to finish"
+    }
+  },
+  {
+    "name": "no_home",
+    "input": {
+      "code": "no_home"
+    },
+    "expected": {
+      "text": "No home position from the flight controller"
+    }
+  },
+  {
+    "name": "airborne",
+    "input": {
+      "code": "airborne"
+    },
+    "expected": {
+      "text": "Already flying"
+    }
+  },
+  {
+    "name": "arm_refused",
+    "input": {
+      "code": "arm_refused"
+    },
+    "expected": {
+      "text": "The flight controller refused to arm"
+    }
+  },
+  {
+    "name": "mode_refused",
+    "input": {
+      "code": "mode_refused"
+    },
+    "expected": {
+      "text": "The flight controller refused the launch mode"
+    }
+  },
+  {
+    "name": "takeoff_timeout",
+    "input": {
+      "code": "takeoff_timeout"
+    },
+    "expected": {
+      "text": "Takeoff did not reach the target height"
+    }
+  },
+  {
+    "name": "skill_not_started",
+    "input": {
+      "code": "skill_not_started"
+    },
+    "expected": {
+      "text": "The skill did not start"
+    }
+  },
+  {
+    "name": "pilot_unavailable",
+    "input": {
+      "code": "pilot_unavailable"
+    },
+    "expected": {
+      "text": "ADOS Pilot is not running"
+    }
+  },
+  {
+    "name": "refused",
+    "input": {
+      "code": "refused"
+    },
+    "expected": {
+      "text": "Refused"
+    }
+  },
+  {
+    "name": "setup_unavailable",
+    "input": {
+      "code": "setup_unavailable"
+    },
+    "expected": {
+      "text": "Setup is not available"
+    }
+  },
+  {
+    "name": "detecting",
+    "input": {
+      "code": "detecting"
+    },
+    "expected": {
+      "text": "Still detecting the flight controller"
+    }
+  },
+  {
+    "name": "unknown_step",
+    "input": {
+      "code": "unknown_step"
+    },
+    "expected": {
+      "text": "Unknown setup step"
+    }
+  },
+  {
+    "name": "not_running",
+    "input": {
+      "code": "not_running"
+    },
+    "expected": {
+      "text": "Setup is not running"
+    }
+  },
+  {
+    "name": "not_current_step",
+    "input": {
+      "code": "not_current_step"
+    },
+    "expected": {
+      "text": "Not the current setup step"
+    }
+  },
+  {
+    "name": "not_skippable",
+    "input": {
+      "code": "not_skippable"
+    },
+    "expected": {
+      "text": "This step cannot be skipped"
+    }
+  },
+  {
+    "name": "not_failed",
+    "input": {
+      "code": "not_failed"
+    },
+    "expected": {
+      "text": "Nothing to retry"
+    }
+  },
+  {
+    "name": "tuning_pending",
+    "input": {
+      "code": "tuning_pending"
+    },
+    "expected": {
+      "text": "Tuning result still pending"
+    }
+  },
+  {
+    "name": "wizard_running",
+    "input": {
+      "code": "wizard_running"
+    },
+    "expected": {
+      "text": "Another setup is running"
+    }
+  },
+  {
+    "name": "no_snapshot",
+    "input": {
+      "code": "no_snapshot"
+    },
+    "expected": {
+      "text": "No saved parameters to restore"
+    }
+  },
+  {
+    "name": "bad_wizard",
+    "input": {
+      "code": "bad_wizard"
+    },
+    "expected": {
+      "text": "Unknown setup"
+    }
+  },
+  {
+    "name": "unknown_op",
+    "input": {
+      "code": "unknown_op"
+    },
+    "expected": {
+      "text": "Not supported by this drone"
+    }
+  },
+  {
+    "name": "bad_state",
+    "input": {
+      "code": "bad_state"
+    },
+    "expected": {
+      "text": "Not available at this point"
+    }
+  },
+  {
+    "name": "battery_low",
+    "input": {
+      "code": "battery_low"
+    },
+    "expected": {
+      "text": "Battery too low"
+    }
+  },
+  {
+    "name": "unsupported",
+    "input": {
+      "code": "unsupported"
+    },
+    "expected": {
+      "text": "Not supported by this flight controller"
+    }
+  },
+  {
+    "name": "unsupported_frame",
+    "input": {
+      "code": "unsupported_frame"
+    },
+    "expected": {
+      "text": "Frame not supported"
+    }
+  },
+  {
+    "name": "blocked",
+    "input": {
+      "code": "blocked"
+    },
+    "expected": {
+      "text": "Preflight checks are blocking"
+    }
+  },
+  {
+    "name": "no_rc",
+    "input": {
+      "code": "no_rc"
+    },
+    "expected": {
+      "text": "No radio input"
+    }
+  },
+  {
+    "name": "not_capturing",
+    "input": {
+      "code": "not_capturing"
+    },
+    "expected": {
+      "text": "Radio capture has not started"
+    }
+  },
+  {
+    "name": "sticks_not_moved",
+    "input": {
+      "code": "sticks_not_moved"
+    },
+    "expected": {
+      "text": "Move the sticks to their ends"
+    }
+  },
+  {
+    "name": "client_no_response",
+    "input": {
+      "code": "no response"
+    },
+    "expected": {
+      "text": "No answer from the drone"
+    }
+  },
+  {
+    "name": "client_no_pilot_link",
+    "input": {
+      "code": "no pilot link"
+    },
+    "expected": {
+      "text": "No answer from the drone"
+    }
+  },
+  {
+    "name": "client_closed",
+    "input": {
+      "code": "closed"
+    },
+    "expected": {
+      "text": "The link to the drone closed"
+    }
+  },
+  {
+    "name": "not_ready_setup_needed",
+    "input": {
+      "code": "not_ready:setup_needed"
+    },
+    "expected": {
+      "text": "Not ready: Aircraft setup"
+    }
+  },
+  {
+    "name": "not_ready_unknown_item",
+    "input": {
+      "code": "not_ready:new_item"
+    },
+    "expected": {
+      "text": "Not ready: new_item"
+    }
+  },
+  {
+    "name": "unknown_code",
+    "input": {
+      "code": "something_new"
+    },
+    "expected": {
+      "text": "Refused: something_new"
+    }
+  },
+  {
+    "name": "empty",
+    "input": {
+      "code": ""
+    },
+    "expected": {
+      "text": "Refused"
+    }
+  },
+  {
+    "name": "absent",
+    "input": {
+      "code": null
+    },
+    "expected": {
+      "text": "Refused"
+    }
+  }
+]

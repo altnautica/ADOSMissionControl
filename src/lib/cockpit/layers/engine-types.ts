@@ -6,6 +6,8 @@
  * @license GPL-3.0-only
  */
 
+import layersSpec from "@/lib/cockpit-spec/layers.json";
+import { specText } from "@/lib/hud/spec-text";
 import type { LayerLevel } from "@/lib/hud/ar-layout";
 import type { AvoidState, MissionState } from "@/lib/hud/cockpit-frames";
 import type { DepthRange, DepthStyle } from "@/stores/cockpit-layers-store";
@@ -21,15 +23,22 @@ export type LayerChipText = Record<
   | "targetsUnavailable",
   string
 >;
-export const DEFAULT_CHIP_TEXT: LayerChipText = {
-  arUnavailable: "AR unavailable",
-  arApprox: "AR ≈",
-  depthUnavailable: "Depth unavailable",
-  depthUnscaled: "Depth unscaled",
-  surfacesUnavailable: "Surfaces unavailable",
-  obstaclesUnavailable: "Obstacles unavailable",
-  targetsUnavailable: "Targets unavailable",
-};
+/** The chip texts from the spec (`layer.unavailable` with the layer's label,
+ *  `layer.ar_approx`, `layer.depth_unscaled`): what the engine draws until the
+ *  flight screen hands it the same values. */
+export function specLayerChipText(): LayerChipText {
+  const label = (id: string) => (layersSpec.layers as { id: string; label: string }[]).find((l) => l.id === id)?.label ?? id;
+  const unavailable = (layer: string) => specText("layer.unavailable", { layer });
+  return {
+    arUnavailable: unavailable(specText("layer.name.ar")),
+    arApprox: specText("layer.ar_approx"),
+    depthUnavailable: unavailable(label("depth")),
+    depthUnscaled: specText("layer.depth_unscaled"),
+    surfacesUnavailable: unavailable(label("surfaces")),
+    obstaclesUnavailable: unavailable(label("obstacles")),
+    targetsUnavailable: unavailable(label("targets")),
+  };
+}
 
 /** What the loop draws, set from React only when a toggle, the level, the
  * camera or the view changes. */

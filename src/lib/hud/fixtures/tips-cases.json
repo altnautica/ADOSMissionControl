@@ -1,0 +1,895 @@
+[
+  {
+    "name": "first_delay_waits",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 1000
+    },
+    "expected": {
+      "kind": "wait",
+      "tipId": "status_pill",
+      "atMs": 2500
+    }
+  },
+  {
+    "name": "first_delay_elapsed_shows_first",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 2500
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "status_pill",
+      "textKey": "tips.status_pill",
+      "anchor": "status_pill"
+    }
+  },
+  {
+    "name": "queue_order_next_after_seen",
+    "input": {
+      "state": {
+        "seen": [
+          "status_pill"
+        ],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "flight_state_chip",
+      "textKey": "tips.flight_state_chip",
+      "anchor": "flight_state_chip"
+    }
+  },
+  {
+    "name": "gap_waits_after_dismissal",
+    "input": {
+      "state": {
+        "seen": [
+          "status_pill"
+        ],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": 10000,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 12000
+    },
+    "expected": {
+      "kind": "wait",
+      "tipId": "flight_state_chip",
+      "atMs": 14000
+    }
+  },
+  {
+    "name": "gap_elapsed_shows_next",
+    "input": {
+      "state": {
+        "seen": [
+          "status_pill"
+        ],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": 10000,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 14000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "flight_state_chip",
+      "textKey": "tips.flight_state_chip",
+      "anchor": "flight_state_chip"
+    }
+  },
+  {
+    "name": "armed_suppresses",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": true,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "none"
+    }
+  },
+  {
+    "name": "airborne_suppresses",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": true,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "none"
+    }
+  },
+  {
+    "name": "sheet_open_suppresses",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": true,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "none"
+    }
+  },
+  {
+    "name": "tour_visible_suppresses",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": true,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "none"
+    }
+  },
+  {
+    "name": "off_flight_screen_suppresses",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": false,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "none"
+    }
+  },
+  {
+    "name": "anchor_missing_skips_unseen",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": false,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "flight_state_chip",
+      "textKey": "tips.flight_state_chip",
+      "anchor": "flight_state_chip"
+    }
+  },
+  {
+    "name": "visible_tip_stays",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": "status_pill",
+        "shownAtMs": 3000,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 11999
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "status_pill",
+      "textKey": "tips.status_pill",
+      "anchor": "status_pill"
+    }
+  },
+  {
+    "name": "auto_dismiss_without_seen",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": "status_pill",
+        "shownAtMs": 3000,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 12000
+    },
+    "expected": {
+      "kind": "hide",
+      "tipId": "status_pill",
+      "markSeen": false,
+      "reason": "auto_dismiss"
+    }
+  },
+  {
+    "name": "auto_dismissed_not_offered_again_this_open",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": 12000,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": [
+          "status_pill"
+        ]
+      },
+      "now_ms": 16000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "flight_state_chip",
+      "textKey": "tips.flight_state_chip",
+      "anchor": "flight_state_chip"
+    }
+  },
+  {
+    "name": "arm_hides_and_marks_seen",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": true,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": "stop",
+        "shownAtMs": 3000,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 4000
+    },
+    "expected": {
+      "kind": "hide",
+      "tipId": "stop",
+      "markSeen": true,
+      "reason": "arm"
+    }
+  },
+  {
+    "name": "sheet_opens_hides_unseen",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": true,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": "stop",
+        "shownAtMs": 3000,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 4000
+    },
+    "expected": {
+      "kind": "hide",
+      "tipId": "stop",
+      "markSeen": false,
+      "reason": "not_allowed"
+    }
+  },
+  {
+    "name": "first_open_queue_done",
+    "input": {
+      "state": {
+        "seen": [
+          "status_pill",
+          "flight_state_chip",
+          "layer_level",
+          "stop"
+        ],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "none"
+    }
+  },
+  {
+    "name": "skills_trigger",
+    "input": {
+      "state": {
+        "seen": [
+          "status_pill",
+          "flight_state_chip",
+          "layer_level",
+          "stop"
+        ],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": true,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "skills_chip",
+      "textKey": "tips.skills_chip",
+      "anchor": "skill_picker_chip"
+    }
+  },
+  {
+    "name": "goto_trigger",
+    "input": {
+      "state": {
+        "seen": [
+          "status_pill",
+          "flight_state_chip",
+          "layer_level",
+          "stop"
+        ],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": true,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "fly_here",
+      "textKey": "tips.fly_here",
+      "anchor": "bottom_left_card"
+    }
+  },
+  {
+    "name": "gimbal_trigger",
+    "input": {
+      "state": {
+        "seen": [
+          "status_pill",
+          "flight_state_chip",
+          "layer_level",
+          "stop"
+        ],
+        "openCount": 1
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": true,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "gimbal_pad",
+      "textKey": "tips.gimbal_pad",
+      "anchor": "gimbal_pad"
+    }
+  },
+  {
+    "name": "second_open_trigger",
+    "input": {
+      "state": {
+        "seen": [
+          "status_pill",
+          "flight_state_chip",
+          "layer_level",
+          "stop"
+        ],
+        "openCount": 2
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "card_switch",
+      "textKey": "tips.card_switch",
+      "anchor": "bottom_left_card"
+    }
+  },
+  {
+    "name": "reset_starts_over",
+    "input": {
+      "state": {
+        "seen": [],
+        "openCount": 0
+      },
+      "ctx": {
+        "armed": false,
+        "airborne": false,
+        "flightScreen": true,
+        "sheetOrMenuOpen": false,
+        "tourVisible": false,
+        "skillsAvailable": false,
+        "gotoOffered": false,
+        "gimbalAvailable": false,
+        "anchorsVisible": {
+          "status_pill": true,
+          "flight_state_chip": true,
+          "layer_button": true,
+          "stop": true,
+          "skill_picker_chip": true,
+          "bottom_left_card": true,
+          "gimbal_pad": true
+        },
+        "screenOpenedAtMs": 0,
+        "lastDismissedAtMs": null,
+        "shownTipId": null,
+        "shownAtMs": null,
+        "hiddenThisOpen": []
+      },
+      "now_ms": 60000
+    },
+    "expected": {
+      "kind": "show",
+      "tipId": "status_pill",
+      "textKey": "tips.status_pill",
+      "anchor": "status_pill"
+    }
+  }
+]
