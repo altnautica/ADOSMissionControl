@@ -14,10 +14,13 @@ import { FlightFlowOverlays } from "../FlightFlowOverlays";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
 import { specString } from "@/lib/cockpit/spec-strings";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 function mount(over: Record<string, unknown>) {
   const pilot = parsePilotState(demoPilotWire(over));
   if (!pilot) throw new Error("demo pilot wire did not parse");
+  // The overlays show only what a fresh pilot frame says.
+  useNavStreamStore.getState().setPilot("countdown-test", pilot);
   return render(
     <IntlWrapper>
       <FlightFlowOverlays droneId="countdown-test" pilot={pilot} />
@@ -44,6 +47,6 @@ describe("flight-flow countdowns", () => {
     expect(screen.getByTestId("low-battery-cancel-warning").textContent).toBe(
       specString("flow.low_battery.cancel_warning"),
     );
-    expect(banner.className).toContain("bg-status-error");
+    expect(banner.getAttribute("data-severity")).toBe("critical");
   });
 });

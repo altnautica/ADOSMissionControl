@@ -3,8 +3,10 @@
 /**
  * The flight-state chip (top bar, left): who flies the drone and how, in the
  * shared spec's words and colours. Tapping it opens the Mode sheet. Its
- * button (Take control, Resume) fires the matching built-in; NOT READY with
- * the readiness item `setup_needed` red links to the aircraft setup wizard.
+ * button (Take control, Resume) fires the matching built-in, and Abort on a
+ * running launch holds the aircraft as the launch step strip's Abort does;
+ * NOT READY with the readiness item `setup_needed` red links to the aircraft
+ * setup wizard.
  *
  * The chip never takes more than {@link CHIP_MAX_FRAC} of the top bar: a
  * longer text ends in an ellipsis and the full text stays in its title and
@@ -21,6 +23,7 @@ import Link from "next/link";
 import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useGroundStationLink } from "@/lib/cockpit/ground-station-link";
 import { specString } from "@/lib/cockpit/spec-strings";
+import { requestPilotAction } from "@/lib/input/pilot-stream";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { ModeSheet } from "./ModeSheet";
 import { AIRCRAFT_SETUP_HREF } from "@/components/shared/AircraftSetupBanner";
@@ -28,9 +31,12 @@ import { AIRCRAFT_SETUP_HREF } from "@/components/shared/AircraftSetupBanner";
 /** The largest share of the top bar's width the chip may take. */
 export const CHIP_MAX_FRAC = 0.4;
 
-const BUTTON_LABEL: Record<string, { label: string; skill: string }> = {
-  take_control: { label: "flow.take_control", skill: "take_control" },
-  resume: { label: "flow.resume", skill: "resume" },
+/** The chip's button: its spec text key and what it does. */
+const CHIP_BUTTON: Record<string, { label: string; run: (droneId: string) => void }> = {
+  take_control: { label: "flow.take_control", run: (id) => void activate("take_control", buildSkillContext(id)) },
+  resume: { label: "flow.resume", run: (id) => void activate("resume", buildSkillContext(id)) },
+  // The same action as the launch sheet's and step strip's Abort.
+  abort: { label: "flow.launch.abort", run: () => void requestPilotAction("pause") },
 };
 
 export function FlightStateChip({
@@ -54,7 +60,7 @@ export function FlightStateChip({
   const detectedLink = useGroundStationLink(droneId);
   const viaGroundStation = groundStationLink ?? detectedLink;
   const [open, setOpen] = useFlightSheet("mode");
-  const button = chip.button ? BUTTON_LABEL[chip.button] : undefined;
+  const button = chip.button ? CHIP_BUTTON[chip.button] : undefined;
   const setupLink =
     chip.button === "setup" &&
     (pilot?.readiness.some((r) => r.id === "setup_needed" && !r.ok) ?? false);
@@ -111,8 +117,10 @@ export function FlightStateChip({
         {button && (
           <button
             type="button"
+            data-testid="chip-action"
+            data-action={chip.button ?? undefined}
             className="fs-btn fs-hit fs-chip-action"
-            onClick={() => void activate(button.skill, buildSkillContext(droneId))}
+            onClick={() => button.run(droneId)}
           >
             {specString(button.label)}
           </button>

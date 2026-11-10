@@ -13,6 +13,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { FlightFlowOverlays } from "@/components/cockpit/v2/FlightFlowOverlays";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
+import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { FlightGridContext } from "../flight-context";
 import { FlightVideoFrame, placeholderTop } from "../FlightFrame";
 import { PLACEHOLDER_DROP_PX, flightGrid, flowColumn, videoRect } from "../flight-grid";
@@ -24,6 +25,9 @@ describe("flow overlay column", () => {
     it(`stacks under the ${following ? "follow strip" : "top bar"}, between the columns`, () => {
       const grid = flightGrid({ width: 1280, height: 800, widthClass: "expanded", following });
       const pilot = parsePilotState(demoPilotWire({ link_loss_in_s: 4, link_loss_action: "rtl", gate: { pending: true, progress: 0.4 } }));
+      if (!pilot) throw new Error("demo pilot wire did not parse");
+      // The overlays show only what a fresh pilot frame says.
+      useNavStreamStore.getState().setPilot("flow-stack", pilot);
       render(
         <FlightGridContext.Provider value={grid}><FlightFlowOverlays droneId="flow-stack" pilot={pilot} /></FlightGridContext.Provider>,
       );

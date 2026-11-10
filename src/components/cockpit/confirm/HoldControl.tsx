@@ -5,10 +5,15 @@
  * @description The on-screen press-and-hold control of a confirm sheet. The
  * fill runs left to right over exactly the hold time while any hold source is
  * held (pointer, Enter, gamepad button) and snaps back when released, so the
- * operator always sees how much of the hold remains.
+ * operator always sees how much of the hold remains. A press let go before
+ * the hold completes shows the keep-holding hint in place of the hint line
+ * for a moment.
  * @license GPL-3.0-only
  */
 
+import { useRef } from "react";
+
+import { keepHoldingText, useKeepHoldingHint } from "@/components/cockpit/v2/HoldButton";
 import type { ConfirmHold } from "./use-confirm-hold";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +34,16 @@ export function HoldControl({
   danger,
   disabled,
 }: HoldControlProps) {
+  const { shown: keepHolding, early } = useKeepHoldingHint();
+  // When the pointer went down on the control, while it is down.
+  const pressedAt = useRef<number | null>(null);
+  const { onPointerDown, onPointerUp, onPointerLeave, onPointerCancel } = hold.pointerHandlers;
+  const letGo = (handler: () => void) => () => {
+    if (pressedAt.current !== null && !disabled && Date.now() - pressedAt.current < holdMs) early();
+    pressedAt.current = null;
+    handler();
+  };
+
   return (
     <div className="flex flex-col gap-1">
       <button
@@ -37,7 +52,13 @@ export function HoldControl({
         data-holding={hold.holding ? "true" : "false"}
         aria-disabled={disabled}
         aria-describedby="skill-confirm-hold-hint"
-        {...hold.pointerHandlers}
+        onPointerDown={(e) => {
+          pressedAt.current = Date.now();
+          onPointerDown(e);
+        }}
+        onPointerUp={letGo(onPointerUp)}
+        onPointerLeave={letGo(onPointerLeave)}
+        onPointerCancel={letGo(onPointerCancel)}
         // Activation happens only through the hold; a click alone does nothing.
         onClick={(e) => e.preventDefault()}
         className={cn(
@@ -62,9 +83,20 @@ export function HoldControl({
         />
         <span className="relative">{label}</span>
       </button>
-      <span id="skill-confirm-hold-hint" className="text-[11px] text-text-tertiary">
-        {hint}
-      </span>
+      {keepHolding ? (
+        <span
+          id="skill-confirm-hold-hint"
+          role="status"
+          data-testid="keep-holding-hint"
+          className="text-[11px] font-semibold text-text-primary"
+        >
+          {keepHoldingText(holdMs)}
+        </span>
+      ) : (
+        <span id="skill-confirm-hold-hint" className="text-[11px] text-text-tertiary">
+          {hint}
+        </span>
+      )}
     </div>
   );
 }

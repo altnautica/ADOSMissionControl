@@ -22,6 +22,12 @@
  * so the ring never sits on it. A PICTURE FROZEN banner, when up, keeps the
  * column's first slot.
  *
+ * All of it says what the pilot state says, so all of it hides once the
+ * newest pilot frame is stale (`pilotFresh`): a countdown or a gate ring
+ * from a frame that stopped arriving is no longer true. Both countdowns end
+ * in an automatic manoeuvre and use the spec's severity colour
+ * (`layout.json` `banners.severity`).
+ *
  * Text comes from the shared cockpit strings, so every surface says the
  * same thing.
  *
@@ -37,8 +43,10 @@ import { flowColumn } from "@/components/cockpit/flight/flight-grid";
 import tokens from "@/lib/cockpit-spec/tokens.json";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { linkLossLine } from "@/lib/hud/link-loss";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { hasSpecString, specString } from "@/lib/cockpit/spec-strings";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { PILOT_SRC, sendPilotAction, takePilotSession, usePilotLinkStore } from "@/lib/input/pilot-stream";
 import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useMissionStatus } from "@/lib/mission/use-mission-status";
@@ -48,6 +56,17 @@ const HANDOVER_MS = layoutSpec.banners.handover_ms;
 const TAKE_CONTROL_HOLD_MS = layoutSpec.holds_ms.take_control;
 /** Space between the stacked overlays. */
 const STACK_GAP_PX = 8;
+/** Re-check of the pilot frame's age while nothing else re-renders. */
+const FRESH_TICK_MS = 500;
+
+type Severity = "ok" | "warning" | "critical";
+const SEVERITY = layoutSpec.banners.severity as Record<"low_battery_rth" | "link_loss", Severity>;
+
+/** A countdown banner's background: `tokens.json` `chrome.severity_<level>`
+ *  for the banner's level in `layout.json` `banners.severity`. */
+export function countdownColor(banner: keyof typeof SEVERITY): string {
+  return tokens.chrome[`severity_${SEVERITY[banner]}`];
+}
 
 /** The banner's args with the spec's sub-keys resolved (`source: "rc"` →
  * "RC switch") and the profile in the chip's upper case. */
@@ -107,7 +126,9 @@ function useVoicePrompts(droneId: string, pilot: PilotState | null): void {
   }, [enabled, owner, fcModeName, mission, rth]);
 }
 
-function HandoverBanner({ pilot }: { pilot: PilotState | null }) {
+/** `hidden` (a stale pilot) keeps the banner's timing but draws nothing, so
+ * a banner already shown is not replayed when frames return. */
+function HandoverBanner({ pilot, hidden }: { pilot: PilotState | null; hidden: boolean }) {
   const banner = pilot?.banner ?? null;
   const text = banner ? bannerText(banner) : null;
   // Shown for the spec's handover time from when its text first appears.
@@ -122,7 +143,7 @@ function HandoverBanner({ pilot }: { pilot: PilotState | null }) {
     const t = setTimeout(() => setVisible(false), HANDOVER_MS);
     return () => clearTimeout(t);
   }, [visible, lastText]);
-  if (!visible || !lastText) return null;
+  if (hidden || !visible || !lastText) return null;
   return (
     <div role="status" aria-live="polite" data-testid="handover-banner" className="pointer-events-none flex w-full justify-center">
       <span className="glass-panel w-[min(640px,100%)] px-4 py-2 text-center text-sm font-semibold text-text-primary">
@@ -193,7 +214,9 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
         <div
           role="alert"
           data-testid="low-battery-rth"
-          className="pointer-events-auto flex w-[min(720px,100%)] items-center justify-between gap-3 rounded-lg bg-status-error/90 px-4 py-2 text-sm font-semibold text-white"
+          data-severity={SEVERITY.low_battery_rth}
+          className="pointer-events-auto flex w-[min(720px,100%)] items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm font-semibold text-white"
+          style={{ background: countdownColor("low_battery_rth") }}
         >
           <span className="flex flex-col">
             <span>{specString("flow.low_battery.title", { in_s: Math.ceil(rth) })}</span>
@@ -211,7 +234,13 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
         </div>
       )}
       {linkLoss !== null && (
-        <div role="alert" data-testid="link-loss-countdown" className="rounded-lg bg-status-error/90 px-4 py-2 text-sm font-semibold text-white">
+        <div
+          role="alert"
+          data-testid="link-loss-countdown"
+          data-severity={SEVERITY.link_loss}
+          className="rounded-lg px-4 py-2 text-sm font-semibold text-white"
+          style={{ background: countdownColor("link_loss") }}
+        >
           {linkLossLine({ linkLossInS: linkLoss, linkLossAction: pilot?.linkLossAction ?? null })}
         </div>
       )}
@@ -223,18 +252,30 @@ export function FlightFlowOverlays({ droneId, pilot }: { droneId: string; pilot:
   useVoicePrompts(droneId, pilot);
   const grid = useFlightGrid();
   const frozen = useVideoFrozen(droneId) !== null;
+  const { receivedAt } = usePilotState(droneId);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), FRESH_TICK_MS);
+    return () => clearInterval(t);
+  }, []);
+  const fresh = pilotFresh(receivedAt, now);
+  const live = fresh ? pilot : null;
   const col = flowColumn(grid);
   const top = col.y + (frozen ? FROZEN_BANNER_H + STACK_GAP_PX : 0);
   return (
+    // The `alert_stack` zone: with nothing to show it has no children and
+    // `empty:hidden` takes it out of layout, so its rect is empty and the
+    // tips know no alert is up.
     <div
       data-testid="flow-stack"
-      className="pointer-events-none absolute z-[45] flex flex-col items-center"
+      data-zone="alert_stack"
+      className="pointer-events-none absolute z-[45] flex flex-col items-center empty:hidden"
       style={{ left: col.x, top, width: col.w, gap: STACK_GAP_PX }}
     >
-      <Countdowns pilot={pilot} />
-      <HandoverBanner pilot={pilot} />
-      <SticksWith pilot={pilot} />
-      <GateRing gate={pilot?.gate ?? null} />
+      <Countdowns pilot={live} />
+      <HandoverBanner pilot={pilot} hidden={!fresh} />
+      <SticksWith pilot={live} />
+      <GateRing gate={live?.gate ?? null} />
     </div>
   );
 }
