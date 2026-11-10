@@ -6,6 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Maps: the "NO GPS FIX" / "POSITION STALE" notice sits under the GPS badge instead of the map's centre; the Split divider position is kept per vehicle with the view, clamped to the shared range.
 - Cockpit top bar: items move into the Menu in the shared order; STOP is always enabled and always opens the 3 s hold; the Menu lists its sections in the shared order with a per-layer list; the controller cell says "No controller" until a pad has been seen.
 - Cockpit card, map and follow: the bottom-left card switches by swipe and dots; Split has a draggable divider (30–70 %); the follow strip sits under the top bar; flow banners stack in one column; a narrow bottom row shows distance and height only.
 - Cockpit right column: a drag-to-aim gimbal pad; the column drops items in the shared order when short; the camera sheet opens below the top bar.

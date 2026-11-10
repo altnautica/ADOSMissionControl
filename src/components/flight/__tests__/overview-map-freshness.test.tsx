@@ -108,6 +108,14 @@ describe("OverviewMap GPS badge", () => {
     expect(container.textContent).toContain("NO GPS FIX");
   });
 
+  it("keeps the no-position notice off the centre of the map", () => {
+    const { getByTestId } = render(<OverviewMap />);
+    const notice = getByTestId("map-no-position");
+    expect(notice.textContent).toBe("NO GPS FIX");
+    expect(notice.className).not.toMatch(/inset-0|justify-center|items-center/);
+    expect(notice.className).toMatch(/top-9/);
+  });
+
   it("shows a fresh fix", () => {
     pushGps(0);
     pushPosition(0);

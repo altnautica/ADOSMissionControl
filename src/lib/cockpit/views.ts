@@ -84,18 +84,44 @@ export function nextView(id: CockpitViewId): CockpitViewId {
   return VIEW_CYCLE[(i + 1) % VIEW_CYCLE.length] ?? DEFAULT_VIEW;
 }
 
+/** The Split view's divider from the spec (the fallback keeps it centred). */
+export const SPLIT_DIVIDER: CockpitViewDivider = viewDef("split").divider ?? {
+  draggable: false,
+  default: 0.5,
+  min: 0.5,
+  max: 0.5,
+};
+
+/** A divider position clamped to the spec's range; non-finite → the default. */
+export function clampSplit(ratio: number): number {
+  if (!Number.isFinite(ratio)) return SPLIT_DIVIDER.default;
+  return Math.min(SPLIT_DIVIDER.max, Math.max(SPLIT_DIVIDER.min, ratio));
+}
+
 interface CockpitViewState {
   byDrone: Record<string, CockpitViewId>;
+  /** The Split divider per vehicle (the video's share), kept with the view so
+   * it survives the flight screen closing and reopening. */
+  splitByDrone: Record<string, number>;
   setView: (droneId: string, view: CockpitViewId) => void;
   cycleView: (droneId: string) => void;
+  setSplit: (droneId: string, ratio: number) => void;
 }
 
 export const useCockpitViewStore = create<CockpitViewState>()((set) => ({
   byDrone: {},
+  splitByDrone: {},
   setView: (droneId, view) => set((s) => ({ byDrone: { ...s.byDrone, [droneId]: view } })),
   cycleView: (droneId) =>
     set((s) => ({ byDrone: { ...s.byDrone, [droneId]: nextView(s.byDrone[droneId] ?? DEFAULT_VIEW) } })),
+  setSplit: (droneId, ratio) =>
+    set((s) => ({ splitByDrone: { ...s.splitByDrone, [droneId]: clampSplit(ratio) } })),
 }));
+
+/** The drone's Split divider position. */
+export function useSplitRatio(droneId: string): number {
+  return useCockpitViewStore((s) => s.splitByDrone[droneId] ?? SPLIT_DIVIDER.default);
+}
 
 /** The drone's current cockpit view. */
 export function useCockpitView(droneId: string): CockpitViewId {

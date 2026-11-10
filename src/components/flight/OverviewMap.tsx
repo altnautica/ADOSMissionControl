@@ -277,10 +277,11 @@ export function OverviewMap({
 
           <GuidanceSettingsMenu />
 
-          {/* No live position overlay */}
+          {/* No live position: a notice under the GPS badge, never over the
+              centre of the map, which stays clear for the drone and the route. */}
           {!hasGps && (
-            <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
-              <span className="text-sm font-mono font-semibold text-text-secondary bg-bg-primary/90 backdrop-blur-md px-3 py-1.5 border border-border-strong rounded shadow-lg">
+            <div className="absolute top-9 left-2 z-[1000] pointer-events-none" data-testid="map-no-position">
+              <span className="text-xs font-mono font-semibold text-text-secondary bg-bg-primary/90 backdrop-blur-md px-2 py-1 border border-border-strong rounded shadow-lg">
                 {positionStale ? "POSITION STALE" : "NO GPS FIX"}
               </span>
             </div>
