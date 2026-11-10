@@ -78,6 +78,7 @@ export const CRC_EXTRA: ReadonlyMap<number, number> = new Map([
   [251, 170],   // NAMED_VALUE_FLOAT
   [252, 44],    // NAMED_VALUE_INT
   [254, 46],    // DEBUG
+  [259, 92],    // CAMERA_INFORMATION
   [263, 133],   // CAMERA_IMAGE_CAPTURED
   [285, 137],   // GIMBAL_DEVICE_ATTITUDE_STATUS
   [330, 23],    // OBSTACLE_DISTANCE
@@ -181,6 +182,7 @@ export const PAYLOAD_LENGTHS: ReadonlyMap<number, number> = new Map([
   [251, 18],    // NAMED_VALUE_FLOAT
   [252, 18],    // NAMED_VALUE_INT
   [254, 9],     // DEBUG
+  [259, 237],   // CAMERA_INFORMATION (235 base + gimbal_device_id/camera_device_id)
   [263, 255],   // CAMERA_IMAGE_CAPTURED
   [285, 49],    // GIMBAL_DEVICE_ATTITUDE_STATUS
   [330, 167],   // OBSTACLE_DISTANCE (158 base + increment_f/angle_offset/frame extensions)

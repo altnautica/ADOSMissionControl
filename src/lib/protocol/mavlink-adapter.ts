@@ -8,6 +8,7 @@
  * - mavlink-adapter-missions.ts (mission/rally/fence protocol)
  * - mavlink-adapter-logs.ts (log download protocol)
  * - mavlink-adapter-frame-handlers.ts (incoming frame routing + state machines)
+ * - mavlink-adapter-camera.ts (finding the vehicle camera, where its commands go)
  *
  * @module protocol/mavlink-adapter
  */
@@ -36,6 +37,7 @@ import * as logOps from './mavlink-adapter-logs'
 import * as ftpOps from './mavlink-adapter-ftp'
 import * as ftpWriteOps from './mavlink-adapter-ftp-ops'
 import { LinkSet } from './mavlink-adapter-links'
+import { CameraDiscovery } from './mavlink-adapter-camera'
 import { commandRefusal } from './command-refusal'
 import { NO_CAPABILITIES } from './no-capabilities'
 import type { MavlinkSigner } from './mavlink-signer'
@@ -130,6 +132,7 @@ export class MAVLinkAdapter implements DroneProtocol {
       componentMetadataUri: null, statusText: new StatusTextAssembler(), homeAltitudeAmsl: null,
     }
   })()
+  private readonly camera = new CameraDiscovery(this.st, (cmd, p, comp) => this.sendCommandLong(cmd, p, undefined, comp))
 
   // ── Connection ─────────────────────────────────────────
   async connect(transport: Transport): Promise<VehicleInfo> {
@@ -194,6 +197,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     // before this connection.
     this.sendCommandLong(512, [49, 0, 0, 0, 0, 0, 0]).catch(() => {})
     this.sendCommandLong(512, [148, 0, 0, 0, 0, 0, 0]).catch(() => {})
+    this.camera.start()
     // COMPONENT_METADATA (397) is a PX4-only "component information" message;
     // ArduPilot does not implement it, so only request it for PX4 vehicles.
     if (this.st.firmwareHandler?.firmwareType === 'px4') {
@@ -269,7 +273,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     if (this.linkLostCheckInterval) { clearInterval(this.linkLostCheckInterval); this.linkLostCheckInterval = null }
     for (const off of this.streamTriggers) off()
     this.streamTriggers = []
-    this.commandQueue.clear(); this.paramCache.clear()
+    this.commandQueue.clear(); this.paramCache.clear(); this.camera.reset()
     this.routing = false
     resetOnDisconnect(this.st, this._ftpCtx)
     // Detach all remaining links
@@ -289,6 +293,7 @@ export class MAVLinkAdapter implements DroneProtocol {
 
   private handleFrame(frame: MAVLinkFrame): void {
     processInboundFrame(this.st, frame, this.diagnosticsEnabled)
+    if (this._connected) this.camera.observe(frame)
   }
 
   // ── Context helpers ────────────────────────────────────
@@ -337,6 +342,8 @@ export class MAVLinkAdapter implements DroneProtocol {
   async setGimbalROI(lat: number, lon: number, alt: number) { return cmds.cmdSetRoiLocation(this.cc, lat, lon, alt) }
   async setRoiLocation(lat: number, lon: number, alt: number) { return cmds.cmdSetRoiLocation(this.cc, lat, lon, alt) }
   async clearRoi() { return cmds.cmdSetRoiNone(this.cc) }
+  async imageStartCapture() { return cmds.cmdImageStartCapture(this.cc, this.camera.commandCompId) }
+  async setCameraZoom(step: 1 | -1) { return cmds.cmdSetCameraZoom(this.cc, step, this.camera.commandCompId) }
   async orbit(radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number) { return cmds.cmdOrbit(this.cc, radius, velocity, yawBehavior, lat, lon, alt) }
   async setEkfOrigin(lat: number, lon: number, alt: number) { return cmds.cmdSetEkfOrigin(this.cc, lat, lon, alt) }
 
@@ -413,7 +420,7 @@ export class MAVLinkAdapter implements DroneProtocol {
   onLinkRestored = this.cbm.onLinkRestored; onLocalPosition = this.cbm.onLocalPosition
   onDebug = this.cbm.onDebug; onGimbalAttitude = this.cbm.onGimbalAttitude
   onObstacleDistance = this.cbm.onObstacleDistance; onCameraImageCaptured = this.cbm.onCameraImageCaptured
-  onAdsbVehicle = this.cbm.onAdsbVehicle
+  onAdsbVehicle = this.cbm.onAdsbVehicle; onCameraInformation = this.cbm.onCameraInformation
   onExtendedSysState = this.cbm.onExtendedSysState; onFencePoint = this.cbm.onFencePoint
   onSystemTime = this.cbm.onSystemTime; onRawImu = this.cbm.onRawImu
   onRcChannelsRaw = this.cbm.onRcChannelsRaw; onRcChannelsOverride = this.cbm.onRcChannelsOverride
@@ -446,11 +453,11 @@ export class MAVLinkAdapter implements DroneProtocol {
     t.send(d)
   }
 
-  private sendCommandLong(cmd: number, p: [number, number, number, number, number, number, number], timeout?: number): Promise<CommandResult> {
+  private sendCommandLong(cmd: number, p: [number, number, number, number, number, number, number], timeout?: number, targetComp = this.st.targetCompId): Promise<CommandResult> {
     const refusal = commandRefusal(this.commandTransport)
     if (refusal) return Promise.resolve({ success: false, resultCode: -1, message: refusal })
     const s = this.st
-    return this.commandQueue.sendCommand(cmd, p, this.sendOrThrow, s.targetSysId, s.targetCompId, s.sysId, s.compId, timeout)
+    return this.commandQueue.sendCommand(cmd, p, this.sendOrThrow, s.targetSysId, targetComp, s.sysId, s.compId, timeout)
   }
 
   /** Ack-tracked COMMAND_INT, for commands whose x/y need 1e7 integer precision. */

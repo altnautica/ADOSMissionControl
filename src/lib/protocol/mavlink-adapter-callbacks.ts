@@ -21,7 +21,7 @@ import type {
   NavControllerCallback, ScaledImuCallback, ScaledPressureCallback,
   EstimatorStatusCallback, CameraTriggerCallback, LinkStateCallback,
   LocalPositionCallback, DebugCallback, GimbalAttitudeCallback,
-  ObstacleDistanceCallback, AdsbVehicleCallback, CameraImageCapturedCallback,
+  ObstacleDistanceCallback, AdsbVehicleCallback, CameraImageCapturedCallback, CameraInformationCallback,
   ExtendedSysStateCallback, FencePointCallback, SystemTimeCallback,
   RawImuCallback, RcChannelsRawCallback, RcChannelsOverrideCallback,
   MissionItemCallback, AltitudeCallback, WindCovCallback,
@@ -74,6 +74,7 @@ export interface CallbackStore {
   obstacleDistanceCallbacks: ObstacleDistanceCallback[]
   adsbVehicleCallbacks: AdsbVehicleCallback[]
   cameraImageCallbacks: CameraImageCapturedCallback[]
+  cameraInformationCallbacks: CameraInformationCallback[]
   extendedSysStateCallbacks: ExtendedSysStateCallback[]
   fencePointCallbacks: FencePointCallback[]
   systemTimeCallbacks: SystemTimeCallback[]
@@ -139,6 +140,7 @@ export function createCallbackStore(): CallbackStore {
     obstacleDistanceCallbacks: [],
     adsbVehicleCallbacks: [],
     cameraImageCallbacks: [],
+    cameraInformationCallbacks: [],
     extendedSysStateCallbacks: [],
     fencePointCallbacks: [],
     systemTimeCallbacks: [],
@@ -214,6 +216,7 @@ export function bindCallbackMethods(cbs: CallbackStore) {
     onObstacleDistance: (cb: ObstacleDistanceCallback) => sub(cbs.obstacleDistanceCallbacks, cb),
     onAdsbVehicle: (cb: AdsbVehicleCallback) => sub(cbs.adsbVehicleCallbacks, cb),
     onCameraImageCaptured: (cb: CameraImageCapturedCallback) => sub(cbs.cameraImageCallbacks, cb),
+    onCameraInformation: (cb: CameraInformationCallback) => sub(cbs.cameraInformationCallbacks, cb),
     onExtendedSysState: (cb: ExtendedSysStateCallback) => sub(cbs.extendedSysStateCallbacks, cb),
     onFencePoint: (cb: FencePointCallback) => sub(cbs.fencePointCallbacks, cb),
     onSystemTime: (cb: SystemTimeCallback) => sub(cbs.systemTimeCallbacks, cb),

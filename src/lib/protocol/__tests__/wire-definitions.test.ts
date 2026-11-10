@@ -292,6 +292,8 @@ const SENDERS: Array<[string, string, (ctx: cmds.CommandContext) => unknown]> = 
   ["cmdEnableFence", "MAV_CMD_DO_FENCE_ENABLE", (c) => cmds.cmdEnableFence(c, true)],
   ["cmdSetServo", "MAV_CMD_DO_SET_SERVO", (c) => cmds.cmdSetServo(c, 9, 1500)],
   ["cmdCameraTrigger", "MAV_CMD_DO_DIGICAM_CONTROL", (c) => cmds.cmdCameraTrigger(c)],
+  ["cmdImageStartCapture", "MAV_CMD_IMAGE_START_CAPTURE", (c) => cmds.cmdImageStartCapture(c)],
+  ["cmdSetCameraZoom", "MAV_CMD_SET_CAMERA_ZOOM", (c) => cmds.cmdSetCameraZoom(c, 1)],
   ["cmdSetGimbalAngle", "MAV_CMD_DO_MOUNT_CONTROL", (c) => cmds.cmdSetGimbalAngle(c, -30, 0, 0)],
   ["cmdSetGimbalMode", "MAV_CMD_DO_MOUNT_CONFIGURE", (c) => cmds.cmdSetGimbalMode(c, 2)],
   ["cmdDoPreArmCheck", "MAV_CMD_RUN_PREARM_CHECKS", (c) => cmds.cmdDoPreArmCheck(c)],

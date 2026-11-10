@@ -142,6 +142,13 @@ export interface DroneProtocolBase {
   setGimbalROI?(lat: number, lon: number, alt: number): Promise<CommandResult>;
   setRoiLocation?(lat: number, lon: number, alt: number): Promise<CommandResult>;
   clearRoi?(): Promise<CommandResult>;
+  /**
+   * One still image (MAV_CMD_IMAGE_START_CAPTURE), sent to the camera that
+   * advertised itself in CAMERA_INFORMATION, else to the autopilot.
+   */
+  imageStartCapture?(): Promise<CommandResult>;
+  /** One zoom step in (1) or out (-1) (MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP), same target. */
+  setCameraZoom?(step: 1 | -1): Promise<CommandResult>;
 
   // ── Orbit ────────────────────────────────────────────────
   orbit?(radius: number, velocity: number, yawBehavior: number, lat: number, lon: number, alt: number): Promise<CommandResult>;

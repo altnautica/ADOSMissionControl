@@ -20,6 +20,9 @@ import { specText } from "@/lib/hud/spec-text";
 import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
 import { captureScreenshot } from "@/lib/video/webrtc-client";
 import { ZOOM_STEPS, useViewZoomStore, type ViewZoom } from "@/components/cockpit/flight/view-zoom-store";
+import type { DroneProtocol } from "@/lib/protocol/types";
+import { useDroneManager } from "@/stores/drone-manager";
+import { useMavlinkCameraStore, type MavlinkCameraCapabilities } from "@/stores/mavlink-camera-store";
 
 /** Extension skill ids (the part after `plugin:`) for each camera action. */
 export const EXTENSION_CAPTURE_IDS = ["capture", "photo", "take-photo"] as const;
@@ -67,6 +70,26 @@ export interface MavlinkCamera {
   capture: () => Promise<boolean>;
   /** MAV_CMD_SET_CAMERA_ZOOM, ZOOM_TYPE_STEP; resolves true when accepted. */
   zoomStep: (by: 1 | -1) => Promise<boolean>;
+}
+
+/**
+ * The camera a drone advertised, driven through its protocol: null unless it
+ * advertised still capture or zoom and the protocol can send that command.
+ * Each action resolves true only when the advertised command was accepted.
+ */
+export function mavlinkCameraFor(
+  advertised: MavlinkCameraCapabilities | undefined,
+  protocol: Pick<DroneProtocol, "imageStartCapture" | "setCameraZoom"> | undefined,
+): MavlinkCamera | null {
+  if (!advertised || !protocol) return null;
+  const capture = advertised.capture ? protocol.imageStartCapture?.bind(protocol) : undefined;
+  const zoomStep = advertised.zoom ? protocol.setCameraZoom?.bind(protocol) : undefined;
+  if (!capture && !zoomStep) return null;
+  return {
+    zoom: zoomStep !== undefined,
+    capture: async () => (capture ? (await capture()).success : false),
+    zoomStep: async (by) => (zoomStep ? (await zoomStep(by)).success : false),
+  };
 }
 
 export interface CameraDeps {
@@ -122,8 +145,8 @@ function pluginSkillId(ids: readonly string[]): string | null {
   return null;
 }
 
-/** The live dependencies. The protocol layer neither reads CAMERA_INFORMATION
- *  nor sends the camera commands, so no vehicle advertises a MAVLink camera. */
+/** The live dependencies. The vehicle camera is the one the drone advertised
+ *  in CAMERA_INFORMATION, driven through its connected protocol. */
 export const LIVE_CAMERA_DEPS: CameraDeps = {
   extensionOffers: (ids) => pluginSkillId(ids) !== null,
   fireExtension: (droneId, ids) => {
@@ -132,7 +155,11 @@ export const LIVE_CAMERA_DEPS: CameraDeps = {
     void activate(id, buildSkillContext(droneId));
     return true;
   },
-  mavlinkCamera: () => null,
+  mavlinkCamera: (droneId) =>
+    mavlinkCameraFor(
+      useMavlinkCameraStore.getState().byDrone[droneId],
+      useDroneManager.getState().drones.get(droneId)?.protocol,
+    ),
   grabFrame: captureScreenshot,
   digitalZoom: {
     get: (droneId) => useViewZoomStore.getState().byDrone[droneId] ?? 1,

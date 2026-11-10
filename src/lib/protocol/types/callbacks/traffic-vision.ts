@@ -44,6 +44,21 @@ export type CameraImageCapturedCallback = (data: {
   fileUrl: string;
 }) => void;
 
+/**
+ * A camera's advertisement (MAVLink CAMERA_INFORMATION), one call per
+ * message. `capture` and `zoom` are its CAMERA_CAP_FLAGS for still capture
+ * and basic zoom.
+ */
+export type CameraInformationCallback = (data: {
+  timestamp: number;
+  /** The MAVLink component that sent it; commands for this camera go there. */
+  compId: number;
+  flags: number;
+  cameraDeviceId: number;
+  capture: boolean;
+  zoom: boolean;
+}) => void;
+
 export type ExtendedSysStateCallback = (data: {
   timestamp: number;
   vtolState: number;

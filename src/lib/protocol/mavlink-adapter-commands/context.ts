@@ -56,7 +56,8 @@ export interface CommandContext {
    * AMSL, so a height above home has to be converted with it.
    */
   homeAltitudeAmsl: number | null
-  sendCommandLong: (command: number, params: [number, number, number, number, number, number, number], timeoutMs?: number) => Promise<CommandResult>
+  /** Ack-tracked COMMAND_LONG to `targetCompId`, the autopilot's component when omitted. */
+  sendCommandLong: (command: number, params: [number, number, number, number, number, number, number], timeoutMs?: number, targetCompId?: number) => Promise<CommandResult>
   /** Ack-tracked COMMAND_INT, for commands whose x/y need 1e7 integer precision. */
   sendCommandInt: (
     command: number,

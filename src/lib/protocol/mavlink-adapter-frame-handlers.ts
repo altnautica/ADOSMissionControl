@@ -46,7 +46,7 @@ import {
 } from './handlers/info-handlers'
 import {
   handleNamedValueFloat, handleNamedValueInt, handleDebugValue,
-  handleCameraTrigger, handleCameraImageCaptured, handleGimbalAttitude, handleObstacleDistance,
+  handleCameraTrigger, handleCameraImageCaptured, handleCameraInformation, handleGimbalAttitude, handleObstacleDistance,
   handleAisVessel, handleGimbalManagerInfo, handleGimbalManagerStatus,
 } from './handlers/debug-handlers'
 import { handleCanFrame, handleCanFdFrame } from './handlers/can-handlers'
@@ -211,6 +211,7 @@ export function routeFrame(s: FrameHandlerState, frame: MAVLinkFrame, p: DataVie
     case 254: handleDebugValue(p, c.debugCallbacks); break
     case 301: handleAisVessel(p, c.aisVesselCallbacks); break
     case 263: handleCameraImageCaptured(p, c.cameraImageCallbacks); break
+    case 259: handleCameraInformation(p, frame.componentId, c.cameraInformationCallbacks); break
     case 285: handleGimbalAttitude(p, c.gimbalAttitudeCallbacks); break
     case 280: handleGimbalManagerInfo(p, c.gimbalManagerInfoCallbacks); break
     case 281: handleGimbalManagerStatus(p, c.gimbalManagerStatusCallbacks); break

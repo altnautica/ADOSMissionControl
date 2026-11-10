@@ -20,6 +20,7 @@ import { useDiagnosticsStore } from "./diagnostics-store";
 import { useGeofenceStore } from "./geofence-store";
 import { useCanMonitorStore } from "./can-monitor-store";
 import { useGpsOriginStore } from "./gps-origin-store";
+import { useMavlinkCameraStore } from "./mavlink-camera-store";
 import { recordFrameFor } from "@/lib/telemetry-recorder";
 import { notifyArmed } from "@/lib/flight-lifecycle";
 import { usePrearmBufferStore } from "@/stores/prearm-buffer-store";
@@ -418,6 +419,13 @@ export function bridgeTelemetry(
     ...(protocol.onGpsOrigin ? [
       protocol.onGpsOrigin((data) => useGpsOriginStore.getState().setOrigin(droneId, data)),
       () => useGpsOriginStore.getState().clear(droneId),
+    ] : []),
+
+    // The vehicle camera's advertised capture and zoom, kept per drone like the
+    // EKF origin (it answers once per connection) and dropped with this bridge.
+    ...(protocol.onCameraInformation ? [
+      protocol.onCameraInformation(({ capture, zoom }) => useMavlinkCameraStore.getState().setCamera(droneId, { capture, zoom })),
+      () => useMavlinkCameraStore.getState().clear(droneId),
     ] : []),
   ];
 }

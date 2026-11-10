@@ -287,6 +287,38 @@ export function decodeDebug(dv: DataView): DebugMsg {
   };
 }
 
+// ── CAMERA_INFORMATION (ID 259) ─────────────────────────────
+
+/** CAMERA_CAP_FLAGS_CAPTURE_IMAGE: the camera takes stills (MAV_CMD_IMAGE_START_CAPTURE). */
+export const CAMERA_CAP_FLAGS_CAPTURE_IMAGE = 2;
+/** CAMERA_CAP_FLAGS_HAS_BASIC_ZOOM: the camera zooms (MAV_CMD_SET_CAMERA_ZOOM). */
+export const CAMERA_CAP_FLAGS_HAS_BASIC_ZOOM = 64;
+
+export interface CameraInformationMsg {
+  timeBootMs: number;
+  /** CAMERA_CAP_FLAGS bitmask. */
+  flags: number;
+  /** Which of the autopilot's cameras this is (1-6), 0 for the sending component itself. */
+  cameraDeviceId: number;
+}
+
+/**
+ * Decode CAMERA_INFORMATION (msg ID 259): the capability fields only.
+ *
+ * | Offset | Type   | Field                        |
+ * |--------|--------|------------------------------|
+ * | 0      | uint32 | timeBootMs                   |
+ * | 20     | uint32 | flags                        |
+ * | 236    | uint8  | cameraDeviceId (extension)   |
+ */
+export function decodeCameraInformation(dv: DataView): CameraInformationMsg {
+  return {
+    timeBootMs: dv.getUint32(0, true),
+    flags: dv.getUint32(20, true),
+    cameraDeviceId: dv.byteLength > 236 ? dv.getUint8(236) : 0,
+  };
+}
+
 // ── CAMERA_IMAGE_CAPTURED (ID 263) ──────────────────────────
 
 export interface CameraImageCapturedMsg {

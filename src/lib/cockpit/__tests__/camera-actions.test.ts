@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  LIVE_CAMERA_DEPS,
   cockpitZoom,
   digitalZoomLabel,
+  mavlinkCameraFor,
   photoResultText,
   stepZoom,
   takePhoto,
@@ -11,6 +13,9 @@ import {
   type MavlinkCamera,
 } from "@/lib/cockpit/camera-actions";
 import { useViewZoomStore, type ViewZoom } from "@/components/cockpit/flight/view-zoom-store";
+import { useMavlinkCameraStore } from "@/stores/mavlink-camera-store";
+import { useDroneManager } from "@/stores/drone-manager";
+import type { CommandResult, DroneProtocol } from "@/lib/protocol/types";
 
 interface Fakes {
   extension?: boolean;
@@ -146,5 +151,76 @@ describe("photo", () => {
     expect(r).toBe("no_video");
     expect(photoResultText(r)).toBe("No video");
     expect(photoResultText("extension")).toBeNull();
+  });
+});
+
+describe("the live vehicle camera", () => {
+  function cameraProtocol(accept = true) {
+    const sent: string[] = [];
+    const result: CommandResult = { success: accept, resultCode: accept ? 0 : 4, message: "" };
+    const protocol = {
+      imageStartCapture: async () => {
+        sent.push("capture");
+        return result;
+      },
+      setCameraZoom: async (step: 1 | -1) => {
+        sent.push(`zoom ${step}`);
+        return result;
+      },
+    } as Partial<DroneProtocol> as DroneProtocol;
+    return { protocol, sent };
+  }
+
+  function connect(protocol: DroneProtocol) {
+    useDroneManager.setState({ drones: new Map([["d1", { protocol }]]) } as never);
+  }
+
+  beforeEach(() => {
+    useMavlinkCameraStore.setState({ byDrone: {} });
+    useDroneManager.setState({ drones: new Map() });
+  });
+
+  it("is absent until the drone advertises a camera", () => {
+    connect(cameraProtocol().protocol);
+    expect(LIVE_CAMERA_DEPS.mavlinkCamera("d1")).toBeNull();
+    useMavlinkCameraStore.getState().setCamera("d1", { capture: false, zoom: false });
+    expect(LIVE_CAMERA_DEPS.mavlinkCamera("d1")).toBeNull();
+  });
+
+  it("is absent when the advertising drone is not connected", () => {
+    useMavlinkCameraStore.getState().setCamera("d1", { capture: true, zoom: true });
+    expect(LIVE_CAMERA_DEPS.mavlinkCamera("d1")).toBeNull();
+  });
+
+  it("captures and zooms through the drone's protocol once advertised", async () => {
+    const { protocol, sent } = cameraProtocol();
+    connect(protocol);
+    useMavlinkCameraStore.getState().setCamera("d1", { capture: true, zoom: true });
+    const cam = LIVE_CAMERA_DEPS.mavlinkCamera("d1");
+    expect(cam?.zoom).toBe(true);
+    expect(await cam?.capture()).toBe(true);
+    expect(await cam?.zoomStep(-1)).toBe(true);
+    expect(sent).toEqual(["capture", "zoom -1"]);
+  });
+
+  it("sends only what the camera advertised, and reports a refusal", async () => {
+    const { protocol, sent } = cameraProtocol(false);
+    const captureOnly = mavlinkCameraFor({ capture: true, zoom: false }, protocol);
+    expect(captureOnly?.zoom).toBe(false);
+    expect(await captureOnly?.zoomStep(1)).toBe(false);
+    expect(await captureOnly?.capture()).toBe(false);
+    expect(sent).toEqual(["capture"]);
+  });
+
+  it("is absent for a protocol without the camera commands", () => {
+    expect(mavlinkCameraFor({ capture: true, zoom: true }, {} as DroneProtocol)).toBeNull();
+  });
+
+  it("drops the camera when the drone's bridge clears it", () => {
+    connect(cameraProtocol().protocol);
+    useMavlinkCameraStore.getState().setCamera("d1", { capture: true, zoom: false });
+    expect(LIVE_CAMERA_DEPS.mavlinkCamera("d1")).not.toBeNull();
+    useMavlinkCameraStore.getState().clear("d1");
+    expect(LIVE_CAMERA_DEPS.mavlinkCamera("d1")).toBeNull();
   });
 });

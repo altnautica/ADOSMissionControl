@@ -15,6 +15,22 @@ export function cmdCameraTrigger(ctx: CommandContext): Promise<CommandResult> {
   return ctx.sendCommandLong(203, [0, 0, 0, 0, 1, 0, 0])
 }
 
+/** CAMERA_ZOOM_TYPE ZOOM_TYPE_STEP: param2 is a step direction (1 in, -1 out). */
+const ZOOM_TYPE_STEP = 0
+
+/**
+ * MAV_CMD_IMAGE_START_CAPTURE (2000): one image from every camera on
+ * `cameraCompId` (id 0, no interval, one image, no sequence number).
+ */
+export function cmdImageStartCapture(ctx: CommandContext, cameraCompId?: number): Promise<CommandResult> {
+  return ctx.sendCommandLong(2000, [0, 0, 1, 0, 0, 0, 0], undefined, cameraCompId)
+}
+
+/** MAV_CMD_SET_CAMERA_ZOOM (531), one step in (1) or out (-1). */
+export function cmdSetCameraZoom(ctx: CommandContext, step: 1 | -1, cameraCompId?: number): Promise<CommandResult> {
+  return ctx.sendCommandLong(531, [ZOOM_TYPE_STEP, step, 0, 0, 0, 0, 0], undefined, cameraCompId)
+}
+
 export function cmdSetGimbalAngle(ctx: CommandContext, pitch: number, roll: number, yaw: number): Promise<CommandResult> {
   // MAV_CMD_DO_MOUNT_CONTROL (205) takes float DEGREES for pitch/roll/yaw.
   // (The centidegree convention belongs to the deprecated MOUNT_CONTROL

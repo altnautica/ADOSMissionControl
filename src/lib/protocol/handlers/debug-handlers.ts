@@ -6,13 +6,14 @@
  */
 
 import type {
-  DebugCallback, CameraImageCapturedCallback, CameraTriggerCallback,
+  DebugCallback, CameraImageCapturedCallback, CameraInformationCallback, CameraTriggerCallback,
   GimbalAttitudeCallback, ObstacleDistanceCallback,
   AisVesselCallback, GimbalManagerInfoCallback, GimbalManagerStatusCallback,
 } from '../types'
 import {
   decodeNamedValueFloat, decodeNamedValueInt, decodeDebug,
-  decodeCameraImageCaptured, decodeCameraTrigger,
+  decodeCameraImageCaptured, decodeCameraInformation, decodeCameraTrigger,
+  CAMERA_CAP_FLAGS_CAPTURE_IMAGE, CAMERA_CAP_FLAGS_HAS_BASIC_ZOOM,
   decodeGimbalDeviceAttitudeStatus, decodeObstacleDistance,
   decodeAisVessel, decodeGimbalManagerInformation, decodeGimbalManagerStatus,
 } from '../messages'
@@ -55,6 +56,20 @@ export function handleCameraImageCaptured(payload: DataView, callbacks: CameraIm
       cameraId: data.cameraId,
       captureResult: data.captureResult,
       fileUrl: data.fileUrl,
+    })
+  }
+}
+
+export function handleCameraInformation(payload: DataView, compId: number, callbacks: CameraInformationCallback[]): void {
+  const data = decodeCameraInformation(payload)
+  for (const cb of callbacks) {
+    cb({
+      timestamp: Date.now(),
+      compId,
+      flags: data.flags,
+      cameraDeviceId: data.cameraDeviceId,
+      capture: (data.flags & CAMERA_CAP_FLAGS_CAPTURE_IMAGE) !== 0,
+      zoom: (data.flags & CAMERA_CAP_FLAGS_HAS_BASIC_ZOOM) !== 0,
     })
   }
 }
