@@ -3,35 +3,57 @@
 /**
  * @module cockpit/flight/FlightMenu
  * @description The top bar's Menu: everything that is not flight-critical
- * lives here rather than on the flight screen. Top-bar items the bar had no
- * room for (controller, navigation source, link detail), the cockpit view,
- * the camera streams and roster, the command palette, the extension quick
- * settings, the control editor, immersive (fullscreen) mode and the way back
- * to the drone page.
+ * lives here rather than on the flight screen. Its sections follow the shared
+ * spec's `menu.order`: the top-bar items the bar had no room for (only those
+ * actually hidden), the cockpit view (in the spec's cycle order), the camera
+ * streams and roster, the layer switches, the pre-flight checklist, the
+ * flight modes (the Mode sheet), the controls, the extension panels, the
+ * aircraft setup (only while the pilot reports setup is needed), the settings
+ * and the way back to the drone page.
  *
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, type ReactNode } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Command, Expand, LogOut, Minimize, Settings2, SlidersHorizontal } from "lucide-react";
+import { Command, Expand, Gauge, LogOut, Minimize, Settings, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
 
-import { COCKPIT_VIEWS, useCockpitView, useCockpitViewStore } from "@/lib/cockpit/views";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import { VIEW_CYCLE, useCockpitView, useCockpitViewStore, viewDef } from "@/lib/cockpit/views";
 import { specString } from "@/lib/cockpit/spec-strings";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useSkillInputStore } from "@/stores/skill-input-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import { useUiStore } from "@/stores/ui-store";
+import { AIRCRAFT_SETUP_HREF } from "@/components/shared/AircraftSetupBanner";
 import { CameraPanel } from "./CameraSheet";
+import { useFlightSheet } from "./flight-sheet";
 import { NavSourceChip } from "../NavSourceChip";
+import { LayerFlags, LayerLevelButton } from "../layers/LayerLevelButton";
 import { ControllerCell, LinkCell } from "./TopBarCells";
 import { StickControlChip } from "../StickControlChip";
 import { PreflightChip } from "../PreflightChip";
+import type { TopBarItem } from "./FlightTopBar";
 
-export interface MenuOverflow {
-  controller: boolean;
-  navSource: boolean;
-  linkDetail: boolean;
-}
+/** The Menu's sections, in the shared spec's order. */
+export type MenuSection =
+  | "overflow"
+  | "view"
+  | "cameras"
+  | "layers"
+  | "preflight"
+  | "modes"
+  | "controls"
+  | "extension_panels"
+  | "setup"
+  | "settings"
+  | "exit";
+
+export const MENU_ORDER: readonly MenuSection[] = layoutSpec.menu.order as MenuSection[];
+
+/** The route the app's settings live at. */
+const SETTINGS_HREF = "/config";
 
 /** Leave the flight screen for the drone page (its Overview tab). */
 export function exitFlightScreen(): void {
@@ -42,22 +64,26 @@ export function exitFlightScreen(): void {
 
 export function FlightMenu({
   droneId,
-  overflow,
+  hidden,
   onClose,
 }: {
   droneId: string;
-  overflow: MenuOverflow;
+  /** The top-bar items currently moved into the Menu. */
+  hidden: ReadonlySet<TopBarItem>;
   onClose: () => void;
 }) {
   const t = useTranslations("flightScreen.menu");
   const view = useCockpitView(droneId);
   const setView = useCockpitViewStore((s) => s.setView);
+  const { pilot } = usePilotState(droneId);
+  // Set up aircraft is offered only while the pilot reports setup is needed.
+  const setupNeeded = pilot?.readiness.some((r) => r.id === "setup_needed" && !r.ok) ?? false;
+  const [, setModeOpen] = useFlightSheet("mode");
   const immersive = useUiStore((s) => s.immersiveMode);
   const ref = useRef<HTMLDivElement>(null);
-  const anyOverflow = overflow.controller || overflow.navSource || overflow.linkDetail;
 
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>("button")?.focus();
+    ref.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -79,53 +105,101 @@ export function FlightMenu({
     fn();
   };
 
-  return (
-    <div ref={ref} role="dialog" aria-label={specString("cockpit.menu")} className="fs-sheet fs-menu" data-testid="fs-menu">
-      {anyOverflow && (
-        <section className="fs-menu-sec" data-testid="fs-menu-overflow">
-          {overflow.linkDetail && <LinkCell droneId={droneId} detail />}
-          {overflow.navSource && <NavSourceChip droneId={droneId} />}
-          {overflow.controller && <ControllerCell />}
+  const linkHidden = hidden.has("link_text") || hidden.has("link_icon");
+
+  const sections: Record<MenuSection, ReactNode> = {
+    overflow:
+      hidden.size > 0 ? (
+        <section className="fs-menu-sec" data-testid="fs-menu-overflow" data-section="overflow">
+          {hidden.has("controller") && <ControllerCell />}
+          {hidden.has("nav_source") && <NavSourceChip droneId={droneId} />}
+          {linkHidden && <LinkCell droneId={droneId} detail />}
+          {hidden.has("layer_button") && <LayerLevelButton droneId={droneId} caret={false} />}
         </section>
-      )}
-      <section className="fs-menu-sec">
-        <h3 className="fs-menu-h">{t("view")}</h3>
-        <div className="fs-seg" role="group" aria-label={t("view")}>
-          {COCKPIT_VIEWS.map((v) => (
+      ) : null,
+    view: (
+      <section className="fs-menu-sec" data-section="view">
+        <h3 className="fs-menu-h">{specString("cockpit.menu.view")}</h3>
+        <div className="fs-seg" role="group" aria-label={specString("cockpit.menu.view")}>
+          {VIEW_CYCLE.map((id) => (
             <button
-              key={v.id}
+              key={id}
               type="button"
-              aria-pressed={view === v.id}
-              data-testid={`fs-view-${v.id}`}
-              onClick={() => setView(droneId, v.id)}
+              className="fs-hit"
+              aria-pressed={view === id}
+              data-testid={`fs-view-${id}`}
+              onClick={() => setView(droneId, id)}
             >
-              {v.label}
+              {viewDef(id).label}
             </button>
           ))}
         </div>
       </section>
-      <section className="fs-menu-sec" data-testid="fs-menu-cameras">
-        <h3 className="fs-menu-h">{t("cameras")}</h3>
+    ),
+    cameras: (
+      <section className="fs-menu-sec" data-testid="fs-menu-cameras" data-section="cameras">
+        <h3 className="fs-menu-h">{specString("cockpit.menu.cameras")}</h3>
         <CameraPanel droneId={droneId} />
       </section>
-      <section className="fs-menu-sec" data-testid="fs-menu-controls">
-        <h3 className="fs-menu-h">{t("controls")}</h3>
-        <StickControlChip droneId={droneId} />
+    ),
+    layers: (
+      <section className="fs-menu-sec" data-testid="fs-menu-layers" data-section="layers">
+        <h3 className="fs-menu-h">{specString("cockpit.menu.layers")}</h3>
+        <LayerFlags droneId={droneId} />
+      </section>
+    ),
+    preflight: (
+      <section className="fs-menu-sec" data-testid="fs-menu-preflight" data-section="preflight">
+        <h3 className="fs-menu-h">{specString("cockpit.menu.preflight")}</h3>
         <PreflightChip droneId={droneId} />
       </section>
-      <section className="fs-menu-sec fs-menu-actions">
+    ),
+    modes: (
+      <section className="fs-menu-sec fs-menu-actions" data-section="modes">
+        <button type="button" data-testid="fs-menu-modes" onClick={run(() => setModeOpen(true))}>
+          <Gauge className="fs-ico" aria-hidden="true" />
+          {specString("cockpit.menu.modes")}
+        </button>
+      </section>
+    ),
+    controls: (
+      <section className="fs-menu-sec" data-testid="fs-menu-controls" data-section="controls">
+        <h3 className="fs-menu-h">{specString("cockpit.menu.controls")}</h3>
+        <StickControlChip droneId={droneId} />
+        <div className="fs-menu-actions">
+          <button type="button" onClick={run(() => useSkillInputStore.getState().setEditorOpen(true))}>
+            <Settings2 className="fs-ico" aria-hidden="true" />
+            {t("editControls")}
+          </button>
+        </div>
+      </section>
+    ),
+    extension_panels: (
+      <section className="fs-menu-sec fs-menu-actions" data-section="extension_panels">
+        <button type="button" data-testid="fs-menu-extensions" onClick={run(() => useFlyQuickSettingsStore.getState().toggle())}>
+          <SlidersHorizontal className="fs-ico" aria-hidden="true" />
+          {specString("cockpit.menu.extension_panels")}
+        </button>
+      </section>
+    ),
+    setup: setupNeeded ? (
+      <section className="fs-menu-sec fs-menu-actions" data-section="setup">
+        <Link href={AIRCRAFT_SETUP_HREF} data-testid="fs-menu-setup" onClick={onClose}>
+          <Wrench className="fs-ico" aria-hidden="true" />
+          {specString("cockpit.menu.setup")}
+        </Link>
+      </section>
+    ) : null,
+    settings: (
+      <section className="fs-menu-sec fs-menu-actions" data-section="settings">
+        <Link href={SETTINGS_HREF} data-testid="fs-menu-settings" onClick={onClose}>
+          <Settings className="fs-ico" aria-hidden="true" />
+          {specString("cockpit.menu.settings")}
+        </Link>
         <button type="button" onClick={run(() => useSkillInputStore.getState().setPaletteOpen(true))}>
           <Command className="fs-ico" aria-hidden="true" />
           {t("palette")}
           <kbd>Ctrl K</kbd>
-        </button>
-        <button type="button" onClick={run(() => useFlyQuickSettingsStore.getState().toggle())}>
-          <SlidersHorizontal className="fs-ico" aria-hidden="true" />
-          {t("quickSettings")}
-        </button>
-        <button type="button" onClick={run(() => useSkillInputStore.getState().setEditorOpen(true))}>
-          <Settings2 className="fs-ico" aria-hidden="true" />
-          {t("editControls")}
         </button>
         <button
           type="button"
@@ -140,11 +214,23 @@ export function FlightMenu({
           {immersive ? <Minimize className="fs-ico" aria-hidden="true" /> : <Expand className="fs-ico" aria-hidden="true" />}
           {immersive ? t("leaveImmersive") : t("immersive")}
         </button>
+      </section>
+    ),
+    exit: (
+      <section className="fs-menu-sec fs-menu-actions" data-section="exit">
         <button type="button" data-testid="fs-exit" onClick={run(exitFlightScreen)}>
           <LogOut className="fs-ico" aria-hidden="true" />
-          {t("exit")}
+          {specString("cockpit.menu.exit")}
         </button>
       </section>
+    ),
+  };
+
+  return (
+    <div ref={ref} role="dialog" aria-label={specString("cockpit.menu")} className="fs-sheet fs-menu" data-testid="fs-menu">
+      {MENU_ORDER.map((id) => (
+        <Fragment key={id}>{sections[id]}</Fragment>
+      ))}
     </div>
   );
 }

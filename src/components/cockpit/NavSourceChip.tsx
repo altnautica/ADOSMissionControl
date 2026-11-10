@@ -16,6 +16,7 @@ import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
 import { useTranslations } from "next-intl";
 import { Compass, Satellite, ScanLine, Waves, type LucideIcon } from "lucide-react";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import type { NavSourceKind, NavSourceResult, NavTone } from "@/lib/hud/nav-source";
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
 import { useNavSource } from "@/hooks/use-nav-source";
@@ -62,7 +63,6 @@ export function useNavSourceText(): (r: NavSourceResult) => { label: string; wor
 }
 
 export function NavSourceChip({ droneId }: { droneId: string }) {
-  const t = useTranslations("hud.nav");
   const view = useNavSource(droneId);
   const widthClass = useCockpitWidthClass();
   const text = useNavSourceText()(view.result);
@@ -75,14 +75,14 @@ export function NavSourceChip({ droneId }: { droneId: string }) {
   const showWord = widthClass !== "compact" && text.word !== null;
 
   return (
-    <div className="stat navchip" data-testid="cockpit-nav" data-kind={kind} data-tone={tone}>
+    <div className="stat navchip" data-testid="cockpit-nav" data-item="nav_source" data-kind={kind} data-tone={tone}>
       <button
         ref={anchorRef}
         type="button"
-        className="navchip-btn"
+        className="navchip-btn fs-hit"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`${t("chipLabel")}: ${text.label}${text.word ? ` ${text.word}` : ""}`}
+        aria-label={`${specString("cockpit.status.source.nav_source")}: ${text.label}${text.word ? ` ${text.word}` : ""}`}
         onClick={() => setOpen((v) => !v)}
       >
         <Icon size={12} aria-hidden="true" style={{ color }} />

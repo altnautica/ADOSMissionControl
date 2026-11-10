@@ -10,11 +10,13 @@
  * only what takes input: the click areas over each target, the drag
  * selection, the detector status tag and the target-action popup.
  *
- * Interaction (unchanged from the SVG target layer it replaces):
- *  - click a target (hit area at least 44 px) → its target-action popup, after
- *    the double-click interval so a double click never also designates;
+ * Interaction:
+ *  - click a target (hit area at least the spec's `touch_target.min`, padded
+ *    around the box) → its target-action popup, after the double-click
+ *    interval so a double click never also designates;
  *  - `[` / `]` cycle a focus ring, `Enter` opens the focused target's popup,
- *    `Esc` clears the focus;
+ *    `Esc` clears the focus; the boxes stay out of the Tab sequence, so Tab
+ *    walks the flight-screen chrome first;
  *  - drag on empty video → designate the dragged rect.
  *
  * It re-renders at detection rate (a few Hz), never at the AR or obstacle
@@ -52,11 +54,22 @@ import { useSelectedTargetStore } from "@/stores/selected-target-store";
 import { useVideoStore } from "@/stores/video-store";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import type { DetectionBox } from "@/stores/vision-detections-store";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 
 import { DetectorStateTag } from "@/components/vision/DetectorStateTag";
 import { TargetActionPopup } from "@/components/vision/TargetActionPopup";
 
 type HitLayout = GlyphLayout & { hit: ScreenRect };
+
+/** The smallest hit area a target takes (`layout.json` `touch_target.min`). */
+const HIT_MIN = layoutSpec.touch_target.min;
+
+/** A target's hit rect grown about its centre to at least {@link HIT_MIN}. */
+export function padHit(r: ScreenRect): ScreenRect {
+  const w = Math.max(r.w, HIT_MIN);
+  const h = Math.max(r.h, HIT_MIN);
+  return { x: r.x - (w - r.w) / 2, y: r.y - (h - r.h) / 2, w, h };
+}
 
 export interface TargetControllerProps {
   droneId: string;
@@ -253,23 +266,29 @@ export function TargetController({ droneId, cameraId, engine, layerRef, size }: 
 
   return (
     <>
-      {hits.map((l) => (
-        <button
-          key={l.key}
-          type="button"
-          className="tgt-hit"
-          data-target-interactive
-          data-kind={l.kind}
-          data-key={l.key}
-          aria-label={l.item.topTag?.text ?? l.item.detection?.classLabel ?? l.kind}
-          style={{ left: l.hit.x, top: l.hit.y, width: l.hit.w, height: l.hit.h }}
-          onClick={(e) => onHitClick(e, l.item)}
-          onPointerEnter={() => setHoverKey(l.key)}
-          onPointerLeave={() => setHoverKey(null)}
-          onFocus={() => setHoverKey(l.key)}
-          onBlur={() => setHoverKey(null)}
-        />
-      ))}
+      {hits.map((l) => {
+        const hit = padHit(l.hit);
+        return (
+          <button
+            key={l.key}
+            type="button"
+            className="tgt-hit"
+            // Out of the Tab sequence so the chrome comes first; the boxes are
+            // reached with `[` / `]` and opened with Enter.
+            tabIndex={-1}
+            data-target-interactive
+            data-kind={l.kind}
+            data-key={l.key}
+            aria-label={l.item.topTag?.text ?? l.item.detection?.classLabel ?? l.kind}
+            style={{ left: hit.x, top: hit.y, width: hit.w, height: hit.h }}
+            onClick={(e) => onHitClick(e, l.item)}
+            onPointerEnter={() => setHoverKey(l.key)}
+            onPointerLeave={() => setHoverKey(null)}
+            onFocus={() => setHoverKey(l.key)}
+            onBlur={() => setHoverKey(null)}
+          />
+        );
+      })}
       {selection && (
         <div
           className="tgt-select"

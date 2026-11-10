@@ -1,19 +1,18 @@
 /**
  * @license GPL-3.0-only
  *
- * The top bar's controller cell asks for a button press before any pad has
- * reported and reads "not supported" for a non-standard pad (which never
- * streams sticks); the first-connect tour shows once per pad id.
+ * The top bar's controller cell in the shared spec's words: "no controller"
+ * before any pad has reported this session, a request for a button press once
+ * one has and is gone, "Pad" for a usable pad (named in its label) and "Not
+ * standard" for a pad whose layout never streams sticks.
  */
 
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
-import { ControllerCell, ControllerTour } from "../TopBarCells";
+import { ControllerCell } from "../TopBarCells";
 import { usePadStatusStore, type PadStatus } from "@/lib/input/pad-status";
-import { useInputStore } from "@/stores/input-store";
-import { useControlsStore } from "@/stores/controls-store";
 
 function pad(p: Partial<PadStatus>): void {
   usePadStatusStore.getState().set({
@@ -29,33 +28,32 @@ function pad(p: Partial<PadStatus>): void {
 afterEach(() => {
   cleanup();
   pad({});
-  useInputStore.setState({ gamepadId: null });
-  useControlsStore.setState({ tourSeen: false });
 });
 
 describe("top bar controller cell", () => {
-  it("asks for a button press before any pad has reported", () => {
+  it("reads no controller before any pad has reported this session", () => {
     pad({});
     renderWithIntl(<ControllerCell />);
-    expect(screen.getByTestId("cockpit-controller-chip").textContent).toBe(
-      "Press any button on the controller",
-    );
+    const cell = screen.getByTestId("cockpit-controller-chip");
+    expect(cell.textContent).toBe("No controller");
+    expect(cell.getAttribute("data-pad")).toBe("none");
   });
 
-  it("reads not supported for a non-standard pad, with no calibrate promise and no tour", () => {
+  it("asks for a button press once a pad has reported and is gone", () => {
+    pad({ seen: true, connected: false });
+    renderWithIntl(<ControllerCell />);
+    const cell = screen.getByTestId("cockpit-controller-chip");
+    expect(cell.textContent).toBe("Press any button on the controller");
+    expect(cell.getAttribute("data-pad")).toBe("seen");
+  });
+
+  it("reads not standard for a pad whose layout never streams sticks", () => {
     pad({ seen: true, connected: true, needsCalibration: true });
-    useInputStore.setState({ gamepadId: "pad-1" });
-    renderWithIntl(
-      <>
-        <ControllerCell />
-        <ControllerTour />
-      </>,
-    );
-    expect(screen.getByTestId("cockpit-controller-chip").textContent).toBe("Controller layout not supported");
-    expect(screen.queryByTestId("controls-tour")).toBeNull();
+    renderWithIntl(<ControllerCell />);
+    expect(screen.getByTestId("cockpit-controller-chip").textContent).toBe("Not standard");
   });
 
-  it("shows the product name without the browser's id decorations", () => {
+  it("reads Pad for a usable pad, named without the browser's id decorations", () => {
     pad({
       seen: true,
       connected: true,
@@ -63,15 +61,8 @@ describe("top bar controller cell", () => {
       name: "Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)",
     });
     renderWithIntl(<ControllerCell />);
-    expect(screen.getByTestId("cockpit-controller-chip").textContent).toBe("Wireless Controller");
-  });
-
-  it("shows the tour on a pad's first connect, once per pad", () => {
-    pad({ seen: true, connected: true, usable: true, name: "Wireless Controller" });
-    useInputStore.setState({ gamepadId: "pad-1" });
-    renderWithIntl(<ControllerTour />);
-    for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole("button"));
-    expect(screen.queryByTestId("controls-tour")).toBeNull();
-    expect(useControlsStore.getState().tourSeen).toBe(true);
+    const cell = screen.getByTestId("cockpit-controller-chip");
+    expect(cell.textContent).toBe("Pad");
+    expect(cell.getAttribute("aria-label")).toBe("Controller Wireless Controller: Pad");
   });
 });

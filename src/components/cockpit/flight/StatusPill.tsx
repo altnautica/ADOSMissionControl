@@ -56,7 +56,7 @@ const ALERT_SOURCE: Record<CockpitAlertId, string> = {
   fenceBreach: "fc_status_text",
   statusText: "fc_status_text",
   statusTextWarn: "fc_status_text",
-  rcFailsafe: "fc_status_text",
+  rcFailsafe: "link",
   highVibration: "fc_status_text",
 };
 
@@ -167,7 +167,7 @@ export function pilotAlerts(
   return out;
 }
 
-function usePillAlerts(droneId: string): PillAlert[] {
+export function usePillAlerts(droneId: string): PillAlert[] {
   const t = useTranslations("flightScreen.pill");
   const ta = useTranslations("cockpit.alerts");
   const { alerts, label } = useCockpitAlertList(droneId);
@@ -218,7 +218,6 @@ const ICON = { ok: CircleCheck, warning: TriangleAlert, critical: OctagonAlert }
 const COLOR = { ok: "var(--fs-ok)", warning: "var(--fs-warn)", critical: "var(--fs-crit)" } as const;
 
 export function StatusPill({ droneId }: { droneId: string }) {
-  const t = useTranslations("flightScreen.pill");
   const alerts = usePillAlerts(droneId);
   const [acked, setAcked] = useState<ReadonlySet<string>>(() => new Set());
   const [open, setOpen] = useState(false);
@@ -262,13 +261,13 @@ export function StatusPill({ droneId }: { droneId: string }) {
     <div ref={rootRef} className="fs-pill-wrap">
       <button
         type="button"
-        className="fs-pill"
+        className="fs-pill fs-hit"
         data-testid="status-pill"
         data-severity={summary.severity}
         data-flashing={summary.flashing ? "true" : "false"}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={t("aria", { text: summary.text })}
+        aria-label={`${specString("cockpit.menu.status")}: ${summary.text}`}
         onClick={() => {
           ackShown(keys);
           setOpen((o) => !o);
@@ -276,7 +275,7 @@ export function StatusPill({ droneId }: { droneId: string }) {
         style={{ "--pill-color": COLOR[summary.severity] } as React.CSSProperties}
       >
         <Icon className="fs-ico" aria-hidden="true" />
-        <span className="fs-pill-text">{summary.text}</span>
+        <span className="fs-pill-text" title={summary.text}>{summary.text}</span>
       </button>
       {open && (
         <div role="dialog" aria-label={specString("cockpit.menu.status")} className="fs-sheet fs-pill-list" data-testid="status-pill-list">

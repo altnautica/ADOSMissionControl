@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
 import { CONFIRM_HOLD_DEFAULT_MS } from "@/lib/skills/types";
+import { refusalText } from "@/lib/hud/refusal";
 import { EKF_FLAG, gpsFixWord, sourceValueKey } from "@/lib/hud/nav-source";
 import type { NavSourceView } from "@/hooks/use-nav-source";
 import { useDroneManager } from "@/stores/drone-manager";
@@ -94,7 +95,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
     try {
       const protocol = useDroneManager.getState().drones.get(droneId)?.protocol;
       if (!protocol) {
-        toast(t("switchFailed", { reason: "no-link" }), "error");
+        toast(t("switchFailed", { reason: refusalText("no_fc") }), "error");
         return;
       }
       const res = await protocol.setEkfSourceSet(set);
@@ -137,7 +138,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
     >
       <div className="navpop-head">
         <span>{t("popoverTitle")}</span>
-        <button type="button" onClick={onClose} aria-label={t("close")} className="navpop-x">
+        <button type="button" onClick={onClose} aria-label={t("close")} className="navpop-x fs-hit">
           <X size={14} aria-hidden="true" />
         </button>
       </div>
@@ -167,7 +168,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
                   ) : (
                     <button
                       type="button"
-                      className="navpop-use"
+                      className="navpop-use fs-hit"
                       aria-pressed={armed === n}
                       disabled={busy}
                       onClick={() => setArmed((cur) => (cur === n ? null : n))}

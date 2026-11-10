@@ -14,9 +14,7 @@ import { useTranslations } from "next-intl";
 import { Gamepad2, Radio } from "lucide-react";
 
 import { useDroneStore } from "@/stores/drone-store";
-import { useInputStore } from "@/stores/input-store";
 import { specString } from "@/lib/cockpit/spec-strings";
-import { Tour } from "@/components/config/ControlsSettingsCards";
 import { useHudTopBarData } from "@/hooks/use-hud-topbar-data";
 import { deriveHudStatus } from "@/lib/hud-readings";
 import { NO_DATA_GLYPH } from "@/lib/hud-draw";
@@ -97,15 +95,23 @@ export function LinkCell({ droneId, detail }: { droneId: string; detail: boolean
       : link === "ok"
         ? t("ok")
         : t("age", { age: formatElapsed(msSince(lastHeartbeat)) });
+  const named = specString("cockpit.link.named", { label: text });
   return (
-    <div className="fs-cell" data-testid="fs-link" data-link-state={link} title={t("title")}>
+    <div
+      className="fs-cell"
+      data-testid="fs-link"
+      data-item="link_icon"
+      data-link-state={link}
+      title={named}
+      aria-label={named}
+    >
       <span className="fs-sig" aria-hidden="true">
         {SIG.map((h, i) => (
           <b key={h} style={{ height: h, background: i < level ? LINK_COLOR[link] : "var(--fs-border)" }} />
         ))}
       </span>
       {detail && (
-        <span className="fs-sub" data-testid="fs-link-detail" style={{ color: LINK_COLOR[link] }}>
+        <span className="fs-sub" data-testid="fs-link-detail" data-item="link_text" style={{ color: LINK_COLOR[link] }}>
           {text}
         </span>
       )}
@@ -120,48 +126,43 @@ export function LinkCell({ droneId, detail }: { droneId: string; detail: boolean
 }
 
 /**
- * The controller's state. Before any pad has reported it asks for a button
- * press (browsers expose a pad only after one). A pad whose layout is not
- * standard never streams sticks, so it reads "not supported".
+ * The controller's state in the shared spec's words. Browsers expose a pad
+ * only after its first button press: before any pad has reported this
+ * session the cell reads "no controller"; once one has and is gone again it
+ * asks for a press. A connected pad reads as a pad, or as not standard when
+ * its layout never streams sticks.
  */
 export function ControllerCell() {
-  const t = useTranslations("flightScreen.controller");
   const pad = usePadStatusStore();
-  if (!pad.seen && !pad.connected) {
-    return (
-      <div className="fs-cell" data-testid="cockpit-controller-chip" data-connected="false">
-        <Gamepad2 className="fs-ico" aria-hidden="true" />
-        <span className="fs-sub fs-trunc">{specString("controls.press_any_button")}</span>
-      </div>
-    );
-  }
   const name = shortPadName(pad.name);
-  const label = !pad.connected
-    ? t("lost")
+  const label = name ? specString("cockpit.controller.named", { name }) : specString("cockpit.controller");
+  const state: "none" | "seen" | "connected" | "not_standard" = !pad.connected
+    ? pad.seen
+      ? "seen"
+      : "none"
     : pad.needsCalibration
-      ? specString("controls.not_standard")
-      : (name ?? t("connected"));
+      ? "not_standard"
+      : "connected";
+  const text =
+    state === "none"
+      ? specString("controls.no_controller")
+      : state === "seen"
+        ? specString("controls.press_any_button")
+        : state === "not_standard"
+          ? specString("controls.pad.not_standard")
+          : specString("controls.pad.connected", { battery: "" });
   return (
     <div
-      className={`fs-cell${pad.connected && pad.usable ? "" : " fs-warn"}`}
+      className={`fs-cell${state === "not_standard" ? " fs-warn" : ""}`}
       data-testid="cockpit-controller-chip"
+      data-item="controller"
       data-connected={pad.connected}
-      title={pad.name ?? undefined}
+      data-pad={state}
+      aria-label={`${label}: ${text}`}
+      title={label}
     >
       <Gamepad2 className="fs-ico" aria-hidden="true" />
-      <span className="fs-sub fs-trunc">{label}</span>
-    </div>
-  );
-}
-
-/** A usable pad's first-connect tour, under the top bar's end. */
-export function ControllerTour() {
-  const pad = usePadStatusStore();
-  const padId = useInputStore((s) => s.gamepadId);
-  if (!pad.connected || !pad.usable || !padId) return null;
-  return (
-    <div className="fs-ctl-tour">
-      <Tour padId={padId} />
+      <span className="fs-sub fs-trunc">{text}</span>
     </div>
   );
 }
