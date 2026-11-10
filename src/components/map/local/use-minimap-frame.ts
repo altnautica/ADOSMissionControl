@@ -11,7 +11,6 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
 
 import { useToast } from "@/components/ui/toast";
 import { useNavSource } from "@/hooks/use-nav-source";
@@ -23,6 +22,7 @@ import {
   type MinimapLocalReason,
   type MinimapPin,
 } from "@/lib/hud/minimap-mode";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { freshOnly } from "@/lib/telemetry/freshness";
 import { useMinimapModeStore } from "@/stores/minimap-mode-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -35,7 +35,6 @@ export interface MinimapFrameState {
 }
 
 export function useMinimapFrame(droneId: string): MinimapFrameState {
-  const t = useTranslations("hud.map");
   const { toast } = useToast();
   const pin = useMinimapModeStore((s) => s.pinByVehicle[droneId] ?? "auto");
   const setStoredPin = useMinimapModeStore((s) => s.setPin);
@@ -58,10 +57,10 @@ export function useMinimapFrame(droneId: string): MinimapFrameState {
   const prevFrame = useRef<MinimapFrame>("global");
   useEffect(() => {
     if (frame === "local" && prevFrame.current !== "local" && reason !== "pinned") {
-      toast(t("toastLocal"), "info");
+      toast(specString("minimap.toast_local"), "info");
     }
     prevFrame.current = frame;
-  }, [frame, reason, t, toast]);
+  }, [frame, reason, toast]);
 
   return { frame, reason, pin, setPin: (p) => setStoredPin(droneId, p) };
 }

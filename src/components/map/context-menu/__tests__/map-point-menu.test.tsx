@@ -3,9 +3,9 @@
  *
  * The tile map's point menu: a touch held for the spec's long-press duration
  * opens it like a right-click (Fly here when the pilot offers a goto), and on
- * the ground, with the pilot advertising `goto`, it offers Launch here, which
- * stores the point with its north/east about the EKF origin for the Launch
- * sheet.
+ * the ground, with the pilot advertising `goto` and a cockpit on screen to
+ * take it, it offers Launch here, which stores the point with its north/east
+ * about the EKF origin for the Launch sheet.
  */
 
 import { act, cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
@@ -35,6 +35,7 @@ import { nedToLatLon } from "@/lib/nav/ned-geo";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
 import { useGpsOriginStore } from "@/stores/gps-origin-store";
+import { useFlightScreenStore } from "@/stores/flight-screen-store";
 import { useLaunchRequestStore } from "@/stores/launch-request-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { handleLaunchHere } from "../actions/navigation";
@@ -63,11 +64,13 @@ describe("tile map point menu", () => {
     useDroneManager.setState({ selectedDroneId: DRONE });
     useDroneStore.setState({ connectionState: "connected", armState: "disarmed", flightMode: "STABILIZE" });
     useLaunchRequestStore.setState({ pending: null });
+    useFlightScreenStore.setState({ mounted: 1 });
   });
   afterEach(() => {
     cleanup();
     useNavStreamStore.setState({ byDrone: {} });
     useGpsOriginStore.getState().clear(DRONE);
+    useFlightScreenStore.setState({ mounted: 0 });
   });
 
   it("a touch held for map_long_press_ms opens the menu with Fly here", () => {
@@ -92,6 +95,15 @@ describe("tile map point menu", () => {
 
     setPilot(flying);
     expect(itemIds()).not.toContain("launch-here");
+  });
+
+  it("offers Launch here only while a cockpit is on screen to open Launch", () => {
+    setPilot(grounded);
+    useGpsOriginStore.getState().setOrigin(DRONE, ORIGIN);
+    useFlightScreenStore.setState({ mounted: 0 });
+    expect(itemIds()).not.toContain("launch-here");
+    useFlightScreenStore.setState({ mounted: 1 });
+    expect(itemIds()).toContain("launch-here");
   });
 
   it("Launch here stores the point with its north/east about the origin", () => {

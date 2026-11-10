@@ -6,8 +6,8 @@
  * banner and "sticks with". Both countdowns use the critical severity colour.
  */
 
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, render, screen } from "@testing-library/react";
 
 import { FlightFlowOverlays } from "../FlightFlowOverlays";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
@@ -40,6 +40,7 @@ const OVERLAYS = ["low-battery-rth", "link-loss-countdown", "gate-ring", "handov
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   useNavStreamStore.getState().clear(DRONE);
   usePadStatusStore.setState({ connected: false } as never);
 });
@@ -52,6 +53,16 @@ describe("flight-flow overlays and pilot freshness", () => {
 
   it("hides them all once the pilot frame is stale", () => {
     mount(3000);
+    for (const id of OVERLAYS) expect(screen.queryByTestId(id), id).toBeNull();
+  });
+
+  it("hides them as the frame crosses 2 s with no new frame arriving", () => {
+    vi.useFakeTimers();
+    mount(1500);
+    for (const id of OVERLAYS) expect(screen.queryByTestId(id), id).not.toBeNull();
+    act(() => void vi.advanceTimersByTime(400));
+    for (const id of OVERLAYS) expect(screen.queryByTestId(id), id).not.toBeNull();
+    act(() => void vi.advanceTimersByTime(600));
     for (const id of OVERLAYS) expect(screen.queryByTestId(id), id).toBeNull();
   });
 

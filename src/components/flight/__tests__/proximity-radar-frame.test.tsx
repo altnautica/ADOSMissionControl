@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import messages from "../../../../locales/en.json";
 import { ProximityRadar } from "@/components/flight/ProximityRadar";
 import { buildFrame } from "@/lib/protocol/encoders/frame";
@@ -112,7 +113,7 @@ describe("ProximityRadar geometry from OBSTACLE_DISTANCE", () => {
     const start = arcStart(container.querySelector("[data-arc]")?.getAttribute("d") ?? "");
     expect(start.y).toBeLessThan(60);
     expect(Math.abs(start.x - 60)).toBeLessThan(1);
-    expect(container.textContent).toContain("1.5 m DANGER");
+    expect(container.textContent).toContain(specString("cockpit.unit.m", { n: "1.5" }) + " " + specString("radar.danger"));
   });
 
   it("labels north-aligned data N and treats beyond-max readings as clear", () => {

@@ -7,7 +7,10 @@
  * Mounted once by the shell, so the items follow telemetry whether or not a
  * checklist is open: the spec checklist that gates the first arm and the
  * detailed auto items are re-evaluated on every telemetry push and on the
- * shared 1 Hz clock, and an item whose telemetry goes stale falls back. It
+ * shared 1 Hz clock, and an item whose telemetry goes stale falls back. The
+ * pilot's readiness, FC status texts and control mode count only while its
+ * frame is fresh (`pilotFresh`); a stale pilot fails its readiness as "Pilot
+ * not answering", so a frozen frame never passes the first-arm gate. It
  * also opens the session for whichever drone is selected; `selectDrone`
  * resets the session on a switch, so a checklist never carries from one
  * aircraft to another. Renders nothing.
@@ -29,6 +32,9 @@ import { useFenceUploadStatus, useMissionUploadStatus } from "@/hooks/use-upload
 import { evaluateAutoChecks } from "@/lib/checklist/auto-checks";
 import { isSkillLinkFresh } from "@/lib/skills/registry";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { specString } from "@/lib/cockpit/spec-strings";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
+import type { FcStatusText, PilotState, ReadinessItem } from "@/lib/hud/cockpit-frames";
 import { usePadStatusStore } from "@/lib/input/pad-status";
 import { useDroneStore } from "@/stores/drone-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
@@ -50,6 +56,27 @@ const GPS_FIX_KEYS: Record<number, string> = {
   5: "rtkFloat",
   6: "rtk",
 };
+
+interface PilotChecklistView {
+  readiness: readonly ReadinessItem[];
+  controlMode: PilotState["controlMode"];
+  statustext: readonly FcStatusText[] | null;
+}
+
+/** What the checklist takes from the pilot at `now`: its frame while fresh;
+ *  a stale frame says nothing but a failing "Pilot not answering". Null
+ *  without a pilot. */
+function pilotChecklistView(pilot: PilotState | null, receivedAt: number | null, now: number): PilotChecklistView | null {
+  if (!pilot) return null;
+  if (pilotFresh(receivedAt, now)) {
+    return { readiness: pilot.readiness, controlMode: pilot.controlMode, statustext: pilot.statustext };
+  }
+  return {
+    readiness: [{ id: "pilot_not_answering", ok: false, severity: "block", msg: specString("alert.pilot_not_answering") }],
+    controlMode: null,
+    statustext: null,
+  };
+}
 
 export function ChecklistAutoRunner(): null {
   const tFix = useTranslations("indicators.gpsFix");
@@ -79,7 +106,7 @@ export function ChecklistAutoRunner(): null {
   const fenceOnVehicle = fenceStatus === "on-aircraft" ? geofenceEnabled : null;
   const battery = batteryBuf.latest();
   const knownCellCount = useKnownCellCount(droneId, battery?.cellCount);
-  const { pilot } = usePilotState(droneId);
+  const { pilot, receivedAt } = usePilotState(droneId);
   const lastHeartbeat = useDroneStore((s) => s.lastHeartbeat);
   const padUsable = usePadStatusStore((s) => s.connected && s.usable);
   const padName = usePadStatusStore((s) => s.name);
@@ -93,6 +120,8 @@ export function ChecklistAutoRunner(): null {
 
   useEffect(() => {
     if (!droneId || sessionDroneId !== droneId) return;
+    const now = Date.now();
+    const live = pilotChecklistView(pilot, receivedAt, now);
     applyAutoVerdicts(
       evaluateAutoChecks(
         {
@@ -104,18 +133,18 @@ export function ChecklistAutoRunner(): null {
           missionOnVehicle,
           fenceOnVehicle,
           formatGpsFix: (fixType) => tFix(GPS_FIX_KEYS[fixType] ?? "fix3d"),
-          pilot: pilot ? { readiness: pilot.readiness, controlMode: pilot.controlMode } : null,
-          linkFresh: lastHeartbeat > 0 ? isSkillLinkFresh(lastHeartbeat, Date.now()) : null,
+          pilot: live ? { readiness: live.readiness, controlMode: live.controlMode } : null,
+          linkFresh: lastHeartbeat > 0 ? isSkillLinkFresh(lastHeartbeat, now) : null,
           controllerConnected: padUsable,
           diskPercent,
         },
-        Date.now(),
+        now,
       ),
     );
   }, [
     droneId, sessionDroneId, sessionId, applyAutoVerdicts, version, tick, battery, knownCellCount,
     gpsBuf, ekfBuf, sysStatusBuf, missionOnVehicle, fenceOnVehicle, tFix,
-    pilot, lastHeartbeat, padUsable, diskPercent,
+    pilot, receivedAt, lastHeartbeat, padUsable, diskPercent,
   ]);
 
   // The spec checklist that gates the first arm.
@@ -125,12 +154,13 @@ export function ChecklistAutoRunner(): null {
     const sysStatus = freshOnly(sysStatusBuf.latest(), now);
     const prearmBit = sysStatus ? decodeSensorHealth(sysStatus).find((s) => s.name === "pre_arm_check") : undefined;
     const fcBattery = freshOnly(battery, now);
+    const live = pilotChecklistView(pilot, receivedAt, now);
     setPreflightItems(
       droneId,
       preflightItems({
-        readiness: pilot?.readiness ?? [],
+        readiness: live?.readiness ?? [],
         prearm: fcPrearmTexts({
-          pilotStatustext: pilot?.statustext ?? null,
+          pilotStatustext: live?.statustext ?? null,
           sysStatusPrearmOk: prearmBit?.present ? prearmBit.healthy : null,
           directLines: prearmLines ?? [],
         }),
@@ -138,14 +168,14 @@ export function ChecklistAutoRunner(): null {
         nav,
         battery: batteryReading(null, fcBattery ? { battery: { remaining: fcBattery.remaining, voltage: fcBattery.voltage } } : null),
         batteryLowPct: batteryLowPct(null),
-        controlMode: pilot?.controlMode ?? null,
+        controlMode: live?.controlMode ?? null,
         controller: { connected: padUsable, name: shortPadName(padName) },
         storagePct: diskPercent,
       }),
     );
   }, [
     droneId, sessionDroneId, sessionId, setPreflightItems, version, tick, battery, sysStatusBuf,
-    pilot, prearmLines, lastHeartbeat, nav, padUsable, padName, diskPercent,
+    pilot, receivedAt, prearmLines, lastHeartbeat, nav, padUsable, padName, diskPercent,
   ]);
 
   return null;

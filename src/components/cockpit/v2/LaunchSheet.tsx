@@ -7,19 +7,25 @@
  * after-takeoff action (hold, a skill, start the mission or go to a point),
  * with an optional "when done" action. The drone's pilot runs the sequence;
  * this sheet sends `launch` and shows the pilot's `sequence` as a step strip.
- * Pause at any point aborts to a hold (or disarms on the ground).
+ * Abort at any point pauses to a hold (or disarms on the ground). Launch arms
+ * the aircraft, so it waits for the first-arm gate: until the pre-flight
+ * checklist is passed for this drone the sheet shows its Pre-flight section
+ * with what fails, and the hold stays disabled.
  *
  * @license GPL-3.0-only
  */
 
 import { useMemo, useRef, useState } from "react";
-import { useLaunchRequestStore } from "@/stores/launch-request-store";
+import { liveLaunchRequest, useLaunchRequestStore } from "@/stores/launch-request-store";
+import { checklistReadyFor, useChecklistStore } from "@/stores/checklist-store";
 import { Rocket, X } from "lucide-react";
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "@/components/cockpit/flight/flight-sheet";
 import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
+import { LaunchPreflight } from "@/components/cockpit/v2/LaunchPreflight";
+import { LaunchStepStrip, useLaunchAbort } from "@/components/cockpit/v2/LaunchSteps";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { refusalText } from "@/lib/hud/refusal";
 import { launchLimits } from "@/lib/cockpit/launch-spec";
@@ -40,15 +46,6 @@ export type LaunchWhenDone = "none" | "land" | "rth";
 export const LAUNCH_DEFAULT_ALT_M = launchLimits.altDefaultM;
 /** The Launch hold: the take-off built-in's confirm hold. */
 export const LAUNCH_HOLD_MS = specBuiltin("takeoff").confirm.ms ?? 1500;
-
-const STEPS = ["checks", "arm", "takeoff", "after", "done"] as const;
-const STEP_KEY: Record<(typeof STEPS)[number], string> = {
-  checks: "flow.launch.step.checks",
-  arm: "flow.launch.step.arm",
-  takeoff: "flow.launch.step.takeoff",
-  after: "flow.launch.step.after_label",
-  done: "flow.launch.step.done",
-};
 
 export interface LaunchArgs {
   after: LaunchAfter;
@@ -79,33 +76,6 @@ export function launchArgs(opts: {
   return args;
 }
 
-export function LaunchStepStrip({ sequence }: { sequence: PilotState["sequence"] }) {
-  if (!sequence) return null;
-  const at = STEPS.indexOf(sequence.step);
-  return (
-    <ol className="flex items-center gap-1" data-testid="launch-step-strip" data-step={sequence.step}>
-      {STEPS.map((s, i) => (
-        <li
-          key={s}
-          className={cn(
-            "rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide",
-            sequence.error && i === at
-              ? "bg-status-error/30 fs-text-crit"
-              : i < at || sequence.step === "done"
-                ? "bg-status-success/25 text-status-success"
-                : i === at
-                  ? "bg-accent-primary/30 text-accent-primary"
-                  : "bg-white/5 text-text-tertiary",
-          )}
-        >
-          {specString(STEP_KEY[s])}
-        </li>
-      ))}
-      {sequence.error && <span className="fs-text-crit ml-2 text-[11px]">{refusalText(sequence.error)}</span>}
-    </ol>
-  );
-}
-
 interface LaunchSheetProps {
   droneId: string;
   pilot: PilotState | null;
@@ -127,8 +97,8 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
   // A point picked on a map ("Launch here") prefills the go-to once; with
   // none, there is no default go-to offset and the operator enters the point.
   const [picked] = useState(() => {
-    const req = useLaunchRequestStore.getState().pending;
-    if (req?.droneId !== droneId || req.north === undefined || req.east === undefined) return null;
+    const req = liveLaunchRequest(useLaunchRequestStore.getState().pending, droneId);
+    if (req?.north === undefined || req.east === undefined) return null;
     useLaunchRequestStore.getState().consume();
     return [Math.round(req.north * 10) / 10, Math.round(req.east * 10) / 10] as [number, number];
   });
@@ -145,10 +115,14 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
 
   const missionLoaded = mission?.state === "loaded";
   const gotoSet = gotoNE[0] !== null && gotoNE[1] !== null;
-  const ready = (after !== "skill" || skillId !== null) && (after !== "goto" || gotoSet);
+  // The first-arm gate, as on the flight controller's Arm and Take off.
+  const preflightPassed = useChecklistStore((s) => checklistReadyFor(s, droneId));
+  const ready = preflightPassed && (after !== "skill" || skillId !== null) && (after !== "goto" || gotoSet);
   const running = pilot?.sequence != null && pilot.sequence.step !== "done";
+  const abortLaunch = useLaunchAbort();
 
   const launch = () => {
+    if (!useChecklistStore.getState().isReadyToArm(droneId)) return;
     setSent(specString("flow.launch.sent"));
     void requestPilotAction(
       "launch",
@@ -163,10 +137,7 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
       setSent(r.ok ? specString("flow.launch.accepted") : specString("flow.launch.refused", { reason: refusalText(r.err) })),
     );
   };
-  const abort = () =>
-    void requestPilotAction("pause").then((r) =>
-      setSent(r.ok ? null : specString("flow.launch.abort_refused", { reason: refusalText(r.err) })),
-    );
+  const abort = () => void abortLaunch().then(setSent);
 
   const choice = (on: boolean) =>
     cn(
@@ -193,6 +164,8 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
         </button>
       </div>
 
+      {!preflightPassed && !running && <LaunchPreflight droneId={droneId} />}
+
       <label className="mb-3 block text-xs">
         <span className="mb-1 block text-text-secondary">{specString("flow.launch.alt_m")}</span>
         {fixedWing ? (
@@ -209,7 +182,7 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
               className="flex-1"
               aria-label={specString("flow.launch.alt_m")}
             />
-            <span className="w-14 text-right font-mono tabular-nums">{alt.toFixed(1)} m</span>
+            <span className="w-14 text-right font-mono tabular-nums">{specString("cockpit.unit.m", { n: alt.toFixed(1) })}</span>
           </span>
         )}
       </label>

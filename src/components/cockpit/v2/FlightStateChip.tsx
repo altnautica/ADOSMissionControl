@@ -4,7 +4,8 @@
  * The flight-state chip (top bar, left): who flies the drone and how, in the
  * shared spec's words and colours. Tapping it opens the Mode sheet. Its
  * button (Take control, Resume) fires the matching built-in, and Abort on a
- * running launch holds the aircraft as the launch step strip's Abort does;
+ * running launch is the launch sheet's and step strip's Abort (a refusal is
+ * toasted with the pilot's reason);
  * NOT READY with the readiness item `setup_needed` red links to the aircraft
  * setup wizard.
  *
@@ -20,23 +21,34 @@
 import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
 import Link from "next/link";
 
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useGroundStationLink } from "@/lib/cockpit/ground-station-link";
 import { specString } from "@/lib/cockpit/spec-strings";
-import { requestPilotAction } from "@/lib/input/pilot-stream";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { ModeSheet } from "./ModeSheet";
+import { useLaunchAbort } from "./LaunchSteps";
 import { AIRCRAFT_SETUP_HREF } from "@/components/shared/AircraftSetupBanner";
 
-/** The largest share of the top bar's width the chip may take. */
-export const CHIP_MAX_FRAC = 0.4;
+interface TopBarChipZoneSpec {
+  id: string;
+  chip?: { max_frac?: number };
+}
 
-/** The chip's button: its spec text key and what it does. */
-const CHIP_BUTTON: Record<string, { label: string; run: (droneId: string) => void }> = {
+const SPEC_CHIP_MAX_FRAC = (layoutSpec.zones as unknown as TopBarChipZoneSpec[]).find((z) => z.id === "top_bar")?.chip
+  ?.max_frac;
+if (typeof SPEC_CHIP_MAX_FRAC !== "number") throw new Error("layout.json: top_bar chip.max_frac is missing");
+
+/** The largest share of the top bar's width the chip may take (spec
+ *  `top_bar.chip.max_frac`). */
+export const CHIP_MAX_FRAC: number = SPEC_CHIP_MAX_FRAC;
+
+/** The chip's button: its spec text key and what it does. Abort is the
+ *  launch Abort every launch surface shares ({@link useLaunchAbort}). */
+const CHIP_BUTTON: Record<string, { label: string; run: ((droneId: string) => void) | "abort" }> = {
   take_control: { label: "flow.take_control", run: (id) => void activate("take_control", buildSkillContext(id)) },
   resume: { label: "flow.resume", run: (id) => void activate("resume", buildSkillContext(id)) },
-  // The same action as the launch sheet's and step strip's Abort.
-  abort: { label: "flow.launch.abort", run: () => void requestPilotAction("pause") },
+  abort: { label: "flow.launch.abort", run: "abort" },
 };
 
 export function FlightStateChip({
@@ -56,6 +68,7 @@ export function FlightStateChip({
   compact?: boolean;
 }) {
   const chip = useFlightStateChip(droneId);
+  const abortLaunch = useLaunchAbort();
   const { pilot } = usePilotState(droneId);
   const detectedLink = useGroundStationLink(droneId);
   const viaGroundStation = groundStationLink ?? detectedLink;
@@ -120,7 +133,7 @@ export function FlightStateChip({
             data-testid="chip-action"
             data-action={chip.button ?? undefined}
             className="fs-btn fs-hit fs-chip-action"
-            onClick={() => button.run(droneId)}
+            onClick={() => (button.run === "abort" ? void abortLaunch() : button.run(droneId))}
           >
             {specString(button.label)}
           </button>

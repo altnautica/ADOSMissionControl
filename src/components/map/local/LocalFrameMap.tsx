@@ -27,7 +27,6 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { useTranslations } from "next-intl";
 import { Minus, Plus } from "lucide-react";
 
 import { useLocalFrameData } from "@/components/map/local/use-local-frame-data";
@@ -48,6 +47,7 @@ import {
 } from "@/lib/hud/local-scene";
 import { parseCssColor, type Rgba } from "@/lib/hud/occupancy-bitmap";
 import { nedToLatLon } from "@/lib/nav/ned-geo";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { cn } from "@/lib/utils";
 import { useGpsOriginStore } from "@/stores/gps-origin-store";
 import { useGuidedStore } from "@/stores/guided-store";
@@ -83,7 +83,6 @@ function inkRgba(ink: string, ctx: CanvasRenderingContext2D | null): Rgba | null
 }
 
 export function LocalFrameMap({ droneId, className, headerExtra, compact = false }: LocalFrameMapProps) {
-  const t = useTranslations("hud.map");
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<{ x: number; y: number; north: number; east: number } | null>(null);
@@ -186,8 +185,8 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
     const nextInk = inkRgba(colours.ink, ctx);
     if (nextInk && (!ink || nextInk.join() !== ink.join())) setInk(nextInk);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    paintLocalScene(ctx, scene, size, colours, bitmaps.lookup, t("origin"));
-  }, [size, ink, scene, bitmaps.lookup, t]);
+    paintLocalScene(ctx, scene, size, colours, bitmaps.lookup, specString("minimap.origin"));
+  }, [size, ink, scene, bitmaps.lookup]);
 
   const onPointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -226,26 +225,26 @@ export function LocalFrameMap({ droneId, className, headerExtra, compact = false
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onContextMenu={onContextMenu}
-        aria-label={t("local")}
+        aria-label={specString("minimap.description")}
         role="img"
       />
       <div className="lfmap-head">
-        <span className="lfmap-title lbl">{t("local")}</span>
-        {data.fcPos && <span className="lfmap-fcpos lbl">{t("fcPos")}</span>}
+        <span className="lfmap-title lbl">{specString("minimap.local_ne")}</span>
+        {data.fcPos && <span className="lfmap-fcpos lbl">{specString("minimap.fc_pos")}</span>}
         <span className="lfmap-spacer" />
         {headerExtra}
       </div>
       <div className="lfmap-zoom">
-        <button type="button" onClick={() => setZoom((z) => stepZoom(z, 1))} aria-label={t("zoomIn")} title={t("zoomIn")}>
+        <button type="button" onClick={() => setZoom((z) => stepZoom(z, 1))} aria-label={specString("cockpit.zoom.in")} title={specString("cockpit.zoom.in")}>
           <Plus size={12} aria-hidden="true" />
         </button>
-        <button type="button" onClick={() => setZoom((z) => stepZoom(z, -1))} aria-label={t("zoomOut")} title={t("zoomOut")}>
+        <button type="button" onClick={() => setZoom((z) => stepZoom(z, -1))} aria-label={specString("cockpit.zoom.out")} title={specString("cockpit.zoom.out")}>
           <Minus size={12} aria-hidden="true" />
         </button>
       </div>
       <div className="lfmap-scale lbl" data-scale-m={scene.scaleBar.m}>
         <span className="bar" style={{ width: scene.scaleBar.px }} />
-        <span>{t("scaleBar", { m: scene.scaleBar.m })}</span>
+        <span>{specString("minimap.scale", { m: scene.scaleBar.m })}</span>
       </div>
       {/* The Fly here hold-confirm, as the full tile map carries it. */}
       {!compact && <GuidedConfirmDialog />}

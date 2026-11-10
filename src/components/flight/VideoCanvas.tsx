@@ -77,10 +77,10 @@ interface VideoCanvasProps {
 type VideoSource = "manual" | "direct" | "relayed" | "cloud" | "none";
 
 const SOURCE_KEY: Record<VideoSource, string | null> = {
-  manual: "sourceManual",
-  direct: "sourceDirect",
-  relayed: "sourceRelayed",
-  cloud: "sourceCloud",
+  manual: "video.source.manual",
+  direct: "video.source.direct",
+  relayed: "video.source.relayed",
+  cloud: "video.source.cloud",
   none: null,
 };
 
@@ -250,7 +250,7 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
   const canRetry = cockpitState === "failed" || cockpitState === "reconnecting";
 
   const sourceKey = SOURCE_KEY[videoSource];
-  const sourceBadge = sourceKey ? t(sourceKey) : null;
+  const sourceBadge = sourceKey ? specString(sourceKey) : null;
 
   return (
     <div className={cn("relative w-full h-full bg-bg-primary overflow-hidden", className)}>
@@ -288,7 +288,7 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
             {/* Which node the absent video belongs to. */}
             {sourceBadge && (
               <span
-                className="text-[10px] font-mono tracking-wider text-text-tertiary"
+                className="text-[10px] font-mono uppercase tracking-wider text-text-tertiary"
                 data-video-source={videoSource}
               >
                 {sourceBadge}
@@ -413,7 +413,7 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
             variant={latencyMs === null ? "neutral" : latencyMs > 200 ? "warning" : "success"}
             size="sm"
           >
-            {latencyMs === null ? "—" : latencyMs}ms net
+            {latencyMs === null ? "—" : latencyMs}{specString("camera.net")}
           </Badge>
           {droneId && (
             <button

@@ -8,18 +8,26 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 
-const pilotAction = vi.hoisted(() => vi.fn(() => Promise.resolve({ ok: true })));
+const pilotAction = vi.hoisted(() =>
+  vi.fn((..._a: unknown[]) => Promise.resolve({ ok: true } as { ok: boolean; err?: string })),
+);
 vi.mock("@/lib/input/pilot-stream", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   requestPilotAction: pilotAction,
+}));
+const toast = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/toast", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useToast: () => ({ toast }),
 }));
 
 import { FlightStateChip } from "../FlightStateChip";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
+import { refusalText } from "@/lib/hud/refusal";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
@@ -38,7 +46,9 @@ function mount(over: Record<string, unknown>) {
 
 afterEach(() => {
   useNavStreamStore.getState().clear(DRONE);
-  pilotAction.mockClear();
+  pilotAction.mockReset();
+  pilotAction.mockImplementation(() => Promise.resolve({ ok: true }));
+  toast.mockClear();
 });
 
 describe("FlightStateChip button", () => {
@@ -50,6 +60,15 @@ describe("FlightStateChip button", () => {
     expect(action.textContent).toBe(specString("flow.launch.abort"));
     fireEvent.click(action);
     expect(pilotAction).toHaveBeenCalledWith("pause");
+  });
+
+  it("shows a refused Abort as the launch sheet does", async () => {
+    pilotAction.mockImplementation(() => Promise.resolve({ ok: false, err: "busy" }));
+    mount({ sequence: { step: "takeoff", after: null, error: null } });
+    fireEvent.click(screen.getByTestId("chip-action"));
+    await act(async () => {});
+    expect(pilotAction).toHaveBeenCalledWith("pause");
+    expect(toast).toHaveBeenCalledWith(specString("flow.launch.abort_refused", { reason: refusalText("busy") }), "error");
   });
 
   it("offers Resume while the pilot holds a paused mission, with the paused line", () => {

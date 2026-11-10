@@ -6,8 +6,8 @@
  * pilot answers; a fixed-wing shows the avoidance note.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 
 const requestPilotAction = vi.fn((..._a: unknown[]) => new Promise<{ ok: boolean; err?: string }>(() => {}));
@@ -15,14 +15,30 @@ vi.mock("@/lib/input/pilot-stream", async (orig) => ({
   ...(await orig<typeof import("@/lib/input/pilot-stream")>()),
   requestPilotAction: (...a: unknown[]) => requestPilotAction(...a),
 }));
+const toast = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/toast", async (orig) => ({
+  ...(await orig<typeof import("@/components/ui/toast")>()),
+  useToast: () => ({ toast }),
+}));
 
 import { ModeSheet } from "../ModeSheet";
-import { LaunchSheet } from "../LaunchSheet";
+import { LaunchSheet, LAUNCH_HOLD_MS } from "../LaunchSheet";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { demoPilotWire } from "@/mock/mock-pilot";
 import { specString } from "@/lib/cockpit/spec-strings";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { useFlightSheetStore } from "@/components/cockpit/flight/flight-sheet";
+import { refusalText } from "@/lib/hud/refusal";
+import { useChecklistStore } from "@/stores/checklist-store";
+import type { PreflightItem } from "@/lib/cockpit/preflight";
+
+/** Opens a checklist session for `droneId` with `items`, passed or not. */
+function checklist(droneId: string, items: PreflightItem[], pass: boolean) {
+  const s = useChecklistStore.getState();
+  s.startSession(droneId);
+  s.setPreflightItems(droneId, items);
+  if (pass) expect(useChecklistStore.getState().passPreflight(droneId)).toBe(true);
+}
 
 function pilot(over: Record<string, unknown> = {}) {
   const p = parsePilotState(demoPilotWire(over));
@@ -31,8 +47,16 @@ function pilot(over: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
-  requestPilotAction.mockClear();
+  requestPilotAction.mockReset();
+  requestPilotAction.mockImplementation(() => new Promise(() => {}));
+  toast.mockClear();
   useFlightSheetStore.setState({ open: null });
+  checklist("d1", [{ id: "link", label: "Link", state: "pass" }], true);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  useChecklistStore.getState().resetSession();
 });
 
 describe("ModeSheet", () => {
@@ -108,5 +132,51 @@ describe("LaunchSheet", () => {
     fireEvent.change(inputs[0], { target: { value: "5" } });
     fireEvent.change(inputs[1], { target: { value: "0" } });
     expect(hold.disabled).toBe(false);
+  });
+
+  it("holds launch behind the pre-flight checklist and names what fails", () => {
+    vi.useFakeTimers();
+    checklist("d1", [{ id: "battery", label: "Battery", state: "fail" }], false);
+    render(
+      <IntlWrapper>
+        <LaunchSheet droneId="d1" pilot={pilot()} onClose={() => {}} />
+      </IntlWrapper>,
+    );
+    const hold = screen.getByText(specString("flow.launch.hold_to_launch")).closest("button")!;
+    expect(hold.disabled).toBe(true);
+    const pre = screen.getByTestId("launch-preflight");
+    expect(pre.textContent).toContain(specString("flow.preflight.title"));
+    expect(pre.textContent).toContain("Battery");
+    fireEvent.pointerDown(hold);
+    act(() => void vi.advanceTimersByTime(LAUNCH_HOLD_MS + 100));
+    fireEvent.pointerUp(hold);
+    expect(requestPilotAction).not.toHaveBeenCalledWith("launch", expect.anything());
+  });
+
+  it("launches once the checklist is passed", () => {
+    vi.useFakeTimers();
+    render(
+      <IntlWrapper>
+        <LaunchSheet droneId="d1" pilot={pilot()} onClose={() => {}} />
+      </IntlWrapper>,
+    );
+    expect(screen.queryByTestId("launch-preflight")).toBeNull();
+    const hold = screen.getByText(specString("flow.launch.hold_to_launch")).closest("button")!;
+    fireEvent.pointerDown(hold);
+    act(() => void vi.advanceTimersByTime(LAUNCH_HOLD_MS + 100));
+    expect(requestPilotAction).toHaveBeenCalledWith("launch", expect.anything());
+  });
+
+  it("shows a refused Abort", async () => {
+    requestPilotAction.mockImplementation(() => Promise.resolve({ ok: false, err: "busy" }));
+    render(
+      <IntlWrapper>
+        <LaunchSheet droneId="d1" pilot={pilot({ sequence: { step: "arm", after: null, error: null } })} onClose={() => {}} />
+      </IntlWrapper>,
+    );
+    fireEvent.click(screen.getByTestId("launch-abort"));
+    await act(async () => {});
+    const text = specString("flow.launch.abort_refused", { reason: refusalText("busy") });
+    expect(toast).toHaveBeenCalledWith(text, "error");
   });
 });

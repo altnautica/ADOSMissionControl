@@ -15,6 +15,7 @@
 
 import { useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useNavStateEntry } from "@/hooks/use-nav-feed";
@@ -74,13 +75,15 @@ export function ProximityRadar({ droneId = null, size }: ProximityRadarProps) {
     e.preventDefault();
   };
   const scaleLabel =
-    setting === "auto" ? t("scaleAuto", { m: model.displayM }) : t("scale", { m: model.displayM });
+    setting === "auto"
+      ? specString("radar.scale_auto", { m: model.displayM })
+      : specString("radar.scale", { m: model.displayM });
   const readout =
     model.nearestM === null
       ? model.stale
         ? "—"
         : t("clear")
-      : `${model.nearestM.toFixed(1)} m ${t(model.band)}`;
+      : `${specString("cockpit.unit.m", { n: model.nearestM.toFixed(1) })} ${model.band === "clear" ? t("clear") : specString(`radar.${model.band}`)}`;
 
   return (
     <div
@@ -89,13 +92,13 @@ export function ProximityRadar({ droneId = null, size }: ProximityRadarProps) {
       style={{ width: dialSize }}
       role="button"
       tabIndex={0}
-      aria-label={t("cycleScale")}
-      title={t("cycleScale")}
+      aria-label={specString("radar.cycle")}
+      title={specString("radar.cycle")}
       onClick={() => setSetting(cycleRadarScale(setting))}
       onKeyDown={onKey}
     >
       <div className="rhead lbl">
-        {model.rateHz !== null ? t("header", { hz: Math.round(model.rateHz) }) : t("noScan")}
+        {model.rateHz !== null ? specString("radar.header", { hz: Math.round(model.rateHz) }) : specString("radar.scan_none")}
       </div>
       <svg viewBox={`0 0 ${dialSize} ${dialSize}`} width={dialSize} height={dialSize} aria-hidden="true">
         <g fill="none" stroke="var(--hud-hair)">

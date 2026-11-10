@@ -26,12 +26,12 @@ import { buildSkillContext, activate } from "@/lib/skills";
 import { useSkillChord } from "@/lib/skills/use-skill-chord";
 import type { SkillActivateArgs } from "@/lib/skills";
 import { TAKEOFF_ALTITUDE_M, parseTakeoffAltitude } from "@/lib/skills/builtins/takeoff";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { cn } from "@/lib/utils";
 
 
 export function ActionsPanel() {
   const t = useTranslations("flight");
-  const tReason = useTranslations("skills.reason");
   const { toast } = useToast();
   const armState = useDroneStore((s) => s.armState);
   const flightMode = useDroneStore((s) => s.flightMode);
@@ -153,7 +153,7 @@ export function ActionsPanel() {
             <Tooltip
               content={
                 armUnknown
-                  ? tReason("noFcLink")
+                  ? specString("refusal.no_fc_link")
                   : isArmed
                     ? tip("actions.disarm", chords.disarm)
                     : tip("actions.arm", chords.arm)
@@ -168,7 +168,7 @@ export function ActionsPanel() {
                 disabled={armUnknown}
                 onClick={fireArmToggle}
               >
-                {armUnknown ? tReason("noFcLink") : isArmed ? t("disarm") : t("arm")}
+                {armUnknown ? specString("refusal.no_fc_link") : isArmed ? t("disarm") : t("arm")}
               </Button>
             </Tooltip>
           </div>

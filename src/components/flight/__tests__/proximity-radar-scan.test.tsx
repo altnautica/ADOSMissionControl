@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import messages from "../../../../locales/en.json";
 import { ProximityRadar } from "@/components/flight/ProximityRadar";
 import { buildRadarModel, radarDial } from "@/components/flight/proximity-radar-model";
@@ -85,18 +86,18 @@ describe("ProximityRadar companion view", () => {
     expect(Number(dots[0].getAttribute("cx"))).toBeCloseTo(c + 20);
     expect(Number(dots[0].getAttribute("cy"))).toBeCloseTo(c);
     expect(container.querySelector("[data-ref]")?.textContent).toBe("FWD");
-    expect(container.textContent).toContain("AUTO 6 m");
-    expect(container.textContent).toContain("2.0 m CAUTION");
+    expect(container.textContent).toContain(specString("radar.scale_auto", { m: 6 }));
+    expect(container.textContent).toContain(specString("cockpit.unit.m", { n: "2.0" }) + " " + specString("radar.caution"));
   });
 
   it("R2: a nearest sector at 180 cm reads 1.8 m DANGER with an outlined arc", () => {
     useTelemetryStore.getState().obstacle.push(obstacle({ 0: 180 }));
     const { container } = renderRadar(140);
-    expect(container.textContent).toContain("1.8 m DANGER");
+    expect(container.textContent).toContain(specString("cockpit.unit.m", { n: "1.8" }) + " " + specString("radar.danger"));
     expect(container.querySelectorAll("[data-sector='crit']")).toHaveLength(1);
     expect(container.querySelectorAll("[data-arc]")).toHaveLength(1);
     // Nothing within 1.5 m, something within 6 m: auto picks 6 m.
-    expect(container.textContent).toContain("AUTO 6 m");
+    expect(container.textContent).toContain(specString("radar.scale_auto", { m: 6 }));
   });
 
   it("takes the nearest of the nav report, the sectors and the scan", () => {
@@ -104,16 +105,16 @@ describe("ProximityRadar companion view", () => {
     useNavStreamStore.getState().setScan(DRONE, scanWith({ 10: 3.2 }));
     useNavStreamStore.getState().setNav(DRONE, { ...NAV, minObstacleM: 1.2 });
     const { container } = renderRadar(140);
-    expect(container.textContent).toContain("1.2 m DANGER");
-    expect(container.textContent).toContain("LIDAR 10 Hz");
+    expect(container.textContent).toContain(specString("cockpit.unit.m", { n: "1.2" }) + " " + specString("radar.danger"));
+    expect(container.textContent).toContain(specString("radar.header", { hz: 10 }));
   });
 
   it("shows SCAN — without a nav rate and CLEAR when nothing is near", () => {
     useNavStreamStore.getState().setScan(DRONE, scanWith({}));
     const { container } = renderRadar(140);
-    expect(container.textContent).toContain("SCAN —");
+    expect(container.textContent).toContain(specString("radar.scan_none"));
     expect(container.textContent).toContain("CLEAR");
-    expect(container.textContent).toContain("AUTO 12 m");
+    expect(container.textContent).toContain(specString("radar.scale_auto", { m: 12 }));
   });
 
   it("tapping the dial pins 3 → 6 → 12 → auto, and +/− step the range", () => {
@@ -121,17 +122,17 @@ describe("ProximityRadar companion view", () => {
     const { container } = renderRadar(140);
     const dial = container.querySelector(".radar") as HTMLElement;
     fireEvent.click(dial);
-    expect(container.querySelector(".rscale")?.textContent).toBe("3 m");
+    expect(container.querySelector(".rscale")?.textContent).toBe(specString("radar.scale", { m: 3 }));
     fireEvent.click(dial);
-    expect(container.querySelector(".rscale")?.textContent).toBe("6 m");
+    expect(container.querySelector(".rscale")?.textContent).toBe(specString("radar.scale", { m: 6 }));
     fireEvent.click(dial);
-    expect(container.querySelector(".rscale")?.textContent).toBe("12 m");
+    expect(container.querySelector(".rscale")?.textContent).toBe(specString("radar.scale", { m: 12 }));
     fireEvent.click(dial);
-    expect(container.querySelector(".rscale")?.textContent).toBe("AUTO 6 m");
+    expect(container.querySelector(".rscale")?.textContent).toBe(specString("radar.scale_auto", { m: 6 }));
     fireEvent.keyDown(dial, { key: "-" });
-    expect(container.querySelector(".rscale")?.textContent).toBe("12 m");
+    expect(container.querySelector(".rscale")?.textContent).toBe(specString("radar.scale", { m: 12 }));
     fireEvent.keyDown(dial, { key: "+" });
-    expect(container.querySelector(".rscale")?.textContent).toBe("6 m");
+    expect(container.querySelector(".rscale")?.textContent).toBe(specString("radar.scale", { m: 6 }));
     // Ring labels follow the display range.
     const rings = [...container.querySelectorAll("[data-ring]")].map((n) => n.textContent);
     expect(rings).toEqual(["2", "4", "6"]);

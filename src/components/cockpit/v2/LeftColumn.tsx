@@ -11,26 +11,39 @@
  * names; elsewhere (compact) it is the icon only. The full label stays the
  * accessible name. On a TV the label is never smaller than `label_min_px`.
  *
+ * The column believes only a fresh pilot frame (`pilotFresh`, re-read on a
+ * 500 ms tick): armed comes from the fresh pilot, else the FC heartbeat. An
+ * armed aircraft counts as on the ground only when `vehicleLanded` says so;
+ * with its landed state unknown the column offers Land, which is harmless on
+ * the ground. A frozen frame never routes Take off or
+ * "Launch here" to the pilot or keeps the launch step strip up.
+ *
  * @module cockpit/v2/LeftColumn
  * @license GPL-3.0-only
  */
 
-import { useEffect, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Home, Pause } from "lucide-react";
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import tokens from "@/lib/cockpit-spec/tokens.json";
-import { LaunchSheet, LaunchStepStrip } from "@/components/cockpit/v2/LaunchSheet";
+import { LaunchSheet } from "@/components/cockpit/v2/LaunchSheet";
+import { LaunchStepsRunning } from "@/components/cockpit/v2/LaunchSteps";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
-import { pilotStreamOpen, requestPilotAction, usePilotLinkStore } from "@/lib/input/pilot-stream";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
+import { pilotStreamOpen, usePilotLinkStore } from "@/lib/input/pilot-stream";
 import { specBuiltin } from "@/lib/cockpit/spec-builtins";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
+import { vehicleLanded } from "@/lib/skills/flight-facts";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { rectStyle, type FlightGridClass } from "@/components/cockpit/flight/flight-grid";
 import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
-import { useLaunchRequestStore } from "@/stores/launch-request-store";
+import { liveLaunchRequest, useLaunchRequestStore } from "@/stores/launch-request-store";
+
+/** How often the column re-reads the pilot frame's age (ms). */
+const PILOT_TICK_MS = 500;
 
 interface LeftColumnZoneSpec {
   id: string;
@@ -79,9 +92,17 @@ function ColumnButton({
 }
 
 export function LeftColumn({ droneId }: { droneId: string }) {
-  const armState = useDroneStore((s) => s.armState);
-  const { pilot } = usePilotState(droneId);
-  const onGround = armState !== "armed" || pilot?.landed === true;
+  const fcArmed = useDroneStore((s) => s.armState === "armed");
+  const { pilot: frame, receivedAt } = usePilotState(droneId);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), PILOT_TICK_MS);
+    return () => clearInterval(t);
+  }, []);
+  // Only a fresh pilot frame says anything; a frozen one is no pilot at all.
+  const pilot = pilotFresh(receivedAt, now) ? frame : null;
+  const armed = pilot ? pilot.armed : fcArmed;
+  const onGround = !armed || vehicleLanded(droneId, now) === true;
   const fire = (id: string) => void activate(id, buildSkillContext(droneId));
   // With the drone's pilot reachable, Take off opens the Launch sheet (one
   // hold runs checks, arm, take-off and the after-take-off action); without
@@ -94,13 +115,14 @@ export function LeftColumn({ droneId }: { droneId: string }) {
     if (!onGround) setLaunchOpen(false);
   }, [onGround, setLaunchOpen]);
   // "Launch here" on a map: open the sheet, which takes the point. A request
-  // the sheet cannot use (flying, or no pilot) is dropped.
+  // the sheet cannot use (flying, no pilot, or picked too long ago) is dropped.
   const launchRequested = useLaunchRequestStore((s) => s.pending?.droneId === droneId);
   useEffect(() => {
     if (!launchRequested) return;
-    if (onGround && viaPilot) setLaunchOpen(true);
+    const live = liveLaunchRequest(useLaunchRequestStore.getState().pending, droneId) !== null;
+    if (live && onGround && viaPilot) setLaunchOpen(true);
     else useLaunchRequestStore.getState().consume();
-  }, [launchRequested, onGround, viaPilot, setLaunchOpen]);
+  }, [launchRequested, droneId, onGround, viaPilot, setLaunchOpen]);
   const sequence = pilot?.sequence ?? null;
   const sequenceRunning = sequence !== null && sequence.step !== "done";
   const grid = useFlightGrid();
@@ -142,19 +164,7 @@ export function LeftColumn({ droneId }: { droneId: string }) {
       {launchOpen && viaPilot && (
         <LaunchSheet droneId={droneId} pilot={pilot} onClose={() => setLaunchOpen(false)} />
       )}
-      {!launchOpen && sequenceRunning && (
-        <div className="fs-sheet fs-launch-steps flex items-center gap-2" data-testid="launch-steps-running">
-          <LaunchStepStrip sequence={sequence} />
-          <button
-            type="button"
-            data-testid="launch-steps-abort"
-            onClick={() => void requestPilotAction("pause")}
-            className="fs-text-crit min-h-[40px] rounded bg-status-error/25 px-3 text-xs font-semibold"
-          >
-            {specString("flow.launch.abort")}
-          </button>
-        </div>
-      )}
+      {!launchOpen && sequenceRunning && <LaunchStepsRunning sequence={sequence} />}
     </div>
   );
 }

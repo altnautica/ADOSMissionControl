@@ -16,6 +16,7 @@ import { specBuiltin } from "@/lib/cockpit/spec-builtins";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { widthClassFor } from "@/lib/cockpit/width-class";
 import { useDroneStore } from "@/stores/drone-store";
+import { forgetDrone, noteFcLandedState } from "@/lib/skills/flight-facts";
 import { FlightGridContext } from "@/components/cockpit/flight/flight-context";
 import { flightGrid } from "@/components/cockpit/flight/flight-grid";
 import { LeftColumn } from "../LeftColumn";
@@ -35,6 +36,7 @@ function mount(w: number, h: number) {
 afterEach(() => {
   cleanup();
   useDroneStore.setState({ armState: "disarmed" } as never);
+  forgetDrone(DRONE);
 });
 
 describe("left column labels", () => {
@@ -71,6 +73,8 @@ describe("left column labels", () => {
 
   it("reads Land in the air", () => {
     useDroneStore.setState({ armState: "armed" } as never);
+    // EXTENDED_SYS_STATE: MAV_LANDED_STATE_IN_AIR.
+    noteFcLandedState(DRONE, 2);
     mount(1280, 800);
     expect(screen.getByTestId("left-col-label-land").textContent).toBe(specString("builtin.short.land"));
   });

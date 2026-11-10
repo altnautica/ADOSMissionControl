@@ -74,7 +74,7 @@ export function GuidedConfirmDialog() {
     if (!confirmPending) return;
     if (altitude === null) {
       setHoldProgress(0);
-      setError(`Altitude must be ${FLY_HERE_ALTITUDE_M.min}-${FLY_HERE_ALTITUDE_M.max} m`);
+      setError(specString("refusal.fly_here_target"));
       return;
     }
     // The dispatcher surfaces any refusal (no link, not armed, the vehicle's

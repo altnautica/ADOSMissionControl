@@ -13,6 +13,7 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useGpsOriginStore } from "@/stores/gps-origin-store";
+import { useFlightScreenStore } from "@/stores/flight-screen-store";
 import { flyHereRoute, launchHereOffered } from "../map-point";
 import { GUIDED_MODES } from "../map-context-menu-icons";
 import type { MenuItemDef } from "./types";
@@ -32,7 +33,8 @@ export interface MenuContext {
    *  over to it), or the FC flies GUIDED, armed and airborne. */
   flyHere: boolean;
   /** The selected drone is on the ground with its pilot advertising `goto`
-   *  and its EKF origin known: the point can be the Launch go-to. */
+   *  and its EKF origin known, and a cockpit is on screen to open Launch with
+   *  it: the point can be the Launch go-to. */
   launchHere: boolean;
 }
 
@@ -58,6 +60,9 @@ export function useMenuContext(): MenuContext {
     return stamped ? launchHereOffered(stamped.data, Date.now() - stamped.receivedAt) : false;
   });
   const hasOrigin = useGpsOriginStore((s) => (selectedId ? selectedId in s.byDrone : false));
+  // Only the cockpit's left column takes a Launch here; off the cockpit it
+  // would wait for a later visit, so it is not offered.
+  const cockpitOnScreen = useFlightScreenStore((s) => s.mounted > 0);
 
   const isConnected =
     connectionState === "connected" ||
@@ -76,7 +81,7 @@ export function useMenuContext(): MenuContext {
     canRally,
     canOrbit,
     flyHere,
-    launchHere: launchHere && hasOrigin,
+    launchHere: launchHere && hasOrigin && cockpitOnScreen,
   };
 }
 
