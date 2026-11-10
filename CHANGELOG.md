@@ -48,14 +48,19 @@ protocol, Convex and panel modules and generates the agent's API types.
   takes a go-to, Fly here sends the map point to the pilot whatever runs now
   (a mission, a skill, a flight mode), and the hold dialog says it takes over.
   In FC manual or ELRS control it repositions the flight controller. A refusal
-  (for example while launching) is shown with its reason.
+  (for example while launching, or while the flight controller flies a
+  failsafe return or landing) is shown with its reason.
 - **Mission ETA.** The active mission chip shows the next waypoint's ETA from
   the drone's AR frame.
 - **ELRS control mode.** The Mode sheet offers the ELRS control mode when the
   drone is reached through a ground station.
 - **Status pill FC warnings.** The status pill lists the flight controller
   warnings the pilot reports, and the bottom row's AGL reads the pilot's
-  height above ground.
+  height above ground; when the pilot's reading goes stale the cell shows no
+  data instead of falling back to another source.
+- **Layer unavailable chips below the top bar.** A layer's "unavailable" chip
+  stacks centred a fifth down the picture, as on the agent cockpit, so the top
+  bar no longer covers it.
 - **Designate reticle and gimbal rate on the controller.** L2 and R2 drive the
   gimbal pitch rate through the agent, and the touchpad opens a designate
   reticle. The cockpit asks for a button press before a pad reports, shows the

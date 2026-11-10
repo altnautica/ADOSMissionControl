@@ -124,6 +124,14 @@ describe("bottom row", () => {
     renderWithIntl(<BottomRow droneId={DRONE} />);
     expect(cell("agl")).toBe("4.2 m");
   });
+
+  it("shows no data, not a fallback 0 m, when the pilot's rangefinder AGL goes stale", () => {
+    position();
+    useTelemetryStore.getState().pushTerrain({ timestamp: Date.now(), currentHeight: 0 } as never);
+    useNavStreamStore.getState().setPilot(DRONE, { aglM: 2.7, aglSource: "rangefinder" } as never, Date.now() - 3000);
+    renderWithIntl(<BottomRow droneId={DRONE} />);
+    expect(cell("agl")).toBe(NO_DATA_GLYPH);
+  });
 });
 
 describe("attitude radar", () => {

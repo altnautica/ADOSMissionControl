@@ -291,13 +291,16 @@ export class LayerEngine {
     if (g.measured !== null) decodeBase64Into(g.measured, s.measured);
   }
 
+  /** Stack one status chip centred under the top chrome (a fifth down the
+   * video rect, as the agent cockpit does); at the very top it sat behind
+   * the top bar and never showed. */
   private chip(k: string, text: string): void {
     const c = this.chips.push(k, "chip");
     c.text = text;
     c.color = CHIP_COLOR;
-    c.align = "left";
-    c.x = 12;
-    c.y = 18 + this.chipCount * 24;
+    c.align = "center";
+    c.x = this.rect.x + this.rect.w / 2;
+    c.y = this.rect.y + this.rect.h * 0.2 + this.chipCount * 24;
     this.chipCount += 1;
   }
 

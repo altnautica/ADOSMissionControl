@@ -9,7 +9,9 @@
  * came from a rangefinder (`agl_source: "rangefinder"`); its height-above-home
  * fallback is not a height above the ground and is never shown as one.
  * Otherwise a downward rangefinder (DISTANCE_SENSOR orientation 25, within
- * its valid range) first, then the FC's terrain report, else no data.
+ * its valid range) first, then the FC's terrain report, else no data. When
+ * the pilot's rangefinder AGL has gone stale the cell shows no data rather
+ * than falling through to a fallback source that may read 0 m.
  *
  * @license GPL-3.0-only
  */
@@ -30,6 +32,8 @@ export interface BottomRowInputs {
   pilotAglM: number | null;
   /** The pilot kind's `agl_source`; only "rangefinder" is a height above the ground. */
   pilotAglSource?: string | null;
+  /** The pilot was supplying a rangefinder AGL and its state has gone stale. */
+  pilotAglStale?: boolean;
 }
 
 export interface BottomRowValues {
@@ -51,8 +55,9 @@ export function bottomRowValues(i: BottomRowInputs): BottomRowValues {
     heightM,
     hSpeedMps,
     vSpeedMps,
-    aglM:
-      (i.pilotAglSource === "rangefinder" ? i.pilotAglM : null) ?? aglFrom(i.rangefinder, i.terrain),
+    aglM: i.pilotAglStale
+      ? null
+      : (i.pilotAglSource === "rangefinder" ? i.pilotAglM : null) ?? aglFrom(i.rangefinder, i.terrain),
   };
 }
 

@@ -7700,7 +7700,8 @@
         "tuning": "Fly Here refused: a setup step is running",
         "no_home": "Fly Here refused: the drone has no home position yet",
         "launching": "Fly Here refused: the drone is still taking off",
-        "control_mode": "Fly Here refused: the flight controller has control"
+        "control_mode": "Fly Here refused: the flight controller has control",
+        "failsafe": "Fly Here refused: the drone is in a failsafe return or landing; change mode first"
       }
     }
   },

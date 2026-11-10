@@ -116,7 +116,7 @@ describe("Fly Here through the pilot", () => {
     expect(guidedGoto).not.toHaveBeenCalled();
   });
 
-  it.each(["bad_args", "not_armed", "landed", "tuning", "no_home", "launching", "control_mode"])(
+  it.each(["bad_args", "not_armed", "landed", "tuning", "no_home", "launching", "control_mode", "failsafe"])(
     "shows the pilot's %s refusal",
     async (code) => {
       pilotWith(["goto"]);

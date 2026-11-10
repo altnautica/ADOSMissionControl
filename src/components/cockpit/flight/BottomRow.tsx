@@ -61,6 +61,7 @@ export const BottomRow = memo(function BottomRow({ droneId }: { droneId: string 
     terrain: fresh(b.terrain.latest(), now),
     pilotAglM: pilotFresh ? (pilot?.aglM ?? null) : null,
     pilotAglSource: pilotFresh ? (pilot?.aglSource ?? null) : null,
+    pilotAglStale: receivedAt !== null && !pilotFresh && pilot?.aglSource === "rangefinder",
   });
   const cells: { key: string; label: string; value: string; title: string }[] = [
     { key: "d", label: "D", value: metres(v.distM), title: t("d") },

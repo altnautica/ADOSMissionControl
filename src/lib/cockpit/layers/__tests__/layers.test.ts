@@ -223,8 +223,9 @@ describe("level rules (cockpit spec layers.json)", () => {
 });
 
 /** A 2D context that records the calls the painter makes. */
-function recordingCanvas(): { canvas: HTMLCanvasElement; calls: string[] } {
+function recordingCanvas(): { canvas: HTMLCanvasElement; calls: string[]; texts: { text: string; y: number }[] } {
   const calls: string[] = [];
+  const texts: { text: string; y: number }[] = [];
   const target: Record<string, unknown> = {
     canvas: null,
     getTransform: () => ({ a: 1, d: 1 }),
@@ -235,8 +236,9 @@ function recordingCanvas(): { canvas: HTMLCanvasElement; calls: string[] } {
     {
       get(target, prop: string) {
         if (prop in target) return (target as Record<string, unknown>)[prop];
-        return (..._args: unknown[]) => {
+        return (...args: unknown[]) => {
           calls.push(prop);
+          if (prop === "fillText") texts.push({ text: args[0] as string, y: args[2] as number });
         };
       },
       set() {
@@ -246,7 +248,7 @@ function recordingCanvas(): { canvas: HTMLCanvasElement; calls: string[] } {
   );
   const canvas = { width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
   target.canvas = canvas;
-  return { canvas, calls };
+  return { canvas, calls, texts };
 }
 
 describe("draw loop", () => {
@@ -288,6 +290,30 @@ describe("draw loop", () => {
     // Only the "AR unavailable" chip is painted (a fill, no route strokes).
     expect(calls.filter((c) => c === "stroke").length).toBe(0);
     expect(calls).toContain("fillText");
+    e.detach();
+  });
+
+  it("shows the obstacles unavailable chip below the top chrome once the frame is 2 s old", () => {
+    const { canvas, texts } = recordingCanvas();
+    const e = new LayerEngine(() => {});
+    e.attach(canvas);
+    e.setRunning(false);
+    e.resize(1280, 720, 1);
+    e.setOptions({
+      droneId: "d4",
+      cameraId: "main",
+      level: "full",
+      layers: new Set(["obstacles"]),
+      depthMode: "solid",
+      depthRange: "5",
+      fpsCap: 0,
+    });
+    putFrame("d4", "obstacles", parseObstaclesFrame(obstaclesFixture)!, 1000);
+    e.draw(1000 + 2500);
+    const chip = texts.find((t) => t.text === "Obstacles unavailable");
+    expect(chip).toBeDefined();
+    // The top bar covers the first ~70 px of the flight screen.
+    expect(chip!.y).toBeGreaterThan(100);
     e.detach();
   });
 
