@@ -17,6 +17,7 @@
 
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { usePluginSkillHostStore } from "@/lib/skills/plugin-skill-host-store";
+import { setDemoPluginConfigSink } from "@/lib/skills/plugin-config-writer";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
 import {
@@ -82,6 +83,7 @@ export class MockPilot {
     this.driver.reset(cfg ? { lat: cfg.homeLat, lon: cfg.homeLon } : null);
     setPilotSender((f) => this.receive(f), droneId);
     this.timer = setInterval(() => this.publish(), PILOT_MS);
+    setDemoPluginConfigSink((dev, plugin, key, value) => this.pluginConfig(dev, plugin, key, value));
     // Demo scenarios (and the cockpit screenshot run) pin chip states, e.g.
     // a paused mission, through this handle. Demo builds only.
     if (typeof window !== "undefined" && isDemoMode()) {
@@ -103,7 +105,10 @@ export class MockPilot {
   stop(): void {
     clearInterval(this.timer ?? undefined);
     this.timer = null;
-    if (this.droneId) setPilotSender(null);
+    if (this.droneId) {
+      setPilotSender(null);
+      setDemoPluginConfigSink(null);
+    }
     this.droneId = null;
     if (typeof window !== "undefined") delete window.__adosDemoPilot;
   }
@@ -111,6 +116,27 @@ export class MockPilot {
   /** Pin fields over the live state (demo scenarios); `{}` clears. */
   pin(fields: Json): void {
     this.pins.set(fields);
+    this.publish();
+  }
+
+  /**
+   * A plugin config write in the demo. Turning Follow-Me's `active` flag on
+   * hands the armed pilot to the skill (owner `skill`), as an agent does;
+   * turning it off hands it back to the pilot.
+   */
+  pluginConfig(deviceId: string, pluginId: string, key: string, value: unknown): void {
+    const own = this.droneId ? (deviceIdFromNodeId(this.droneId) ?? this.droneId) : null;
+    if (!own || deviceId !== own || pluginId !== FOLLOW_ME_PLUGIN_ID || key !== "active") return;
+    const host = usePluginSkillHostStore.getState();
+    if (value === true) {
+      this.wire.owner = "skill";
+      this.wire.skill = { plugin_id: FOLLOW_ME_PLUGIN_ID, skill_id: "follow-me", label: "Follow-Me" };
+      host.pushPluginSkillState(own, "follow.state", { state: "active" });
+    } else {
+      if (this.wire.owner === "skill") this.wire.owner = "pilot";
+      this.wire.skill = null;
+      host.pushPluginSkillState(own, "follow.state", { state: "idle" });
+    }
     this.publish();
   }
 

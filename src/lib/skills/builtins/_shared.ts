@@ -9,6 +9,7 @@
  * @license GPL-3.0-only
  */
 
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { specBuiltin, specConfirmGesture } from "@/lib/cockpit/spec-builtins";
 import { refusalText } from "@/lib/hud/refusal";
 import {
@@ -155,7 +156,10 @@ export function specConfirm(
 ): ConfirmPolicy | undefined {
   const { gesture, holdMs } = specConfirmGesture(specBuiltin(id));
   if (gesture === "tap") return undefined;
-  return { ...builtinConfirm(id, gesture, variant, extra), holdMs };
+  // The emergency stop holds for the spec's stop hold on every path (STOP,
+  // key, pad); a pad hold row never stands in for it.
+  const ms = id === "kill" ? layoutSpec.holds_ms.stop : holdMs;
+  return { ...builtinConfirm(id, gesture, variant, extra), holdMs: ms };
 }
 
 /**

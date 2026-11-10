@@ -22,6 +22,7 @@ import {
 import { MAV_LANDED_STATE_ON_GROUND, noteFcLandedState } from "../flight-facts";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import type { ProtocolCapabilities } from "@/lib/protocol/types";
 
 const DRONE = "drone-link";
@@ -125,6 +126,27 @@ describe("skill link freshness", () => {
     expect(policies[0].staleLink).toBe(true);
     expect(policies[0].values?.drone).toBe(DRONE);
     expect(killSwitch).toHaveBeenCalledWith(true);
+  });
+
+  it("an emergency stop from a pad hold or a key still needs the full spec stop hold", async () => {
+    useDroneStore.setState({ armState: "armed", lastHeartbeat: Date.now() });
+    const policies: ConfirmPolicy[] = [];
+    const ctx = {
+      ...buildSkillContext(DRONE),
+      confirm: async (policy: ConfirmPolicy) => {
+        policies.push(policy);
+        return false;
+      },
+    };
+    // A pad hold row (its own hold is not the confirmation), then a key press.
+    await activate("kill", ctx, { confirmedByHold: true });
+    await activate("kill", ctx);
+    expect(policies).toHaveLength(2);
+    for (const p of policies) {
+      expect(p.gesture).toBe("guarded");
+      expect(p.holdMs).toBe(layoutSpec.holds_ms.stop);
+    }
+    expect(killSwitch).not.toHaveBeenCalled();
   });
 
   it("enables them again on a fresh heartbeat", () => {

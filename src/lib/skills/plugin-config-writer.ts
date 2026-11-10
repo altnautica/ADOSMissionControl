@@ -24,6 +24,7 @@
 
 import { pluginClientForReach, resolveNodeAgentReach } from "@/lib/plugins/node-agent-reach";
 import { usePluginConfigCache } from "@/lib/plugins/config-cache";
+import { isDemoMode } from "@/lib/utils";
 
 import {
   usePluginSkillHostStore,
@@ -39,12 +40,26 @@ export function canWritePluginConfig(deviceId: string): boolean {
   return resolveNodeAgentReach(deviceId) !== null;
 }
 
+/** Demo builds: where a plugin config write lands instead of an agent. */
+export type DemoPluginConfigSink = (deviceId: string, pluginId: string, key: string, value: unknown) => void;
+let demoSink: DemoPluginConfigSink | null = null;
+
+/** The demo pilot installs its sink here; `null` removes it. */
+export function setDemoPluginConfigSink(sink: DemoPluginConfigSink | null): void {
+  demoSink = sink;
+}
+
 async function putConfig(
   deviceId: string,
   pluginId: string,
   key: string,
   value: unknown,
 ): Promise<boolean> {
+  if (demoSink && isDemoMode()) {
+    demoSink(deviceId, pluginId, key, value);
+    usePluginConfigCache.getState().record(deviceId, pluginId, key, value);
+    return true;
+  }
   const reach = resolveNodeAgentReach(deviceId);
   if (!reach) return false;
   await pluginClientForReach(reach).setConfig(pluginId, key, value, "drone");

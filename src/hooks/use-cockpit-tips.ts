@@ -116,7 +116,9 @@ export function useCockpitTips(droneId: string, readUi: () => CockpitTipsUi): Co
       const live = receivedAt !== null && pilotFresh(receivedAt, now) ? pilot : null;
       const facts = {
         armed: armState === "armed" || live?.armed === true,
-        airborne: (live ? live.armed && !live.landed : false) || vehicleLanded(droneId) === false,
+        // An unknown arm state (no fresh pilot, no FC disarm) may be a
+        // vehicle in the air: no tip until disarmed is known.
+        airborne: (live ? live.armed && !live.landed : armState !== "disarmed") || vehicleLanded(droneId) === false,
         tourVisible,
         gotoOffered: gotoAdvertised(live),
       };

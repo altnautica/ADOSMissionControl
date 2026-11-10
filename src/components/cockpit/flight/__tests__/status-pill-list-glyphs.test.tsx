@@ -8,6 +8,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import tokens from "@/lib/cockpit-spec/tokens.json";
 import { PILL_SOURCES } from "@/lib/hud/status-pill";
 import { StatusPillList } from "../StatusPillList";
@@ -38,5 +39,10 @@ describe("status pill list glyphs", () => {
     expect(crit.style.color).toBe("var(--fs-crit)");
     expect(warn.textContent).toBe(tokens.chrome.severity_icon.warning);
     expect(warn.style.color).toBe("var(--fs-warn)");
+    // The list opens with the spec heading and tints critical item text.
+    expect(screen.getByTestId("status-pill-list-title").textContent).toBe(specString("cockpit.alerts.title"));
+    expect(screen.getByRole("dialog", { name: specString("cockpit.alerts.title") })).toBeTruthy();
+    expect(screen.getByText("Crit").style.color).toBe("var(--fs-text-crit)");
+    expect(screen.getByText("Warn").style.color).toBe("");
   });
 });

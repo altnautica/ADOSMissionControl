@@ -136,6 +136,17 @@ describe("useCockpitTips", () => {
     expect(result.current.tip?.id).toBe("status_pill");
   });
 
+  it("treats an unknown arm state with no fresh pilot as possibly airborne", () => {
+    useDroneStore.setState({ armState: "unknown" });
+    const { result } = renderHook(() => useCockpitTips("d1", () => ui));
+    advance(10_000);
+    expect(result.current.tip).toBeNull();
+    // A fresh pilot reporting disarmed on the ground settles it.
+    act(() => pinPilot({ armed: false, landed: true }, 0));
+    advance(500);
+    expect(result.current.tip?.id).toBe("status_pill");
+  });
+
   it("shows no tip while an alert banner is up, and hides one when a banner arrives", () => {
     const { result, rerender } = renderHook((u: CockpitTipsUi) => useCockpitTips("d1", () => u), {
       initialProps: { ...ui, alertBannerVisible: true },

@@ -846,6 +846,7 @@ html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill
 /* emergency stop confirm: a sheet below the top bar beside the right column */
 .ados-cockpit .fs-stop-sheet { z-index: 60; width: min(320px, calc(100vw - 16px)); display: flex; flex-direction: column; gap: 10px; padding: 10px; border-color: var(--fs-stop-bg); }
 .ados-cockpit .fs-stop-sheet-body { font-size: var(--fs-top-px); color: var(--fs-text); }
+.ados-cockpit .fs-stop-sheet-stale { font-size: var(--fs-label-px); font-weight: 600; color: var(--fs-text-crit); }
 .ados-cockpit .fs-stop-hold { position: relative; overflow: hidden; width: 100%; padding: 0 12px; border-radius: var(--fs-radius-sm); border: 2px solid var(--fs-stop-bg); background: transparent; color: var(--fs-text); font-weight: 700; font-size: var(--fs-top-px); touch-action: none; user-select: none; cursor: pointer; }
 .ados-cockpit .fs-stop-hold:focus-visible { outline: 3px solid var(--fs-text); outline-offset: 2px; }
 .ados-cockpit .fs-stop-hold-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--fs-stop-bg) 45%, transparent); }

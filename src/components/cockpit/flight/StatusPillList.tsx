@@ -49,11 +49,14 @@ export function StatusPillList({
       <div
         ref={listRef}
         role="dialog"
-        aria-label={specString("cockpit.menu.status")}
+        aria-labelledby="status-pill-list-title"
         className="fs-sheet fs-pill-list"
         data-testid="status-pill-list"
         style={{ position: "absolute", ...sheetPlacement(grid, "left") }}
       >
+        <p id="status-pill-list-title" className="fs-menu-h" data-testid="status-pill-list-title">
+          {specString("cockpit.alerts.title")}
+        </p>
         {alerts.length === 0 ? (
           <p className="fs-sheet-empty">{specString("cockpit.status.ok")}</p>
         ) : (
@@ -70,7 +73,12 @@ export function StatusPillList({
                   >
                     {glyph}
                   </span>
-                  <span className="fs-pill-item">{a.text}</span>
+                  <span
+                    className="fs-pill-item"
+                    style={a.severity === "critical" ? { color: "var(--fs-text-crit)" } : undefined}
+                  >
+                    {a.text}
+                  </span>
                   <span className="fs-pill-src">{pillSourceLabel(a.source)}</span>
                 </li>
               );

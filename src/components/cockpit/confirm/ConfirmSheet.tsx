@@ -169,7 +169,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
   }, [flightRoot]);
 
   if (stopSheet && flightRoot) {
-    const stop = <StopSheet hold={hold} holdMs={holdMs} holdLeftMs={holdLeftMs} sheetRef={sheetRef} onCancel={() => resolve(false)} />;
+    const stop = <StopSheet hold={hold} holdMs={holdMs} holdLeftMs={holdLeftMs} sheetRef={sheetRef} onCancel={() => resolve(false)} staleLink={policy.staleLink === true} />;
     return createPortal(stop, flightRoot);
   }
 

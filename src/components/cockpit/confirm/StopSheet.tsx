@@ -27,12 +27,15 @@ export function StopSheet({
   holdLeftMs,
   sheetRef,
   onCancel,
+  staleLink = false,
 }: {
   hold: ConfirmHold;
   holdMs: number;
   holdLeftMs: number;
   sheetRef: RefObject<HTMLDivElement | null>;
   onCancel: () => void;
+  /** The link is stale, so the kill would be sent without an answer. */
+  staleLink?: boolean;
 }) {
   const grid = useFlightGrid();
   const hit = layoutSpec.touch_target.min * grid.scale;
@@ -68,6 +71,11 @@ export function StopSheet({
       <p id="stop-sheet-body" className="fs-stop-sheet-body">
         {specString("confirm.kill.message")}
       </p>
+      {staleLink && (
+        <p role="alert" className="fs-stop-sheet-stale" data-testid="stop-sheet-stale-link">
+          {specString("confirm.stale_link")}
+        </p>
+      )}
       <button
         type="button"
         className="fs-stop-hold"

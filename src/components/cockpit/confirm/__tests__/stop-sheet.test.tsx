@@ -35,10 +35,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function mount(onResolve: (ok: boolean) => void) {
+function mount(onResolve: (ok: boolean) => void, policy: ConfirmPolicy = KILL) {
   renderWithIntl(<div data-testid="flight-screen" style={{ ["--fs-bar-b" as string]: "52px" }} />);
   act(() => {
-    renderWithIntl(<ConfirmSheet policy={KILL} droneId="d1" onResolve={onResolve} />);
+    renderWithIntl(<ConfirmSheet policy={policy} droneId="d1" onResolve={onResolve} />);
   });
 }
 
@@ -78,5 +78,16 @@ describe("emergency stop sheet", () => {
     expect(onResolve).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("stop-sheet-cancel"));
     expect(onResolve).toHaveBeenCalledWith(false, undefined);
+  });
+
+  it("warns under the body when the link is stale and the kill goes out blind", () => {
+    mount(() => {});
+    expect(screen.queryByTestId("stop-sheet-stale-link")).toBeNull();
+    cleanup();
+    mount(() => {}, { ...KILL, staleLink: true });
+    const warn = screen.getByTestId("stop-sheet-stale-link");
+    expect(warn.getAttribute("role")).toBe("alert");
+    expect(warn.textContent).toBe(specString("confirm.stale_link"));
+    expect(warn.previousElementSibling?.id).toBe("stop-sheet-body");
   });
 });

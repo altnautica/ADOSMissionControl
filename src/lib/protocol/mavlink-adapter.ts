@@ -23,11 +23,11 @@ import type { MAVLinkFrame } from './mavlink-parser'
 import { encodeHeartbeat } from './encoders'
 import { CommandQueue } from './command-queue'
 import { TELEMETRY_STALE_MS } from '@/lib/telemetry/freshness'
-import { useSettingsStore } from '@/stores/settings-store'
+import { requestConnectMessages, requestStreamRates } from './mavlink-adapter-session'
 import { createFirmwareHandler } from './firmware/ardupilot'
 import { createCallbackStore, bindCallbackMethods } from './mavlink-adapter-callbacks'
 import {
-  checkLinkState, requestDataStreams, processInboundFrame, resetOnDisconnect, type FrameHandlerState,
+  checkLinkState, processInboundFrame, resetOnDisconnect, type FrameHandlerState,
 } from './mavlink-adapter-frame-handlers'
 import { StatusTextAssembler } from './handlers/info-handlers'
 import * as cmds from './mavlink-adapter-commands'
@@ -195,17 +195,8 @@ export class MAVLinkAdapter implements DroneProtocol {
     ]
     this.st.lastVehicleHeartbeat = Date.now(); this.st.linkIsLost = false
     this.linkLostCheckInterval = setInterval(() => checkLinkState(this.st), 1000)
-    this.sendCommandLong(512, [242, 0, 0, 0, 0, 0, 0]).catch(() => {})
-    // The EKF origin is sent when it is set; ask once in case that happened
-    // before this connection.
-    this.sendCommandLong(512, [49, 0, 0, 0, 0, 0, 0]).catch(() => {})
-    this.sendCommandLong(512, [148, 0, 0, 0, 0, 0, 0]).catch(() => {})
+    requestConnectMessages(this.st, this.sendCommandLong.bind(this))
     this.camera.start()
-    // COMPONENT_METADATA (397) is a PX4-only "component information" message;
-    // ArduPilot does not implement it, so only request it for PX4 vehicles.
-    if (this.st.firmwareHandler?.firmwareType === 'px4') {
-      this.sendCommandLong(512, [397, 0, 0, 0, 0, 0, 0]).catch(() => {})
-    }
     return vehicleInfo
   }
 
@@ -250,21 +241,7 @@ export class MAVLinkAdapter implements DroneProtocol {
     }
   }
 
-  /** Request telemetry rates; housekeeping, so a send failure is logged, never thrown. */
-  private requestStreams(): void {
-    try {
-      requestDataStreams(this.st)
-    } catch (err) {
-      console.warn('[MAVLinkAdapter] stream-rate request failed:', err)
-    }
-    // EXTENDED_SYS_STATE (245) at 1 Hz is the flight controller's landed state,
-    // which Disarm gates on. A reboot drops the interval, so it rides every
-    // re-request; the PX4 stream set already carries it when the GCS manages
-    // rates. A refusal or no answer just leaves the landed state unknown.
-    const px4Streams = this.st.firmwareHandler?.firmwareType === 'px4'
-      && useSettingsStore.getState().gcsManagesTelemetryRates
-    if (!px4Streams) this.sendCommandLong(511, [245, 1_000_000, 0, 0, 0, 0, 0]).catch(() => {})
-  }
+  private requestStreams(): void { requestStreamRates(this.st, this.sendCommandLong.bind(this)) }
 
   async disconnect(): Promise<void> {
     const links = Array.from(this.ls.links.values())
