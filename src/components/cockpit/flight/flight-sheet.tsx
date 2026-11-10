@@ -30,8 +30,7 @@ import type { FlightGrid } from "./flight-grid";
 
 /**
  * Where flight-screen toasts stack (bottom edge offset from the screen's
- * bottom, left edge, width): above the bottom row (and the follow dock when
- * it is open), between the card and the skills chip; in portrait, at the
+ * bottom, left edge, width): above the bottom row, between the card and the skills chip; in portrait, at the
  * bottom of the video, above the left column's row.
  */
 export function toastAnchor(grid: FlightGrid): { bottom: number; left: number; width: number } {
@@ -42,8 +41,7 @@ export function toastAnchor(grid: FlightGrid): { bottom: number; left: number; w
     return { bottom: grid.height - top + gap, left: gap, width: grid.width - 2 * gap };
   }
   const row = grid.zones.bottom_row;
-  const dock = grid.zones.follow_dock;
-  const topY = Math.min(row?.y ?? grid.height, dock?.y ?? grid.height);
+  const topY = row?.y ?? grid.height;
   return {
     bottom: grid.height - topY + gap,
     left: row?.x ?? gap,

@@ -7,7 +7,9 @@
  * (vertical speed) and AGL (height above the ground: the ADOS pilot's
  * rangefinder `agl_m`, else a downward range finder, else the terrain
  * report). Values come from fresh samples only, except the latched home
- * position; a value with no source shows the no-data glyph.
+ * position; a value with no source shows the no-data glyph. Where the row
+ * is too narrow for all five without them touching (`bottomRowLabels`, from
+ * the row's own width) it shows D and H only.
  *
  * @license GPL-3.0-only
  */
@@ -23,7 +25,7 @@ import { PILOT_STALE_MS } from "@/stores/nav-stream-store";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { useThrottledTelemetryVersion } from "@/hooks/use-throttled-telemetry-version";
 import { useFlightGrid } from "./flight-context";
-import { rectStyle } from "./flight-grid";
+import { bottomRowLabels, rectStyle } from "./flight-grid";
 
 function fresh<T extends { timestamp: number }>(s: T | undefined, now: number): T | null {
   return s !== undefined && isFresh(s.timestamp, now) ? s : null;
@@ -63,15 +65,20 @@ export const BottomRow = memo(function BottomRow({ droneId }: { droneId: string 
     pilotAglSource: pilotFresh ? (pilot?.aglSource ?? null) : null,
     pilotAglStale: receivedAt !== null && !pilotFresh && pilot?.aglSource === "rangefinder",
   });
+  const labels = bottomRowLabels(grid);
   const cells: { key: string; label: string; value: string; title: string }[] = [
     { key: "d", label: "D", value: metres(v.distM), title: t("d") },
     { key: "h", label: "H", value: metres(v.heightM), title: t("h") },
-    { key: "hs", label: "H.S", value: speed(v.hSpeedMps), title: t("hs") },
-    { key: "vs", label: "V.S", value: speed(v.vSpeedMps), title: t("vs") },
-    { key: "agl", label: "AGL", value: metres(v.aglM), title: t("agl") },
   ];
+  if (labels === "full") {
+    cells.push(
+      { key: "hs", label: "H.S", value: speed(v.hSpeedMps), title: t("hs") },
+      { key: "vs", label: "V.S", value: speed(v.vSpeedMps), title: t("vs") },
+      { key: "agl", label: "AGL", value: metres(v.aglM), title: t("agl") },
+    );
+  }
   return (
-    <div className="fs-panel fs-row" data-zone="bottom_row" style={rectStyle(rect)}>
+    <div className="fs-panel fs-row" data-zone="bottom_row" data-labels={labels} style={rectStyle(rect)}>
       {cells.map((c) => (
         <div key={c.key} className="fs-row-cell" data-testid={`fs-row-${c.key}`} title={c.title}>
           <span className="fs-label">{c.label}</span>

@@ -48,8 +48,7 @@ describe("FollowRangePanel", () => {
     const panel = screen.getByTestId("follow-range-panel");
     expect(panel.textContent).toContain("10.2 m");
     expect(panel.textContent).toContain("±0.3");
-    expect(panel.textContent).toContain("AGL 4.1");
-    expect(panel.textContent).toContain("RNG");
+    expect(panel.textContent).not.toContain("AGL");
     expect(rows()).toEqual([]);
   });
 

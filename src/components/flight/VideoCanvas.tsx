@@ -224,7 +224,7 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
       />
 
       {!hasVideo && !demoFeed && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div data-video-placeholder className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="w-16 h-16 border border-border-default flex items-center justify-center">
               <svg

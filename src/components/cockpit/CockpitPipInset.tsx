@@ -5,9 +5,9 @@
  * @description The cockpit picture-in-picture inset: a small draggable corner
  * window over the main video showing a SECOND stream (e.g. thermal over EO)
  * while the main view stays on the active stream. Shown only when a PiP stream
- * is set (the operator toggles it with `P` or a tab affordance). The inset
- * draws its own target layer for its camera's detections (PiP tag rules,
- * interactive); the main overlays follow the active stream.
+ * is set (the operator toggles it with `P` or a tab affordance). A PiP never
+ * draws data layers or targets (`views.json`): the overlays and target boxes
+ * follow the main picture's stream only.
  *
  * The inset uses an isolated WHEP player (`usePipVideo`) because the main feed
  * is the one *shared* receive session, and a PiP leg is a different stream —
@@ -307,7 +307,7 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
                       type="button"
                       onClick={pipRetry}
                       aria-label={t("pipRetry")}
-                      className="flex items-center gap-1 border border-border-default px-1.5 py-0.5 text-[9px] font-mono text-text-secondary transition-colors hover:border-accent-primary hover:text-accent-primary"
+                      className="flex min-h-12 min-w-12 items-center justify-center gap-1 border border-border-default px-3 text-[9px] font-mono text-text-secondary transition-colors hover:border-accent-primary hover:text-accent-primary"
                     >
                       <RefreshCw size={9} aria-hidden="true" />
                       {t("pipRetry")}

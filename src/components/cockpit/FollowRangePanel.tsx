@@ -2,10 +2,12 @@
 
 /**
  * @module cockpit/FollowRangePanel
- * @description The read-only range panel of following mode. It docks in the
- * follow dock above the bottom row as one merged line (`variant="line"`);
- * the full panel (range + interval bar + height, then geometry and the
- * cue/latency row at `expanded`/`tv`) opens as a sheet from that line. A
+ * @description The read-only range panel of following mode. It sits in the
+ * follow strip under the top bar as one line (`variant="line"`): the range
+ * to the target, only when the skill measures it, and the phase. The line
+ * carries no height above the ground: the bottom row owns that readout. The
+ * full panel (range + interval bar + height, then geometry and the
+ * cue/latency row at `expanded`/`tv`) opens as a sheet from the strip. A
  * `follow.state` older than 2 s blanks every value, dims the plate and reads
  * STALE.
  *
@@ -74,15 +76,15 @@ export function FollowRangePanel({
   const brg = live?.bearingDeg ?? null;
 
   if (variant === "line" || widthClass === "compact") {
+    // A skill that measures the target's distance reports a range or range
+    // cues; a stale report keeps the slot (blank) rather than dropping it.
+    const measures = follow !== null && (follow.rangeM !== null || follow.rangeCues.length > 0);
     return (
       <div className="frp" data-width-class="compact" data-stale={blank ? "true" : undefined}
         role="status" aria-label={t("label")} data-testid="follow-range-panel">
         <div className="frp-line">
-          <span className="frp-range">{rangeText}</span>
-          {sigma !== null && range !== null && <span className="frp-aux">±{sigma.toFixed(1)}</span>}
-          <span className="frp-sep frp-aux">·</span>
-          <span className="frp-aux">{t("agl")} {agl}</span>
-          {sourceWord && <span className="frp-aux" style={sourceStyle}>{sourceWord}</span>}
+          {measures && <span className="frp-range" data-testid="follow-range-value">{rangeText}</span>}
+          {measures && sigma !== null && range !== null && <span className="frp-aux">±{sigma.toFixed(1)}</span>}
           <span className="frp-phase" style={{ color: phaseColor }}>{phaseWord}</span>
         </div>
       </div>

@@ -2,8 +2,8 @@
 
 /**
  * @module cockpit/FollowRail
- * @description The following-mode controls, one row in the follow dock above
- * the bottom row: FOLLOW / TRACKING (the follow-me toggle skill), STRICT |
+ * @description The following-mode controls, one row in the follow strip under
+ * the top bar: FOLLOW / TRACKING (the follow-me toggle skill), STRICT |
  * SMART, and FRONT ⇄ BELLY (two concurrent legs, one a belly camera). REC
  * joins them only where the flight screen has no right column (portrait),
  * since the right column's shutter records everywhere else. Hold, return and

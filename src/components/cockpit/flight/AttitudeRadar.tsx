@@ -22,7 +22,8 @@ const PITCH_FULL_DEG = 45;
 export const AttitudeRadar = memo(function AttitudeRadar({ size }: { droneId: string; size: number }) {
   const t = useTranslations("flightScreen.card");
   const r = useHudInstruments();
-  const s = Math.max(64, size - 28);
+  // Room above for the face's title and below for the page dots.
+  const s = Math.max(64, size - 44);
   const c = s / 2;
   const ring = c - 6;
   const ball = ring - 12;

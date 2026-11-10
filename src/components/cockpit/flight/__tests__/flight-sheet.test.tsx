@@ -171,7 +171,7 @@ describe("flight-screen toasts", () => {
     const a = toastAnchor(grid);
     // A two-line toast stack 80 px tall above the anchor.
     const stack = { x: a.left, y: h - a.bottom - 80, w: a.width, h: 80 };
-    for (const id of ["bottom_row", "bottom_right", "follow_dock", "left_column"] as const) {
+    for (const id of ["bottom_row", "bottom_right", "follow_strip", "left_column"] as const) {
       const z = grid.zones[id];
       if (z) expect(overlaps(stack, z), id).toBe(false);
     }

@@ -16,9 +16,10 @@
 import { memo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { Layers } from "lucide-react";
+import { Layers, Maximize2 } from "lucide-react";
 import { MinimapBasemapSelector } from "@/components/map/MinimapBasemapSelector";
 import { LocalFrameMap } from "@/components/map/local/LocalFrameMap";
+import { FlightSheetPortal } from "@/components/cockpit/flight/flight-sheet";
 import { useMinimapFrame } from "@/components/map/local/use-minimap-frame";
 import type { MinimapPin } from "@/lib/hud/minimap-mode";
 import { useUiStore } from "@/stores/ui-store";
@@ -34,6 +35,12 @@ const OverviewMap = dynamic(
 );
 const FollowTargetGeoLayer = dynamic(
   () => import("@/components/map/local/FollowTargetGeoLayer").then((m) => m.FollowTargetGeoLayer),
+  { ssr: false },
+);
+// The Fly Here hold-confirm for a point picked on this map (right-click or
+// long-press); the compact map does not mount its own.
+const GuidedConfirmDialog = dynamic(
+  () => import("@/components/flight/GuidedConfirmDialog").then((m) => ({ default: m.GuidedConfirmDialog })),
   { ssr: false },
 );
 
@@ -66,49 +73,56 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
 
   return (
     <div className="mmap" data-frame={frame} data-testid="cockpit-minimap">
-        {frame === "local" ? (
-          <LocalFrameMap droneId={droneId} className="absolute inset-0" headerExtra={toggle} compact />
-        ) : (
-          <>
-            <div className="absolute inset-0">
-              <OverviewMap compact pluginOverlay>
-                <FollowTargetGeoLayer droneId={droneId} />
-              </OverviewMap>
+      {frame === "local" ? (
+        <LocalFrameMap droneId={droneId} className="absolute inset-0" headerExtra={toggle} compact />
+      ) : (
+        <>
+          {/* The map takes its own pointer input, so a right-click or a
+              long-press on it can offer Fly Here; opening the Flight tab is
+              the button in the corner. */}
+          <div className="absolute inset-0">
+            <OverviewMap compact pluginOverlay>
+              <FollowTargetGeoLayer droneId={droneId} />
+            </OverviewMap>
+          </div>
+          <div className="absolute top-1.5 left-1.5 right-1.5 z-[1002] flex items-start justify-between pointer-events-none">
+            <div className="relative pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => setBasemapOpen((o) => !o)}
+                aria-label={t("mapLayer")}
+                aria-expanded={basemapOpen}
+                title={t("mapLayer")}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+              >
+                <Layers size={13} aria-hidden="true" />
+              </button>
+              {basemapOpen && (
+                <div className="absolute left-0 top-7">
+                  <MinimapBasemapSelector className="rounded-md bg-bg-primary/85 p-0.5 backdrop-blur-sm" />
+                </div>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={openFlightTab}
-              title={t("openFlight")}
-              aria-label={t("openFlight")}
-              className="absolute inset-0 z-[1001] cursor-pointer transition-colors hover:bg-on-media/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-primary"
-            />
-            {/* Above the click overlay; stops clicks falling through to the
-                Flight-tab switch. */}
-            <div
-              className="absolute top-1.5 left-1.5 right-1.5 z-[1002] flex items-start justify-between pointer-events-none"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="relative pointer-events-auto">
-                <button
-                  type="button"
-                  onClick={() => setBasemapOpen((o) => !o)}
-                  aria-label={t("mapLayer")}
-                  aria-expanded={basemapOpen}
-                  title={t("mapLayer")}
-                  className="flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
-                >
-                  <Layers size={13} aria-hidden="true" />
-                </button>
-                {basemapOpen && (
-                  <div className="absolute left-0 top-7">
-                    <MinimapBasemapSelector className="rounded-md bg-bg-primary/85 p-0.5 backdrop-blur-sm" />
-                  </div>
-                )}
-              </div>
-              <div className="pointer-events-auto">{toggle}</div>
+            <div className="pointer-events-auto flex items-start gap-1">
+              {toggle}
+              <button
+                type="button"
+                onClick={openFlightTab}
+                data-testid="minimap-open-flight"
+                title={t("openFlight")}
+                aria-label={t("openFlight")}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+              >
+                <Maximize2 size={13} aria-hidden="true" />
+              </button>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
+      {/* At the flight screen's root: the card is too small to hold it. */}
+      <FlightSheetPortal>
+        <GuidedConfirmDialog />
+      </FlightSheetPortal>
+    </div>
   );
 });

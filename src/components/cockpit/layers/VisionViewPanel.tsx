@@ -2,10 +2,11 @@
 
 /**
  * @module cockpit/layers/VisionViewPanel
- * @description The side panel of the cockpit's Vision view: the live
- * detection list for the displayed camera, the detector model picker, the
- * depth and surfaces layer options (both layers are on while the view is
- * open) and the engine summary.
+ * @description The panel of the cockpit's Vision view, beside the video in
+ * landscape and stacked under it in portrait: the live detection list for
+ * the displayed camera, the detector model picker, the depth and surfaces
+ * layer options (both layers are on while the view is open) and the engine
+ * summary.
  *
  * @license GPL-3.0-only
  */
@@ -98,7 +99,7 @@ function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; c
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        "min-h-9 flex-1 rounded px-2 text-[11px]",
+        "min-h-12 flex-1 rounded px-2 text-[11px]",
         on ? "bg-accent-primary text-white" : "bg-white/5 text-text-secondary hover:bg-white/10",
       )}
     >

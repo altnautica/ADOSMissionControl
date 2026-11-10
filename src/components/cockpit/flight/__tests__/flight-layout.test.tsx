@@ -71,9 +71,9 @@ describe("flight screen grid", () => {
       expect(g.cls).toBe(s.cls);
       checkGrid(g);
     });
-    it(`keeps the follow dock clear of every zone at ${s.w}x${s.h}`, () => {
+    it(`keeps the follow strip clear of every zone at ${s.w}x${s.h}`, () => {
       const g = gridAt(s.w, s.h, { following: true });
-      expect(g.zones.follow_dock).toBeDefined();
+      expect(g.zones.follow_strip).toBeDefined();
       checkGrid(g);
     });
   }
@@ -83,10 +83,10 @@ describe("flight screen grid", () => {
   });
 
   for (const [w, h] of [[1920, 1080], [1280, 800], [900, 600], [1280, 720]] as const) {
-    it(`keeps the follow dock clear of the Vision side panel at ${w}x${h}`, () => {
+    it(`keeps the follow strip clear of the Vision side panel at ${w}x${h}`, () => {
       // The panel width as the flight frame computes it.
       const g = gridAt(w, h, { following: true, sidePanelWidth: Math.round(Math.min(340, w * 0.4)) });
-      expect(g.zones.follow_dock).toBeDefined();
+      expect(g.zones.follow_strip).toBeDefined();
       expect(g.zones.side_panel).toBeDefined();
       checkGrid(g);
     });

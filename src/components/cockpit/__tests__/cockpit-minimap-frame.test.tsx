@@ -42,7 +42,7 @@ describe("CockpitMinimap frame", () => {
     useTelemetryStore.getState().gps.push({ timestamp: Date.now(), fixType: 3, satellites: 12, lat: 0, lon: 0, alt: 0 });
     const { container } = renderMinimap();
     expect(container.querySelector(".mmap")?.getAttribute("data-frame")).toBe("global");
-    expect(screen.getByTestId("overview-map")).toBeTruthy();
+    expect(screen.getAllByTestId("overview-map").length).toBeGreaterThan(0);
   });
 
   it("pins LOCAL per vehicle and draws the local frame", () => {

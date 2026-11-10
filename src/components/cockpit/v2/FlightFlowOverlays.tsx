@@ -15,6 +15,13 @@
  *   - voice prompts for handovers, return home, low battery and mission
  *     state changes (Web Speech; Settings › Sound, default on).
  *
+ * They stack in one top-centre column under the follow strip (or the top
+ * bar), between the side columns (`flowColumn`): countdowns first, then the
+ * handover banner, the sticks-with take over and the centre-sticks ring. The
+ * screen centre stays the clean camera view (`layout.json` center `clean`),
+ * so the ring never sits on it. A PICTURE FROZEN banner, when up, keeps the
+ * column's first slot.
+ *
  * Text comes from the shared cockpit strings, so every surface says the
  * same thing.
  *
@@ -24,6 +31,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
+import { FROZEN_BANNER_H, useVideoFrozen } from "@/components/cockpit/CockpitVideoStatusBanner";
+import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
+import { flowColumn } from "@/components/cockpit/flight/flight-grid";
+import tokens from "@/lib/cockpit-spec/tokens.json";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { linkLossLine } from "@/lib/hud/link-loss";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
@@ -34,6 +45,9 @@ import { useMissionStatus } from "@/lib/mission/use-mission-status";
 import { useCockpitPrefsStore } from "@/stores/cockpit-prefs-store";
 
 const HANDOVER_MS = layoutSpec.banners.handover_ms;
+const TAKE_CONTROL_HOLD_MS = layoutSpec.holds_ms.take_control;
+/** Space between the stacked overlays. */
+const STACK_GAP_PX = 8;
 
 /** The banner's args with the spec's sub-keys resolved (`source: "rc"` →
  * "RC switch") and the profile in the chip's upper case. */
@@ -110,13 +124,8 @@ function HandoverBanner({ pilot }: { pilot: PilotState | null }) {
   }, [visible, lastText]);
   if (!visible || !lastText) return null;
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      data-testid="handover-banner"
-      className="pointer-events-none absolute inset-x-0 top-24 z-[45] flex justify-center"
-    >
-      <span className="glass-panel w-[min(640px,92%)] px-4 py-2 text-center text-sm font-semibold text-text-primary">
+    <div role="status" aria-live="polite" data-testid="handover-banner" className="pointer-events-none flex w-full justify-center">
+      <span className="glass-panel w-[min(640px,100%)] px-4 py-2 text-center text-sm font-semibold text-text-primary">
         {lastText}
       </span>
     </div>
@@ -128,11 +137,7 @@ function GateRing({ gate }: { gate: PilotState["gate"] }) {
   const r = 34;
   const c = 2 * Math.PI * r;
   return (
-    <div
-      role="status"
-      data-testid="gate-ring"
-      className="pointer-events-none absolute left-1/2 top-1/2 z-[44] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
-    >
+    <div role="status" data-testid="gate-ring" className="pointer-events-none flex flex-col items-center gap-2">
       <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
         <circle cx="42" cy="42" r={r} fill="rgba(0,0,0,0.45)" stroke="rgba(255,255,255,0.25)" strokeWidth="6" />
         <circle
@@ -140,7 +145,7 @@ function GateRing({ gate }: { gate: PilotState["gate"] }) {
           cy="42"
           r={r}
           fill="none"
-          stroke="#2979FF"
+          stroke={tokens.state.pilot}
           strokeWidth="6"
           strokeLinecap="round"
           strokeDasharray={c}
@@ -164,13 +169,13 @@ function SticksWith({ pilot }: { pilot: PilotState | null }) {
     <div
       role="status"
       data-testid="sticks-with"
-      className="glass-panel pointer-events-auto absolute bottom-24 left-1/2 z-[44] flex -translate-x-1/2 items-center gap-3 px-3 py-2 text-xs text-text-primary"
+      className="glass-panel pointer-events-auto flex max-w-full items-center gap-3 px-3 py-1 text-xs text-text-primary"
     >
       <span>{specString("flow.sticks_with", { label: session.label })}</span>
       <HoldButton
-        holdMs={800}
+        holdMs={TAKE_CONTROL_HOLD_MS}
         onFire={() => void takePilotSession()}
-        className="rounded bg-accent-primary/25 px-3 py-1.5 font-semibold text-accent-primary"
+        className="min-h-12 rounded bg-accent-primary/25 px-3 font-semibold text-accent-primary"
       >
         {specString("flow.sticks_take_over")}
       </HoldButton>
@@ -183,12 +188,12 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
   const linkLoss = pilot?.linkLossInS ?? null;
   if (rth === null && linkLoss === null) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-14 z-[46] flex flex-col items-center gap-2">
+    <div className="pointer-events-none flex w-full flex-col items-center gap-2">
       {rth !== null && (
         <div
           role="alert"
           data-testid="low-battery-rth"
-          className="pointer-events-auto flex w-[min(720px,96%)] items-center justify-between gap-3 rounded-lg bg-status-error/90 px-4 py-2 text-sm font-semibold text-white"
+          className="pointer-events-auto flex w-[min(720px,100%)] items-center justify-between gap-3 rounded-lg bg-status-error/90 px-4 py-2 text-sm font-semibold text-white"
         >
           <span className="flex flex-col">
             <span>{specString("flow.low_battery.title", { in_s: Math.ceil(rth) })}</span>
@@ -199,7 +204,7 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
           <button
             type="button"
             onClick={() => void sendPilotAction("rth_cancel")}
-            className="min-h-[40px] rounded bg-black/80 px-4 text-white"
+            className="min-h-12 rounded bg-black/80 px-4 text-white"
           >
             {specString("flow.low_battery.cancel")}
           </button>
@@ -216,12 +221,20 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
 
 export function FlightFlowOverlays({ droneId, pilot }: { droneId: string; pilot: PilotState | null }) {
   useVoicePrompts(droneId, pilot);
+  const grid = useFlightGrid();
+  const frozen = useVideoFrozen(droneId) !== null;
+  const col = flowColumn(grid);
+  const top = col.y + (frozen ? FROZEN_BANNER_H + STACK_GAP_PX : 0);
   return (
-    <>
-      <HandoverBanner pilot={pilot} />
-      <GateRing gate={pilot?.gate ?? null} />
-      <SticksWith pilot={pilot} />
+    <div
+      data-testid="flow-stack"
+      className="pointer-events-none absolute z-[45] flex flex-col items-center"
+      style={{ left: col.x, top, width: col.w, gap: STACK_GAP_PX }}
+    >
       <Countdowns pilot={pilot} />
-    </>
+      <HandoverBanner pilot={pilot} />
+      <SticksWith pilot={pilot} />
+      <GateRing gate={pilot?.gate ?? null} />
+    </div>
   );
 }
