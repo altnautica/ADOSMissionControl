@@ -107,6 +107,8 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_CONVEX_URL: https://convex.altnautica.com
+          # The macOS arm64 runner has 7 GB; Node's default heap there (about 2 GB) runs out in the type check.
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Compile Electron
         run: npm run electron:compile
@@ -142,6 +144,7 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_CONVEX_URL: https://convex.altnautica.com
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Compile Electron
         run: npm run electron:compile
@@ -177,6 +180,7 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_CONVEX_URL: https://convex.altnautica.com
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Compile Electron
         run: npm run electron:compile
