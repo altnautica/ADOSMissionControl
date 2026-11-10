@@ -1,12 +1,14 @@
 /**
  * Take-off skill — arms then commands an autonomous take-off to the requested
- * altitude (default 10 m). One-shot, disarmed-only, hold-to-confirm on a sheet
- * that carries the altitude stepper, checklist-aware. Requires autonomous nav.
+ * altitude (default: the spec's launch altitude). One-shot, disarmed-only,
+ * hold-to-confirm on a sheet that carries the altitude stepper,
+ * checklist-aware. Requires autonomous nav.
  *
  * @module skills/builtins/takeoff
  * @license GPL-3.0-only
  */
 
+import { launchLimits } from "@/lib/cockpit/launch-spec";
 import type { Skill, SkillActivateArgs } from "../types";
 import {
   pilotActionResult,
@@ -16,8 +18,13 @@ import {
   disabledUnlessDisarmed,
 } from "./_shared";
 
-/** Take-off altitude bounds and default, metres above home. */
-export const TAKEOFF_ALTITUDE_M = { min: 1, max: 120, default: 10 } as const;
+/** Take-off altitude bounds and default, metres above home, from the spec's
+ * launch limits. */
+export const TAKEOFF_ALTITUDE_M = {
+  min: launchLimits.altMinM,
+  max: launchLimits.altMaxM,
+  default: launchLimits.altDefaultM,
+} as const;
 
 /**
  * Parse a typed take-off altitude. Returns metres, or `null` when the entry is

@@ -54,19 +54,6 @@ function flyHereTarget(args?: SkillActivateArgs): FlyHereTarget | null {
   return { lat, lon, altitudeM };
 }
 
-/** Pilot `goto` refusals the operator gets a sentence for; any other code is
- * shown as the pilot sent it. */
-const PILOT_GOTO_REFUSALS = new Set([
-  "bad_args",
-  "not_armed",
-  "landed",
-  "tuning",
-  "no_home",
-  "launching",
-  "control_mode",
-  "failsafe",
-]);
-
 /** True when this drone's ADOS pilot flies it from this surface and accepts a
  * `goto` from a surface. */
 function pilotFliesGoto(ctx: SkillContext): boolean {
@@ -102,11 +89,9 @@ export const flyHereSkill: Skill = {
     let result: CommandResult;
     if (pilotFliesGoto(ctx)) {
       // The pilot owns the aircraft: it flies to the point itself (altitude
-      // above home) and answers with an action result.
+      // above home) and answers with an action result; a refusal arrives as
+      // the spec's text for its code.
       result = await pilotActionResult("goto", { lat: target.lat, lon: target.lon, alt_m: target.altitudeM });
-      if (!result.success && PILOT_GOTO_REFUSALS.has(result.message)) {
-        result = { ...result, message: `skills.flyHere.refused.${result.message}` };
-      }
     } else {
       // The reposition needs the full protocol (guided goto and its
       // supervisor), which only a live connection to this drone provides.

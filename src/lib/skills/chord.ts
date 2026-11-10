@@ -17,6 +17,8 @@
  * @license GPL-3.0-only
  */
 
+import { WEB_BUTTON_INDEX } from "@/lib/input/ds4-bindings";
+
 /**
  * Build the canonical chord for a keyboard event, or null when the event has
  * no bindable base (a bare modifier, dead key, or non-printable key). Modifier
@@ -106,22 +108,25 @@ const RESERVED_CHORDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Standard-mapping gamepad buttons the cockpit owns. A skill bound to one would
- * fire alongside the cockpit's own action, so binding capture refuses them.
+ * Standard-mapping gamepad buttons the cockpit owns, at the indexes and for
+ * the actions the controller spec (`ds4.json`) binds them to. A skill bound
+ * to one would fire alongside the cockpit's own action, so binding capture
+ * refuses them.
  */
 export const COCKPIT_GAMEPAD_BUTTON = {
-  /** L1 + R1 held together toggles the quick-settings drawer. */
-  quickSettingsLeft: 4,
-  quickSettingsRight: 5,
-  /** Select / Back: held to open the skill radial. */
-  radial: 8,
-  /** Start: leaves immersive mode. */
-  exit: 9,
-  /** D-pad: aims the radial; left/right cycle the video stream. */
-  dpadUp: 12,
-  dpadDown: 13,
-  dpadLeft: 14,
-  dpadRight: 15,
+  /** L1 + R1 held together: the arm hold (each alone steps the zoom). */
+  armLeft: WEB_BUTTON_INDEX.l1,
+  armRight: WEB_BUTTON_INDEX.r1,
+  /** Share: starts and stops recording. */
+  share: WEB_BUTTON_INDEX.share,
+  /** Options: a tap opens quick settings; held with D-pad left / right it
+   * steps the flight profile. */
+  options: WEB_BUTTON_INDEX.options,
+  /** D-pad: the skill-picker focus and parameter steps. */
+  dpadUp: WEB_BUTTON_INDEX.dpad_up,
+  dpadDown: WEB_BUTTON_INDEX.dpad_down,
+  dpadLeft: WEB_BUTTON_INDEX.dpad_left,
+  dpadRight: WEB_BUTTON_INDEX.dpad_right,
 } as const;
 
 const RESERVED_GAMEPAD_BUTTONS: ReadonlySet<number> = new Set(

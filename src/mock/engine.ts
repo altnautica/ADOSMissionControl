@@ -37,8 +37,7 @@ import { mockCanBus } from "./mock-can-bus";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore, resolveNodeId } from "@/stores/node-registry";
-import { randomId } from "@/lib/utils";
-import type { FleetDrone, FlightRecord } from "@/lib/types";
+import type { FleetDrone } from "@/lib/types";
 import { haversineDistance } from "@/lib/geo/distance";
 
 /** Demo node id for a config id (the canonical `node:<id>`). */
@@ -342,29 +341,9 @@ class MockFlightEngine {
           state.pathProgress = 0;
 
           if (nextIdx === 0 && state.currentWaypointIdx > 0) {
+            // The curated seed in mock/history.ts is the demo History tab; the
+            // loop writes no flight records of its own.
             state.loopCount++;
-            if (state.loopCount >= 2) {
-              const duration = Math.round((state.tickCount - state.loopStartTick) * this.tickRate / 1000);
-              const now = Date.now();
-              const record: FlightRecord = {
-                id: randomId(), droneId: cfg.id, droneName: cfg.name,
-                date: now,
-                startTime: now - duration * 1000,
-                endTime: now,
-                duration,
-                distance: Math.round(state.loopDistance),
-                maxAlt: Math.round(state.loopMaxAlt),
-                maxSpeed: Math.round(state.loopMaxSpeed * 10) / 10,
-                batteryUsed: Math.round(state.loopBatteryStart - state.battery),
-                waypointCount: path.length, status: "completed",
-                path: state.loopTrail.length > 0 ? [...state.loopTrail] : undefined,
-                updatedAt: now,
-              };
-              // In demo mode the curated seed in mock/history.ts is the source
-              // of truth for the History tab. Skip live engine records here to
-              // avoid stuck IN_PROGRESS / 0-duration stubs piling up in IDB.
-              void record;
-            }
             state.loopStartTick = state.tickCount;
             state.loopMaxAlt = 0; state.loopMaxSpeed = 0; state.loopDistance = 0;
             state.loopBatteryStart = state.battery; state.loopTrail = [];

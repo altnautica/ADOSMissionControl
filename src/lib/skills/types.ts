@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import type { CommandResult, ProtocolCapabilities } from "@/lib/protocol/types";
 import type { UnifiedFlightMode } from "@/lib/protocol/types";
 import type { FlightMode, ArmState } from "@/lib/types";
@@ -37,12 +38,26 @@ export type AutonomousNavCapability = "supported" | "unsupported" | "unknown";
  */
 export type ConfirmGesture = "tap" | "hold" | "slide" | "guarded";
 
-/** Hold duration (ms) each tier asks for when the policy names none. */
+/**
+ * The confirm holds the shared cockpit spec names (`layout.json` `holds_ms`):
+ * take control, hand to the flight controller, the VTOL transition, Fly Here
+ * and the emergency stop. Every surface holds these for the same time.
+ */
+export const SPEC_HOLD_MS: Readonly<{
+  take_control: number;
+  hand_to_fc: number;
+  vtol_transition: number;
+  fly_here: number;
+  stop: number;
+}> = Object.freeze({ ...layoutSpec.holds_ms });
+
+/** Hold duration (ms) each tier asks for when the policy names none. The
+ * guarded tier is the emergency stop's, so it holds for the spec's stop. */
 export const CONFIRM_HOLD_DEFAULT_MS: Record<ConfirmGesture, number> = {
   tap: 0,
   hold: 800,
   slide: 1500,
-  guarded: 1500,
+  guarded: SPEC_HOLD_MS.stop,
 };
 
 /** How long the kill guard stays armed after the first activation (ms). */

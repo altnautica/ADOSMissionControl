@@ -4,6 +4,7 @@
  * @license GPL-3.0-only
  */
 
+import { mavResultText } from "@/lib/cockpit/spec-strings";
 import type { CommandResult } from "../../types";
 import { agentRequest, type RequestContext } from "../transport";
 
@@ -89,9 +90,10 @@ export function decodeAgentCommandOutcome(body: unknown): AgentCommandOutcome {
     typeof block.statustext === "string" && block.statustext.length > 0
       ? block.statustext
       : null;
+  // The ack's result name (`DENIED`) reads as the spec's `mav_result.*` text.
   const resultName =
     typeof block.result_name === "string" && block.result_name.length > 0
-      ? block.result_name
+      ? (mavResultText(block.result_name) ?? block.result_name)
       : null;
   return {
     acknowledged: true,

@@ -10,6 +10,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
+import strings from "@/lib/cockpit-spec/setup-strings.json";
 import { killSkill, pauseSkill, rthSkill } from "@/lib/skills/builtins";
 import { viaPilot } from "@/lib/skills/builtins/_shared";
 import {
@@ -130,8 +131,8 @@ describe("built-ins with a stalled pilot", () => {
     const fc = fcPath();
     const pending = rthSkill.activate(ctxWith(fc));
     const sent = frames.find((f) => f.op === "action") as Extract<PilotOutboundFrame, { op: "action" }>;
-    handlePilotServerFrame("drone-1", { kind: "action_result", name: "rth", id: sent.id, ok: false, err: "no home" });
-    await expect(pending).resolves.toMatchObject({ success: false, message: "no home" });
+    handlePilotServerFrame("drone-1", { kind: "action_result", name: "rth", id: sent.id, ok: false, err: "no_home" });
+    await expect(pending).resolves.toMatchObject({ success: false, message: strings.strings["refusal.no_home"] });
     expect(fc.returnToLaunch).not.toHaveBeenCalled();
   });
 });

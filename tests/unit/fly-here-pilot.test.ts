@@ -10,6 +10,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import strings from "@/lib/cockpit-spec/setup-strings.json";
 import { activate } from "@/lib/skills";
 import { useSkillRegistry } from "@/lib/skills/registry";
 import { resetCooldownState } from "@/lib/skills/cooldown";
@@ -124,7 +125,7 @@ describe("Fly Here through the pilot", () => {
       const done = activate("fly-here", c, { lat: 10, lon: 20, altitudeM: 30 });
       await answer(false, code);
       await done;
-      expect(c.notify).toHaveBeenCalledWith(`skills.flyHere.refused.${code}`, "error");
+      expect(c.notify).toHaveBeenCalledWith((strings.strings as Record<string, string>)[`refusal.${code}`], "error");
       expect(guidedGoto).not.toHaveBeenCalled();
     },
   );

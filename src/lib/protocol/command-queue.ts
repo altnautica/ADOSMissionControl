@@ -4,6 +4,7 @@
  */
 
 import type { CommandResult } from "./types";
+import { mavResultText } from "@/lib/cockpit/spec-strings";
 import { encodeCommandInt, encodeCommandLong } from "./encoders";
 import {
   armResend, resendAsCommandInt, retryTemporarilyRejected, transmit,
@@ -25,19 +26,25 @@ export const MAV_RESULT = {
   NOT_IN_CONTROL: 10,
 } as const;
 
+const RESULT_NAMES: Readonly<Record<number, string>> = Object.fromEntries(
+  Object.entries(MAV_RESULT).map(([name, code]) => [code, name]),
+);
+
+/** Text for the results the cockpit spec names no `mav_result.*` text for. */
 const RESULT_MESSAGES: Record<number, string> = {
-  [MAV_RESULT.ACCEPTED]: "Command accepted",
-  [MAV_RESULT.TEMPORARILY_REJECTED]: "Command temporarily rejected",
-  [MAV_RESULT.DENIED]: "Command denied",
-  [MAV_RESULT.UNSUPPORTED]: "Command unsupported",
-  [MAV_RESULT.FAILED]: "Command failed",
-  [MAV_RESULT.IN_PROGRESS]: "Command in progress",
-  [MAV_RESULT.CANCELLED]: "Command cancelled",
   [MAV_RESULT.COMMAND_LONG_ONLY]: "Command must be sent as COMMAND_LONG",
   [MAV_RESULT.COMMAND_INT_ONLY]: "Command must be sent as COMMAND_INT",
   [MAV_RESULT.COMMAND_UNSUPPORTED_MAV_FRAME]: "Command frame unsupported",
   [MAV_RESULT.NOT_IN_CONTROL]: "Another controller has control of the vehicle",
 };
+
+/** The operator text for a final COMMAND_ACK result: the spec's
+ * `mav_result.<NAME>` text where it has one, so every surface words a
+ * result alike, else the queue's own. */
+export function commandResultMessage(result: number): string {
+  const name = RESULT_NAMES[result];
+  return (name ? mavResultText(name) : null) ?? RESULT_MESSAGES[result] ?? `Unknown result code: ${result}`;
+}
 
 /**
  * Upper bound on concurrently-pending commands. Generous next to real usage
@@ -277,7 +284,7 @@ export class CommandQueue {
     entry.resolve({
       success: result === MAV_RESULT.ACCEPTED,
       resultCode: result,
-      message: RESULT_MESSAGES[result] ?? `Unknown result code: ${result}`,
+      message: commandResultMessage(result),
     });
   }
 

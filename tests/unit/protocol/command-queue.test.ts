@@ -9,6 +9,10 @@ vi.mock('@/lib/protocol/encoders', () => ({
 }));
 
 import { CommandQueue, MAV_RESULT } from '@/lib/protocol/command-queue';
+import specStrings from '@/lib/cockpit-spec/setup-strings.json';
+
+/** The cockpit spec's words for a final command result. */
+const MAV_TEXT = specStrings.strings as Record<string, string>;
 
 describe('CommandQueue', () => {
   let queue: CommandQueue;
@@ -36,7 +40,7 @@ describe('CommandQueue', () => {
     const result = await promise;
     expect(result.success).toBe(true);
     expect(result.resultCode).toBe(0);
-    expect(result.message).toBe('Command accepted');
+    expect(result.message).toBe(MAV_TEXT['mav_result.ACCEPTED']);
   });
 
   it('calls sendFn with encoded frame', async () => {
@@ -55,7 +59,7 @@ describe('CommandQueue', () => {
     const result = await promise;
     expect(result.success).toBe(false);
     expect(result.resultCode).toBe(2);
-    expect(result.message).toBe('Command denied');
+    expect(result.message).toBe(MAV_TEXT['mav_result.DENIED']);
   });
 
   it('resolves failure on UNSUPPORTED (3)', async () => {
@@ -64,7 +68,7 @@ describe('CommandQueue', () => {
     const result = await promise;
     expect(result.success).toBe(false);
     expect(result.resultCode).toBe(3);
-    expect(result.message).toBe('Command unsupported');
+    expect(result.message).toBe(MAV_TEXT['mav_result.UNSUPPORTED']);
   });
 
   it('resolves failure on FAILED (4)', async () => {
@@ -73,7 +77,7 @@ describe('CommandQueue', () => {
     const result = await promise;
     expect(result.success).toBe(false);
     expect(result.resultCode).toBe(4);
-    expect(result.message).toBe('Command failed');
+    expect(result.message).toBe(MAV_TEXT['mav_result.FAILED']);
   });
 
   it('resolves failure on CANCELLED (6)', async () => {
@@ -82,7 +86,7 @@ describe('CommandQueue', () => {
     const result = await promise;
     expect(result.success).toBe(false);
     expect(result.resultCode).toBe(6);
-    expect(result.message).toBe('Command cancelled');
+    expect(result.message).toBe(MAV_TEXT['mav_result.CANCELLED']);
   });
 
   // ── Timeout ──
@@ -228,7 +232,7 @@ describe('CommandQueue', () => {
     const result = await promise;
     expect(result.success).toBe(false);
     expect(result.resultCode).toBe(MAV_RESULT.TEMPORARILY_REJECTED);
-    expect(result.message).toContain('temporarily rejected');
+    expect(result.message).toBe(MAV_TEXT['mav_result.TEMPORARILY_REJECTED']);
   });
 
   it('retry exhaustion: resolves failure after 3 retries', async () => {

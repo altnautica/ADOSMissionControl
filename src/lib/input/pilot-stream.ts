@@ -196,8 +196,14 @@ export function sendPilotRelease(): boolean {
 
 /** How long an action waits for the pilot's `action_result`. */
 export const PILOT_ACTION_TIMEOUT_MS = 3000;
-/** The error an action resolves with when the pilot gave no answer in time. */
-export const PILOT_NO_ANSWER = "the pilot did not answer";
+/** The refusal code an action resolves with when the pilot gave no answer in
+ * time. Like the other codes this client makes up (`no pilot link`, `closed`)
+ * it reads through the spec's `refusal.*` text. */
+export const PILOT_NO_ANSWER = "no response";
+/** The refusal code of an action sent with no pilot stream open. */
+export const PILOT_NO_LINK = "no pilot link";
+/** The refusal code of an action whose stream closed before the answer. */
+export const PILOT_CLOSED = "closed";
 
 /** The pilot's answer to one action. */
 export interface PilotActionOutcome {
@@ -253,7 +259,7 @@ export function requestPilotAction(
   return new Promise((resolve) => {
     const timer = setTimeout(() => settleAction(id, { ok: false, err: PILOT_NO_ANSWER }), timeoutMs);
     pendingActions.set(id, { name, resolve, timer });
-    if (!send(actionFrame(name, id, args))) settleAction(id, { ok: false, err: "the pilot stream is not open" });
+    if (!send(actionFrame(name, id, args))) settleAction(id, { ok: false, err: PILOT_NO_LINK });
   });
 }
 
@@ -344,7 +350,7 @@ export function connectPilotStream(opts: {
         connected: live,
         ...(live ? {} : { streaming: false, controlMode: null }),
       });
-      if (!live) failPendingActions("the pilot stream closed");
+      if (!live) failPendingActions(PILOT_CLOSED);
     },
   });
 
@@ -360,7 +366,7 @@ export function connectPilotStream(opts: {
         agentFor: null,
       });
       clearInterval(hb);
-      failPendingActions("the pilot stream closed");
+      failPendingActions(PILOT_CLOSED);
       teardown();
       socket = null;
     },

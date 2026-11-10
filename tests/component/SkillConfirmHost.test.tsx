@@ -24,6 +24,7 @@ import {
   activate,
   buildSkillContext,
   registerBuiltins,
+  SPEC_HOLD_MS,
   type ConfirmPolicy,
   type ConfirmResult,
 } from "@/lib/skills";
@@ -212,12 +213,12 @@ describe("SkillConfirmHost", () => {
     expect(outcome.value).toBe(false);
   });
 
-  it("fires kill on a 1500 ms hold inside the guard window", async () => {
+  it("fires kill on the spec's stop hold started inside the guard window", async () => {
     renderWithIntl(<SkillConfirmHost />);
     const outcome = request(KILL_POLICY);
     advance(1000);
     fireEvent.pointerDown(holdControl(), { pointerId: 1 });
-    advance(1400);
+    advance(SPEC_HOLD_MS.stop - 100);
     await flush();
     expect(outcome.value).toBeNull();
     advance(100);

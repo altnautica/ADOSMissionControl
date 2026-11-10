@@ -30,3 +30,13 @@ export function specString(key: string, args?: Record<string, unknown>): string 
     return v === undefined || v === null ? "" : String(v);
   });
 }
+
+/**
+ * The spec text (`mav_result.<NAME>`) for a MAVLink command result name,
+ * bare (`DENIED`) or prefixed (`MAV_RESULT_DENIED`), or null when the spec
+ * names no text for it.
+ */
+export function mavResultText(name: string): string | null {
+  const key = `mav_result.${name.replace(/^MAV_RESULT_/, "")}`;
+  return hasSpecString(key) ? TABLE[key] : null;
+}

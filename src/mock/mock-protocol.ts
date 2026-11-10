@@ -177,11 +177,7 @@ export class MockProtocol implements DroneProtocol {
   async arm(): Promise<CommandResult> { return this.flight.arm(); }
   async disarm(): Promise<CommandResult> { return this.flight.disarm(); }
   async setFlightMode(m: UnifiedFlightMode): Promise<CommandResult> { return this.flight.setMode(m); }
-  async returnToLaunch(): Promise<CommandResult> {
-    this.emitStatusText(6, "Returning to launch");
-    this.flight.setMode("RTL");
-    return ok("RTL");
-  }
+  async returnToLaunch(): Promise<CommandResult> { this.emitStatusText(6, "Returning to launch"); this.flight.setMode("RTL"); return ok("RTL"); }
   async land(): Promise<CommandResult> { return this.flight.land(); }
   async takeoff(alt: number): Promise<CommandResult> { return this.flight.takeoff(alt); }
   async killSwitch(confirmed: boolean): Promise<CommandResult> {

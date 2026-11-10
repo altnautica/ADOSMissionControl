@@ -9,6 +9,7 @@
  */
 
 import { specBuiltin, specConfirmGesture } from "@/lib/cockpit/spec-builtins";
+import { refusalText } from "@/lib/hud/refusal";
 import {
   PILOT_NO_ANSWER,
   requestPilotAction,
@@ -160,9 +161,11 @@ export function viaPilot(ctx: SkillContext): boolean {
 }
 
 /** Send a built-in as a pilot action and wait for the pilot's answer, so a
- * refusal (or no answer) reaches the dispatcher as a failure. When the pilot
- * gives no answer at all and `fallback` yields a flight-controller command,
- * that command's result is returned instead. */
+ * refusal (or no answer) reaches the dispatcher as a failure whose message is
+ * the spec's text for the refusal code (`refusal.*`, `not_ready:<id>` naming
+ * the readiness item, an unknown code shown as sent). When the pilot gives no
+ * answer at all and `fallback` yields a flight-controller command, that
+ * command's result is returned instead. */
 export async function pilotActionResult(
   name: PilotActionName,
   args?: Record<string, unknown>,
@@ -173,5 +176,5 @@ export async function pilotActionResult(
     const fb = fallback();
     if (fb) return fb;
   }
-  return { success: r.ok, resultCode: r.ok ? 0 : 4, message: r.ok ? "" : (r.err ?? "refused") };
+  return { success: r.ok, resultCode: r.ok ? 0 : 4, message: r.ok ? "" : refusalText(r.err) };
 }

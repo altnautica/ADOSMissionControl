@@ -63,6 +63,7 @@ export type {
 export {
   CONFIRM_HOLD_DEFAULT_MS,
   GUARD_WINDOW_MS,
+  SPEC_HOLD_MS,
   confirmHoldMs,
 } from "./types";
 export {
