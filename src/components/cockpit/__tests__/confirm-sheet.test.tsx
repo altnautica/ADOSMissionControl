@@ -1,8 +1,9 @@
 /**
  * ConfirmSheet safety behaviour: the kill guard lapses at its window unless a
  * hold started, a checklist override is recorded, a held gamepad button
- * confirms, Escape cancels, the title names the drone, and a stale-link send
- * says the vehicle may not receive it.
+ * confirms, Escape cancels, a built-in's title and message are the spec's,
+ * an app i18n title still names the drone, and a stale-link send says the
+ * vehicle may not receive it.
  *
  * @license GPL-3.0-only
  */
@@ -12,6 +13,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../locales/en.json";
 import { ConfirmSheet } from "@/components/cockpit/confirm/ConfirmSheet";
+import { specString } from "@/lib/cockpit/spec-strings";
 import {
   CONFIRM_HOLD_DEFAULT_MS,
   GUARD_WINDOW_MS,
@@ -90,7 +92,7 @@ describe("ConfirmSheet", () => {
     useChecklistStore.getState().startSession("drone-1");
     const onResolve = renderSheet({
       ...BASE,
-      title: "skills.arm.confirm.title",
+      title: "confirm.arm.title",
       checklistAware: true,
     });
     fireEvent.click(screen.getByRole("switch"));
@@ -121,10 +123,35 @@ describe("ConfirmSheet", () => {
     expect(onResolve).toHaveBeenCalledWith(false, undefined);
   });
 
-  it("names the drone and warns on a stale link", () => {
-    renderSheet({ ...BASE, values: { drone: "Survey One" }, staleLink: true });
-    expect(screen.getByText("Arm Survey One")).toBeTruthy();
+  it("shows a built-in's spec title and message and warns on a stale link", () => {
+    renderSheet({
+      ...BASE,
+      title: "confirm.arm.title",
+      message: "confirm.arm.message",
+      values: { drone: "Survey One" },
+      staleLink: true,
+    });
+    expect(screen.getByText(specString("confirm.arm.title"))).toBeTruthy();
+    expect(screen.getByText(specString("confirm.arm.message"))).toBeTruthy();
     expect(screen.getByText(STALE_TEXT)).toBeTruthy();
+  });
+
+  it("names the drone in an app i18n title", () => {
+    renderSheet({ ...BASE, values: { drone: "Survey One" } });
+    expect(screen.getByText("Arm Survey One")).toBeTruthy();
+  });
+
+  it("counts the guard window, then the hold, in the spec's words", () => {
+    renderSheet({ ...BASE, gesture: "guarded" });
+    expect(
+      screen.getByText(specString("confirm.guard", { s: Math.ceil(GUARD_WINDOW_MS / 1000) })),
+    ).toBeTruthy();
+    fireEvent.pointerDown(holdControl(), { pointerId: 1 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    const left = ((CONFIRM_HOLD_DEFAULT_MS.guarded - 500) / 1000).toFixed(1);
+    expect(screen.getByText(specString("confirm.guard_holding", { s: left }))).toBeTruthy();
   });
 
   it("shows no stale-link warning on a fresh link", () => {

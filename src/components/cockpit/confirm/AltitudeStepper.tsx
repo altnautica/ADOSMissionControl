@@ -10,6 +10,11 @@
 import { useTranslations } from "next-intl";
 import { Minus, Plus } from "lucide-react";
 import type { ConfirmAltitude } from "@/lib/skills/types";
+import { specString } from "@/lib/cockpit/spec-strings";
+
+/** The unit after the input: the spec's metre format with the number, which
+ *  the input itself carries, left out. */
+const METRE_UNIT = specString("cockpit.unit.m", { n: "" }).trim();
 
 interface AltitudeStepperProps {
   spec: ConfirmAltitude;
@@ -35,7 +40,7 @@ export function AltitudeStepper({ spec, value, onChange }: AltitudeStepperProps)
           type="button"
           onClick={() => set(value - spec.stepM)}
           disabled={value <= spec.minM}
-          aria-label={t("altitudeDecrease")}
+          aria-label={specString("confirm.altitude_down")}
           className={stepClass}
         >
           <Minus size={14} aria-hidden="true" />
@@ -54,12 +59,12 @@ export function AltitudeStepper({ spec, value, onChange }: AltitudeStepperProps)
           }}
           className="h-10 w-16 rounded-md border border-border-default bg-bg-primary text-center font-mono text-sm tabular-nums text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
         />
-        <span className="text-xs text-text-tertiary">{t("altitudeUnit")}</span>
+        <span className="text-xs text-text-tertiary">{METRE_UNIT}</span>
         <button
           type="button"
           onClick={() => set(value + spec.stepM)}
           disabled={value >= spec.maxM}
-          aria-label={t("altitudeIncrease")}
+          aria-label={specString("confirm.altitude_up")}
           className={stepClass}
         >
           <Plus size={14} aria-hidden="true" />

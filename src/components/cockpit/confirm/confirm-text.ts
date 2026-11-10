@@ -4,7 +4,7 @@
  * @license GPL-3.0-only
  */
 
-import type { useTranslations } from "next-intl";
+import { specOrAppText, type AppTranslator } from "@/lib/cockpit/spec-strings";
 
 const OVERRIDE_LOG_KEY = "ados:flight-safety-overrides";
 
@@ -28,14 +28,14 @@ export function recordSafetyOverride(action: string, reason: string): void {
 }
 
 /**
- * Translate a policy string. Built-in policies carry i18n keys; an extension
- * may supply literal text, which is shown as is.
+ * Translate a policy string. Built-in policies carry spec keys
+ * (`confirm.*`) or app i18n keys; an extension may supply literal text,
+ * which is shown as is.
  */
 export function translatePolicyText(
-  t: ReturnType<typeof useTranslations>,
+  t: AppTranslator,
   value: string,
   values?: Record<string, string | number>,
 ): string {
-  if (!value.includes(".") || !t.has(value)) return value;
-  return t(value, values);
+  return specOrAppText(t, value, values);
 }

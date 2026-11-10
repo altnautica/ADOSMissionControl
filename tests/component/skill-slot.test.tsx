@@ -12,6 +12,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
 
 import { SkillSlot } from "@/components/cockpit/SkillSlot";
+import { specString } from "@/lib/cockpit/spec-strings";
 import type { Skill, SkillState } from "@/lib/skills/types";
 
 // Echo the i18n key (with interpolations) so assertions match on the key, not a
@@ -77,14 +78,15 @@ describe("SkillSlot ARIA + cues", () => {
   it("marks disabled with aria-disabled and a referenced reason description", () => {
     const { container } = renderSlot({
       kind: "disabled",
-      reason: "skills.reason.noFcLink",
+      reason: "refusal.no_fc_link",
     });
     const btn = container.querySelector("button");
     expect(btn?.getAttribute("aria-disabled")).toBe("true");
     const descId = btn?.getAttribute("aria-describedby");
     expect(descId).toBeTruthy();
     const desc = descId ? container.querySelector(`#${descId}`) : null;
-    expect(desc?.textContent).toContain("skills.reason.noFcLink");
+    // A spec reason key reads as the spec's text.
+    expect(desc?.textContent).toContain(specString("refusal.no_fc_link"));
     // Disabled also carries the lock glyph (non-colour cue): an svg is present.
     expect(container.querySelector("svg")).not.toBeNull();
   });

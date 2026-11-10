@@ -13,6 +13,7 @@
  * @license GPL-3.0-only
  */
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useTranslations } from "next-intl";
 import { Gamepad2, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,8 +45,8 @@ export function GroundStationCockpit({ groundDeviceId }: GroundStationCockpitPro
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <Radio size={28} className="text-text-tertiary" aria-hidden="true" />
-        <p className="text-sm font-medium text-text-primary">{t("noDrone")}</p>
-        <p className="max-w-sm text-xs text-text-secondary">{t("noDroneBody")}</p>
+        <p className="text-sm font-medium text-text-primary">{specString("cockpit.no_carried.title")}</p>
+        <p className="max-w-sm text-xs text-text-secondary">{specString("cockpit.no_carried.message")}</p>
         <Button
           variant="secondary"
           size="sm"

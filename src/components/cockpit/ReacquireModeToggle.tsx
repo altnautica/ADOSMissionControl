@@ -13,6 +13,7 @@
 import { useTranslations } from "next-intl";
 
 import type { ReacquireMode } from "@/lib/hud/nav-types";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { cn } from "@/lib/utils";
 import { useReacquireMode } from "@/hooks/use-reacquire-mode";
 
@@ -38,7 +39,7 @@ export function ReacquireModeToggle({
   return (
     <div
       role="group"
-      aria-label={t("reacquire")}
+      aria-label={specString("target.reacquire_mode")}
       className={cn("reacq", vertical && "reacq-v", className)}
       data-testid="reacquire-toggle"
     >

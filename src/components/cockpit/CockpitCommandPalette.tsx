@@ -38,6 +38,7 @@ import { resolveSkillIcon } from "@/lib/skills/skill-icon";
 import { useBoundSkillResolver } from "@/lib/skills/use-skill-chord";
 import { useSettingsStore } from "@/stores/settings-store";
 import { DEFAULT_LOADOUT_ID } from "@/stores/settings/keybindings-slice";
+import { specOrAppText } from "@/lib/cockpit/spec-strings";
 import { cn } from "@/lib/utils";
 
 const IDLE: SkillState = { kind: "idle" };
@@ -202,7 +203,7 @@ export function CockpitCommandPalette({
               const disabled = row.state.kind === "disabled";
               const reason =
                 disabled && row.state.reason
-                  ? safeTranslate(tRoot, row.state.reason)
+                  ? specOrAppText(tRoot, row.state.reason)
                   : null;
               const active = i === highlight;
               return (
@@ -260,15 +261,4 @@ export function CockpitCommandPalette({
       </div>
     </div>
   );
-}
-
-function safeTranslate(
-  t: ReturnType<typeof useTranslations>,
-  key: string,
-): string {
-  try {
-    return t(key);
-  } catch {
-    return key;
-  }
 }

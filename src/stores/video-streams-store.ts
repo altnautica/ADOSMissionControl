@@ -31,6 +31,8 @@
 
 import { create } from "zustand";
 
+import { specString } from "@/lib/cockpit/spec-strings";
+
 /** How a stream is switched to, which decides the selection side effect and
  * whether it can appear in a PiP inset. */
 export type StreamSwitchKind = "concurrent" | "switchable";
@@ -43,13 +45,30 @@ export type StreamRole = "eo" | "eo_wide" | "ir" | "split" | "down" | (string & 
 /** i18n key suffix (namespace `cockpitStreams`) for a known role's short tab
  * label. An unknown role has no entry → the tab renders the descriptor's raw
  * `label` (the camera name) instead. */
-export const ROLE_LABEL_KEY: Readonly<Record<string, string>> = {
+const ROLE_LABEL_KEY: Readonly<Record<string, string>> = {
   eo: "roleEo",
   eo_wide: "roleEoWide",
   ir: "roleIr",
   split: "roleSplit",
-  down: "roleDown",
 };
+
+/** Roles whose short label is shared cockpit spec text. */
+const ROLE_SPEC_KEY: Readonly<Record<string, string>> = {
+  down: "hud.leg.belly",
+};
+
+/** Short label for a known role: the spec text, else the `cockpitStreams`
+ * translation; undefined for an unknown role (render the camera name). */
+export function streamRoleLabel(
+  role: StreamRole | undefined,
+  t: (key: string) => string,
+): string | undefined {
+  if (!role) return undefined;
+  const spec = ROLE_SPEC_KEY[role];
+  if (spec) return specString(spec);
+  const key = ROLE_LABEL_KEY[role];
+  return key ? t(key) : undefined;
+}
 
 /** One selectable video stream a node exposes. */
 export interface StreamDescriptor {

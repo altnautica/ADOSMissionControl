@@ -26,6 +26,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Crosshair, X } from "lucide-react";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useCameraDetectionBatch } from "@/hooks/use-detection-batch";
 import { useFollowStateEntry } from "@/hooks/use-nav-feed";
 import { useClockTick } from "@/lib/agent/freshness";
@@ -48,13 +49,13 @@ type HudTranslate = (key: string, values?: Record<string, string>) => string;
 function lockLabel(state: LockState | null | undefined, t: HudTranslate): string {
   switch (state) {
     case "locked":
-      return t("lock.locked");
+      return specString("lock.locked");
     case "uncertain":
-      return t("lock.uncertain");
+      return specString("lock.uncertain");
     case "lost":
       return t("lock.lost");
     default:
-      return t("lock.tracking");
+      return specString("follow.tracking");
   }
 }
 
@@ -66,13 +67,13 @@ function phaseWord(f: FollowState, t: HudTranslate): string | null {
     case "acquiring":
       return t("lock.acquiring");
     case "coasting":
-      return t("lock.coasting", { s: (f.coastRemainingS ?? 0).toFixed(1) });
+      return specString("lock.coasting", { s: (f.coastRemainingS ?? 0).toFixed(1) });
     case "searching":
       return t("lock.searching");
     case "holding": {
       const reason = holdReasonWord(f.holdReason);
       return reason
-        ? t("lock.holding", { reason: reason.charAt(0) + reason.slice(1).toLowerCase() })
+        ? specString("lock.holding", { label: reason.charAt(0) + reason.slice(1).toLowerCase() })
         : t("lock.holdingBare");
     }
     case "lost":
@@ -120,15 +121,15 @@ export function WhatsLockedChip({ droneId }: { droneId: string }) {
   let label: string;
   if (stale) label = staleReason(tier);
   else if (followWord) label = followWord;
-  else if (reacquired) label = t("lock.reacquired", { sim: reacquired.similarity.toFixed(2) });
+  else if (reacquired) label = specString("lock.reacquired", { sim: reacquired.similarity.toFixed(2) });
   else if (here.trackId == null) label = t("lock.untracked");
   else if (live) label = lockLabel(live.lockState, t);
-  else label = feed === "fresh" ? t("lock.notInView") : t("lock.waitingFeed");
+  else label = feed === "fresh" ? specString("lock.not_in_view") : t("lock.waitingFeed");
 
   const warnColor = stale && tier === "offload" ? "var(--hud-crit)" : "var(--hud-warn)";
   const warn = stale || (notInView && !followWord);
   const cls = classWord(here.classLabel).trim() || t("lock.targetFallback");
-  const who = here.trackId != null ? `${cls} · #${here.trackId}` : cls;
+  const who = here.trackId != null ? specString("lock.who", { label: cls, id: here.trackId }) : cls;
 
   return (
     <div

@@ -29,6 +29,7 @@ import { resolveNamedIcon } from "@/lib/icons/icon-registry";
 import type { Skill, SkillState } from "@/lib/skills/types";
 import { skillDisplayLabel, skillEffectText } from "@/lib/skills/skill-label";
 import { formatChord } from "@/lib/skills/chord";
+import { specOrAppText } from "@/lib/cockpit/spec-strings";
 
 interface SkillSlotProps {
   index: number;
@@ -167,11 +168,11 @@ export const SkillSlot = memo(function SkillSlot({
       }
       case "disabled":
         return state.reason
-          ? safeReason(t, state.reason)
+          ? specOrAppText(t, state.reason)
           : t("skills.state.disabled");
       default:
         return state.warning
-          ? safeReason(t, state.warning)
+          ? specOrAppText(t, state.warning)
           : t("skills.state.ready");
     }
   }, [state, t, cooldownPct, skill]);
@@ -200,9 +201,9 @@ export const SkillSlot = memo(function SkillSlot({
   // is unavailable.
   const ariaDescription =
     skill && isDisabled && state.reason
-      ? safeReason(t, state.reason)
+      ? specOrAppText(t, state.reason)
       : skill && !isDisabled && state.warning
-        ? safeReason(t, state.warning)
+        ? specOrAppText(t, state.warning)
         : undefined;
 
   const tooltipContent = (
@@ -331,18 +332,3 @@ export const SkillSlot = memo(function SkillSlot({
     </Tooltip>
   );
 });
-
-/**
- * A disabled reason is a fully-qualified i18n key under "skills"
- * (e.g. "skills.reason.noFcLink"). Fall back to the raw string when a plugin
- * supplies a non-key reason so the slot never renders a key.
- */
-function safeReason(
-  t: ReturnType<typeof useTranslations>,
-  reason: string,
-): string {
-  if (reason.startsWith("skills.")) {
-    return t(reason);
-  }
-  return reason;
-}

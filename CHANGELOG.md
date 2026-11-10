@@ -6,6 +6,19 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Flight actions: a return or landing counts as commanded from Mission Control only after the vehicle accepts it and only until it flies something else, so a later failsafe return still refuses Pause; Land Here, the fleet recall and the direct-FC command sink record theirs the same way.
+- Fly here: the send step uses the route that was offered, decided again at the press; the flight-controller route never switches the mode and only repositions in GUIDED, else it is refused.
+- Disarm needs a known landed state on every route (a fresh pilot state, else the flight controller's landed state); unknown or airborne is refused with the shared refusal text. The demo sends the landed state.
+- Cockpit left column, pre-flight, controller tour and tips ignore a pilot state older than 2 s; an armed vehicle whose landed state is unknown shows Land.
+- Launch: the pilot launch waits for the pre-flight checklist and the first-arm gate; every Abort shows the pilot's refusal; "Launch here" is offered only with a cockpit on screen and a request older than 5 s is dropped.
+- Cockpit Menu: Flight modes opens the Mode sheet and the navigation source popover opens from the Menu; the Menu lists only items hidden from the bar; Exit reads "Exit to Overview".
+- Status pill: pilot and agent items only for a drone whose agent is paired; frozen video is a video item; the link text uses the contrast text colour.
+- Tips: a tip with no room is skipped, not marked seen; no tip while the status list, palette, binding editor, quick settings or a skill confirm is open; tips for the top bar sit below it.
+- Controller: Square and R1/L1 use the vehicle camera order; the controller tour mutes D-pad and Cross; the gimbal pad drags from its centre and never handles Space.
+- Vehicle camera: a refused capture or zoom shows the failure instead of a frame grab; zoom steps in and out; capture sends a sequence number from 1.
+- Demo: the shell modals show again (the demo fleet does not hold them); the demo pilot can pin a failsafe, a setup step and Fly Here; the demo vehicle has a camera; `__adosDemo.failAgentPolls(n)`; pins reset per drone.
+- Flight screen words: confirm dialogs, alerts, refusals, navigation source, targets, radar, minimap, layers, camera and card labels come from the shared cockpit strings.
+- Aircraft setup offers stored by an earlier build are kept; a vehicle that loses its link while armed keeps holding the shell modals for 5 minutes.
 - Cockpit status pill: the shared rules decide it. A paired agent with no fresh pilot state reads "Pilot not answering" (never "All systems OK"), an agent that stops answering is critical, a controller lost in the air is a warning, a failing pre-flight check shows on the ground, and storage reads "<n> % used".
 - Cockpit flow: when the pilot state goes stale, the countdowns, gate ring, handover banner and sticks-with line hide and AGL reads "—"; both the low-battery return and link-loss countdowns are critical; the chip reads TAKING OFF with an Abort during a launch and offers Resume for a mission paused by a stick takeover; an FC failsafe shows FAILSAFE on the chip; the FC mode change banner names its cause in words.
 - Fly here: map menus and the local map offer it by the shared route rule (the pilot while fresh, under ADOS control and outside a failsafe; else the flight controller in GUIDED while airborne); Pause reads the pilot's own failsafe flag while its state is fresh.

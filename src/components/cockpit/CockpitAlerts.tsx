@@ -18,7 +18,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { Info, OctagonAlert, TriangleAlert } from "lucide-react";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneStore } from "@/stores/drone-store";
@@ -40,15 +39,23 @@ import { reacquiredToast } from "@/lib/vision/target-format";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { specString } from "@/lib/cockpit/spec-strings";
 
-/** The alert rules every surface shares read their titles from the spec
- *  (`alert.*`, the same ids as the shared pill rules); the rest are this
- *  surface's own. */
-export const SPEC_ALERT_KEY: Partial<Record<CockpitAlert["id"], string>> = {
+/** Alert titles from the spec (`alert.*`, the same ids as the shared pill
+ *  rules). The FC's own lines, the pre-arm reason and the FC state carry
+ *  their detail and are composed in `label`. */
+export const SPEC_ALERT_KEY: Record<
+  Exclude<CockpitAlert["id"], "statusText" | "statusTextWarn" | "prearm" | "fcState">,
+  string
+> = {
   linkLost: "alert.link_lost",
   linkStale: "alert.link_stale",
   battCrit: "alert.batt_crit",
   battLow: "alert.batt_low",
   videoFrozen: "alert.video_frozen",
+  ekfFailsafe: "alert.ekf_failsafe",
+  fenceBreach: "alert.fence_breach",
+  gpsNo3d: "alert.gps_no_3d",
+  rcFailsafe: "alert.rc_failsafe",
+  highVibration: "alert.high_vibration",
 };
 
 /** MAV_SEVERITY_CRITICAL and MAV_SEVERITY_WARNING; lower values are more severe. */
@@ -120,7 +127,6 @@ export function useCockpitAlertList(droneId: string): {
   alerts: CockpitAlert[];
   label: (a: CockpitAlert) => string;
 } {
-  const t = useTranslations("cockpit.alerts");
   useThrottledTelemetryVersion();
   useClockTick();
 
@@ -161,10 +167,12 @@ export function useCockpitAlertList(droneId: string): {
 
   const label = (a: CockpitAlert): string => {
     if (a.id === "statusText" || a.id === "statusTextWarn") return a.detail ?? "";
-    if (a.id === "prearm") return t("prearm", { reason: a.detail ?? "" });
-    if (a.id === "fcState") return t(a.detail ?? "fcCritical");
-    const shared = SPEC_ALERT_KEY[a.id];
-    return shared ? specString(shared) : t(a.id);
+    if (a.id === "prearm") return `${specString("alert.prearm")}: ${a.detail ?? ""}`;
+    if (a.id === "fcState") {
+      const state = specString(`alert.fc_state.${a.detail ?? "critical"}`);
+      return `${specString("cockpit.status.source.fc_status_text")} ${state}`;
+    }
+    return specString(SPEC_ALERT_KEY[a.id]);
   };
   return { alerts, label };
 }
@@ -175,7 +183,6 @@ export function useCockpitAlertList(droneId: string): {
  * list, so the centre stays clear unless something is critical.
  */
 export function CockpitAlerts({ droneId }: { droneId: string }) {
-  const t = useTranslations("cockpit.alerts");
   const { alerts, label } = useCockpitAlertList(droneId);
   const reacquired = useReacquiredAdvisory(droneId);
 
@@ -195,7 +202,7 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
           }}
         >
           <Icon size={14} style={{ color, flex: "none" }} aria-hidden="true" />
-          <span className="sr-only">{t(`level.${a.level}`)}: </span>
+          <span className="sr-only">{specString(`alert.level.${a.level}`)}: </span>
           <span className="truncate">{label(a)}</span>
         </div>
       );
@@ -224,7 +231,7 @@ export function CockpitAlerts({ droneId }: { droneId: string }) {
             }}
           >
             <Info size={14} style={{ color: LEVEL_STYLE.advisory.color, flex: "none" }} aria-hidden="true" />
-            <span className="sr-only">{t("level.advisory")}: </span>
+            <span className="sr-only">{specString("alert.level.advisory")}: </span>
             <span className="truncate">{reacquired}</span>
           </div>
         )}

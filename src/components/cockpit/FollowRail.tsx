@@ -19,12 +19,13 @@ import { useTranslations } from "next-intl";
 import { ArrowLeftRight, Circle, Crosshair, X } from "lucide-react";
 
 import { activateBound, buildSkillContext, useSkillRegistry } from "@/lib/skills";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { camSwapPlan } from "@/lib/cockpit/cam-swap";
 import { cn } from "@/lib/utils";
 import { useFlightRecording } from "@/hooks/use-flight-recording";
 import { FOLLOW_SKILL_ID, useFollowingMode } from "@/hooks/use-following-mode";
 import {
-  ROLE_LABEL_KEY,
+  streamRoleLabel,
   useVideoStreamsStore,
   type StreamDescriptor,
 } from "@/stores/video-streams-store";
@@ -63,8 +64,7 @@ function RailButton({ icon, word, label, onClick, disabled, pressed, tone, testI
 function useLegLabel(): (leg: StreamDescriptor) => string {
   const t = useTranslations("cockpitStreams");
   return (leg) => {
-    const key = leg.role ? ROLE_LABEL_KEY[leg.role] : undefined;
-    return key ? t(key) : leg.label;
+    return streamRoleLabel(leg.role, t) ?? leg.label;
   };
 }
 
@@ -88,7 +88,7 @@ export function FollowRail({ droneId, withRec = false }: { droneId: string; with
       {installed && (
         <RailButton
           icon={tracking ? <X size={16} /> : <Crosshair size={16} />}
-          word={tracking ? `${t("tracking")} ×` : `${t("follow")} ▸`}
+          word={tracking ? specString("follow.tracking_close") : `${t("follow")} ▸`}
           label={tracking ? t("stopFollow") : t("follow")}
           pressed={tracking}
           tone={tracking ? "track" : undefined}
@@ -103,7 +103,7 @@ export function FollowRail({ droneId, withRec = false }: { droneId: string; with
       {swap && (
         <RailButton
           icon={<ArrowLeftRight size={16} />}
-          word={t("camSwap", { a: legLabel(swap.pip), b: legLabel(swap.main) })}
+          word={specString("follow.cam_swap", { from: legLabel(swap.pip), to: legLabel(swap.main) })}
           testId="frail-camswap"
           onClick={() => {
             const st = useVideoStreamsStore.getState();

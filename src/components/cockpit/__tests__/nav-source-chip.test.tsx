@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({ toast: vi.fn() }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: mocks.toast }) }));
 
 import messages from "../../../../locales/en.json";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { NavSourceChip } from "@/components/cockpit/NavSourceChip";
 import { CockpitLayoutContext } from "@/hooks/use-cockpit-width-class";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
@@ -86,7 +87,7 @@ describe("NavSourceChip", () => {
   it("reads NAV — (muted) with no fresh EKF report", () => {
     pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_ABS, 3000);
     renderChip();
-    expect(chip().textContent).toContain("NAV —");
+    expect(chip().textContent).toContain(specString("nav_source.stale"));
     expect(chip().getAttribute("data-tone")).toBe("muted");
   });
 
@@ -94,8 +95,8 @@ describe("NavSourceChip", () => {
     pushEkf(EKF_FLAG.CONST_POS);
     renderChip();
     expect(chip().getAttribute("data-kind")).toBe("dr");
-    expect(chip().textContent).toContain("DR");
-    expect(chip().textContent).toContain("DRIFT");
+    expect(chip().textContent).toContain(specString("nav_source.dr"));
+    expect(chip().textContent).toContain(specString("nav_source.q.drift"));
     expect(chip().getAttribute("data-tone")).toBe("crit");
   });
 
@@ -104,8 +105,8 @@ describe("NavSourceChip", () => {
     pushGps(3);
     pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_ABS);
     renderChip();
-    expect(chip().textContent).toContain("GPS 3D·14");
-    expect(chip().textContent).toContain("GOOD");
+    expect(chip().textContent).toContain(specString("nav_source.chip_gps", { fix: specString("nav_source.fix.3d"), sats: 14 }));
+    expect(chip().textContent).toContain(specString("nav_source.q.good"));
     expect(chip().getAttribute("data-tone")).toBe("good");
   });
 
@@ -123,8 +124,8 @@ describe("NavSourceChip", () => {
     });
     pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
     renderChip();
-    expect(chip().textContent).toContain("EXT NAV");
-    expect(chip().textContent).toContain("DEGRADED");
+    expect(chip().textContent).toContain(specString("nav_source.ext_nav"));
+    expect(chip().textContent).toContain(specString("nav_source.q.degraded"));
     expect(chip().getAttribute("data-tone")).toBe("warn");
   });
 
@@ -132,8 +133,8 @@ describe("NavSourceChip", () => {
     setSrc(0, 5);
     pushEkf(EKF_FLAG.VEL_H);
     renderChip("compact");
-    expect(chip().textContent).toContain("FLOW");
-    expect(chip().textContent).not.toContain("HOLD OK");
+    expect(chip().textContent).toContain(specString("nav_source.flow"));
+    expect(chip().textContent).not.toContain(specString("nav_source.q.hold_ok"));
     expect(chip().getAttribute("data-tone")).toBe("good");
   });
 
@@ -144,12 +145,12 @@ describe("NavSourceChip", () => {
     renderChip();
     fireEvent.click(chip().querySelector("button")!);
     const pop = screen.getByTestId("nav-source-popover");
-    expect(screen.getByTestId("nav-set-1").textContent).toContain("ACTIVE");
-    expect(screen.getByTestId("nav-set-2").textContent).toContain("ExternalNav");
-    expect(pop.textContent).toContain("VEL H");
+    expect(screen.getByTestId("nav-set-1").textContent).toContain(specString("nav_source.active"));
+    expect(screen.getByTestId("nav-set-2").textContent).toContain(specString("nav_source.src.extnav"));
+    expect(pop.textContent).toContain(specString("nav_source.flag.vel_h"));
 
     vi.useFakeTimers();
-    fireEvent.click(screen.getByText("Use set 2"));
+    fireEvent.click(screen.getByText(specString("nav_source.use_set", { n: 2 })));
     const hold = pop.querySelector("[data-hold-control='true']")!;
     // A click alone never switches.
     fireEvent.click(hold);
@@ -160,7 +161,7 @@ describe("NavSourceChip", () => {
     });
     expect(setEkfSourceSet).toHaveBeenCalledWith(2);
     expect(useEkfSourceStore.getState().lastCommanded[DRONE]).toBe(2);
-    expect(mocks.toast).toHaveBeenCalledWith("EKF source set 2 active", "success");
+    expect(mocks.toast).toHaveBeenCalledWith(specString("nav_source.set_active", { n: 2 }), "success");
   });
 
   it("notes automatic switching while vision-nav runs external nav", () => {
@@ -178,7 +179,7 @@ describe("NavSourceChip", () => {
     pushEkf(EKF_FLAG.VEL_H | EKF_FLAG.POS_H_REL);
     renderChip();
     fireEvent.click(chip().querySelector("button")!);
-    expect(screen.getByText(messages.hud.nav.autoSwitch)).toBeTruthy();
-    expect(screen.getByTestId("nav-set-2").textContent).toContain("ACTIVE");
+    expect(screen.getByText(specString("nav_source.auto_note"))).toBeTruthy();
+    expect(screen.getByTestId("nav-set-2").textContent).toContain(specString("nav_source.active"));
   });
 });

@@ -43,7 +43,8 @@ export type CockpitAlertId =
 export interface CockpitAlert {
   id: CockpitAlertId;
   level: CockpitAlertLevel;
-  /** FC-supplied text (STATUSTEXT, pre-arm reason, FC state name key). */
+  /** FC-supplied text (STATUSTEXT, pre-arm reason), or the FC state's name
+   *  (`alert.fc_state.<detail>` in the spec). */
   detail?: string;
 }
 
@@ -84,11 +85,12 @@ const EKF_FAILSAFE_VARIANCE = 0.8;
 const HIGH_VIBRATION = 30;
 const SENSOR_RC_RECEIVER = 1 << 16;
 
-/** MAV_STATE values that mean the autopilot itself declared a failsafe. */
+/** MAV_STATE values that mean the autopilot itself declared a failsafe, by
+ *  their spec name (`alert.fc_state.*`). */
 const FC_STATE_DETAIL: Record<number, string> = {
-  5: "fcCritical",
-  6: "fcEmergency",
-  8: "fcTermination",
+  5: "critical",
+  6: "emergency",
+  8: "termination",
 };
 
 const LEVEL_ORDER: Record<CockpitAlertLevel, number> = { critical: 0, warning: 1, advisory: 2 };

@@ -29,6 +29,7 @@ vi.mock("@/lib/skills/plugin-config-writer", async (orig) => ({
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: mocks.toast }) }));
 
 import messages from "../../../../locales/en.json";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useSkillRegistry } from "@/lib/skills";
 import { FollowRail } from "@/components/cockpit/FollowRail";
 import { FOLLOW_SKILL_ID } from "@/hooks/use-following-mode";
@@ -91,7 +92,7 @@ describe("FollowRail", () => {
     useNavStreamStore.getState().setFollow(DRONE, followState());
     setSkills([FOLLOW_SKILL_ID, "pause", "rth", "land"]);
     renderRail();
-    expect(screen.getByTestId("frail-follow").textContent).toContain("TRACKING ×");
+    expect(screen.getByTestId("frail-follow").textContent).toContain(specString("follow.tracking_close"));
     for (const id of ["pause", "rth", "land"]) {
       expect(screen.queryByTestId(`frail-skill-${id}`)).toBeNull();
     }
@@ -126,7 +127,7 @@ describe("FollowRail", () => {
     });
     expect(screen.getByText("STRICT").getAttribute("data-pending")).toBeNull();
     expect(screen.getByText("SMART").getAttribute("aria-pressed")).toBe("true");
-    expect(mocks.toast).toHaveBeenCalledWith(messages.hud.rail.modeNotApplied, "warning");
+    expect(mocks.toast).toHaveBeenCalledWith(specString("follow.reacquire_not_applied"), "warning");
   });
 
   it("swaps the main and belly legs", () => {
@@ -137,7 +138,7 @@ describe("FollowRail", () => {
     ]);
     renderRail();
     const swap = screen.getByTestId("frail-camswap");
-    expect(swap.textContent).toContain("EO Zoom ⇄ Belly");
+    expect(swap.textContent).toContain(specString("follow.cam_swap", { from: messages.cockpitStreams.roleEo, to: specString("hud.leg.belly") }));
     fireEvent.click(swap);
     const st = useVideoStreamsStore.getState();
     expect(st.activeStreamIdByDrone[DRONE]).toBe("belly");

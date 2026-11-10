@@ -12,9 +12,9 @@
  * A checklist-aware request whose pre-flight checklist is incomplete lists the
  * open items and keeps the gesture inert until the operator turns on the
  * explicit override, which is recorded as a safety event. A take-off sheet
- * carries the altitude stepper whose value is what gets commanded. Titles name
- * the target drone (`{drone}`), and a command going out over a stale link says
- * the vehicle may not receive it.
+ * carries the altitude stepper whose value is what gets commanded. Sheet text
+ * is the shared spec's (`confirm.*`) wherever the spec names it, and a command
+ * going out over a stale link says the vehicle may not receive it.
  * @license GPL-3.0-only
  */
 
@@ -34,6 +34,7 @@ import { HoldControl } from "./HoldControl";
 import { SlideToConfirm } from "./SlideToConfirm";
 import { AltitudeStepper } from "./AltitudeStepper";
 import { recordSafetyOverride, translatePolicyText } from "./confirm-text";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { BELOW_TOP_BAR, closeFlightSheets, useFlightRoot } from "../flight/flight-sheet";
 import { createPortal } from "react-dom";
 
@@ -78,7 +79,10 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
 
   const complete = useCallback(() => {
     if (checklistIncomplete) {
-      const action = /^skills\.([^.]+)\.confirm\./.exec(policy.title)?.[1] ?? "skill";
+      // The skill id from a spec title (`confirm.<id>.title`) or an app one
+      // (`skills.<id>.confirm.title`).
+      const m = /^(?:confirm\.([^.]+)|skills\.([^.]+)\.confirm)\./.exec(policy.title);
+      const action = m?.[1] ?? m?.[2] ?? "skill";
       recordSafetyOverride(action, "preflight_incomplete");
     }
     resolve(true, policy.altitude ? { altitudeM } : undefined);
@@ -109,6 +113,20 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
       clearInterval(tick);
     };
   }, [policy.gesture, hold.holding, guardEndsAt, resolve]);
+
+  // A guarded hold counts down the time left to cut the motors.
+  const [holdLeftMs, setHoldLeftMs] = useState(holdMs);
+  useEffect(() => {
+    if (policy.gesture !== "guarded" || !hold.holding) return;
+    const started = Date.now();
+    const tick = setInterval(() => {
+      setHoldLeftMs(Math.max(0, holdMs - (Date.now() - started)));
+    }, 100);
+    return () => {
+      clearInterval(tick);
+      setHoldLeftMs(holdMs);
+    };
+  }, [policy.gesture, hold.holding, holdMs]);
 
   // Escape cancels; the gesture control takes focus so Enter is a hold at once.
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -207,7 +225,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
           <div className="flex flex-col gap-2 rounded-md border border-status-warning/60 bg-status-warning/10 p-2">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-status-warning">
               <ShieldAlert size={14} aria-hidden="true" />
-              {t("cockpit.confirm.checklistIncomplete", { count: openItems.length })}
+              {specString("confirm.checklist_failing")}
             </p>
             <ul className="max-h-28 list-disc overflow-y-auto pl-5 text-[11px] text-text-secondary">
               {openItems.map((item) => (
@@ -222,7 +240,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
                 onChange={(e) => setOverride(e.target.checked)}
                 className="h-4 w-4 accent-[var(--color-status-warning)]"
               />
-              {t("cockpit.confirm.checklistOverride")}
+              {specString("confirm.override")}
             </label>
             <p className="text-[11px] text-text-tertiary">
               {t("cockpit.confirm.checklistOverrideHint")}
@@ -233,8 +251,8 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
         {policy.gesture === "guarded" && (
           <p role="status" className="text-xs font-semibold text-status-error">
             {hold.holding
-              ? t("cockpit.confirm.guardHolding")
-              : t("cockpit.confirm.guardArmed", { seconds: guardSeconds })}
+              ? specString("confirm.guard_holding", { s: (holdLeftMs / 1000).toFixed(1) })
+              : specString("confirm.guard", { s: guardSeconds })}
           </p>
         )}
 
@@ -243,7 +261,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
             hold={hold}
             holdMs={holdMs}
             label={confirmLabel}
-            hint={t("cockpit.confirm.slideHint")}
+            hint={specString("confirm.slide_hint", { s: (holdMs / 1000).toFixed(1) })}
             disabled={!gestureEnabled}
             onComplete={complete}
           />
@@ -252,11 +270,12 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
             hold={hold}
             holdMs={holdMs}
             label={confirmLabel}
-            hint={t("cockpit.confirm.holdHint", { seconds: (holdMs / 1000).toFixed(1) })}
+            hint={specString("confirm.hold", { s: (holdMs / 1000).toFixed(1) })}
             danger={danger}
             disabled={!gestureEnabled}
           />
         )}
+        <p className="text-[11px] text-text-tertiary">{specString("confirm.input_hint")}</p>
 
         <button
           type="button"

@@ -24,7 +24,7 @@ import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
-import { safeTranslate } from "@/hooks/use-skill-toast-bridge";
+import { specOrAppText } from "@/lib/cockpit/spec-strings";
 import type { CommandAgentSummary } from "@/hooks/use-command-agent-fleet";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { ModeReadout } from "./StateCells";
@@ -66,7 +66,7 @@ export function FlightModeCell({
       disabled: action.disabled,
       danger: action.id === "land",
       title: action.reasonKey
-        ? safeTranslate(t, action.reasonKey)
+        ? specOrAppText(t, action.reasonKey)
         : undefined,
     };
     return index === DIVIDER_AFTER

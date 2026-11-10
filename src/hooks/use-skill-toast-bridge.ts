@@ -4,10 +4,11 @@
  * @module use-skill-toast-bridge
  * @description Wires the skill dispatcher's feedback to the toast host.
  *
- * The dispatcher runs outside React and rejects a press with a raw i18n key
- * rather than a sentence, so something mounted has to resolve those keys and
- * show them. Until that happens the notifier is a no-op and every rejection is
- * silent — an operator presses a control, nothing moves, and nothing says why.
+ * The dispatcher runs outside React and rejects a press with a raw text key
+ * (a spec key such as `refusal.no_fc_link`, or an app i18n key) rather than a
+ * sentence, so something mounted has to resolve those keys and show them.
+ * Until that happens the notifier is a no-op and every rejection is silent —
+ * an operator presses a control, nothing moves, and nothing says why.
  *
  * So the shell mounts this once (CommandShell, beside the skill dispatcher),
  * and every surface that fires skills gets its feedback from that one mount.
@@ -19,26 +20,11 @@ import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 
 import { useToast } from "@/components/ui/toast";
+import { specOrAppText } from "@/lib/cockpit/spec-strings";
 import { setSkillNotifier } from "@/lib/skills";
 
 /**
- * Resolve a fully-qualified key the dispatcher emitted (e.g.
- * "skills.reason.notArmed"), falling back to the key itself so a missing
- * translation degrades to something readable instead of throwing.
- */
-export function safeTranslate(
-  t: ReturnType<typeof useTranslations>,
-  key: string,
-): string {
-  try {
-    return t(key);
-  } catch {
-    return key;
-  }
-}
-
-/**
- * A dotted, whitespace-free token is a translation key; anything with spaces is
+ * A dotted, whitespace-free token is a text key; anything with spaces is
  * already a sentence and is shown as-is.
  */
 const KEY_SHAPE = /^[\w.-]+\.[\w.-]+$/;
@@ -60,7 +46,7 @@ export function useSkillToastBridge(): void {
   useEffect(() => {
     setSkillNotifier((message, status) => {
       const text = KEY_SHAPE.test(message)
-        ? safeTranslate(tRef.current, message)
+        ? specOrAppText(tRef.current, message)
         : message;
       toastRef.current(text, status ?? "info");
     });

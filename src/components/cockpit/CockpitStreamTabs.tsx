@@ -24,7 +24,7 @@ import { VideoOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
-  ROLE_LABEL_KEY,
+  streamRoleLabel,
   useVideoStreamsStore,
   type StreamDescriptor,
 } from "@/stores/video-streams-store";
@@ -35,8 +35,7 @@ function streamLabel(
   s: StreamDescriptor,
   t: (key: string) => string,
 ): string {
-  const key = s.role ? ROLE_LABEL_KEY[s.role] : undefined;
-  return key ? t(key) : s.label;
+  return streamRoleLabel(s.role, t) ?? s.label;
 }
 
 interface CockpitStreamTabsProps {

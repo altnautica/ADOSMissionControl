@@ -20,6 +20,7 @@ import { useChecklistStore } from "@/stores/checklist-store";
 import { useInputStore } from "@/stores/input-store";
 import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { useDroneStore } from "@/stores/drone-store";
+import { specString } from "@/lib/cockpit/spec-strings";
 import {
   activate,
   buildSkillContext,
@@ -64,15 +65,15 @@ async function flush() {
 
 const HOLD_POLICY: ConfirmPolicy = {
   title: "skills.land.confirm.title",
-  message: "skills.land.confirm.message",
+  message: "confirm.land.message",
   confirmLabel: "skills.land.confirm.button",
   variant: "danger",
   gesture: "hold",
 };
 
 const ARM_POLICY: ConfirmPolicy = {
-  title: "skills.arm.confirm.title",
-  message: "skills.arm.confirm.message",
+  title: "confirm.arm.title",
+  message: "confirm.arm.message",
   confirmLabel: "skills.arm.confirm.button",
   variant: "danger",
   gesture: "slide",
@@ -80,8 +81,8 @@ const ARM_POLICY: ConfirmPolicy = {
 };
 
 const KILL_POLICY: ConfirmPolicy = {
-  title: "skills.kill.confirm.title",
-  message: "skills.kill.confirm.message",
+  title: "confirm.kill.title",
+  message: "confirm.kill.message",
   confirmLabel: "skills.kill.confirm.button",
   variant: "danger",
   gesture: "guarded",
@@ -236,8 +237,9 @@ describe("SkillConfirmHost", () => {
       },
       DRONE,
     );
-    fireEvent.click(screen.getByRole("button", { name: /increase/i }));
-    fireEvent.click(screen.getByRole("button", { name: /increase/i }));
+    const raise = specString("confirm.altitude_up");
+    fireEvent.click(screen.getByRole("button", { name: raise }));
+    fireEvent.click(screen.getByRole("button", { name: raise }));
     fireEvent.pointerDown(holdControl(), { pointerId: 1 });
     advance(800);
     await flush();

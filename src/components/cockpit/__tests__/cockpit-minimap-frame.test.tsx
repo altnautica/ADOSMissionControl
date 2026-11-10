@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import messages from "../../../../locales/en.json";
 
 vi.mock("next/dynamic", () => ({
@@ -47,13 +48,13 @@ describe("CockpitMinimap frame", () => {
 
   it("pins LOCAL per vehicle and draws the local frame", () => {
     const { container } = renderMinimap();
-    fireEvent.click(screen.getByRole("button", { name: messages.hud.map.modeLocal }));
+    fireEvent.click(screen.getByRole("button", { name: specString("minimap.pin.local") }));
     expect(useMinimapModeStore.getState().pinByVehicle[DRONE]).toBe("local");
     expect(container.querySelector(".mmap")?.getAttribute("data-frame")).toBe("local");
     expect(container.querySelector(".lfmap")).not.toBeNull();
-    expect(container.textContent).toContain(messages.hud.map.local);
+    expect(container.textContent).toContain(specString("minimap.local_ne"));
 
-    fireEvent.click(screen.getByRole("button", { name: messages.hud.map.modeAuto }));
+    fireEvent.click(screen.getByRole("button", { name: specString("minimap.pin.auto") }));
     expect(useMinimapModeStore.getState().pinByVehicle[DRONE]).toBeUndefined();
   });
 });

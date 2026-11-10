@@ -19,7 +19,7 @@ import { useInputStore } from "@/stores/input-store";
 
 function policy(overrides: Partial<ConfirmPolicy> = {}): ConfirmPolicy {
   return {
-    title: "skills.arm.confirm.title",
+    title: "confirm.arm.title",
     message: "Arm the drone",
     confirmLabel: "Hold to arm",
     variant: "primary",

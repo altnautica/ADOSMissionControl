@@ -81,7 +81,7 @@ function probeSkill(seen: string[]): Skill {
     getState: (ctx) =>
       ctx.protocol
         ? { kind: "idle" }
-        : { kind: "disabled", reason: "skills.reason.noFcLink" },
+        : { kind: "disabled", reason: "refusal.no_fc_link" },
     activate: async (ctx) => {
       seen.push(ctx.droneId);
     },

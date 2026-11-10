@@ -8,6 +8,7 @@
  * @license GPL-3.0-only
  */
 
+import type { useTranslations } from "next-intl";
 import strings from "@/lib/cockpit-spec/setup-strings.json";
 
 const TABLE = strings.strings as Record<string, string>;
@@ -29,6 +30,28 @@ export function specString(key: string, args?: Record<string, unknown>): string 
     const v = args[name];
     return v === undefined || v === null ? "" : String(v);
   });
+}
+
+/** The app's translator, as `useTranslations()` returns it. */
+export type AppTranslator = ReturnType<typeof useTranslations>;
+
+/**
+ * The text for a key that may live in either table: the spec's text when the
+ * spec carries `key`, else the app translation. Anything neither table
+ * carries (an extension's own sentence, a key with no text) is shown as
+ * given, never thrown on.
+ */
+export function specOrAppText(
+  t: AppTranslator,
+  key: string,
+  values?: Record<string, string | number>,
+): string {
+  if (hasSpecString(key)) return specString(key, values);
+  try {
+    return t.has(key) ? t(key, values) : key;
+  } catch {
+    return key;
+  }
 }
 
 /**

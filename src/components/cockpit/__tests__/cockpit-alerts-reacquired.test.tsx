@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import messages from "../../../../locales/en.json";
 import { CockpitAlerts, REACQUIRED_ADVISORY_MS } from "@/components/cockpit/CockpitAlerts";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 
 const DRONE = "node:d1";
@@ -45,7 +46,7 @@ describe("CockpitAlerts re-acquired advisory", () => {
     });
     const el = advisory(container)!;
     expect(el.getAttribute("data-level")).toBe("advisory");
-    expect(el.textContent).toContain("Re-acquired #15 · 0.86 · 1.8 s gap");
+    expect(el.textContent).toContain(specString("follow.reacquired_toast", { id: 15, sim: "0.86", gap: "1.8" }));
 
     act(() => {
       vi.advanceTimersByTime(REACQUIRED_ADVISORY_MS + 50);

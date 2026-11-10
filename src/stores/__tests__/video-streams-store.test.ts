@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import {
-  ROLE_LABEL_KEY,
+  streamRoleLabel,
   useVideoStreamsStore,
   type StreamDescriptor,
 } from "@/stores/video-streams-store";
@@ -203,10 +204,12 @@ describe("video-streams-store", () => {
     expect(st.streamsForDrone("node:d2")).toHaveLength(2);
   });
 
-  it("maps known roles to a localized label key", () => {
-    expect(ROLE_LABEL_KEY.eo).toBe("roleEo");
-    expect(ROLE_LABEL_KEY.ir).toBe("roleIr");
-    expect(ROLE_LABEL_KEY.down).toBe("roleDown");
-    expect(ROLE_LABEL_KEY.unknownRole).toBeUndefined();
+  it("labels known roles: the belly leg from the spec, the rest translated", () => {
+    const t = (key: string) => `t:${key}`;
+    expect(streamRoleLabel("eo", t)).toBe("t:roleEo");
+    expect(streamRoleLabel("ir", t)).toBe("t:roleIr");
+    expect(streamRoleLabel("down", t)).toBe(specString("hud.leg.belly"));
+    expect(streamRoleLabel("unknownRole", t)).toBeUndefined();
+    expect(streamRoleLabel(undefined, t)).toBeUndefined();
   });
 });

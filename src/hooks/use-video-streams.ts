@@ -28,7 +28,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { specString } from "@/lib/cockpit/spec-strings";
 
 import { useToast } from "@/components/ui/toast";
 
@@ -117,12 +117,9 @@ export function useVideoStreams(droneId: string): void {
   // The toast + translator live in refs so the selection effect can reach the
   // current ones without re-running on every render.
   const { toast } = useToast();
-  const t = useTranslations("cockpit.streams");
   const toastRef = useRef(toast);
-  const tRef = useRef(t);
   useEffect(() => {
     toastRef.current = toast;
-    tRef.current = t;
   });
 
   // Guards, re-armed when the drone changes:
@@ -249,7 +246,7 @@ export function useVideoStreams(droneId: string): void {
             appliedRef.current = previousId;
             streamsStore.selectStream(droneId, previousId);
           }
-          toastRef.current(tRef.current("switchFailed", { name: target.label }), "error");
+          toastRef.current(specString("cockpit.toast.stream_switch_failed"), "error");
         },
       );
     }

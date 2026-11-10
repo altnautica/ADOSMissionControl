@@ -15,5 +15,7 @@
   { "name": "countdown_whole_second", "input": { "fn": "countdownS", "v": 3000 }, "expected": 3 },
   { "name": "countdown_last_ms", "input": { "fn": "countdownS", "v": 1 }, "expected": 1 },
   { "name": "countdown_zero", "input": { "fn": "countdownS", "v": 0 }, "expected": 0 },
-  { "name": "countdown_never_negative", "input": { "fn": "countdownS", "v": -500 }, "expected": 0 }
+  { "name": "countdown_never_negative", "input": { "fn": "countdownS", "v": -500 }, "expected": 0 },
+  { "name": "signed1_binary_tie_rounds_down", "input": { "fn": "fmtSigned1", "v": 0.35 }, "expected": "0.3" },
+  { "name": "distance_km_binary_tie_rounds_down", "input": { "fn": "fmtDistance", "v": 1005 }, "expected": "1.00 km" }
 ]

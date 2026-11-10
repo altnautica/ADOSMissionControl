@@ -13,10 +13,10 @@
  */
 
 import { useCallback, useEffect } from "react";
-import { useTranslations } from "next-intl";
 import { create } from "zustand";
 
 import type { ReacquireMode } from "@/lib/hud/nav-types";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { writePluginConfigValue } from "@/lib/skills/plugin-config-writer";
@@ -93,7 +93,6 @@ export function useReacquireMode(
   droneId: string,
   echoed: ReacquireMode | null,
 ): ReacquireModeControl {
-  const t = useTranslations("hud.rail");
   const { toast } = useToast();
   const pending = useReacquirePendingStore((s) => s.byDrone[droneId] ?? null);
 
@@ -108,7 +107,7 @@ export function useReacquireMode(
       if (mode === shown) return;
       const token = beginPending(droneId, mode);
       const notApplied = () => {
-        if (endPending(droneId, token)) toast(t("modeNotApplied"), "warning");
+        if (endPending(droneId, token)) toast(specString("follow.reacquire_not_applied"), "warning");
       };
       setTimeout(notApplied, REACQUIRE_ECHO_TIMEOUT_MS);
       sendReacquireMode(droneId, mode).then(
@@ -118,7 +117,7 @@ export function useReacquireMode(
         notApplied,
       );
     },
-    [droneId, shown, t, toast],
+    [droneId, shown, toast],
   );
 
   return { mode: shown, pending: pending?.mode ?? null, select };

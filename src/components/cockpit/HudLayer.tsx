@@ -33,6 +33,7 @@ import { CentreMarks } from "@/components/cockpit/flight/CentreMarks";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { centreHeadingTop, rectStyle, videoRect } from "@/components/cockpit/flight/flight-grid";
 import { effectiveLayers } from "@/lib/cockpit/layers/layer-spec";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useCockpitView } from "@/lib/cockpit/views";
 import { useVehicleLayers } from "@/stores/cockpit-layers-store";
 
@@ -144,7 +145,7 @@ export function HudLayer({ droneId }: { droneId: string }) {
             heading={reading.heading}
             homeBearing={reading.homeBearing}
             cardinals={cardinals}
-            homeLabel={t("homeMark")}
+            homeLabel={specString("layer.home")}
           />
           <SpeedTape value={speed} caption={speedLabel} />
           <AltTape value={alt} caption={`${t("alt")} ${refLabel}`} refToggle={toggle} />

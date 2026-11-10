@@ -20,6 +20,7 @@ import { X } from "lucide-react";
 import { CONFIRM_HOLD_DEFAULT_MS } from "@/lib/skills/types";
 import { refusalText } from "@/lib/hud/refusal";
 import { EKF_FLAG, gpsFixWord, sourceValueKey } from "@/lib/hud/nav-source";
+import { specString } from "@/lib/cockpit/spec-strings";
 import type { NavSourceView } from "@/hooks/use-nav-source";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useEkfSourceStore, type EkfSourceSet } from "@/stores/ekf-source-store";
@@ -27,20 +28,37 @@ import { NO_DATA_GLYPH } from "@/lib/hud-draw";
 import { useToast } from "@/components/ui/toast";
 import { HoldControl } from "./confirm/HoldControl";
 import { useConfirmHold } from "./confirm/use-confirm-hold";
+import { navFixText, navQualityText } from "./nav-source-text";
 
 const SETS: readonly EkfSourceSet[] = [1, 2, 3];
 const FIELDS = [
-  ["posxy", "POSXY"],
-  ["velxy", "VELXY"],
-  ["yaw", "YAW"],
+  ["nav_source.posxy", "POSXY"],
+  ["nav_source.velxy", "VELXY"],
+  ["nav_source.yaw", "YAW"],
 ] as const;
 const FLAG_WORDS = [
-  [EKF_FLAG.VEL_H, "flagVelH"],
-  [EKF_FLAG.POS_H_REL, "flagPosRel"],
-  [EKF_FLAG.POS_H_ABS, "flagPosAbs"],
-  [EKF_FLAG.CONST_POS, "flagConstPos"],
-  [EKF_FLAG.GPS_GLITCH, "flagGlitch"],
+  [EKF_FLAG.VEL_H, "nav_source.flag.vel_h"],
+  [EKF_FLAG.POS_H_REL, "nav_source.flag.pos_rel"],
+  [EKF_FLAG.POS_H_ABS, "nav_source.flag.pos_abs"],
+  [EKF_FLAG.CONST_POS, "nav_source.flag.const_pos"],
+  [EKF_FLAG.GPS_GLITCH, "nav_source.flag.glitch"],
 ] as const;
+/** EK3_SRC value → spec key; values the table does not name read as no data. */
+const SOURCE_KEY: Readonly<Record<string, string>> = {
+  "0": "controls.action.none",
+  "1": "agl.source.baro",
+  "2": "nav_source.src.rangefinder",
+  "3": "nav_source.gps",
+  "4": "nav_source.src.beacon",
+  "5": "nav_source.src.flow",
+  "6": "nav_source.src.extnav",
+  "7": "nav_source.src.wheel",
+};
+
+function sourceText(v: number | undefined): string {
+  const key = SOURCE_KEY[sourceValueKey(v)];
+  return key ? specString(key) : NO_DATA_GLYPH;
+}
 const POPOVER_W = 340;
 
 interface NavSourcePopoverProps {
@@ -98,18 +116,18 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
     try {
       const protocol = useDroneManager.getState().drones.get(droneId)?.protocol;
       if (!protocol) {
-        toast(t("switchFailed", { reason: refusalText("no_fc") }), "error");
+        toast(specString("nav_source.switch_failed", { reason: refusalText("no_fc") }), "error");
         return;
       }
       const res = await protocol.setEkfSourceSet(set);
       if (res.ok) {
         useEkfSourceStore.getState().setLastCommanded(droneId, set);
-        toast(t("switched", { n: set }), "success");
+        toast(specString("nav_source.set_active", { n: set }), "success");
       } else {
-        toast(t("switchFailed", { reason: res.reason }), "error");
+        toast(specString("nav_source.switch_failed", { reason: res.reason }), "error");
       }
     } catch (err) {
-      toast(t("switchFailed", { reason: err instanceof Error ? err.message : String(err) }), "error");
+      toast(specString("nav_source.switch_failed", { reason: err instanceof Error ? err.message : String(err) }), "error");
     } finally {
       setBusy(false);
       setArmed(null);
@@ -127,7 +145,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
 
   const flagWords = ekfFlags === null
     ? []
-    : FLAG_WORDS.filter(([bit]) => (ekfFlags & bit) !== 0).map(([, key]) => t(key));
+    : FLAG_WORDS.filter(([bit]) => (ekfFlags & bit) !== 0).map(([, key]) => specString(key));
   const health = nav?.extnavHealth ?? null;
 
   const body = (
@@ -141,7 +159,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
     >
       <div className="navpop-head">
         <span>{t("popoverTitle")}</span>
-        <button type="button" onClick={onClose} aria-label={t("close")} className="navpop-x fs-hit">
+        <button type="button" onClick={onClose} aria-label={specString("cockpit.close")} className="navpop-x fs-hit">
           <X size={14} aria-hidden="true" />
         </button>
       </div>
@@ -151,7 +169,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
           <tr>
             <th scope="col" />
             {FIELDS.map(([key]) => (
-              <th key={key} scope="col">{t(key)}</th>
+              <th key={key} scope="col">{specString(key)}</th>
             ))}
             <th scope="col" />
           </tr>
@@ -161,13 +179,13 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
             const active = result.activeSet === n;
             return (
               <tr key={n} data-active={active ? "true" : undefined} data-testid={`nav-set-${n}`}>
-                <th scope="row" className="whitespace-nowrap">{t("set", { n })}</th>
+                <th scope="row" className="whitespace-nowrap">{specString("nav_source.set_n", { n })}</th>
                 {FIELDS.map(([key, suffix]) => (
-                  <td key={key}>{t(`src.${sourceValueKey(params?.[`EK3_SRC${n}_${suffix}`])}`)}</td>
+                  <td key={key}>{sourceText(params?.[`EK3_SRC${n}_${suffix}`])}</td>
                 ))}
                 <td>
                   {active ? (
-                    <span className="navpop-active">{t("active")}</span>
+                    <span className="navpop-active">{specString("nav_source.active")}</span>
                   ) : (
                     <button
                       type="button"
@@ -176,7 +194,7 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
                       disabled={busy}
                       onClick={() => setArmed((cur) => (cur === n ? null : n))}
                     >
-                      {t("useSet", { n })}
+                      {specString("nav_source.use_set", { n })}
                     </button>
                   )}
                 </td>
@@ -185,14 +203,14 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
           })}
         </tbody>
       </table>
-      {!params && <p className="navpop-note">{t("paramsUnknown")}</p>}
+      {!params && <p className="navpop-note">{specString("nav_source.params_unknown")}</p>}
 
       {armed !== null && (
         <HoldControl
           hold={hold}
           holdMs={holdMs}
-          label={busy ? t("switching") : t("useSet", { n: armed })}
-          hint={t("holdToSwitch", { n: armed })}
+          label={busy ? specString("nav_source.switching") : specString("nav_source.use_set", { n: armed })}
+          hint={specString("nav_source.hold_use_set", { n: armed })}
           danger={false}
           disabled={busy}
         />
@@ -200,28 +218,27 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
 
       <div className="navpop-readouts">
         <div>
-          <span className="navpop-k">{t("extnav")}</span>
-          <span>
-            {health ? t(`q.${health}`) : NO_DATA_GLYPH}
-            {nav?.odomRateHz != null && ` · ${t("odomRate", { hz: nav.odomRateHz.toFixed(0) })}`}
-          </span>
+          {specString("nav_source.extnav_readout", {
+            health: health ? navQualityText(health) : NO_DATA_GLYPH,
+            hz: nav?.odomRateHz != null ? nav.odomRateHz.toFixed(0) : NO_DATA_GLYPH,
+          })}
         </div>
         <div>
           {gps
-            ? t("gpsReadout", {
-                fix: t(`fix.${gpsFixWord(gps.fixType)}`),
+            ? specString("nav_source.gps_readout", {
+                fix: navFixText(gpsFixWord(gps.fixType)),
                 sats: gps.satellites ?? NO_DATA_GLYPH,
                 hdop: gps.hdop?.toFixed(1) ?? NO_DATA_GLYPH,
               })
             : NO_DATA_GLYPH}
         </div>
         <div>
-          <span className="navpop-k">{t("flags")}</span>
-          <span data-testid="nav-flags">{flagWords.length > 0 ? flagWords.join(" · ") : t("noFlags")}</span>
+          <span className="navpop-k">{specString("nav_source.flags")}</span>
+          <span data-testid="nav-flags">{flagWords.length > 0 ? flagWords.join(" · ") : specString("controls.action.none")}</span>
         </div>
       </div>
 
-      {nav?.mode === "external_nav" && <p className="navpop-note">{t("autoSwitch")}</p>}
+      {nav?.mode === "external_nav" && <p className="navpop-note">{specString("nav_source.auto_note")}</p>}
     </div>
   );
 

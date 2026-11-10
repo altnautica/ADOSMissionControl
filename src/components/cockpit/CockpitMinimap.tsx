@@ -52,9 +52,8 @@ function openFlightTab(): void {
 }
 
 function FrameToggle({ pin, onPin }: { pin: MinimapPin; onPin: (p: MinimapPin) => void }) {
-  const t = useTranslations("hud.map");
   return (
-    <div className="seg mmap-seg" role="group" aria-label={t("modeLabel")}>
+    <div className="seg mmap-seg" role="group" aria-label={specString("minimap.mode_label")}>
       {(["auto", "local", "map"] as const).map((p) => (
         <button key={p} type="button" aria-pressed={pin === p} onClick={() => onPin(p)}>
           {specString(`minimap.pin.${p}`)}

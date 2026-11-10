@@ -24,7 +24,7 @@ import { MoreHorizontal } from "lucide-react";
 
 import type { FleetNodeEntry } from "@/hooks/use-fleet-nodes";
 import { skillDisplayLabel } from "@/lib/skills/skill-label";
-import { safeTranslate } from "@/hooks/use-skill-toast-bridge";
+import { specOrAppText } from "@/lib/cockpit/spec-strings";
 import { useForgetNode } from "@/hooks/use-forget-node";
 import { useUiStore } from "@/stores/ui-store";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
@@ -88,7 +88,7 @@ export function NodeActionsMenu({
         action.id === "arm" ||
         action.id === "land" ||
         action.id === "kill",
-      title: action.reasonKey ? safeTranslate(t, action.reasonKey) : undefined,
+      title: action.reasonKey ? specOrAppText(t, action.reasonKey) : undefined,
     })),
     { id: "nav-divider", label: "", divider: true },
     ...navItems.map((item) => ({

@@ -26,7 +26,7 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 import { usePipVideo } from "@/hooks/use-pip-video";
 import { useConnectedWhepKey } from "@/hooks/use-whep-key";
 import {
-  ROLE_LABEL_KEY,
+  streamRoleLabel,
   useVideoStreamsStore,
 } from "@/stores/video-streams-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -169,7 +169,7 @@ export function CockpitPipInset({ droneId }: CockpitPipInsetProps) {
 
   if (!pip) return null;
 
-  const label = pip.role && ROLE_LABEL_KEY[pip.role] ? t(ROLE_LABEL_KEY[pip.role]) : pip.label;
+  const label = streamRoleLabel(pip.role, t) ?? pip.label;
 
   const onPointerDown = (e: React.PointerEvent) => {
     const el = rootRef.current;

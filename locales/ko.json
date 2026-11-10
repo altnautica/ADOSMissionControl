@@ -7337,21 +7337,16 @@
       "rel": "REL",
       "msl": "MSL",
       "altRefToggle": "고도 기준 {ref}, {next}(으)로 전환",
-      "homeMark": "H",
       "cardN": "N",
       "cardE": "E",
       "cardS": "S",
       "cardW": "W",
       "wind": "WIND",
-      "eta": "ETA",
       "noData": "데이터 없음",
       "summary": "피치 {pitch}, 롤 {roll}, 속도 {speed}, 고도 {alt}, 방위 {heading}"
     },
     "layout": {
       "hiddenAtDensity": "이 밀도에서는 숨겨짐"
-    },
-    "streams": {
-      "switchFailed": "{name}(으)로 전환하지 못했습니다"
     },
     "pip": {
       "reconnecting": "다시 연결 중"
@@ -7391,19 +7386,6 @@
     "immersiveTitle": "Expand to full screen",
     "exitImmersiveTitle": "Exit immersive",
     "band": {
-      "batt": "BATT",
-      "time": "TIME",
-      "mode": "모드",
-      "reachDirect": "직접",
-      "reachLan": "LAN",
-      "reachRelayed": "지상 경유",
-      "reachCloud": "클라우드",
-      "linkAge": "HB {age}",
-      "video": "영상",
-      "videoLive": "라이브",
-      "videoFrozen": "정지됨",
-      "videoNone": "영상 없음",
-      "stick": "스틱",
       "stickOn": "켜짐",
       "stickOff": "꺼짐",
       "stickBlocked": "차단됨",
@@ -7413,22 +7395,6 @@
       "stickDisableTitle": "스틱 조종 중지",
       "picHolder": "PIC {holder}",
       "picTitle": "기장: {holder}",
-      "preflight": "비행 전 {done}/{total}",
-      "preflightTitle": "비행 전 점검표",
-      "preflightClose": "점검표 닫기",
-      "recStopFailed": "녹화를 정상적으로 중지하지 못했습니다",
-      "reserve": "예비 {eta}",
-      "reserveTitle": "노드 배터리 엔진 기준 예비 용량까지 남은 시간",
-      "more": "상태 더 보기",
-      "announceArmed": "기체 시동",
-      "announceDisarmed": "기체 시동 해제",
-      "announceArmUnknown": "시동 상태 알 수 없음",
-      "announceBattLow": "배터리 부족",
-      "announceBattCritical": "배터리 위험",
-      "announceBattNormal": "배터리 정상 복귀",
-      "announceLinkStale": "링크 지연",
-      "announceLinkLost": "링크 끊김",
-      "announceLinkOk": "링크 복구",
       "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
@@ -7442,47 +7408,15 @@
     "mapToggle": "미니맵 표시/숨기기",
     "confirm": {
       "cancel": "취소",
-      "holdHint": "{seconds}초 동안 길게 누르거나 Enter 또는 게임패드 버튼을 누르고 있으세요.",
-      "slideHint": "끝까지 밀거나 Enter 또는 게임패드 버튼을 누르고 있으세요.",
-      "guardArmed": "킬 대기 중. {seconds}초 안에 길게 눌러 모터를 정지합니다.",
-      "guardHolding": "계속 누르면 모터가 정지됩니다.",
-      "checklistIncomplete": "비행 전 체크리스트 미완료 ({count}개 남음)",
-      "checklistOverride": "체크리스트 무시",
       "checklistOverrideHint": "무시는 안전 이벤트로 기록됩니다.",
       "altitude": "이륙 고도",
-      "altitudeUnit": "m",
-      "altitudeDecrease": "고도 낮추기",
-      "altitudeIncrease": "고도 높이기",
       "staleLink": "The vehicle may not receive this"
     },
     "groundStation": {
-      "noDrone": "이 지상국에 연결된 드론이 없습니다",
-      "noDroneBody": "이 조종석은 지상국이 무선 링크로 중계하는 드론을 조종합니다. 드론을 연결한 후 다시 오세요.",
       "openCarried": "중계 중인 드론",
       "carried": "이 지상국은 {name}을(를) 중계합니다",
       "carriedBody": "해당 드론이 선택된 상태로 이 지상국을 통한 조종석이 열립니다.",
       "fly": "{name} 조종"
-    },
-    "alerts": {
-      "battCrit": "배터리 위험",
-      "battLow": "배터리 부족",
-      "fenceBreach": "펜스 이탈",
-      "linkStale": "링크 끊김",
-      "linkLost": "링크 끊김",
-      "fcCritical": "FC 위험 상태",
-      "fcEmergency": "FC 비상",
-      "fcTermination": "비행 종료",
-      "ekfFailsafe": "EKF 페일세이프",
-      "gpsNo3d": "GPS 3D 고정 없음",
-      "videoFrozen": "영상 정지",
-      "rcFailsafe": "RC 페일세이프",
-      "prearm": "시동 전 점검: {reason}",
-      "highVibration": "진동 높음",
-      "level": {
-        "critical": "위험",
-        "warning": "경고",
-        "advisory": "안내"
-      }
     },
     "video": {
       "connecting": "연결 중...",
@@ -7493,31 +7427,10 @@
       "noSignalGround": "지상 릴레이 신호 없음",
       "noSignal": "신호 없음",
       "videoOffline": "영상 오프라인",
-      "sourceManual": "수동",
-      "sourceDirect": "직접",
-      "sourceRelayed": "지상 경유",
-      "sourceCloud": "클라우드 경유",
       "retry": "재시도",
       "configure": "영상 소스 설정",
       "frozenLinkLost": "링크 끊김 — 화면 정지, 재연결 중",
       "frozenNoFrames": "프레임 없음 — 화면 정지, 재연결 중"
-    },
-    "topRight": {
-      "densityGroup": "정보 밀도",
-      "densityMin": "최소",
-      "densityStd": "표준",
-      "densityFull": "전체",
-      "fps": "fps",
-      "video": "영상",
-      "frameAgeSeiTitle": "Measured camera-to-monitor delay (SEI timestamps in the bitstream + WebRTC presentationTime + a drone/browser clock offset estimate).",
-      "frameAgeMetadataTitle": "Sender-capture to presented frame, from the browser's frame metadata (RTCP-synchronised). Excludes the camera and encoder legs, so the true delay is higher.",
-      "frameAgeUnknownTitle": "프레임 지연 알 수 없음: SEI 프로브와 사용 가능한 프레임 타임스탬프가 없습니다.",
-      "netTitle": "네트워크 왕복 시간과 디코더 지터 버퍼 대기. 종단 간 지연이 아닙니다.",
-      "msNet": "ms net",
-      "linkLost": "링크 끊김",
-      "noFrames": "프레임 없음",
-      "offline": "오프라인",
-      "camera": "카메라 · {name}"
     }
   },
   "skills": {
@@ -7525,8 +7438,6 @@
       "label": "Arm",
       "effect": "Enables motor output",
       "confirm": {
-        "title": "Arm vehicle",
-        "message": "Arming enables motor output. Confirm only when the area is clear.",
         "button": "Arm"
       }
     },
@@ -7534,8 +7445,6 @@
       "label": "Disarm",
       "effect": "Cuts motor output",
       "confirm": {
-        "title": "Disarm vehicle",
-        "message": "Disarming disables motor output. Confirm the vehicle is landed or otherwise safe to disarm.",
         "button": "Disarm"
       }
     },
@@ -7544,7 +7453,6 @@
       "effect": "Arms and climbs to the set altitude",
       "confirm": {
         "title": "Take off to {altitude} m",
-        "message": "Command takeoff to the set altitude. Confirm the launch area is clear.",
         "button": "Take off"
       }
     },
@@ -7553,7 +7461,6 @@
       "effect": "Lands at the current position",
       "confirm": {
         "title": "Land vehicle",
-        "message": "Command the vehicle to land at its current position. Keep monitoring until landed telemetry confirms it is safe to disarm.",
         "button": "Land"
       }
     },
@@ -7562,7 +7469,6 @@
       "effect": "Flies to home and lands",
       "confirm": {
         "title": "Return to Home",
-        "message": "Command the vehicle to return to the launch position and land?",
         "button": "Return Home"
       }
     },
@@ -7592,8 +7498,6 @@
       "label": "Kill Motors",
       "effect": "Immediately cuts all motors",
       "confirm": {
-        "title": "Kill switch",
-        "message": "This will IMMEDIATELY CUT ALL MOTORS. The drone will fall. This is an emergency-only action. Are you absolutely sure?",
         "button": "I understand, proceed"
       }
     },
@@ -7622,15 +7526,9 @@
       "effect": "기체를 선택한 비행 모드로 전환합니다"
     },
     "reason": {
-      "noFcLink": "No flight-controller link",
       "alreadyArmed": "Already armed",
       "notArmed": "Needs armed",
       "alreadyDisarmed": "Already disarmed",
-      "modeUnavailable": "Mode unavailable on this firmware",
-      "noAutonomousNav": "Autonomous flight unavailable",
-      "stateError": "State unavailable",
-      "noCharges": "No charges remaining",
-      "commandRejected": "The vehicle did not accept the command",
       "linkStale": "Link stale: sent without confirmation of receipt",
       "changedSincePrompt": "The vehicle changed while the confirmation was open. Nothing was sent.",
       "noPausedMission": "No paused mission",
@@ -7669,8 +7567,6 @@
     },
     "modeChange": {
       "confirm": {
-        "title": "{mode}(으)로 전환",
-        "message": "비행 컨트롤러를 {mode}(으)로 전환합니다.",
         "button": "모드 전환"
       }
     },
@@ -7695,17 +7591,7 @@
     },
     "flyHere": {
       "label": "Fly Here",
-      "effect": "Flies to the chosen map point at the set altitude",
-      "refused": {
-        "bad_args": "Fly Here refused: the point or altitude is not valid",
-        "not_armed": "Fly Here refused: the drone is not armed",
-        "landed": "Fly Here refused: the drone is on the ground",
-        "tuning": "Fly Here refused: a setup step is running",
-        "no_home": "Fly Here refused: the drone has no home position yet",
-        "launching": "Fly Here refused: the drone is still taking off",
-        "control_mode": "Fly Here refused: the flight controller has control",
-        "failsafe": "Fly Here refused: the drone is in a failsafe return or landing; change mode first"
-      }
+      "effect": "Flies to the chosen map point at the set altitude"
     }
   },
   "skillBindings": {
@@ -7872,7 +7758,6 @@
   },
   "cockpitQuickSettings": {
     "close": "Close",
-    "title": "Quick settings",
     "subtitle": "Adjust extension parameters and the active vision model",
     "subtitleFocused": "Adjust this extension's parameters",
     "noDrone": "No drone selected",
@@ -8224,13 +8109,8 @@
     "roleEoWide": "EO Wide",
     "roleIr": "Thermal",
     "roleSplit": "Split",
-    "roleDown": "Belly",
-    "camera": "Camera {n}",
     "switching": "Switching…",
-    "pipToggle": "Picture-in-picture",
-    "pipShow": "Show picture-in-picture",
     "pipHide": "Hide picture-in-picture",
-    "pipUnavailable": "Picture-in-picture needs two or more live streams",
     "pipConnecting": "Connecting…",
     "pipNoSignal": "No signal",
     "pipRetry": "Retry",
@@ -9147,44 +9027,19 @@
   },
   "hud": {
     "target": {
-      "track": "TRACK {pct}%",
-      "lock": "LOCK #{id} {pct}%",
-      "acquiring": "ACQUIRING #{id}",
-      "coast": "COAST {s} s",
       "searching": "SEARCHING",
-      "searchingBearing": "SEARCHING · {deg}°",
       "lost": "LOST",
-      "hold": "HOLD · {reason}",
       "holdBare": "HOLD",
-      "followStale": "FOLLOW STALE",
-      "est": "{range} m EST",
-      "gt": "GT {cls} #{id}",
-      "occl": "{pct}% OCCL",
-      "candidate": "{cls} {pct}%",
-      "tracked": "{cls} #{id}",
-      "uncertain": "{tag} ?",
-      "menuFollow": "Follow",
-      "menuLock": "Lock"
-    },
-    "toast": {
-      "reacquired": "Re-acquired #{id} · {sim} · {gap} s gap"
+      "gt": "GT {cls} #{id}"
     },
     "rail": {
       "label": "Follow controls",
       "follow": "FOLLOW",
-      "tracking": "TRACKING",
       "stopFollow": "Stop following",
       "strict": "STRICT",
       "smart": "SMART",
-      "reacquire": "Re-acquire mode",
-      "camSwap": "{a} ⇄ {b}",
       "rec": "REC",
       "stop": "STOP",
-      "hold": "HOLD",
-      "rtl": "RTL",
-      "land": "LAND",
-      "more": "MORE",
-      "modeNotApplied": "Re-acquire mode not applied",
       "pending": "Applying"
     },
     "range": {
@@ -9212,30 +9067,16 @@
     "lock": {
       "following": "Following",
       "acquiring": "Acquiring",
-      "coasting": "Coasting {s} s",
       "searching": "Searching",
-      "holding": "Holding · {reason}",
       "holdingBare": "Holding",
       "lost": "Lost",
-      "reacquired": "Re-acquired · {sim}",
-      "locked": "Locked",
-      "uncertain": "Uncertain",
-      "tracking": "Tracking",
       "untracked": "Untracked",
-      "notInView": "Not in view",
       "waitingFeed": "Waiting for feed",
       "release": "Release target",
       "conf": "conf",
       "targetFallback": "TARGET"
     },
     "nav": {
-      "dr": "DR",
-      "ext": "EXT NAV",
-      "gps": "GPS {fix}·{sats}",
-      "gpsNoSats": "GPS {fix}",
-      "flow": "FLOW",
-      "stale": "NAV —",
-      "chipLabel": "Navigation source",
       "q": {
         "good": "GOOD",
         "fair": "FAIR",
@@ -9248,72 +9089,10 @@
         "noFlow": "NO FLOW",
         "drift": "DRIFT"
       },
-      "fix": {
-        "none": "NO FIX",
-        "2d": "2D",
-        "3d": "3D",
-        "dgps": "DGPS",
-        "rtkFloat": "RTK FLT",
-        "rtkFixed": "RTK FIX"
-      },
-      "src": {
-        "0": "None",
-        "1": "Baro",
-        "2": "Rangefinder",
-        "3": "GPS",
-        "4": "Beacon",
-        "5": "OpticalFlow",
-        "6": "ExternalNav",
-        "7": "WheelEncoder",
-        "unknown": "—"
-      },
-      "popoverTitle": "Navigation sources",
-      "set": "Set {n}",
-      "posxy": "POSXY",
-      "velxy": "VELXY",
-      "yaw": "YAW",
-      "active": "ACTIVE",
-      "useSet": "Use set {n}",
-      "holdToSwitch": "Hold to switch to set {n}",
-      "switching": "Switching…",
-      "switchFailed": "Source set switch failed: {reason}",
-      "switched": "EKF source set {n} active",
-      "extnav": "External nav",
-      "odomRate": "{hz} Hz odometry",
-      "gpsReadout": "GPS fix {fix} · {sats} sats · HDOP {hdop}",
-      "flags": "EKF flags",
-      "flagVelH": "VEL H",
-      "flagPosRel": "POS REL",
-      "flagPosAbs": "POS ABS",
-      "flagConstPos": "CONST POS",
-      "flagGlitch": "GPS GLITCH",
-      "noFlags": "none",
-      "autoSwitch": "Vision-nav switches sets automatically; a manual switch may be overridden.",
-      "paramsUnknown": "Source parameters not loaded",
-      "close": "Close"
+      "popoverTitle": "Navigation sources"
     },
     "radar": {
-      "clear": "CLEAR",
-      "caution": "CAUTION",
-      "danger": "DANGER",
-      "header": "LIDAR {hz} Hz",
-      "noScan": "SCAN —",
-      "scale": "{m} m",
-      "scaleAuto": "AUTO {m} m",
-      "cycleScale": "Change radar range"
-    },
-    "map": {
-      "local": "LOCAL · N/E m",
-      "fcPos": "FC POS",
-      "toastLocal": "Minimap: local frame (no GNSS position)",
-      "origin": "ORIGIN",
-      "modeAuto": "AUTO",
-      "modeLocal": "LOCAL",
-      "modeMap": "MAP",
-      "modeLabel": "Minimap frame",
-      "zoomIn": "Zoom in",
-      "zoomOut": "Zoom out",
-      "scaleBar": "{m} m"
+      "clear": "CLEAR"
     },
     "mapTab": {
       "title": "Map",
@@ -9369,51 +9148,6 @@
       "unreachable": "DETECTOR UNREACHABLE"
     }
   },
-  "cockpitLayers": {
-    "chip": {
-      "arUnavailable": "AR unavailable",
-      "arApprox": "AR ≈",
-      "depthUnavailable": "Depth unavailable",
-      "depthUnscaled": "Depth unscaled",
-      "surfacesUnavailable": "Surfaces unavailable",
-      "obstaclesUnavailable": "Obstacles unavailable",
-      "targetsUnavailable": "Targets unavailable"
-    },
-    "cycleHint": "Data layers: Full, Route, Off (O)",
-    "levelAria": "Data layers: {level}",
-    "menuAria": "Data layer switches",
-    "level": {
-      "full": "Full",
-      "route": "Route",
-      "off": "Off",
-      "instruments": "Instruments"
-    },
-    "layer": {
-      "depth": "Depth",
-      "surfaces": "Surfaces",
-      "obstacles": "Obstacles",
-      "targets": "Targets",
-      "ar_route": "Route",
-      "ar_motion": "Motion",
-      "centre_marks": "Centre marks",
-      "instruments": "Flight instruments"
-    },
-    "depthOptions": "Depth",
-    "depthStyle": {
-      "solid": "Solid",
-      "outline": "Outline"
-    },
-    "depthRange": {
-      "2": "2 m",
-      "5": "5 m",
-      "off": "Off"
-    },
-    "detections": "Detections",
-    "noDetections": "No detections on this camera.",
-    "model": "Model",
-    "engine": "Engine",
-    "visionForced": "Targets, depth and surfaces stay on while this view is open."
-  },
   "aircraftSetup": {
     "title": "Aircraft setup",
     "description": "Calibration, initial tune and the ADOS Pilot hand-over, run by the drone's agent. Each step can be run again on its own.",
@@ -9465,51 +9199,8 @@
       "storage": "Companion storage {pct}% full",
       "pilotStale": "ADOS Pilot not answering"
     },
-    "battery": {
-      "title": "Battery: charge, time to the return reserve, and the reserve marker",
-      "aria": "Battery {pct}%, {left} to the return reserve"
-    },
-    "link": {
-      "title": "Link",
-      "rssi": "RSSI {v}",
-      "ok": "Live",
-      "age": "{age} ago",
-      "reducedRate": "Reduced update rate (radio)"
-    },
-    "controller": {
-      "lost": "Controller lost",
-      "connected": "Controller"
-    },
     "menu": {
-      "view": "View",
-      "cameras": "Cameras",
-      "controls": "Controls",
-      "palette": "Command palette",
-      "quickSettings": "Extension settings",
-      "editControls": "Edit controls",
-      "immersive": "Immersive (fullscreen)",
-      "leaveImmersive": "Leave fullscreen",
-      "exit": "Exit flight screen"
-    },
-    "camera": {
-      "mode": "Capture mode",
-      "photo": "Photo",
-      "video": "Video",
-      "takePhoto": "Take photo",
-      "startVideo": "Start recording",
-      "stopVideo": "Stop recording",
-      "zoom": "Zoom {z}x",
-      "settings": "Camera settings",
-      "noPicture": "No live picture to capture",
-      "demoFeed": "Demo feed",
-      "offline": "No video",
-      "gimbal": "Gimbal",
-      "gimbalDir": {
-        "up": "Tilt up (hold)",
-        "down": "Tilt down (hold)",
-        "left": "Pan left (hold)",
-        "right": "Pan right (hold)"
-      }
+      "exitToOverview": "Exit to Overview"
     },
     "row": {
       "d": "Distance from home",
@@ -9519,17 +9210,8 @@
       "agl": "Height above the ground"
     },
     "card": {
-      "roledescription": "Switchable card",
-      "switch": "Card",
-      "map": "Map",
-      "attitude": "Attitude radar",
-      "obstacles": "Obstacle radar",
-      "noObstacles": "No obstacle sensor",
       "attitudeAria": "Pitch {pitch} degrees, roll {roll} degrees, heading {hdg} degrees",
       "attitudeNone": "No attitude"
-    },
-    "follow": {
-      "rangeDetail": "Range detail"
     },
     "fly": "Fly",
     "flyTitle": "Open the flight screen"

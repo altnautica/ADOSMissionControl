@@ -27,7 +27,7 @@
 
 import { useCallback } from "react";
 import { create } from "zustand";
-import { useTranslations } from "next-intl";
+import { specString } from "@/lib/cockpit/spec-strings";
 import {
   startRecording as startVideoRecording,
   stopRecording as stopVideoRecording,
@@ -89,7 +89,6 @@ export function useFlightRecordingStartedAt(droneId: string): number | null {
 }
 
 export function useFlightRecording(droneId: string): FlightRecording {
-  const t = useTranslations("cockpit.band");
   const { toast } = useToast();
   const videoRecording = useVideoStore((s) => s.isRecording);
   const telemetryStamp = useButtonTelemetryRecordingStore((s) => s.startedAt[droneId] ?? null);
@@ -142,8 +141,8 @@ export function useFlightRecording(droneId: string): FlightRecording {
         }
       }
     }
-    if (failed) toast(t("recStopFailed"), "error");
-  }, [droneId, t, toast]);
+    if (failed) toast(specString("cockpit.toast.recording_failed"), "error");
+  }, [droneId, toast]);
 
   const toggle = useCallback(() => {
     if (isRecording) void stop();

@@ -23,7 +23,7 @@
 
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NextIntlClientProvider, useTranslations } from "next-intl";
+import { NextIntlClientProvider } from "next-intl";
 
 import messages from "../../../../locales/en.json";
 import { useCockpitAlertList } from "@/components/cockpit/CockpitAlerts";
@@ -37,15 +37,12 @@ import { TELEMETRY_STALE_MS } from "@/lib/telemetry/freshness";
 import { LINK_LOST_MS, LINK_STALE_MS } from "@/components/cockpit/band/link-state";
 import { specString } from "@/lib/cockpit/spec-strings";
 
-const A = messages.cockpit.alerts;
-
 /** Every alert the list holds, critical ones in the assertive region. */
 function AlertProbe({ droneId }: { droneId: string }) {
-  const t = useTranslations("cockpit.alerts");
   const { alerts, label } = useCockpitAlertList(droneId);
   const row = (a: (typeof alerts)[number]) => (
     <div key={`${a.id}:${a.detail ?? ""}`} data-testid={`cockpit-alert-${a.id}`} data-level={a.level}>
-      <span>{t(`level.${a.level}`)}: </span>
+      <span>{specString(`alert.level.${a.level}`)}: </span>
       {label(a)}
     </div>
   );
@@ -152,7 +149,7 @@ describe("cockpit alert stack", () => {
     expect(el!.closest("[aria-live]")?.getAttribute("aria-live")).toBe("assertive");
     // Shared alert ids read their title from the spec, the same on every surface.
     expect(el!.textContent).toContain(specString("alert.batt_crit"));
-    expect(el!.textContent).toContain(A.level.critical);
+    expect(el!.textContent).toContain(specString("alert.level.critical"));
   });
 
   it("distinguishes low from critical under the operator's bands", () => {
@@ -272,7 +269,9 @@ describe("cockpit alert stack", () => {
     drone.heartbeat(true);
     act(() => useDroneStore.setState({ systemStatus: 6 }));
     const { container } = renderAlerts("drone-emerg");
-    expect(alertEl(container, "fcState")?.textContent).toContain(A.fcEmergency);
+    const text = alertEl(container, "fcState")?.textContent;
+    expect(text).toContain(specString("cockpit.status.source.fc_status_text"));
+    expect(text).toContain(specString("alert.fc_state.emergency"));
   });
 
   it("warns on a frozen picture and on a sub-3D fix while armed", async () => {
@@ -305,6 +304,7 @@ describe("cockpit alert stack", () => {
     const prearm = alertEl(container, "prearm");
     expect(prearm?.getAttribute("data-level")).toBe("advisory");
     expect(prearm?.textContent).toContain("Compass not calibrated");
+    expect(prearm?.textContent).toContain(specString("alert.prearm"));
   });
 
   it("orders critical before warning before advisory", async () => {

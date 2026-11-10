@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import messages from "../../../../locales/en.json";
 import { WhatsLockedChip } from "@/components/vision/WhatsLockedChip";
 import { parseFollowState } from "@/lib/hud/nav-types";
@@ -110,8 +111,8 @@ describe("WhatsLockedChip", () => {
     seedBatch(7, "locked");
     designateTrack7();
     render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText("PERSON · #7")).toBeTruthy();
-    expect(screen.getByText("Locked")).toBeTruthy();
+    expect(screen.getByText(specString("lock.who", { label: "PERSON", id: 7 }))).toBeTruthy();
+    expect(screen.getByText(specString("lock.locked"))).toBeTruthy();
     // Confidence comes from the LIVE detection (0.8), not the click-time copy.
     expect(screen.getByText("80%")).toBeTruthy();
   });
@@ -120,7 +121,7 @@ describe("WhatsLockedChip", () => {
     seedBatch(7, "uncertain");
     designateTrack7("car");
     render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText("Uncertain")).toBeTruthy();
+    expect(screen.getByText(specString("lock.uncertain"))).toBeTruthy();
   });
 
   it("shows the tracker's Lost state while the feed is still FRESH", () => {
@@ -134,7 +135,7 @@ describe("WhatsLockedChip", () => {
     seedBatch(3, "locked", 0);
     designateTrack7();
     render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText("Not in view")).toBeTruthy();
+    expect(screen.getByText(specString("lock.not_in_view"))).toBeTruthy();
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.queryByText("87%")).toBeNull();
   });
@@ -144,7 +145,7 @@ describe("WhatsLockedChip", () => {
     seedStreams(batch("uvc-0", 3, "locked", 100), batch("uvc-1", 7, "locked"));
     designateTrack7();
     render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText("Not in view")).toBeTruthy();
+    expect(screen.getByText(specString("lock.not_in_view"))).toBeTruthy();
     expect(screen.queryByText("Locked")).toBeNull();
   });
 
@@ -186,11 +187,11 @@ describe("WhatsLockedChip", () => {
     designateTrack7();
     setFollow({ phase: "coasting", track_id: 7, coast_remaining_s: 1.43 });
     const { unmount } = render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText("Coasting 1.4 s")).toBeTruthy();
+    expect(screen.getByText(specString("lock.coasting", { s: "1.4" }))).toBeTruthy();
     unmount();
     setFollow({ phase: "holding", track_id: 7, hold_reason: "HOLD_NO_RANGE" });
     render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText("Holding · No range")).toBeTruthy();
+    expect(screen.getByText(specString("lock.holding", { label: "No range" }))).toBeTruthy();
   });
 
   it("ignores a stale follow state", () => {
@@ -198,7 +199,7 @@ describe("WhatsLockedChip", () => {
     designateTrack7();
     setFollow({ phase: "following", track_id: 7 }, 2500);
     render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText("Locked")).toBeTruthy();
+    expect(screen.getByText(specString("lock.locked"))).toBeTruthy();
   });
 
   it("reads Re-acquired with the similarity for 4 s after the event", () => {
@@ -210,7 +211,7 @@ describe("WhatsLockedChip", () => {
         .pushFollowEvent(DRONE, { topic: "follow.reacquired", trackId: 7, similarity: 0.862, gapS: 1.8 });
     });
     render(<WhatsLockedChip droneId={DRONE} />);
-    expect(screen.getByText("Re-acquired · 0.86")).toBeTruthy();
+    expect(screen.getByText(specString("lock.reacquired", { sim: "0.86" }))).toBeTruthy();
   });
 
   it("keeps the stale-feed reason above every follow word", () => {

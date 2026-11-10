@@ -10,6 +10,7 @@ vi.mock("next-intl", () => ({
 }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ toast: toastSpy }) }));
 
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useVideoStreams } from "@/hooks/use-video-streams";
 import { useVideoStreamsStore } from "@/stores/video-streams-store";
 import { useVideoStore } from "@/stores/video-store";
@@ -203,7 +204,7 @@ describe("useVideoStreams", () => {
     expect(spy).toHaveBeenCalledWith("/dev/video1");
     expect(useVideoStreamsStore.getState().activeStream(DRONE)?.id).toBe("/dev/video0");
     expect(useVideoStreamsStore.getState().switchingByDrone[DRONE]).toBeFalsy();
-    expect(toastSpy).toHaveBeenCalledWith("switchFailed:Thermal", "error");
+    expect(toastSpy).toHaveBeenCalledWith(specString("cockpit.toast.stream_switch_failed"), "error");
     // The revert is not itself a user switch: no second switchCamera fires.
     expect(spy).toHaveBeenCalledTimes(1);
   });
