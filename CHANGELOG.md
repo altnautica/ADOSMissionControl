@@ -6,46 +6,151 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- Flight actions: a return or landing counts as commanded from Mission Control only after the vehicle accepts it and only until it flies something else, so a later failsafe return still refuses Pause; Land Here, the fleet recall and the direct-FC command sink record theirs the same way.
-- Fly here: the send step uses the route that was offered, decided again at the press; the flight-controller route never switches the mode and only repositions in GUIDED, else it is refused.
-- Disarm needs a known landed state on every route (a fresh pilot state, else the flight controller's landed state); unknown or airborne is refused with the shared refusal text. The demo sends the landed state.
-- Cockpit left column, pre-flight, controller tour and tips ignore a pilot state older than 2 s; an armed vehicle whose landed state is unknown shows Land.
-- Launch: the pilot launch waits for the pre-flight checklist and the first-arm gate; every Abort shows the pilot's refusal; "Launch here" is offered only with a cockpit on screen and a request older than 5 s is dropped.
-- Cockpit Menu: Flight modes opens the Mode sheet and the navigation source popover opens from the Menu; the Menu lists only items hidden from the bar; Exit reads "Exit to Overview".
-- Status pill: pilot and agent items only for a drone whose agent is paired; frozen video is a video item; the link text uses the contrast text colour.
-- Tips: a tip with no room is skipped, not marked seen; no tip while the status list, palette, binding editor, quick settings or a skill confirm is open; tips for the top bar sit below it.
-- Controller: Square and R1/L1 use the vehicle camera order; the controller tour mutes D-pad and Cross; the gimbal pad drags from its centre and never handles Space.
-- Vehicle camera: a refused capture or zoom shows the failure instead of a frame grab; zoom steps in and out; capture sends a sequence number from 1.
-- Demo: the shell modals show again (the demo fleet does not hold them); the demo pilot can pin a failsafe, a setup step and Fly Here; the demo vehicle has a camera; `__adosDemo.failAgentPolls(n)`; pins reset per drone.
-- Flight screen words: confirm dialogs, alerts, refusals, navigation source, targets, radar, minimap, layers, camera and card labels come from the shared cockpit strings.
-- Aircraft setup offers stored by an earlier build are kept; a vehicle that loses its link while armed keeps holding the shell modals for 5 minutes.
-- Cockpit status pill: the shared rules decide it. A paired agent with no fresh pilot state reads "Pilot not answering" (never "All systems OK"), an agent that stops answering is critical, a controller lost in the air is a warning, a failing pre-flight check shows on the ground, and storage reads "<n> % used".
-- Cockpit flow: when the pilot state goes stale, the countdowns, gate ring, handover banner and sticks-with line hide and AGL reads "—"; both the low-battery return and link-loss countdowns are critical; the chip reads TAKING OFF with an Abort during a launch and offers Resume for a mission paused by a stick takeover; an FC failsafe shows FAILSAFE on the chip; the FC mode change banner names its cause in words.
-- Fly here: map menus and the local map offer it by the shared route rule (the pilot while fresh, under ADOS control and outside a failsafe; else the flight controller in GUIDED while airborne); Pause reads the pilot's own failsafe flag while its state is fresh.
-- Cockpit chrome: panels, red text on panels and STOP's fill come from the shared tokens; the left column shows short labels under the icons; the video area uses the shared state words with a retry; the link cell shows the age of the newest vehicle frame (signal in its popover); the battery shows time to reserve; hold controls say "Keep holding" after a short press; distances and signed readouts use one format (never "-0.0").
-- Cockpit tips stay off the alert stack and wait while an alert banner is up; Split keeps its divider per vehicle; the minimap card shows no title over its own header; local-map zoom buttons are 48 px targets; scrims and popovers stay below the top bar.
-- Maps: the "NO GPS FIX" / "POSITION STALE" notice sits under the GPS badge instead of the map's centre; the Split divider position is kept per vehicle with the view, clamped to the shared range.
-- Cockpit top bar: items move into the Menu in the shared order; STOP is always enabled and always opens the 3 s hold; the Menu lists its sections in the shared order with a per-layer list; the controller cell says "No controller" until a pad has been seen.
-- Cockpit card, map and follow: the bottom-left card switches by swipe and dots; Split has a draggable divider (30–70 %); the follow strip sits under the top bar; flow banners stack in one column; a narrow bottom row shows distance and height only.
-- Cockpit right column: a drag-to-aim gimbal pad; the column drops items in the shared order when short; the camera sheet opens below the top bar.
-- Cockpit tips and controller tour: one-line tips on the ground, never over STOP; the controller tour is a card without a scrim; Settings has Reset tips and Replay controller tour.
-- Cockpit pre-flight: the Menu's pre-flight list is the shared checklist, and "Checks done" passes the first-arm gate.
-- Skills: pilot refusals read as the shared sentences (`Not ready: <item>` for a readiness block, `Refused: <code>` for an unknown code) and command results as the shared MAV_RESULT words; take-off altitude limits (1–120 m, default 3 m), every confirm hold and the controller's Options button come from the shared cockpit spec; the Fly Here dialog holds for the spec's time.
-- Pre-flight: the first arm of a session waits until the spec checklist is passed (no item failing; warnings accepted by passing), as on the drone's own cockpit and Android; later arms of the session go ahead directly.
-- Controller: while the controller tour shows, pad buttons drive the tour and never fire a bound skill.
-- Cockpit camera: photo and zoom follow one order (camera extension, then the vehicle's MAVLink camera, then the shown video: a saved frame and digital ×1/×2/×4), with the spec's "Photo saved" and "No video" texts.
-- MAVLink camera: Mission Control asks the autopilot, and any camera component that announces itself, for CAMERA_INFORMATION once per connection; a camera advertising still capture or zoom takes the cockpit's Photo (MAV_CMD_IMAGE_START_CAPTURE) and Zoom (MAV_CMD_SET_CAMERA_ZOOM, one step), addressed to that camera's component, before the shown-video fallback.
-- Demo: the demo pilot mirrors and drives the demo drone (a mission in AUTO reads MISSION · WP n/N; Pause, Resume, Land, Return home and Kill act on the vehicle; MISSION PAUSED is reachable); `__adosDemo.freezeTelemetry()` also stalls the pilot, and `__adosDemo.blockNavStream(true)` shows the reduced-rate radio fallback.
-- Maps: the local-frame map (no GNSS fix) offers Fly here on right-click and long-press, converting the point through the EKF origin; touch long-press on every map follows the spec's press time; on the ground, Launch here sends the point to the Launch sheet as its go-to.
-- Aircraft setup: the offer to set up a new flight controller is a small banner with Open and Later, shown once per flight controller on this device, on the ground and never over the flight screen. The Meet ADOS Pilot step shows its step state like every other step.
-- Cockpit: the shared chip, status-pill, refusal and tips case files run against Mission Control's copies of the shared modules; layer chips start from the spec's words.
-- Shell: on the flight screen Ctrl+K opens only the cockpit's command palette.
-- Cockpit sheets: confirm dialogs and every flight-screen sheet open below the top bar over a translucent scrim, so the picture stays visible and STOP takes the first press; the Launch sheet opens beside the left column at full width (Hold to launch was unreachable); one sheet at a time, and Escape or a press outside closes it. Toasts on the flight screen stack above the bottom row, clear of the card, the skills chip and STOP. The controls row says where the sticks go: with ADOS Pilot in control it names that route and the live input session, and the FC stick switch shows only when the sticks reach the flight controller. The link-loss countdown names the configured action (Return home, Land, Hold), and the low-battery return shows its cancel warning inline; both countdowns use the critical colour.
-- Cockpit: the contextual tips queue (one tip at a time, on the ground and disarmed, never while a sheet, menu or the controller tour is open), remembered per device in `altcmd:cockpit-tips` with a reset; the controller tour is remembered once per device rather than per pad (earlier per-pad flags carry over) and can be replayed.
-- Map: the right-click menu offers Fly here whenever the drone's ADOS pilot accepts a go-to (live pilot state, ADOS control, flying), whatever the flight-controller mode; without the pilot it stays limited to the guided modes.
-- Flight actions: Pause is refused while the flight controller flies a failsafe return or landing (a return or landing commanded from Mission Control is not one), on the pilot and flight-controller routes alike, so a pause can no longer cancel a failsafe. Disarm is offered only on the ground, and the arm key never turns into Disarm in the air.
-- Shell: the welcome, disclaimer and What's New modals wait while a cockpit is on screen or any vehicle is armed, and open once both clear.
-- Cockpit: the flight-state chip uses the shared chip rules and inputs the drone's own cockpit uses (mission waypoint, ETA and completion from the pilot state, `TUNING · <step>`, `NO PILOT` before the first pilot state); the cockpit spec copy moves to `src/lib/cockpit-spec/` beside the shared HUD modules (spec text, refusal texts, chip inputs, battery, link loss, status pill, tips, Fly here offer). A controller-lost hold lights the DS4 failsafe colour.
+This release covers everything since 0.62.0: fifty-four commits, all on
+2026-11-10. It is a second pass over the cockpit that 0.62.0 rebuilt, with
+three threads running through it.
+
+The first is one behaviour on every cockpit. The flight-state chip, the status
+pill, pilot refusals, the tips queue, the link-loss line, battery time to
+reserve and the Fly here offer now run on modules shared with the drone's own
+cockpit and the Android app, checked against the same case files. Every
+flight-screen word, confirm hold, take-off limit and Menu order comes from the
+shared cockpit spec, so a refusal reads "Not ready: Controller" instead of a
+raw code and the link-loss countdown names the configured action.
+
+The second is safety around the flight screen. Pause is refused while the
+flight controller flies a failsafe return or landing, Disarm needs a known
+landed state on MAVLink flight controllers, STOP is always enabled and opens a
+sheet with one 3 s hold, and every controller binding for STOP waits for that
+full hold. The welcome, disclaimer and What's New dialogs wait until no cockpit
+is on screen and no vehicle is armed. Sheets open below the top bar so STOP
+always takes the first press.
+
+The third is first use without interruptions: one-line contextual tips on the
+ground, a controller tour card without a scrim that can be replayed, a small
+banner to set up a new flight controller, and a pre-flight checklist that
+gates the first arm of a session.
+
+### Added
+
+- **Contextual tips.** One-line tips anchored to the status pill, chip, layer
+  button, STOP, skills chip, card and gimbal pad. One at a time, on the ground
+  and disarmed only, never over STOP, the top bar, the left column, the chip or
+  an alert, and never while a sheet, menu or the controller tour is open. A tip
+  hidden for a moment by a banner or sheet keeps its turn. Settings › General
+  has Reset tips.
+- **Controller tour card.** The tour is a card without a scrim, remembered
+  once per device instead of per pad (earlier flags carry over), driven by the
+  pad while it shows, and replayable from Settings › Controls.
+- **Aircraft setup banner.** A new flight controller gets a small "Set up this
+  aircraft" banner with Open and Later, once per controller on this device, on
+  the ground and never over the flight screen.
+- **Pre-flight gate.** The Menu's Pre-flight row opens the shared checklist as
+  a sheet. The first arm of a session, and the pilot launch, wait until no item
+  fails; "Checks done" passes the gate, and the arm confirm names the open
+  items. On-screen sticks count as a controller where they are shown.
+- **Vehicle camera.** Mission Control asks for CAMERA_INFORMATION once per
+  connection. Photo and Zoom try a camera extension, then a MAVLink camera
+  that advertises capture or zoom, then the shown video (a saved frame and
+  digital ×1/×2/×4), with "Photo saved" and "No video" texts. A refused
+  capture or zoom shows the failure; a capture still in progress is never
+  reported as failed.
+- **Gimbal pad.** A drag-to-aim pad in the right column: release stops, a tap
+  recentres, arrow keys aim, Enter recentres, Space is never handled.
+- **Fly here on more maps.** The local-frame map (no GNSS fix) offers Fly here
+  on right-click and long-press through the EKF origin. On the ground, a long
+  press offers Launch here, which prefills the Launch sheet's go-to.
+- **Demo states.** The demo pilot mirrors the demo drone (missions, Pause,
+  Resume, Land, Return home, Kill, Follow-Me from the skill bar), can pin a
+  failsafe, a setup step and Fly here, and the demo vehicle has a camera.
+  `__adosDemo.freezeTelemetry()` stalls the pilot,
+  `__adosDemo.blockNavStream(true)` shows the radio fallback and
+  `__adosDemo.failAgentPolls(n)` drops agent polls.
+
+### Changed
+
+- **Shared chip and pill.** The chip has two lines (state, then details and
+  control mode) and shows MISSION · WP n/N with ETA, MISSION COMPLETE,
+  `TUNING · <step>`, TAKING OFF with Abort, Resume after a stick takeover,
+  FAILSAFE and NO PILOT. The pill reads "Pilot not answering" for a paired
+  agent with no fresh pilot state, treats an unreachable agent as critical,
+  lists the flight controller's own failsafe ("Failsafe: <cause>") and a
+  failing pre-flight check, and reports storage as "<n> % used" (warning at
+  90 %, critical at 97 %). The alert list opens below the top bar with an
+  "Alerts" heading and severity glyphs.
+- **Shared words.** Confirm dialogs, alerts, refusals, command results, the
+  navigation source, layers, radar, minimap, camera and card labels come from
+  the shared cockpit strings. Skill settings show the manifest's label. Agent
+  refusals that carry a code show the shared text for that code.
+- **Top bar and Menu.** Items move into the Menu in the shared order, and the
+  Menu lists only hidden items, then its sections in the shared order with a
+  per-layer list. Flight modes opens the Mode sheet. Exit reads "Exit to
+  Overview". The controller cell says "No controller" until a pad has been
+  seen.
+- **STOP.** STOP is always enabled. On the flight screen it opens a sheet below
+  the top bar titled "Emergency stop" with one hold button that counts down
+  the 3 s hold, and a warning when the link is stale. Any keyboard or
+  controller binding for STOP runs as that full hold.
+- **Layout.** The bottom-left card switches by swipe and dots; the Map view's
+  video sits in that card; Split has a draggable divider (30 to 70 %) kept per
+  vehicle; the follow strip sits under the top bar; the right column drops
+  items in the shared order when short; toasts stack above the bottom row.
+- **Sheets.** Every flight-screen sheet opens below the top bar over a
+  translucent scrim, one at a time, closed by Escape or a press outside. The
+  Launch sheet takes 1 to 120 m (default 3 m) and has Abort.
+- **Chrome.** Panels, critical text and STOP use the shared tokens; the left
+  column shows short labels; the link cell shows the age of the newest frame
+  with signal in its popover; the battery shows time to reserve; hold controls
+  say "Keep holding" after a short press; readouts never show a negative zero.
+- **Holds and bindings.** Take control, hand to FC, VTOL transition, Fly here
+  and STOP holds, and the controller's Options button, come from the spec.
+- **Map menu Fly here.** Offered whenever the ADOS pilot accepts a go-to
+  (fresh pilot state, ADOS control, outside a failsafe), whatever the flight
+  mode; without the pilot it is a flight-controller reposition offered only in
+  GUIDED.
+- **Landed state.** On connect, after a link restore and after a flight
+  controller reboot, Mission Control asks ArduPilot for EXTENDED_SYS_STATE so
+  the landed state is known.
+- **Shell.** On the flight screen Ctrl+K opens only the cockpit palette.
+
+### Fixed
+
+- **Pause during a failsafe.** Pause is refused while the flight controller
+  flies a failsafe return or landing (ArduPilot and PX4 mode names), on the
+  pilot and flight-controller routes. A return or landing counts as commanded
+  here only once the vehicle accepts it, and every vehicle's own heartbeat is
+  checked.
+- **Disarm.** On MAVLink flight controllers Disarm needs a known landed state
+  and otherwise shows "Landed state unknown"; Betaflight and iNav, which report
+  no landed state, keep the confirm only. The arm key never turns into Disarm
+  in the air.
+- **Shell dialogs over the cockpit.** The welcome, disclaimer and What's New
+  dialogs wait while a cockpit is open or any vehicle is armed (and for 5
+  minutes after an armed vehicle loses its link), then open.
+- **Link-loss countdown.** Names the configured action (Return home, Land,
+  Hold) instead of a generic word; both it and the low-battery return are
+  critical.
+- **Stale pilot state.** Countdowns, the gate ring, the handover banner and
+  AGL hide when the pilot state is older than 2 s, and Fly here falls back to
+  the flight controller route.
+- **Fly here send.** The send uses the route that was offered, decided again
+  at the press.
+- **Launch sheet.** Hold to launch was unreachable at some sizes; the sheet
+  now opens beside the left column at full width.
+- **Alert list.** The status pill's list was clipped by the top bar and could
+  not be read or pressed.
+- **Controller tour.** The press that closes the tour no longer reaches the
+  skill picker.
+- **Map notice.** "NO GPS FIX" and "POSITION STALE" sit under the GPS badge,
+  not at the map's centre.
+
+### Notes
+
+- Tip and tour state is stored in `altcmd:cockpit-tips` and
+  `altcmd:cockpit-controls`; earlier per-pad tour flags and stored aircraft
+  setup offers carry over.
+- Pairs with ADOS Drone Agent 0.109.101 or later for the shared cockpit spec,
+  the pilot failsafe flag and the refusal codes.
 
 ## [0.62.0] - 2026-11-10
 
