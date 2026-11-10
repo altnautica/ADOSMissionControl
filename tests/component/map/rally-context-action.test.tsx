@@ -110,6 +110,7 @@ describe("rally menu item", () => {
     flightMode: "LOITER",
     canRally: false,
     canOrbit: false,
+    pilotGoto: false,
   };
 
   it("is hidden when the FC cannot take a rally upload", () => {
@@ -132,6 +133,7 @@ describe("flight menu items", () => {
     flightMode: "GUIDED",
     canRally: false,
     canOrbit: false,
+    pilotGoto: false,
   };
   const ids = (ctx: MenuContext) => renderHook(() => useMenuItems(ctx)).result.current.map((i) => i.id);
 
