@@ -18,8 +18,8 @@
  * @license GPL-3.0-only
  */
 
-import layersSpec from "@/lib/cockpit/spec/layers.json";
-import viewsSpec from "@/lib/cockpit/spec/views.json";
+import layersSpec from "@/lib/cockpit-spec/layers.json";
+import viewsSpec from "@/lib/cockpit-spec/views.json";
 
 import type { LayerLevel } from "@/stores/cockpit-layers-store";
 

@@ -20,10 +20,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Lock } from "lucide-react";
 
-import ds4Art from "@/lib/cockpit/spec/ds4-art.json";
-import ds4Hotspots from "@/lib/cockpit/spec/ds4-hotspots.json";
-import genericArt from "@/lib/cockpit/spec/gamepad-generic-art.json";
-import genericHotspots from "@/lib/cockpit/spec/gamepad-generic-hotspots.json";
+import ds4Art from "@/lib/cockpit-spec/ds4-art.json";
+import ds4Hotspots from "@/lib/cockpit-spec/ds4-hotspots.json";
+import genericArt from "@/lib/cockpit-spec/gamepad-generic-art.json";
+import genericHotspots from "@/lib/cockpit-spec/gamepad-generic-hotspots.json";
 import { specString } from "@/lib/cockpit/spec-strings";
 import {
   DS4_ACTIONS,

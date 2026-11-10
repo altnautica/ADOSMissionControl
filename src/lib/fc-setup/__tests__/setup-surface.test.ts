@@ -10,7 +10,7 @@ import type { SetupFrame } from "../types";
 
 describe("setup strings and pictures", () => {
   it("bundles every picture the cockpit spec ships", () => {
-    const dir = join(process.cwd(), "src/lib/cockpit/spec/setup-images");
+    const dir = join(process.cwd(), "src/lib/cockpit-spec/setup-images");
     const files = readdirSync(dir)
       .filter((f) => f.endsWith(".svg"))
       .map((f) => f.slice(0, -4))

@@ -9,7 +9,7 @@
  * @license GPL-3.0-only
  */
 
-import layoutSpec from "@/lib/cockpit/spec/layout.json";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 
 export type CockpitWidthClass = "compact" | "medium" | "expanded" | "tv";
 

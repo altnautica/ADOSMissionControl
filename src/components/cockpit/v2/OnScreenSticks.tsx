@@ -15,7 +15,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { useCockpitWidthClass } from "@/hooks/use-cockpit-width-class";
-import layoutSpec from "@/lib/cockpit/spec/layout.json";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import {
   PILOT_INPUT_PERIOD_MS,
   sendPilotInput,

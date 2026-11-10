@@ -26,7 +26,7 @@
  * @license GPL-3.0-only
  */
 
-import ds4 from "@/lib/cockpit/spec/ds4.json";
+import ds4 from "@/lib/cockpit-spec/ds4.json";
 
 export type Ds4Gesture = "press" | "tap" | "hold" | "double_tap" | "analog";
 

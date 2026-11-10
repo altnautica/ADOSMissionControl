@@ -1,6 +1,6 @@
 /**
  * The canonical built-in skill set, exactly the shared cockpit spec's table
- * (`lib/cockpit/spec/builtins.json`). Each built-in is a thin adapter over the
+ * (`lib/cockpit-spec/builtins.json`). Each built-in is a thin adapter over the
  * pilot action (ADOS pilot route) or the protocol call (FC manual, direct
  * link), with the spec's confirm tier and arm gate. FC mode presets are
  * registered for the Mode sheet and the node board but never slotted.

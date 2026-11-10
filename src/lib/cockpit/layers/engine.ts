@@ -42,7 +42,7 @@ import {
 } from "@/lib/hud/layer-layout";
 import { paintOps } from "@/lib/hud/layer-paint";
 import { LAYER_DIM_MS, LAYER_HIDE_MS } from "./layer-spec";
-import cockpitTokens from "@/lib/cockpit/spec/tokens.json";
+import cockpitTokens from "@/lib/cockpit-spec/tokens.json";
 import {
   DEFAULT_CHIP_TEXT,
   type FlightContext,

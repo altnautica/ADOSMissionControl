@@ -6,6 +6,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Cockpit: the flight-state chip uses the shared chip rules and inputs the drone's own cockpit uses (mission waypoint, ETA and completion from the pilot state, `TUNING · <step>`, `NO PILOT` before the first pilot state); the cockpit spec copy moves to `src/lib/cockpit-spec/` beside the shared HUD modules (spec text, refusal texts, chip inputs, battery, link loss, status pill, tips, Fly here offer). A controller-lost hold lights the DS4 failsafe colour.
+
 ## [0.62.0] - 2026-11-10
 
 This release covers everything since 0.61.0: sixty-eight commits between

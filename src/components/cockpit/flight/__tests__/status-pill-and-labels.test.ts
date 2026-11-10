@@ -9,8 +9,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import ds4Hotspots from "@/lib/cockpit/spec/ds4-hotspots.json";
-import genericHotspots from "@/lib/cockpit/spec/gamepad-generic-hotspots.json";
+import ds4Hotspots from "@/lib/cockpit-spec/ds4-hotspots.json";
+import genericHotspots from "@/lib/cockpit-spec/gamepad-generic-hotspots.json";
 import { layoutLeaderLabels, type LeaderInput } from "@/components/config/leader-labels";
 import { pilotAlerts, pillSummary, statusTextAlerts, type PillAlert } from "../StatusPill";
 import { PILOT_STALE_MS } from "@/stores/nav-stream-store";

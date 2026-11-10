@@ -18,7 +18,7 @@
 
 import { useEffect, useMemo, type CSSProperties, type ReactNode, type RefObject } from "react";
 
-import layoutSpec from "@/lib/cockpit/spec/layout.json";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { useFollowingMode } from "@/hooks/use-following-mode";
 import type { CockpitLayoutSize } from "@/hooks/use-cockpit-width-class";
 import type { CockpitViewId } from "@/lib/cockpit/views";

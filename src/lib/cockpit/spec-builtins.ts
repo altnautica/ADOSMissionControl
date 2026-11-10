@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import builtinsSpec from "./spec/builtins.json";
+import builtinsSpec from "@/lib/cockpit-spec/builtins.json";
 import type { ConfirmGesture } from "@/lib/skills/types";
 import type { PilotActionName } from "@/lib/input/pilot-stream";
 

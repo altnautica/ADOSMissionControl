@@ -16,8 +16,8 @@
  * @license GPL-3.0-only
  */
 
-import layoutSpec from "@/lib/cockpit/spec/layout.json";
-import tokens from "@/lib/cockpit/spec/tokens.json";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import tokens from "@/lib/cockpit-spec/tokens.json";
 import type { CockpitWidthClass } from "@/lib/cockpit/width-class";
 import type { CockpitViewId } from "@/lib/cockpit/views";
 

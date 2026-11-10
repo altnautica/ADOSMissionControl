@@ -25,7 +25,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
-import layoutSpec from "@/lib/cockpit/spec/layout.json";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { hasSpecString, specString } from "@/lib/cockpit/spec-strings";
 import { PILOT_SRC, sendPilotAction, takePilotSession, usePilotLinkStore } from "@/lib/input/pilot-stream";
 import { usePadStatusStore } from "@/lib/input/pad-status";

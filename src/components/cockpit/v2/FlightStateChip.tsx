@@ -42,12 +42,12 @@ export function FlightStateChip({
   const [open, setOpen] = useState(false);
   const button = chip.button ? BUTTON_LABEL[chip.button] : undefined;
   const setupLink =
-    chip.button === "setup_link_when_setup_needed" &&
+    chip.button === "setup" &&
     (pilot?.readiness.some((r) => r.id === "setup_needed" && !r.ok) ?? false);
 
   return (
     <>
-      <div className="fs-chip-wrap" data-testid="flight-state-chip" data-chip={chip.id}>
+      <div className="fs-chip-wrap" data-testid="flight-state-chip" data-chip={chip.ruleId}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

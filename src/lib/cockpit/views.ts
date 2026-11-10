@@ -13,7 +13,7 @@
 
 import { create } from "zustand";
 
-import viewsSpec from "@/lib/cockpit/spec/views.json";
+import viewsSpec from "@/lib/cockpit-spec/views.json";
 import type { LayerStackView } from "@/lib/cockpit/layers/layer-spec";
 
 export type CockpitViewId = LayerStackView;

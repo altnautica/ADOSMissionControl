@@ -133,7 +133,7 @@ export interface PilotState {
   linkLossInS: number | null;
   /** What the pilot does when the countdown ends; null from an agent that
    *  does not report it. */
-  linkLossAction: "rth" | "hold" | "land" | null;
+  linkLossAction: "rth" | "rtl" | "hold" | "loiter" | "land" | null;
   /** The FC is flying a VTOL transition (either direction). */
   vtolTransitioning: boolean;
   mission: MissionState | null;
@@ -150,6 +150,8 @@ export interface PilotState {
   aglSource: "rangefinder" | "home" | null;
   /** FC STATUSTEXT at WARNING or worse from the last 30 s, newest first. */
   statustext: FcStatusText[];
+  /** The setup step a tuning flight is on (owner `tuning`), or null. */
+  setupStep: string | null;
 }
 
 /** One FC STATUSTEXT line; severity is MAVLink's (0 emergency … 4 warning). */
@@ -226,7 +228,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     setpointNed: pt3(p.setpoint_ned),
     readiness,
     linkLossInS: num(p.link_loss_in_s),
-    linkLossAction: oneOf(p.link_loss_action, ["rth", "hold", "land"] as const),
+    linkLossAction: oneOf(p.link_loss_action, ["rth", "rtl", "hold", "loiter", "land"] as const),
     vtolTransitioning: p.vtol_transitioning === true,
     mission: parseMission(p.mission),
     inputSession: is && str(is.src) !== null ? { src: is.src as string, label: str(is.label) ?? (is.src as string), session: num(is.session) } : null,
@@ -241,6 +243,7 @@ export function parsePilotState(raw: unknown): PilotState | null {
     aglM: num(p.agl_m),
     aglSource: oneOf(p.agl_source, ["rangefinder", "home"] as const),
     statustext: parseStatusText(p.statustext),
+    setupStep: str(p.setup_step),
   };
 }
 

@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from "react";
 
-import ds4Spec from "@/lib/cockpit/spec/ds4.json";
+import ds4Spec from "@/lib/cockpit-spec/ds4.json";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { canRumble, lightbarColour, lightbarSupported, requestLightbarDevice, rumble, setLightbar } from "@/lib/input/ds4-feedback";
 import { useControlsStore } from "@/stores/controls-store";

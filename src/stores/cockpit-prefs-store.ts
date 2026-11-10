@@ -10,7 +10,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import layoutSpec from "@/lib/cockpit/spec/layout.json";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 
 interface CockpitPrefsState {
   voicePrompts: boolean;

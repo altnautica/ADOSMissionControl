@@ -11,7 +11,7 @@
 
 import { createContext, useContext, type CSSProperties } from "react";
 
-import tokens from "@/lib/cockpit/spec/tokens.json";
+import tokens from "@/lib/cockpit-spec/tokens.json";
 import { flightGrid, type FlightGrid } from "./flight-grid";
 
 export const FlightGridContext = createContext<FlightGrid>(

@@ -8,7 +8,7 @@
  * @license GPL-3.0-only
  */
 
-import strings from "@/lib/cockpit/spec/setup-strings.json";
+import strings from "@/lib/cockpit-spec/setup-strings.json";
 
 const TABLE = strings.strings as Record<string, string>;
 

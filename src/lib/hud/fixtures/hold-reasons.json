@@ -1,0 +1,7 @@
+[
+  { "reason": "blocked", "emitted_by": "crates/ados-pilot/src/core/control/plan.rs" },
+  { "reason": "controller-lost", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
+  { "reason": "lease-revoked", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
+  { "reason": "link-loss", "emitted_by": "crates/ados-pilot/src/core/control.rs" },
+  { "reason": "obstacle-close", "emitted_by": "crates/ados-pilot/src/core/control.rs" }
+]

@@ -42,11 +42,13 @@
   },
   "hold_reason_labels": {
     "blocked": "Blocked",
-    "obstacle-close": "Obstacle close",
-    "input_stale": "CONTROLLER LOST · HOLDING",
+    "controller-lost": "Controller lost",
     "lease-busy": "Another skill has control",
-    "lease-revoked": "Skill stopped"
+    "lease-revoked": "Skill stopped",
+    "link-loss": "Link lost",
+    "obstacle-close": "Obstacle close"
   },
+  "hold_reason_labels_note": "keyed by the exact hold_reason wire string the pilot emits (hyphenated); setup-strings.json pilot.hold_reason.<same key> carries the same text",
   "stale_after_ms": 2000,
   "tap": "open_mode_sheet",
   "mode_sheet": {

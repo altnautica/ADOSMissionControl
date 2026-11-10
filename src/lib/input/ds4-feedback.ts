@@ -13,7 +13,7 @@
  * @license GPL-3.0-only
  */
 
-import ds4 from "@/lib/cockpit/spec/ds4.json";
+import ds4 from "@/lib/cockpit-spec/ds4.json";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
 
 type RumbleSpec = { pulses_ms: number[]; gap_ms: number; strong: number; weak: number };
@@ -70,7 +70,7 @@ export type LightbarState = keyof typeof ds4.lightbar.states;
 export function lightbarState(pilot: PilotState | null, opts: { lowBattery: boolean; linkLost: boolean }): LightbarState {
   const owner = pilot?.owner ?? null;
   const rth = !!pilot?.fcModeName && /RTL|QRTL/i.test(pilot.fcModeName);
-  const failsafe = opts.linkLost || pilot?.holdReason === "input-stale" || pilot?.linkLossInS != null;
+  const failsafe = opts.linkLost || pilot?.holdReason === "controller-lost" || pilot?.linkLossInS != null;
   const cand: Record<LightbarState, boolean> = {
     failsafe,
     low_battery: opts.lowBattery || pilot?.rthCountdownS != null,

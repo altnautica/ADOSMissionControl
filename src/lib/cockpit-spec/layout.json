@@ -32,9 +32,10 @@
       "overflow": {
         "scroll": false,
         "rows": 1,
-        "to_menu_order": ["controller", "nav_source", "link_detail"],
-        "to_menu_note": "when the row runs out of room, items move into the Menu lowest priority first in this order; link_detail is the link's text, its icon stays",
-        "never_move": ["flight_state_chip", "status_pill", "battery", "stop"]
+        "to_menu_order": ["controller", "nav_source", "link_text", "link_icon", "layer_button"],
+        "to_menu_note": "when the row runs out of room, items move into the Menu lowest priority first in this order; link_text is the link's text, link_icon its icon",
+        "never_move": ["flight_state_chip", "status_pill", "battery", "settings", "stop"],
+        "pill_when_short": "the status pill truncates with an ellipsis once every movable item is in the Menu"
       }
     },
     {
@@ -45,7 +46,9 @@
     {
       "id": "right_column",
       "align": "vertical_center",
-      "items": ["shutter", "photo_video_switch", "zoom", "gimbal_pad", "camera_settings"]
+      "items": ["shutter", "photo_video_switch", "zoom", "gimbal_pad", "camera_settings"],
+      "drop_order": ["gimbal_pad", "zoom"],
+      "drop_note": "when the column is too short, items leave it in this order"
     },
     {
       "id": "bottom_left_card",
@@ -59,6 +62,13 @@
     {
       "id": "bottom_right",
       "items": ["skill_picker_chip"]
+    },
+    {
+      "id": "follow_strip",
+      "below": "top_bar",
+      "span": "between_left_and_right_columns",
+      "items": ["follow_controls"],
+      "range_panel": "sheet opened from the strip"
     },
     {
       "id": "center",
@@ -76,12 +86,41 @@
     "new_alert": "flash",
     "flash_until": "acknowledged",
     "press": "open_alert_list",
-    "opening_list_acknowledges": true
+    "opening_list_acknowledges": true,
+    "storage_warn_pct": 90,
+    "storage_crit_pct": 97,
+    "storage_note": "percent of on-board storage used: warning at or above storage_warn_pct, critical at or above storage_crit_pct"
+  },
+  "battery": {
+    "low_fallback_pct": 20,
+    "low_fallback_note": "the low-battery threshold when the flight controller reports none"
+  },
+  "holds_ms": {
+    "take_control": 1500,
+    "hand_to_fc": 1500,
+    "vtol_transition": 1500,
+    "fly_here": 800,
+    "stop": 3000
+  },
+  "holds_note": "every confirm hold reads its duration here; fly_here keeps the value the agent cockpit and Android already use",
+  "map_long_press_ms": 600,
+  "map_long_press_note": "a press held this long without moving on any map (card, full map, split pane) picks a point; right-click does the same with a mouse",
+  "launch": {
+    "alt_min_m": 1,
+    "alt_max_m": 120,
+    "alt_default_m": 3,
+    "goto_default": null
+  },
+  "menu": {
+    "order": ["overflow", "view", "cameras", "layers", "preflight", "modes", "controls", "extension_panels", "setup", "settings", "exit"],
+    "overflow_note": "overflow lists only the top-bar items actually hidden; setup shows only when setup is needed; the kiosk has no exit",
+    "exit_to": { "mission_control": "overview", "android": "home", "agent_cockpit": "dashboard", "kiosk": null }
   },
   "orientation_lock": { "android_flight_screen": "landscape" },
   "orientation_lock_note": "browsers keep the portrait class; Home, Settings and Planner on Android still rotate",
   "legacy_chrome": "none",
   "legacy_chrome_rule": "the flight screen draws no status band, no telemetry strip, no navigation rail and no hint bar; controller button hints appear only inside sheets and menus while a gamepad is active",
+  "tips": "tips.json (non-modal, ground only)",
   "classes": {
     "compact": {
       "orientation": "landscape",

@@ -9,26 +9,26 @@
  * @license GPL-3.0-only
  */
 
-import setupStrings from "@/lib/cockpit/spec/setup-strings.json";
-import accelBack from "@/lib/cockpit/spec/setup-images/accel_back.svg";
-import accelLeft from "@/lib/cockpit/spec/setup-images/accel_left.svg";
-import accelLevel from "@/lib/cockpit/spec/setup-images/accel_level.svg";
-import accelNoseDown from "@/lib/cockpit/spec/setup-images/accel_nose_down.svg";
-import accelNoseUp from "@/lib/cockpit/spec/setup-images/accel_nose_up.svg";
-import accelRight from "@/lib/cockpit/spec/setup-images/accel_right.svg";
-import airspeedCover from "@/lib/cockpit/spec/setup-images/airspeed_cover.svg";
-import compassRotate from "@/lib/cockpit/spec/setup-images/compass_rotate.svg";
-import levelPlane from "@/lib/cockpit/spec/setup-images/level_plane.svg";
-import motorOrderHexaPlus from "@/lib/cockpit/spec/setup-images/motor_order_hexa_plus.svg";
-import motorOrderHexaX from "@/lib/cockpit/spec/setup-images/motor_order_hexa_x.svg";
-import motorOrderOctaX from "@/lib/cockpit/spec/setup-images/motor_order_octa_x.svg";
-import motorOrderQuadH from "@/lib/cockpit/spec/setup-images/motor_order_quad_h.svg";
-import motorOrderQuadPlus from "@/lib/cockpit/spec/setup-images/motor_order_quad_plus.svg";
-import motorOrderQuadX from "@/lib/cockpit/spec/setup-images/motor_order_quad_x.svg";
-import surfacesElevon from "@/lib/cockpit/spec/setup-images/surfaces_elevon.svg";
-import surfacesNormal from "@/lib/cockpit/spec/setup-images/surfaces_normal.svg";
-import surfacesVtail from "@/lib/cockpit/spec/setup-images/surfaces_vtail.svg";
-import vtolTransition from "@/lib/cockpit/spec/setup-images/vtol_transition.svg";
+import setupStrings from "@/lib/cockpit-spec/setup-strings.json";
+import accelBack from "@/lib/cockpit-spec/setup-images/accel_back.svg";
+import accelLeft from "@/lib/cockpit-spec/setup-images/accel_left.svg";
+import accelLevel from "@/lib/cockpit-spec/setup-images/accel_level.svg";
+import accelNoseDown from "@/lib/cockpit-spec/setup-images/accel_nose_down.svg";
+import accelNoseUp from "@/lib/cockpit-spec/setup-images/accel_nose_up.svg";
+import accelRight from "@/lib/cockpit-spec/setup-images/accel_right.svg";
+import airspeedCover from "@/lib/cockpit-spec/setup-images/airspeed_cover.svg";
+import compassRotate from "@/lib/cockpit-spec/setup-images/compass_rotate.svg";
+import levelPlane from "@/lib/cockpit-spec/setup-images/level_plane.svg";
+import motorOrderHexaPlus from "@/lib/cockpit-spec/setup-images/motor_order_hexa_plus.svg";
+import motorOrderHexaX from "@/lib/cockpit-spec/setup-images/motor_order_hexa_x.svg";
+import motorOrderOctaX from "@/lib/cockpit-spec/setup-images/motor_order_octa_x.svg";
+import motorOrderQuadH from "@/lib/cockpit-spec/setup-images/motor_order_quad_h.svg";
+import motorOrderQuadPlus from "@/lib/cockpit-spec/setup-images/motor_order_quad_plus.svg";
+import motorOrderQuadX from "@/lib/cockpit-spec/setup-images/motor_order_quad_x.svg";
+import surfacesElevon from "@/lib/cockpit-spec/setup-images/surfaces_elevon.svg";
+import surfacesNormal from "@/lib/cockpit-spec/setup-images/surfaces_normal.svg";
+import surfacesVtail from "@/lib/cockpit-spec/setup-images/surfaces_vtail.svg";
+import vtolTransition from "@/lib/cockpit-spec/setup-images/vtol_transition.svg";
 
 import type { SetupValue } from "./types";
 
