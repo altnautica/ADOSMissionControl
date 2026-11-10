@@ -17,9 +17,10 @@
  * @license GPL-3.0-only
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Lock } from "lucide-react";
 
+import tokens from "@/lib/cockpit-spec/tokens.json";
 import ds4Art from "@/lib/cockpit-spec/ds4-art.json";
 import ds4Hotspots from "@/lib/cockpit-spec/ds4-hotspots.json";
 import genericArt from "@/lib/cockpit-spec/gamepad-generic-art.json";
@@ -66,7 +67,11 @@ const GROUP_LABEL: Record<string, string> = {
   profile: "Profile",
   none: "None",
 };
-const ACCENT = "#22D3EE";
+/** The drawing's colours, from the cockpit spec's controller tokens. */
+const PRESSED = tokens.controller.pressed;
+const CONFLICT = tokens.controller.conflict;
+const DEADZONE_RING = tokens.controller.deadzone_ring;
+const SELECTED = tokens.state.skill;
 /** Leader labels: line pitch, gap from the artwork, and gutter width (art units). */
 const LABEL_PITCH = 36;
 const LABEL_GAP = 28;
@@ -78,11 +83,22 @@ function controlLabel(bindings: readonly Ds4Binding[], control: string): string 
   return row ? actionLabel(row.action) : null;
 }
 
-function HotspotShape({ h, className, onClick }: { h: Hotspot; className: string; onClick?: () => void }) {
+function HotspotShape({
+  h,
+  className,
+  style,
+  onClick,
+}: {
+  h: Hotspot;
+  className: string;
+  style?: CSSProperties;
+  onClick?: () => void;
+}) {
   const g = h.geom;
-  if (h.shape === "circle") return <circle cx={g.cx} cy={g.cy} r={g.r} className={className} onClick={onClick} />;
-  if (h.shape === "rect") return <rect x={g.x} y={g.y} width={g.w} height={g.h} rx={g.rx} className={className} onClick={onClick} />;
-  return <path d={g.d} className={className} onClick={onClick} />;
+  if (h.shape === "circle") return <circle cx={g.cx} cy={g.cy} r={g.r} className={className} style={style} onClick={onClick} />;
+  if (h.shape === "rect")
+    return <rect x={g.x} y={g.y} width={g.w} height={g.h} rx={g.rx} className={className} style={style} onClick={onClick} />;
+  return <path d={g.d} className={className} style={style} onClick={onClick} />;
 }
 
 function ControllerDrawing({
@@ -120,8 +136,8 @@ function ControllerDrawing({
     const { cx = 0, cy = 0, r = 40 } = h.geom;
     return (
       <g key={`${id}-live`} pointerEvents="none">
-        <circle cx={cx} cy={cy} r={r * deadzone * 2.5} fill="none" stroke="rgba(255,255,255,0.35)" strokeDasharray="3 3" />
-        <circle cx={cx + (padAxes[ax] ?? 0) * r} cy={cy + (padAxes[ay] ?? 0) * r} r={7} fill={ACCENT} data-testid={`${id}-dot`} />
+        <circle cx={cx} cy={cy} r={r * deadzone * 2.5} fill="none" stroke={DEADZONE_RING} strokeDasharray="3 3" />
+        <circle cx={cx + (padAxes[ax] ?? 0) * r} cy={cy + (padAxes[ay] ?? 0) * r} r={7} fill={PRESSED} data-testid={`${id}-dot`} />
       </g>
     );
   };
@@ -139,7 +155,7 @@ function ControllerDrawing({
           d={p.d}
           data-control={p.role === "control" ? p.id : undefined}
           data-pressed={p.role === "control" && pressed(p.id) ? "true" : undefined}
-          fill={p.role === "control" && pressed(p.id) ? ACCENT : "none"}
+          fill={p.role === "control" && pressed(p.id) ? PRESSED : "none"}
           stroke="currentColor"
           strokeWidth={art.stroke_width}
           strokeLinecap="round"
@@ -151,7 +167,7 @@ function ControllerDrawing({
         const h = hotspots[t];
         if (!h || h.shape !== "rect") return null;
         return (
-          <rect key={`${t}-bar`} x={h.geom.x} y={h.geom.y} width={(h.geom.w ?? 0) * (pressed(t) ? 1 : 0)} height={h.geom.h} rx={h.geom.rx} fill={ACCENT} opacity={0.6} pointerEvents="none" />
+          <rect key={`${t}-bar`} x={h.geom.x} y={h.geom.y} width={(h.geom.w ?? 0) * (pressed(t) ? 1 : 0)} height={h.geom.h} rx={h.geom.rx} fill={PRESSED} opacity={0.6} pointerEvents="none" />
         );
       })}
       {stick("stick_l", 0, 1)}
@@ -170,8 +186,9 @@ function ControllerDrawing({
               onClick={() => onSelect(id)}
               className={cn(
                 "cursor-pointer fill-transparent",
-                conflicts.has(id) ? "stroke-[#EF4444] [stroke-width:5]" : selected === id ? "stroke-[#22D3EE] [stroke-width:4]" : "stroke-transparent hover:stroke-white/40",
+                conflicts.has(id) ? "[stroke-width:5]" : selected === id ? "[stroke-width:4]" : "stroke-transparent hover:stroke-white/40",
               )}
+              style={conflicts.has(id) ? { stroke: CONFLICT } : selected === id ? { stroke: SELECTED } : undefined}
             />
             {label && (
               <>
@@ -187,7 +204,8 @@ function ControllerDrawing({
                   y={leader.y + 7}
                   textAnchor={leader.side === "left" ? "end" : "start"}
                   data-label-side={leader.side}
-                  className={cn("text-[22px]", conflicts.has(id) ? "fill-[#EF4444]" : "fill-current")}
+                  className={cn("text-[22px]", !conflicts.has(id) && "fill-current")}
+                  style={conflicts.has(id) ? { fill: CONFLICT } : undefined}
                   onClick={() => onSelect(id)}
                 >
                   {locked ? "🔒 " : ""}

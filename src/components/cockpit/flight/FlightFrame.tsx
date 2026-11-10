@@ -13,7 +13,8 @@
  * `classes[*].default_layer_level`), the chrome tokens as CSS variables and
  * the main picture's placement per view: Map puts the video in the
  * bottom-left card, Split divides the picture slot at a draggable divider
- * (`views.json` split `divider`), kept per vehicle while the screen is up.
+ * (`views.json` split `divider`), kept per vehicle in the view store, so it
+ * survives the flight screen closing and reopening.
  *
  * @license GPL-3.0-only
  */
@@ -36,7 +37,7 @@ import {
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { useFollowingMode } from "@/hooks/use-following-mode";
 import type { CockpitLayoutSize } from "@/hooks/use-cockpit-width-class";
-import type { CockpitViewId } from "@/lib/cockpit/views";
+import { useCockpitViewStore, useSplitRatio as useStoredSplitRatio, type CockpitViewId } from "@/lib/cockpit/views";
 import { useCockpitLayersStore, type LayerLevel } from "@/stores/cockpit-layers-store";
 import { FlightGridContext, chromeVars, useFlightGrid } from "./flight-context";
 import { specString } from "@/lib/cockpit/spec-strings";
@@ -56,15 +57,22 @@ import { useViewZoomStore } from "./view-zoom-store";
 import { inertShellAround } from "./inert-shell";
 import { toastAnchor } from "./flight-sheet";
 
-/** The Split divider's ratio for the flight screen's vehicle and its setter. */
+/** The Split divider's ratio for the flight screen's vehicle: `preview`
+ * moves it live during a drag (null ends the preview), `setRatio` keeps it
+ * for the vehicle. */
 interface SplitState {
   ratio: number;
   setRatio: (ratio: number) => void;
+  preview: (ratio: number | null) => void;
 }
 
-export const SplitContext = createContext<SplitState>({ ratio: SPLIT_DIVIDER.default, setRatio: () => {} });
+export const SplitContext = createContext<SplitState>({
+  ratio: SPLIT_DIVIDER.default,
+  setRatio: () => {},
+  preview: () => {},
+});
 
-/** The Split view's divider ratio and its setter (clamped to the limits). */
+/** The Split view's divider ratio and its setters (clamped to the limits). */
 export function useSplitRatio(): SplitState {
   return useContext(SplitContext);
 }
@@ -89,14 +97,20 @@ export function FlightFrame({
   const { following } = useFollowingMode(droneId);
   // The Vision view's side panel: 340 px, at most 40 % of the width.
   const panelW = sidePanel ? Math.round(Math.min(340, size.width * 0.4)) : 0;
-  // The Split divider per vehicle, for as long as the flight screen is up.
-  const [splitByDrone, setSplitByDrone] = useState<Record<string, number>>({});
-  const splitRatio = clampSplit(splitByDrone[droneId]);
+  // The Split divider per vehicle, kept in the view store; a drag previews
+  // locally and is stored when it ends.
+  const stored = useStoredSplitRatio(droneId);
+  const [dragRatio, setDragRatio] = useState<number | null>(null);
+  const splitRatio = clampSplit(dragRatio ?? stored);
   const setRatio = useCallback(
-    (ratio: number) => setSplitByDrone((m) => ({ ...m, [droneId]: clampSplit(ratio) })),
+    (ratio: number) => {
+      setDragRatio(null);
+      useCockpitViewStore.getState().setSplit(droneId, ratio);
+    },
     [droneId],
   );
-  const split = useMemo(() => ({ ratio: splitRatio, setRatio }), [splitRatio, setRatio]);
+  const preview = useCallback((ratio: number | null) => setDragRatio(ratio === null ? null : clampSplit(ratio)), []);
+  const split = useMemo(() => ({ ratio: splitRatio, setRatio, preview }), [splitRatio, setRatio, preview]);
   const grid = useMemo(
     () =>
       flightGrid({
@@ -269,7 +283,7 @@ const DIVIDER_STEP = 0.05;
  */
 export function SplitDivider() {
   const grid = useFlightGrid();
-  const { ratio, setRatio } = useSplitRatio();
+  const { ratio, setRatio, preview } = useSplitRatio();
   const dragging = useRef(false);
   const rect = splitDividerRect(grid);
 
@@ -282,14 +296,22 @@ export function SplitDivider() {
     e.currentTarget.setPointerCapture?.(e.pointerId);
     e.preventDefault();
   };
+  // The drag moves the divider live; the vehicle's ratio is stored once, at
+  // the drag's end.
   const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragging.current) setRatio(splitFromPointer(pointerX(e), grid));
+    if (dragging.current) preview(splitFromPointer(pointerX(e), grid));
   };
   const onUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!dragging.current) return;
     dragging.current = false;
     e.currentTarget.releasePointerCapture?.(e.pointerId);
     setRatio(splitFromPointer(pointerX(e), grid));
+  };
+  const onCancel = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    preview(null);
   };
   const onKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     const step = e.shiftKey ? DIVIDER_STEP * 2 : DIVIDER_STEP;
@@ -324,7 +346,7 @@ export function SplitDivider() {
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
-      onPointerCancel={onUp}
+      onPointerCancel={onCancel}
       onKeyDown={onKey}
     />
   );

@@ -113,7 +113,7 @@ export function FlightMenu({
         <section className="fs-menu-sec" data-testid="fs-menu-overflow" data-section="overflow">
           {hidden.has("controller") && <ControllerCell />}
           {hidden.has("nav_source") && <NavSourceChip droneId={droneId} />}
-          {linkHidden && <LinkCell droneId={droneId} detail />}
+          {linkHidden && <LinkCell droneId={droneId} detail inMenu />}
           {hidden.has("layer_button") && <LayerLevelButton droneId={droneId} caret={false} />}
         </section>
       ) : null,

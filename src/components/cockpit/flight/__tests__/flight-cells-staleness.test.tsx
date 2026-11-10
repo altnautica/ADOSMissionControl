@@ -86,13 +86,13 @@ describe("top bar cells", () => {
   it("drops a stale RSSI from the link detail", () => {
     useDroneStore.setState({ lastHeartbeat: Date.now() } as never);
     radio(0);
-    renderWithIntl(<LinkCell droneId={DRONE} detail />);
-    expect(screen.getByTestId("fs-link-detail").textContent).toBe("RSSI -55");
+    renderWithIntl(<LinkCell droneId={DRONE} detail inMenu />);
+    expect(screen.getByTestId("fs-link-rssi").textContent).toBe("RSSI -55");
     cleanup();
     useTelemetryStore.getState().clear();
     radio(BAND_STALE_MS + 1000);
-    renderWithIntl(<LinkCell droneId={DRONE} detail />);
-    expect(screen.getByTestId("fs-link-detail").textContent).not.toContain("-55");
+    renderWithIntl(<LinkCell droneId={DRONE} detail inMenu />);
+    expect(screen.getByTestId("fs-link-rssi").textContent).not.toContain("-55");
   });
 });
 

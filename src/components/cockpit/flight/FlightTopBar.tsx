@@ -151,7 +151,8 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
         <div className="fs-bar-items">
           <FlightStateChip droneId={droneId} barWidth={bar.w} compact={compact} />
           <StatusPill droneId={droneId} />
-          <BatteryCell droneId={droneId} />
+          {/* The short reserve text once the bar is short of room. */}
+          <BatteryCell droneId={droneId} short={compact || stage > 0} />
           {!hidden.has("link_icon") && <LinkCell droneId={droneId} detail={!hidden.has("link_text")} />}
           {!hidden.has("nav_source") && <NavSourceChip droneId={droneId} />}
           {!hidden.has("controller") && <ControllerCell />}

@@ -149,8 +149,10 @@ export function CockpitQuickSettings({
     paramPlugins.length > 0 || visiblePanels.length > 0 || showModelPicker;
 
   return (
+    // Below the top bar (layout.json `sheets`): STOP stays pressable.
     <div
-      className="pointer-events-auto absolute inset-0 z-40 flex justify-end"
+      className="pointer-events-auto absolute inset-x-0 bottom-0 z-40 flex justify-end"
+      style={{ top: "var(--fs-bar-b, 0px)" }}
       data-cockpit-layer="quick-settings"
     >
       {/* Scrim — a click outside the drawer closes it. */}

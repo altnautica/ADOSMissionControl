@@ -68,8 +68,11 @@ export function NavSourcePopover({ droneId, view, anchor, onClose }: NavSourcePo
     if (!a) return;
     const r = a.getBoundingClientRect();
     const c = root.getBoundingClientRect();
+    // Opened from the top bar it starts below the bar, never over STOP.
+    const bar = a.closest("[data-zone='top_bar']")?.getBoundingClientRect();
+    const below = Math.max(r.bottom + 6, bar ? bar.bottom + 8 : 0);
     const maxLeft = Math.max(8, c.width - POPOVER_W - 8);
-    setPos({ top: r.bottom - c.top + 6, left: Math.min(Math.max(8, r.left - c.left), maxLeft) });
+    setPos({ top: below - c.top, left: Math.min(Math.max(8, r.left - c.left), maxLeft) });
   }, [anchor]);
 
   // Escape or a press outside closes it.

@@ -711,18 +711,23 @@ html[data-flight-screen] .toast-host {
 }
 html[data-flight-screen] .toast-host > * { align-items: center; }
 html[data-flight-screen] .toast-host > * > * { pointer-events: auto; max-width: 100%; }
-.ados-cockpit .fs-panel {
+.ados-cockpit .fs-panel,
+.ados-cockpit.flight-screen :is(.glass-panel, .glass-pill) {
   background: var(--fs-bg); border: var(--fs-border-px) solid var(--fs-border); border-radius: var(--fs-radius);
   -webkit-backdrop-filter: blur(var(--fs-blur)) saturate(1.2); backdrop-filter: blur(var(--fs-blur)) saturate(1.2);
   color: var(--fs-text); box-shadow: 0 8px 24px var(--cockpit-shadow);
 }
+.ados-cockpit.flight-screen .glass-pill { border-radius: var(--fs-radius-sm); box-shadow: none; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .ados-cockpit .fs-panel, .ados-cockpit .fs-sheet { background: var(--fs-bg-solid); }
+  .ados-cockpit .fs-panel, .ados-cockpit .fs-sheet, .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill) { background: var(--fs-bg-solid); }
 }
-html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--fs-bg-solid); }
+html[data-power="low"] .ados-cockpit :is(.fs-panel, .fs-sheet),
+html[data-power="low"] .ados-cockpit.flight-screen :is(.glass-panel, .glass-pill) { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--fs-bg-solid); }
 .ados-cockpit .fs-ico { width: var(--fs-icon); height: var(--fs-icon); flex: none; }
 .ados-cockpit .fs-ico-sm { width: calc(var(--fs-icon) - 2px); height: calc(var(--fs-icon) - 2px); flex: none; }
 .ados-cockpit .fs-warn { color: var(--fs-warn); }
+/* Red text on a panel: the lighter critical text token, legible on the dark glass. */
+.ados-cockpit .fs-text-crit { color: var(--fs-text-crit); }
 .ados-cockpit .fs-trunc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ados-cockpit .fs-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none;
@@ -757,6 +762,9 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit :is(.fs-hit, .fs-focus, .fs-menu-actions :is(button, a), .fs-seg button, .navpop button):focus-visible { outline: 2px solid var(--fs-text); outline-offset: 2px; }
 .ados-cockpit .fs-bar-end { flex: none; display: flex; align-items: center; gap: 6px; }
 .ados-cockpit .fs-cell { flex: none; display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 0 2px; color: var(--fs-text); }
+.ados-cockpit .fs-cell-btn { height: 32px; border: 0; border-radius: var(--fs-radius-sm); background: transparent; font: inherit; cursor: pointer; }
+.ados-cockpit .fs-cell-btn:hover { background: color-mix(in srgb, var(--fs-text) 8%, transparent); }
+.ados-cockpit .fs-cell-btn:focus-visible { outline: 2px solid var(--fs-text); outline-offset: 2px; }
 .ados-cockpit .fs-sub { color: var(--fs-text-dim); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 4px; }
 .ados-cockpit .fs-val { font-variant-numeric: tabular-nums; font-weight: 600; }
 .ados-cockpit .fs-gauge { position: relative; width: 26px; height: 12px; border: 1.5px solid var(--fs-text-dim); border-radius: 3px; padding: 1px; }
@@ -802,7 +810,7 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 
 /* sheets: Menu, alert list, camera settings, layer switches */
 .ados-cockpit .fs-sheet {
-  background: var(--fs-bg-solid); border: 1px solid var(--fs-border); border-radius: var(--fs-radius); color: var(--fs-text);
+  background: var(--fs-bg); border: 1px solid var(--fs-border); border-radius: var(--fs-radius); color: var(--fs-text);
   -webkit-backdrop-filter: blur(var(--fs-blur)); backdrop-filter: blur(var(--fs-blur)); box-shadow: 0 16px 40px var(--cockpit-shadow);
   font-size: var(--fs-top-px); white-space: normal; z-index: 50;
   animation: fs-sheet-in 160ms ease-out;
@@ -813,6 +821,8 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
   .ados-cockpit .fs-pill[data-flashing="true"] { background: color-mix(in srgb, var(--pill-color) 40%, transparent); }
 }
 .ados-cockpit .fs-menu { position: absolute; right: 0; top: calc(100% + 8px); width: min(340px, calc(100vw - 16px)); max-height: calc(100vh - 80px); overflow-y: auto; padding: 8px; }
+/* The layer switches drop from the bar's bottom edge, like the Menu: below the bar, never over STOP. */
+.ados-cockpit .fs-layer-menu { position: absolute; right: 0; top: calc(100% + 8px); max-height: calc(100vh - var(--fs-bar-b, 0px) - 16px); overflow-y: auto; }
 .ados-cockpit .fs-menu-sec { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
 .ados-cockpit .fs-menu-sec + .fs-menu-sec { border-top: 1px solid var(--fs-border); }
 .ados-cockpit .fs-menu-h { font-size: var(--fs-label-px); letter-spacing: .08em; text-transform: uppercase; color: var(--fs-text-dim); }
@@ -823,6 +833,7 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-seg button { flex: 1; min-height: 32px; border-radius: 6px; border: 0; background: transparent; color: var(--fs-text-dim); cursor: pointer; font-weight: 600; }
 .ados-cockpit .fs-seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--fs-text) 16%, transparent); color: var(--fs-text); }
 .ados-cockpit .fs-pill-list { position: absolute; left: 0; top: calc(100% + 10px); width: min(360px, calc(100vw - 16px)); padding: 6px; }
+.ados-cockpit .fs-link-pop { display: flex; flex-direction: column; gap: 4px; min-width: 140px; padding: 10px 12px; }
 .ados-cockpit .fs-pill-list li { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 8px; }
 .ados-cockpit .fs-pill-list li + li { border-top: 1px solid var(--fs-border); }
 .ados-cockpit .fs-pill-src { grid-column: 2; font-size: var(--fs-label-px); color: var(--fs-text-dim); }
@@ -843,6 +854,7 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-col-row .fs-col-stack { flex-direction: row; width: 100%; justify-content: space-around; }
 .ados-cockpit .fs-col-target { width: var(--fs-target); height: var(--fs-target); min-height: 0; padding: 0; flex-direction: column; gap: 2px; font-size: var(--fs-label-px); border-radius: var(--fs-radius); }
 .ados-cockpit .fs-col-row .fs-col-target { flex: 1; max-width: 120px; }
+.ados-cockpit .fs-col-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.1; font-weight: 600; }
 .ados-cockpit .fs-col-btn { min-width: 48px; min-height: 48px; padding: 0; font-variant-numeric: tabular-nums; }
 .ados-cockpit .fs-gimbal-pad { position: relative; flex-shrink: 0; border-radius: 50%; touch-action: none; background: var(--fs-bg); border: var(--fs-border-px) solid var(--fs-border); -webkit-backdrop-filter: blur(var(--fs-blur)); backdrop-filter: blur(var(--fs-blur)); }
 .ados-cockpit .fs-gimbal-pad:focus-visible { outline: 3px solid var(--fs-text); outline-offset: 3px; }
@@ -853,7 +865,7 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit .fs-shutter[data-mode="video"] > i { background: var(--fs-crit); }
 .ados-cockpit .fs-shutter[data-recording="true"] > i { width: 40%; height: 40%; border-radius: 6px; }
 .ados-cockpit .fs-shutter:active > i { transform: scale(.9); }
-.ados-cockpit .fs-rec { font-size: var(--fs-label-px); color: var(--fs-crit); font-variant-numeric: tabular-nums; }
+.ados-cockpit .fs-rec { font-size: var(--fs-label-px); color: var(--fs-text-crit); font-variant-numeric: tabular-nums; }
 .ados-cockpit .fs-mode { display: flex; flex-direction: column; gap: 2px; padding: 2px; border-radius: var(--fs-radius-sm); background: color-mix(in srgb, var(--fs-text) 6%, transparent); }
 .ados-cockpit .fs-mode button { min-width: 48px; min-height: 48px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--fs-text-dim); cursor: pointer; }
 .ados-cockpit .fs-mode button[aria-pressed="true"] { background: color-mix(in srgb, var(--fs-text) 16%, transparent); color: var(--fs-text); }
@@ -868,11 +880,11 @@ html[data-power="low"] .ados-cockpit .fs-panel { -webkit-backdrop-filter: none; 
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-row-cell { flex-direction: column; align-items: center; gap: 0; }
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-value { font-size: calc(var(--fs-value-px) - 3px); }
 /* A portrait or compact bar has room for the essentials only: the battery
-   shows its percentage (the time left is in its label), the pill only its
-   icon (the list opens on a tap). At the last overflow stage on any bar the
-   pill gives way before the chip text, which may then ellipsize, so nothing
-   in the bar is clipped mid-glyph. */
-.ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-batt :is(.fs-gauge, .fs-sub) { display: none; }
+   shows its percentage and the short time to the reserve (no gauge), the
+   pill only its icon (the list opens on a tap). At the last overflow stage
+   on any bar the pill gives way before the chip text, which may then
+   ellipsize, so nothing in the bar is clipped mid-glyph. */
+.ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-batt .fs-gauge { display: none; }
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar .fs-pill-text { display: none; }
 .ados-cockpit:is([data-grid="compact"], [data-grid="portrait"]) .fs-bar :is(.fs-chip-wrap, .fs-chip, .fs-chip-text),
 .ados-cockpit .fs-bar[data-overflow="full"] :is(.fs-chip-wrap, .fs-chip, .fs-chip-text) { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1165,10 +1177,15 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .lfmap .lfmap-title { color: var(--hud-ink-2); }
 .lfmap .lfmap-fcpos { color: var(--hud-warn); border: 1px solid color-mix(in oklch, var(--hud-warn) 50%, transparent); border-radius: 4px; padding: 0 4px; }
 .lfmap .lfmap-spacer { flex: 1; pointer-events: none; }
-.lfmap .lfmap-zoom { position: absolute; right: 5px; bottom: 5px; display: flex; flex-direction: column; gap: 2px; }
-.lfmap .lfmap-zoom button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--hud-hair); background: var(--hud-glass); color: var(--hud-ink-2); cursor: pointer; }
+/* Zoom: each button is a 48 px transparent hit area (touch_target.min) with
+   the 20 px glyph box drawn inside it; the column steps 48 px. */
+.lfmap .lfmap-zoom { position: absolute; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 0; }
+.lfmap .lfmap-zoom button { position: relative; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; background: transparent; color: var(--hud-ink-2); cursor: pointer; }
+.lfmap .lfmap-zoom button::before { content: ""; position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; box-sizing: border-box; border-radius: 5px; border: 1px solid var(--hud-hair); background: var(--hud-glass); }
+.lfmap .lfmap-zoom button > svg { position: relative; }
 .lfmap .lfmap-zoom button:hover { color: var(--hud-ink); }
-.lfmap .lfmap-zoom button:focus-visible { outline: 2px solid var(--hud-primary); outline-offset: 1px; }
+.lfmap .lfmap-zoom button:focus-visible { outline: none; }
+.lfmap .lfmap-zoom button:focus-visible::before { outline: 2px solid var(--hud-primary); outline-offset: 1px; }
 .lfmap .lfmap-scale { position: absolute; left: 7px; bottom: 6px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
 .lfmap .lfmap-scale .bar { display: block; height: 4px; border: 1px solid var(--hud-ink-2); border-top: 0; }
 
@@ -1348,7 +1365,7 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 .ados-cockpit .frail-btn:focus-visible { outline: 2px solid var(--fs-text); outline-offset: 2px; }
 .ados-cockpit .frail-btn[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }
 .ados-cockpit .frail-btn.tone-track { border-color: var(--hud-track); color: var(--hud-track); }
-.ados-cockpit .frail-btn.tone-crit { color: var(--fs-crit); }
+.ados-cockpit .frail-btn.tone-crit { color: var(--fs-text-crit); }
 .ados-cockpit .frail-word { font-size: var(--fs-label-px); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
 
 /* STRICT | SMART (rail and follow skill popover). Pending = 1 px dashed outline. */

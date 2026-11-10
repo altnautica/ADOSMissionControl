@@ -7,8 +7,9 @@
  *
  * Shown while the receive path is still installed and the last decoded frame
  * is still on screen but nothing is arriving: without it a frozen picture
- * reads as a live one. It names the cause and counts up from the moment the
- * feed went bad; the text never flashes.
+ * reads as a live one. It reads the spec's `video.state.frozen` (the cause
+ * stays on `data-video-degraded`) and counts up from the moment the feed
+ * went bad; the text never flashes.
  *
  * The video store is scoped to the selected drone, so the banner only speaks
  * while this cockpit's drone is the selected one.
@@ -16,7 +17,7 @@
  * @license GPL-3.0-only
  */
 
-import { useTranslations } from "next-intl";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useVideoStore, type VideoDegradedReason } from "@/stores/video-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useClockTick } from "@/lib/agent/freshness";
@@ -37,7 +38,7 @@ export function useVideoFrozen(droneId: string): VideoDegradedReason | null {
 }
 
 export function CockpitVideoStatusBanner({ droneId }: { droneId: string }) {
-  const t = useTranslations("cockpit.video");
+  const text = specString("video.state.frozen");
   const grid = useFlightGrid();
   const reason = useVideoFrozen(droneId);
   const since = useVideoStore((s) => s.degradedSince);
@@ -62,7 +63,7 @@ export function CockpitVideoStatusBanner({ droneId }: { droneId: string }) {
         background: "color-mix(in oklch, var(--hud-crit) 72%, transparent)",
       }}
     >
-      <span>{reason === "ice-disconnect" ? t("frozenLinkLost") : t("frozenNoFrames")}</span>
+      <span>{text}</span>
       {since !== null && <span className="tabular-nums">{formatElapsed(msSince(since))}</span>}
     </div>
   );

@@ -112,7 +112,7 @@ describe("split divider handle", () => {
       createElement(
         FlightGridContext.Provider,
         { value: grid },
-        createElement(SplitContext.Provider, { value: { ratio: grid.split, setRatio: set } }, children),
+        createElement(SplitContext.Provider, { value: { ratio: grid.split, setRatio: set, preview: () => {} } }, children),
       );
     return render(wrap(createElement(SplitDivider)));
   }

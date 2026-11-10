@@ -6,13 +6,20 @@
  * a row under the video. Each fires its built-in through the shared skill
  * pipeline, so the spec's confirm tier and gates apply.
  *
+ * Each button is its icon with the built-in's short label under it
+ * (`builtin.short.<id>`) at the classes the spec's `left_column.labels`
+ * names; elsewhere (compact) it is the icon only. The full label stays the
+ * accessible name. On a TV the label is never smaller than `label_min_px`.
+ *
  * @module cockpit/v2/LeftColumn
  * @license GPL-3.0-only
  */
 
-import { useEffect } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Home, Pause } from "lucide-react";
 
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
+import tokens from "@/lib/cockpit-spec/tokens.json";
 import { LaunchSheet, LaunchStepStrip } from "@/components/cockpit/v2/LaunchSheet";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
 import { pilotStreamOpen, requestPilotAction, usePilotLinkStore } from "@/lib/input/pilot-stream";
@@ -21,9 +28,55 @@ import { specString } from "@/lib/cockpit/spec-strings";
 import { activate, buildSkillContext } from "@/lib/skills";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
-import { rectStyle } from "@/components/cockpit/flight/flight-grid";
+import { rectStyle, type FlightGridClass } from "@/components/cockpit/flight/flight-grid";
 import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
 import { useLaunchRequestStore } from "@/stores/launch-request-store";
+
+interface LeftColumnZoneSpec {
+  id: string;
+  labels?: { show_at?: string[] };
+}
+
+const LABELS_AT: readonly string[] =
+  (layoutSpec.zones as unknown as LeftColumnZoneSpec[]).find((z) => z.id === "left_column")?.labels?.show_at ?? [];
+const TV_LABEL_MIN_PX = layoutSpec.classes.tv.label_min_px;
+
+/** Whether the left column shows its short labels at this grid class. */
+export function leftColumnLabels(cls: FlightGridClass): boolean {
+  return LABELS_AT.includes(cls);
+}
+
+function ColumnButton({
+  id,
+  icon,
+  label,
+  ...rest
+}: {
+  id: string;
+  icon: ReactNode;
+  label: CSSProperties | null;
+  onClick: () => void;
+  "aria-expanded"?: boolean;
+  "data-sheet-trigger"?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="fs-btn fs-col-target"
+      data-builtin={id}
+      aria-label={specBuiltin(id).label}
+      title={specBuiltin(id).label}
+      {...rest}
+    >
+      {icon}
+      {label && (
+        <span className="fs-col-label" data-testid={`left-col-label-${id}`} style={label}>
+          {specString(`builtin.short.${id}`)}
+        </span>
+      )}
+    </button>
+  );
+}
 
 export function LeftColumn({ droneId }: { droneId: string }) {
   const armState = useDroneStore((s) => s.armState);
@@ -54,43 +107,37 @@ export function LeftColumn({ droneId }: { droneId: string }) {
   const rect = grid.zones.left_column;
   if (!rect) return null;
   const row = grid.cls === "portrait";
-
-  const btn = "fs-btn fs-col-target";
+  // The short label under each icon where the spec shows it; at least the
+  // TV minimum on a TV.
+  const label: CSSProperties | null = leftColumnLabels(grid.cls)
+    ? grid.cls === "tv"
+      ? { fontSize: `${Math.max(TV_LABEL_MIN_PX, tokens.chrome.type.label_px * grid.scale)}px` }
+      : {}
+    : null;
 
   return (
     <div
       className={`fs-col fs-col-left${row ? " fs-col-row" : ""}`}
       data-zone="left_column"
       data-testid="left-column"
-      style={{ ...rectStyle(rect), "--fs-target": `${grid.target}px` } as React.CSSProperties}
+      data-labels={label ? "true" : "false"}
+      style={{ ...rectStyle(rect), "--fs-target": `${grid.target}px` } as CSSProperties}
     >
       <div className="fs-col-stack">
-      {onGround ? (
-        <button
-          type="button"
-          className={btn}
-          data-sheet-trigger="launch"
-          onClick={() => (viaPilot ? setLaunchOpen((o) => !o) : fire("takeoff"))}
-          aria-label={specBuiltin("takeoff").label}
-          aria-expanded={viaPilot ? launchOpen : undefined}
-        >
-          <ArrowUpFromLine size={18} aria-hidden />
-          Take off
-        </button>
-      ) : (
-        <button type="button" className={btn} onClick={() => fire("land")} aria-label={specBuiltin("land").label}>
-          <ArrowDownToLine size={18} aria-hidden />
-          Land
-        </button>
-      )}
-      <button type="button" className={btn} onClick={() => fire("rth")} aria-label={specBuiltin("rth").label}>
-        <Home size={18} aria-hidden />
-        RTH
-      </button>
-      <button type="button" className={btn} onClick={() => fire("pause")} aria-label={specBuiltin("pause").label}>
-        <Pause size={18} aria-hidden />
-        Pause
-      </button>
+        {onGround ? (
+          <ColumnButton
+            id="takeoff"
+            icon={<ArrowUpFromLine size={18} aria-hidden />}
+            label={label}
+            data-sheet-trigger="launch"
+            aria-expanded={viaPilot ? launchOpen : undefined}
+            onClick={() => (viaPilot ? setLaunchOpen((o) => !o) : fire("takeoff"))}
+          />
+        ) : (
+          <ColumnButton id="land" icon={<ArrowDownToLine size={18} aria-hidden />} label={label} onClick={() => fire("land")} />
+        )}
+        <ColumnButton id="rth" icon={<Home size={18} aria-hidden />} label={label} onClick={() => fire("rth")} />
+        <ColumnButton id="pause" icon={<Pause size={18} aria-hidden />} label={label} onClick={() => fire("pause")} />
       </div>
       {launchOpen && viaPilot && (
         <LaunchSheet droneId={droneId} pilot={pilot} onClose={() => setLaunchOpen(false)} />
@@ -102,7 +149,7 @@ export function LeftColumn({ droneId }: { droneId: string }) {
             type="button"
             data-testid="launch-steps-abort"
             onClick={() => void requestPilotAction("pause")}
-            className="min-h-[40px] rounded bg-status-error/25 px-3 text-xs font-semibold text-status-error"
+            className="fs-text-crit min-h-[40px] rounded bg-status-error/25 px-3 text-xs font-semibold"
           >
             {specString("flow.launch.abort")}
           </button>

@@ -5,8 +5,11 @@
  * @description The bottom-left card (cockpit spec `layout.json`
  * `bottom_left_card`): the map, the attitude radar or the obstacle radar,
  * switched by a horizontal swipe on the card or its page dots (the spec's
- * `switch`), never by arrows. Each face carries its own small title inside
- * the card. The map's own controls (frame toggle, zoom, scale) belong to the
+ * `switch`), never by arrows. The radar faces carry their own small title
+ * inside the card; the map face draws its own header (the AUTO | LOCAL |
+ * MAP frame toggle and its buttons), so the card's title stays off it and
+ * the face is named by the card's accessible name. The map's own controls
+ * (frame toggle, zoom, scale) belong to the
  * map face and leave with it. On a compact cockpit it is a small square chip
  * showing the same face.
  *
@@ -86,9 +89,11 @@ export function BottomLeftCard({ droneId }: { droneId: string }) {
           </div>
         )}
       </div>
-      <span className="fs-card-title" data-testid="fs-card-title" aria-hidden="true">
-        {title}
-      </span>
+      {face !== "map" && (
+        <span className="fs-card-title" data-testid="fs-card-title" aria-hidden="true">
+          {title}
+        </span>
+      )}
       <div className="fs-dots" role="tablist" aria-label={t("switch")}>
         {CARD_FACES.map((f) => (
           <button

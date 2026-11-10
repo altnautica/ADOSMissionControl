@@ -2,7 +2,8 @@
  * @license GPL-3.0-only
  *
  * The bottom-left card's faces: switched by swipe and page dots (no arrows),
- * each face titled inside the card from the shared strings, and the map's
+ * each radar face titled inside the card from the shared strings (the map
+ * face draws its own header instead), and the map's
  * own controls (frame toggle, zoom, scale) present on the map face only.
  * In the Map view the card slot holds the video, which carries none of them.
  */
@@ -71,18 +72,22 @@ describe("bottom-left card faces", () => {
     expect(CARD_FACES).toEqual(["map", "attitude_radar", "obstacle_radar"]);
   });
 
-  it("titles each face inside the card from the shared strings", () => {
+  it("titles each radar face inside the card from the shared strings, and leaves the map face to its own header", () => {
     renderCard();
     const keys = {
-      map: "cockpit.card.map",
       attitude_radar: "cockpit.card.attitude_radar",
       obstacle_radar: "cockpit.card.obstacle_radar",
     } as const;
     for (const face of CARD_FACES) {
       fireEvent.click(screen.getByTestId(`fs-card-${face}`));
-      const title = within(card()).getByTestId("fs-card-title");
-      expect(title.textContent).toBe(specString(keys[face]));
       expect(card().getAttribute("data-face")).toBe(face);
+      const title = within(card()).queryByTestId("fs-card-title");
+      if (face === "map") {
+        expect(title).toBeNull();
+        expect(card().getAttribute("aria-label")).toBe(specString("cockpit.card.map"));
+      } else {
+        expect(title?.textContent).toBe(specString(keys[face]));
+      }
     }
   });
 

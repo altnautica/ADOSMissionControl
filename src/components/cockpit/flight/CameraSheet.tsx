@@ -32,14 +32,13 @@ export const CAMERA_SHEET_TRIGGER = "[data-sheet-trigger='camera']";
 
 function VideoFigures({ droneId }: { droneId: string }) {
   const t = useTranslations("cockpit.topRight");
-  const tc = useTranslations("flightScreen.camera");
   const demoFeed = useDemoFeedActive(droneId);
   const isStreaming = useVideoStore((s) => s.isStreaming);
   const fps = useVideoStore((s) => s.fps);
   const latencyMs = useVideoStore((s) => s.latencyMs);
   const resolution = useVideoStore((s) => s.resolution);
   const frameAge = useVideoFrameAge();
-  if (demoFeed) return <p className="fs-figures">{tc("demoFeed")}</p>;
+  if (demoFeed) return <p className="fs-figures">{specString("camera.demo_feed")}</p>;
   if (!isStreaming) return <p className="fs-figures">{specString("camera.no_video")}</p>;
   return (
     <p className="fs-figures" data-testid="fs-video-figures">

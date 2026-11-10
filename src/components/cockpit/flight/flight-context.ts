@@ -48,6 +48,7 @@ export function chromeVars(scale: number): CSSProperties {
     "--fs-ok": hexa(c.severity_ok),
     "--fs-warn": hexa(c.severity_warning),
     "--fs-crit": hexa(c.severity_critical),
+    "--fs-text-crit": hexa(c.text_critical),
     "--fs-stop-bg": hexa(c.stop_bg),
     "--fs-stop-text": hexa(c.stop_text),
     "--fs-top-px": px(c.type.top_bar_px),

@@ -24,6 +24,32 @@ import { Camera, RefreshCw, Settings2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { VideoSourceConfigPanel } from "./VideoSourceConfigPanel";
 import { useDemoFeedActive } from "@/components/cockpit/CockpitDemoStream";
+import { specString } from "@/lib/cockpit/spec-strings";
+
+/** The flight screen's word for an absent picture (`video.state.<state>`). */
+export type CockpitVideoState = "connecting" | "no_source" | "failed" | "reconnecting";
+
+/**
+ * Which spec video state the flight screen shows while there is no picture:
+ * a dial in progress is connecting; a failed dial that will retry by itself
+ * (or an air-side camera self-heal) is reconnecting; a failed dial waiting
+ * for the operator is failed; a source the agent reports running is about
+ * to be dialled (connecting); anything else has no source to show.
+ */
+export function cockpitVideoState(s: {
+  connecting: boolean;
+  failed: boolean;
+  retrying: boolean;
+  recovering: boolean;
+  running: boolean;
+  hasSource: boolean;
+}): CockpitVideoState {
+  if (s.connecting) return "connecting";
+  if (s.recovering) return "reconnecting";
+  if (!s.hasSource) return "no_source";
+  if (s.failed) return s.retrying ? "reconnecting" : "failed";
+  return s.running ? "connecting" : "no_source";
+}
 
 interface VideoCanvasProps {
   children?: ReactNode;
@@ -154,6 +180,7 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
     state: cascadeState,
     error: hookError,
     retry: handleRetry,
+    retryDelaySec,
   } = useSingletonAgentVideo({
     whepUrl: effectiveWhepUrl,
     cloudDeviceId,
@@ -210,6 +237,18 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
                 ? "videoOffline"
                 : "noSignal";
 
+  // The cockpit speaks the shared spec's video state words, never an
+  // exception's text; a failed feed offers a retry.
+  const cockpitState = cockpitVideoState({
+    connecting: showConnecting,
+    failed: cascadeState === "failed",
+    retrying: retryDelaySec > 0,
+    recovering: airCameraRecovering,
+    running: agentVideoState === "running",
+    hasSource: videoSource !== "none" && !airCameraMissing,
+  });
+  const canRetry = cockpitState === "failed" || cockpitState === "reconnecting";
+
   const sourceKey = SOURCE_KEY[videoSource];
   const sourceBadge = sourceKey ? t(sourceKey) : null;
 
@@ -240,8 +279,11 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
                 <path d="M10.5 5H19a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7" />
               </svg>
             </div>
-            <span className="text-sm font-mono text-text-tertiary tracking-wider">
-              {t(placeholderKey)}
+            <span
+              className="text-sm font-mono text-text-tertiary tracking-wider"
+              data-video-state={panelChrome ? undefined : cockpitState}
+            >
+              {panelChrome ? t(placeholderKey) : specString(`video.state.${cockpitState}`)}
             </span>
             {/* Which node the absent video belongs to. */}
             {sourceBadge && (
@@ -252,18 +294,34 @@ export function VideoCanvas({ children, className, chrome = "panel", droneId }: 
                 {sourceBadge}
               </span>
             )}
-            {cascadeError && (
+            {panelChrome && cascadeError && (
               <span className="text-[10px] text-status-error max-w-[200px] text-center">
                 {cascadeError}
               </span>
             )}
-            {cascadeError && !showConfig && (
+            {panelChrome && cascadeError && !showConfig && (
               <button
                 onClick={handleRetry}
                 className="pointer-events-auto mt-1 flex items-center gap-1 px-3 py-1.5 text-[10px] font-mono text-text-secondary border border-border-default hover:border-accent-primary hover:text-accent-primary transition-colors cursor-pointer"
               >
                 <RefreshCw size={11} />
                 {t("retry")}
+              </button>
+            )}
+            {!panelChrome && retryDelaySec > 0 && (
+              <span className="text-[10px] font-mono text-text-tertiary tabular-nums" data-testid="video-retrying-in">
+                {specString("video.state.retrying_in", { s: retryDelaySec })}
+              </span>
+            )}
+            {!panelChrome && canRetry && !showConfig && (
+              <button
+                type="button"
+                onClick={handleRetry}
+                data-testid="video-retry"
+                className="pointer-events-auto mt-1 flex min-h-12 min-w-12 items-center gap-1 rounded px-4 text-xs font-semibold text-text-secondary border border-border-default hover:border-accent-primary hover:text-accent-primary transition-colors cursor-pointer"
+              >
+                <RefreshCw size={12} aria-hidden="true" />
+                {specString("video.state.retry")}
               </button>
             )}
             {offerManualConfig && !showConfig && (

@@ -14,7 +14,8 @@
  */
 
 import { useCallback, useRef } from "react";
-import { useTranslations } from "next-intl";
+
+import { specString } from "@/lib/cockpit/spec-strings";
 
 import { FollowRail } from "../FollowRail";
 import { FollowRangePanel } from "../FollowRangePanel";
@@ -28,7 +29,7 @@ const TRIGGER = "[data-follow-range-trigger]";
 const SHEET_GAP_PX = 8;
 
 export function FollowDock({ droneId }: { droneId: string }) {
-  const t = useTranslations("flightScreen.follow");
+  const rangeLabel = specString("follow.range");
   const grid = useFlightGrid();
   const rect = grid.zones.follow_strip;
   const [open, setOpen] = useFlightSheet(SHEET_ID);
@@ -45,8 +46,8 @@ export function FollowDock({ droneId }: { droneId: string }) {
           className="fs-follow-range"
           data-follow-range-trigger=""
           aria-expanded={open}
-          aria-label={t("rangeDetail")}
-          title={t("rangeDetail")}
+          aria-label={rangeLabel}
+          title={rangeLabel}
           onClick={() => setOpen((o) => !o)}
         >
           <FollowRangePanel droneId={droneId} variant="line" />
@@ -58,7 +59,7 @@ export function FollowDock({ droneId }: { droneId: string }) {
             className="fs-follow-sheet-slot"
             style={{ position: "absolute", left: rect.x, width: rect.w, top: rect.y + rect.h + SHEET_GAP_PX }}
           >
-            <div ref={sheetRef} className="fs-sheet fs-follow-sheet" role="dialog" aria-label={t("rangeDetail")} data-testid="follow-range-sheet">
+            <div ref={sheetRef} className="fs-sheet fs-follow-sheet" role="dialog" aria-label={rangeLabel} data-testid="follow-range-sheet">
               <FollowRangePanel droneId={droneId} variant="detail" />
             </div>
           </div>

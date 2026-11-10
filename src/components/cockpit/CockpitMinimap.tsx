@@ -20,6 +20,7 @@ import { Layers, Maximize2 } from "lucide-react";
 import { MinimapBasemapSelector } from "@/components/map/MinimapBasemapSelector";
 import { LocalFrameMap } from "@/components/map/local/LocalFrameMap";
 import { FlightSheetPortal } from "@/components/cockpit/flight/flight-sheet";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useMinimapFrame } from "@/components/map/local/use-minimap-frame";
 import type { MinimapPin } from "@/lib/hud/minimap-mode";
 import { useUiStore } from "@/stores/ui-store";
@@ -50,15 +51,13 @@ function openFlightTab(): void {
   ui.setPendingDetailTab("flight");
 }
 
-const PIN_LABEL = { auto: "modeAuto", local: "modeLocal", map: "modeMap" } as const;
-
 function FrameToggle({ pin, onPin }: { pin: MinimapPin; onPin: (p: MinimapPin) => void }) {
   const t = useTranslations("hud.map");
   return (
     <div className="seg mmap-seg" role="group" aria-label={t("modeLabel")}>
       {(["auto", "local", "map"] as const).map((p) => (
         <button key={p} type="button" aria-pressed={pin === p} onClick={() => onPin(p)}>
-          {t(PIN_LABEL[p])}
+          {specString(`minimap.pin.${p}`)}
         </button>
       ))}
     </div>

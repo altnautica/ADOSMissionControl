@@ -90,7 +90,7 @@ export function LaunchStepStrip({ sequence }: { sequence: PilotState["sequence"]
           className={cn(
             "rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide",
             sequence.error && i === at
-              ? "bg-status-error/30 text-status-error"
+              ? "bg-status-error/30 fs-text-crit"
               : i < at || sequence.step === "done"
                 ? "bg-status-success/25 text-status-success"
                 : i === at
@@ -101,7 +101,7 @@ export function LaunchStepStrip({ sequence }: { sequence: PilotState["sequence"]
           {specString(STEP_KEY[s])}
         </li>
       ))}
-      {sequence.error && <span className="ml-2 text-[11px] text-status-error">{refusalText(sequence.error)}</span>}
+      {sequence.error && <span className="fs-text-crit ml-2 text-[11px]">{refusalText(sequence.error)}</span>}
     </ol>
   );
 }
@@ -292,7 +292,7 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
             type="button"
             data-testid="launch-abort"
             onClick={abort}
-            className="min-h-[48px] flex-1 rounded bg-status-error/25 text-sm font-semibold text-status-error"
+            className="fs-text-crit min-h-[48px] flex-1 rounded bg-status-error/25 text-sm font-semibold"
           >
             {specString("flow.launch.abort")}
           </button>

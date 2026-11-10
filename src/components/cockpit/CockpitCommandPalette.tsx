@@ -160,8 +160,11 @@ export function CockpitCommandPalette({
   };
 
   return (
+    // Below the top bar (layout.json `sheets`): STOP stays pressable.
     <div
-      className="absolute inset-0 z-50 flex items-start justify-center bg-scrim/50 p-4 pt-[12vh] backdrop-blur-sm"
+      className="absolute inset-x-0 bottom-0 z-50 flex items-start justify-center bg-scrim/50 p-4 pt-[12vh] backdrop-blur-sm"
+      style={{ top: "var(--fs-bar-b, 0px)" }}
+      data-testid="command-palette-scrim"
       onMouseDown={(e) => {
         // Click on the dimmer (not the dialog) closes.
         if (e.target === e.currentTarget) onClose();

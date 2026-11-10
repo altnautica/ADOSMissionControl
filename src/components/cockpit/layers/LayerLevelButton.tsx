@@ -52,7 +52,7 @@ export function LayerLevelButton({
 
   return (
     <div
-      className="fs-layer relative flex items-center"
+      className="fs-layer flex items-center"
       data-testid="layer-level-button"
       data-item="layer_button"
       data-level={vl.level}
@@ -87,7 +87,7 @@ export function LayerLevelButton({
           role="menu"
           aria-label={specString("cockpit.layers.flags")}
           data-testid="layer-menu"
-          className="fs-sheet absolute right-0 top-full z-40 mt-2 w-56 p-2"
+          className="fs-sheet fs-layer-menu w-56 p-2"
         >
           <LayerFlags droneId={droneId} />
         </div>
