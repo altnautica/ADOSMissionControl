@@ -22,7 +22,7 @@ import { chipInputs } from "../chip-inputs";
 import { flightStateChip } from "../flight-state";
 import { pillAlerts, pillSummary, type PillInputs } from "../status-pill";
 import { refusalText } from "../refusal";
-import { nextTip, type TipsContext } from "../tips";
+import { nextTip, placeTip, type TipRect, type TipsContext } from "../tips";
 import { flyHereOffered } from "../fly-here-offer";
 import { countdownS, fmtDistance, fmtSigned1 } from "../format";
 
@@ -93,9 +93,20 @@ describe("refusal cases", () => {
 });
 
 describe("tips cases", () => {
+  // A case with `input.place` checks placement; every other case the queue.
   for (const c of tipsCases) {
     it(c.name, () => {
-      expect(nextTip(c.input.state, c.input.ctx as TipsContext, c.input.now_ms)).toEqual(c.expected);
+      const i = c.input as {
+        place?: { anchor: TipRect; tip: { w: number; h: number }; viewport: TipRect; avoid: TipRect[] };
+        state: Parameters<typeof nextTip>[0];
+        ctx: TipsContext;
+        now_ms: number;
+      };
+      if (i.place) {
+        expect(placeTip(i.place.anchor, i.place.tip, i.place.viewport, i.place.avoid)).toEqual(c.expected);
+      } else {
+        expect(nextTip(i.state, i.ctx, i.now_ms)).toEqual(c.expected);
+      }
     });
   }
 });

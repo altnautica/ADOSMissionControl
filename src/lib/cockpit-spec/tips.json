@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "$description": "Contextual tips on the flight screen. One at a time, ground only, never over STOP, the left column or the flight-state chip.",
+  "$description": "Contextual tips on the flight screen. One at a time, ground only, never over STOP, the left column, the flight-state chip, the alert stack or the top bar (a tip anchored in the top bar goes below it).",
   "rules": {
     "max_visible": 1,
     "show_only_when": {
@@ -15,7 +15,7 @@
     "gap_between_ms": 4000,
     "auto_dismiss_ms": 9000,
     "dismiss_on": ["tap_tip", "tap_anchor", "any_controller_button", "arm"],
-    "never_cover_zones": ["stop", "left_column", "flight_state_chip", "alert_stack"],
+    "never_cover_zones": ["stop", "left_column", "flight_state_chip", "alert_stack", "top_bar"],
     "kiosk": "show",
     "persist": "per_device",
     "reset_setting_key": "tips.reset"

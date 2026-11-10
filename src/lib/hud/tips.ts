@@ -163,10 +163,25 @@ function intersects(a: TipRect, b: TipRect): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
 
+function contains(outer: TipRect, inner: TipRect): boolean {
+  return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h;
+}
+
+/** Spots along one axis to try for a tip of length `len` in [lo, hi]: the
+ *  centred spot first, then each spot just clear of an avoided rect, nearest
+ *  the centre first. */
+function slideSpots(centre: number, lo: number, hi: number, len: number, edges: readonly [number, number][]): number[] {
+  const spots = [centre, lo, hi];
+  for (const [a, b] of edges) spots.push(a - TIP_GAP_PX - len, b + TIP_GAP_PX);
+  return spots.map((s) => Math.min(hi, Math.max(lo, s))).sort((a, b) => Math.abs(a - centre) - Math.abs(b - centre));
+}
+
 /** Where a tip of `tipSize` goes beside `anchorRect`: on the side with the most
  *  free space inside `viewport`, slid along that side so it covers none of
- *  `avoidRects` (STOP, the left column, the flight-state chip). Null when no
- *  side fits. */
+ *  `avoidRects` (the `never_cover_zones` rects and the top bar). An avoided
+ *  rect that contains the anchor (the top bar, for an anchor in the bar) is
+ *  excepted for that anchor, and the tip goes below it, pushed further down
+ *  past any avoided rect under it (the alert stack). Null when nothing fits. */
 export function placeTip(
   anchorRect: TipRect,
   tipSize: { w: number; h: number },
@@ -175,6 +190,26 @@ export function placeTip(
 ): TipPlacement | null {
   const right = viewport.x + viewport.w;
   const bottom = viewport.y + viewport.h;
+  const container = avoidRects
+    .filter((r) => contains(r, anchorRect) && (r.w > anchorRect.w || r.h > anchorRect.h))
+    .sort((a, b) => b.w * b.h - a.w * a.h)[0];
+  if (container) {
+    const avoid = avoidRects.filter((r) => !contains(container, r));
+    const centre = anchorRect.x + anchorRect.w / 2 - tipSize.w / 2;
+    const lo = viewport.x;
+    const hi = right - tipSize.w;
+    const xs = slideSpots(centre, lo, hi, tipSize.w, avoid.map((r) => [r.x, r.x + r.w]));
+    const ys = [container.y + container.h + TIP_GAP_PX, ...avoid.map((r) => r.y + r.h + TIP_GAP_PX)]
+      .filter((y) => y >= container.y + container.h + TIP_GAP_PX && y + tipSize.h <= bottom)
+      .sort((a, b) => a - b);
+    for (const y of ys) {
+      for (const x of xs) {
+        const rect = { x, y, w: tipSize.w, h: tipSize.h };
+        if (!avoid.some((r) => intersects(rect, r))) return { x, y, side: "bottom" };
+      }
+    }
+    return null;
+  }
   const sides: { side: TipPlacement["side"]; free: number }[] = [
     { side: "top" as const, free: anchorRect.y - viewport.y },
     { side: "bottom" as const, free: bottom - (anchorRect.y + anchorRect.h) },
@@ -196,15 +231,8 @@ export function placeTip(
     const hi = vertical ? right - tipSize.w : bottom - tipSize.h;
     if (hi < lo) continue;
     const centre = vertical ? anchorRect.x + anchorRect.w / 2 - tipSize.w / 2 : anchorRect.y + anchorRect.h / 2 - tipSize.h / 2;
-    // The centred spot first, then each spot just clear of an avoided rect,
-    // nearest the anchor first.
-    const spots = [centre, lo, hi];
-    for (const r of avoidRects) {
-      if (vertical) spots.push(r.x - TIP_GAP_PX - tipSize.w, r.x + r.w + TIP_GAP_PX);
-      else spots.push(r.y - TIP_GAP_PX - tipSize.h, r.y + r.h + TIP_GAP_PX);
-    }
-    const ordered = spots.map((s) => Math.min(hi, Math.max(lo, s))).sort((a, b) => Math.abs(a - centre) - Math.abs(b - centre));
-    for (const s of ordered) {
+    const edges = avoidRects.map((r): [number, number] => (vertical ? [r.x, r.x + r.w] : [r.y, r.y + r.h]));
+    for (const s of slideSpots(centre, lo, hi, vertical ? tipSize.w : tipSize.h, edges)) {
       const rect = vertical ? { x: s, y: fixed, w: tipSize.w, h: tipSize.h } : { x: fixed, y: s, w: tipSize.w, h: tipSize.h };
       if (!avoidRects.some((r) => intersects(rect, r))) return { x: rect.x, y: rect.y, side };
     }
