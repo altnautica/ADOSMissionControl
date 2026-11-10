@@ -107,5 +107,6 @@
    "age_ms": 1200
   }
  ],
+ "failsafe_cause": null,
  "setup_step": null
 }
