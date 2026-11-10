@@ -37,6 +37,7 @@ import { mockCanBus } from "./mock-can-bus";
 import { useFleetStore } from "@/stores/fleet-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore, resolveNodeId } from "@/stores/node-registry";
+import { clearDemoVehicles, markDemoVehicles } from "@/lib/demo/demo-vehicles";
 import type { FleetDrone } from "@/lib/types";
 import { haversineDistance } from "@/lib/geo/distance";
 
@@ -188,6 +189,7 @@ class MockFlightEngine {
       { type: "websocket", url: "mock://demo" },
       { ownsFleetRow: true },
     );
+    markDemoVehicles([DEMO_DIRECT_FC_ID]);
 
     // Emit Alpha-01's boot messages so its Status tab is populated when opened
     // (no drone is auto-selected — the dashboard lands on the grid).
@@ -261,6 +263,7 @@ class MockFlightEngine {
     this.running = false;
     setDemoTelemetryFrozen(false);
     setDemoNavStreamBlocked(false);
+    clearDemoVehicles();
   }
 
   tick(): void {

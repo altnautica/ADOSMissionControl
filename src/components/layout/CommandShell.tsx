@@ -142,12 +142,12 @@ function ConvexUserMenu() {
 export function CommandShell({ children }: { children: React.ReactNode }) {
   useGcsLocation();
 
-  // Register the built-in skills + start the registry subscriptions once.
-  // Both calls are idempotent (guard flags) so React strict-mode's double
-  // invoke and any remount are safe.
+  // Register the built-in skills + start the registry subscriptions, and stop
+  // them on unmount. Both are idempotent (guard flags) so React strict-mode's
+  // double invoke and any remount are safe.
   useEffect(() => {
     registerBuiltins();
-    initSkillSubscriptions();
+    return initSkillSubscriptions();
   }, []);
 
   // The one keyboard + gamepad skill dispatcher. Live only while a flying

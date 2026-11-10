@@ -32,6 +32,7 @@ import type {
   VideoProfileLeaseRequest,
 } from "@/lib/agent/agent-client/extras";
 import { delay } from "./utils";
+import { throwIfDemoAgentPollFails } from "../demo-link";
 import { parseAgentDiagnostics, type AgentDiagnostics } from "@/lib/agent/agent-diagnostics";
 import { DEMO_STATUS_EXTRAS } from "./status-extras";
 
@@ -75,6 +76,7 @@ export class MockAgentClientExtras {
 
   /** `null` sends the status poll down its per-endpoint path. */
   async getFullStatus(): Promise<LanStatusFull | null> {
+    throwIfDemoAgentPollFails();
     await delay(DEMO_LATENCY_MS);
     return null;
   }

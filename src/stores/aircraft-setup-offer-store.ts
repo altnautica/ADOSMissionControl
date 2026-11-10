@@ -7,7 +7,7 @@
  */
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
 
 /** localStorage key holding the offered FC uids. */
 export const SETUP_OFFERED_KEY = "altcmd:aircraft-setup-offered";
@@ -17,6 +17,34 @@ interface AircraftSetupOfferState {
   offered: string[];
   markOffered: (uid: string) => void;
 }
+
+type OfferedSlice = Pick<AircraftSetupOfferState, "offered">;
+
+function local(): Storage | null {
+  return typeof localStorage === "undefined" ? null : localStorage;
+}
+
+/** JSON in localStorage. An earlier build stored the uids as a bare array
+ * under the same key; it reads as the current shape, so those aircraft are
+ * not offered setup again. */
+const offeredStorage: PersistStorage<OfferedSlice> = {
+  getItem: (name) => {
+    const raw = local()?.getItem(name);
+    if (raw == null) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    if (Array.isArray(parsed)) {
+      return { state: { offered: parsed.filter((u): u is string => typeof u === "string") }, version: 1 };
+    }
+    return parsed as StorageValue<OfferedSlice>;
+  },
+  setItem: (name, value) => local()?.setItem(name, JSON.stringify(value)),
+  removeItem: (name) => local()?.removeItem(name),
+};
 
 export const useAircraftSetupOfferStore = create<AircraftSetupOfferState>()(
   persist(
@@ -28,6 +56,7 @@ export const useAircraftSetupOfferStore = create<AircraftSetupOfferState>()(
     {
       name: SETUP_OFFERED_KEY,
       version: 1,
+      storage: offeredStorage,
       partialize: (s) => ({ offered: s.offered }),
     },
   ),

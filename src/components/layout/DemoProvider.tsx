@@ -19,6 +19,7 @@ import { useCommandFleetStore, type CommandCloudStatus } from "@/stores/command-
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { setMockAgentOverride } from "@/mock/agent/client";
+import { failDemoAgentPolls } from "@/mock/demo-link";
 import { clearDemoLanNodes } from "@/lib/demo/demo-residue";
 import { DEMO_AGENTS, buildDemoStatus, seedDemoLanNodes } from "@/mock/demo-seed/fleet";
 import { seedGroundStationStore } from "@/mock/demo-seed/ground-station";
@@ -49,6 +50,8 @@ declare global {
       freezeTelemetry: () => void;
       blockNavStream: (blocked: boolean) => void;
       resumeTelemetry: () => void;
+      /** Fail the demo agent's next n status polls (agent unreachable); 0 restores it. */
+      failAgentPolls: (n: number) => void;
       readonly telemetryFlowing: boolean;
     };
   }
@@ -99,6 +102,7 @@ export function DemoProvider() {
         freezeTelemetry: () => engine?.freezeTelemetry(),
         blockNavStream: (blocked: boolean) => engine?.blockNavStream(blocked),
         resumeTelemetry: () => engine?.resumeTelemetry(),
+        failAgentPolls: failDemoAgentPolls,
         get telemetryFlowing() {
           return engine?.telemetryFlowing ?? false;
         },
@@ -175,6 +179,7 @@ export function DemoProvider() {
       useGroundStationStore.getState().resetAll();
       useNodeSensorsStore.getState().clear();
       useMcpPluginStore.setState({ plugins: [], status: "idle" });
+      failDemoAgentPolls(0);
       delete window.__adosDemo;
     };
   }, []);

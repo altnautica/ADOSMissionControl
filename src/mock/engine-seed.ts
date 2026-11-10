@@ -16,6 +16,7 @@ import {
   type DemoDroneConfig,
 } from "./drones";
 import { DEMO_VISOR } from "./demo-seed/visor";
+import { markDemoVehicles } from "@/lib/demo/demo-vehicles";
 import { useDroneMetadataStore } from "@/stores/drone-metadata-store";
 import {
   useNodeRegistryStore,
@@ -32,6 +33,9 @@ import {
  */
 export function seedDemoNodes(now: number): void {
   const registry = useNodeRegistryStore.getState();
+  // Demo vehicles boot armed in their missions; the operator's own armed
+  // vehicles are what the shell's modals wait for.
+  markDemoVehicles(DEMO_DRONES.map((cfg) => resolveNodeId(cfg.id)));
   for (const cfg of DEMO_DRONES) {
     const id = resolveNodeId(cfg.id);
     // An FC-only drone (`hasAgent === false`) is a direct MAVLink connection

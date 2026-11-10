@@ -15,8 +15,7 @@ import type {
   CameraTriggerCallback, NavControllerCallback, LocalPositionCallback,
   DebugCallback, GimbalAttitudeCallback, ObstacleDistanceCallback,
   CameraImageCapturedCallback, ExtendedSysStateCallback, FencePointCallback,
-  SystemTimeCallback, AutopilotVersionCallback,
-  CanFrameCallback, FenceElement, MspModeRange, MspAdjustmentRange, RallyPointItem,
+  SystemTimeCallback, AutopilotVersionCallback, CanFrameCallback,
 } from "@/lib/protocol/types";
 import { ArduCopterHandler, ArduPlaneHandler, ArduRoverHandler, ArduSubHandler } from "@/lib/protocol/firmware/ardupilot";
 import { PX4Handler } from "@/lib/protocol/firmware/px4";
@@ -34,11 +33,11 @@ import * as E from "./mock-protocol-emitters";
 import { mockStartCalibration, type CalibrationContext, type CalTimer } from "./mock-protocol-calibration";
 import { MockFlightState } from "./mock-protocol-flight";
 import { handleSerialCommand, startTelemetryTick, type TelemetryTickContext } from "./mock-protocol-serial";
-import { MOCK_FENCE_POLYGON, MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_INFO, PX4_VTOL_VEHICLE_INFO, ARDUPLANE_VEHICLE_INFO, ARDUPLANE_VTOL_VEHICLE_INFO, ARDUPLANE_TAILSITTER_VEHICLE_INFO, ARDUPLANE_TILTROTOR_VEHICLE_INFO, ARDUROVER_VEHICLE_INFO, ARDUBOAT_VEHICLE_INFO, ARDUSUB_VEHICLE_INFO, BETAFLIGHT_VEHICLE_INFO, INAV_FW_VEHICLE_INFO } from "./mock-protocol-data";
+import { MOCK_VEHICLE_INFO, HELI_VEHICLE_INFO, PX4_VEHICLE_INFO, PX4_VTOL_VEHICLE_INFO, ARDUPLANE_VEHICLE_INFO, ARDUPLANE_VTOL_VEHICLE_INFO, ARDUPLANE_TAILSITTER_VEHICLE_INFO, ARDUPLANE_TILTROTOR_VEHICLE_INFO, ARDUROVER_VEHICLE_INFO, ARDUBOAT_VEHICLE_INFO, ARDUSUB_VEHICLE_INFO, BETAFLIGHT_VEHICLE_INFO, INAV_FW_VEHICLE_INFO } from "./mock-protocol-data";
 import type { DisplayPortOp } from "@/lib/protocol/msp/decoders/config/displayport";
-import { MockRanges } from "./mock-protocol-ranges";
-import { MockBfStorage, startMockDisplayPort } from "./mock-protocol-bf-storage";
+import { startMockDisplayPort } from "./mock-protocol-bf-storage";
 import { MockMission } from "./mock-protocol-mission";
+import { MockProtocolPeripherals } from "./mock-protocol-peripherals";
 import { px4MissionRejection } from "./mock-px4-mission-rules";
 import { MockFcFiles } from "./mock-protocol-files";
 import { createMockFrameFeed } from "./mock-mavlink-frames";
@@ -50,7 +49,8 @@ import type { MockFirmware } from "./mock-firmware";
 
 function ok(message = "OK"): CommandResult { return { success: true, resultCode: 0, message }; }
 
-export class MockProtocol implements DroneProtocol {
+/** The demo FC; its peripherals and stored plans live in MockProtocolPeripherals. */
+export class MockProtocol extends MockProtocolPeripherals implements DroneProtocol {
   readonly protocolName = "mock-mavlink";
   private _connected = true;
   private handler: FirmwareHandler;
@@ -64,8 +64,6 @@ export class MockProtocol implements DroneProtocol {
   private imageCounter = { value: 0 };
   private _rcChannelValues: number[] = Array(16).fill(1500);
   private _lastManualControl: ManualControlSample | null = null;
-  private rallyPoints: RallyPointItem[] = [];
-  private fenceElements: FenceElement[] = [];
   /** Arm / airborne / mode of this demo vehicle; see mock-protocol-flight. */
   readonly flight = new MockFlightState(
     (s) => this.emitHeartbeat(s.armed, s.mode),
@@ -73,6 +71,7 @@ export class MockProtocol implements DroneProtocol {
   );
 
   constructor(firmwareType: MockFirmware = 'ardupilot-copter') {
+    super();
     switch (firmwareType) {
       case 'px4':
         this.handler = new PX4Handler(); this.defaults = PX4_MOCK_PARAMS; this._vehicleInfo = PX4_VEHICLE_INFO; break;
@@ -220,7 +219,6 @@ export class MockProtocol implements DroneProtocol {
   async setRelay(): Promise<CommandResult> { return ok("Relay set"); }
   async startRxPair(): Promise<CommandResult> { return ok("RX pair started"); }
   async setMessageInterval(): Promise<CommandResult> { return ok("Interval set"); }
-  async sendCommand(): Promise<CommandResult> { return ok("Command sent"); }
   sendManualControl(roll: number, pitch: number, throttle: number, yaw: number, buttons: number): void {
     this._lastManualControl = { roll, pitch, throttle, yaw, buttons };
   }
@@ -245,34 +243,6 @@ export class MockProtocol implements DroneProtocol {
     }
     return ok("Pre-arm check");
   }
-
-  // ── Fence / Rally ──────────────────────────────────────
-  // PX4 stores the geofence as a mission plan (mission_type = fence). Round-trip
-  // the uploaded elements so the demo mission-fence path is real, not a no-op.
-  async uploadFenceMission(elements: FenceElement[]): Promise<CommandResult> {
-    await new Promise((r) => setTimeout(r, 500));
-    this.fenceElements = elements.map((el) => ({ ...el }));
-    this.emitStatusText(6, `Fence uploaded (${elements.length} elements)`);
-    return ok("Fence uploaded");
-  }
-  async downloadFenceMission(): Promise<FenceElement[]> {
-    if (this.fenceElements.length > 0) return this.fenceElements.map((el) => ({ ...el }));
-    // No fence uploaded yet: return the mock polygon as a single inclusion zone.
-    return [{
-      kind: "polygon",
-      role: "inclusion",
-      vertices: MOCK_FENCE_POLYGON.map((p) => ({ lat: p.lat, lon: p.lon })),
-    }];
-  }
-  async uploadRallyPoints(pts: RallyPointItem[]): Promise<CommandResult> {
-    const { promise, resolve } = Promise.withResolvers<void>();
-    setTimeout(resolve, 300);
-    await promise;
-    this.rallyPoints = pts.map((p) => ({ ...p }));
-    this.emitStatusText(6, `${pts.length} rally points uploaded`);
-    return ok("Rally points uploaded");
-  }
-  async downloadRallyPoints() { return [...this.rallyPoints]; }
 
   // ── Parameters ─────────────────────────────────────────
   getCachedParameterNames(): string[] { return Array.from(this.params.keys()); }
@@ -368,55 +338,6 @@ export class MockProtocol implements DroneProtocol {
 
   /** Demo mode never has a real FC-served metadata overlay. */
   getComponentMetadataUri(): string | null { return null; }
-
-  // ── Betaflight LED strip (mock) ────────────────────────
-  async getLedStripConfig(): Promise<number[]> {
-    // 8 LEDs, palette colour index cycling 0..7 (color field = bits 22..25).
-    return Array.from({ length: 8 }, (_, i) => (i << 22) >>> 0);
-  }
-  async setLedStripConfig(): Promise<CommandResult> { return ok("LED config written"); }
-  async getLedColors() {
-    // A 16-entry rainbow palette.
-    return Array.from({ length: 16 }, (_, i) => ({ h: Math.round((i * 360) / 16), s: 255, v: 255 }));
-  }
-  async setLedColors(): Promise<CommandResult> { return ok("LED colours written"); }
-  async getLedStripModeColors() {
-    const out: { mode: number; fun: number; color: number }[] = [];
-    for (let mode = 0; mode < 6; mode++)
-      for (let dir = 0; dir < 6; dir++) out.push({ mode, fun: dir, color: (mode + dir) % 16 });
-    for (let fun = 0; fun < 11; fun++) out.push({ mode: 6, fun, color: fun % 16 });
-    out.push({ mode: 7, fun: 0, color: 0 });
-    return out;
-  }
-  async setLedStripModeColors(): Promise<CommandResult> { return ok("Mode colours written"); }
-
-  // ── Mode and adjustment ranges (mock) ──────────────────
-  private ranges = new MockRanges();
-  async getModeBoxes() { return this.ranges.boxes(); }
-  async getModeRanges() { return this.ranges.modeRanges(); }
-  async setModeRanges(r: MspModeRange[]): Promise<CommandResult> { return this.ranges.setModeRanges(r); }
-  async getAdjustmentRanges() { return this.ranges.adjustmentRanges(); }
-  async setAdjustmentRanges(r: MspAdjustmentRange[]): Promise<CommandResult> { return this.ranges.setAdjustmentRanges(r); }
-
-  // ── Betaflight serial ports (mock, MSP2 32-bit mask) ───
-  async getSerialConfig() {
-    return [
-      { identifier: 20, functions: 1, mspBaudRate: 0, gpsBaudRate: 0, telemetryBaudRate: 0, blackboxBaudRate: 0 }, // USB VCP: MSP
-      { identifier: 51, functions: 1 << 16, mspBaudRate: 5, gpsBaudRate: 0, telemetryBaudRate: 0, blackboxBaudRate: 0 }, // UART1: FrSky OSD (bit 16)
-      { identifier: 52, functions: 1 << 6, mspBaudRate: 0, gpsBaudRate: 5, telemetryBaudRate: 0, blackboxBaudRate: 0 }, // UART2: Serial RX
-    ];
-  }
-  async setSerialConfig(): Promise<CommandResult> { return ok("Serial config written"); }
-  serialConfigExtended(): boolean { return true; }
-  async sendDshotCommand(): Promise<CommandResult> { return ok("DShot command sent"); }
-  async uploadOsdFont(glyphs: Uint8Array[], onProgress?: (done: number, total: number) => void): Promise<CommandResult> { onProgress?.(glyphs.length, glyphs.length); return ok(`Uploaded ${glyphs.length} font glyphs`); }
-  private bfStorage = new MockBfStorage();
-  getOsdConfig() { return this.bfStorage.getOsdConfig(); }
-  writeOsdLayout(...a: Parameters<MockBfStorage["writeOsdLayout"]>) { return this.bfStorage.writeOsdLayout(...a); }
-  getDataflashSummary() { return this.bfStorage.getDataflashSummary(); }
-  downloadBlackbox(...a: Parameters<MockBfStorage["downloadBlackbox"]>) { return this.bfStorage.downloadBlackbox(...a); }
-  eraseDataflash() { return this.bfStorage.eraseDataflash(); }
-  getVtxPowerLevels() { return this.bfStorage.getVtxPowerLevels(); }
 
   // ── DisplayPort OSD push (mock) ────────────────────────
   onDisplayPort(cb: (op: DisplayPortOp) => void): () => void {

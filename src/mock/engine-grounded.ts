@@ -47,5 +47,9 @@ export function tickGroundedDrone(
     rc: { timestamp: now, channels: IDLE_RC, rssi: 230 },
   });
   protocol.setRcChannelValues(IDLE_RC);
-  if (tickCount % 5 === 0) protocol.emitHeartbeat(protocol.flight.armed, protocol.flight.mode);
+  if (tickCount % 5 === 0) {
+    protocol.emitHeartbeat(protocol.flight.armed, protocol.flight.mode);
+    // EXTENDED_SYS_STATE: MAV_LANDED_STATE_ON_GROUND.
+    protocol.emitExtendedSysState({ timestamp: now, vtolState: 0, landedState: 1 });
+  }
 }

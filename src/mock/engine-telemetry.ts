@@ -156,9 +156,13 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
   }
 
   // Heartbeat at 1Hz, carrying the vehicle's own arm state and mode so a
-  // command that changed them (mock-protocol-flight) holds across ticks.
+  // command that changed them (mock-protocol-flight) holds across ticks, and
+  // EXTENDED_SYS_STATE with it: the FC's landed state (MAV_LANDED_STATE
+  // 1 on the ground, 2 in the air).
   if (ctx.tickCount % 5 === 0) {
-    ctx.protocol.emitHeartbeat(ctx.protocol.flight.armed, ctx.protocol.flight.mode);
+    const { armed, mode, airborne } = ctx.protocol.flight;
+    ctx.protocol.emitHeartbeat(armed, mode);
+    ctx.protocol.emitExtendedSysState({ timestamp: now, vtolState: 0, landedState: armed && airborne ? 2 : 1 });
   }
 
   // MissionCurrent at 1Hz: the mission item the drone is flying toward.

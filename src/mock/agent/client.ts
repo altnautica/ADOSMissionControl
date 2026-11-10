@@ -34,6 +34,7 @@ import type {
   SupervisorRestartResult,
 } from "@/lib/agent/agent-client/system";
 import { delay, jitter, startTime } from "./utils";
+import { throwIfDemoAgentPollFails } from "../demo-link";
 import { MockAgentClientExtras } from "./client-extras";
 import { getMockConfig, setMockConfigValue } from "./config";
 import { MOCK_PERIPHERALS } from "./peripherals";
@@ -102,6 +103,7 @@ export class MockAgentClient extends MockAgentClientExtras {
   readonly logging = new MockLoggingService();
 
   async getStatus(): Promise<AgentStatus> {
+    throwIfDemoAgentPollFails();
     await delay(60);
     if (overrideStatus) return { ...overrideStatus };
     const uptimeMs = Date.now() - startTime;
@@ -205,6 +207,7 @@ export class MockAgentClient extends MockAgentClientExtras {
   }
 
   async getServices(): Promise<ServiceInfo[]> {
+    throwIfDemoAgentPollFails();
     await delay(80);
     if (overrideServices) return overrideServices.map((s) => ({ ...s }));
     const uptime = Math.floor((Date.now() - startTime) / 1000);
@@ -219,6 +222,7 @@ export class MockAgentClient extends MockAgentClientExtras {
   }
 
   async getSystemResources(): Promise<SystemResources> {
+    throwIfDemoAgentPollFails();
     await delay(50);
     if (overrideResources) {
       const r = overrideResources;
