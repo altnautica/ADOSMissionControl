@@ -118,7 +118,7 @@ describe("Fly Here dialog", () => {
     vi.useFakeTimers();
     open();
     fireEvent.change(screen.getByLabelText(/Altitude/), { target: { value: "" } });
-    const hold = screen.getByRole("button", { name: /Hold to Confirm/ });
+    const hold = screen.getByRole("button", { name: /Hold to fly here/ });
     expect(hold).toHaveProperty("disabled", true);
     fireEvent.mouseDown(hold);
     await act(async () => {
@@ -131,7 +131,7 @@ describe("Fly Here dialog", () => {
     vi.useFakeTimers();
     open();
     fireEvent.change(screen.getByLabelText(/Altitude/), { target: { value: "25" } });
-    fireEvent.mouseDown(screen.getByRole("button", { name: /Hold to Confirm/ }));
+    fireEvent.mouseDown(screen.getByRole("button", { name: /Hold to fly here/ }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000);
     });
@@ -142,7 +142,7 @@ describe("Fly Here dialog", () => {
     vi.useFakeTimers();
     open();
     fireEvent.change(screen.getByLabelText(/Altitude/), { target: { value: "25" } });
-    fireEvent.mouseDown(screen.getByRole("button", { name: /Hold to Confirm/ }));
+    fireEvent.mouseDown(screen.getByRole("button", { name: /Hold to fly here/ }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(SPEC_HOLD_MS.fly_here - 200);
     });
@@ -156,5 +156,6 @@ describe("Fly Here dialog", () => {
   it("warns that the hold takes over a running mission or skill", () => {
     open();
     expect(screen.getByText(/Takes over from any running mission or skill/)).toBeTruthy();
+    expect(screen.getByText("Fly here")).toBeTruthy();
   });
 });

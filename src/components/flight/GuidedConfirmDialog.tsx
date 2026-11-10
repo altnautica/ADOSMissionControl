@@ -19,6 +19,8 @@ import { activate, buildSkillContext, SPEC_HOLD_MS } from "@/lib/skills";
 import { FLY_HERE_ALTITUDE_M, parseFlyHereAltitude } from "@/lib/skills/builtins/fly-here";
 import { X, Navigation } from "lucide-react";
 import { haversineDistance } from "@/lib/geo/distance";
+import { specString } from "@/lib/cockpit/spec-strings";
+import { countdownS, fmtDistance } from "@/lib/hud/format";
 
 /** The Fly Here confirm hold, the same on every surface (spec `holds_ms`). */
 const HOLD_DURATION_MS = SPEC_HOLD_MS.fly_here;
@@ -122,7 +124,7 @@ export function GuidedConfirmDialog() {
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
         <div className="flex items-center gap-2">
           <Navigation size={14} className="text-accent-primary" />
-          <span className="text-xs font-semibold text-text-primary">Fly Here</span>
+          <span className="text-xs font-semibold text-text-primary">{specString("map.fly_here")}</span>
         </div>
         <button
           onClick={dismissConfirm}
@@ -160,10 +162,8 @@ export function GuidedConfirmDialog() {
         {distance !== null && (
           <div className="flex gap-4">
             <div>
-              <span className="text-[9px] text-text-tertiary uppercase">Distance</span>
-              <p className="text-xs font-mono text-text-primary">
-                {distance < 1000 ? `${Math.round(distance)} m` : `${(distance / 1000).toFixed(2)} km`}
-              </p>
+              <span className="text-[9px] text-text-tertiary uppercase">{specString("map.fly_here.distance")}</span>
+              <p className="text-xs font-mono text-text-primary">{fmtDistance(distance)}</p>
             </div>
             {eta !== null && (
               <div>
@@ -209,7 +209,7 @@ export function GuidedConfirmDialog() {
         )}
 
         {/* The hold replaces whatever flies the drone now */}
-        <p className="text-[10px] text-status-warning">Takes over from any running mission or skill.</p>
+        <p className="text-[10px] text-status-warning">{specString("map.fly_here.takes_over")}</p>
 
         {/* Error */}
         {error && (
@@ -236,7 +236,9 @@ export function GuidedConfirmDialog() {
             style={{ width: `${holdProgress * 100}%` }}
           />
           <span className="relative text-xs font-semibold text-accent-primary">
-            {holdProgress > 0 ? "Hold..." : "Hold to Confirm"}
+            {holdProgress > 0
+              ? specString("hold.keep_holding", { s: countdownS((1 - holdProgress) * SPEC_HOLD_MS.fly_here) })
+              : specString("map.fly_here.hold")}
           </span>
         </button>
       </div>
