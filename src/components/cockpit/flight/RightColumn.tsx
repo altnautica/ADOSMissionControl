@@ -4,217 +4,234 @@
  * @module cockpit/flight/RightColumn
  * @description The right column (cockpit spec `layout.json` `right_column`),
  * vertically centred: the 56 px shutter, the photo / video switch, the zoom
- * step and the camera settings.
+ * step, the gimbal pad and the camera settings, in the spec's item order.
  *
  * What each control really does on this ground station:
- * - Photo: saves a still of the received picture (PNG download).
+ * - Photo: a camera extension's capture, else the vehicle camera, else a
+ *   still of the received picture (PNG download).
  * - Video: starts and stops the flight recording (the received video plus
  *   the telemetry log), the same recorder as everywhere else in the app.
- * - Zoom: a digital zoom of the view, 1x / 2x / 4x; the data layers scale
- *   with the picture so boxes stay on their targets.
- * - Gimbal pad: press and hold to tilt or pan the gimbal through the drone
- *   agent's rate route (`POST /api/v1/gimbal/rate`, about 10 Hz, a zero rate
- *   on release). Shown only while `GET` on that route reports the drone takes
- *   rates, and only where the column has room for it.
+ * - Zoom: a camera extension's zoom, else the vehicle camera, else a digital
+ *   zoom of the view, 1x / 2x / 4x; the data layers scale with the picture so
+ *   boxes stay on their targets.
+ * - Gimbal pad: drag to aim the camera through the drone agent's rate route
+ *   (`POST /api/v1/gimbal/rate`). Shown only while `GET` on that route
+ *   reports the drone takes rates.
  * - Camera settings: the stream switcher, the camera roster and the live
- *   video figures.
+ *   video figures, in a sheet.
+ *
+ * When the column is too short for every item, items leave it in the spec's
+ * `drop_order`.
  *
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { useFlightSheet } from "./flight-sheet";
-import { useTranslations } from "next-intl";
-import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, SlidersHorizontal, Video, ZoomIn } from "lucide-react";
+import { Fragment, useCallback, useState } from "react";
+import { Camera, SlidersHorizontal, Video, ZoomIn } from "lucide-react";
 
-import { captureScreenshot } from "@/lib/video/webrtc-client";
+import { cockpitPhoto, cockpitZoom, digitalZoomLabel, photoResultText } from "@/lib/cockpit/camera-actions";
 import { notifySkill } from "@/lib/skills/registry";
+import { specString } from "@/lib/cockpit/spec-strings";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { useFlightRecording } from "@/hooks/use-flight-recording";
 import { firePluginSkill } from "@/hooks/use-ds4-dispatcher";
 import { RecTimer } from "../RecTimer";
 import { CameraSheet } from "./CameraSheet";
 import { useFlightGrid } from "./flight-context";
 import { rectStyle } from "./flight-grid";
+import { useFlightSheet } from "./flight-sheet";
+import { GIMBAL_PAD_PX, GimbalPad, useGimbalRateAvailable } from "./GimbalPad";
 import { useViewZoomStore } from "./view-zoom-store";
-import { GimbalRateDriver, gimbalRateAvailable } from "@/lib/cockpit/gimbal-rate";
 
-/** Pad rate at a press (°/s), the controller's full trigger travel. */
-const PAD_DPS = 60;
-/** How often the pad re-asks whether the drone takes gimbal rates. */
-const AVAILABILITY_POLL_MS = 5000;
-/** Column height (unscaled px) the stack needs with the pad in it. */
-const PAD_COLUMN_MIN_H = 300;
+export type RightItem = "shutter" | "photo_video_switch" | "zoom" | "gimbal_pad" | "camera_settings";
 
-/** Whether the drone's agent takes gimbal rates, re-checked while mounted. */
-function useGimbalRateAvailable(droneId: string): boolean {
-  const [available, setAvailable] = useState(false);
-  useEffect(() => {
-    let live = true;
-    const check = () =>
-      void gimbalRateAvailable(droneId).then((a) => {
-        if (live) setAvailable(a);
-      });
-    check();
-    const id = setInterval(check, AVAILABILITY_POLL_MS);
-    return () => {
-      live = false;
-      clearInterval(id);
-    };
-  }, [droneId]);
-  return available;
+const ZONE = layoutSpec.zones.find((z) => z.id === "right_column") as unknown as {
+  items: RightItem[];
+  drop_order: RightItem[];
+};
+/** The column's items, top to bottom (spec order). */
+export const RIGHT_ITEMS: readonly RightItem[] = ZONE.items;
+/** The order items leave a column too short for all of them (spec). */
+export const RIGHT_DROP_ORDER: readonly RightItem[] = ZONE.drop_order;
+
+const HIT = layoutSpec.touch_target.min;
+/** The switch: two hit-size buttons, a 2 px gap and 2 px padding. */
+const SWITCH_H = 2 * HIT + 2 + 4;
+/** The recording timer under the shutter while recording. */
+const REC_TIMER_H = 16;
+/** The stack's gap and padding (chrome gap token, `.fs-col-stack`). */
+const STACK_GAP = 8;
+const STACK_PAD = 6;
+
+/** Each item's height in the column, unscaled. */
+const ITEM_H: Record<RightItem, number> = {
+  shutter: layoutSpec.touch_target.shutter,
+  photo_video_switch: SWITCH_H,
+  zoom: HIT,
+  gimbal_pad: GIMBAL_PAD_PX,
+  camera_settings: HIT,
+};
+
+function stackHeight(items: readonly RightItem[], recording: boolean): number {
+  const body = items.reduce((h, it) => h + ITEM_H[it], 0) + STACK_GAP * Math.max(0, items.length - 1);
+  return body + 2 * STACK_PAD + (recording ? REC_TIMER_H + STACK_GAP : 0);
 }
 
-const PAD_DIRS = [
-  { key: "up", p: 1, y: 0, Icon: ChevronUp, area: "up" },
-  { key: "left", p: 0, y: -1, Icon: ChevronLeft, area: "left" },
-  { key: "right", p: 0, y: 1, Icon: ChevronRight, area: "right" },
-  { key: "down", p: -1, y: 0, Icon: ChevronDown, area: "down" },
-] as const;
-
-/** Press-and-hold pitch and yaw buttons driving the gimbal rate. */
-export function GimbalPad({ droneId }: { droneId: string }) {
-  const t = useTranslations("flightScreen.camera");
-  const driver = useRef<GimbalRateDriver | null>(null);
-  useEffect(() => {
-    const d = new GimbalRateDriver(droneId, PAD_DPS);
-    driver.current = d;
-    return () => {
-      d.stop();
-      driver.current = null;
-    };
-  }, [droneId]);
-  const release = () => driver.current?.set(0, 0);
-  const press = (p: number, y: number) => driver.current?.set(p * PAD_DPS, y * PAD_DPS);
-  return (
-    <div className="fs-gimbal-pad" role="group" aria-label={t("gimbal")} data-testid="fs-gimbal-pad">
-      {PAD_DIRS.map(({ key, p, y, Icon, area }) => (
-        <button
-          key={key}
-          type="button"
-          style={{ gridArea: area }}
-          data-testid={`fs-gimbal-${key}`}
-          aria-label={t(`gimbalDir.${key}`)}
-          title={t(`gimbalDir.${key}`)}
-          onPointerDown={(e: ReactPointerEvent<HTMLButtonElement>) => {
-            e.currentTarget.setPointerCapture?.(e.pointerId);
-            press(p, y);
-          }}
-          onPointerUp={release}
-          onPointerCancel={release}
-          onLostPointerCapture={release}
-          // Enter only: Space is the Pause hotkey and must never move the gimbal.
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.repeat) press(p, y);
-          }}
-          onKeyUp={(e) => {
-            if (e.key === "Enter") release();
-          }}
-          onBlur={release}
-        >
-          <Icon className="fs-ico-sm" aria-hidden="true" />
-        </button>
-      ))}
-    </div>
-  );
+/**
+ * The items a column of height `h` shows: the spec's items (less the gimbal
+ * pad when the drone takes no gimbal rates), dropping items in the spec's
+ * `drop_order` until the stack fits.
+ */
+export function rightColumnItems(h: number, scale: number, opts: { gimbal: boolean; recording?: boolean }): RightItem[] {
+  let items = RIGHT_ITEMS.filter((it) => it !== "gimbal_pad" || opts.gimbal);
+  for (const drop of RIGHT_DROP_ORDER) {
+    if (stackHeight(items, opts.recording ?? false) * scale <= h) break;
+    items = items.filter((it) => it !== drop);
+  }
+  return items;
 }
 
 type CaptureMode = "photo" | "video";
 
 export function RightColumn({ droneId }: { droneId: string }) {
-  const t = useTranslations("flightScreen.camera");
   const grid = useFlightGrid();
   const rect = grid.zones.right_column;
   const [mode, setMode] = useState<CaptureMode>("photo");
   const [sheetOpen, setSheetOpen] = useFlightSheet("camera");
+  const closeSheet = useCallback(() => setSheetOpen(false), [setSheetOpen]);
   const { isRecording, toggle } = useFlightRecording(droneId);
   const zoom = useViewZoomStore((s) => s.byDrone[droneId] ?? 1);
-  const cycleZoom = useViewZoomStore((s) => s.cycle);
   const gimbal = useGimbalRateAvailable(droneId);
   if (!rect) return null;
-  const padFits = rect.h >= PAD_COLUMN_MIN_H * grid.scale;
+  const items = rightColumnItems(rect.h, grid.scale, { gimbal, recording: isRecording });
+  const hit = HIT * grid.scale;
 
   // A camera extension's own capture / record skill wins (the same order as
-  // the controller's Photo and Record buttons); without one, the ground
-  // station captures the received picture itself.
+  // the controller's Photo and Record buttons); then the vehicle camera; then
+  // the ground station captures the received picture itself.
   const shoot = () => {
     if (mode === "video") {
       if (!firePluginSkill(droneId, ["record", "record-toggle"])) toggle();
       return;
     }
-    if (firePluginSkill(droneId, ["capture", "photo", "take-photo"])) return;
-    void captureScreenshot().then((blob) => {
-      if (!blob) notifySkill(t("noPicture"), "warning");
+    void cockpitPhoto(droneId).then((r) => {
+      const text = photoResultText(r);
+      if (text) notifySkill(text, r === "no_video" ? "warning" : "success");
     });
   };
 
+  const shutterLabel =
+    mode === "photo"
+      ? specString("cockpit.camera.take_photo")
+      : isRecording
+        ? specString("cockpit.camera.stop_recording")
+        : specString("cockpit.camera.start_recording");
+  const zoomLabel = digitalZoomLabel(zoom);
+
+  const render = (item: RightItem) => {
+    switch (item) {
+      case "shutter":
+        return (
+          <Fragment key={item}>
+            <button
+              type="button"
+              className="fs-shutter"
+              data-item={item}
+              data-testid="fs-shutter"
+              data-mode={mode}
+              data-recording={isRecording ? "true" : "false"}
+              style={{ width: grid.target, height: grid.target }}
+              aria-label={shutterLabel}
+              title={shutterLabel}
+              onClick={shoot}
+            >
+              <i aria-hidden="true" />
+            </button>
+            {isRecording && (
+              <span className="fs-rec" data-testid="fs-rec-timer">
+                <RecTimer droneId={droneId} />
+              </span>
+            )}
+          </Fragment>
+        );
+      case "photo_video_switch":
+        return (
+          <div
+            key={item}
+            className="fs-mode"
+            role="group"
+            data-item={item}
+            data-testid="fs-photo_video_switch"
+            aria-label={specString("cockpit.camera.shutter_mode")}
+          >
+            <button
+              type="button"
+              aria-pressed={mode === "photo"}
+              aria-label={specString("cockpit.camera.photo")}
+              title={specString("cockpit.camera.photo")}
+              style={{ width: hit, height: hit }}
+              disabled={isRecording}
+              onClick={() => setMode("photo")}
+            >
+              <Camera className="fs-ico-sm" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === "video"}
+              aria-label={specString("cockpit.camera.video")}
+              title={specString("cockpit.camera.video")}
+              style={{ width: hit, height: hit }}
+              onClick={() => setMode("video")}
+            >
+              <Video className="fs-ico-sm" aria-hidden="true" />
+            </button>
+          </div>
+        );
+      case "zoom":
+        return (
+          <button
+            key={item}
+            type="button"
+            className="fs-btn fs-col-btn"
+            data-item={item}
+            data-testid="fs-zoom"
+            style={{ width: hit, height: hit }}
+            aria-label={zoomLabel}
+            title={zoomLabel}
+            onClick={() => cockpitZoom(droneId, "cycle")}
+          >
+            {zoom === 1 ? <ZoomIn className="fs-ico-sm" aria-hidden="true" /> : null}
+            <span aria-hidden="true">{zoom}×</span>
+          </button>
+        );
+      case "gimbal_pad":
+        return <GimbalPad key={item} droneId={droneId} scale={grid.scale} />;
+      case "camera_settings":
+        return (
+          <button
+            key={item}
+            type="button"
+            className="fs-btn fs-col-btn"
+            data-item={item}
+            data-testid="fs-camera_settings"
+            data-sheet-trigger="camera"
+            style={{ width: hit, height: hit }}
+            aria-haspopup="dialog"
+            aria-expanded={sheetOpen}
+            aria-label={specString("cockpit.camera.settings")}
+            title={specString("cockpit.camera.settings")}
+            onClick={() => setSheetOpen((o) => !o)}
+          >
+            <SlidersHorizontal className="fs-ico-sm" aria-hidden="true" />
+          </button>
+        );
+    }
+  };
+
   return (
-    <div className="fs-col fs-col-right" data-zone="right_column" style={rectStyle(rect)}>
-      <div className="fs-col-stack">
-        <button
-          type="button"
-          className="fs-shutter"
-          data-testid="fs-shutter"
-          data-mode={mode}
-          data-recording={isRecording ? "true" : "false"}
-          style={{ width: grid.target, height: grid.target }}
-          aria-label={mode === "photo" ? t("takePhoto") : isRecording ? t("stopVideo") : t("startVideo")}
-          title={mode === "photo" ? t("takePhoto") : isRecording ? t("stopVideo") : t("startVideo")}
-          onClick={shoot}
-        >
-          <i aria-hidden="true" />
-        </button>
-        {isRecording && (
-          <span className="fs-rec" data-testid="fs-rec-timer">
-            <RecTimer droneId={droneId} />
-          </span>
-        )}
-        <div className="fs-mode" role="group" aria-label={t("mode")}>
-          <button
-            type="button"
-            aria-pressed={mode === "photo"}
-            aria-label={t("photo")}
-            title={t("photo")}
-            disabled={isRecording}
-            onClick={() => setMode("photo")}
-          >
-            <Camera className="fs-ico-sm" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode === "video"}
-            aria-label={t("video")}
-            title={t("video")}
-            onClick={() => setMode("video")}
-          >
-            <Video className="fs-ico-sm" aria-hidden="true" />
-          </button>
-        </div>
-        <button
-          type="button"
-          className="fs-btn fs-col-btn"
-          data-testid="fs-zoom"
-          aria-label={t("zoom", { z: zoom })}
-          title={t("zoom", { z: zoom })}
-          onClick={() => cycleZoom(droneId)}
-        >
-          {zoom === 1 ? <ZoomIn className="fs-ico-sm" aria-hidden="true" /> : null}
-          <span>{zoom}×</span>
-        </button>
-        {gimbal && padFits && <GimbalPad droneId={droneId} />}
-        <button
-          type="button"
-          className="fs-btn fs-col-btn"
-          data-testid="fs-camera-settings"
-          aria-haspopup="dialog"
-          aria-expanded={sheetOpen}
-          aria-label={t("settings")}
-          title={t("settings")}
-          onClick={() => setSheetOpen((o) => !o)}
-        >
-          <SlidersHorizontal className="fs-ico-sm" aria-hidden="true" />
-        </button>
-      </div>
-      {sheetOpen && <CameraSheet droneId={droneId} onClose={() => setSheetOpen(false)} />}
+    <div className="fs-col fs-col-right" data-zone="right_column" data-items={items.join(" ")} style={rectStyle(rect)}>
+      <div className="fs-col-stack">{items.map(render)}</div>
+      {sheetOpen && <CameraSheet droneId={droneId} onClose={closeSheet} />}
     </div>
   );
 }

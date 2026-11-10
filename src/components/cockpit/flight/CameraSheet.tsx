@@ -5,20 +5,30 @@
  * @description Camera settings: the stream switcher (multi-stream nodes), the
  * camera roster and the live video figures (resolution, frame rate, frame age
  * with the estimator that produced it, and the network round trip labelled
- * `net` so it is never read as end-to-end delay).
+ * `net` so it is never read as end-to-end delay). As a sheet it follows the
+ * flight screen's sheet rules: rendered at the screen's root beside the right
+ * column and below the top bar, closed by Escape, a press outside or its ✕.
  *
  * @license GPL-3.0-only
  */
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useTranslations } from "next-intl";
+import { X } from "lucide-react";
 
 import { useVideoStore } from "@/stores/video-store";
 import { useVideoFrameAge } from "@/hooks/use-video-frame-age";
 import { frameAgeLabel } from "@/lib/video/frame-age";
+import { specString } from "@/lib/cockpit/spec-strings";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { CockpitCameraRoster } from "@/components/vision/CockpitCameraRoster";
 import { CockpitStreamTabs } from "../CockpitStreamTabs";
 import { useDemoFeedActive } from "../CockpitDemoStream";
+import { useFlightGrid } from "./flight-context";
+import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "./flight-sheet";
+
+/** The camera settings trigger, which is not "outside" the sheet. */
+export const CAMERA_SHEET_TRIGGER = "[data-sheet-trigger='camera']";
 
 function VideoFigures({ droneId }: { droneId: string }) {
   const t = useTranslations("cockpit.topRight");
@@ -30,7 +40,7 @@ function VideoFigures({ droneId }: { droneId: string }) {
   const resolution = useVideoStore((s) => s.resolution);
   const frameAge = useVideoFrameAge();
   if (demoFeed) return <p className="fs-figures">{tc("demoFeed")}</p>;
-  if (!isStreaming) return <p className="fs-figures">{tc("offline")}</p>;
+  if (!isStreaming) return <p className="fs-figures">{specString("camera.no_video")}</p>;
   return (
     <p className="fs-figures" data-testid="fs-video-figures">
       <span>{resolution || "—"}</span>
@@ -60,26 +70,37 @@ export function CameraPanel({ droneId }: { droneId: string }) {
 }
 
 export function CameraSheet({ droneId, onClose }: { droneId: string; onClose: () => void }) {
-  const t = useTranslations("flightScreen.camera");
+  const grid = useFlightGrid();
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    const onDown = (e: PointerEvent) => {
-      const target = e.target as HTMLElement;
-      if (!ref.current?.contains(target) && !target.closest("[data-testid='fs-camera-settings']")) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("pointerdown", onDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("pointerdown", onDown);
-    };
-  }, [onClose]);
+  useSheetDismiss(ref, onClose, CAMERA_SHEET_TRIGGER);
+  const title = specString("cockpit.camera.settings");
+  const hit = layoutSpec.touch_target.min * grid.scale;
   return (
-    <div ref={ref} role="dialog" aria-label={t("settings")} className="fs-sheet fs-camera-sheet" data-testid="fs-camera-sheet">
-      <CameraPanel droneId={droneId} />
-    </div>
+    <FlightSheetPortal>
+      <div
+        ref={ref}
+        role="dialog"
+        aria-label={title}
+        className="fs-sheet fs-camera-sheet"
+        data-testid="fs-camera-sheet"
+        style={{ position: "absolute", ...sheetPlacement(grid, "right") }}
+      >
+        <header className="fs-sheet-head">
+          <h2>{title}</h2>
+          <button
+            type="button"
+            className="fs-sheet-close"
+            data-testid="fs-camera-sheet-close"
+            aria-label={specString("cockpit.close")}
+            title={specString("cockpit.close")}
+            style={{ width: hit, height: hit }}
+            onClick={onClose}
+          >
+            <X className="fs-ico-sm" aria-hidden="true" />
+          </button>
+        </header>
+        <CameraPanel droneId={droneId} />
+      </div>
+    </FlightSheetPortal>
   );
 }
