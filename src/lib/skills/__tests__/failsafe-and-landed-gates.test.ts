@@ -12,7 +12,9 @@ import { disarmSkill } from "../builtins/disarm";
 import { pauseSkill } from "../builtins/pause";
 import { rthSkill } from "../builtins/rth";
 import { resolveBoundSkillId } from "../bound-skill";
-import { resetCommandedModes } from "../flight-facts";
+import { fcFailsafeActive, resetCommandedModes } from "../flight-facts";
+import { parsePilotState } from "@/lib/hud/cockpit-frames";
+import pilotFixture from "@/lib/cockpit/layers/fixtures/pilot-frame.json";
 import type { SkillContext } from "../types";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
@@ -70,6 +72,31 @@ describe("Pause during a flight-controller failsafe", () => {
     const c = ctx({ flightMode: "RTL" });
     await rthSkill.activate(c);
     expect(pauseSkill.getState(c).kind).not.toBe("disabled");
+  });
+});
+
+describe("the fresh pilot's failsafe flag decides", () => {
+  function pilotSays(fcFailsafe: boolean, ageMs: number) {
+    const data = parsePilotState({ ...pilotFixture, fc_failsafe: fcFailsafe, failsafe_cause: fcFailsafe ? "fc" : null });
+    useNavStreamStore.setState({ byDrone: { d1: { pilot: { data, receivedAt: Date.now() - ageMs } } } as never });
+  }
+  beforeEach(() => resetCommandedModes());
+  afterEach(() => useNavStreamStore.setState({ byDrone: {} }));
+
+  it("refuses Pause when the pilot reports an FC failsafe, whatever the mode looks like", () => {
+    pilotSays(true, 100);
+    expect(fcFailsafeActive("d1", "LOITER", 0)).toBe(true);
+    expect(pauseSkill.getState(ctx({ flightMode: "LOITER" }))).toMatchObject({ kind: "disabled" });
+  });
+
+  it("allows Pause in an RTL the pilot says is no failsafe", () => {
+    pilotSays(false, 100);
+    expect(fcFailsafeActive("d1", "RTL", 0)).toBe(false);
+  });
+
+  it("falls back to the FC's own state once the pilot is stale", () => {
+    pilotSays(false, 2000);
+    expect(fcFailsafeActive("d1", "RTL", 0)).toBe(true);
   });
 });
 

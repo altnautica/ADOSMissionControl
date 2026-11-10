@@ -3,9 +3,10 @@
   "$description": "Flight-state chip. Rules are evaluated in order on the pilot kind; the first match wins. {placeholders} are filled from the pilot kind and its mission object. color names resolve through tokens.json state.*.",
   "rules": [
     { "id": "link_stale", "match": { "pilot_stale": true }, "text": "LINK", "color": "stale", "dim": true, "button": null },
+    { "id": "launching", "match": { "sequence_running": true }, "text": "TAKING OFF · {step}", "color": "pilot", "button": "abort" },
     { "id": "idle_ready", "match": { "owner": "idle", "ready": true }, "text": "READY", "color": "ready", "button": null },
     { "id": "idle_not_ready", "match": { "owner": "idle", "ready": false }, "text": "NOT READY · {first_block_msg}", "color": "not_ready", "button": "setup_link_when_setup_needed" },
-    { "id": "pilot", "match": { "owner": "pilot" }, "text": "PILOT · {profile_upper}", "color": "pilot", "button": null },
+    { "id": "pilot", "match": { "owner": "pilot" }, "text": "PILOT · {profile_upper}", "color": "pilot", "button": null, "button_if": { "match": { "mission_state": "paused" }, "button": "resume" } },
     { "id": "skill", "match": { "owner": "skill" }, "text": "{skill_label_upper} · {mode_detail}", "color": "skill", "button": null },
     { "id": "goto", "match": { "owner": "goto" }, "text": "GOTO · {dist_m} m", "color": "goto", "button": null },
     { "id": "swarm", "match": { "owner": "swarm" }, "text": "SWARM", "color": "swarm", "button": null },
@@ -26,7 +27,9 @@
     "land": { "copter": [9], "plane": [20] }
   },
   "secondary": {
-    "order": ["hold_reason", "avoid_state", "control_mode"],
+    "order": ["fc_failsafe", "mission_paused_line", "hold_reason", "avoid_state", "control_mode"],
+    "fc_failsafe": { "text": "FAILSAFE", "color": "blocked" },
+    "mission_paused_line": { "match": { "owner": "pilot", "mission_state": "paused" }, "text": "Mission paused · WP {seq}/{total}", "color": "mission" },
     "avoid_state": {
       "detour": { "text": "AVOIDING", "color": "avoiding" },
       "blocked": { "text": "BLOCKED", "color": "blocked" },

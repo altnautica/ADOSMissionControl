@@ -14,7 +14,8 @@
 
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
-import { gotoAdvertised, flyHereOffered } from "@/lib/hud/fly-here-offer";
+import { gotoAdvertised, flyHereOffered, type FlyHereOffer } from "@/lib/hud/fly-here-offer";
+import { vehicleLanded } from "@/lib/skills/flight-facts";
 import { CHIP_STALE_AFTER_MS } from "@/lib/hud/flight-state";
 import { haversineDistance } from "@/lib/geo/distance";
 import { bearing } from "@/lib/telemetry-utils";
@@ -68,23 +69,35 @@ export interface MapPointOffer {
   launchHere: boolean;
 }
 
-/** What a point picked for `droneId` offers now. The FC guided-mode route
- *  applies only to the selected drone, the one the FC state describes. */
-export function mapPointOffer(droneId: string | null, now: number = Date.now()): MapPointOffer {
-  if (!droneId) return { flyHere: false, launchHere: false };
+/** The route a Fly here for `droneId` takes now (the shared rule): the ADOS
+ *  pilot when its fresh state offers a goto, else the FC when it flies
+ *  GUIDED, armed and airborne, else none. The FC state describes only the
+ *  selected drone, so the FC route applies to it alone. */
+export function flyHereRoute(droneId: string | null, now: number = Date.now()): FlyHereOffer["route"] {
+  if (!droneId) return null;
   const stamped = useNavStreamStore.getState().byDrone[droneId]?.pilot;
   const pilot = stamped?.data ?? null;
   const age = stamped ? now - stamped.receivedAt : Infinity;
   const fc = useDroneStore.getState();
   const connected =
     fc.connectionState === "connected" || fc.connectionState === "armed" || fc.connectionState === "in_flight";
-  const fcGuided =
-    useDroneManager.getState().selectedDroneId === droneId &&
-    connected &&
-    fc.armState === "armed" &&
-    GUIDED_MODES.has(fc.flightMode);
-  const launchHere = launchHereOffered(pilot, age);
-  return { flyHere: !launchHere && (flyHereOffered(pilot, age) || fcGuided), launchHere };
+  const fcFacts =
+    useDroneManager.getState().selectedDroneId === droneId && connected
+      ? {
+          guided: GUIDED_MODES.has(fc.flightMode),
+          armed: fc.armState === "armed",
+          landed: vehicleLanded(droneId, now) === true,
+        }
+      : null;
+  return flyHereOffered(pilot, age, fcFacts).route;
+}
+
+/** What a point picked for `droneId` offers now. */
+export function mapPointOffer(droneId: string | null, now: number = Date.now()): MapPointOffer {
+  if (!droneId) return { flyHere: false, launchHere: false };
+  const stamped = useNavStreamStore.getState().byDrone[droneId]?.pilot;
+  const launchHere = launchHereOffered(stamped?.data ?? null, stamped ? now - stamped.receivedAt : Infinity);
+  return { flyHere: !launchHere && flyHereRoute(droneId, now) !== null, launchHere };
 }
 
 /**

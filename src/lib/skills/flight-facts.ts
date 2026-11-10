@@ -3,11 +3,13 @@
  * @description Two facts the safety built-ins gate on, read the same way on
  * every route:
  *
- * - **FC failsafe**: the flight controller is flying a return or landing it
- *   chose itself (a failsafe, or an RC-switch return), or its heartbeat
- *   reports CRITICAL/EMERGENCY. A return or landing this ground station
- *   commanded is not a failsafe. Pause is refused during one, on the pilot
- *   route (the pilot refuses it) and the flight-controller route alike.
+ * - **FC failsafe**: while the pilot's state is fresh, its own `fc_failsafe`
+ *   flag says it (the pilot names the cause, and refuses Pause during one).
+ *   Without a fresh pilot state: the flight controller is flying a return or
+ *   landing it chose itself (a failsafe, or an RC-switch return), or its
+ *   heartbeat reports CRITICAL/EMERGENCY. A return or landing this ground
+ *   station commanded is not a failsafe. Pause is refused during one, on the
+ *   pilot route and the flight-controller route alike.
  * - **Landed**: the pilot's `landed` while its state is fresh, else the FC's
  *   height above home. Unknown when neither is available.
  * @license GPL-3.0-only
@@ -48,9 +50,17 @@ export function resetCommandedModes(): void {
   commanded.clear();
 }
 
-/** True while the FC flies a return or landing nobody here asked for, or its
- *  heartbeat reports a critical state. */
-export function fcFailsafeActive(droneId: string, flightMode: FlightMode, systemStatus: number | null | undefined): boolean {
+/** True while the FC flies a failsafe: the fresh pilot's `fcFailsafe` flag
+ *  when there is one, else a return or landing nobody here asked for, or a
+ *  heartbeat in a critical state. */
+export function fcFailsafeActive(
+  droneId: string,
+  flightMode: FlightMode,
+  systemStatus: number | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  const stamped = useNavStreamStore.getState().byDrone[droneId]?.pilot;
+  if (stamped && now - stamped.receivedAt < PILOT_STALE_MS) return stamped.data.fcFailsafe;
   if (systemStatus != null && systemStatus >= MAV_STATE_CRITICAL && systemStatus <= 8) return true;
   if (!RETURN_OR_LAND[flightMode]) return false;
   return commanded.get(droneId) !== flightMode;

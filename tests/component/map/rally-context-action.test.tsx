@@ -110,7 +110,7 @@ describe("rally menu item", () => {
     flightMode: "LOITER",
     canRally: false,
     canOrbit: false,
-    pilotGoto: false,
+    flyHere: false,
     launchHere: false,
   };
 
@@ -134,7 +134,7 @@ describe("flight menu items", () => {
     flightMode: "GUIDED",
     canRally: false,
     canOrbit: false,
-    pilotGoto: false,
+    flyHere: false,
     launchHere: false,
   };
   const ids = (ctx: MenuContext) => renderHook(() => useMenuItems(ctx)).result.current.map((i) => i.id);

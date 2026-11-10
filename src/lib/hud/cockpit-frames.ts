@@ -152,6 +152,12 @@ export interface PilotState {
   statustext: FcStatusText[];
   /** The setup step a tuning flight is on (owner `tuning`), or null. */
   setupStep: string | null;
+  /** The FC flies an RTL or land of its own (a failsafe, not an operator's
+   *  mode change). The agent omits `fc_failsafe` while it is false. */
+  fcFailsafe: boolean;
+  /** Why `fcFailsafe`: `rc_or_failsafe` (RC input was present, so an RC
+   *  switch is possible) or `fc`; null while not in a failsafe. */
+  failsafeCause: string | null;
 }
 
 /** One FC STATUSTEXT line; severity is MAVLink's (0 emergency … 4 warning). */
@@ -244,6 +250,8 @@ export function parsePilotState(raw: unknown): PilotState | null {
     aglSource: oneOf(p.agl_source, ["rangefinder", "home"] as const),
     statustext: parseStatusText(p.statustext),
     setupStep: str(p.setup_step),
+    fcFailsafe: p.fc_failsafe === true,
+    failsafeCause: str(p.failsafe_cause),
   };
 }
 

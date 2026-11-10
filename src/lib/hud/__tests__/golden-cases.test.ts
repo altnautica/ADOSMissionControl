@@ -1,7 +1,8 @@
 /**
- * The shared behaviour case files (chip, status pill, refusal texts, tips)
- * run against Mission Control's copies of the shared HUD modules, so this
- * surface computes exactly what every other cockpit computes.
+ * The shared behaviour case files (chip, status pill, refusal texts, tips,
+ * Fly here routes, readout formats) run against Mission Control's copies of
+ * the shared HUD modules, so this surface computes exactly what every other
+ * cockpit computes.
  *
  * @license GPL-3.0-only
  */
@@ -12,6 +13,8 @@ import chipCases from "../fixtures/chip-cases.json";
 import pillCases from "../fixtures/pill-cases.json";
 import refusalCases from "../fixtures/refusal-cases.json";
 import tipsCases from "../fixtures/tips-cases.json";
+import flyHereCases from "../fixtures/fly-here-cases.json";
+import readoutCases from "../fixtures/readout-cases.json";
 import flightStateJson from "@/lib/cockpit-spec/flight-state.json";
 import tokensJson from "@/lib/cockpit-spec/tokens.json";
 import { parsePilotState, type ArFrame } from "../cockpit-frames";
@@ -20,6 +23,8 @@ import { flightStateChip } from "../flight-state";
 import { pillAlerts, pillSummary, type PillInputs } from "../status-pill";
 import { refusalText } from "../refusal";
 import { nextTip, type TipsContext } from "../tips";
+import { flyHereOffered } from "../fly-here-offer";
+import { countdownS, fmtDistance, fmtSigned1 } from "../format";
 
 describe("chip cases", () => {
   const colors = tokensJson.state as Record<string, string>;
@@ -68,6 +73,10 @@ describe("pill cases", () => {
         prearm: i.prearm ?? undefined,
         storagePct: i.storage_pct,
         fcStatus: i.fc_status.map((s) => ({ severity: s.severity, text: s.text, ageMs: s.age_ms })),
+        pilotAgeMs: i.pilot_age_ms,
+        agentReachable: i.agent_reachable,
+        controllerLost: i.controller_lost,
+        preflightFailing: i.preflight_failing,
       });
       const s = pillSummary(alerts, new Set());
       expect({ severity: s.severity, text: s.text, count: s.count, ids: alerts.map((a) => a.id) }).toEqual(c.expected);
@@ -87,6 +96,30 @@ describe("tips cases", () => {
   for (const c of tipsCases) {
     it(c.name, () => {
       expect(nextTip(c.input.state, c.input.ctx as TipsContext, c.input.now_ms)).toEqual(c.expected);
+    });
+  }
+});
+
+describe("fly here cases", () => {
+  for (const c of flyHereCases) {
+    it(c.name, () => {
+      const p = c.input.pilot === null ? null : parsePilotState(c.input.pilot);
+      if (c.input.pilot !== null) expect(p).not.toBeNull();
+      expect(flyHereOffered(p, c.input.pilot_age_ms, c.input.fc)).toEqual(c.expected);
+    });
+  }
+});
+
+describe("readout cases", () => {
+  const fns: Record<string, (v: number | null) => string | number> = {
+    fmtSigned1,
+    fmtDistance,
+    countdownS: (v) => countdownS(v ?? 0),
+  };
+  for (const c of readoutCases) {
+    it(c.name, () => {
+      expect(Object.keys(fns)).toContain(c.input.fn);
+      expect(fns[c.input.fn](c.input.v)).toBe(c.expected);
     });
   }
 });

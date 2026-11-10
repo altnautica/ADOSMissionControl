@@ -52,4 +52,20 @@ describe("Fly here on the map context menu", () => {
     setPilot(flying, 5000);
     expect(itemIds()).not.toContain("fly-here");
   });
+
+  it("is hidden while the pilot reports an FC failsafe", () => {
+    useDroneManager.setState({ selectedDroneId: "d1" });
+    useDroneStore.setState({ connectionState: "armed", armState: "armed", flightMode: "RTL" });
+    setPilot({ ...flying, fcFailsafe: true, failsafeCause: "fc" }, 100);
+    expect(itemIds()).not.toContain("fly-here");
+  });
+
+  it("takes the FC route in GUIDED only while the drone is off the ground", () => {
+    useDroneManager.setState({ selectedDroneId: "d1" });
+    useDroneStore.setState({ connectionState: "armed", armState: "armed", flightMode: "GUIDED" });
+    setPilot({ ...flying, controlMode: "fc_manual", landed: true }, 100);
+    expect(itemIds()).not.toContain("fly-here");
+    setPilot({ ...flying, controlMode: "fc_manual", landed: false }, 100);
+    expect(itemIds()).toContain("fly-here");
+  });
 });

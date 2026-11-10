@@ -7,6 +7,7 @@
 import flightStateJson from "../cockpit-spec/flight-state.json";
 import tokensJson from "../cockpit-spec/tokens.json";
 import type { PilotState } from "./cockpit-frames";
+import { specText } from "./spec-text";
 
 export interface ChipRule {
   id: string;
@@ -15,6 +16,9 @@ export interface ChipRule {
   color: string;
   dim?: boolean;
   button: string | null;
+  /** A different button while a further condition holds (the `pilot` chip
+   *  offers Resume while it holds a paused mission). */
+  button_if?: { match: Record<string, string | number | boolean>; button: string };
   suffix_if_landing_seq?: string;
 }
 
@@ -24,6 +28,8 @@ const FC_MODE_CLASSES = flightStateJson.fc_mode_classes as unknown as Record<"rt
 const HOLD_REASON_LABELS: Readonly<Record<string, string>> = flightStateJson.hold_reason_labels;
 const CHIP_SECONDARY = flightStateJson.secondary as {
   order: string[];
+  fc_failsafe: { text: string; color: string };
+  mission_paused_line: { match: Record<string, string | number | boolean>; text: string; color: string };
   avoid_state: Record<string, { text: string; color: string } | null>;
   hold_reason: { text: string; color: string };
   control_mode: Record<string, string>;
@@ -57,6 +63,10 @@ export interface ChipFacts {
   controlMode: string | null;
   holdReason: string | null;
   avoidState: string | null;
+  /** The step of a running launch sequence (not `done`, no error), or null. */
+  launchStep: string | null;
+  /** The FC flies a failsafe RTL or land of its own. */
+  fcFailsafe: boolean;
   /** Age of the pilot state in ms. */
   ageMs: number;
 }
@@ -72,8 +82,9 @@ export interface ChipView {
   /** CSS colour from `tokens.json` `state.*`. */
   color: string;
   dim: boolean;
-  /** `take_control`, `resume` or `setup` (the "Set up aircraft" link). */
-  button: "take_control" | "resume" | "setup" | null;
+  /** `take_control`, `resume`, `abort` (a running launch) or `setup` (the
+   *  "Set up aircraft" link). */
+  button: "take_control" | "resume" | "abort" | "setup" | null;
   secondary: ChipLine[];
 }
 
@@ -85,8 +96,8 @@ function fcModeClass(f: ChipFacts): string | null {
   return null;
 }
 
-function matches(rule: ChipRule, f: ChipFacts): boolean {
-  for (const [key, want] of Object.entries(rule.match)) {
+function matches(match: ChipRule["match"], f: ChipFacts): boolean {
+  for (const [key, want] of Object.entries(match)) {
     switch (key) {
       case "pilot_stale":
         if ((f.ageMs > CHIP_STALE_AFTER_MS) !== want) return false;
@@ -112,6 +123,12 @@ function matches(rule: ChipRule, f: ChipFacts): boolean {
       case "control_mode":
         if (f.controlMode !== want) return false;
         break;
+      case "sequence_running":
+        if ((f.launchStep !== null) !== want) return false;
+        break;
+      case "fc_failsafe":
+        if (f.fcFailsafe !== want) return false;
+        break;
       default:
         // A condition this cockpit does not know never matches.
         return false;
@@ -122,8 +139,16 @@ function matches(rule: ChipRule, f: ChipFacts): boolean {
 
 function fmtEta(s: number | null): string {
   if (s === null || !Number.isFinite(s)) return "";
-  const m = Math.floor(s / 60);
-  return m > 0 ? `ETA ${m}:${String(Math.round(s % 60)).padStart(2, "0")}` : `ETA ${Math.round(s)} s`;
+  // Round the total first, so 119.6 s reads 2:00, never 1:60.
+  const total = Math.round(s);
+  const m = Math.floor(total / 60);
+  return m > 0 ? `ETA ${m}:${String(total % 60).padStart(2, "0")}` : `ETA ${total} s`;
+}
+
+/** A launch step's name, upper case (`flow.launch.step.*`, `after` as its label). */
+function launchStepUpper(step: string | null): string {
+  if (step === null) return "";
+  return specText(step === "after" ? "flow.launch.step.after_label" : `flow.launch.step.${step}`).toUpperCase();
 }
 
 function num(v: number | null): string {
@@ -143,6 +168,7 @@ function fill(template: string, f: ChipFacts): string {
     total: num(f.total),
     eta: fmtEta(f.etaS),
     fc_mode_name_upper: (f.fcModeName ?? "—").toUpperCase(),
+    step: launchStepUpper(f.launchStep),
   };
   return template.replace(/\{([a-z_]+)\}/g, (_, k: string) => values[k] ?? "").replace(/ · $/, "");
 }
@@ -155,12 +181,17 @@ function holdReasonLabel(reason: string): string {
   return HOLD_REASON_LABELS[reason] ?? reason.replace(/[-_]/g, " ");
 }
 
-/** The secondary line, in the spec's order: hold reason, avoidance state,
- *  control mode. */
+/** The secondary line, in the spec's order: FC failsafe, a mission the pilot
+ *  holds paused, hold reason, avoidance state, control mode. */
 export function chipSecondary(f: ChipFacts): ChipLine[] {
   const out: ChipLine[] = [];
   for (const part of CHIP_SECONDARY.order) {
-    if (part === "hold_reason" && f.holdReason) {
+    if (part === "fc_failsafe" && f.fcFailsafe) {
+      out.push({ text: CHIP_SECONDARY.fc_failsafe.text, color: colorOf(CHIP_SECONDARY.fc_failsafe.color) });
+    } else if (part === "mission_paused_line" && matches(CHIP_SECONDARY.mission_paused_line.match, f)) {
+      const line = CHIP_SECONDARY.mission_paused_line;
+      out.push({ text: fill(line.text, f), color: colorOf(line.color) });
+    } else if (part === "hold_reason" && f.holdReason) {
       out.push({ text: holdReasonLabel(f.holdReason), color: colorOf(CHIP_SECONDARY.hold_reason.color) });
     } else if (part === "avoid_state" && f.avoidState) {
       const s = CHIP_SECONDARY.avoid_state[f.avoidState];
@@ -173,11 +204,14 @@ export function chipSecondary(f: ChipFacts): ChipLine[] {
 }
 
 function buttonOf(rule: ChipRule, f: ChipFacts): ChipView["button"] {
-  switch (rule.button) {
+  const name = rule.button_if && matches(rule.button_if.match, f) ? rule.button_if.button : rule.button;
+  switch (name) {
     case "take_control":
       return "take_control";
     case "resume":
       return "resume";
+    case "abort":
+      return "abort";
     case "setup_link_when_setup_needed":
       return f.setupNeeded ? "setup" : null;
     default:
@@ -187,7 +221,7 @@ function buttonOf(rule: ChipRule, f: ChipFacts): ChipView["button"] {
 
 /** The chip for a set of facts. */
 export function flightStateChip(f: ChipFacts): ChipView {
-  const rule = CHIP_RULES.find((r) => matches(r, f));
+  const rule = CHIP_RULES.find((r) => matches(r.match, f));
   if (!rule) {
     return {
       ruleId: "none",
@@ -252,6 +286,8 @@ export function chipFacts(
     controlMode: p.controlMode,
     holdReason: p.holdReason,
     avoidState: p.avoidState,
+    launchStep: p.sequence && p.sequence.step !== "done" && p.sequence.error === null ? p.sequence.step : null,
+    fcFailsafe: p.fcFailsafe,
     ageMs,
   };
 }

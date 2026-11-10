@@ -6,7 +6,11 @@
       "readiness": [],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "ok",
@@ -28,7 +32,11 @@
       "readiness": [],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "warning",
@@ -59,7 +67,11 @@
         "PreArm: Compass not calibrated"
       ],
       "fc_status": [],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "critical",
@@ -85,7 +97,11 @@
       "readiness": [],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "ok",
@@ -104,7 +120,11 @@
         "PreArm: RC not calibrated"
       ],
       "fc_status": [],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "warning",
@@ -122,7 +142,11 @@
       "readiness": [],
       "prearm": null,
       "fc_status": [],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "ok",
@@ -154,7 +178,11 @@
           "age_ms": 900
         }
       ],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "critical",
@@ -189,7 +217,11 @@
           "age_ms": 4000
         }
       ],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "critical",
@@ -207,7 +239,11 @@
       "readiness": [],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 89
+      "storage_pct": 89,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "ok",
@@ -223,11 +259,15 @@
       "readiness": [],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 90
+      "storage_pct": 90,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "warning",
-      "text": "Storage 90%",
+      "text": "90 % used",
       "count": 1,
       "ids": [
         "storage"
@@ -241,11 +281,15 @@
       "readiness": [],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 96.4
+      "storage_pct": 96.4,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "warning",
-      "text": "Storage 96%",
+      "text": "96 % used",
       "count": 1,
       "ids": [
         "storage"
@@ -259,11 +303,15 @@
       "readiness": [],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 97
+      "storage_pct": 97,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "critical",
-      "text": "Storage 97%",
+      "text": "97 % used",
       "count": 1,
       "ids": [
         "storage"
@@ -277,7 +325,11 @@
       "readiness": [],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": null
+      "storage_pct": null,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "ok",
@@ -312,7 +364,11 @@
       ],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "critical",
@@ -338,7 +394,11 @@
       ],
       "prearm": [],
       "fc_status": [],
-      "storage_pct": 40
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "warning",
@@ -387,7 +447,11 @@
           "age_ms": 10
         }
       ],
-      "storage_pct": 98
+      "storage_pct": 98,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
     },
     "expected": {
       "severity": "critical",
@@ -400,6 +464,247 @@
         "pilot:agl",
         "fc:Throttle too high",
         "fcst:EKF variance"
+      ]
+    }
+  },
+  {
+    "name": "pilot_absent_never_reads_ok",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": null,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Pilot not answering",
+      "count": 1,
+      "ids": [
+        "pilot_not_answering"
+      ]
+    }
+  },
+  {
+    "name": "pilot_stale_drops_readiness_statustext_and_controller",
+    "input": {
+      "alerts": [],
+      "readiness": [
+        {
+          "id": "position",
+          "ok": false,
+          "severity": "block",
+          "msg": "No position estimate"
+        }
+      ],
+      "prearm": [],
+      "fc_status": [
+        {
+          "severity": 4,
+          "text": "EKF3 lane switch 1",
+          "age_ms": 900
+        }
+      ],
+      "storage_pct": 40,
+      "pilot_age_ms": 2000,
+      "agent_reachable": true,
+      "controller_lost": true,
+      "preflight_failing": []
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Pilot not answering",
+      "count": 1,
+      "ids": [
+        "pilot_not_answering"
+      ]
+    }
+  },
+  {
+    "name": "pilot_fresh_at_1999_keeps_readiness",
+    "input": {
+      "alerts": [],
+      "readiness": [
+        {
+          "id": "position",
+          "ok": false,
+          "severity": "block",
+          "msg": "No position estimate"
+        }
+      ],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 1999,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "No position estimate",
+      "count": 1,
+      "ids": [
+        "pilot:position"
+      ]
+    }
+  },
+  {
+    "name": "pilot_stale_keeps_other_sources",
+    "input": {
+      "alerts": [
+        {
+          "id": "batt_low",
+          "level": "warning",
+          "title": "Battery low"
+        }
+      ],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 98,
+      "pilot_age_ms": 5000,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "3 warnings",
+      "count": 3,
+      "ids": [
+        "storage",
+        "alert:batt_low",
+        "pilot_not_answering"
+      ]
+    }
+  },
+  {
+    "name": "agent_unreachable_is_critical",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": false,
+      "controller_lost": false,
+      "preflight_failing": []
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "Agent unreachable",
+      "count": 1,
+      "ids": [
+        "agent_unreachable"
+      ]
+    }
+  },
+  {
+    "name": "controller_lost_in_the_air",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": true,
+      "preflight_failing": []
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Controller lost",
+      "count": 1,
+      "ids": [
+        "controller_lost"
+      ]
+    }
+  },
+  {
+    "name": "preflight_failing_one_item",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [
+        {
+          "id": "gps",
+          "label": "GNSS fix"
+        }
+      ]
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "Pre-flight: GNSS fix",
+      "count": 1,
+      "ids": [
+        "preflight:gps"
+      ]
+    }
+  },
+  {
+    "name": "preflight_failing_each_item",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 40,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": [
+        {
+          "id": "gps",
+          "label": "GNSS fix"
+        },
+        {
+          "id": "compass",
+          "label": "Compass"
+        }
+      ]
+    },
+    "expected": {
+      "severity": "warning",
+      "text": "2 warnings",
+      "count": 2,
+      "ids": [
+        "preflight:gps",
+        "preflight:compass"
+      ]
+    }
+  },
+  {
+    "name": "storage_98_reads_percent_used",
+    "input": {
+      "alerts": [],
+      "readiness": [],
+      "prearm": [],
+      "fc_status": [],
+      "storage_pct": 98,
+      "pilot_age_ms": 100,
+      "agent_reachable": true,
+      "controller_lost": false,
+      "preflight_failing": []
+    },
+    "expected": {
+      "severity": "critical",
+      "text": "98 % used",
+      "count": 1,
+      "ids": [
+        "storage"
       ]
     }
   }

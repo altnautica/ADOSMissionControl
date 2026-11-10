@@ -2,9 +2,10 @@
 // summary of everything that should stop a pilot from flying carelessly, and
 // the base alert rules behind it. Sources: the surface's alerts (link,
 // battery, GNSS, frozen video, plus whatever the surface adds), the pilot's
-// readiness items, the flight controller's PreArm/Arm and status texts and
-// on-board storage. It reads "All systems OK", the one active alert's text,
-// or "<n> warnings", coloured by the worst severity.
+// readiness items, the flight controller's PreArm/Arm and status texts,
+// on-board storage, and the spec's pilot, link, controller and pre-flight
+// rules. It reads "All systems OK", the one active alert's text, or
+// "<n> warnings", coloured by the worst severity.
 //
 // Alert levels:
 //   critical: vehicle link lost > 10 s while armed, battery at or below the
@@ -17,7 +18,8 @@
 
 import layoutJson from "../cockpit-spec/layout.json";
 import { BATTERY_CRITICAL_PCT, batteryLowPct, batteryReading, type BatteryHealthInput, type FcBatteryInput } from "./battery";
-import type { FcStatusText, ReadinessItem } from "./cockpit-frames";
+import type { FcStatusText, PilotState, ReadinessItem } from "./cockpit-frames";
+import { CHIP_STALE_AFTER_MS } from "./flight-state";
 import { specText } from "./spec-text";
 
 /** On-board storage use that warns, and that is critical (percent). */
@@ -121,7 +123,18 @@ export function baseAlerts(i: BaseAlertInputs): BaseAlert[] {
   return sortAlerts(out);
 }
 
-export type PillSource = "pilot_readiness" | "fc_prearm" | "fc_status_text" | "battery" | "link" | "nav_source" | "storage" | "video";
+export type PillSource =
+  | "pilot_readiness"
+  | "fc_prearm"
+  | "fc_status_text"
+  | "battery"
+  | "link"
+  | "nav_source"
+  | "storage"
+  | "video"
+  | "pilot"
+  | "controller"
+  | "preflight";
 export type PillSeverity = "ok" | "warning" | "critical";
 
 export interface PillAlert {
@@ -139,6 +152,28 @@ export interface PillInputs {
   storagePct: number | null;
   /** The pilot kind's FC STATUSTEXT at WARNING or worse (last 30 s). */
   fcStatus?: readonly FcStatusText[];
+  /** Age of the newest pilot state in ms; null when none ever arrived.
+   *  Omitted (undefined) by a surface that does not read the pilot kind:
+   *  then the pilot rule is off. With a number at or past
+   *  `flight-state.json` `stale_after_ms`, or null, the pill shows one
+   *  `pilot_not_answering` warning and drops the readiness, FC status text
+   *  and controller items, which came from that stale frame, so it never
+   *  reads OK without a fresh pilot state. */
+  pilotAgeMs?: number | null;
+  /** False while the agent itself does not answer: a critical link item. */
+  agentReachable?: boolean;
+  /** The pilot holds because the controller was lost, armed and airborne
+   *  (see `controllerLost`). */
+  controllerLost?: boolean;
+  /** The failing pre-flight checklist items. The checklist is a ground
+   *  surface: pass them only while on the ground. */
+  preflightFailing?: readonly { id: string; label: string }[];
+}
+
+/** The pilot holds for a lost controller while armed and airborne (spec
+ *  `status_pill.controller_rule`). */
+export function controllerLost(p: Pick<PilotState, "holdReason" | "armed" | "landed"> | null): boolean {
+  return p !== null && p.holdReason === "controller-lost" && p.armed && !p.landed;
 }
 
 /** The pill source of an alert id. */
@@ -157,10 +192,23 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
     if (a.level === "advisory") continue;
     out.push({ id: `alert:${a.id}`, source: alertSource(a.id), severity: a.level, text: a.title });
   }
-  for (const r of i.readiness) {
+  if (i.agentReachable === false) {
+    out.push({ id: "agent_unreachable", source: "link", severity: "critical", text: specText("alert.agent_unreachable") });
+  }
+  const pilotStale = i.pilotAgeMs === null || (i.pilotAgeMs !== undefined && i.pilotAgeMs >= CHIP_STALE_AFTER_MS);
+  if (pilotStale) {
+    out.push({ id: "pilot_not_answering", source: "pilot", severity: "warning", text: specText("alert.pilot_not_answering") });
+  }
+  for (const r of pilotStale ? [] : i.readiness) {
     if (r.ok) continue;
     // A blocking item refuses take-off: critical, as the pre-flight sheet fails it.
     out.push({ id: `pilot:${r.id}`, source: "pilot_readiness", severity: r.severity === "block" ? "critical" : "warning", text: r.msg || r.id });
+  }
+  if (i.controllerLost && !pilotStale) {
+    out.push({ id: "controller_lost", source: "controller", severity: "warning", text: specText("alert.controller_lost") });
+  }
+  for (const item of i.preflightFailing ?? []) {
+    out.push({ id: `preflight:${item.id}`, source: "preflight", severity: "warning", text: specText("alert.preflight_failing", { item: item.label }) });
   }
   if (i.prearm && i.prearm.length > 0) {
     const text = i.prearm[i.prearm.length - 1].replace(/^(PreArm|Arm):\s*/, "");
@@ -169,7 +217,7 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
   // The FC repeats a warning while its condition lasts: one alert per text,
   // at the worst severity it was sent with.
   const fcAt = new Map<string, number>();
-  for (const s of i.fcStatus ?? []) {
+  for (const s of pilotStale ? [] : (i.fcStatus ?? [])) {
     // PreArm/Arm lines already reach the pill through `prearm`.
     if (/^(PreArm|Arm):/.test(s.text)) continue;
     const severity = s.severity <= 2 ? "critical" : "warning";
@@ -186,7 +234,7 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
       id: "storage",
       source: "storage",
       severity: i.storagePct >= STORAGE_CRIT_PCT ? "critical" : "warning",
-      text: `${specText("cockpit.status.source.storage")} ${Math.round(i.storagePct)}%`,
+      text: specText("cockpit.status.storage_used", { pct: Math.round(i.storagePct) }),
     });
   }
   return out.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "critical" ? -1 : 1));

@@ -1,0 +1,19 @@
+[
+  { "name": "signed1_positive", "input": { "fn": "fmtSigned1", "v": 1.24 }, "expected": "1.2" },
+  { "name": "signed1_negative", "input": { "fn": "fmtSigned1", "v": -0.46 }, "expected": "-0.5" },
+  { "name": "signed1_small_negative_never_minus_zero", "input": { "fn": "fmtSigned1", "v": -0.04 }, "expected": "0.0" },
+  { "name": "signed1_small_positive", "input": { "fn": "fmtSigned1", "v": 0.049 }, "expected": "0.0" },
+  { "name": "signed1_zero", "input": { "fn": "fmtSigned1", "v": 0 }, "expected": "0.0" },
+  { "name": "signed1_null", "input": { "fn": "fmtSigned1", "v": null }, "expected": "—" },
+  { "name": "distance_zero", "input": { "fn": "fmtDistance", "v": 0 }, "expected": "0 m" },
+  { "name": "distance_rounds_metres", "input": { "fn": "fmtDistance", "v": 120.6 }, "expected": "121 m" },
+  { "name": "distance_below_1_km", "input": { "fn": "fmtDistance", "v": 999.4 }, "expected": "999 m" },
+  { "name": "distance_1_km", "input": { "fn": "fmtDistance", "v": 1000 }, "expected": "1.00 km" },
+  { "name": "distance_km_two_decimals", "input": { "fn": "fmtDistance", "v": 1254 }, "expected": "1.25 km" },
+  { "name": "distance_null", "input": { "fn": "fmtDistance", "v": null }, "expected": "—" },
+  { "name": "countdown_rounds_up", "input": { "fn": "countdownS", "v": 1200 }, "expected": 2 },
+  { "name": "countdown_whole_second", "input": { "fn": "countdownS", "v": 3000 }, "expected": 3 },
+  { "name": "countdown_last_ms", "input": { "fn": "countdownS", "v": 1 }, "expected": 1 },
+  { "name": "countdown_zero", "input": { "fn": "countdownS", "v": 0 }, "expected": 0 },
+  { "name": "countdown_never_negative", "input": { "fn": "countdownS", "v": -500 }, "expected": 0 }
+]

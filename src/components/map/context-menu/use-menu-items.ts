@@ -12,9 +12,8 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNavStreamStore } from "@/stores/nav-stream-store";
-import { flyHereOffered } from "@/lib/hud/fly-here-offer";
 import { useGpsOriginStore } from "@/stores/gps-origin-store";
-import { launchHereOffered } from "../map-point";
+import { flyHereRoute, launchHereOffered } from "../map-point";
 import { GUIDED_MODES } from "../map-context-menu-icons";
 import type { MenuItemDef } from "./types";
 
@@ -28,10 +27,10 @@ export interface MenuContext {
   canRally: boolean;
   /** The selected FC handles MAV_CMD_DO_ORBIT (PX4; ArduCopter has no handler). */
   canOrbit: boolean;
-  /** The selected drone's ADOS pilot accepts a Fly here goto now (live pilot
-   *  state listing `goto`, ADOS control, armed and flying), whatever the FC
-   *  mode: a mission or skill hands over to the goto. */
-  pilotGoto: boolean;
+  /** The selected drone takes a Fly here now, by the shared route rule: its
+   *  fresh ADOS pilot offers a goto (any FC mode; a mission or skill hands
+   *  over to it), or the FC flies GUIDED, armed and airborne. */
+  flyHere: boolean;
   /** The selected drone is on the ground with its pilot advertising `goto`
    *  and its EKF origin known: the point can be the Launch go-to. */
   launchHere: boolean;
@@ -53,10 +52,7 @@ export function useMenuContext(): MenuContext {
   });
 
   const selectedId = useDroneManager((s) => s.selectedDroneId);
-  const pilotGoto = useNavStreamStore((s) => {
-    const stamped = selectedId ? s.byDrone[selectedId]?.pilot : undefined;
-    return stamped ? flyHereOffered(stamped.data, Date.now() - stamped.receivedAt) : false;
-  });
+  const flyHere = useNavStreamStore(() => flyHereRoute(selectedId) !== null);
   const launchHere = useNavStreamStore((s) => {
     const stamped = selectedId ? s.byDrone[selectedId]?.pilot : undefined;
     return stamped ? launchHereOffered(stamped.data, Date.now() - stamped.receivedAt) : false;
@@ -79,7 +75,7 @@ export function useMenuContext(): MenuContext {
     flightMode,
     canRally,
     canOrbit,
-    pilotGoto,
+    flyHere,
     launchHere: launchHere && hasOrigin,
   };
 }
@@ -89,7 +85,7 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
   const latestPos = posBuffer.latest();
   const hasDronePos = !!(latestPos && latestPos.lat !== 0);
 
-  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, pilotGoto, launchHere } = ctx;
+  const { canNavigate, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, flyHere, launchHere } = ctx;
 
   return useMemo<MenuItemDef[]>(() => {
     const items: MenuItemDef[] = [];
@@ -100,7 +96,7 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
     if (launchHere) {
       items.push({ id: "launch-here", label: "Launch here", icon: "launch", group: 0 });
     }
-    if (canNavigate || pilotGoto) {
+    if (flyHere) {
       items.push({ id: "fly-here", label: "Fly Here", icon: "flyHere", group: 0, shortcut: "G" });
       items.push({ id: "fly-here-alt", label: "Fly Here at Alt...", icon: "flyHereAlt", group: 0 });
     }
@@ -141,5 +137,5 @@ export function useMenuItems(ctx: MenuContext): MenuItemDef[] {
     }
 
     return items;
-  }, [canNavigate, pilotGoto, launchHere, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, hasDronePos]);
+  }, [canNavigate, flyHere, launchHere, isConnected, isArmed, isCopter, flightMode, canRally, canOrbit, hasDronePos]);
 }
