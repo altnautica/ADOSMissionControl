@@ -12,7 +12,9 @@ const { stub } = vi.hoisted(() => ({ stub: (name: string) => () => ({ [name]: ()
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/" }));
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
-vi.mock("next/dynamic", () => ({ default: () => () => null }));
+// Every lazily loaded shell piece renders as one marker (only the command
+// palette mounts unconditionally).
+vi.mock("next/dynamic", () => ({ default: () => () => <div data-testid="lazy" /> }));
 vi.mock("next/link", () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("@convex-dev/auth/react", () => ({ useAuthActions: () => ({ signOut: vi.fn() }) }));
 vi.mock("@/hooks/use-convex-available", () => ({ useConvexAvailable: () => false }));
@@ -60,6 +62,7 @@ vi.mock("@/components/changelog/ChangelogNotificationGate", async () => {
 });
 
 import { CommandShell } from "../CommandShell";
+import { inertShellAround } from "@/components/cockpit/flight/inert-shell";
 import { useFlightScreenStore } from "@/stores/flight-screen-store";
 import { useNodeRegistryStore } from "@/stores/node-registry/node-registry-store";
 
@@ -100,5 +103,38 @@ describe("shell modals over a flight screen", () => {
     render(<CommandShell>body</CommandShell>);
     act(() => void vi.advanceTimersByTime(2000));
     expect(screen.queryByTestId("whats-new")).toBeNull();
+  });
+
+  it("leaves Ctrl+K to the cockpit palette while the flight screen is open", () => {
+    useFlightScreenStore.setState({ mounted: 1 });
+    const { unmount } = render(<CommandShell>body</CommandShell>);
+    expect(screen.queryAllByTestId("lazy")).toHaveLength(0);
+    unmount();
+    useFlightScreenStore.setState({ mounted: 0 });
+    render(<CommandShell>body</CommandShell>);
+    expect(screen.queryAllByTestId("lazy").length).toBeGreaterThan(0);
+  });
+
+  it("makes the real shell inert around a flight screen, including a banner that mounts later", async () => {
+    render(
+      <CommandShell>
+        <div data-testid="frame">flight</div>
+      </CommandShell>,
+    );
+    const frame = screen.getByTestId("frame");
+    const restore = inertShellAround(frame);
+    expect(document.querySelector("header")?.hasAttribute("inert")).toBe(true);
+    expect(frame.hasAttribute("inert")).toBe(false);
+    expect(frame.closest("[inert]")).toBeNull();
+
+    const late = document.createElement("div");
+    frame.parentElement!.prepend(late);
+    await act(async () => {
+      vi.useRealTimers();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(late.hasAttribute("inert")).toBe(true);
+    restore();
+    expect(document.querySelector("header")?.hasAttribute("inert")).toBe(false);
   });
 });

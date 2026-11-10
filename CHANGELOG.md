@@ -6,6 +6,7 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Shell: on the flight screen Ctrl+K opens only the cockpit's command palette.
 - Cockpit sheets: confirm dialogs and every flight-screen sheet open below the top bar over a translucent scrim, so the picture stays visible and STOP takes the first press; the Launch sheet opens beside the left column at full width (Hold to launch was unreachable); one sheet at a time, and Escape or a press outside closes it. Toasts on the flight screen stack above the bottom row, clear of the card, the skills chip and STOP. The controls row says where the sticks go: with ADOS Pilot in control it names that route and the live input session, and the FC stick switch shows only when the sticks reach the flight controller. The link-loss countdown names the configured action (Return home, Land, Hold), and the low-battery return shows its cancel warning inline; both countdowns use the critical colour.
 - Cockpit: the contextual tips queue (one tip at a time, on the ground and disarmed, never while a sheet, menu or the controller tour is open), remembered per device in `altcmd:cockpit-tips` with a reset; the controller tour is remembered once per device rather than per pad (earlier per-pad flags carry over) and can be replayed.
 - Map: the right-click menu offers Fly here whenever the drone's ADOS pilot accepts a go-to (live pilot state, ADOS control, flying), whatever the flight-controller mode; without the pilot it stays limited to the guided modes.

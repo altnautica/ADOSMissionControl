@@ -62,6 +62,7 @@ import { DISCLAIMER_VERSION } from "@/components/onboarding/constants";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { usePairDialogStore } from "@/stores/pair-dialog-store";
 import { useShellModalsAllowed } from "@/hooks/use-shell-modals-allowed";
+import { useFlightScreenStore } from "@/stores/flight-screen-store";
 
 // Rarely-open modals load as separate chunks so they stay out of every
 // route's first load (same pattern as CockpitView's sheets).
@@ -188,6 +189,8 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
   const onboarded = useSettingsStore((s) => s.onboarded);
   // Shell modals wait while a cockpit is on screen or a vehicle is armed.
   const shellModalsAllowed = useShellModalsAllowed();
+  // The flight screen has its own palette; Ctrl+K opens only that one there.
+  const flightScreenOpen = useFlightScreenStore((s) => s.mounted > 0);
   const disclaimerCurrent = useSettingsStore(
     (s) => s.disclaimerAccepted && s.disclaimerVersion >= DISCLAIMER_VERSION,
   );
@@ -399,7 +402,7 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
           (MCP activity watch + flight logs) that persists across routes. */}
       <main className="flex-1 flex overflow-hidden">
         <ShellBridges />
-        <CommandPalette />
+        {!flightScreenOpen && <CommandPalette />}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <FailsafeAlertBanner />
           <SlcanModeBanner />
