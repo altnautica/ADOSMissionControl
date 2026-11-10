@@ -28,6 +28,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { useFlyQuickSettingsStore } from "@/stores/fly-quick-settings-store";
 import { useSkillInputStore } from "@/stores/skill-input-store";
+import { useControlsStore } from "@/stores/controls-store";
 import { activateBound, buildSkillContext } from "@/lib/skills";
 import { canonicalChord } from "@/lib/skills/chord";
 import { TAKEOFF_ALTITUDE_M } from "@/lib/skills/builtins/takeoff";
@@ -58,6 +59,10 @@ export function useSkillInput(): void {
   const confirmPending = useSkillConfirmStore((s) => s.pending !== null);
   const quickOpen = useFlyQuickSettingsStore((s) => s.isOpen);
   const enabled = surfaceLive && !confirmPending && !quickOpen;
+  // The controller tour drives itself from the pad (D-pad, Cross): while it
+  // shows, pad presses belong to the tour, never to a bound skill.
+  const tourVisible = useControlsStore((s) => s.tourVisible);
+  const padEnabled = enabled && !tourVisible;
   const { toast } = useToast();
   const tFlight = useTranslations("flight");
 
@@ -132,7 +137,7 @@ export function useSkillInput(): void {
 
   // Gamepad half: edge-detect false->true transitions on input-store buttons.
   useEffect(() => {
-    if (!enabled) return;
+    if (!padEnabled) return;
 
     // Seed from the current state so a button already held at mount does not
     // register a spurious edge.
@@ -161,5 +166,5 @@ export function useSkillInput(): void {
     });
 
     return () => unsubscribe();
-  }, [enabled]);
+  }, [padEnabled]);
 }

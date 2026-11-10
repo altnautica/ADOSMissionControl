@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { activate } from "@/lib/skills";
+import { activate, SPEC_HOLD_MS } from "@/lib/skills";
 import { useSkillRegistry } from "@/lib/skills/registry";
 import { resetCooldownState } from "@/lib/skills/cooldown";
 import { cancelGuidedTarget } from "@/lib/skills/guided-target";
@@ -134,6 +134,21 @@ describe("Fly Here dialog", () => {
     fireEvent.mouseDown(screen.getByRole("button", { name: /Hold to Confirm/ }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25);
+  });
+
+  it("confirms after the spec's Fly Here hold, not before", async () => {
+    vi.useFakeTimers();
+    open();
+    fireEvent.change(screen.getByLabelText(/Altitude/), { target: { value: "25" } });
+    fireEvent.mouseDown(screen.getByRole("button", { name: /Hold to Confirm/ }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SPEC_HOLD_MS.fly_here - 200);
+    });
+    expect(guidedGoto).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
     });
     expect(guidedGoto).toHaveBeenCalledWith(10, 20, 25);
   });

@@ -15,12 +15,13 @@ import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
 import { freshOnly } from "@/lib/telemetry/freshness";
-import { activate, buildSkillContext } from "@/lib/skills";
+import { activate, buildSkillContext, SPEC_HOLD_MS } from "@/lib/skills";
 import { FLY_HERE_ALTITUDE_M, parseFlyHereAltitude } from "@/lib/skills/builtins/fly-here";
 import { X, Navigation } from "lucide-react";
 import { haversineDistance } from "@/lib/geo/distance";
 
-const HOLD_DURATION_MS = 1500;
+/** The Fly Here confirm hold, the same on every surface (spec `holds_ms`). */
+const HOLD_DURATION_MS = SPEC_HOLD_MS.fly_here;
 const DEFAULT_ALT_M = 10;
 
 export function GuidedConfirmDialog() {
