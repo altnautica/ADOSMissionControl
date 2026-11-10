@@ -703,6 +703,14 @@ html[data-power="low"] .ados-cockpit,
    (set as --fs-* on the root): translucent dark glass with a backdrop blur,
    a hairline border, tabular numerals. */
 .ados-cockpit.flight-screen { position: fixed; inset: 0; z-index: 40; container-type: normal; }
+/* Toasts on the flight screen: above the bottom row, between the card and
+   the skills chip, never over STOP (FlightFrame publishes the anchor). */
+html[data-flight-screen] .toast-host {
+  right: auto; left: var(--fs-toast-left); bottom: var(--fs-toast-bottom);
+  width: var(--fs-toast-w); align-items: center; pointer-events: none;
+}
+html[data-flight-screen] .toast-host > * { align-items: center; }
+html[data-flight-screen] .toast-host > * > * { pointer-events: auto; max-width: 100%; }
 .ados-cockpit .fs-panel {
   background: var(--fs-bg); border: var(--fs-border-px) solid var(--fs-border); border-radius: var(--fs-radius);
   -webkit-backdrop-filter: blur(var(--fs-blur)) saturate(1.2); backdrop-filter: blur(var(--fs-blur)) saturate(1.2);

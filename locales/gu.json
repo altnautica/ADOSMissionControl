@@ -7426,7 +7426,8 @@
       "announceBattNormal": "Battery back to normal",
       "announceLinkStale": "Link stale",
       "announceLinkLost": "લિંક તૂટી",
-      "announceLinkOk": "લિંક પુનઃસ્થાપિત"
+      "announceLinkOk": "લિંક પુનઃસ્થાપિત",
+      "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
     "command": {

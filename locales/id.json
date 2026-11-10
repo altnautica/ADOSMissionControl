@@ -7426,7 +7426,8 @@
       "announceBattNormal": "Baterai kembali normal",
       "announceLinkStale": "Tautan usang",
       "announceLinkLost": "Tautan terputus",
-      "announceLinkOk": "Tautan pulih"
+      "announceLinkOk": "Tautan pulih",
+      "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
     "command": {

@@ -17,6 +17,7 @@
  */
 
 import { memo, useEffect, useRef, useState } from "react";
+import { useFlightSheet } from "./flight-sheet";
 import { Menu, OctagonX } from "lucide-react";
 
 import { activate, buildSkillContext } from "@/lib/skills";
@@ -42,7 +43,7 @@ function FlightTopBarInner({ droneId }: { droneId: string }) {
   const bar = grid.zones.top_bar;
   const mainRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<HTMLDivElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useFlightSheet("menu");
   // The stage is kept with the room it was measured in, so a wider bar starts
   // again from "everything on the bar".
   const [fit, setFit] = useState({ room: 0, stage: 0 });

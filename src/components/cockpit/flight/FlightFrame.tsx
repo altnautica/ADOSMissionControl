@@ -27,6 +27,7 @@ import { FlightGridContext, chromeVars, useFlightGrid } from "./flight-context";
 import { flightGrid, rectStyle, videoRect, type FlightGrid } from "./flight-grid";
 import { useViewZoomStore } from "./view-zoom-store";
 import { inertShellAround } from "./inert-shell";
+import { toastAnchor } from "./flight-sheet";
 
 export function FlightFrame({
   droneId,
@@ -73,10 +74,31 @@ export function FlightFrame({
     return frame ? inertShellAround(frame) : undefined;
   }, [containerRef]);
 
+  // Toasts on the flight screen sit above the bottom row, clear of the
+  // card, the skills chip and STOP (the toast host reads these).
+  useEffect(() => {
+    const html = document.documentElement;
+    const a = toastAnchor(grid);
+    html.dataset.flightScreen = "";
+    html.style.setProperty("--fs-toast-bottom", `${a.bottom}px`);
+    html.style.setProperty("--fs-toast-left", `${a.left}px`);
+    html.style.setProperty("--fs-toast-w", `${a.width}px`);
+    return () => {
+      delete html.dataset.flightScreen;
+      html.style.removeProperty("--fs-toast-bottom");
+      html.style.removeProperty("--fs-toast-left");
+      html.style.removeProperty("--fs-toast-w");
+    };
+  }, [grid]);
+
   const centre = grid.zones.center;
+  const bar = grid.zones.top_bar;
   const style = {
     ...chromeVars(grid.scale),
     "--fs-top-y": `${centre?.y ?? 60}px`,
+    // The top bar's bottom edge: sheets and scrims start here, so STOP is
+    // never covered.
+    "--fs-bar-b": `${bar ? bar.y + bar.h : 0}px`,
     "--fs-cx": `${centre?.x ?? 0}px`,
     "--fs-cy": `${centre?.y ?? 0}px`,
     "--fs-cw": `${centre?.w ?? size.width}px`,

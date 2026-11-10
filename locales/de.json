@@ -7426,7 +7426,8 @@
       "announceBattNormal": "Akku wieder normal",
       "announceLinkStale": "Verbindung veraltet",
       "announceLinkLost": "Verbindung verloren",
-      "announceLinkOk": "Verbindung wiederhergestellt"
+      "announceLinkOk": "Verbindung wiederhergestellt",
+      "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
     "command": {

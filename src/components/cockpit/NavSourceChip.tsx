@@ -11,7 +11,8 @@
  * @license GPL-3.0-only
  */
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
+import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
 import { useTranslations } from "next-intl";
 import { Compass, Satellite, ScanLine, Waves, type LucideIcon } from "lucide-react";
 
@@ -65,7 +66,7 @@ export function NavSourceChip({ droneId }: { droneId: string }) {
   const view = useNavSource(droneId);
   const widthClass = useCockpitWidthClass();
   const text = useNavSourceText()(view.result);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useFlightSheet("nav_source");
   const anchorRef = useRef<HTMLButtonElement>(null);
 
   const { kind, tone } = view.result;

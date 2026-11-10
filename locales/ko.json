@@ -7426,7 +7426,8 @@
       "announceBattNormal": "배터리 정상 복귀",
       "announceLinkStale": "링크 지연",
       "announceLinkLost": "링크 끊김",
-      "announceLinkOk": "링크 복구"
+      "announceLinkOk": "링크 복구",
+      "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
     "command": {

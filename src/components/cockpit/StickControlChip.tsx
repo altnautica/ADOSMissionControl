@@ -1,23 +1,31 @@
 "use client";
 
 /**
- * The safety band's stick-control chip: whether gamepad sticks are flying the
- * vehicle (manual control on/off), why the link cannot carry stick frames
- * when it cannot, and who holds pilot-in-command on the ground station when a
- * claim exists.
+ * The stick-control row: where the gamepad's sticks go, and who holds
+ * pilot-in-command on the ground station when a claim exists.
  *
- * The toggle is the same input-store opt-in the input settings page owns: off
- * at every start, needs a connected gamepad and a live session for this
- * drone, and is revoked by the store when the pad drops.
+ * With the drone's pilot in `ados` control the pad streams to ADOS Pilot
+ * whatever the RC-override switch says, so the row names that route with the
+ * pilot's live input session and shows no switch. In `fc_manual` (or with no
+ * pilot reporting) the sticks reach the flight controller through the RC
+ * override, and the row is that route's switch: the same input-store opt-in
+ * the input settings page owns, off at every start, needs a connected gamepad
+ * and a live session for this drone, and is revoked by the store when the pad
+ * drops. In `elrs` the ground station's radio drives the FC.
  *
  * @license GPL-3.0-only
  */
 
 import { useTranslations } from "next-intl";
 import { Gamepad2 } from "lucide-react";
+import flightStateSpec from "@/lib/cockpit-spec/flight-state.json";
+import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { specString } from "@/lib/cockpit/spec-strings";
 import { useInputStore } from "@/stores/input-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useGroundStationStore } from "@/stores/ground-station-store";
+
+const CONTROL = flightStateSpec.mode_sheet.control_mode;
 
 export function StickControlChip({ droneId }: { droneId: string }) {
   const t = useTranslations("cockpit.band");
@@ -27,6 +35,40 @@ export function StickControlChip({ droneId }: { droneId: string }) {
   const linkBlock = useInputStore((s) => s.manualControlLinkBlock);
   const hasSession = useDroneManager((s) => s.drones.has(droneId));
   const picHolder = useGroundStationStore((s) => s.pic.claimed_by);
+  const { pilot } = usePilotState(droneId);
+  const mode = pilot?.controlMode ?? null;
+
+  const pic = picHolder && (
+    <span className="k keep" title={t("picTitle", { holder: picHolder })}>
+      {t("picHolder", { holder: picHolder })}
+    </span>
+  );
+
+  // ADOS Pilot (or the ground station's radio) has the sticks: name the
+  // route; the FC RC-override switch does not apply.
+  if (mode === "ados" || mode === "elrs") {
+    const label = CONTROL.labels[CONTROL.values.indexOf(mode)];
+    const live = mode === "ados" && pilot?.inputSrc;
+    return (
+      <div className="stat" data-testid="cockpit-stick" data-route={mode}>
+        <span
+          className="flex items-center gap-1.5 px-1 py-0.5"
+          style={{ color: live ? "var(--hud-good)" : "var(--hud-ink-2)" }}
+        >
+          <Gamepad2 size={13} aria-hidden="true" />
+          <span className="k" style={{ color: "inherit" }}>
+            {specString("flow.sticks_with", { label })}
+          </span>
+          {mode === "ados" && (
+            <span className="v" style={{ color: "inherit", fontSize: 11 }}>
+              {pilot?.inputSrc ?? specString("controls.pad.none")}
+            </span>
+          )}
+        </span>
+        {pic}
+      </div>
+    );
+  }
 
   const available = hasGamepad && hasSession;
   const blocked = enabled && linkBlock !== null;
@@ -42,12 +84,12 @@ export function StickControlChip({ droneId }: { droneId: string }) {
           : t("stickEnableTitle");
 
   return (
-    <div className="stat" data-testid="cockpit-stick">
+    <div className="stat" data-testid="cockpit-stick" data-route="fc">
       <button
         type="button"
         role="switch"
         aria-checked={enabled}
-        aria-label={t("stick")}
+        aria-label={t("stickFc")}
         title={title}
         disabled={!available && !enabled}
         onClick={() => setEnabled(!enabled)}
@@ -56,17 +98,13 @@ export function StickControlChip({ droneId }: { droneId: string }) {
       >
         <Gamepad2 size={13} aria-hidden="true" />
         <span className="k" style={{ color: "inherit" }}>
-          {t("stick")}
+          {t("stickFc")}
         </span>
         <span className="v" style={{ color: "inherit", fontSize: 11 }}>
           {blocked ? t("stickBlocked") : enabled ? t("stickOn") : t("stickOff")}
         </span>
       </button>
-      {picHolder && (
-        <span className="k keep" title={t("picTitle", { holder: picHolder })}>
-          {t("picHolder", { holder: picHolder })}
-        </span>
-      )}
+      {pic}
     </div>
   );
 }

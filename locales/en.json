@@ -7407,6 +7407,7 @@
       "videoFrozen": "FROZEN",
       "videoNone": "NO VIDEO",
       "stick": "STICK",
+      "stickFc": "STICKS → FC",
       "stickOn": "ON",
       "stickOff": "OFF",
       "stickBlocked": "BLOCKED",

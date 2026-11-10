@@ -25,6 +25,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
+import { linkLossLine } from "@/lib/hud/link-loss";
 import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { hasSpecString, specString } from "@/lib/cockpit/spec-strings";
 import { PILOT_SRC, sendPilotAction, takePilotSession, usePilotLinkStore } from "@/lib/input/pilot-stream";
@@ -187,12 +188,16 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
         <div
           role="alert"
           data-testid="low-battery-rth"
-          className="pointer-events-auto flex w-[min(720px,96%)] items-center justify-between gap-3 rounded-lg bg-status-warning/90 px-4 py-2 text-sm font-semibold text-black"
+          className="pointer-events-auto flex w-[min(720px,96%)] items-center justify-between gap-3 rounded-lg bg-status-error/90 px-4 py-2 text-sm font-semibold text-white"
         >
-          <span>{specString("flow.low_battery.title", { in_s: Math.ceil(rth) })}</span>
+          <span className="flex flex-col">
+            <span>{specString("flow.low_battery.title", { in_s: Math.ceil(rth) })}</span>
+            <span data-testid="low-battery-cancel-warning" className="text-xs font-normal">
+              {specString("flow.low_battery.cancel_warning")}
+            </span>
+          </span>
           <button
             type="button"
-            title={specString("flow.low_battery.cancel_warning")}
             onClick={() => void sendPilotAction("rth_cancel")}
             className="min-h-[40px] rounded bg-black/80 px-4 text-white"
           >
@@ -202,7 +207,7 @@ function Countdowns({ pilot }: { pilot: PilotState | null }) {
       )}
       {linkLoss !== null && (
         <div role="alert" data-testid="link-loss-countdown" className="rounded-lg bg-status-error/90 px-4 py-2 text-sm font-semibold text-white">
-          {specString("pilot.banner.link_loss", { action: "failsafe", in_s: Math.ceil(linkLoss) })}
+          {linkLossLine({ linkLossInS: linkLoss, linkLossAction: pilot?.linkLossAction ?? null })}
         </div>
       )}
     </div>

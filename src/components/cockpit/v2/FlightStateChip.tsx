@@ -10,7 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
+import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
 import Link from "next/link";
 
 import { useFlightStateChip, usePilotState } from "@/lib/cockpit/use-pilot-state";
@@ -39,7 +39,7 @@ export function FlightStateChip({
   const { pilot } = usePilotState(droneId);
   const detectedLink = useGroundStationLink(droneId);
   const viaGroundStation = groundStationLink ?? detectedLink;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useFlightSheet("mode");
   const button = chip.button ? BUTTON_LABEL[chip.button] : undefined;
   const setupLink =
     chip.button === "setup" &&
@@ -50,6 +50,7 @@ export function FlightStateChip({
       <div className="fs-chip-wrap" data-testid="flight-state-chip" data-chip={chip.ruleId}>
         <button
           type="button"
+          data-sheet-trigger="mode"
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="dialog"
           aria-expanded={open}

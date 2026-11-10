@@ -50,6 +50,7 @@ import { PluginSkillHost } from "@/components/cockpit/PluginSkillHost";
 import { LeftColumn } from "@/components/cockpit/v2/LeftColumn";
 import { SkillPicker } from "@/components/cockpit/v2/SkillPicker";
 import { usePilotState } from "@/lib/cockpit/use-pilot-state";
+import { useFlightScreenPresence } from "@/stores/flight-screen-store";
 import { useCockpitView, viewDef } from "@/lib/cockpit/views";
 import { CockpitMapPane } from "@/components/cockpit/v2/CockpitMapPane";
 import { VisionViewPanel } from "@/components/cockpit/layers/VisionViewPanel";
@@ -115,6 +116,8 @@ export function CockpitView({ droneId }: CockpitViewProps) {
   const t = useTranslations("skillBindings");
   const tFly = useTranslations("flyCockpit");
   const containerRef = useRef<HTMLDivElement>(null);
+  // Shell modals (welcome, disclaimer, what's new) wait while this is up.
+  useFlightScreenPresence();
   const { pilot } = usePilotState(droneId);
   const view = useCockpitView(droneId);
   const viewMeta = viewDef(view);

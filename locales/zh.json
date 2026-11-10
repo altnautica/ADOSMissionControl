@@ -7426,7 +7426,8 @@
       "announceBattNormal": "电量恢复正常",
       "announceLinkStale": "链路过时",
       "announceLinkLost": "链路丢失",
-      "announceLinkOk": "链路已恢复"
+      "announceLinkOk": "链路已恢复",
+      "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
     "command": {

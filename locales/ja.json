@@ -7426,7 +7426,8 @@
       "announceBattNormal": "バッテリーが正常に戻りました",
       "announceLinkStale": "リンク遅延",
       "announceLinkLost": "リンク喪失",
-      "announceLinkOk": "リンク復旧"
+      "announceLinkOk": "リンク復旧",
+      "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
     "command": {

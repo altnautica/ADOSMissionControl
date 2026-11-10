@@ -34,6 +34,8 @@ import { HoldControl } from "./HoldControl";
 import { SlideToConfirm } from "./SlideToConfirm";
 import { AltitudeStepper } from "./AltitudeStepper";
 import { recordSafetyOverride, translatePolicyText } from "./confirm-text";
+import { BELOW_TOP_BAR, closeFlightSheets, useFlightRoot } from "../flight/flight-sheet";
+import { createPortal } from "react-dom";
 
 interface ConfirmSheetProps {
   policy: ConfirmPolicy;
@@ -137,8 +139,24 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
   const confirmLabel = translatePolicyText(t, policy.confirmLabel, values);
   const danger = policy.variant === "danger" || policy.gesture === "guarded";
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-scrim p-4 sm:items-center">
+  // On the flight screen the dialog sits below the top bar over a
+  // translucent scrim, so the picture stays visible and STOP keeps the first
+  // press; it replaces any open flight-screen sheet.
+  const flightRoot = useFlightRoot();
+  useEffect(() => {
+    if (flightRoot) closeFlightSheets();
+  }, [flightRoot]);
+
+  const dialog = (
+    <div
+      data-flight-confirm=""
+      data-testid="confirm-scrim"
+      style={flightRoot ? BELOW_TOP_BAR : undefined}
+      className={cn(
+        "z-50 flex items-end justify-center p-4 sm:items-center",
+        flightRoot ? "overflow-y-auto bg-scrim/50" : "fixed inset-0 bg-scrim",
+      )}
+    >
       <div
         ref={sheetRef}
         role="alertdialog"
@@ -147,7 +165,7 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
         aria-describedby="skill-confirm-message"
         data-gesture={policy.gesture}
         className={cn(
-          "flex w-full max-w-sm flex-col gap-3 rounded-xl border bg-bg-secondary p-4 shadow-xl",
+          "flex max-h-full w-full max-w-sm flex-col gap-3 overflow-y-auto rounded-xl border bg-bg-secondary p-4 shadow-xl",
           danger ? "border-status-error/70" : "border-border-strong",
         )}
       >
@@ -251,4 +269,5 @@ export function ConfirmSheet({ policy, droneId, onResolve }: ConfirmSheetProps) 
       </div>
     </div>
   );
+  return flightRoot ? createPortal(dialog, flightRoot) : dialog;
 }

@@ -10,7 +10,7 @@
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Home, Pause } from "lucide-react";
 
 import { LaunchSheet, LaunchStepStrip } from "@/components/cockpit/v2/LaunchSheet";
@@ -20,6 +20,7 @@ import { activate, buildSkillContext } from "@/lib/skills";
 import { useDroneStore } from "@/stores/drone-store";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { rectStyle } from "@/components/cockpit/flight/flight-grid";
+import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
 
 export function LeftColumn({ droneId }: { droneId: string }) {
   const armState = useDroneStore((s) => s.armState);
@@ -31,7 +32,11 @@ export function LeftColumn({ droneId }: { droneId: string }) {
   // it, Take off is the plain built-in.
   usePilotLinkStore((s) => s.connected);
   const viaPilot = pilotStreamOpen(droneId) && pilot !== null;
-  const [launchOpen, setLaunchOpen] = useState(false);
+  const [launchOpen, setLaunchOpen] = useFlightSheet("launch");
+  // The Launch sheet is a ground sheet: it closes once the drone is flying.
+  useEffect(() => {
+    if (!onGround) setLaunchOpen(false);
+  }, [onGround, setLaunchOpen]);
   const sequence = pilot?.sequence ?? null;
   const sequenceRunning = sequence !== null && sequence.step !== "done";
   const grid = useFlightGrid();
@@ -53,6 +58,7 @@ export function LeftColumn({ droneId }: { droneId: string }) {
         <button
           type="button"
           className={btn}
+          data-sheet-trigger="launch"
           onClick={() => (viaPilot ? setLaunchOpen((o) => !o) : fire("takeoff"))}
           aria-label="Take off"
           aria-expanded={viaPilot ? launchOpen : undefined}

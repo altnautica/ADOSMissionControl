@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFlightSheet, useSheetDismiss } from "@/components/cockpit/flight/flight-sheet";
 import { Sparkles } from "lucide-react";
 
 import type { PilotState } from "@/lib/hud/cockpit-frames";
@@ -79,7 +80,10 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
   const t = useTranslations();
   const registry = useSkillRegistry((s) => s.skills);
   const states = useSkillRegistry((s) => s.states.get(droneId));
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useFlightSheet("skills");
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const closeSheet = useCallback(() => setOpen(false), [setOpen]);
+  useSheetDismiss(sheetRef, closeSheet, "[data-sheet-trigger='skills']", open);
   const [tab, setTab] = useState<PickerTab>("behavior");
   const [selected, setSelected] = useState<string | null>(null);
   const [pending, setPending] = useState<{ id: string; want: boolean; at: number } | null>(null);
@@ -201,7 +205,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
           void writePluginConfigValue({ droneId: deviceId, pluginId, key, value });
         }
       }),
-    [],
+    [setOpen],
   );
   useEffect(() => {
     usePickerStore.getState().setOpen(open);
@@ -211,9 +215,11 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
     <div className="relative flex flex-col items-end gap-2" data-testid="skill-picker">
       {open && (
         <div
+          ref={sheetRef}
           role="dialog"
           aria-label="Skills"
-          className="glass-panel flex max-h-[60vh] w-[340px] max-w-[92vw] flex-col gap-3 overflow-y-auto p-3"
+          data-testid="skill-picker-sheet"
+          className="glass-panel flex max-h-[min(60vh,calc(100vh-var(--fs-bar-b,0px)-120px))] w-[340px] max-w-[92vw] flex-col gap-3 overflow-y-auto p-3"
         >
           <div role="tablist" className="flex gap-1">
             {PICKER_TABS.map((k) => (
@@ -285,6 +291,7 @@ export function SkillPicker({ droneId, pilot, notify }: SkillPickerProps) {
       )}
       <button
         type="button"
+        data-sheet-trigger="skills"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="glass-pill flex min-h-12 items-center gap-2 px-4 text-xs font-semibold text-text-primary"

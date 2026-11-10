@@ -7426,7 +7426,8 @@
       "announceBattNormal": "Bateria normal novamente",
       "announceLinkStale": "Link desatualizado",
       "announceLinkLost": "Link perdido",
-      "announceLinkOk": "Link restabelecido"
+      "announceLinkOk": "Link restabelecido",
+      "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
     "command": {

@@ -11,7 +11,7 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { X } from "lucide-react";
 
 import flightStateSpec from "@/lib/cockpit-spec/flight-state.json";
@@ -21,6 +21,8 @@ import { activate, buildSkillContext, stopMotionSkills } from "@/lib/skills";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { HoldButton } from "./HoldButton";
+import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
+import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "@/components/cockpit/flight/flight-sheet";
 
 const SHEET = flightStateSpec.mode_sheet;
 
@@ -67,13 +69,19 @@ export function ModeSheet({ droneId, pilot, groundStationLink, onClose }: ModeSh
   const handValues =
     pilot?.vehicleClass === "fixedwing" ? SHEET.hand_to_fc.plane_values : SHEET.hand_to_fc.values;
   const fcModes = useMemo(() => buildSkillContext(droneId).availableModes, [droneId]);
+  const ref = useRef<HTMLDivElement>(null);
+  useSheetDismiss(ref, onClose, "[data-sheet-trigger='mode']");
+  const place = sheetPlacement(useFlightGrid(), "left");
 
   return (
+    <FlightSheetPortal>
     <div
+      ref={ref}
       role="dialog"
       aria-label="Mode"
       data-testid="mode-sheet"
-      className="glass-panel absolute right-3 top-14 z-50 flex max-h-[80%] w-[360px] max-w-[92%] flex-col gap-4 overflow-y-auto p-4"
+      style={place}
+      className="glass-panel absolute z-50 flex max-h-[calc(100%-var(--fs-bar-b)-16px)] w-[360px] max-w-[calc(100%-16px)] flex-col gap-4 overflow-y-auto p-4"
     >
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-text-primary">Mode</h2>
@@ -189,5 +197,6 @@ export function ModeSheet({ droneId, pilot, groundStationLink, onClose }: ModeSh
         </div>
       </Section>
     </div>
+    </FlightSheetPortal>
   );
 }

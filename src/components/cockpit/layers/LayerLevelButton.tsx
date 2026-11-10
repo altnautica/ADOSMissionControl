@@ -11,7 +11,8 @@
  * @license GPL-3.0-only
  */
 
-import { useState } from "react";
+import { useRef } from "react";
+import { useFlightSheet, useSheetDismiss } from "@/components/cockpit/flight/flight-sheet";
 import { useTranslations } from "next-intl";
 import { Layers } from "lucide-react";
 
@@ -35,7 +36,9 @@ export function LayerLevelButton({ droneId, iconOnly = false }: { droneId: strin
   const cycleLevel = useCockpitLayersStore((s) => s.cycleLevel);
   const setLayer = useCockpitLayersStore((s) => s.setLayer);
   const setDepth = useCockpitLayersStore((s) => s.setDepth);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useFlightSheet("layers");
+  const menuRef = useRef<HTMLDivElement>(null);
+  useSheetDismiss(menuRef, () => setOpen(false), "[data-sheet-trigger='layers']", open);
   const on = effectiveLayers(vl.level, vl.flips, view);
 
   return (
@@ -53,6 +56,7 @@ export function LayerLevelButton({ droneId, iconOnly = false }: { droneId: strin
       <button
         type="button"
         className="fs-btn fs-layer-caret"
+        data-sheet-trigger="layers"
         aria-expanded={open}
         aria-label={t("menuAria")}
         onClick={() => setOpen((o) => !o)}
@@ -61,7 +65,9 @@ export function LayerLevelButton({ droneId, iconOnly = false }: { droneId: strin
       </button>
       {open && (
         <div
+          ref={menuRef}
           role="menu"
+          data-testid="layer-menu"
           className="fs-sheet absolute right-0 top-full z-40 mt-2 w-56 p-2"
         >
           {LAYER_DEFS.map((d) => (

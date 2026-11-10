@@ -12,10 +12,12 @@
  * @license GPL-3.0-only
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Rocket, X } from "lucide-react";
 
 import { HoldButton } from "@/components/cockpit/v2/HoldButton";
+import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
+import { FlightSheetPortal, sheetPlacement, useSheetDismiss } from "@/components/cockpit/flight/flight-sheet";
 import { pickerSkills } from "@/components/cockpit/v2/SkillPicker";
 import type { PilotState } from "@/lib/hud/cockpit-frames";
 import { requestPilotAction, sendPilotAction } from "@/lib/input/pilot-stream";
@@ -122,6 +124,10 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
   const [gotoNE, setGotoNE] = useState<[number, number]>([10, 0]);
   const [whenDone, setWhenDone] = useState<LaunchWhenDone>("none");
   const [sent, setSent] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  useSheetDismiss(ref, onClose, "[data-sheet-trigger='launch']");
+  // At the flight screen's root, right of the left column, below the top bar.
+  const place = sheetPlacement(useFlightGrid(), "left");
 
   const missionLoaded = mission?.state === "loaded";
   const ready = after !== "skill" || skillId !== null;
@@ -142,11 +148,14 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
     );
 
   return (
+    <FlightSheetPortal>
     <div
+      ref={ref}
       role="dialog"
       aria-label="Launch"
       data-testid="launch-sheet"
-      className="glass-panel pointer-events-auto absolute left-20 top-1/2 z-50 w-[min(380px,calc(100%-6rem))] -translate-y-1/2 p-4 text-text-primary"
+      style={place}
+      className="glass-panel pointer-events-auto absolute z-50 max-h-[calc(100%-var(--fs-bar-b)-16px)] w-[min(380px,calc(100%-16px))] overflow-y-auto p-4 text-text-primary"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -273,5 +282,6 @@ export function LaunchSheet({ droneId, pilot, onClose }: LaunchSheetProps) {
       </div>
       {sent && <p className="mt-2 text-[11px] text-text-secondary">{sent}</p>}
     </div>
+    </FlightSheetPortal>
   );
 }

@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useFlightSheet } from "./flight-sheet";
 import { useTranslations } from "next-intl";
 import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, SlidersHorizontal, Video, ZoomIn } from "lucide-react";
 
@@ -124,7 +125,7 @@ export function RightColumn({ droneId }: { droneId: string }) {
   const grid = useFlightGrid();
   const rect = grid.zones.right_column;
   const [mode, setMode] = useState<CaptureMode>("photo");
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useFlightSheet("camera");
   const { isRecording, toggle } = useFlightRecording(droneId);
   const zoom = useViewZoomStore((s) => s.byDrone[droneId] ?? 1);
   const cycleZoom = useViewZoomStore((s) => s.cycle);

@@ -7426,7 +7426,8 @@
       "announceBattNormal": "Batterie revenue à la normale",
       "announceLinkStale": "Liaison périmée",
       "announceLinkLost": "Liaison perdue",
-      "announceLinkOk": "Liaison rétablie"
+      "announceLinkOk": "Liaison rétablie",
+      "stickFc": "STICKS → FC"
     },
     "mapLayer": "Map layer",
     "command": {
