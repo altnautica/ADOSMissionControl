@@ -71,7 +71,7 @@ function measure(layer: HTMLElement): Measured {
   rects.alert_stack = null;
   for (const el of scope.querySelectorAll(TIP_ANCHOR_SELECTORS.alert_stack)) {
     const r = rectOf(el, origin);
-    const u = rects.alert_stack;
+    const u: TipRect | null = rects.alert_stack;
     if (!r) continue;
     if (!u) {
       rects.alert_stack = r;

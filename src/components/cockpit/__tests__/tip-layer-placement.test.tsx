@@ -9,15 +9,16 @@
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CockpitTipsUi } from "@/hooks/use-cockpit-tips";
 
 const mocks = vi.hoisted(() => ({
   tip: null as { id: string; anchor: string; text: string } | null,
   dismiss: vi.fn(),
-  ui: null as null | { anchorsVisible: Record<string, boolean>; sheetOrMenuOpen: boolean },
+  ui: null as null | CockpitTipsUi,
 }));
 
 vi.mock("@/hooks/use-cockpit-tips", () => ({
-  useCockpitTips: (_droneId: string, ui: { anchorsVisible: Record<string, boolean>; sheetOrMenuOpen: boolean }) => {
+  useCockpitTips: (_droneId: string, ui: CockpitTipsUi) => {
     mocks.ui = ui;
     return { tip: mocks.tip, dismiss: mocks.dismiss };
   },
