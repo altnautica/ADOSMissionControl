@@ -14,8 +14,11 @@ import {
   SPEC_BINDINGS,
   bindingConflicts,
   missingLocked,
+  STOP_HOLD_MS,
+  stopHoldRow,
   type Ds4Binding,
 } from "@/lib/input/ds4-bindings";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 import { planIdentity } from "@/lib/mission/plan-identity";
 import { evaluateAutoChecks } from "@/lib/checklist/auto-checks";
 import { launchArgs } from "@/components/cockpit/v2/LaunchSheet";
@@ -287,5 +290,38 @@ describe("plan identity after Load from drone", () => {
     useNavStreamStore.getState().setPilot("d", { mission: m } as never);
     await downloadPlanMission(() => {});
     expect(planIdentity(receiptFor("mission", "d"), m)).toBe("match");
+  });
+});
+
+describe("a controller row bound to the emergency stop", () => {
+  const row = (gesture: Ds4Binding["gesture"], hold_ms: number | null): Ds4Binding => ({
+    control: "triangle",
+    with: [],
+    gesture,
+    hold_ms,
+    when: null,
+    action: "kill",
+    rumble: null,
+    locked: false,
+  });
+
+  it.each([
+    ["press", null],
+    ["tap", null],
+    ["double_tap", null],
+    ["hold", 500],
+  ] as const)("runs a %s row as the full spec stop hold", (gesture, hold) => {
+    const stop = layoutSpec.holds_ms.stop;
+    // Pressed and released quickly, or held short of the stop hold: nothing.
+    expect(run([row(gesture, hold)], [[0, ["triangle"]], [100, []], [200, ["triangle"]], [300, []], [1_000, []]])).toEqual([]);
+    expect(run([row(gesture, hold)], [[0, ["triangle"]], [stop - 100, ["triangle"]], [stop - 50, []]])).toEqual([]);
+    // Held for the full stop hold: fires once.
+    expect(run([row(gesture, hold)], [[0, ["triangle"]], [stop, ["triangle"]], [stop + 50, []]])).toEqual(["kill"]);
+  });
+
+  it("raises the row in the editor and import paths", () => {
+    expect(stopHoldRow(row("tap", null))).toMatchObject({ gesture: "hold", hold_ms: STOP_HOLD_MS });
+    expect(stopHoldRow(row("hold", 5_000)).hold_ms).toBe(5_000);
+    expect(stopHoldRow({ ...row("tap", null), action: "pause" }).gesture).toBe("tap");
   });
 });

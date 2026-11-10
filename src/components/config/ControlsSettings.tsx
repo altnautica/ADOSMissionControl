@@ -32,6 +32,7 @@ import {
   WEB_BUTTON_INDEX,
   actionLabel,
   bindingConflicts,
+  stopHoldRow,
   type Ds4Binding,
   type Ds4Gesture,
 } from "@/lib/input/ds4-bindings";
@@ -270,7 +271,8 @@ function ControlSheet({
   onClose: () => void;
 }) {
   const rows = draft.map((b, i) => ({ b, i })).filter(({ b }) => b.control === control);
-  const setRow = (i: number, patch: Partial<Ds4Binding>) => setDraft(draft.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  const setRow = (i: number, patch: Partial<Ds4Binding>) =>
+    setDraft(draft.map((b, j) => (j === i ? stopHoldRow({ ...b, ...patch }) : b)));
   const setGesture = (gesture: Exclude<Ds4Gesture, "analog">, action: string) => {
     if (action === "none") {
       setDraft(draft.filter((b) => !(b.control === control && b.gesture === gesture && b.with.length === 0 && !b.locked)));
@@ -278,7 +280,7 @@ function ControlSheet({
     }
     setDraft([
       ...draft,
-      { control, with: [], gesture, hold_ms: gesture === "hold" ? 1500 : null, when: null, action, rumble: null, locked: false },
+      stopHoldRow({ control, with: [], gesture, hold_ms: gesture === "hold" ? 1500 : null, when: null, action, rumble: null, locked: false }),
     ]);
   };
   return (

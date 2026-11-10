@@ -20,6 +20,7 @@ import {
   DS4_ACTIONS,
   SPEC_BINDINGS,
   bindingConflicts,
+  stopHoldRow,
   missingLocked,
   type Ds4Binding,
 } from "@/lib/input/ds4-bindings";
@@ -139,7 +140,7 @@ export function importControls(text: string): string | null {
   const bindings: Ds4Binding[] = [];
   for (const b of f.bindings) {
     if (!isBinding(b)) return `Unknown binding: ${JSON.stringify(b).slice(0, 80)}`;
-    bindings.push({
+    bindings.push(stopHoldRow({
       control: b.control,
       with: [...b.with],
       gesture: b.gesture,
@@ -149,7 +150,7 @@ export function importControls(text: string): string | null {
       rumble: typeof b.rumble === "string" ? b.rumble : null,
       locked: b.locked === true,
       ...(typeof b.rate_full_dps === "number" ? { rate_full_dps: b.rate_full_dps } : {}),
-    });
+    }));
   }
   const missing = missingLocked(bindings);
   if (missing.length > 0) return `This file is missing safety bindings: ${missing.join(", ")}`;

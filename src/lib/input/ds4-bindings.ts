@@ -27,6 +27,7 @@
  */
 
 import ds4 from "@/lib/cockpit-spec/ds4.json";
+import layoutSpec from "@/lib/cockpit-spec/layout.json";
 
 export type Ds4Gesture = "press" | "tap" | "hold" | "double_tap" | "analog";
 
@@ -58,6 +59,27 @@ export const CENTERED_THRESHOLD: number = ds4.centered_threshold;
 /** Standard-mapping Web Gamepad button index per control. */
 export const WEB_BUTTON_INDEX = ds4.platform_map.web_standard.buttons as Record<string, number>;
 export const TRIGGER_PRESSED = ds4.stream.trigger_pressed_threshold;
+
+/** The emergency stop's hold (`layout.json` `holds_ms.stop`). */
+export const STOP_HOLD_MS: number = layoutSpec.holds_ms.stop;
+const STOP_ACTION = "kill";
+const raisedStopRows = new Set<string>();
+
+/**
+ * A row bound to the emergency stop runs as a hold of at least the stop hold:
+ * a press, tap or double tap becomes that hold, a shorter hold is raised to
+ * it. Applied in the engine at run time and in the editor and import paths.
+ */
+export function stopHoldRow(b: Ds4Binding): Ds4Binding {
+  if (b.action !== STOP_ACTION || b.gesture === "analog") return b;
+  if (b.gesture === "hold" && (b.hold_ms ?? 0) >= STOP_HOLD_MS) return b;
+  const key = `${[...b.with, b.control].join("+")}:${b.gesture}:${b.hold_ms}`;
+  if (!raisedStopRows.has(key)) {
+    raisedStopRows.add(key);
+    console.info(`[controls] emergency stop on ${key} raised to a ${STOP_HOLD_MS} ms hold`);
+  }
+  return { ...b, gesture: "hold", hold_ms: STOP_HOLD_MS };
+}
 
 /** Spec label for an action id; a `skill:<plugin>:<skill>` id shows the skill id. */
 export function actionLabel(id: string): string {
@@ -142,12 +164,12 @@ export class GestureEngine {
   private pendingTap = new Map<string, { candidates: Ds4Binding[]; until: number }>();
 
   constructor(bindings: readonly Ds4Binding[], cb: GestureCallbacks) {
-    this.bindings = bindings.filter((b) => b.gesture !== "analog" && b.action !== "none");
+    this.bindings = bindings.filter((b) => b.gesture !== "analog" && b.action !== "none").map(stopHoldRow);
     this.cb = cb;
   }
 
   setBindings(bindings: readonly Ds4Binding[]): void {
-    this.bindings = bindings.filter((b) => b.gesture !== "analog" && b.action !== "none");
+    this.bindings = bindings.filter((b) => b.gesture !== "analog" && b.action !== "none").map(stopHoldRow);
     this.presses.clear();
     this.pendingTap.clear();
     this.muted.clear();
