@@ -35,6 +35,9 @@ export interface CockpitTipsUi {
   skillsAvailable: boolean;
   /** The gimbal rate endpoint answered `available: true`. */
   gimbalAvailable: boolean;
+  /** A banner or countdown shows in the alert stack (`alert_stack` zone):
+   *  no tip then (`show_only_when.alert_banner_visible: false`). */
+  alertBannerVisible: boolean;
 }
 
 export interface CockpitTip {
@@ -71,6 +74,7 @@ export function tipsContext(
     skillsAvailable: ui.skillsAvailable,
     gotoOffered: facts.gotoOffered,
     gimbalAvailable: ui.gimbalAvailable,
+    alertBannerVisible: ui.alertBannerVisible,
     anchorsVisible: ui.anchorsVisible,
     screenOpenedAtMs: open.openedAt,
     lastDismissedAtMs: open.lastDismissedAt,

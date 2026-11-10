@@ -15,7 +15,13 @@ import { useControlsStore } from "@/stores/controls-store";
 import { useDroneStore } from "@/stores/drone-store";
 
 const anchorsVisible = Object.fromEntries(tipsJson.tips.map((t) => [t.anchor, true]));
-const ui: CockpitTipsUi = { anchorsVisible, sheetOrMenuOpen: false, skillsAvailable: false, gimbalAvailable: false };
+const ui: CockpitTipsUi = {
+  anchorsVisible,
+  sheetOrMenuOpen: false,
+  skillsAvailable: false,
+  gimbalAvailable: false,
+  alertBannerVisible: false,
+};
 
 function advance(ms: number) {
   act(() => void vi.advanceTimersByTime(ms));
@@ -73,6 +79,21 @@ describe("useCockpitTips", () => {
     const { result } = renderHook(() => useCockpitTips("d1", ui));
     advance(3000 + tipsJson.rules.auto_dismiss_ms);
     expect(result.current.tip?.id).not.toBe("status_pill");
+    expect(useCockpitTipsStore.getState().seen).not.toContain("status_pill");
+  });
+
+  it("shows no tip while an alert banner is up, and hides one when a banner arrives", () => {
+    const { result, rerender } = renderHook((u: CockpitTipsUi) => useCockpitTips("d1", u), {
+      initialProps: { ...ui, alertBannerVisible: true },
+    });
+    advance(5000);
+    expect(result.current.tip).toBeNull();
+    rerender(ui);
+    advance(3000);
+    expect(result.current.tip?.id).toBe("status_pill");
+    rerender({ ...ui, alertBannerVisible: true });
+    advance(300);
+    expect(result.current.tip).toBeNull();
     expect(useCockpitTipsStore.getState().seen).not.toContain("status_pill");
   });
 });

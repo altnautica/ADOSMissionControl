@@ -33,6 +33,7 @@ export const TIP_ANCHOR_SELECTORS: Readonly<Record<string, string>> = {
   bottom_left_card: "[data-zone='bottom_left_card']",
   gimbal_pad: "[data-testid='fs-gimbal_pad']",
   left_column: "[data-zone='left_column']",
+  alert_stack: "[data-zone='alert_stack']",
 };
 
 /** The zones a tip never covers (`rules.never_cover_zones`). */
@@ -103,6 +104,7 @@ export function TipLayer({ droneId }: { droneId: string }) {
     sheetOrMenuOpen: sheetOpen || m?.menuOpen === true,
     skillsAvailable,
     gimbalAvailable: anchorsVisible.gimbal_pad === true,
+    alertBannerVisible: Boolean(m?.rects.alert_stack),
   });
 
   // A tap on the anchor, or any controller button, dismisses the tip.
