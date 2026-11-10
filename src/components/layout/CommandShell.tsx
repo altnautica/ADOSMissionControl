@@ -61,6 +61,7 @@ import { McpAutoNavBridge } from "@/components/mcp/watch/McpAutoNavBridge";
 import { DISCLAIMER_VERSION } from "@/components/onboarding/constants";
 import { useConnectDialogStore } from "@/stores/connect-dialog-store";
 import { usePairDialogStore } from "@/stores/pair-dialog-store";
+import { useShellModalsAllowed } from "@/hooks/use-shell-modals-allowed";
 
 // Rarely-open modals load as separate chunks so they stay out of every
 // route's first load (same pattern as CockpitView's sheets).
@@ -185,6 +186,8 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
   const [signInOpen, setSignInOpen] = useState(false);
   const hasHydrated = useSettingsStore((s) => s._hasHydrated);
   const onboarded = useSettingsStore((s) => s.onboarded);
+  // Shell modals wait while a cockpit is on screen or a vehicle is armed.
+  const shellModalsAllowed = useShellModalsAllowed();
   const disclaimerCurrent = useSettingsStore(
     (s) => s.disclaimerAccepted && s.disclaimerVersion >= DISCLAIMER_VERSION,
   );
@@ -228,13 +231,13 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col h-dvh">
       {/* Welcome onboarding modal */}
-      {hasHydrated && !onboarded && <WelcomeModal />}
+      {shellModalsAllowed && hasHydrated && !onboarded && <WelcomeModal />}
 
       {/* Disclaimer gate for existing users who haven't accepted yet */}
-      {hasHydrated && onboarded && !disclaimerCurrent && <DisclaimerGate />}
+      {shellModalsAllowed && hasHydrated && onboarded && !disclaimerCurrent && <DisclaimerGate />}
 
       {/* Changelog "What's New" notification modal */}
-      <ChangelogNotificationGate />
+      {shellModalsAllowed && <ChangelogNotificationGate />}
 
       {/* Armed-state parameter write confirmation dialog */}
       <ArmedWriteConfirmDialog />
