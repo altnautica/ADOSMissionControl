@@ -9,6 +9,8 @@
  *   Mission Control never sends one. Land first, then disarm.
  * - Land touches the demo vehicle down at once (the demo does not model the
  *   descent) and leaves it armed in LAND; the operator disarms it.
+ * - An RTL ends in the FC's own touchdown at home and its automatic disarm.
+ * - Flight termination (kill) stops the motors: disarmed, on the ground.
  * - Takeoff needs an armed vehicle; arming on the ground does not take off.
  *
  * Every change is pushed at once through `onChange` as a heartbeat, so the
@@ -37,6 +39,9 @@ export class MockFlightState implements MockFlightSnapshot {
   armed = false;
   airborne = false;
   mode: UnifiedFlightMode = "STABILIZE";
+  /** MISSION_CURRENT seq and mission item count (home excluded) of the loop
+   * the vehicle flies; kept current by the demo engine, null when it flies none. */
+  missionProgress: { seq: number; total: number } | null = null;
 
   constructor(
     private readonly onChange: (state: MockFlightSnapshot) => void,
@@ -78,6 +83,25 @@ export class MockFlightState implements MockFlightSnapshot {
     this.say(6, "Land complete");
     this.changed();
     return ok("Landed");
+  }
+
+  /** The FC's own landing at the end of an RTL: touch down, then the
+   * automatic disarm a landed vehicle does. */
+  touchDown(): void {
+    if (!this.airborne && !this.armed) return;
+    this.airborne = false;
+    this.armed = false;
+    this.say(6, "Land complete");
+    this.say(6, "Disarming motors");
+    this.changed();
+  }
+
+  /** Flight termination: motors stop at once, airborne or not. */
+  kill(): void {
+    if (!this.armed && !this.airborne) return;
+    this.armed = false;
+    this.airborne = false;
+    this.changed();
   }
 
   takeoff(altM: number): CommandResult {

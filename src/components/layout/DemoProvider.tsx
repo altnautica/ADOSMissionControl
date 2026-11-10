@@ -33,6 +33,7 @@ interface MockEngineHandle {
   start: (ms: number) => void;
   stop: () => void;
   freezeTelemetry: () => void;
+  blockNavStream: (blocked: boolean) => void;
   resumeTelemetry: () => void;
   readonly telemetryFlowing: boolean;
 }
@@ -46,6 +47,7 @@ declare global {
      */
     __adosDemo?: {
       freezeTelemetry: () => void;
+      blockNavStream: (blocked: boolean) => void;
       resumeTelemetry: () => void;
       readonly telemetryFlowing: boolean;
     };
@@ -95,6 +97,7 @@ export function DemoProvider() {
       // Installed only while demo mode is on, removed on teardown.
       window.__adosDemo = {
         freezeTelemetry: () => engine?.freezeTelemetry(),
+        blockNavStream: (blocked: boolean) => engine?.blockNavStream(blocked),
         resumeTelemetry: () => engine?.resumeTelemetry(),
         get telemetryFlowing() {
           return engine?.telemetryFlowing ?? false;

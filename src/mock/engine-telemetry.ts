@@ -28,6 +28,9 @@ interface TelemetryTickContext {
   pitch: number;
   headingDelta: number;
   battery: number;
+  /** Ground speed and climb rate this tick, m/s (zero while holding). */
+  speed: number;
+  climbRate: number;
   pathIndex: number;
   currentWaypointIdx: number;
   pathProgress: number;
@@ -45,7 +48,6 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
   const now = Date.now();
   const path = FLIGHT_PATHS[ctx.pathIndex];
   const nextWp = path[(ctx.currentWaypointIdx + 1) % path.length];
-  const wp = path[ctx.currentWaypointIdx];
 
   telemetryStore.pushBatch({
     attitude: {
@@ -62,12 +64,12 @@ export function emitSelectedDroneTelemetry(ctx: TelemetryTickContext): number {
     gps: ctx.droneUpdate.gps!,
     vfr: {
       timestamp: now,
-      airspeed: wp.speed * 1.05,
-      groundspeed: wp.speed,
+      airspeed: ctx.speed * 1.05,
+      groundspeed: ctx.speed,
       heading: ctx.pos.heading,
       throttle: 45 + Math.random() * 15,
       alt: ctx.pos.alt,
-      climb: (nextWp.alt - wp.alt) * ctx.pathProgress,
+      climb: ctx.climbRate,
     },
     rc: {
       timestamp: now,

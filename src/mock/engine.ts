@@ -29,7 +29,9 @@ import { BOOT_MESSAGES } from "./status-messages";
 import { emitSelectedDroneTelemetry } from "./engine-telemetry";
 import { tickGroundedDrone } from "./engine-grounded";
 import { seedDemoNodes } from "./engine-seed";
-import { DemoMissionLoader, holdsHomeSlot, pathMissionItems } from "./engine-mission";
+import { DemoMissionLoader, holdsHomeSlot, missionSeqForTarget, pathMissionItems } from "./engine-mission";
+import { RETURN_SPEED_MPS, demoFlightPhase, stepHome, type DemoFix } from "./engine-modes";
+import { setDemoNavStreamBlocked, setDemoTelemetryFrozen } from "./demo-link";
 import { DEMO_PX4_EVENT_FRAMES } from "./px4-demo-events";
 import { mockCanBus } from "./mock-can-bus";
 import { useFleetStore } from "@/stores/fleet-store";
@@ -78,6 +80,13 @@ interface DroneSimState {
    * The tick writes GLOBAL telemetry-store state (nav/arming/adsb), so it must
    * only run while this drone is selected — the tick loop gates it. */
   inavTicking: boolean;
+  /** MISSION_CURRENT seq for each loop point as the target, and the mission's
+   * item count without home: what the vehicle reports flying its loop. */
+  missionSeqs: number[];
+  missionTotal: number;
+  /** Where the vehicle is while off its loop (a hold or the flight home);
+   * null while it flies the loop. */
+  offPath: DemoFix | null;
 }
 
 class MockFlightEngine {
@@ -101,9 +110,16 @@ class MockFlightEngine {
       const protocol = createDemoProtocol(cfg.firmware);
       // The loop this drone flies is the mission it holds onboard, and it
       // boots airborne in its configured arm state and mode.
+      const missionSeqs: number[] = [];
+      let missionTotal = 0;
       if (path && path.length >= 2 && protocol instanceof MockProtocol) {
-        protocol.loadMission(pathMissionItems(path, holdsHomeSlot(protocol)));
+        const homeSlot = holdsHomeSlot(protocol);
+        const items = pathMissionItems(path, homeSlot);
+        protocol.loadMission(items);
         protocol.flight.init({ armed: cfg.status === "in_mission", airborne: true, mode: cfg.flightMode });
+        for (let i = 0; i < path.length; i++) missionSeqs.push(missionSeqForTarget(path, i, homeSlot));
+        missionTotal = items.length - (homeSlot ? 1 : 0);
+        protocol.flight.missionProgress = { seq: missionSeqs[1], total: missionTotal };
       }
 
       return {
@@ -114,7 +130,7 @@ class MockFlightEngine {
         bootMessageIndex: 0, statusMessageTick: 0, segmentDistances,
         loopStartTick: 0, loopMaxAlt: 0, loopMaxSpeed: 0, loopDistance: 0,
         loopBatteryStart: cfg.batteryStart, loopTrail: [], loopCount: 0,
-        inavTicking: false,
+        inavTicking: false, missionSeqs, missionTotal, offPath: null,
       };
     });
   }
@@ -197,18 +213,31 @@ class MockFlightEngine {
    * a stale reading: the ring buffers were always being fed, so the bug only
    * appeared on a real link loss in the field. Freezing the tick leaves the
    * last samples in place and lets the clock age them, which is exactly what
-   * a dead radio looks like from the GCS.
+   * a dead radio looks like from the GCS. The demo pilot publisher stops with
+   * it, so the flight-state chip dims to LINK as on a real link loss.
    *
    * `stop()` remains the full teardown; this is deliberately narrower.
    */
   freezeTelemetry(): void {
     if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
+    setDemoTelemetryFrozen(true);
   }
 
   /** Resume the tick after {@link freezeTelemetry}. */
   resumeTelemetry(): void {
+    setDemoTelemetryFrozen(false);
     if (!this.running || this.intervalId) return;
     this.intervalId = setInterval(() => this.tick(), this.tickRate);
+  }
+
+  /**
+   * Make the demo nav feed behave as if `/api/v1/nav/stream` cannot be
+   * reached (true) or restore it (false). Blocked, the feed goes quiet for the
+   * bridge's fallback delay and then arrives through the reduced-rate
+   * `nav/status` poll, as it does behind a ground-station radio relay.
+   */
+  blockNavStream(blocked: boolean): void {
+    setDemoNavStreamBlocked(blocked);
   }
 
   /** Whether telemetry is currently flowing (false while frozen). */
@@ -231,6 +260,8 @@ class MockFlightEngine {
       void p.disconnect();
     }
     this.running = false;
+    setDemoTelemetryFrozen(false);
+    setDemoNavStreamBlocked(false);
   }
 
   tick(): void {
@@ -279,8 +310,13 @@ class MockFlightEngine {
       const path = FLIGHT_PATHS[cfg.pathIndex];
       if (!path || path.length < 2) continue;
 
-      // A drone that landed (Land command) holds its touchdown point and
-      // flies no path until it takes off again.
+      const flight = state.protocol instanceof MockProtocol ? state.protocol.flight : null;
+      // LAND set as a mode (the mode bar, a pilot land) touches down the way
+      // the Land command does.
+      if (flight?.airborne && flight.mode === "LAND") flight.land();
+
+      // A drone that landed (Land command, a kill, the end of an RTL) holds
+      // its touchdown point and flies no path until it takes off again.
       if (state.protocol instanceof MockProtocol && !state.protocol.flight.airborne) {
         tickGroundedDrone(nid(cfg.id), state.protocol, state.tickCount, nid(cfg.id) === selectedId, now);
         continue;
@@ -289,52 +325,83 @@ class MockFlightEngine {
       const wp = path[state.currentWaypointIdx];
       const nextIdx = (state.currentWaypointIdx + 1) % path.length;
       const nextWp = path[nextIdx];
-
       const segmentDist = state.segmentDistances[state.currentWaypointIdx] ?? 0;
-      const stepDist = (wp.speed * this.tickRate) / 1000;
-      const progressStep = segmentDist > 0 ? stepDist / segmentDist : 0.01;
-      state.pathProgress += progressStep;
+      const phase = flight ? demoFlightPhase(flight.mode) : "path";
 
-      if (state.pathProgress >= 1) {
-        state.pathProgress = 0;
+      let pos: DemoFix;
+      let speed = 0;
+      let climbRate = 0;
+      let arrivedHome = false;
+      if (phase === "path") {
+        state.offPath = null;
+        const stepDist = (wp.speed * this.tickRate) / 1000;
+        const progressStep = segmentDist > 0 ? stepDist / segmentDist : 0.01;
+        state.pathProgress += progressStep;
 
-        if (nextIdx === 0 && state.currentWaypointIdx > 0) {
-          state.loopCount++;
-          if (state.loopCount >= 2) {
-            const duration = Math.round((state.tickCount - state.loopStartTick) * this.tickRate / 1000);
-            const now = Date.now();
-            const record: FlightRecord = {
-              id: randomId(), droneId: cfg.id, droneName: cfg.name,
-              date: now,
-              startTime: now - duration * 1000,
-              endTime: now,
-              duration,
-              distance: Math.round(state.loopDistance),
-              maxAlt: Math.round(state.loopMaxAlt),
-              maxSpeed: Math.round(state.loopMaxSpeed * 10) / 10,
-              batteryUsed: Math.round(state.loopBatteryStart - state.battery),
-              waypointCount: path.length, status: "completed",
-              path: state.loopTrail.length > 0 ? [...state.loopTrail] : undefined,
-              updatedAt: now,
-            };
-            // In demo mode the curated seed in mock/history.ts is the source
-            // of truth for the History tab. Skip live engine records here to
-            // avoid stuck IN_PROGRESS / 0-duration stubs piling up in IDB.
-            void record;
+        if (state.pathProgress >= 1) {
+          state.pathProgress = 0;
+
+          if (nextIdx === 0 && state.currentWaypointIdx > 0) {
+            state.loopCount++;
+            if (state.loopCount >= 2) {
+              const duration = Math.round((state.tickCount - state.loopStartTick) * this.tickRate / 1000);
+              const now = Date.now();
+              const record: FlightRecord = {
+                id: randomId(), droneId: cfg.id, droneName: cfg.name,
+                date: now,
+                startTime: now - duration * 1000,
+                endTime: now,
+                duration,
+                distance: Math.round(state.loopDistance),
+                maxAlt: Math.round(state.loopMaxAlt),
+                maxSpeed: Math.round(state.loopMaxSpeed * 10) / 10,
+                batteryUsed: Math.round(state.loopBatteryStart - state.battery),
+                waypointCount: path.length, status: "completed",
+                path: state.loopTrail.length > 0 ? [...state.loopTrail] : undefined,
+                updatedAt: now,
+              };
+              // In demo mode the curated seed in mock/history.ts is the source
+              // of truth for the History tab. Skip live engine records here to
+              // avoid stuck IN_PROGRESS / 0-duration stubs piling up in IDB.
+              void record;
+            }
+            state.loopStartTick = state.tickCount;
+            state.loopMaxAlt = 0; state.loopMaxSpeed = 0; state.loopDistance = 0;
+            state.loopBatteryStart = state.battery; state.loopTrail = [];
           }
-          state.loopStartTick = state.tickCount;
-          state.loopMaxAlt = 0; state.loopMaxSpeed = 0; state.loopDistance = 0;
-          state.loopBatteryStart = state.battery; state.loopTrail = [];
+
+          state.loopDistance += state.segmentDistances[state.currentWaypointIdx] ?? 0;
+          state.currentWaypointIdx = nextIdx;
         }
 
-        state.loopDistance += state.segmentDistances[state.currentWaypointIdx] ?? 0;
-        state.currentWaypointIdx = nextIdx;
+        pos = interpolatePath(wp, nextWp, state.pathProgress);
+        speed = wp.speed;
+        // Climb in m/s: the segment's height change over the time it takes to
+        // fly at the waypoint's speed.
+        climbRate = segmentDist > 0 ? ((nextWp.alt - wp.alt) * wp.speed) / segmentDist : 0;
+        if (wp.speed > state.loopMaxSpeed) state.loopMaxSpeed = wp.speed;
+      } else {
+        // Off the loop: hold where the vehicle is, or fly home. The loop
+        // progress stays put, so AUTO carries on from the item it was on.
+        const here = state.offPath ?? interpolatePath(wp, nextWp, state.pathProgress);
+        if (phase === "return") {
+          const step = stepHome(here, path[0], (RETURN_SPEED_MPS * this.tickRate) / 1000);
+          state.offPath = step.fix;
+          arrivedHome = step.arrived;
+          speed = arrivedHome ? 0 : RETURN_SPEED_MPS;
+        } else {
+          state.offPath = here;
+        }
+        pos = state.offPath;
+      }
+      if (flight) {
+        flight.missionProgress = {
+          seq: state.missionSeqs[(state.currentWaypointIdx + 1) % path.length],
+          total: state.missionTotal,
+        };
       }
 
-      const pos = interpolatePath(wp, nextWp, state.pathProgress);
-
       if (pos.alt > state.loopMaxAlt) state.loopMaxAlt = pos.alt;
-      if (wp.speed > state.loopMaxSpeed) state.loopMaxSpeed = wp.speed;
       if (state.tickCount % 10 === 0) { state.loopTrail.push([pos.lat, pos.lon]); }
 
       const jitterLat = (Math.random() - 0.5) * 0.00002;
@@ -345,22 +412,19 @@ class MockFlightEngine {
         registry.getEntry(nid(cfg.id))?.fc.position?.heading ?? pos.heading;
       const headingDelta = pos.heading - prevHeading;
       const roll = Math.max(-30, Math.min(30, headingDelta * 0.5));
-      const pitch = (nextWp.alt - wp.alt) > 0 ? -5 : (nextWp.alt - wp.alt) < 0 ? 5 : -2;
-      // Climb in m/s: the segment's height change over the time it takes to
-      // fly at the waypoint's speed.
-      const climbRate =
-        segmentDist > 0 ? ((nextWp.alt - wp.alt) * wp.speed) / segmentDist : 0;
+      const climbSign = phase === "path" ? Math.sign(nextWp.alt - wp.alt) : 0;
+      const pitch = phase === "hold" ? 0 : climbSign > 0 ? -5 : climbSign < 0 ? 5 : -2;
 
       const droneUpdate: Partial<FleetDrone> = {
         lastHeartbeat: now,
         position: {
           timestamp: now, lat: pos.lat + jitterLat, lon: pos.lon + jitterLon,
           alt: DEMO_SITE_ELEVATION_M + pos.alt, relativeAlt: pos.alt, heading: pos.heading,
-          groundSpeed: wp.speed, airSpeed: wp.speed * 1.05,
+          groundSpeed: speed, airSpeed: speed * 1.05,
           climbRate,
           // Velocity along the course, NED: the track the drone is flying.
-          vn: wp.speed * Math.cos((pos.heading * Math.PI) / 180),
-          ve: wp.speed * Math.sin((pos.heading * Math.PI) / 180),
+          vn: speed * Math.cos((pos.heading * Math.PI) / 180),
+          ve: speed * Math.sin((pos.heading * Math.PI) / 180),
           vd: -climbRate,
         },
         battery: (() => {
@@ -407,7 +471,7 @@ class MockFlightEngine {
 
         state.statusMessageTick = emitSelectedDroneTelemetry({
           tickCount: state.tickCount, protocol: state.protocol,
-          droneUpdate, pos, roll, pitch, headingDelta, battery: state.battery,
+          droneUpdate, pos, roll, pitch, headingDelta, battery: state.battery, speed, climbRate,
           pathIndex: cfg.pathIndex, currentWaypointIdx: state.currentWaypointIdx,
           pathProgress: state.pathProgress, segmentDistances: state.segmentDistances,
           statusMessageTick: state.statusMessageTick, rcChannels,
@@ -419,6 +483,15 @@ class MockFlightEngine {
           const idx = Math.floor(state.tickCount / 40) % DEMO_PX4_EVENT_FRAMES.length;
           state.protocol.emitEvent(DEMO_PX4_EVENT_FRAMES[idx]);
         }
+      }
+
+      // Home reached on an RTL: the FC touches down and disarms there, and a
+      // later AUTO starts the loop from the top.
+      if (arrivedHome && flight) {
+        flight.touchDown();
+        state.currentWaypointIdx = 0;
+        state.pathProgress = 0;
+        state.offPath = null;
       }
 
       if (state.tickCount - state.lastAlertTick > 300 && Math.random() < 0.02) {

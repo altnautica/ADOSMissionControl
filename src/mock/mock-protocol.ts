@@ -177,7 +177,11 @@ export class MockProtocol implements DroneProtocol {
   async arm(): Promise<CommandResult> { return this.flight.arm(); }
   async disarm(): Promise<CommandResult> { return this.flight.disarm(); }
   async setFlightMode(m: UnifiedFlightMode): Promise<CommandResult> { return this.flight.setMode(m); }
-  async returnToLaunch(): Promise<CommandResult> { this.emitStatusText(6, "Returning to launch"); return ok("RTL"); }
+  async returnToLaunch(): Promise<CommandResult> {
+    this.emitStatusText(6, "Returning to launch");
+    this.flight.setMode("RTL");
+    return ok("RTL");
+  }
   async land(): Promise<CommandResult> { return this.flight.land(); }
   async takeoff(alt: number): Promise<CommandResult> { return this.flight.takeoff(alt); }
   async killSwitch(confirmed: boolean): Promise<CommandResult> {
@@ -185,6 +189,7 @@ export class MockProtocol implements DroneProtocol {
     // fails the same way here as it does against a vehicle.
     if (!confirmed) return { success: false, resultCode: -1, message: "Flight termination requires explicit confirmation" };
     this.emitStatusText(2, "KILL SWITCH ACTIVATED");
+    this.flight.kill();
     return ok("Kill switch");
   }
   async guidedGoto(lat: number, lon: number, alt: number): Promise<CommandResult> { return ok(`Goto ${lat.toFixed(6)}, ${lon.toFixed(6)} @ ${alt}m`); }

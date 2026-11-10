@@ -11,6 +11,11 @@
  *   pillars;
  * - occupancy tiles and `map_status` at 1 Hz, tiles revealed progressively.
  *
+ * While the demo nav stream is blocked (`demo-link`) the feed behaves the way
+ * the real bridge sees an unreachable `/api/v1/nav/stream`: nothing arrives
+ * for the fallback delay, then every kind comes through the reduced-rate
+ * `nav/status` poll and the drone's feed reads transport `poll`.
+ *
  * Started and stopped by `mockDetectionStream` so the target layer, follow
  * chrome, radar, minimap and Map tab all run off one clock. Loaded only
  * through the demo-mode dynamic import of `mock-detections`.
@@ -18,6 +23,8 @@
  */
 
 import { mockPilot } from "./mock-pilot";
+import { demoNavStreamBlockedAt } from "./demo-link";
+import { NAV_STATUS_POLL_MS, NAV_STREAM_FALLBACK_MS } from "@/lib/agent/nav-stream";
 import type { MapStatus, NavState, ReacquireMode } from "@/lib/hud/nav-types";
 import { pluginConfigKey, usePluginConfigCache } from "@/lib/plugins/config-cache";
 import { FOLLOW_ME_PLUGIN_ID } from "@/hooks/use-nav-feed";
@@ -105,13 +112,15 @@ export class MockNavStream {
     this.startMs = startMs;
     this.occupancy = new OccupancyReveal(this.encoder);
     this.timers = [
-      setInterval(() => this.tickFollow(), FOLLOW_MS),
-      setInterval(() => this.tickNav(), NAV_MS),
-      setInterval(() => this.tickPose(), POSE_MS),
+      setInterval(() => this.streaming() && this.tickFollow(), FOLLOW_MS),
+      setInterval(() => this.streaming() && this.tickNav(), NAV_MS),
+      setInterval(() => this.streaming() && this.tickPose(), POSE_MS),
       setInterval(() => this.tickMap(), MAP_MS),
+      setInterval(() => this.tickLink(), NAV_STATUS_POLL_MS),
     ];
     this.layers.start(droneId, startMs);
     mockPilot.start(droneId);
+    this.tickLink();
     this.tickMap();
   }
 
@@ -132,6 +141,32 @@ export class MockNavStream {
 
   private cycleS(): number {
     return (Date.now() - this.startMs) / 1000;
+  }
+
+  /** Whether the nav stream is up (not blocked by the demo). */
+  private streaming(): boolean {
+    return demoNavStreamBlockedAt() === null;
+  }
+
+  /** The bridge's transport, and the fallback poll once the stream has been
+   * down for the fallback delay. */
+  private tickLink(): void {
+    const droneId = this.droneId;
+    if (!droneId) return;
+    const store = useNavStreamStore.getState();
+    const blockedAt = demoNavStreamBlockedAt();
+    if (blockedAt === null) {
+      store.setTransport(droneId, "stream");
+      return;
+    }
+    if (Date.now() - blockedAt < NAV_STREAM_FALLBACK_MS) return;
+    this.tickFollow();
+    this.tickNav();
+    this.tickPose();
+    const occupancy = this.occupancy;
+    if (occupancy) store.setMap(droneId, demoMapStatus(this.cycleS(), occupancy.revealedCount));
+    mockPilot.publishPolled();
+    store.setTransport(droneId, "poll");
   }
 
   private tickFollow(): void {
@@ -191,8 +226,10 @@ export class MockNavStream {
     const occupancy = this.occupancy;
     if (!droneId || !occupancy) return;
     const store = useNavStreamStore.getState();
+    // Occupancy tiles come from the `map/live` poll, which the stream's
+    // absence does not stop; `map_status` rides the stream.
     store.mergeOccupancy(droneId, occupancy.next());
-    store.setMap(droneId, demoMapStatus(this.cycleS(), occupancy.revealedCount));
+    if (this.streaming()) store.setMap(droneId, demoMapStatus(this.cycleS(), occupancy.revealedCount));
   }
 }
 
