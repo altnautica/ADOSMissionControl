@@ -12201,13 +12201,6 @@
       "failedToLoadCommunityData": "Failed to load community data",
       "retry": "Retry"
     },
-    "convexclientprovider": {
-      "authBridge": "auth-bridge"
-    },
-    "globalerror": {
-      "somethingWentWrong": "Something went wrong",
-      "tryAgain": "Try Again"
-    },
     "error": {
       "somethingWentWrong": "Something went wrong",
       "tryAgain": "Try Again"

@@ -12201,13 +12201,6 @@
       "failedToLoadCommunityData": "커뮤니티 데이터를 불러오지 못했습니다",
       "retry": "다시 시도"
     },
-    "convexclientprovider": {
-      "authBridge": "auth-bridge"
-    },
-    "globalerror": {
-      "somethingWentWrong": "문제가 발생했습니다",
-      "tryAgain": "다시 시도"
-    },
     "error": {
       "somethingWentWrong": "문제가 발생했습니다",
       "tryAgain": "다시 시도"

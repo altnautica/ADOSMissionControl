@@ -7,7 +7,6 @@
 
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 // Only the generated colour tokens: the root layout (and globals.css) may be
@@ -21,7 +20,6 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const tk = useTranslations("appPages.globalerror");
   useEffect(() => {
     console.error("[global-error-boundary]", error);
   }, [error]);
@@ -33,7 +31,7 @@ export default function GlobalError({
           <div style={{ maxWidth: "28rem", width: "100%", textAlign: "center" }}>
             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠</div>
             <h2 style={{ fontSize: "1.125rem", fontWeight: 600, marginBottom: "0.5rem" }}>
-              {tk("somethingWentWrong")}
+              Something went wrong
             </h2>
             <p style={{ fontSize: "0.875rem", color: "var(--alt-text-secondary)", marginBottom: "1.5rem" }}>
               {error.message || "An unexpected error occurred."}
@@ -51,7 +49,7 @@ export default function GlobalError({
                 cursor: "pointer",
               }}
             >
-              {tk("tryAgain")}
+              Try Again
             </button>
           </div>
         </div>

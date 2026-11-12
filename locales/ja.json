@@ -12201,13 +12201,6 @@
       "failedToLoadCommunityData": "コミュニティデータの読み込みに失敗しました",
       "retry": "再試行"
     },
-    "convexclientprovider": {
-      "authBridge": "auth-bridge"
-    },
-    "globalerror": {
-      "somethingWentWrong": "問題が発生しました",
-      "tryAgain": "再試行"
-    },
     "error": {
       "somethingWentWrong": "問題が発生しました",
       "tryAgain": "再試行"

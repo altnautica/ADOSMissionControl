@@ -89,7 +89,8 @@ the project follows [Semantic Versioning](https://semver.org/).
 - **Configure by firmware.** Betaflight and iNav hide ArduPilot outputs and
   gain a Failsafe panel; PX4 gains Failure & return, hides the ArduPilot CAN
   setup and points Radio Config to Ports. A failing panel no longer takes the
-  Setup tab down. Absent PX4 parameters read "not present on this board".
+  Setup tab down. Absent PX4 parameters read "not present on this board". The LED panel
+  reads its values when it opens.
   More panels read in the operator's language.
 - **Settings.** Night vision theme, a remembered deadzone, alert volume after
   reload, Bluetooth Forget with confirmation, Controls Reset as a draft, the

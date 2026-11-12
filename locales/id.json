@@ -12201,13 +12201,6 @@
       "failedToLoadCommunityData": "Gagal memuat data komunitas",
       "retry": "Coba lagi"
     },
-    "convexclientprovider": {
-      "authBridge": "auth-bridge"
-    },
-    "globalerror": {
-      "somethingWentWrong": "Terjadi kesalahan",
-      "tryAgain": "Coba Lagi"
-    },
     "error": {
       "somethingWentWrong": "Terjadi kesalahan",
       "tryAgain": "Coba Lagi"

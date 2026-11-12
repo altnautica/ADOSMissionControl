@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { ReactNode, useMemo } from "react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ConvexAuthNextjsProvider } from "@convex-dev/auth/nextjs";
@@ -23,7 +22,6 @@ export default function ConvexClientProvider({
 }: {
   children: ReactNode;
 }) {
-  const tk = useTranslations("appPages.convexclientprovider");
   const hasBackend = Boolean(CONVEX_URL);
   // Always build a client so the Convex hooks have a provider context, even in
   // local-only mode. Without a provider, useQuery / useMutation throw
@@ -47,7 +45,7 @@ export default function ConvexClientProvider({
   return (
     <ConvexAvailableContext.Provider value={true}>
       <ConvexAuthNextjsProvider client={client}>
-        <SilentErrorBoundary label={tk("authBridge")}>
+        <SilentErrorBoundary label="auth-bridge">
           <AuthBridge />
         </SilentErrorBoundary>
         {children}

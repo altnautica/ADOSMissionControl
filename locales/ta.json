@@ -12201,13 +12201,6 @@
       "failedToLoadCommunityData": "சமூகத் தரவை ஏற்ற முடியவில்லை",
       "retry": "மீண்டும் முயல்"
     },
-    "convexclientprovider": {
-      "authBridge": "auth-bridge"
-    },
-    "globalerror": {
-      "somethingWentWrong": "ஏதோ தவறு நடந்தது",
-      "tryAgain": "மீண்டும் முயலவும்"
-    },
     "error": {
       "somethingWentWrong": "ஏதோ தவறு நடந்தது",
       "tryAgain": "மீண்டும் முயலவும்"

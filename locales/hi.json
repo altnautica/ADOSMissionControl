@@ -12201,13 +12201,6 @@
       "failedToLoadCommunityData": "कम्युनिटी डेटा लोड करने में विफल",
       "retry": "पुनः प्रयास करें"
     },
-    "convexclientprovider": {
-      "authBridge": "auth-bridge"
-    },
-    "globalerror": {
-      "somethingWentWrong": "कुछ गलत हो गया",
-      "tryAgain": "फिर से प्रयास करें"
-    },
     "error": {
       "somethingWentWrong": "कुछ गलत हो गया",
       "tryAgain": "फिर से प्रयास करें"

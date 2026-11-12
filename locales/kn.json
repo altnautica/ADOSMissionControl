@@ -12201,13 +12201,6 @@
       "failedToLoadCommunityData": "ಸಮುದಾಯ ಡೇಟಾ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ",
       "retry": "ಮರುಪ್ರಯತ್ನಿಸಿ"
     },
-    "convexclientprovider": {
-      "authBridge": "auth-bridge"
-    },
-    "globalerror": {
-      "somethingWentWrong": "ಏನೋ ತಪ್ಪಾಗಿದೆ",
-      "tryAgain": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ"
-    },
     "error": {
       "somethingWentWrong": "ಏನೋ ತಪ್ಪಾಗಿದೆ",
       "tryAgain": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ"

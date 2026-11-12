@@ -12201,13 +12201,6 @@
       "failedToLoadCommunityData": "加载社区数据失败",
       "retry": "重试"
     },
-    "convexclientprovider": {
-      "authBridge": "auth-bridge"
-    },
-    "globalerror": {
-      "somethingWentWrong": "出错了",
-      "tryAgain": "重试"
-    },
     "error": {
       "somethingWentWrong": "出错了",
       "tryAgain": "重试"

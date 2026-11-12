@@ -41,7 +41,7 @@ const BRIGHTNESS_OPTIONS = ["Off", "Low", "Medium", "High"];
 
 export function LedPanel() {
   const tr = useTranslations("fcPanels.ledPanel");
-  const panelState = useFcPanelState({ paramNames: LED_PARAMS, panelId: "led" });
+  const panelState = useFcPanelState({ paramNames: LED_PARAMS, panelId: "led", autoLoad: true });
   const {
     params, loading, error, dirtyParams, hasRamWrites,
     loadProgress, hasLoaded, getProtocol,
