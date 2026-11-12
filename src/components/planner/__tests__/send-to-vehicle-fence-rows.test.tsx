@@ -1,7 +1,8 @@
 /**
  * @license GPL-3.0-only
  * The upload dialog holds back a fence the plan's own mission breaks (a leg
- * through an exclusion zone, a waypoint above the fence ceiling), and holds
+ * through an exclusion zone, a waypoint above the fence ceiling or below its
+ * floor), and holds
  * back rally points the fence forbids, so neither lands on the vehicle under
  * the mission it already holds.
  */
@@ -83,6 +84,18 @@ describe("SendToVehicleDialog fence rows", () => {
     ]);
 
     expect(checkbox("geofence")).toBeDisabled();
+    expect(screen.getByTestId("send-geofence-crossed")).toBeInTheDocument();
+  });
+
+  it("holds back the fence when a waypoint is below its floor", () => {
+    useGeofenceStore.getState().setMinAltitude(20);
+    renderDialog([
+      { id: "a", lat: 47.004, lon: 8.004, alt: 30 },
+      { id: "b", lat: 47.006, lon: 8.006, alt: 10 },
+    ]);
+
+    expect(checkbox("geofence")).toBeDisabled();
+    expect(checkbox("geofence")).not.toBeChecked();
     expect(screen.getByTestId("send-geofence-crossed")).toBeInTheDocument();
   });
 

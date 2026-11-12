@@ -44,12 +44,13 @@ import type { Planner } from "@/app/plan/use-planner";
 type SendItem = "mission" | "geofence" | "rally";
 const ORDER: readonly SendItem[] = ["mission", "geofence", "rally"];
 
-/** Mission errors that mean the mission crosses the plan's own fence. */
+/** Mission errors that mean the mission crosses the plan's own fence (its floor included). */
 const FENCE_BREACH_CODES: Record<string, true> = {
   OUTSIDE_GEOFENCE: true,
   LEG_OUTSIDE_GEOFENCE: true,
   INSIDE_EXCLUSION_ZONE: true,
   LEG_CROSSES_EXCLUSION_ZONE: true,
+  BELOW_MIN_ALTITUDE: true,
 };
 
 /** Errors that mean a rally point lies where the plan's own fence forbids flight. */
