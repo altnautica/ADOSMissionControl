@@ -27,6 +27,7 @@ vi.mock("@/hooks/use-panel-params", () => ({
 import { Px4VtolPanel } from "../Px4VtolPanel";
 import { Px4ControlAllocationPanel } from "../Px4ControlAllocationPanel";
 import { VtolPanel } from "../../vtol/VtolPanel";
+import { ArduPilotHeliPanel } from "../../frame/ArduPilotHeliPanel";
 import { isFrameGeometryParam } from "../../shared/frame-geometry-params";
 
 function inputFor(param: string): HTMLInputElement {
@@ -78,6 +79,7 @@ describe("frame geometry while armed", () => {
       [() => <Px4VtolPanel />, "VT_TYPE", "VT_F_TRANS_DUR"],
       [() => <Px4ControlAllocationPanel />, "CA_ROTOR_COUNT", null],
       [() => <VtolPanel />, "Q_ENABLE", "Q_TRANSITION_MS"],
+      [() => <ArduPilotHeliPanel />, "H_SW_TYPE", "H_COL_MIN"],
     ];
     const saveButton = () => screen.getByRole("button", { name: /save to flight controller/i }) as HTMLButtonElement;
     for (const [panel, geometry, other] of cases) {

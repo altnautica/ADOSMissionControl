@@ -88,7 +88,7 @@ function MetaField({
 export function ArduPilotHeliPanel() {
   const tm = useTranslations("fcPanels.arduPilotHeliPanel");
   const scrollRef = usePanelScroll("ap-heli");
-  const { isHardBlocked } = useArmedLock();
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const metadata = useParamMetadataMap();
 
   const panelParams = usePanelParams({
@@ -108,6 +108,9 @@ export function ArduPilotHeliPanel() {
 
   const connected = useDroneManager(selectSelectedProtocol) !== null;
   const hasDirty = dirtyParams.size > 0;
+  // A staged swashplate edit is refused while the vehicle may be armed: say
+  // so on Save rather than let the whole batch fail as "some parameters failed".
+  const geometryBlocked = isHardBlocked && [...dirtyParams].some(isFrameGeometryParam);
   const field = (name: string, label: string) => (
     <MetaField key={name} name={name} label={label} metadata={metadata} params={params} setLocalValue={setLocalValue} locked={isHardBlocked && isFrameGeometryParam(name)} />
   );
@@ -206,7 +209,8 @@ export function ArduPilotHeliPanel() {
               variant="primary"
               size="lg"
               icon={<Save size={14} />}
-              disabled={!hasDirty || !connected}
+              disabled={!hasDirty || !connected || geometryBlocked}
+              title={geometryBlocked ? hardBlockMessage : undefined}
               loading={saving}
               onClick={handleSave}
             >

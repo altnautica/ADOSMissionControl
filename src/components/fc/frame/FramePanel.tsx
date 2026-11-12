@@ -30,6 +30,7 @@ import { withCurrent } from "./enum-options";
 import { FcSection } from "@/components/fc/shared/FcSection";
 
 import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
+import { isFrameGeometryParam } from "../shared/frame-geometry-params";
 
 const MotorDiagram3D = dynamic(
   () => import("../motors/MotorDiagram3D").then((m) => ({ default: m.MotorDiagram3D })),
@@ -54,7 +55,7 @@ export function FramePanel() {
   const t = useTranslations("fcToasts.frame");
   // Frame class/type are hard-blocked in flight (structural change).
   // Save button is soft — goes through usePanelParams confirm dialog.
-  const { isHardBlocked } = useArmedLock();
+  const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const { firmwareType } = useFirmwareCapabilities();
   const connected = useDroneManager(selectSelectedProtocol) !== null;
 
@@ -100,6 +101,9 @@ export function FramePanel() {
   const frameClass = params.get(classParam) ?? 0;
   const frameType = params.get(typeParam) ?? 0;
   const hasDirty = dirtyParams.size > 0;
+  // A staged frame edit is refused while the vehicle may be armed: say so on
+  // Save rather than let the whole batch fail as "some parameters failed".
+  const geometryBlocked = isHardBlocked && [...dirtyParams].some(isFrameGeometryParam);
 
   const uniqueTypes = useMemo(() => getUniqueTypesForClass(frameClass), [frameClass]);
   const frameTypeOptions = useMemo(() => {
@@ -265,7 +269,8 @@ export function FramePanel() {
                 saveLabel="saveToRam"
                 onSave={handleSave}
                 saving={saving}
-                saveDisabled={!hasDirty}
+                saveDisabled={!hasDirty || geometryBlocked}
+                saveTitle={geometryBlocked ? hardBlockMessage : undefined}
                 showFlash={hasRamWrites}
                 onFlash={handleFlash}
                 flashing={committing}
