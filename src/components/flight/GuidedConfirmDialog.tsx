@@ -13,7 +13,8 @@
 
 import { useState, useCallback, useEffect, useRef, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
-import { useGuidedStore } from "@/stores/guided-store";
+import { useGuidedStore, type GuidedConfirmPending } from "@/stores/guided-store";
+import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useFreshTelemetry } from "@/hooks/use-telemetry-latest";
@@ -41,16 +42,51 @@ const DEFAULT_ALT_M = 10;
 /**
  * `flightScreenHost`: the one instance the flight screen mounts. While a
  * flight screen is up every other instance (a map pane's own) renders
- * nothing, so one right-click opens one dialog.
+ * nothing, so one right-click opens one dialog. A hidden instance mounts no
+ * hold either, so only the dialog on screen answers Enter or the pad.
  */
 export function GuidedConfirmDialog({ flightScreenHost = false }: { flightScreenHost?: boolean } = {}) {
-  const t = useTranslations();
   const storedPending = useGuidedStore((s) => s.confirmPending);
   const selectedDroneId = useDroneManager((s) => s.selectedDroneId);
   // A confirmation belongs to the drone it was raised for; it never re-opens
   // for another one after the selection changes.
   const confirmPending = storedPending?.droneId === selectedDroneId ? storedPending : null;
   const dismissConfirm = useGuidedStore((s) => s.dismissConfirm);
+  // An open skill confirm (the emergency stop above all) owns Enter and the
+  // pad's confirm button, so one hold never drives both it and a reposition:
+  // Fly Here closes when one opens and is refused while one shows.
+  const skillConfirmOpen = useSkillConfirmStore((s) => s.pending !== null);
+  useEffect(() => {
+    if (skillConfirmOpen && storedPending !== null) dismissConfirm();
+  }, [skillConfirmOpen, storedPending, dismissConfirm]);
+  const flightRoot = useFlightRoot();
+  const onFlightScreen = flightScreenHost || flightRoot !== null;
+  const shown = confirmPending !== null && !skillConfirmOpen && (flightScreenHost || !onFlightScreen);
+
+  if (!confirmPending || !shown) return null;
+  return (
+    <FlyHereDialog
+      confirmPending={confirmPending}
+      flightScreenHost={flightScreenHost}
+      onFlightScreen={onFlightScreen}
+      dismissConfirm={dismissConfirm}
+    />
+  );
+}
+
+/** The dialog on screen, with its altitude box and its confirm hold. */
+function FlyHereDialog({
+  confirmPending,
+  flightScreenHost,
+  onFlightScreen,
+  dismissConfirm,
+}: {
+  confirmPending: GuidedConfirmPending;
+  flightScreenHost: boolean;
+  onFlightScreen: boolean;
+  dismissConfirm: () => void;
+}) {
+  const t = useTranslations();
 
   // Current drone position for distance/ETA, only while it is fresh: a frozen
   // position would measure the target from where the aircraft used to be.
@@ -60,40 +96,33 @@ export function GuidedConfirmDialog({ flightScreenHost = false }: { flightScreen
   const [altitudeText, setAltitudeText] = useState(String(DEFAULT_ALT_M));
   const [error, setError] = useState<string | null>(null);
   const grid = useFlightGrid();
-  const flightRoot = useFlightRoot();
-  const onFlightScreen = flightScreenHost || flightRoot !== null;
-  const shown = confirmPending !== null && (flightScreenHost || !onFlightScreen);
   const ref = useRef<HTMLDivElement>(null);
 
   // Escape and a press outside close it; focus returns where it was.
-  useSheetDismiss(ref, dismissConfirm, undefined, shown);
+  useSheetDismiss(ref, dismissConfirm);
 
   const altitude = parseFlyHereAltitude(altitudeText);
 
-  // Initialize altitude from current drone altitude ONLY on first open (not on telemetry updates)
+  // Initialize altitude from current drone altitude on each new target (not on telemetry updates)
   useEffect(() => {
-    if (confirmPending) {
-      const pos = freshOnly(useTelemetryStore.getState().position.latest(), Date.now());
-      const initAlt = pos?.relativeAlt !== undefined ? Math.round(pos.relativeAlt) : DEFAULT_ALT_M;
-      setAltitudeText(
-        String(Math.min(Math.max(initAlt, FLY_HERE_ALTITUDE_M.min), FLY_HERE_ALTITUDE_M.max)),
-      );
-      setError(null);
-    }
+    const pos = freshOnly(useTelemetryStore.getState().position.latest(), Date.now());
+    const initAlt = pos?.relativeAlt !== undefined ? Math.round(pos.relativeAlt) : DEFAULT_ALT_M;
+    setAltitudeText(
+      String(Math.min(Math.max(initAlt, FLY_HERE_ALTITUDE_M.min), FLY_HERE_ALTITUDE_M.max)),
+    );
+    setError(null);
   }, [confirmPending]);
 
   const hasGps = latestPos !== undefined && latestPos.lat !== 0;
-  const distance =
-    confirmPending && hasGps
-      ? haversineDistance(latestPos.lat, latestPos.lon, confirmPending.lat, confirmPending.lon)
-      : null;
+  const distance = hasGps
+    ? haversineDistance(latestPos.lat, latestPos.lon, confirmPending.lat, confirmPending.lon)
+    : null;
   const eta =
     distance !== null && latestPos && latestPos.groundSpeed >= 0.5
       ? distance / latestPos.groundSpeed
       : null;
 
   const handleConfirm = useCallback(async () => {
-    if (!confirmPending) return;
     if (altitude === null) {
       setError(specString("refusal.fly_here_target"));
       return;
@@ -112,11 +141,9 @@ export function GuidedConfirmDialog({ flightScreenHost = false }: { flightScreen
   // its own Enter) or the gamepad confirm button.
   const hold = useConfirmHold({
     holdMs: HOLD_DURATION_MS,
-    enabled: confirmPending !== null && altitude !== null,
+    enabled: altitude !== null,
     onComplete: () => void handleConfirm(),
   });
-
-  if (!confirmPending || !shown) return null;
 
   // On the flight screen the dialog follows the sheet rules; elsewhere it
   // keeps to the bottom centre of its map.

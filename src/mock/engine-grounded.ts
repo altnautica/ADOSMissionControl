@@ -12,6 +12,7 @@ import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import type { MockProtocol } from "./mock-protocol";
 import { SENSOR_MASK } from "./engine-telemetry";
+import { mockEkfFlags } from "./mock-ekf-source";
 
 /** Sticks centred, throttle and the mode channel low. */
 const IDLE_RC = [1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500];
@@ -63,6 +64,12 @@ export function tickGroundedDrone(
       timestamp: now, cpuLoad: 150, sensorsPresent: SENSOR_MASK, sensorsEnabled: SENSOR_MASK, sensorsHealthy: SENSOR_MASK,
       voltageMv: Math.round((battery?.voltage ?? 0) * 1000), currentCa: 0,
       batteryRemaining: Math.round(battery?.remaining ?? -1), dropRateComm: 0, errorsComm: 0,
+    });
+    // EKF_STATUS_REPORT: the estimator keeps running on the ground, so the
+    // navigation source stays reported after a Land.
+    protocol.emitEkf({
+      timestamp: now, velocityVariance: 0.01, posHorizVariance: 0.02, posVertVariance: 0.01,
+      compassVariance: 0.02, terrainAltVariance: 0.01, flags: mockEkfFlags(),
     });
     // TERRAIN_REPORT with the vehicle on the ground: height above terrain 0.
     if (position) {

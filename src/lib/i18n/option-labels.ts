@@ -7,7 +7,7 @@
  * A constant keeps its English `label` as the key id; `optionLabelKey` turns it
  * into a key under the `optionLabels` namespace, and `useOptionLabels` returns
  * a mapper that swaps every label for its translation at render. The catalog
- * test (`tests/unit/option-labels-catalog.test.ts`) keeps every label of every
+ * test (`tests/unit/option-labels-catalog.test.tsx`) keeps every label of every
  * wrapped constant present in the English catalog.
  *
  * @license GPL-3.0-only

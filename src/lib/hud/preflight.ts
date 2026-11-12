@@ -9,6 +9,9 @@ import { EKF_FLAG } from "./nav-source";
 export interface PreflightCheck {
   id: string;
   label: string;
+  /** The failure, worded as the fault ("Home position not set"): what the
+   *  pill and a failing checklist row say. */
+  fail: string;
   ok: boolean;
 }
 
@@ -47,10 +50,10 @@ export function preflightChecks(i: PreflightInputs): PreflightCheck[] {
   const reading = batteryReading(i.battery, i.telemetry);
   const low = batteryLowPct(i.battery);
   return [
-    { id: "link", label: "Vehicle link fresh", ok: i.live },
-    { id: "gps", label: "GPS fix 3D or better", ok: i.live && typeof fix === "number" && fix >= 3 },
-    { id: "battery", label: "Battery above the low band", ok: reading !== null && reading.pct > low },
-    { id: "home", label: "Home position set", ok: fcHomeSet(i.telemetry) },
+    { id: "link", label: "Vehicle link fresh", fail: "Vehicle link not fresh", ok: i.live },
+    { id: "gps", label: "GPS fix 3D or better", fail: "GPS fix below 3D", ok: i.live && typeof fix === "number" && fix >= 3 },
+    { id: "battery", label: "Battery above the low band", fail: "Battery in the low band", ok: reading !== null && reading.pct > low },
+    { id: "home", label: "Home position set", fail: "Home position not set", ok: fcHomeSet(i.telemetry) },
   ];
 }
 
@@ -74,5 +77,5 @@ export function preflightFailing(
   const active = new Set(alerts.map((a) => a.id));
   return checks
     .filter((c) => !c.ok && !(CHECK_COVERED_BY[c.id] ?? []).some((id) => active.has(id)))
-    .map((c) => ({ id: c.id, label: c.label }));
+    .map((c) => ({ id: c.id, label: c.fail }));
 }

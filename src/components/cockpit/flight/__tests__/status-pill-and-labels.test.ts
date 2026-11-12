@@ -84,7 +84,7 @@ describe("status pill: the pilot's FC status text", () => {
     const out = pillAlertsFor(sources({ pilot: onGround, armed: false }));
     expect(out.map((a) => [a.source, a.severity, a.text])).toEqual([
       ["fc_status_text", "critical", "Crash: Disarming"],
-      ["fc_prearm", "warning", specString("flow.preflight.fc_prearm.failing", { text: "Compass not calibrated" })],
+      ["fc_prearm", "warning", "Compass not calibrated"],
     ]);
   });
 

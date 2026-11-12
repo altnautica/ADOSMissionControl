@@ -8,7 +8,8 @@
 // FC mode), the goto takes over after the hold.
 //
 // FC route: otherwise, a flight controller in GUIDED, armed and flying takes
-// a reposition straight from the surface.
+// a reposition straight from the surface, unless a fresh pilot state reports
+// an FC failsafe (a reposition would fight the failsafe RTL or land).
 //
 // Neither: `reason` says why, worded by `refusal.<reason>`, so a long-press
 // on the map can say it in a toast instead of opening a dialog. An unknown
@@ -46,7 +47,8 @@ export function flyHereOffered(p: PilotState | null, pilotAgeMs: number, fc?: Fl
   if (p !== null && fresh && p.controlMode === "ados" && gotoAdvertised(p) && p.armed === true && p.landed === false && !p.fcFailsafe) {
     return { route: "pilot" };
   }
-  if (fc && fc.guided && fc.armed && !fc.landed) return { route: "fc" };
+  const failsafe = p !== null && fresh && p.fcFailsafe;
+  if (fc && !failsafe && fc.guided && fc.armed && !fc.landed) return { route: "fc" };
   if (p !== null && !fresh) return { route: null, reason: "pilot_stale" };
   if (p !== null) {
     if (p.fcFailsafe) return { route: null, reason: "failsafe" };

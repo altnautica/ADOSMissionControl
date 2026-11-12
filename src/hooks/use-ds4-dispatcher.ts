@@ -32,6 +32,7 @@ import {
 } from "@/lib/input/ds4-bindings";
 import { lightbarColour, lightbarState, rumble, rumbleHoldTick, setLightbar } from "@/lib/input/ds4-feedback";
 import { sendPilotAction } from "@/lib/input/pilot-stream";
+import { pilotFresh } from "@/lib/hud/pilot-fresh";
 import { GimbalRateDriver } from "@/lib/cockpit/gimbal-rate";
 import { reticleControl, toggleReticle } from "@/lib/cockpit/designate-reticle";
 import { activate, buildSkillContext, useSkillRegistry } from "@/lib/skills";
@@ -178,13 +179,16 @@ export function useDs4Dispatcher(droneId: string): void {
 
   useEffect(() => {
     const when = (cond: string): boolean => {
-      const pilot = useNavStreamStore.getState().byDrone[droneId]?.pilot?.data ?? null;
+      const stamped = useNavStreamStore.getState().byDrone[droneId]?.pilot;
+      const pilot = stamped?.data ?? null;
       const rth = !!pilot?.fcModeName && /RTL|QRTL/i.test(pilot.fcModeName);
-      // With no pilot, the heartbeat decides; a pilot's unknown arm or landed
-      // state may be in the air.
-      const onGround = pilot
-        ? pilot.landed === true || pilot.armed === false
-        : useDroneStore.getState().armState !== "armed";
+      // A fresh pilot decides; a pilot's unknown arm or landed state may be in
+      // the air. With no fresh pilot only a heartbeat that reads disarmed is
+      // on the ground: an unknown arm state may be flying.
+      const freshPilot = stamped && pilotFresh(stamped.receivedAt, Date.now()) ? stamped.data : null;
+      const onGround = freshPilot
+        ? freshPilot.landed === true || freshPilot.armed === false
+        : useDroneStore.getState().armState === "disarmed";
       switch (cond) {
         case "picker_open":
           return usePickerStore.getState().open;
@@ -308,7 +312,7 @@ export function useDs4Dispatcher(droneId: string): void {
     const tick = setInterval(() => {
       const nav = useNavStreamStore.getState().byDrone[droneId];
       const pilot = nav?.pilot?.data ?? null;
-      const linkLost = nav?.pilot ? Date.now() - nav.pilot.receivedAt > 2000 : false;
+      const linkLost = nav?.pilot ? !pilotFresh(nav.pilot.receivedAt, Date.now()) : false;
       const remaining = useTelemetryStore.getState().battery.latest()?.remaining ?? null;
       const state = lightbarState(pilot, { lowBattery: remaining !== null && remaining >= 0 && remaining < 20, linkLost });
       const rgb = lightbarColour(state, Date.now());

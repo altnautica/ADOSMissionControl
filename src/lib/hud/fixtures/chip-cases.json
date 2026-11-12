@@ -6729,7 +6729,7 @@
     },
     "expected": {
       "rule": "launching",
-      "text": "Taking off · TAKE OFF",
+      "text": "Taking off · CLIMB",
       "color": "pilot",
       "dim": false,
       "button": "abort",

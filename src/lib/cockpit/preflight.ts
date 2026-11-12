@@ -109,13 +109,6 @@ export interface PreflightInputs {
   storagePct: number | null;
 }
 
-/** A shared check's words: its failure text when it fails and the check
- *  carries one, else its label. */
-function checkLabel(c: PreflightCheck): string {
-  const fail = (c as PreflightCheck & { fail?: string }).fail;
-  return !c.ok && typeof fail === "string" && fail ? fail : c.label;
-}
-
 /** The source word of a nav source kind, for the degraded text. */
 const NAV_WORD: Record<string, string> = {
   gps: "nav_source.gps",
@@ -143,7 +136,8 @@ function navItem(i: PreflightInputs): PreflightItem {
 
 /** The checklist, in display order: the shared checks first. */
 export function preflightItems(i: PreflightInputs): PreflightItem[] {
-  const items: PreflightItem[] = i.checks.map((c) => ({ id: c.id, label: checkLabel(c), state: c.ok ? "pass" : "fail" }));
+  // A shared check reads as its failure ("Home position not set") when it fails.
+  const items: PreflightItem[] = i.checks.map((c) => ({ id: c.id, label: c.ok ? c.label : c.fail, state: c.ok ? "pass" : "fail" }));
   for (const r of i.readiness) {
     items.push({ id: `pilot:${r.id}`, label: r.msg || r.id, state: r.ok ? "pass" : r.severity === "block" ? "fail" : "warn" });
   }

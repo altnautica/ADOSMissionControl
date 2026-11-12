@@ -13,8 +13,16 @@ describe("gimbal rate in demo", () => {
   it("answers without any network request", async () => {
     const fetchSpy = vi.fn(() => Promise.reject(new Error("no network in demo")));
     vi.stubGlobal("fetch", fetchSpy);
-    expect(await gimbalRateAvailable("demo-1")).toBe(true);
-    expect(await postGimbalRate("demo-1", 10, 0)).toBe(200);
+    expect(await gimbalRateAvailable("alpha-1")).toBe(true);
+    expect(await postGimbalRate("alpha-1", 10, 0)).toBe(200);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("answers no rates for a drone with no companion agent", async () => {
+    const fetchSpy = vi.fn(() => Promise.reject(new Error("no network in demo")));
+    vi.stubGlobal("fetch", fetchSpy);
+    expect(await gimbalRateAvailable("bravo-2")).toBe(false);
+    expect(await postGimbalRate("bravo-2", 10, 0)).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

@@ -4,7 +4,7 @@
  * @module use-cockpit-view-setup
  * @description The cockpit surface's side effects, kept out of the
  * `CockpitView` render: gamepad + stick stream ownership, initial focus, the
- * immersive request, demo detections, built-in registrations, the input
+ * demo detections, built-in registrations, the input
  * surface and hotkeys, the video streams store, and closing the editor /
  * palette / quick settings when the skill layer or the surface goes away.
  * Renders nothing; subscribes only to input-mode state.

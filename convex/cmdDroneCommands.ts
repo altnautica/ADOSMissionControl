@@ -211,21 +211,19 @@ export const ackCommand = internalMutation({
  *
  * Only a `pending` row can be cancelled: once the node has claimed it
  * (`delivering`) it may already be running, and its ack decides the outcome.
+ * A plugin install is never cancelled here: its job has its own cancel path,
+ * and failing the command would settle the job as a failed install.
  * Returns whether the row was cancelled.
  */
 export const cancelCommand = mutation({
   args: { commandId: v.id("cmd_droneCommands") },
   handler: async (ctx, { commandId }) => {
     const command = await requireOwnedCommand(ctx, commandId);
-    if (command.status !== "pending") return { cancelled: false };
+    if (command.status !== "pending" || command.command === "plugin.install") return { cancelled: false };
     await ctx.db.patch(commandId, {
       status: "failed",
       result: { success: false, message: "cancelled by operator" },
       completedAt: Date.now(),
-    });
-    await settleInstallJobFromAck(ctx, command, {
-      status: "failed",
-      result: { success: false, message: "cancelled by operator" },
     });
     return { cancelled: true };
   },

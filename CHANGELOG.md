@@ -53,6 +53,23 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Stop and Pause confirmed on their sheet** are sent even when the link
+  drops or returns during the hold. Holding the pad stop chord while the stop
+  sheet is open sends the stop.
+- **Fly Here** sends only from the dialog on screen, with the altitude typed
+  there, and closes when a confirm such as the stop sheet opens, so one hold
+  never drives both. It is not offered on the flight-controller route while
+  the pilot reports a failsafe.
+- **Controller.** The Triangle hold lands rather than taking off when the
+  pilot data is stale or the arm state is unknown, and the lightbar shows
+  link lost at the same age as the rest of the Flight tab.
+- **Pre-flight** names a failing check as the fault, for example "Home
+  position not set", and FC pre-arm text appears without a prefix.
+- **Demo.** A landed demo drone keeps reporting its navigation source, the
+  demo LAN drones never reach a device on the operator's network, and only
+  demo drones with a companion take gimbal rates.
+- **Relayed commands.** Cancel leaves a pending extension install to its own
+  cancel instead of failing the install.
 - **Emergency stop.** Kill goes out in any arm state, including after a link
   loss left the arm state unknown. A completed pad stop hold sends kill with no
   second hold, the PS button reaches its binding, and releasing a chord

@@ -138,10 +138,13 @@ function matches(match: ChipRule["match"], f: ChipFacts): boolean {
   return true;
 }
 
-/** A launch step's name, upper case (`flow.launch.step.*`, `after` as its label). */
+/** A launch step's name, upper case (`flow.launch.step.*`, `after` as its
+ *  label). The take-off step reads as its action (`chip.launch_step.takeoff`,
+ *  "Climb"), so the chip never says "Taking off · Take off". */
 function launchStepUpper(step: string | null): string {
   if (step === null) return "";
-  return specText(step === "after" ? "flow.launch.step.after_label" : `flow.launch.step.${step}`).toUpperCase();
+  const key = step === "after" ? "flow.launch.step.after_label" : step === "takeoff" ? "chip.launch_step.takeoff" : `flow.launch.step.${step}`;
+  return specText(key).toUpperCase();
 }
 
 function num(v: number | null): string {

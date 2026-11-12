@@ -34,11 +34,20 @@ function agentFor(droneId: string) {
   return resolveLocalAgentForDrone(deviceIdFromNodeId(droneId) ?? droneId);
 }
 
+/** Whether a demo drone runs the in-process demo agent. An FC-only demo drone
+ * has none, so it takes no gimbal rates either. The mock chunk loads only in a
+ * demo session (production code never statically imports `src/mock/`). */
+async function demoDroneHasAgent(droneId: string): Promise<boolean> {
+  const { DEMO_DRONES } = await import("@/mock/drones");
+  const id = deviceIdFromNodeId(droneId) ?? droneId;
+  return DEMO_DRONES.some((d) => d.id === id && d.hasAgent === true);
+}
+
 /** POST the rate to the drone's agent; resolves the HTTP status, or null
  * when the drone has no LAN agent or the request failed. */
 export const postGimbalRate: GimbalRateSend = async (droneId, pitchDps, yawDps) => {
-  // Demo drones have no real agent: accept the rate without a request.
-  if (isDemoMode()) return 200;
+  // The demo agent is in-process: accept the rate without a request.
+  if (isDemoMode()) return (await demoDroneHasAgent(droneId)) ? 200 : null;
   const agent = agentFor(droneId);
   if (!agent) return null;
   try {
@@ -59,7 +68,7 @@ export const postGimbalRate: GimbalRateSend = async (droneId, pitchDps, yawDps) 
  * (404), a drone with no LAN agent or a failed request reads unavailable.
  */
 export async function gimbalRateAvailable(droneId: string): Promise<boolean> {
-  if (isDemoMode()) return true;
+  if (isDemoMode()) return demoDroneHasAgent(droneId);
   const agent = agentFor(droneId);
   if (!agent) return false;
   try {

@@ -168,6 +168,9 @@ describe("pre-flight checklist", () => {
     expect(pad.find((i) => i.id === "controller")?.label).toBe(specText("controls.no_controller"));
     const fc = preflightItems(inputs({ prearm: ["PreArm: Compass not calibrated"] }));
     expect(fc.find((i) => i.id === "fc_prearm")?.label).toBe("Compass not calibrated");
+    const noHome = preflightItems(inputs({ checks: shared({ home: false }) }));
+    expect(noHome.find((i) => i.id === "home")?.label).toBe("Home position not set");
+    expect(preflightItems(inputs()).find((i) => i.id === "home")?.label).toBe("Home position set");
   });
 
   it("shows the controller only when the pilot flies the sticks, warning when absent", () => {

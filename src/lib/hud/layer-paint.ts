@@ -15,6 +15,11 @@ const LABEL_FONT = "600 12px Inter, system-ui, sans-serif";
 /** Dash patterns reused on every paint (`setLineDash` copies its argument). */
 const DASH = [0, 0];
 const SOLID: number[] = [];
+/** An edge chip's dark plate stays at this alpha however dimmed the chip is,
+ *  and its text never fades below `CHIP_TEXT_MIN_ALPHA`: a dimmed chip stays
+ *  legible on bright video and shows its dimming in the paused grey instead. */
+export const CHIP_PLATE_ALPHA = 0.72;
+export const CHIP_TEXT_MIN_ALPHA = 0.85;
 
 function measure(ctx: CanvasRenderingContext2D, text: string): number {
   let w = textWidths.get(text);
@@ -120,7 +125,7 @@ export function paintOps(ctx: CanvasRenderingContext2D, buf: DrawOpBuffer, alpha
       const w = measure(ctx, op.text);
       const left = op.align === "left" ? op.x : op.align === "right" ? op.x - w : op.x - w / 2;
       if (op.kind === "chip") {
-        ctx.globalAlpha = 0.72 * a;
+        ctx.globalAlpha = CHIP_PLATE_ALPHA;
         ctx.fillStyle = LAYER_COLORS.halo;
         ctx.beginPath();
         ctx.roundRect(left - 6, op.y - 10, w + 12, 20, 6);
@@ -131,8 +136,9 @@ export function paintOps(ctx: CanvasRenderingContext2D, buf: DrawOpBuffer, alpha
         ctx.lineWidth = HALO_PX * 2;
         ctx.strokeText(op.text, left, op.y);
       }
-      ctx.globalAlpha = a;
-      ctx.fillStyle = op.color;
+      const dimChip = op.kind === "chip" && a < CHIP_TEXT_MIN_ALPHA;
+      ctx.globalAlpha = op.kind === "chip" ? Math.max(a, CHIP_TEXT_MIN_ALPHA) : a;
+      ctx.fillStyle = dimChip ? LAYER_COLORS.paused : op.color;
       ctx.fillText(op.text, left, op.y);
       continue;
     }

@@ -176,14 +176,14 @@ describe("ackCommand", () => {
 });
 
 describe("cancelCommand", () => {
-  const seeded = (status: string) => {
+  const seeded = (status: string, command = "plugin.enable") => {
     const ctx = makeCtx({ subject: "user-1|session-1" });
     ctx.db.seed("cmd_drones", [{ deviceId: "dev-1", userId: "user-1" }]);
     const [row] = ctx.db.seed("cmd_droneCommands", [
       {
         deviceId: "dev-1",
         userId: "user-1",
-        command: "plugin.enable",
+        command,
         status,
         createdAt: Date.now(),
       },
@@ -205,5 +205,12 @@ describe("cancelCommand", () => {
     const out = await invoke(commands.cancelCommand, ctx, { commandId: id });
     expect(out).toEqual({ cancelled: false });
     expect(ctx.db.rows("cmd_droneCommands")[0].status).toBe("delivering");
+  });
+
+  it("leaves a pending plugin install to its job's own cancel", async () => {
+    const { ctx, id } = seeded("pending", "plugin.install");
+    const out = await invoke(commands.cancelCommand, ctx, { commandId: id });
+    expect(out).toEqual({ cancelled: false });
+    expect(ctx.db.rows("cmd_droneCommands")[0].status).toBe("pending");
   });
 });

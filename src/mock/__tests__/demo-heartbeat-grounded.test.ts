@@ -12,6 +12,8 @@ import { tickGroundedDrone } from "@/mock/engine-grounded";
 import { useNodeRegistryStore } from "@/stores/node-registry";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { inAuto } from "@/lib/mission/mission-state";
+import { resolveNavSource } from "@/lib/hud/nav-source";
+import { preflightItems } from "@/lib/cockpit/preflight";
 
 describe("demo heartbeat and grounded tick", () => {
   beforeEach(() => {
@@ -48,5 +50,29 @@ describe("demo heartbeat and grounded tick", () => {
     expect(tel.gps.latest()?.satellites).toBe(14);
     expect(sys).toEqual([72]);
     expect(agl).toEqual([0]);
+  });
+
+  it("keeps the navigation source reported on the ground, so the pre-flight item passes", () => {
+    const now = Date.now();
+    const reg = useNodeRegistryStore.getState();
+    reg.upsertPresence("n1", { name: "N1", profile: "drone", lastHeartbeat: now }, "local");
+    const p = new MockProtocol("ardupilot-copter");
+    const flags: number[] = [];
+    p.onEkf((e) => flags.push(e.flags));
+    for (let tick = 1; tick <= 10; tick++) tickGroundedDrone("n1", p, tick, true, now + tick * 200);
+    expect(flags).toHaveLength(2);
+    const nav = resolveNavSource({
+      ekf: { flags: flags[1], ageMs: 0 },
+      gps: { fixType: 3, satellites: 14, hdop: 0.8 },
+      nav: null,
+      lastCommandedSet: null,
+      params: null,
+    });
+    expect(nav.kind).not.toBe("stale");
+    const items = preflightItems({
+      readiness: [], prearm: [], checks: [], live: true, nav, controlMode: null,
+      controller: { connected: false, name: null }, onScreenSticks: false, storagePct: 40,
+    });
+    expect(items.find((i) => i.id === "nav_source")?.state).toBe("pass");
   });
 });

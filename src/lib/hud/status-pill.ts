@@ -18,6 +18,7 @@
 // Every rule reads a real field; an unknown reading never alerts.
 
 import layoutJson from "../cockpit-spec/layout.json";
+import tokens from "../cockpit-spec/tokens.json";
 import { BATTERY_CRITICAL_PCT, batteryLowPct, batteryReading, type BatteryHealthInput, type FcBatteryInput } from "./battery";
 import type { FcStatusText, PilotState, ReadinessItem } from "./cockpit-frames";
 import { CHIP_STALE_AFTER_MS } from "./flight-state";
@@ -142,6 +143,16 @@ export const PILL_SOURCES = [
 export type PillSource = (typeof PILL_SOURCES)[number];
 export type PillSeverity = "ok" | "warning" | "critical";
 
+/** The colour of words in a severity: `text_critical` for critical, the
+ *  warning hue (bright enough as text) for warning, plain text otherwise.
+ *  `severity_critical` and the `state.*` hues are for dots, outlines and the
+ *  lightbar only: as small text they fall below 4.5:1 over bright video. */
+export function severityTextColor(s: PillSeverity): string {
+  if (s === "critical") return tokens.chrome.text_critical;
+  if (s === "warning") return tokens.chrome.severity_warning;
+  return tokens.chrome.text;
+}
+
 export interface PillAlert {
   id: string;
   source: PillSource;
@@ -265,7 +276,7 @@ export function pillAlerts(i: PillInputs): PillAlert[] {
   }
   if (i.prearm && i.prearm.length > 0) {
     const text = i.prearm[i.prearm.length - 1].replace(/^(PreArm|Arm):\s*/, "");
-    out.push({ id: `fc:${text}`, source: "fc_prearm", severity: "warning", text: specText("flow.preflight.fc_prearm.failing", { text }) });
+    out.push({ id: `fc:${text}`, source: "fc_prearm", severity: "warning", text });
   }
   // The FC repeats a warning while its condition lasts: one alert per text,
   // at the worst severity it was sent with.

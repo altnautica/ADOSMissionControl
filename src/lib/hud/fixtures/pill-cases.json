@@ -128,7 +128,7 @@
     },
     "expected": {
       "severity": "warning",
-      "text": "Flight controller: RC not calibrated",
+      "text": "RC not calibrated",
       "count": 1,
       "ids": [
         "fc:RC not calibrated"
@@ -647,7 +647,7 @@
     },
     "expected": {
       "severity": "warning",
-      "text": "Pre-flight: GNSS fix",
+      "text": "GNSS fix",
       "count": 1,
       "ids": [
         "preflight:gps"

@@ -31,6 +31,7 @@ import {
 } from "./cooldown";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
+import { useSkillConfirmStore } from "@/stores/skill-confirm-store";
 import { resolveBoundSkillId } from "./bound-skill";
 import { useChecklistStore } from "@/stores/checklist-store";
 import { useFollowMeStore } from "@/stores/follow-me-store";
@@ -98,12 +99,45 @@ const DEBOUNCE_MS = 750;
  * Per-(droneId, skillId) dispatch guards. `busy` blocks re-entrant presses
  * while an activate/deactivate promise is in flight or a confirm dialog is
  * open; `cooldownUntil` swallows a repeat one-shot inside the debounce window.
+ * `padAccept` accepts the confirm a guarded skill has open, for a completed
+ * pad hold that arrives while it shows.
  */
 const busy = new Set<string>();
 const cooldownUntil = new Map<string, number>();
+const padAccept = new Map<string, () => void>();
 
 function guardKey(droneId: string, skillId: string): string {
   return `${droneId}::${skillId}`;
+}
+
+/** Accept the confirm open for `key`: the shared sheet, when it shows the
+ *  guarded confirm for this drone, closes as confirmed. */
+function acceptOpenConfirm(key: string, droneId: string): void {
+  const accept = padAccept.get(key);
+  if (!accept) return;
+  const confirms = useSkillConfirmStore.getState();
+  if (confirms.pending?.droneId === droneId && confirms.pending.policy.gesture === "guarded") {
+    confirms.resolvePending(true);
+  }
+  accept();
+}
+
+/** A built-in the shared spec sends blind on a stale link (pause). */
+function sendsBlind(skill: Skill): boolean {
+  return (
+    skill.source === "builtin" &&
+    SPEC_BUILTINS.some((b) => b.id === skill.id && b.stale_link === "send_blind")
+  );
+}
+
+/** True when an unknown arm state still lets `skill` go out: it is sent blind
+ *  and a route to the vehicle remains. */
+function blindThroughUnknown(skill: Skill, ctx: SkillContext): boolean {
+  return (
+    ctx.armState === "unknown" &&
+    sendsBlind(skill) &&
+    (lastResortPath(ctx) !== null || viaPilot(ctx))
+  );
 }
 
 /**
@@ -135,10 +169,28 @@ export async function activate(
   if (!skill) return;
 
   const key = guardKey(ctx.droneId, skillId);
+  const policy = skill.confirmFor ? skill.confirmFor(args, ctx) : skill.confirm;
+  // A `hold` policy fired by a controller hold binding (`confirmedByHold`) is
+  // confirmed by that hold; a `guarded` policy (the emergency stop) counts the
+  // pad hold once it ran at least the policy's own hold. An incomplete
+  // pre-flight checklist always opens the sheet, so the operator sees what is
+  // failing before an arm.
+  const heldOnPad =
+    policy !== undefined &&
+    args?.confirmedByHold === true &&
+    (policy.gesture === "hold" ||
+      (policy.gesture === "guarded" && (args.heldMs ?? 0) >= (policy.holdMs ?? Infinity))) &&
+    !(policy.checklistAware && !useChecklistStore.getState().isReadyToArm(ctx.droneId));
 
   // Re-entrancy / busy guard — an in-flight activation or open confirm drops
-  // further presses for this (drone, skill).
-  if (busy.has(key)) return;
+  // further presses for this (drone, skill). The one exception is a completed
+  // pad hold of the emergency stop: it is the operator's confirmation, so it
+  // accepts the stop sheet already open for this (drone, skill), whose
+  // pipeline then sends the stop once.
+  if (busy.has(key)) {
+    if (heldOnPad && policy?.gesture === "guarded") acceptOpenConfirm(key, ctx.droneId);
+    return;
+  }
 
   // Disabled gate: surface the reason, never open a dialog.
   const state = skill.getState(ctx);
@@ -161,12 +213,7 @@ export async function activate(
   // (pause): link loss leaves the arm state unknown, and its brake must still
   // go out on whatever route remains.
   const armReq = skill.armRequirement ?? "any";
-  const blindThroughUnknown =
-    ctx.armState === "unknown" &&
-    skill.source === "builtin" &&
-    SPEC_BUILTINS.some((b) => b.id === skill.id && b.stale_link === "send_blind") &&
-    (lastResortPath(ctx) !== null || viaPilot(ctx));
-  if (armReq !== "any" && ctx.armState !== armReq && !blindThroughUnknown) {
+  if (armReq !== "any" && ctx.armState !== armReq && !blindThroughUnknown(skill, ctx)) {
     ctx.notify(
       ctx.armState === "unknown"
         ? "refusal.no_fc_link"
@@ -186,23 +233,11 @@ export async function activate(
   }
 
   // Confirm gate — open the shared sheet and await the operator. A `tap`
-  // policy is confirmed by the press itself and opens nothing; so is a `hold`
-  // policy fired by a controller hold binding (`confirmedByHold`), whose own
-  // hold time is the confirmation. A `guarded` policy (the emergency stop)
-  // counts the pad hold too, once it ran at least the policy's own hold. The
-  // sheet names the target drone and, on a stale link, warns the command may
-  // not arrive.
+  // policy is confirmed by the press itself and opens nothing; so is a policy
+  // the pad hold above confirmed (`heldOnPad`). The sheet names the target
+  // drone and, on a stale link, warns the command may not arrive.
   let activateArgs = args;
   let sendCtx = ctx;
-  const policy = skill.confirmFor ? skill.confirmFor(args, ctx) : skill.confirm;
-  // An incomplete pre-flight checklist always opens the sheet, so the
-  // operator sees what is failing before an arm.
-  const heldOnPad =
-    policy !== undefined &&
-    args?.confirmedByHold === true &&
-    (policy.gesture === "hold" ||
-      (policy.gesture === "guarded" && (args.heldMs ?? 0) >= (policy.holdMs ?? Infinity))) &&
-    !(policy.checklistAware && !useChecklistStore.getState().isReadyToArm(ctx.droneId));
   if (policy && policy.gesture !== "tap" && !heldOnPad) {
     busy.add(key);
     let result: ConfirmResult = false;
@@ -211,21 +246,27 @@ export async function activate(
         policy.altitude && typeof args?.altitudeM === "number"
           ? { ...policy.altitude, defaultM: args.altitudeM }
           : policy.altitude;
-      result = await ctx.confirm({
-        ...policy,
-        ...(altitude ? { altitude } : {}),
-        values: {
-          ...policy.values,
-          ...(skill.confirmValues ? skill.confirmValues(args) : {}),
-          drone: skillTargetName(ctx.droneId),
-        },
-        ...(ctx.linkStale && !ctx.protocol ? { staleLink: true } : {}),
-        ...(typeof args?.gamepadButton === "number"
-          ? { gamepadButton: args.gamepadButton }
-          : {}),
-      });
+      const padAccepted = Promise.withResolvers<ConfirmResult>();
+      padAccept.set(key, () => padAccepted.resolve(true));
+      result = await Promise.race([
+        ctx.confirm({
+          ...policy,
+          ...(altitude ? { altitude } : {}),
+          values: {
+            ...policy.values,
+            ...(skill.confirmValues ? skill.confirmValues(args) : {}),
+            drone: skillTargetName(ctx.droneId),
+          },
+          ...(ctx.linkStale && !ctx.protocol ? { staleLink: true } : {}),
+          ...(typeof args?.gamepadButton === "number"
+            ? { gamepadButton: args.gamepadButton }
+            : {}),
+        }),
+        padAccepted.promise,
+      ]);
     } finally {
       busy.delete(key);
+      padAccept.delete(key);
     }
     if (!result) return;
     if (typeof result === "object" && typeof result.altitudeM === "number") {
@@ -320,16 +361,22 @@ function skillTargetName(droneId: string): string {
  * True when the vehicle moved under an open confirm sheet so the approved
  * command no longer means what the operator approved: the arm state changed,
  * the skill became unavailable, or its arm requirement is no longer met.
+ *
+ * A stop or brake (no arm requirement, or sent blind on a stale link: kill,
+ * pause) means the same thing whatever the arm state: link loss turning
+ * `armed` into `unknown` under the hold, or its return, never cancels it, and
+ * an unknown arm state with a route left still meets its requirement.
  */
 function changedSincePrompt(
   skill: Skill,
   before: SkillContext,
   after: SkillContext,
 ): boolean {
-  if (after.armState !== before.armState) return true;
-  if (skill.getState(after).kind === "disabled") return true;
   const armReq = skill.armRequirement ?? "any";
-  return armReq !== "any" && after.armState !== armReq;
+  const holdsThroughArmChange = armReq === "any" || sendsBlind(skill);
+  if (!holdsThroughArmChange && after.armState !== before.armState) return true;
+  if (skill.getState(after).kind === "disabled") return true;
+  return armReq !== "any" && after.armState !== armReq && !blindThroughUnknown(skill, after);
 }
 
 /** Stop a toggle behavior. Busy-guarded and protocol-optional via the skill. */

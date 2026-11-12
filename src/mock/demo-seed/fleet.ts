@@ -120,31 +120,32 @@ export const DEMO_AGENTS: PairedDrone[] = [
  * Two demo drones the operator has paired over the LAN (Add-a-Node card),
  * so the Nodes board shows the local-first `lan` reach kind (local-first) — not
  * just cloud-relay. They shadow their cloud-paired rows (same deviceId), so the
- * LAN transport wins over cloud for those two. Generic private hostnames (no
- * real lab host). Their `deviceId`s are the removal keys the demo teardown +
+ * LAN transport wins over cloud for those two. Their hosts are in-process
+ * `mock://` addresses and documentation-range IPs, so the demo never reaches a
+ * device on the operator's LAN. Their `deviceId`s are the removal keys the demo teardown +
  * residue sweep use, so a real fleet's LAN nodes are never touched. */
 const DEMO_LAN_NODES: Array<Omit<LocalNode, "pairedAt" | "lastSeenAt">> = [
   {
     deviceId: DEMO_LAN_NODE_IDS[0],
     name: "Delta-04",
-    hostname: "http://192.168.1.50:8080",
+    hostname: "mock://delta-04",
     apiKey: "demo",
     profile: "drone",
     board: "Reference Companion",
     version: AGENT_VERSION,
     mdnsHost: "delta-04.local",
-    ipv4: "192.168.1.50",
+    ipv4: "192.0.2.50",
   },
   {
     deviceId: DEMO_LAN_NODE_IDS[1],
     name: "Golf-07",
-    hostname: "http://192.168.1.51:8080",
+    hostname: "mock://golf-07",
     apiKey: "demo",
     profile: "drone",
     board: "Reference Companion",
     version: AGENT_VERSION,
     mdnsHost: "golf-07.local",
-    ipv4: "192.168.1.51",
+    ipv4: "192.0.2.51",
   },
 ];
 
@@ -159,17 +160,16 @@ export function seedDemoLanNodes(now: number): void {
 
 /** Per-drone flight telemetry for the Command grid tiles (the map itself is fed
  * by the live mock engine through the node registry). Derived from DEMO_DRONES so
- * the roster stays in sync; ground vehicles read ~0 altitude and the sub a
- * negative depth (an honest per-airframe reading). */
+ * the roster stays in sync; ground vehicles read ~0 altitude (an honest
+ * per-airframe reading). */
 const DRONE_TELEMETRY: Record<
   string,
   NonNullable<CommandCloudStatus["telemetry"]>
 > = Object.fromEntries(
   DEMO_DRONES.map((d) => {
     const isGround = d.firmware === "ardupilot-rover" || d.firmware === "ardupilot-boat";
-    const isSub = d.firmware === "ardupilot-sub";
-    const altRel = isSub ? -5 : isGround ? 0 : 40 + (d.pathIndex % 3) * 12;
-    const speed = isSub ? 1.5 : isGround ? 2.5 : 6 + (d.pathIndex % 4);
+    const altRel = isGround ? 0 : 40 + (d.pathIndex % 3) * 12;
+    const speed = isGround ? 2.5 : 6 + (d.pathIndex % 4);
     return [
       d.id,
       {
