@@ -270,7 +270,9 @@
       "flashUnacknowledged": "ಫ್ಲ್ಯಾಶ್ ಕಮಿಟ್ ಕಳುಹಿಸಲಾಗಿದೆ — ವಾಹನ ಅದನ್ನು ದೃಢೀಕರಿಸಲಿಲ್ಲ",
       "armedTitle": "ಆರ್ಮ್ ಆಗಿರುವ ಡ್ರೋನ್‌ನ ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸುವುದೇ?",
       "armedMessage": "{name} ಆರ್ಮ್ ಆಗಿದೆ. ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿದರೆ ಟೆಲಿಮೆಟ್ರಿ ನಿಲ್ಲುತ್ತದೆ ಮತ್ತು ಅದರ GCS failsafe ಪ್ರಚೋದಿಸಬಹುದು.",
-      "armedConfirm": "ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿ"
+      "armedConfirm": "ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿ",
+      "armedUnknownTitle": "ಆರ್ಮ್ ಆಗಿರಬಹುದಾದ ಡ್ರೋನ್ ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಬೇಕೆ?",
+      "armedUnknownMessage": "{name} ನ ಆರ್ಮ್ ಸ್ಥಿತಿ ತಿಳಿದಿಲ್ಲ, ಆದ್ದರಿಂದ ಅದು ಇನ್ನೂ ಹಾರುತ್ತಿರಬಹುದು. ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿದರೆ ಟೆಲಿಮೆಟ್ರಿ ನಿಲ್ಲುತ್ತದೆ ಮತ್ತು ಅದರ GCS failsafe ಪ್ರಚೋದಿಸಬಹುದು."
     }
   },
   "nodeConsole": {
@@ -1102,7 +1104,8 @@
       "rebootCommandSentToThe": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ರೀಬೂಟ್ ಆದೇಶ ಕಳುಹಿಸಲಾಗಿದೆ",
       "failedToSendRebootCommand": "ರೀಬೂಟ್ ಆದೇಶ ಕಳುಹಿಸಲು ವಿಫಲವಾಗಿದೆ",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
-      "rebootFC": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಅನ್ನು ರೀಬೂಟ್ ಮಾಡಿ"
+      "rebootFC": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಅನ್ನು ರೀಬೂಟ್ ಮಾಡಿ",
+      "rebootRefused": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ರೀಬೂಟ್ ಆಜ್ಞೆಯನ್ನು ನಿರಾಕರಿಸಿತು"
     },
     "appletCatalog": {
       "starterScripts": "ಆರಂಭಿಕ ಸ್ಕ್ರಿಪ್ಟ್‌ಗಳು",
@@ -1855,7 +1858,6 @@
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
     "surfaceErrorRetry": "Try again",
-    "openCockpit": "ಕಾಕ್‌ಪಿಟ್ ತೆರೆಯಿರಿ",
     "nodeDetailTabs": "ನೋಡ್ ವಿವರ ಟ್ಯಾಬ್‌ಗಳು",
     "nodeNotFound": "Drone “{id}” ಕಂಡುಬಂದಿಲ್ಲ",
     "retryConnect": "ಮರುಪ್ರಯತ್ನ",
@@ -2011,7 +2013,9 @@
     "backendMock": "Detector backend is a test stand-in; detections are not from a real model.",
     "benchmarkOnly": "Benchmark only",
     "benchmarkOnlyHint": "Weights carry research-use terms. Never installed by default; install explicitly for benchmarks.",
-    "notDetector": "Not a detector"
+    "notDetector": "Not a detector",
+    "inputsNotReported": "ಕ್ಯಾಮೆರಾಗಳು ಇನ್ನೂ ವರದಿಯಾಗಿಲ್ಲ — ನೋಡ್ ತನ್ನ ಸಾಮರ್ಥ್ಯಗಳನ್ನು ವರದಿ ಮಾಡಲು ಕಾಯಲಾಗುತ್ತಿದೆ.",
+    "tierHint_cpu": "ಡಿಟೆಕ್ಟರ್ ಈ ನೋಡ್‌ನ CPU ಮೇಲೆ ಚಲಿಸುತ್ತದೆ. ಇದಕ್ಕೆ ಆಕ್ಸಿಲರೇಟರ್ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಕಡಿಮೆ ಫ್ರೇಮ್ ದರ ನಿರೀಕ್ಷಿಸಿ."
   },
   "nodeSettings": {
     "subtitle": "ಈ ನೋಡ್‌ನ ಕಂಪ್ಯಾನಿಯನ್ ಕಂಪ್ಯೂಟರ್ ಅನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಿ. ಬದಲಾವಣೆಗಳು LAN ಮೂಲಕ ನೇರವಾಗಿ ಏಜೆಂಟ್‌ಗೆ ಬರೆಯಲ್ಪಡುತ್ತವೆ.",
@@ -2641,7 +2645,8 @@
     "commandCancelled": "{name} ಗಾಗಿ ಆದೇಶವನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ",
     "cancelTooLate": "ಡ್ರೋನ್ ಈಗಾಗಲೇ {name} ಗಾಗಿ ಆದೇಶವನ್ನು ಪಡೆದಿದೆ. ಅದರ ಉತ್ತರಕ್ಕಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ.",
     "notPickedUp": "ಡ್ರೋನ್ 30 ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಆದೇಶವನ್ನು ಸ್ವೀಕರಿಸಲಿಲ್ಲ",
-    "nodeUnreachable": "ಈ ನೆಟ್‌ವರ್ಕ್‌ನಲ್ಲಿ ಡ್ರೋನ್ ಅನ್ನು ತಲುಪಲು ಸಾಧ್ಯವಿಲ್ಲ"
+    "nodeUnreachable": "ಈ ನೆಟ್‌ವರ್ಕ್‌ನಲ್ಲಿ ಡ್ರೋನ್ ಅನ್ನು ತಲುಪಲು ಸಾಧ್ಯವಿಲ್ಲ",
+    "disableArmedUnknownNote": "ಈ ವಿಮಾನ ಆರ್ಮ್ ಆಗಿರಬಹುದು: ಅದರ ಆರ್ಮ್ ಸ್ಥಿತಿ ತಿಳಿದಿಲ್ಲ."
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -3232,7 +3237,11 @@
     "restartConfirmLabel": "Restart",
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
-    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller."
+    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "notAttached": {
+      "title": "ಈ ನೋಡ್‌ಗೆ ನೇರ ಸಂಪರ್ಕವಿಲ್ಲ",
+      "body": "ಇದರ ಸ್ಥಿತಿ, ಸೇವೆಗಳು, ಲಾಗ್‌ಗಳು ಮತ್ತು ಮರುಪ್ರಾರಂಭ ನಿಯಂತ್ರಣಗಳು ಈ ನೋಡ್‌ನ ಏಜೆಂಟ್‌ಗೆ ನೇರ ಸಂಪರ್ಕದಿಂದ ಬರುತ್ತವೆ. ಈ ಬ್ರೌಸರ್ ಅದಕ್ಕೆ ಸಂಪರ್ಕಿಸಿದಾಗ ಅವು ಕಾಣಿಸುತ್ತವೆ."
+    }
   },
   "fleetNetwork": {
     "title": "Fleet Network",
@@ -4211,7 +4220,8 @@
         "verifyMismatch": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮಿಷನ್ ಸ್ವೀಕರಿಸಿತು, ಆದರೆ ಮರಳಿ ಓದಿದ ಪ್ರತಿ ಬೇರೆಯಾಗಿದೆ. ಮತ್ತೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
         "verifyFailed": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮಿಷನ್ ಸ್ವೀಕರಿಸಿತು, ಆದರೆ ಪರಿಶೀಲನೆಗಾಗಿ ಮರಳಿ ಓದುವುದು ವಿಫಲವಾಯಿತು. ಲಿಂಕ್ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ."
       },
-      "fenceCrossed": "ಮಿಷನ್ ಈ ಬೇಲಿಯನ್ನು ದಾಟುತ್ತದೆ. ಬೇಲಿ ಕಳುಹಿಸುವ ಮೊದಲು ಮಿಷನ್ ಸರಿಪಡಿಸಿ."
+      "fenceCrossed": "ಮಿಷನ್ ಈ ಬೇಲಿಯನ್ನು ದಾಟುತ್ತದೆ. ಬೇಲಿ ಕಳುಹಿಸುವ ಮೊದಲು ಮಿಷನ್ ಸರಿಪಡಿಸಿ.",
+      "rallyOutsideFence": "ಒಂದು ರ‍್ಯಾಲಿ ಪಾಯಿಂಟ್ ಜಿಯೋಫೆನ್ಸ್‌ನ ಹೊರಗೆ ಅಥವಾ ಹೊರಗಿಡುವ ವಲಯದೊಳಗೆ ಇದೆ. ರ‍್ಯಾಲಿ ಪಾಯಿಂಟ್‌ಗಳನ್ನು ಕಳುಹಿಸುವ ಮೊದಲು ಅದನ್ನು ಸರಿಸಿ."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -5423,7 +5433,8 @@
     "writeToFcCount": "{n} ಅನ್ನು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಬರೆಯಿರಿ",
     "writingProgress": "ಬರೆಯಲಾಗುತ್ತಿದೆ {current}/{total}…",
     "writeToFcHint": "ಬದಲಾದ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್‌ಗೆ ಕಳುಹಿಸಿ",
-    "notPresent": "ಈ ಬೋರ್ಡ್‌ನಲ್ಲಿ ಇಲ್ಲ"
+    "notPresent": "ಈ ಬೋರ್ಡ್‌ನಲ್ಲಿ ಇಲ್ಲ",
+    "notRead": "ಓದಿಲ್ಲ"
   },
   "calibration": {
     "title": "ಮಾಪನಾಂಕನ",
@@ -5943,7 +5954,7 @@
     "empty": "No commands available for this drone",
     "goToSimulate": "Go to Simulate",
     "goToMcp": "Go to MCP",
-    "openCockpit": "Open Cockpit",
+    "openCockpit": "Flight ತೆರೆಯಿರಿ",
     "flight": "Flight",
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
@@ -9139,7 +9150,7 @@
     "addIp": "Add IP camera",
     "loading": "Loading cameras…",
     "empty": "No cameras detected on this node.",
-    "unavailable": "Cameras are read from this node's agent, and this session has no connection to it.",
+    "unavailable": "ಕ್ಯಾಮೆರಾಗಳನ್ನು ಈ ನೋಡ್‌ನ ಏಜೆಂಟ್‌ನಿಂದ ಓದಲಾಗುತ್ತದೆ, ಮತ್ತು ಈ ಸೆಷನ್‌ಗೆ ಅದರೊಂದಿಗೆ ಸಂಪರ್ಕವಿಲ್ಲ.",
     "readOnlyNotice": "Camera editing runs on the local network. Connect directly to change the roster.",
     "errorTitle": "Couldn’t load cameras",
     "saveError": "Couldn’t save cameras",
@@ -9262,7 +9273,9 @@
       "removeAction": "ತೆಗೆದುಹಾಕಿ",
       "armedTitle": "ಆರ್ಮ್ ಆಗಿರುವಾಗ ವೀಡಿಯೊ ಮರುಪ್ರಾರಂಭಿಸಬೇಕೆ?",
       "armedMessage": "ಈ ಡ್ರೋನ್ ಆರ್ಮ್ ಆಗಿದೆ. ಕ್ಯಾಮೆರಾ ಬದಲಾವಣೆಯನ್ನು ಉಳಿಸಿದರೆ ಅದರ ವೀಡಿಯೊ ಕೆಲವು ಸೆಕೆಂಡುಗಳ ಕಾಲ ಮರುಪ್ರಾರಂಭವಾಗುತ್ತದೆ.",
-      "armedAction": "ಉಳಿಸಿ ಮತ್ತು ಮರುಪ್ರಾರಂಭಿಸಿ"
+      "armedAction": "ಉಳಿಸಿ ಮತ್ತು ಮರುಪ್ರಾರಂಭಿಸಿ",
+      "armedUnknownTitle": "ವೀಡಿಯೊ ಮರುಪ್ರಾರಂಭಿಸಬೇಕೆ? ಡ್ರೋನ್ ಆರ್ಮ್ ಆಗಿರಬಹುದು",
+      "armedUnknownMessage": "ಈ ಡ್ರೋನ್‌ನ ಆರ್ಮ್ ಸ್ಥಿತಿ ತಿಳಿದಿಲ್ಲ, ಆದ್ದರಿಂದ ಅದು ಹಾರುತ್ತಿರಬಹುದು. ಕ್ಯಾಮೆರಾ ಬದಲಾವಣೆ ಉಳಿಸಿದರೆ ಅದರ ವೀಡಿಯೊ ಕೆಲವು ಸೆಕೆಂಡುಗಳ ಕಾಲ ಮರುಪ್ರಾರಂಭವಾಗುತ್ತದೆ."
     }
   },
   "nodesView": {
@@ -10185,9 +10198,6 @@
     "noDronesWithAgent": "ಫ್ಲೀಟ್‌ನಲ್ಲಿ ಯಾವುದೇ ಡ್ರೋನ್‌ಗೆ ಏಜೆಂಟ್ ಇಲ್ಲ"
   },
   "flightScreen": {
-    "pill": {
-      "navSource": "Navigation source degraded ({kind})"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
@@ -10201,7 +10211,8 @@
       "differs": "ಡ್ರೋನ್‌ನಲ್ಲಿರುವ ಯೋಜನೆ ಈ ಸಾಧನದ ಯೋಜನೆಗಿಂತ ಭಿನ್ನವಾಗಿದೆ",
       "load": "ಡ್ರೋನ್‌ನಿಂದ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
       "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…"
-    }
+    },
+    "flyMissionNoPilot": "The Launch sheet needs the drone's onboard agent on this network, so it did not open. To fly the mission on the flight controller alone: Take off, then Mode › AUTO."
   },
   "operatorRegistry": {
     "profile": {
@@ -10670,7 +10681,9 @@
       "copyAgain": "ಮತ್ತೆ ನಕಲಿಸಿ",
       "tryAgain": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
       "iClearedIt": "ನಾನು ತೆರವುಗೊಳಿಸಿದೆ",
-      "typeToContinue": "ಮುಂದುವರಿಸಲು <word>EXPORT</word> ಟೈಪ್ ಮಾಡಿ."
+      "typeToContinue": "ಮುಂದುವರಿಸಲು <word>EXPORT</word> ಟೈಪ್ ಮಾಡಿ.",
+      "pasteWithin": "{seconds} s ಒಳಗೆ ಇನ್ನೊಂದು ಬ್ರೌಸರ್ ಅಥವಾ ಬ್ಯಾಕಪ್ ಸಂಗ್ರಹಕ್ಕೆ ಅಂಟಿಸಿ.",
+      "autoClearsIn": "ಕ್ಲಿಪ್‌ಬೋರ್ಡ್ {seconds} s ನಲ್ಲಿ ಸ್ವಯಂ ತೆರವಾಗುತ್ತದೆ"
     },
     "framePanel": {
       "frameConfiguration": "ಫ್ರೇಮ್ ಕಾನ್ಫಿಗರೇಶನ್",
@@ -10740,7 +10753,8 @@
       "notes": "ಟಿಪ್ಪಣಿಗಳು",
       "noActiveFlags": "ಯಾವುದೇ ಸಕ್ರಿಯ ಫ್ಲ್ಯಾಗ್‌ಗಳಿಲ್ಲ.",
       "gps": "GPS",
-      "sensorStatusEKFVibrationGPS": "ಸೆನ್ಸರ್ ಸ್ಥಿತಿ, EKF, ಕಂಪನ, GPS ಮತ್ತು ಪ್ರೀ-ಆರ್ಮ್ ಪರಿಶೀಲನೆಗಳು"
+      "sensorStatusEKFVibrationGPS": "ಸೆನ್ಸರ್ ಸ್ಥಿತಿ, EKF, ಕಂಪನ, GPS ಮತ್ತು ಪ್ರೀ-ಆರ್ಮ್ ಪರಿಶೀಲನೆಗಳು",
+      "sensorsHealthy": "{healthy}/{total} ಸೆನ್ಸರ್‌ಗಳು ಸುಸ್ಥಿತಿಯಲ್ಲಿವೆ"
     },
     "ledPanel": {
       "ledConfiguration": "LED ಕಾನ್ಫಿಗರೇಶನ್",
@@ -10761,7 +10775,15 @@
       "useLedCommand": "LED ಸ್ಟ್ರಿಪ್ ನಿಯೋಜನೆಗಳನ್ನು ಹೊಂದಿಸಲು FC ಕನ್ಸೋಲ್ ಪ್ಯಾನೆಲ್‌ನಲ್ಲಿ <cmd>led</cmd> ಆದೇಶ ಬಳಸಿ.",
       "ledCmdShow": "ಪ್ರಸ್ತುತ LED ಸ್ಟ್ರಿಪ್ ಸಂರಚನೆ ತೋರಿಸಿ",
       "ledCmdExample": "ಉದಾಹರಣೆ: LED 0 ಹೊಂದಿಸಿ",
-      "colorCmd": "LED ಬಣ್ಣಗಳನ್ನು ತೋರಿಸಿ/ಹೊಂದಿಸಿ"
+      "colorCmd": "LED ಬಣ್ಣಗಳನ್ನು ತೋರಿಸಿ/ಹೊಂದಿಸಿ",
+      "brightness": "ಪ್ರಕಾಶ",
+      "brightnessOff": "ಆಫ್",
+      "brightnessLow": "ಕಡಿಮೆ",
+      "brightnessMedium": "ಮಧ್ಯಮ",
+      "brightnessHigh": "ಹೆಚ್ಚು",
+      "bitmaskValue": "ಬಿಟ್‌ಮಾಸ್ಕ್: {value} (0x{hex})",
+      "unitLeds": "LED‌ಗಳು",
+      "moreLeds": "+{n} ಇನ್ನಷ್ಟು"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "ಮಿಕ್ಸರ್ ಪ್ರೊಫೈಲ್‌ಗಳು",
@@ -11002,7 +11024,16 @@
       "setARotorCountTo": "ರೋಟರ್ ಗುಣಾಂಕಗಳನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಲು ರೋಟರ್ ಸಂಖ್ಯೆಯನ್ನು ಹೊಂದಿಸಿ.",
       "controlSurfaces": "ನಿಯಂತ್ರಣ ಮೇಲ್ಮೈಗಳು",
       "tiltServos": "ಟಿಲ್ಟ್ ಸರ್ವೋಗಳು",
-      "reversibleMotorsCARREV": "ರಿವರ್ಸಿಬಲ್ ಮೋಟಾರ್‌ಗಳು (CA_R_REV)"
+      "reversibleMotorsCARREV": "ರಿವರ್ಸಿಬಲ್ ಮೋಟಾರ್‌ಗಳು (CA_R_REV)",
+      "allocationMethod": "ಹಂಚಿಕೆ ವಿಧಾನ",
+      "reversibleNone": "ಯಾವುದೂ ಇಲ್ಲ",
+      "reversibleBits": "{value} — ಸೆಟ್ ಬಿಟ್‌ಗಳು…",
+      "rotorCount": "ರೋಟರ್ ಸಂಖ್ಯೆ",
+      "surfaceCount": "ಮೇಲ್ಮೈ ಸಂಖ್ಯೆ",
+      "tiltServoCount": "ಟಿಲ್ಟ್-ಸರ್ವೋ ಸಂಖ್ಯೆ",
+      "rotorN": "ರೋಟರ್ {n}",
+      "surfaceN": "ಮೇಲ್ಮೈ {n}",
+      "tiltN": "ಟಿಲ್ಟ್ {n}"
     },
     "bfMotorTest": {
       "iConfirmAllPropellersHave": "ಎಲ್ಲಾ ಪ್ರೊಪೆಲ್ಲರ್‌ಗಳನ್ನು ತೆಗೆದುಹಾಕಲಾಗಿದೆ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ",
@@ -11469,7 +11500,10 @@
     "flightModesPanel": {
       "flightModes": "ಹಾರಾಟ ಮೋಡ್‌ಗಳು",
       "connectToADroneTo": "ಫ್ಲೈಟ್ ಮೋಡ್‌ಗಳನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಲು ಡ್ರೋನ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.",
-      "currentMode": "ಪ್ರಸ್ತುತ ಮೋಡ್:"
+      "currentMode": "ಪ್ರಸ್ತುತ ಮೋಡ್:",
+      "notRead": "ಫ್ಲೈಟ್ ಮೋಡ್‌ಗಳನ್ನು ಇನ್ನೂ ವಾಹನದಿಂದ ಓದಿಲ್ಲ.",
+      "readingModes": "ಫ್ಲೈಟ್ ಮೋಡ್‌ಗಳನ್ನು ಓದಲಾಗುತ್ತಿದೆ…",
+      "readFailed": "ಫ್ಲೈಟ್ ಮೋಡ್‌ಗಳನ್ನು ಓದಲಾಗಲಿಲ್ಲ. ಸಂಪಾದಿಸುವ ಮೊದಲು ಮತ್ತೆ ಓದಿ."
     },
     "flightModesHeader": {
       "flightModes": "ಹಾರಾಟ ಮೋಡ್‌ಗಳು",
@@ -11633,7 +11667,12 @@
       "selectNone": "ಯಾವುದನ್ನೂ ಆಯ್ಕೆಮಾಡಬೇಡಿ",
       "noParametersMatchTheCurrent": "ಪ್ರಸ್ತುತ ಫಿಲ್ಟರ್‌ಗೆ ಯಾವುದೇ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳು ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ.",
       "applyN": "{count} ಪ್ಯಾರಾಮೀಟರ್ ಅನ್ವಯಿಸಿ",
-      "selectedOf": "{total} ರಲ್ಲಿ {selected} ಆಯ್ಕೆ"
+      "selectedOf": "{total} ರಲ್ಲಿ {selected} ಆಯ್ಕೆ",
+      "fileParamCount": "{count, plural, one {(# ಪ್ಯಾರಾಮೀಟರ್)} other {(# ಪ್ಯಾರಾಮೀಟರ್‌ಗಳು)}}",
+      "changedCount": "{count} ಬದಲಾಗಿವೆ",
+      "addedCount": "{count} ಹೊಸದು",
+      "unchangedCount": "{count} ಬದಲಾಗಿಲ್ಲ",
+      "applyingProgress": "ಅನ್ವಯಿಸಲಾಗುತ್ತಿದೆ {current}/{total}…"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "ಪ್ಯಾರಾಮೀಟರ್ ಬರೆಯುವುದನ್ನು ದೃಢೀಕರಿಸಿ",
@@ -11675,7 +11714,8 @@
       "name": "ಹೆಸರು",
       "now": "ಈಗ",
       "restore": "ಮರುಸ್ಥಾಪಿಸಿ",
-      "readingCurrentParameters": "ಪ್ರಸ್ತುತ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಓದಲಾಗುತ್ತಿದೆ…"
+      "readingCurrentParameters": "ಪ್ರಸ್ತುತ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಓದಲಾಗುತ್ತಿದೆ…",
+      "title": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು {target} ಗೆ ಮರುಸ್ಥಾಪಿಸಿ"
     },
     "inboundSigningSection": {
       "inboundVerification": "ಒಳಬರುವ ಪರಿಶೀಲನೆ",
@@ -12050,7 +12090,10 @@
       "favorites": "ಮೆಚ್ಚಿನವುಗಳು"
     },
     "firmwareFcWizard": {
-      "dismiss": "ವಜಾಗೊಳಿಸಿ"
+      "dismiss": "ವಜಾಗೊಳಿಸಿ",
+      "postFlashSaved": "{count, plural, one {ಫ್ಲ್ಯಾಶ್ ಮಾಡುವ ಮೊದಲು # ಪ್ಯಾರಾಮೀಟರ್ ಉಳಿಸಲಾಗಿದೆ ({createdAt}).} other {ಫ್ಲ್ಯಾಶ್ ಮಾಡುವ ಮೊದಲು # ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಉಳಿಸಲಾಗಿದೆ ({createdAt}).}} ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಮರುಸಂಪರ್ಕಿಸಿ, ನಂತರ ಬದಲಾವಣೆಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
+      "postFlashRestore": "{count, plural, one {# ಪ್ಯಾರಾಮೀಟರ್ ಮರುಸ್ಥಾಪಿಸಿ} other {# ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ}}",
+      "postFlashSource": "{createdAt} ರ ಬ್ಯಾಕಪ್"
     },
     "bfFailsafe": {
       "title": "ಫೇಲ್‌ಸೇಫ್",
@@ -12061,7 +12104,13 @@
       "offDelay": "ಮೋಟಾರ್ ಆಫ್ ವಿಳಂಬ (0.1 ಸೆ)",
       "throttle": "ಇಳಿಯುವ ಥ್ರಾಟಲ್ (µs)",
       "throttleLowDelay": "ಕಡಿಮೆ ಥ್ರಾಟಲ್ ವಿಳಂಬ (0.1 ಸೆ)",
-      "switchMode": "ಫೇಲ್‌ಸೇಫ್ ಸ್ವಿಚ್ (0 ಹಂತ 1, 1 ಆಫ್, 2 ಹಂತ 2)"
+      "switchMode": "ಫೇಲ್‌ಸೇಫ್ ಸ್ವಿಚ್ (0 ಹಂತ 1, 1 ಆಫ್, 2 ಹಂತ 2)",
+      "procedureDrop": "ಡ್ರಾಪ್",
+      "procedureLand": "ಲ್ಯಾಂಡ್",
+      "procedureGpsRescue": "GPS ರಕ್ಷಣೆ",
+      "switchStage1": "ಹಂತ 1",
+      "switchKill": "ಕಿಲ್",
+      "switchStage2": "ಹಂತ 2"
     },
     "px4Safety": {
       "title": "ವೈಫಲ್ಯ ಪತ್ತೆ ಮತ್ತು ಹಿಂತಿರುಗು",

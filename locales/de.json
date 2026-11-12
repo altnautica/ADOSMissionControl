@@ -270,7 +270,9 @@
       "flashUnacknowledged": "Flash-Commit gesendet – das Fahrzeug hat ihn nicht bestätigt",
       "armedTitle": "Scharfgeschaltete Drohne trennen?",
       "armedMessage": "{name} ist scharfgeschaltet. Das Trennen beendet die Telemetrie und kann den GCS-Failsafe auslösen.",
-      "armedConfirm": "Trennen"
+      "armedConfirm": "Trennen",
+      "armedUnknownTitle": "Eine möglicherweise scharfe Drohne trennen?",
+      "armedUnknownMessage": "Der Scharf-Status von {name} ist unbekannt, die Drohne fliegt also möglicherweise noch. Das Trennen stoppt die Telemetrie und kann ihren GCS-Failsafe auslösen."
     }
   },
   "nodeConsole": {
@@ -1102,7 +1104,8 @@
       "rebootCommandSentToThe": "Neustartbefehl an den Flugcontroller gesendet",
       "failedToSendRebootCommand": "Neustartbefehl konnte nicht gesendet werden",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
-      "rebootFC": "Flugcontroller neu starten"
+      "rebootFC": "Flugcontroller neu starten",
+      "rebootRefused": "Der Flugcontroller hat den Neustartbefehl abgelehnt"
     },
     "appletCatalog": {
       "starterScripts": "Starter-Skripte",
@@ -1855,7 +1858,6 @@
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
     "surfaceErrorRetry": "Try again",
-    "openCockpit": "Cockpit öffnen",
     "nodeDetailTabs": "Registerkarten der Knotendetails",
     "nodeNotFound": "Drohne „{id}“ nicht gefunden",
     "retryConnect": "Erneut versuchen",
@@ -2011,7 +2013,9 @@
     "backendMock": "Detector backend is a test stand-in; detections are not from a real model.",
     "benchmarkOnly": "Benchmark only",
     "benchmarkOnlyHint": "Weights carry research-use terms. Never installed by default; install explicitly for benchmarks.",
-    "notDetector": "Not a detector"
+    "notDetector": "Not a detector",
+    "inputsNotReported": "Kameras noch nicht gemeldet — warte, bis der Knoten seine Fähigkeiten meldet.",
+    "tierHint_cpu": "Der Detektor läuft auf der CPU dieses Knotens. Ohne Beschleuniger ist mit einer niedrigeren Bildrate zu rechnen."
   },
   "nodeSettings": {
     "subtitle": "Companion-Computer dieses Nodes konfigurieren. Änderungen werden direkt über das LAN an den Agent geschrieben.",
@@ -2641,7 +2645,8 @@
     "commandCancelled": "Befehl für {name} abgebrochen",
     "cancelTooLate": "Die Drohne hat den Befehl für {name} bereits erhalten. Warte auf ihre Antwort.",
     "notPickedUp": "die Drohne hat den Befehl nicht innerhalb von 30 Sekunden übernommen",
-    "nodeUnreachable": "die Drohne ist in diesem Netzwerk nicht erreichbar"
+    "nodeUnreachable": "die Drohne ist in diesem Netzwerk nicht erreichbar",
+    "disableArmedUnknownNote": "Dieses Fluggerät ist möglicherweise scharf: sein Scharf-Status ist unbekannt."
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -3232,7 +3237,11 @@
     "restartConfirmLabel": "Restart",
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
-    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller."
+    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "notAttached": {
+      "title": "Keine direkte Verbindung zu diesem Knoten",
+      "body": "Status, Dienste, Protokolle und Neustart kommen über eine direkte Verbindung zum Agenten dieses Knotens. Sie erscheinen, sobald dieser Browser sich mit ihm verbindet."
+    }
   },
   "fleetNetwork": {
     "title": "Flottennetzwerk",
@@ -4211,7 +4220,8 @@
         "verifyMismatch": "Der Flugcontroller hat die Mission bestätigt, aber die zurückgelesene Kopie weicht ab. Erneut hochladen.",
         "verifyFailed": "Der Flugcontroller hat die Mission bestätigt, aber das Zurücklesen zur Prüfung schlug fehl. Verbindung prüfen und erneut hochladen."
       },
-      "fenceCrossed": "Die Mission verletzt diesen Zaun. Korrigieren Sie die Mission, bevor Sie den Zaun senden."
+      "fenceCrossed": "Die Mission verletzt diesen Zaun. Korrigieren Sie die Mission, bevor Sie den Zaun senden.",
+      "rallyOutsideFence": "Ein Sammelpunkt liegt außerhalb des Geofence oder in einer Sperrzone. Verschiebe ihn, bevor du die Sammelpunkte sendest."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -5423,7 +5433,8 @@
     "writeToFcCount": "{n} auf Flugcontroller schreiben",
     "writingProgress": "Schreibe {current}/{total}…",
     "writeToFcHint": "Geänderte Parameter an den Flugcontroller senden",
-    "notPresent": "auf diesem Board nicht vorhanden"
+    "notPresent": "auf diesem Board nicht vorhanden",
+    "notRead": "nicht gelesen"
   },
   "calibration": {
     "title": "Kalibrierung",
@@ -5943,7 +5954,7 @@
     "empty": "No commands available for this drone",
     "goToSimulate": "Go to Simulate",
     "goToMcp": "Go to MCP",
-    "openCockpit": "Open Cockpit",
+    "openCockpit": "Flight öffnen",
     "flight": "Flight",
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
@@ -9139,7 +9150,7 @@
     "addIp": "Add IP camera",
     "loading": "Loading cameras…",
     "empty": "No cameras detected on this node.",
-    "unavailable": "Cameras are read from this node's agent, and this session has no connection to it.",
+    "unavailable": "Kameras werden vom Agenten dieses Knotens gelesen, und diese Sitzung ist nicht mit ihm verbunden.",
     "readOnlyNotice": "Camera editing runs on the local network. Connect directly to change the roster.",
     "errorTitle": "Couldn’t load cameras",
     "saveError": "Couldn’t save cameras",
@@ -9262,7 +9273,9 @@
       "removeAction": "Entfernen",
       "armedTitle": "Video im scharfgeschalteten Zustand neu starten?",
       "armedMessage": "Diese Drohne ist scharfgeschaltet. Beim Speichern der Kameraänderung wird ihr Video für einige Sekunden neu gestartet.",
-      "armedAction": "Speichern und neu starten"
+      "armedAction": "Speichern und neu starten",
+      "armedUnknownTitle": "Video neu starten? Die Drohne ist möglicherweise scharf",
+      "armedUnknownMessage": "Der Scharf-Status dieser Drohne ist unbekannt, sie fliegt also möglicherweise. Das Speichern der Kameraänderung startet ihr Video für einige Sekunden neu."
     }
   },
   "nodesView": {
@@ -10185,9 +10198,6 @@
     "noDronesWithAgent": "Keine Drohne der Flotte hat einen Agenten"
   },
   "flightScreen": {
-    "pill": {
-      "navSource": "Navigation source degraded ({kind})"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
@@ -10201,7 +10211,8 @@
       "differs": "Der Plan auf der Drohne weicht vom Plan auf diesem Gerät ab",
       "load": "Von Drohne herunterladen",
       "loading": "Wird geladen…"
-    }
+    },
+    "flyMissionNoPilot": "The Launch sheet needs the drone's onboard agent on this network, so it did not open. To fly the mission on the flight controller alone: Take off, then Mode › AUTO."
   },
   "operatorRegistry": {
     "profile": {
@@ -10670,7 +10681,9 @@
       "copyAgain": "Erneut kopieren",
       "tryAgain": "Erneut versuchen",
       "iClearedIt": "Ich habe sie geleert",
-      "typeToContinue": "Gib <word>EXPORT</word> ein, um fortzufahren."
+      "typeToContinue": "Gib <word>EXPORT</word> ein, um fortzufahren.",
+      "pasteWithin": "Innerhalb von {seconds} s in den anderen Browser oder Sicherungsspeicher einfügen.",
+      "autoClearsIn": "Zwischenablage wird in {seconds} s automatisch geleert"
     },
     "framePanel": {
       "frameConfiguration": "Rahmenkonfiguration",
@@ -10740,7 +10753,8 @@
       "notes": "Hinweise",
       "noActiveFlags": "Keine aktiven Flags.",
       "gps": "GPS",
-      "sensorStatusEKFVibrationGPS": "Sensorstatus, EKF, Vibration, GPS und Pre-Arm-Prüfungen"
+      "sensorStatusEKFVibrationGPS": "Sensorstatus, EKF, Vibration, GPS und Pre-Arm-Prüfungen",
+      "sensorsHealthy": "{healthy}/{total} Sensoren in Ordnung"
     },
     "ledPanel": {
       "ledConfiguration": "LED-Konfiguration",
@@ -10761,7 +10775,15 @@
       "useLedCommand": "Nutze den Befehl <cmd>led</cmd> im FC-Konsolen-Panel, um die LED-Streifen-Zuordnung einzustellen.",
       "ledCmdShow": "Aktuelle LED-Streifen-Konfiguration anzeigen",
       "ledCmdExample": "Beispiel: LED 0 setzen",
-      "colorCmd": "LED-Farben anzeigen/setzen"
+      "colorCmd": "LED-Farben anzeigen/setzen",
+      "brightness": "Helligkeit",
+      "brightnessOff": "Aus",
+      "brightnessLow": "Niedrig",
+      "brightnessMedium": "Mittel",
+      "brightnessHigh": "Hoch",
+      "bitmaskValue": "Bitmaske: {value} (0x{hex})",
+      "unitLeds": "LEDs",
+      "moreLeds": "+{n} weitere"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "Mixer-Profile",
@@ -11002,7 +11024,16 @@
       "setARotorCountTo": "Legen Sie eine Rotoranzahl fest, um die Rotorkoeffizienten zu konfigurieren.",
       "controlSurfaces": "Steuerflächen",
       "tiltServos": "Neige-Servos",
-      "reversibleMotorsCARREV": "Umkehrbare Motoren (CA_R_REV)"
+      "reversibleMotorsCARREV": "Umkehrbare Motoren (CA_R_REV)",
+      "allocationMethod": "Zuordnungsmethode",
+      "reversibleNone": "Keine",
+      "reversibleBits": "{value} — gesetzte Bits…",
+      "rotorCount": "Anzahl Rotoren",
+      "surfaceCount": "Anzahl Steuerflächen",
+      "tiltServoCount": "Anzahl Neigeservos",
+      "rotorN": "Rotor {n}",
+      "surfaceN": "Steuerfläche {n}",
+      "tiltN": "Neigung {n}"
     },
     "bfMotorTest": {
       "iConfirmAllPropellersHave": "Ich bestätige, dass alle Propeller entfernt wurden",
@@ -11469,7 +11500,10 @@
     "flightModesPanel": {
       "flightModes": "Flugmodi",
       "connectToADroneTo": "Verbinden Sie eine Drohne, um Flugmodi zu konfigurieren.",
-      "currentMode": "Aktueller Modus:"
+      "currentMode": "Aktueller Modus:",
+      "notRead": "Flugmodi wurden noch nicht vom Fahrzeug gelesen.",
+      "readingModes": "Flugmodi werden gelesen…",
+      "readFailed": "Flugmodi konnten nicht gelesen werden. Vor dem Bearbeiten erneut lesen."
     },
     "flightModesHeader": {
       "flightModes": "Flugmodi",
@@ -11633,7 +11667,12 @@
       "selectNone": "Keine auswählen",
       "noParametersMatchTheCurrent": "Keine Parameter entsprechen dem aktuellen Filter.",
       "applyN": "{count} Parameter anwenden",
-      "selectedOf": "{selected} von {total} wählbaren Parametern ausgewählt"
+      "selectedOf": "{selected} von {total} wählbaren Parametern ausgewählt",
+      "fileParamCount": "{count, plural, one {(# Parameter)} other {(# Parameter)}}",
+      "changedCount": "{count} geändert",
+      "addedCount": "{count} neu",
+      "unchangedCount": "{count} unverändert",
+      "applyingProgress": "Wird angewendet {current}/{total}…"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Parameter schreiben bestätigen",
@@ -11675,7 +11714,8 @@
       "name": "Name",
       "now": "Jetzt",
       "restore": "Wiederherstellen",
-      "readingCurrentParameters": "Aktuelle Parameter werden gelesen…"
+      "readingCurrentParameters": "Aktuelle Parameter werden gelesen…",
+      "title": "Parameter wiederherstellen: {target}"
     },
     "inboundSigningSection": {
       "inboundVerification": "Eingangsprüfung",
@@ -12050,7 +12090,10 @@
       "favorites": "Favoriten"
     },
     "firmwareFcWizard": {
-      "dismiss": "Schließen"
+      "dismiss": "Schließen",
+      "postFlashSaved": "{count, plural, one {# Parameter wurde vor dem Flashen gespeichert ({createdAt}).} other {# Parameter wurden vor dem Flashen gespeichert ({createdAt}).}} Verbinde den Flugcontroller erneut und prüfe dann die Änderungen.",
+      "postFlashRestore": "{count, plural, one {# Parameter wiederherstellen} other {# Parameter wiederherstellen}}",
+      "postFlashSource": "die Sicherung vom {createdAt}"
     },
     "bfFailsafe": {
       "title": "Failsafe",
@@ -12061,7 +12104,13 @@
       "offDelay": "Motor-aus-Verzögerung (0,1 s)",
       "throttle": "Landegas (µs)",
       "throttleLowDelay": "Gas-niedrig-Verzögerung (0,1 s)",
-      "switchMode": "Failsafe-Schalter (0 Stufe 1, 1 Aus, 2 Stufe 2)"
+      "switchMode": "Failsafe-Schalter (0 Stufe 1, 1 Aus, 2 Stufe 2)",
+      "procedureDrop": "Fallen lassen",
+      "procedureLand": "Landen",
+      "procedureGpsRescue": "GPS-Rettung",
+      "switchStage1": "Stufe 1",
+      "switchKill": "Abschalten",
+      "switchStage2": "Stufe 2"
     },
     "px4Safety": {
       "title": "Ausfallerkennung und Rückkehr",

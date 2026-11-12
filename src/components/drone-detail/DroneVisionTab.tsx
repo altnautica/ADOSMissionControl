@@ -137,22 +137,22 @@ export function DroneVisionTab({ droneId, nodeDeviceId }: DroneVisionTabProps) {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="flex flex-col gap-5">
           <Section title={t("sectionEngine")}>
-            <VisionSummaryCard droneId={droneId} />
+            <VisionSummaryCard droneId={droneId} nodeDeviceId={nodeDeviceId} />
             <VisionModelCountTile droneId={droneId} agent={direct} />
           </Section>
 
           <Section title={t("sectionExecution")}>
-            <PerceptionTierCard droneId={droneId} />
+            <PerceptionTierCard droneId={droneId} nodeDeviceId={nodeDeviceId} />
           </Section>
 
           <Section title={t("sectionHealth")}>
-            <PerceptionSessionCard droneId={droneId} />
+            <PerceptionSessionCard droneId={droneId} nodeDeviceId={nodeDeviceId} />
             <PerceptionUsageCard agent={direct} />
           </Section>
 
           <Section title={t("sectionInputs")}>
-            <VisionPipelinesPanel droneId={droneId} />
-            <VisionInputsPanel droneId={droneId} />
+            <VisionPipelinesPanel droneId={droneId} nodeDeviceId={nodeDeviceId} />
+            <VisionInputsPanel droneId={droneId} nodeDeviceId={nodeDeviceId} />
           </Section>
         </div>
 

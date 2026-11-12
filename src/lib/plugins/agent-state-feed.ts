@@ -16,7 +16,8 @@
  *
  * It works for any node profile. One poll runs per (node, plugin), however
  * many mounts hold it, and stops when the last lets go. A topic is published
- * only when its `ts_ms` moves, so a steady sidecar does not replay, and it
+ * only when its `ts_ms` moves forward, so a steady sidecar does not replay and
+ * an older fallback report never overwrites a newer one, and it
  * goes out with that `ts_ms` on it ({@link agentStatePayload}) so a plugin
  * ages each report from the drone's own report time. The heartbeat slice is
  * the same source the native HUD reads (`use-nav-feed`), so a plugin tab and
@@ -79,7 +80,10 @@ async function tick(key: string, feed: Feed, pluginId: string, deviceId: string)
     if (!state || feeds.get(key) !== feed) return;
     const origin = agentStateOrigin(pluginId, deviceId);
     for (const [topic, entry] of Object.entries(state)) {
-      if (feed.published.get(topic) === entry.ts_ms) continue;
+      // Only a newer report goes out: a fallback slice older than the last
+      // LAN answer must not walk the topic back in time.
+      const last = feed.published.get(topic);
+      if (last !== undefined && entry.ts_ms <= last) continue;
       feed.published.set(topic, entry.ts_ms);
       publishPluginEvent(topic, agentStatePayload(entry.payload, entry.ts_ms), origin);
     }

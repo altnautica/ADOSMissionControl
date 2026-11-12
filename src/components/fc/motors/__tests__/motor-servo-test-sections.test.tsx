@@ -63,6 +63,27 @@ describe("MotorTestSection safety", () => {
   });
 });
 
+describe("MotorTestSection while a test runs", () => {
+  it("locks the motor choice, keeps Stop when the safety toggle goes off, and stops the started motor", async () => {
+    const motorTest = vi.fn(ok);
+    const protocol = { motorTest } as Partial<DroneProtocol> as DroneProtocol;
+    renderWithIntl(<MotorTestSection protocol={protocol} isHardBlocked={false} hardBlockMessage="" />);
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /Test motor 1/ }));
+    await waitFor(() => expect(motorTest).toHaveBeenCalledWith(1, 5, 3));
+
+    const motorSelect = screen.getByRole("combobox") as HTMLButtonElement;
+    expect(motorSelect.disabled).toBe(true);
+    fireEvent.click(motorSelect);
+    expect(screen.queryByRole("option", { name: "Motor 2" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(motorTest).toHaveBeenLastCalledWith(1, 0, 1);
+  });
+});
+
 describe("ServoTestSection", () => {
   it("keeps the FC output number for every row after a GPIO output", () => {
     const setServo = vi.fn(ok);

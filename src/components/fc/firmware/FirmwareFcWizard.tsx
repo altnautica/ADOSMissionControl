@@ -237,14 +237,14 @@ export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
           {done && fw.paramBackup && (
             <div className="border border-border-default bg-bg-secondary p-4 flex items-center justify-between gap-3">
               <p className="text-[10px] text-text-secondary">
-                {`${fw.paramBackup.params.length} parameters were saved before flashing (${fw.paramBackup.createdAt}). Reconnect the flight controller, then review what changed.`}
+                {tk("postFlashSaved", { count: fw.paramBackup.params.length, createdAt: fw.paramBackup.createdAt })}
               </p>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => setRestoreOpen(true)}
                   className="px-3 py-2 text-xs border border-accent-primary/50 text-accent-primary hover:bg-accent-primary/10 cursor-pointer transition-colors"
                 >
-                  {`Restore ${fw.paramBackup.params.length} parameters`}
+                  {tk("postFlashRestore", { count: fw.paramBackup.params.length })}
                 </button>
                 <button
                   onClick={fw.dismissParamBackup}
@@ -255,7 +255,7 @@ export function FirmwareFcWizard({ fw }: { fw: FirmwareState }) {
               </div>
               <ParamRestoreDialog
                 open={restoreOpen}
-                sourceLabel={`the backup from ${fw.paramBackup.createdAt}`}
+                sourceLabel={tk("postFlashSource", { createdAt: fw.paramBackup.createdAt })}
                 targetLabel={targetLabel}
                 entries={fw.paramBackup.params}
                 protocol={fw.drone?.protocol ?? null}

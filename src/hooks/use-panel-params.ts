@@ -5,6 +5,8 @@ import { usePanelCacheStore } from "@/stores/panel-cache-store";
 import { useFcPanelActionsStore } from "@/stores/fc-panel-actions-store";
 import { useDiagnosticsStore } from "@/stores/diagnostics-store";
 import { confirmArmedParamWrite, writeParamToFc } from "@/lib/protocol/param-write";
+import { useDroneStore } from "@/stores/drone-store";
+import { isFrameGeometryParam } from "@/components/fc/shared/frame-geometry-params";
 import { cachePanelToIDB, getCachedPanelFromIDB } from "@/lib/param-cache-idb";
 import type { PanelParamOptions, PanelParamState, PanelParamActions, UndoEntry } from "./use-panel-params-types";
 import type { FlashCommitOutcome } from "./use-flash-commit-toast";
@@ -278,6 +280,22 @@ export function usePanelParams(
   }, [getProtocol, panelId, externalMetadata, onEvent]);
 
   const saveAllToRam = useCallback(async (): Promise<boolean> => {
+    // Frame and actuator geometry is hard-blocked while the vehicle may be
+    // armed: an edit staged before arming is refused, not merely confirmed.
+    // Checked again after the confirm, since the vehicle can arm meanwhile.
+    const refuseGeometry = (): boolean => {
+      const { armState, connectionState } = useDroneStore.getState();
+      if (connectionState === "disconnected" || armState === "disarmed") return false;
+      const blocked = Array.from(dirtyParams).filter(isFrameGeometryParam);
+      if (blocked.length === 0) return false;
+      onEvent?.({
+        type: "error",
+        message: `Frame geometry not written while the vehicle may be armed: ${blocked.join(", ")}`,
+      });
+      return true;
+    };
+    if (refuseGeometry()) return false;
+
     // Armed-write guard, shared with the raw Parameters grid so both surfaces
     // ask the same question in the same words.
     const confirmed = await confirmArmedParamWrite(
@@ -291,6 +309,7 @@ export function usePanelParams(
       });
       return false;
     }
+    if (refuseGeometry()) return false;
 
     let allOk = true;
     for (const name of dirtyParams) {

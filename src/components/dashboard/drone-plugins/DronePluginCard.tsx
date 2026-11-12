@@ -93,7 +93,7 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
     setUpdateSettingsOpen,
     busy,
     waiting,
-    isArmed,
+    armedNote,
     agentOnly,
     pendingUpdate,
     statusLabel,
@@ -287,8 +287,8 @@ export function DronePluginCard({ install, className }: DronePluginCardProps) {
         onCancel={() => setConfirmDisableOpen(false)}
         title={t("disableConfirmTitle", { name: install.name })}
         message={
-          isArmed
-            ? `${t("disableConfirmMessage")} ${t("disableArmedNote")}`
+          armedNote
+            ? `${t("disableConfirmMessage")} ${t(armedNote === "armed" ? "disableArmedNote" : "disableArmedUnknownNote")}`
             : t("disableConfirmMessage")
         }
         confirmLabel={t("disable")}

@@ -55,7 +55,7 @@ export const useSettingsStore = create<SettingsStoreState>()(
     {
       name: "altcmd:settings",
       storage: createJSONStorage(indexedDBStorage.storage),
-      version: 56,
+      version: 57,
       migrate: migrateSettings,
       // Runs after a successful rehydrate AND after a failed one (state is
       // undefined then): either way the persisted read is over and every gate

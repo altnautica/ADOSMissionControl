@@ -15,6 +15,7 @@ import {
   Upload, Search, CheckSquare, Square, FileText, PenLine, HardDrive,
 } from "lucide-react";
 import { STATUS_STYLES, STATUS_LABELS, FILTER_MODES, TH, filterLabel, type FilterMode } from "./param-compare-helpers";
+import { isValueOutOfRange } from "../shared/WriteConfirmDialog";
 
 /** Pending-write records from this surface are attributed to the grid it opens from. */
 const PANEL_ID = "parameters";
@@ -35,6 +36,7 @@ interface ParamCompareProps {
 
 export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProps) {
   const tl = useTranslations("fcPanels.paramCompare");
+  const tw = useTranslations("fcPanels.writeConfirmDialog");
   // A whole file is not applied to a vehicle that may be armed.
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
   const { toast } = useToast();
@@ -47,6 +49,14 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
   const [search, setSearch] = useState("");
   const [applying, setApplying] = useState(false);
   const [applyProgress, setApplyProgress] = useState({ current: 0, total: 0 });
+
+  // A file value outside the parameter's documented range is never offered
+  // for writing, the same rule the write confirmation enforces.
+  const isSelectable = useCallback(
+    (d: ParamDiff) =>
+      (d.status === "changed" || d.status === "added") && !isValueOutOfRange(d.fileValue, metadata.get(d.name)),
+    [metadata],
+  );
 
   const stats = useMemo(() => {
     let changed = 0, added = 0, unchanged = 0;
@@ -90,7 +100,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
       // Auto-select all changed params
       const autoSelected = new Set<string>();
       for (const d of diffResult) {
-        if (d.status === "changed") autoSelected.add(d.name);
+        if (d.status === "changed" && isSelectable(d)) autoSelected.add(d.name);
       }
       setSelected(autoSelected);
       setSearch("");
@@ -98,20 +108,20 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
     };
     reader.readAsText(file);
     e.target.value = "";
-  }, [fcParams, toast, t]);
+  }, [fcParams, toast, t, isSelectable]);
 
-  const selectableCount = useMemo(
-    () => diffs.filter((d) => d.status === "changed" || d.status === "added").length,
-    [diffs]
+  const selectableCount = useMemo(() => diffs.filter(isSelectable).length, [diffs, isSelectable]);
+
+  // What Apply writes: the selection, less anything that became unselectable
+  // since it was ticked (metadata loaded after the file, for one).
+  const applicable = useMemo(
+    () => diffs.filter((d) => selected.has(d.name) && isSelectable(d)),
+    [diffs, selected, isSelectable],
   );
 
   const handleSelectAll = useCallback(() => {
-    const all = new Set<string>();
-    for (const d of diffs) {
-      if (d.status === "changed" || d.status === "added") all.add(d.name);
-    }
-    setSelected(all);
-  }, [diffs]);
+    setSelected(new Set(diffs.filter(isSelectable).map((d) => d.name)));
+  }, [diffs, isSelectable]);
 
   const handleSelectNone = useCallback(() => {
     setSelected(new Set());
@@ -128,9 +138,9 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
 
   const handleApply = useCallback(async () => {
     const protocol = useDroneManager.getState().getSelectedProtocol();
-    if (!protocol || selected.size === 0 || isHardBlocked) return;
+    const entries = applicable;
+    if (!protocol || entries.length === 0 || isHardBlocked) return;
 
-    const entries = diffs.filter((d) => selected.has(d.name));
     // Same armed-write guard as every other parameter write: one confirmation
     // naming the whole batch before anything reaches the vehicle.
     const confirmed = await confirmArmedParamWrite(PANEL_ID, entries.map((d) => d.name));
@@ -172,7 +182,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
 
     setApplying(false);
     setApplyProgress({ current: 0, total: 0 });
-  }, [diffs, selected, metadata, toast, t, onApplied, isHardBlocked]);
+  }, [applicable, metadata, toast, t, onApplied, isHardBlocked]);
 
   return (
     <div className="flex flex-col gap-4 max-h-[70vh]">
@@ -197,7 +207,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
           <div className="flex items-center gap-1.5 text-xs text-text-secondary">
             <FileText size={12} />
             <span className="font-mono">{fileName}</span>
-            <span className="text-text-tertiary">({stats.total} params)</span>
+            <span className="text-text-tertiary">{tl("fileParamCount", { count: stats.total })}</span>
           </div>
         )}
       </div>
@@ -206,9 +216,9 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
         <>
           {/* Summary */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="warning" size="sm">{stats.changed} changed</Badge>
-            <Badge variant="info" size="sm">{stats.added} new</Badge>
-            <Badge variant="neutral" size="sm">{stats.unchanged} unchanged</Badge>
+            <Badge variant="warning" size="sm">{tl("changedCount", { count: stats.changed })}</Badge>
+            <Badge variant="info" size="sm">{tl("addedCount", { count: stats.added })}</Badge>
+            <Badge variant="neutral" size="sm">{tl("unchangedCount", { count: stats.unchanged })}</Badge>
             <div className="w-px h-4 bg-border-default" />
             <Button variant="ghost" size="sm" icon={<CheckSquare size={12} />} onClick={handleSelectAll} disabled={selectableCount === 0}>
               {tl("selectAll")}
@@ -258,7 +268,8 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
               </tr></thead>
               <tbody>
                 {filteredDiffs.map((d) => {
-                  const selectable = d.status === "changed" || d.status === "added";
+                  const selectable = isSelectable(d);
+                  const range = metadata.get(d.name)?.range;
                   const isSelected = selected.has(d.name);
                   return (
                     <tr
@@ -289,6 +300,11 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
                         d.status === "changed" ? "text-status-warning" : "text-text-secondary"
                       )}>
                         {d.fileValue}
+                        {range && isValueOutOfRange(d.fileValue, metadata.get(d.name)) && (
+                          <div className="text-[10px] font-sans text-status-error">
+                            {tw("outOfRange", { min: range.min, max: range.max })}
+                          </div>
+                        )}
                       </td>
                       <td className="px-2 py-1.5 text-center">
                         <span className={cn("text-[10px] font-semibold uppercase", STATUS_STYLES[d.status])}>
@@ -312,17 +328,17 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
           {applying && applyProgress.total > 0 && (
             <div className="flex items-center gap-3">
               <PenLine size={12} className="text-status-warning flex-shrink-0" />
-              <span className="text-xs text-text-secondary">Applying {applyProgress.current}/{applyProgress.total}...</span>
+              <span className="text-xs text-text-secondary">{tl("applyingProgress", { current: applyProgress.current, total: applyProgress.total })}</span>
               <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
                 <div className="h-full bg-status-warning transition-all duration-200" style={{ width: `${Math.round((applyProgress.current / applyProgress.total) * 100)}%` }} />
               </div>
             </div>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-text-tertiary">{tl("selectedOf", { selected: selected.size, total: selectableCount })}</span>
+            <span className="text-xs text-text-tertiary">{tl("selectedOf", { selected: applicable.length, total: selectableCount })}</span>
             {isHardBlocked && <span role="alert" className="text-xs text-status-warning">{hardBlockMessage}</span>}
-            <Button variant="primary" size="sm" icon={<HardDrive size={12} />} onClick={handleApply} disabled={selected.size === 0 || applying || isHardBlocked} loading={applying}>
-              {tl("applyN", { count: selected.size })}
+            <Button variant="primary" size="sm" icon={<HardDrive size={12} />} onClick={handleApply} disabled={applicable.length === 0 || applying || isHardBlocked} loading={applying}>
+              {tl("applyN", { count: applicable.length })}
             </Button>
           </div>
         </>

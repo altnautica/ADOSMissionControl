@@ -35,6 +35,10 @@ import { TAKEOFF_ALTITUDE_M } from "@/lib/skills/builtins/takeoff";
 import type { SkillActivateArgs, SkillContext } from "@/lib/skills/types";
 import { cockpitOwnsKeyboard } from "@/hooks/use-cockpit-input";
 
+/** Buttons treated as still held after the tab returns: past the standard
+ *  mapping's 18, with room for the extra buttons of a larger pad. */
+const PAD_BUTTONS_SEEDED = 32;
+
 /** True when the event originates from an editable field — never dispatch. */
 export function isTextTarget(target: EventTarget | null): boolean {
   return (
@@ -143,6 +147,16 @@ export function useSkillInput(): void {
     // register a spurious edge.
     const prevButtons: boolean[] = [...useInputStore.getState().buttons];
 
+    // A hidden tab clears the store's buttons, and on return the poll
+    // republishes a button still held, which would read as a fresh press.
+    // Count every button as held until it is first seen up again.
+    const onVisibility = () => {
+      if (document.hidden) return;
+      const n = Math.max(prevButtons.length, useInputStore.getState().buttons.length, PAD_BUTTONS_SEEDED);
+      for (let i = 0; i < n; i++) prevButtons[i] = true;
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     const unsubscribe = useInputStore.subscribe((state) => {
       const buttons = state.buttons;
       const { loadouts, activeLoadoutId } = useSettingsStore.getState();
@@ -167,6 +181,9 @@ export function useSkillInput(): void {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [padEnabled]);
 }

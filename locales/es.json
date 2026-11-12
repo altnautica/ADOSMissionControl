@@ -270,7 +270,9 @@
       "flashUnacknowledged": "Confirmación en flash enviada: el vehículo no la reconoció",
       "armedTitle": "¿Desconectar un dron armado?",
       "armedMessage": "{name} está armado. Al desconectar se detiene la telemetría y puede activarse su failsafe de GCS.",
-      "armedConfirm": "Desconectar"
+      "armedConfirm": "Desconectar",
+      "armedUnknownTitle": "¿Desconectar un dron que puede estar armado?",
+      "armedUnknownMessage": "Se desconoce si {name} está armado, así que puede seguir volando. Desconectar detiene la telemetría y puede activar su failsafe de GCS."
     }
   },
   "nodeConsole": {
@@ -1102,7 +1104,8 @@
       "rebootCommandSentToThe": "Comando de reinicio enviado a la controladora de vuelo",
       "failedToSendRebootCommand": "No se pudo enviar el comando de reinicio",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
-      "rebootFC": "Reiniciar controladora de vuelo"
+      "rebootFC": "Reiniciar controladora de vuelo",
+      "rebootRefused": "El controlador de vuelo rechazó la orden de reinicio"
     },
     "appletCatalog": {
       "starterScripts": "Scripts de inicio",
@@ -1855,7 +1858,6 @@
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
     "surfaceErrorRetry": "Try again",
-    "openCockpit": "Abrir cabina",
     "nodeDetailTabs": "Pestañas de detalles del nodo",
     "nodeNotFound": "No se ha encontrado el drone «{id}»",
     "retryConnect": "Reintentar",
@@ -2011,7 +2013,9 @@
     "backendMock": "Detector backend is a test stand-in; detections are not from a real model.",
     "benchmarkOnly": "Benchmark only",
     "benchmarkOnlyHint": "Weights carry research-use terms. Never installed by default; install explicitly for benchmarks.",
-    "notDetector": "Not a detector"
+    "notDetector": "Not a detector",
+    "inputsNotReported": "Cámaras aún no informadas: esperando a que el nodo informe sus capacidades.",
+    "tierHint_cpu": "El detector se ejecuta en la CPU de este nodo. No tiene acelerador, así que espera una tasa de fotogramas menor."
   },
   "nodeSettings": {
     "subtitle": "Configura el ordenador de a bordo de este nodo. Los cambios se escriben directamente en el agente por la LAN.",
@@ -2641,7 +2645,8 @@
     "commandCancelled": "Se canceló el comando para {name}",
     "cancelTooLate": "El dron ya tiene el comando para {name}. Esperando su respuesta.",
     "notPickedUp": "el dron no recibió el comando en 30 segundos",
-    "nodeUnreachable": "no se puede acceder al dron en esta red"
+    "nodeUnreachable": "no se puede acceder al dron en esta red",
+    "disableArmedUnknownNote": "Esta aeronave puede estar armada: se desconoce su estado de armado."
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -3232,7 +3237,11 @@
     "restartConfirmLabel": "Restart",
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
-    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller."
+    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "notAttached": {
+      "title": "Sin conexión directa con este nodo",
+      "body": "Su estado, servicios, registros y controles de reinicio llegan por una conexión directa con el agente de este nodo. Aparecen cuando este navegador se conecta a él."
+    }
   },
   "fleetNetwork": {
     "title": "Red de flota",
@@ -4211,7 +4220,8 @@
         "verifyMismatch": "El controlador de vuelo confirmó la misión, pero la copia leída no coincide. Vuelva a subirla.",
         "verifyFailed": "El controlador de vuelo confirmó la misión, pero no se pudo leer para comprobarla. Revise el enlace y vuelva a subirla."
       },
-      "fenceCrossed": "La misión cruza esta geovalla. Corrija la misión antes de enviar la geovalla."
+      "fenceCrossed": "La misión cruza esta geovalla. Corrija la misión antes de enviar la geovalla.",
+      "rallyOutsideFence": "Un punto de reunión está fuera de la geocerca o dentro de una zona de exclusión. Muévelo antes de enviar los puntos de reunión."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -5423,7 +5433,8 @@
     "writeToFcCount": "Escribir {n} en la controladora de vuelo",
     "writingProgress": "Escribiendo {current}/{total}…",
     "writeToFcHint": "Enviar los parámetros modificados a la controladora de vuelo",
-    "notPresent": "no presente en esta placa"
+    "notPresent": "no presente en esta placa",
+    "notRead": "no leído"
   },
   "calibration": {
     "title": "Calibración",
@@ -5943,7 +5954,7 @@
     "empty": "No commands available for this drone",
     "goToSimulate": "Go to Simulate",
     "goToMcp": "Go to MCP",
-    "openCockpit": "Open Cockpit",
+    "openCockpit": "Abrir Flight",
     "flight": "Flight",
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
@@ -9139,7 +9150,7 @@
     "addIp": "Add IP camera",
     "loading": "Loading cameras…",
     "empty": "No cameras detected on this node.",
-    "unavailable": "Cameras are read from this node's agent, and this session has no connection to it.",
+    "unavailable": "Las cámaras se leen del agente de este nodo, y esta sesión no tiene conexión con él.",
     "readOnlyNotice": "Camera editing runs on the local network. Connect directly to change the roster.",
     "errorTitle": "Couldn’t load cameras",
     "saveError": "Couldn’t save cameras",
@@ -9262,7 +9273,9 @@
       "removeAction": "Quitar",
       "armedTitle": "¿Reiniciar el video con el dron armado?",
       "armedMessage": "Este dron está armado. Al guardar el cambio de cámara, su video se reiniciará durante unos segundos.",
-      "armedAction": "Guardar y reiniciar"
+      "armedAction": "Guardar y reiniciar",
+      "armedUnknownTitle": "¿Reiniciar el vídeo? El dron puede estar armado",
+      "armedUnknownMessage": "Se desconoce si este dron está armado, así que puede estar volando. Guardar el cambio de cámara reinicia su vídeo durante unos segundos."
     }
   },
   "nodesView": {
@@ -10185,9 +10198,6 @@
     "noDronesWithAgent": "Ningún dron de la flota tiene un agente"
   },
   "flightScreen": {
-    "pill": {
-      "navSource": "Navigation source degraded ({kind})"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
@@ -10201,7 +10211,8 @@
       "differs": "El plan del dron difiere del plan de este dispositivo",
       "load": "Descargar del dron",
       "loading": "Cargando…"
-    }
+    },
+    "flyMissionNoPilot": "The Launch sheet needs the drone's onboard agent on this network, so it did not open. To fly the mission on the flight controller alone: Take off, then Mode › AUTO."
   },
   "operatorRegistry": {
     "profile": {
@@ -10670,7 +10681,9 @@
       "copyAgain": "Copiar de nuevo",
       "tryAgain": "Reintentar",
       "iClearedIt": "Ya lo borré",
-      "typeToContinue": "Escribe <word>EXPORT</word> para continuar."
+      "typeToContinue": "Escribe <word>EXPORT</word> para continuar.",
+      "pasteWithin": "Pégalo en el otro navegador o almacén de respaldo en {seconds} s.",
+      "autoClearsIn": "El portapapeles se borra automáticamente en {seconds} s"
     },
     "framePanel": {
       "frameConfiguration": "Configuración del chasis",
@@ -10740,7 +10753,8 @@
       "notes": "Notas",
       "noActiveFlags": "No hay indicadores activos.",
       "gps": "GPS",
-      "sensorStatusEKFVibrationGPS": "Estado de sensores, EKF, vibración, GPS y comprobaciones previas al armado"
+      "sensorStatusEKFVibrationGPS": "Estado de sensores, EKF, vibración, GPS y comprobaciones previas al armado",
+      "sensorsHealthy": "{healthy}/{total} sensores en buen estado"
     },
     "ledPanel": {
       "ledConfiguration": "Configuración de LED",
@@ -10761,7 +10775,15 @@
       "useLedCommand": "Usa el comando <cmd>led</cmd> en el panel Consola FC para configurar las asignaciones de la tira LED.",
       "ledCmdShow": "Mostrar la configuración actual de la tira LED",
       "ledCmdExample": "Ejemplo: configurar el LED 0",
-      "colorCmd": "Mostrar/configurar colores LED"
+      "colorCmd": "Mostrar/configurar colores LED",
+      "brightness": "Brillo",
+      "brightnessOff": "Apagado",
+      "brightnessLow": "Bajo",
+      "brightnessMedium": "Medio",
+      "brightnessHigh": "Alto",
+      "bitmaskValue": "Máscara de bits: {value} (0x{hex})",
+      "unitLeds": "LED",
+      "moreLeds": "+{n} más"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "Perfiles de mezclador",
@@ -11002,7 +11024,16 @@
       "setARotorCountTo": "Define el número de rotores para configurar sus coeficientes.",
       "controlSurfaces": "Superficies de control",
       "tiltServos": "Servos de inclinación",
-      "reversibleMotorsCARREV": "Motores reversibles (CA_R_REV)"
+      "reversibleMotorsCARREV": "Motores reversibles (CA_R_REV)",
+      "allocationMethod": "Método de asignación",
+      "reversibleNone": "Ninguno",
+      "reversibleBits": "{value} — bits activos…",
+      "rotorCount": "Número de rotores",
+      "surfaceCount": "Número de superficies",
+      "tiltServoCount": "Número de servos de inclinación",
+      "rotorN": "Rotor {n}",
+      "surfaceN": "Superficie {n}",
+      "tiltN": "Inclinación {n}"
     },
     "bfMotorTest": {
       "iConfirmAllPropellersHave": "Confirmo que se han retirado todas las hélices",
@@ -11469,7 +11500,10 @@
     "flightModesPanel": {
       "flightModes": "Modos de vuelo",
       "connectToADroneTo": "Conecta un dron para configurar los modos de vuelo.",
-      "currentMode": "Modo actual:"
+      "currentMode": "Modo actual:",
+      "notRead": "Los modos de vuelo aún no se han leído del vehículo.",
+      "readingModes": "Leyendo modos de vuelo…",
+      "readFailed": "No se pudieron leer los modos de vuelo. Vuelve a leerlos antes de editarlos."
     },
     "flightModesHeader": {
       "flightModes": "Modos de vuelo",
@@ -11633,7 +11667,12 @@
       "selectNone": "No seleccionar ninguno",
       "noParametersMatchTheCurrent": "Ningún parámetro coincide con el filtro actual.",
       "applyN": "Aplicar {count} {count, plural, one {parámetro} other {parámetros}}",
-      "selectedOf": "{selected} de {total} parámetros seleccionables elegidos"
+      "selectedOf": "{selected} de {total} parámetros seleccionables elegidos",
+      "fileParamCount": "{count, plural, one {(# parámetro)} other {(# parámetros)}}",
+      "changedCount": "{count} cambiados",
+      "addedCount": "{count} nuevos",
+      "unchangedCount": "{count} sin cambios",
+      "applyingProgress": "Aplicando {current}/{total}…"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Confirmar escritura de parámetros",
@@ -11675,7 +11714,8 @@
       "name": "Nombre",
       "now": "Ahora",
       "restore": "Restaurar",
-      "readingCurrentParameters": "Leyendo parámetros actuales…"
+      "readingCurrentParameters": "Leyendo parámetros actuales…",
+      "title": "Restaurar parámetros a {target}"
     },
     "inboundSigningSection": {
       "inboundVerification": "Verificación entrante",
@@ -12050,7 +12090,10 @@
       "favorites": "Favoritos"
     },
     "firmwareFcWizard": {
-      "dismiss": "Descartar"
+      "dismiss": "Descartar",
+      "postFlashSaved": "{count, plural, one {Se guardó # parámetro antes de flashear ({createdAt}).} other {Se guardaron # parámetros antes de flashear ({createdAt}).}} Vuelve a conectar la controladora de vuelo y revisa los cambios.",
+      "postFlashRestore": "{count, plural, one {Restaurar # parámetro} other {Restaurar # parámetros}}",
+      "postFlashSource": "la copia de seguridad del {createdAt}"
     },
     "bfFailsafe": {
       "title": "Failsafe",
@@ -12061,7 +12104,13 @@
       "offDelay": "Retardo de apagado de motores (0,1 s)",
       "throttle": "Acelerador de aterrizaje (µs)",
       "throttleLowDelay": "Retardo de acelerador bajo (0,1 s)",
-      "switchMode": "Interruptor failsafe (0 etapa 1, 1 cortar, 2 etapa 2)"
+      "switchMode": "Interruptor failsafe (0 etapa 1, 1 cortar, 2 etapa 2)",
+      "procedureDrop": "Caída",
+      "procedureLand": "Aterrizar",
+      "procedureGpsRescue": "Rescate GPS",
+      "switchStage1": "Etapa 1",
+      "switchKill": "Apagar",
+      "switchStage2": "Etapa 2"
     },
     "px4Safety": {
       "title": "Detector de fallos y regreso",

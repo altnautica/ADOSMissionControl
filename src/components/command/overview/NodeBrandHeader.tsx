@@ -24,9 +24,12 @@ export function NodeBrandHeader({
   title,
   reachedViaName,
   fcConnected,
+  nodeDeviceId,
 }: {
   profile: EffProfile;
   title: string;
+  /** The device id of the node the page shows (null when it has none). */
+  nodeDeviceId: string | null;
   /** Display name of the ground node this drone is reached through over WFB,
    * when it is enrolled transitively. Surfaces the "via <node>" sub-badge. */
   reachedViaName?: string | null;
@@ -34,7 +37,7 @@ export function NodeBrandHeader({
    * a bare flight controller (no agent) comes from it. */
   fcConnected?: boolean;
 }) {
-  const b = useNodeBrand({ profile, title, reachedViaName, fcConnected });
+  const b = useNodeBrand({ profile, title, reachedViaName, fcConnected, nodeDeviceId });
   return (
     <div
       className="relative flex items-center gap-3 overflow-hidden rounded-xl border border-border-default bg-bg-secondary p-4"

@@ -326,6 +326,13 @@ export const usePlannerStore = create<PlannerStoreState>()(
         sectionOpen: state.sectionOpen,
         mapView: state.mapView,
       }),
+      // On a phone-width window the inspector is a sheet over the map: a
+      // layout saved on a wider window never opens it there on load.
+      merge: (persisted, current) => {
+        const saved = { ...(persisted as Partial<PlannerStoreState> | undefined) };
+        if (isNarrowViewport()) delete saved.inspectorOpen;
+        return { ...current, ...saved };
+      },
       // Fires on success and on a failed read (zustand leaves `hasHydrated()`
       // false when the storage read rejects), so the planner never waits
       // forever on persisted state that is not coming; the defaults stand.

@@ -30,11 +30,11 @@ import {
   PORT_PARAMS, PX4_PORTS, PX4_PORT_PARAMS, PX4_BAUD_OPTIONS,
 } from "./ports-constants";
 import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
+import { RebootFcButton } from "@/components/fc/shared/RebootFcButton";
 
 export function PortsPanel() {
   const ol = useOptionLabels();
   const tr = useTranslations("fcPanels.portsPanel");
-  const tDrone = useTranslations("droneDetail");
   const protocol = useDroneManager(selectSelectedProtocol);
   const { firmwareType } = useFirmwareCapabilities();
   const isPx4 = firmwareType === "px4";
@@ -130,7 +130,7 @@ export function PortsPanel() {
           >
             {hasDirty && (
               <span className="text-[10px] font-mono text-status-warning px-1.5 py-0.5 bg-status-warning/10 border border-status-warning/20">
-                UNSAVED
+                <SaveBarLabel k="unsavedChanges" />
               </span>
             )}
             <Button
@@ -161,15 +161,7 @@ export function PortsPanel() {
                 <SaveBarLabel k="writeToFlash" />
               </Button>
             )}
-            {needsReboot && (
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleReboot}
-              >
-                {tDrone("rebootFc")}
-              </Button>
-            )}
+            {needsReboot && <RebootFcButton onReboot={handleReboot} />}
           </PanelHeader>
         </div>
 

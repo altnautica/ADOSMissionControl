@@ -270,7 +270,9 @@
       "flashUnacknowledged": "ஃபிளாஷ் சேமிப்பு அனுப்பப்பட்டது — வாகனம் அதை உறுதிப்படுத்தவில்லை",
       "armedTitle": "armed நிலையிலுள்ள ட்ரோனைத் துண்டிக்கவா?",
       "armedMessage": "{name} armed நிலையில் உள்ளது. துண்டித்தால் டெலிமெட்ரி நின்றுவிடும், அதன் GCS failsafe தூண்டப்படலாம்.",
-      "armedConfirm": "துண்டி"
+      "armedConfirm": "துண்டி",
+      "armedUnknownTitle": "ஆர்ம் செய்யப்பட்டிருக்கக்கூடிய ட்ரோனைத் துண்டிக்கவா?",
+      "armedUnknownMessage": "{name} இன் ஆர்ம் நிலை தெரியவில்லை, அதனால் அது இன்னும் பறந்துகொண்டிருக்கலாம். துண்டித்தால் டெலிமெட்ரி நின்று அதன் GCS failsafe இயங்கக்கூடும்."
     }
   },
   "nodeConsole": {
@@ -1102,7 +1104,8 @@
       "rebootCommandSentToThe": "ஃப்ளைட் கன்ட்ரோலருக்கு மறுதொடக்கக் கட்டளை அனுப்பப்பட்டது",
       "failedToSendRebootCommand": "மறுதொடக்கக் கட்டளையை அனுப்ப முடியவில்லை",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
-      "rebootFC": "ஃப்ளைட் கன்ட்ரோலரை மறுதொடக்கம் செய்"
+      "rebootFC": "ஃப்ளைட் கன்ட்ரோலரை மறுதொடக்கம் செய்",
+      "rebootRefused": "ஃப்ளைட் கன்ட்ரோலர் மறுதொடக்கக் கட்டளையை மறுத்தது"
     },
     "appletCatalog": {
       "starterScripts": "தொடக்க ஸ்கிரிப்டுகள்",
@@ -1855,7 +1858,6 @@
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
     "surfaceErrorRetry": "Try again",
-    "openCockpit": "காக்பிட்டைத் திற",
     "nodeDetailTabs": "முனை விவரத் தாவல்கள்",
     "nodeNotFound": "“{id}” Drone கண்டறியப்படவில்லை",
     "retryConnect": "மீண்டும் முயல்",
@@ -2011,7 +2013,9 @@
     "backendMock": "Detector backend is a test stand-in; detections are not from a real model.",
     "benchmarkOnly": "Benchmark only",
     "benchmarkOnlyHint": "Weights carry research-use terms. Never installed by default; install explicitly for benchmarks.",
-    "notDetector": "Not a detector"
+    "notDetector": "Not a detector",
+    "inputsNotReported": "கேமராக்கள் இன்னும் தெரிவிக்கப்படவில்லை — நோட் தன் திறன்களைத் தெரிவிக்கக் காத்திருக்கிறது.",
+    "tierHint_cpu": "டிடெக்டர் இந்த நோடின் CPU-வில் இயங்குகிறது. முடுக்கி இல்லாததால் குறைந்த ஃபிரேம் வீதத்தை எதிர்பார்க்கவும்."
   },
   "nodeSettings": {
     "subtitle": "இந்த நோடின் துணைக் கணினியை உள்ளமைக்கவும். மாற்றங்கள் LAN வழியாக நேரடியாக ஏஜென்டில் எழுதப்படும்.",
@@ -2641,7 +2645,8 @@
     "commandCancelled": "{name} க்கான கட்டளை ரத்துசெய்யப்பட்டது",
     "cancelTooLate": "{name} க்கான கட்டளை ஏற்கனவே ட்ரோனிடம் உள்ளது. அதன் பதிலுக்காகக் காத்திருக்கிறது.",
     "notPickedUp": "30 வினாடிகளுக்குள் ட்ரோன் கட்டளையை ஏற்கவில்லை",
-    "nodeUnreachable": "இந்த நெட்வொர்க்கில் ட்ரோனை அணுக முடியவில்லை"
+    "nodeUnreachable": "இந்த நெட்வொர்க்கில் ட்ரோனை அணுக முடியவில்லை",
+    "disableArmedUnknownNote": "இந்த விமானம் ஆர்ம் செய்யப்பட்டிருக்கலாம்: அதன் ஆர்ம் நிலை தெரியவில்லை."
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -3232,7 +3237,11 @@
     "restartConfirmLabel": "Restart",
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
-    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller."
+    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "notAttached": {
+      "title": "இந்த நோடுடன் நேரடி இணைப்பு இல்லை",
+      "body": "இதன் நிலை, சேவைகள், பதிவுகள், மறுதொடக்கக் கட்டுப்பாடுகள் இந்த நோடின் ஏஜென்டுடனான நேரடி இணைப்பிலிருந்து வருகின்றன. இந்த உலாவி அதனுடன் இணைந்ததும் அவை தோன்றும்."
+    }
   },
   "fleetNetwork": {
     "title": "ஃப்ளீட் நெட்வொர்க்",
@@ -4211,7 +4220,8 @@
         "verifyMismatch": "ஃப்ளைட் கன்ட்ரோலர் பணியை ஏற்றது, ஆனால் திரும்பப் படித்த நகல் வேறுபடுகிறது. மீண்டும் பதிவேற்றவும்.",
         "verifyFailed": "ஃப்ளைட் கன்ட்ரோலர் பணியை ஏற்றது, ஆனால் சரிபார்க்கத் திரும்பப் படிப்பது தோல்வியடைந்தது. இணைப்பைச் சரிபார்த்து மீண்டும் பதிவேற்றவும்."
       },
-      "fenceCrossed": "பணி இந்த வேலியைக் கடக்கிறது. வேலியை அனுப்பும் முன் பணியைச் சரிசெய்யவும்."
+      "fenceCrossed": "பணி இந்த வேலியைக் கடக்கிறது. வேலியை அனுப்பும் முன் பணியைச் சரிசெய்யவும்.",
+      "rallyOutsideFence": "ஒரு ரேலி புள்ளி ஜியோஃபென்ஸுக்கு வெளியே அல்லது விலக்கு மண்டலத்துக்குள் உள்ளது. ரேலி புள்ளிகளை அனுப்பும் முன் அதை நகர்த்துங்கள்."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -5423,7 +5433,8 @@
     "writeToFcCount": "{n} ஐ ஃப்ளைட் கன்ட்ரோலரில் எழுது",
     "writingProgress": "எழுதுகிறது {current}/{total}…",
     "writeToFcHint": "மாற்றிய அளவுருக்களை ஃப்ளைட் கன்ட்ரோலருக்கு அனுப்பு",
-    "notPresent": "இந்தப் பலகையில் இல்லை"
+    "notPresent": "இந்தப் பலகையில் இல்லை",
+    "notRead": "படிக்கப்படவில்லை"
   },
   "calibration": {
     "title": "கேலிப்ரேஷன்",
@@ -5943,7 +5954,7 @@
     "empty": "No commands available for this drone",
     "goToSimulate": "Go to Simulate",
     "goToMcp": "Go to MCP",
-    "openCockpit": "Open Cockpit",
+    "openCockpit": "Flight-ஐத் திற",
     "flight": "Flight",
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
@@ -9139,7 +9150,7 @@
     "addIp": "Add IP camera",
     "loading": "Loading cameras…",
     "empty": "No cameras detected on this node.",
-    "unavailable": "Cameras are read from this node's agent, and this session has no connection to it.",
+    "unavailable": "கேமராக்கள் இந்த நோடின் ஏஜென்டிலிருந்து படிக்கப்படுகின்றன, இந்த அமர்வுக்கு அதனுடன் இணைப்பு இல்லை.",
     "readOnlyNotice": "Camera editing runs on the local network. Connect directly to change the roster.",
     "errorTitle": "Couldn’t load cameras",
     "saveError": "Couldn’t save cameras",
@@ -9262,7 +9273,9 @@
       "removeAction": "நீக்கு",
       "armedTitle": "ஆயுதமேற்றப்பட்ட நிலையில் வீடியோவை மறுதொடக்கம் செய்யவா?",
       "armedMessage": "இந்த ட்ரோன் ஆயுதமேற்றப்பட்டுள்ளது. கேமரா மாற்றத்தைச் சேமித்தால் அதன் வீடியோ சில விநாடிகளுக்கு மறுதொடக்கம் ஆகும்.",
-      "armedAction": "சேமித்து மறுதொடக்கு"
+      "armedAction": "சேமித்து மறுதொடக்கு",
+      "armedUnknownTitle": "வீடியோவை மறுதொடக்கம் செய்யவா? ட்ரோன் ஆர்ம் செய்யப்பட்டிருக்கலாம்",
+      "armedUnknownMessage": "இந்த ட்ரோனின் ஆர்ம் நிலை தெரியவில்லை, அதனால் அது பறந்துகொண்டிருக்கலாம். கேமரா மாற்றத்தைச் சேமித்தால் அதன் வீடியோ சில விநாடிகள் மறுதொடக்கம் ஆகும்."
     }
   },
   "nodesView": {
@@ -10185,9 +10198,6 @@
     "noDronesWithAgent": "தொகுப்பில் உள்ள எந்த ட்ரோனிலும் ஏஜென்ட் இல்லை"
   },
   "flightScreen": {
-    "pill": {
-      "navSource": "Navigation source degraded ({kind})"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
@@ -10201,7 +10211,8 @@
       "differs": "ட்ரோனில் உள்ள திட்டம் இந்தச் சாதனத்தின் திட்டத்திலிருந்து வேறுபடுகிறது",
       "load": "ட்ரோனிலிருந்து பதிவிறக்கு",
       "loading": "ஏற்றுகிறது…"
-    }
+    },
+    "flyMissionNoPilot": "The Launch sheet needs the drone's onboard agent on this network, so it did not open. To fly the mission on the flight controller alone: Take off, then Mode › AUTO."
   },
   "operatorRegistry": {
     "profile": {
@@ -10670,7 +10681,9 @@
       "copyAgain": "மீண்டும் நகலெடு",
       "tryAgain": "மீண்டும் முயற்சி செய்",
       "iClearedIt": "நான் அழித்துவிட்டேன்",
-      "typeToContinue": "தொடர <word>EXPORT</word> என தட்டச்சு செய்யவும்."
+      "typeToContinue": "தொடர <word>EXPORT</word> என தட்டச்சு செய்யவும்.",
+      "pasteWithin": "{seconds} s க்குள் மற்ற உலாவி அல்லது காப்புச் சேமிப்பில் ஒட்டவும்.",
+      "autoClearsIn": "கிளிப்போர்டு {seconds} s இல் தானாக அழியும்"
     },
     "framePanel": {
       "frameConfiguration": "ஃப்ரேம் உள்ளமைவு",
@@ -10740,7 +10753,8 @@
       "notes": "குறிப்புகள்",
       "noActiveFlags": "செயலில் உள்ள கொடிகள் இல்லை.",
       "gps": "GPS",
-      "sensorStatusEKFVibrationGPS": "சென்சார் நிலை, EKF, அதிர்வு, GPS மற்றும் ஆர்முக்கு முந்தைய சோதனைகள்"
+      "sensorStatusEKFVibrationGPS": "சென்சார் நிலை, EKF, அதிர்வு, GPS மற்றும் ஆர்முக்கு முந்தைய சோதனைகள்",
+      "sensorsHealthy": "{healthy}/{total} சென்சார்கள் நலமாக உள்ளன"
     },
     "ledPanel": {
       "ledConfiguration": "LED உள்ளமைவு",
@@ -10761,7 +10775,15 @@
       "useLedCommand": "LED பட்டை ஒதுக்கீடுகளை அமைக்க FC கன்சோல் பலகத்தில் <cmd>led</cmd> கட்டளையைப் பயன்படுத்தவும்.",
       "ledCmdShow": "தற்போதைய LED பட்டை அமைப்பைக் காட்டு",
       "ledCmdExample": "எடுத்துக்காட்டு: LED 0 ஐ அமை",
-      "colorCmd": "LED நிறங்களைக் காட்டு/அமை"
+      "colorCmd": "LED நிறங்களைக் காட்டு/அமை",
+      "brightness": "ஒளிர்வு",
+      "brightnessOff": "அணை",
+      "brightnessLow": "குறைவு",
+      "brightnessMedium": "நடுத்தரம்",
+      "brightnessHigh": "அதிகம்",
+      "bitmaskValue": "பிட்மாஸ்க்: {value} (0x{hex})",
+      "unitLeds": "LED‌கள்",
+      "moreLeds": "+{n} மேலும்"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "மிக்சர் சுயவிவரங்கள்",
@@ -11002,7 +11024,16 @@
       "setARotorCountTo": "ரோட்டர் குணகங்களை உள்ளமைக்க ரோட்டர் எண்ணிக்கையை அமைக்கவும்.",
       "controlSurfaces": "கட்டுப்பாட்டு மேற்பரப்புகள்",
       "tiltServos": "சாய்வு சர்வோக்கள்",
-      "reversibleMotorsCARREV": "தலைகீழ் இயக்க மோட்டார்கள் (CA_R_REV)"
+      "reversibleMotorsCARREV": "தலைகீழ் இயக்க மோட்டார்கள் (CA_R_REV)",
+      "allocationMethod": "ஒதுக்கீட்டு முறை",
+      "reversibleNone": "எதுவும் இல்லை",
+      "reversibleBits": "{value} — அமைக்கப்பட்ட பிட்கள்…",
+      "rotorCount": "ரோட்டர் எண்ணிக்கை",
+      "surfaceCount": "மேற்பரப்பு எண்ணிக்கை",
+      "tiltServoCount": "சாய்வு-சர்வோ எண்ணிக்கை",
+      "rotorN": "ரோட்டர் {n}",
+      "surfaceN": "மேற்பரப்பு {n}",
+      "tiltN": "சாய்வு {n}"
     },
     "bfMotorTest": {
       "iConfirmAllPropellersHave": "அனைத்து ப்ரொப்பல்லர்களும் அகற்றப்பட்டதை உறுதிப்படுத்துகிறேன்",
@@ -11469,7 +11500,10 @@
     "flightModesPanel": {
       "flightModes": "பறப்பு முறைகள்",
       "connectToADroneTo": "பறக்கும் பயன்முறைகளை உள்ளமைக்க ட்ரோனுடன் இணைக்கவும்.",
-      "currentMode": "தற்போதைய பயன்முறை:"
+      "currentMode": "தற்போதைய பயன்முறை:",
+      "notRead": "பறப்பு முறைகள் இன்னும் வாகனத்திலிருந்து படிக்கப்படவில்லை.",
+      "readingModes": "பறப்பு முறைகளைப் படிக்கிறது…",
+      "readFailed": "பறப்பு முறைகளைப் படிக்க முடியவில்லை. திருத்துவதற்கு முன் மீண்டும் படிக்கவும்."
     },
     "flightModesHeader": {
       "flightModes": "பறப்பு பயன்முறைகள்",
@@ -11633,7 +11667,12 @@
       "selectNone": "எதையும் தேர்ந்தெடுக்காதே",
       "noParametersMatchTheCurrent": "தற்போதைய வடிகட்டியுடன் எந்த அளவுருவும் பொருந்தவில்லை.",
       "applyN": "{count} அளவுருக்களைப் பயன்படுத்து",
-      "selectedOf": "{total} இல் {selected} தேர்ந்தெடுக்கப்பட்டது"
+      "selectedOf": "{total} இல் {selected} தேர்ந்தெடுக்கப்பட்டது",
+      "fileParamCount": "{count, plural, one {(# அளவுரு)} other {(# அளவுருக்கள்)}}",
+      "changedCount": "{count} மாற்றப்பட்டன",
+      "addedCount": "{count} புதியவை",
+      "unchangedCount": "{count} மாற்றமில்லை",
+      "applyingProgress": "பயன்படுத்துகிறது {current}/{total}…"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "அளவுரு எழுதுதலை உறுதிப்படுத்து",
@@ -11675,7 +11714,8 @@
       "name": "பெயர்",
       "now": "இப்போது",
       "restore": "மீட்டமை",
-      "readingCurrentParameters": "தற்போதைய அளவுருக்களைப் படிக்கிறது…"
+      "readingCurrentParameters": "தற்போதைய அளவுருக்களைப் படிக்கிறது…",
+      "title": "அளவுருக்களை {target} க்கு மீட்டமை"
     },
     "inboundSigningSection": {
       "inboundVerification": "உள்வரும் சரிபார்ப்பு",
@@ -12050,7 +12090,10 @@
       "favorites": "பிடித்தவை"
     },
     "firmwareFcWizard": {
-      "dismiss": "மூடு"
+      "dismiss": "மூடு",
+      "postFlashSaved": "{count, plural, one {ஃபிளாஷ் செய்வதற்கு முன் # அளவுரு சேமிக்கப்பட்டது ({createdAt}).} other {ஃபிளாஷ் செய்வதற்கு முன் # அளவுருக்கள் சேமிக்கப்பட்டன ({createdAt}).}} ஃப்ளைட் கன்ட்ரோலரை மீண்டும் இணைத்து, மாற்றங்களைச் சரிபார்க்கவும்.",
+      "postFlashRestore": "{count, plural, one {# அளவுருவை மீட்டமை} other {# அளவுருக்களை மீட்டமை}}",
+      "postFlashSource": "{createdAt} இன் காப்புப்பிரதி"
     },
     "bfFailsafe": {
       "title": "ஃபெயில்சேஃப்",
@@ -12061,7 +12104,13 @@
       "offDelay": "மோட்டார் நிறுத்த தாமதம் (0.1 வி)",
       "throttle": "தரையிறக்க த்ராட்டில் (µs)",
       "throttleLowDelay": "குறைந்த த்ராட்டில் தாமதம் (0.1 வி)",
-      "switchMode": "ஃபெயில்சேஃப் சுவிட்ச் (0 நிலை 1, 1 நிறுத்து, 2 நிலை 2)"
+      "switchMode": "ஃபெயில்சேஃப் சுவிட்ச் (0 நிலை 1, 1 நிறுத்து, 2 நிலை 2)",
+      "procedureDrop": "விடு",
+      "procedureLand": "தரையிறங்கு",
+      "procedureGpsRescue": "GPS மீட்பு",
+      "switchStage1": "நிலை 1",
+      "switchKill": "நிறுத்து",
+      "switchStage2": "நிலை 2"
     },
     "px4Safety": {
       "title": "தோல்வி கண்டறிதல் & திரும்புதல்",

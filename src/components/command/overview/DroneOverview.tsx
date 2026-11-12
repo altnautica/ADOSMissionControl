@@ -83,6 +83,7 @@ export function DroneOverview({ ctx }: { ctx: SurfaceContext }) {
         title={ctx.displayName}
         reachedViaName={reachedViaName}
         fcConnected={ctx.isConnected}
+        nodeDeviceId={surfaceNodeDeviceId(ctx)}
       />
 
       {/* How this browser last reached the node, and the address it used.

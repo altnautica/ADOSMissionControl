@@ -243,14 +243,14 @@ export function ExportKeyModal({ client, droneId, linkId, open, onClose }: Props
               <div>
                 <p className="text-sm font-medium">{tr("copiedToClipboard")}</p>
                 <p className="text-xs text-text-tertiary">
-                  Paste into the other browser or backup store within {secondsLeft}s.
+                  {tr("pasteWithin", { seconds: secondsLeft })}
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="font-mono text-xs text-text-tertiary">
                 <Clipboard size={12} className="inline mr-1" aria-hidden="true" />
-                clipboard auto-clears in {secondsLeft}s
+                {tr("autoClearsIn", { seconds: secondsLeft })}
               </span>
               <button
                 type="button"

@@ -13,7 +13,7 @@ import L from "leaflet";
 import { useTelemetryStore } from "@/stores/telemetry-store";
 import { useTrailStore, type TrailPoint } from "@/stores/trail-store";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
-import { TILE_PROVIDERS } from "@/lib/tile-math";
+import { TILE_PROVIDERS, rasterZoomOptions } from "@/lib/tile-math";
 import { Crosshair } from "lucide-react";
 import { MapFollower } from "@/components/map/MapFollower";
 import "leaflet/dist/leaflet.css";
@@ -87,7 +87,11 @@ export function ReplayMap() {
         className="h-full w-full"
         zoomControl={false}
       >
-        <TileLayer url={TILE_PROVIDERS.dark.url} attribution={TILE_PROVIDERS.dark.attribution} />
+        <TileLayer
+          url={TILE_PROVIDERS.dark.url}
+          attribution={TILE_PROVIDERS.dark.attribution}
+          {...rasterZoomOptions(TILE_PROVIDERS.dark.maxZoom)}
+        />
         <MapFollower position={dronePos} follow={autoFollow} />
         <MapDragDetector onDrag={handleMapDrag} />
 

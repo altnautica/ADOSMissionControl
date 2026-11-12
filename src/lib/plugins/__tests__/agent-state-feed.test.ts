@@ -132,6 +132,30 @@ describe("agent-extended telemetry on a node-bound mount", () => {
     dispose();
   });
 
+  it("never walks a topic back to an older heartbeat slice after a failed LAN poll", async () => {
+    vi.useFakeTimers();
+    useAuthStore.setState({ isAuthenticated: true });
+    usePluginCloudStateStore.getState().setForDevice(
+      WS,
+      { [PLUGIN_ID]: { "telemetry.status": { payload: { jobs: 5 }, ts_ms: 9 } } },
+      Date.now(),
+    );
+    let lanUp = true;
+    fetchMock.mockImplementation(async () => {
+      if (!lanUp) throw new Error("unreachable");
+      return stateBody(11, { jobs: 7 });
+    });
+    const { postEvent, dispose } = subscribeStatus();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(postEvent).toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", { jobs: 7, ts_ms: 11 });
+
+    lanUp = false;
+    await vi.advanceTimersByTimeAsync(AGENT_STATE_POLL_MS * 2);
+    expect(postEvent).not.toHaveBeenCalledWith("telemetry.status", "telemetry.subscribe.status", { jobs: 5, ts_ms: 9 });
+    expect(postEvent).toHaveBeenCalledTimes(1);
+    dispose();
+  });
+
   it("runs one poll per (node, plugin) and stops when the last holder lets go", async () => {
     vi.useFakeTimers();
     fetchMock.mockImplementation(async () => stateBody(1, {}));

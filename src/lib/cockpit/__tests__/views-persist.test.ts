@@ -31,4 +31,27 @@ describe("cockpit view persistence", () => {
     expect(s.splitByDrone.d3).toBe(0.7);
     expect(s.byDrone.d2).toBe("split");
   });
+
+  it("writes a versioned record", () => {
+    useCockpitViewStore.getState().setView("d1", "map");
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    expect(stored.version).toBe(1);
+  });
+
+  it("drops a view id the spec does not name from an unversioned record", async () => {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({ state: { byDrone: { d4: "foo", d5: "map" }, splitByDrone: { d4: "wide" } }, version: 0 }),
+    );
+    await useCockpitViewStore.persist.rehydrate();
+    const s = useCockpitViewStore.getState();
+    expect(s.byDrone).toEqual({ d5: "map" });
+    expect(s.splitByDrone).toEqual({});
+  });
+
+  it("drops a view id the spec does not name from a current record", async () => {
+    localStorage.setItem(KEY, JSON.stringify({ state: { byDrone: { d6: "cinema", d7: "vision" }, splitByDrone: {} }, version: 1 }));
+    await useCockpitViewStore.persist.rehydrate();
+    expect(useCockpitViewStore.getState().byDrone).toEqual({ d7: "vision" });
+  });
 });

@@ -44,11 +44,6 @@ import { FcSection } from "@/components/fc/shared/FcSection";
 
 import { PanelSaveBar } from "@/components/fc/shared/PanelSaveBar";
 
-const AIRFRAME_FIELDS: CaField[] = [
-  { param: "CA_AIRFRAME", label: "Airframe", kind: "enum" },
-  { param: "CA_METHOD", label: "Allocation method", kind: "enum" },
-];
-
 export function Px4ControlAllocationPanel() {
   const tr = useTranslations("fcPanels.px4ControlAllocationPanel");
   const selectedProtocol = useDroneManager(selectSelectedProtocol);
@@ -75,6 +70,10 @@ export function Px4ControlAllocationPanel() {
   const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
+
+  // Staged geometry edits stay unsaved while the vehicle may be armed.
+
+  const geometryBlocked = isHardBlocked && [...dirtyParams].some(isFrameGeometryParam);
   const tShared = useTranslations("fcShared");
   const renderField = (f: CaField) => {
     const read = params.get(f.param);
@@ -103,10 +102,10 @@ export function Px4ControlAllocationPanel() {
     );
   };
 
-  const indexedCards = (count: number, fields: (i: number) => CaField[], label: string) =>
+  const indexedCards = (count: number, fields: (i: number) => CaField[], label: (n: number) => string) =>
     Array.from({ length: count }, (_, i) => (
       <div key={i} className="border border-border-default bg-bg-tertiary/30 p-3">
-        <div className="text-[11px] font-mono text-text-tertiary mb-2">{label} {i + 1}</div>
+        <div className="text-[11px] font-mono text-text-tertiary mb-2">{label(i + 1)}</div>
         <div className="space-y-2">{fields(i).map(renderField)}</div>
       </div>
     ));
@@ -123,39 +122,41 @@ export function Px4ControlAllocationPanel() {
           />
 
           <FcSection title={tr("airframe")}>
-            {AIRFRAME_FIELDS.map(renderField)}
+            {renderField({ param: "CA_AIRFRAME", label: tr("airframe"), kind: "enum" })}
+            {renderField({ param: "CA_METHOD", label: tr("allocationMethod"), kind: "enum" })}
             <div className="grid grid-cols-[180px_1fr] items-center gap-3">
               <div>
                 <span className="text-xs text-text-secondary">{tr("reversibleMotors")}</span>
                 <span className="text-[9px] text-text-tertiary block font-mono">{pn("CA_R_REV")}</span>
               </div>
               <Button variant="secondary" size="sm" disabled={isHardBlocked} onClick={() => setRevEditor(true)}>
-                {revValue === 0 ? "None" : `${revValue} — set bits…`}
+                {revValue === 0 ? tr("reversibleNone") : tr("reversibleBits", { value: revValue })}
               </Button>
             </div>
           </FcSection>
 
           <FcSection title={tr("rotors")}>
-            {renderField({ param: "CA_ROTOR_COUNT", label: "Rotor count", kind: "enum" })}
+            {renderField({ param: "CA_ROTOR_COUNT", label: tr("rotorCount"), kind: "enum" })}
             {rotorCount > 0
-              ? indexedCards(rotorCount, caRotorFields, "Rotor")
+              ? indexedCards(rotorCount, caRotorFields, (n) => tr("rotorN", { n }))
               : hasLoaded && <p className="text-[10px] text-text-tertiary">{tr("setARotorCountTo")}</p>}
           </FcSection>
 
           <FcSection title={tr("controlSurfaces")}>
-            {renderField({ param: "CA_SV_CS_COUNT", label: "Surface count", kind: "enum" })}
-            {surfaceCount > 0 && indexedCards(surfaceCount, caSurfaceFields, "Surface")}
+            {renderField({ param: "CA_SV_CS_COUNT", label: tr("surfaceCount"), kind: "enum" })}
+            {surfaceCount > 0 && indexedCards(surfaceCount, caSurfaceFields, (n) => tr("surfaceN", { n }))}
           </FcSection>
 
           <FcSection title={tr("tiltServos")}>
-            {renderField({ param: "CA_SV_TL_COUNT", label: "Tilt-servo count", kind: "enum" })}
-            {tiltCount > 0 && indexedCards(tiltCount, caTiltFields, "Tilt")}
+            {renderField({ param: "CA_SV_TL_COUNT", label: tr("tiltServoCount"), kind: "enum" })}
+            {tiltCount > 0 && indexedCards(tiltCount, caTiltFields, (n) => tr("tiltN", { n }))}
           </FcSection>
 
           <PanelSaveBar
             onSave={handleSave}
             saving={saving}
-            saveDisabled={!hasDirty || !connected}
+            saveDisabled={!hasDirty || !connected || geometryBlocked}
+            saveTitle={geometryBlocked ? hardBlockMessage : undefined}
             onRevert={handleRevert}
             revertDisabled={!hasDirty}
             showFlash={hasRamWrites}

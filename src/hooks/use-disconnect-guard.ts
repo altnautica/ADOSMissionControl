@@ -8,14 +8,24 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useNodeRegistryStore } from "@/stores/node-registry/node-registry-store";
 import { useToast } from "@/components/ui/toast";
 import type { CommandResult } from "@/lib/protocol/types";
+import type { ArmState } from "@/lib/types/drone";
 
-/** Whether a managed drone is positively known to be armed: the selected
- * drone's live arm state, else that node's registry entry. */
-function isDroneArmed(droneId: string): boolean {
-  if (useDroneManager.getState().selectedDroneId === droneId) {
-    return useDroneStore.getState().armState === "armed";
-  }
-  return useNodeRegistryStore.getState().getEntry(droneId)?.fc.armState === "armed";
+/** A managed drone's arm state: the selected drone's live arm state, else
+ * that node's registry entry; unknown when neither holds one. */
+function armStateOf(droneId: string): ArmState {
+  const state =
+    useDroneManager.getState().selectedDroneId === droneId
+      ? useDroneStore.getState().armState
+      : useNodeRegistryStore.getState().getEntry(droneId)?.fc.armState;
+  return state ?? "unknown";
+}
+
+/** A drone the operator asked to disconnect while it may be armed. */
+export interface ArmedDisconnect {
+  id: string;
+  name: string;
+  /** "armed", or "unknown" (after a link drop it may still be flying). */
+  armState: Exclude<ArmState, "disarmed">;
 }
 
 export function useDisconnectGuard() {
@@ -23,8 +33,8 @@ export function useDisconnectGuard() {
   const t = useTranslations("panelCommit.disconnectGuard");
   const [guardOpen, setGuardOpen] = useState(false);
   const [pendingDroneId, setPendingDroneId] = useState<string | null>(null);
-  // An armed drone the operator asked to disconnect, awaiting confirmation.
-  const [armedDrone, setArmedDrone] = useState<{ id: string; name: string } | null>(null);
+  // A possibly armed drone the operator asked to disconnect, awaiting confirmation.
+  const [armedDrone, setArmedDrone] = useState<ArmedDisconnect | null>(null);
 
   // Past the armed check: stop for pending parameter writes, else disconnect.
   const disconnectUnlessWritesPending = useCallback((droneId: string) => {
@@ -42,10 +52,11 @@ export function useDisconnectGuard() {
 
   const requestDisconnect = useCallback(
     (droneId: string) => {
-      // Cutting the link of an armed aircraft asks first.
-      if (isDroneArmed(droneId)) {
+      // Cutting the link of a possibly armed aircraft asks first.
+      const armState = armStateOf(droneId);
+      if (armState !== "disarmed") {
         const name = useDroneManager.getState().drones.get(droneId)?.name ?? droneId;
-        setArmedDrone({ id: droneId, name });
+        setArmedDrone({ id: droneId, name, armState });
         return;
       }
       disconnectUnlessWritesPending(droneId);

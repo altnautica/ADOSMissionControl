@@ -29,6 +29,8 @@ import { resolveFeatureDot } from "@/lib/nodes/node-feature-dots";
 import { useNodePersonalizationStore } from "@/stores/node-personalization-store";
 import { useCommandFleetStore } from "@/stores/command-fleet-store";
 import { useNodeControlAuthorityNotice } from "@/hooks/use-node-control-authority";
+import { useClockTick } from "@/lib/agent/freshness";
+import { livenessFromTimestamp } from "@/lib/nodes/presence";
 import { droneLiveness } from "../fleet/types";
 import { nodeBadgeLabels, nodeBadgesWithProvenance, type NodeBadge } from "./NodeBadgeSet";
 
@@ -74,11 +76,18 @@ export function NodeMetaLine({
   const personalization = useNodePersonalizationStore((s) => s.byNode[node.deviceId]);
   const authority = useNodeControlAuthorityNotice(node._id);
   const liveness = droneLiveness(node);
-  const battery = useCommandFleetStore((s) =>
-    effProfile === "drone" && liveness === "live"
-      ? s.cloudStatuses[node.deviceId]?.telemetry?.battery?.remaining
-      : undefined,
+  const status = useCommandFleetStore((s) =>
+    effProfile === "drone" ? s.cloudStatuses[node.deviceId] : undefined,
   );
+  // Re-judge the status row's age every second.
+  useClockTick();
+  // Presence alone is not enough: an agent that refuses the GCS (401/403)
+  // still counts as heard from, but writes no new status row. The battery
+  // shows only while that row is itself live.
+  const battery =
+    liveness === "live" && status && livenessFromTimestamp(status.updatedAt) === "live"
+      ? status.telemetry?.battery?.remaining
+      : undefined;
 
   const badges = nodeBadgesWithProvenance(node, effProfile, nodeBadgeLabels(t));
   const byKey = (key: string) => badges.find((b) => b.key === key);

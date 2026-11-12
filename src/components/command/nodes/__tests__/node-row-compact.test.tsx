@@ -100,7 +100,7 @@ describe("NodeMetaLine", () => {
 
   it("appends a live drone's battery, red below 15 %", () => {
     useCommandFleetStore.setState({
-      cloudStatuses: { n1: { deviceId: "n1", telemetry: { battery: { remaining: 12 } } } },
+      cloudStatuses: { n1: { deviceId: "n1", updatedAt: Date.now(), telemetry: { battery: { remaining: 12 } } } },
     } as never);
     wrap(<NodeMetaLine node={node()} effProfile="drone" />);
     const battery = screen.getByTestId("node-meta-battery");
@@ -110,9 +110,21 @@ describe("NodeMetaLine", () => {
 
   it("hides the battery once the drone is not live", () => {
     useCommandFleetStore.setState({
-      cloudStatuses: { n1: { deviceId: "n1", telemetry: { battery: { remaining: 80 } } } },
+      cloudStatuses: { n1: { deviceId: "n1", updatedAt: Date.now(), telemetry: { battery: { remaining: 80 } } } },
     } as never);
     wrap(<NodeMetaLine node={node({ lastSeen: Date.now() - 50_000 })} effProfile="drone" />);
+    expect(screen.queryByTestId("node-meta-battery")).toBeNull();
+  });
+
+  it("hides the last battery while the node answers but writes no new status", () => {
+    // A refused agent (401/403) still counts as heard from, so presence stays
+    // fresh, but its status row stops at the last value it wrote.
+    useCommandFleetStore.setState({
+      cloudStatuses: {
+        n1: { deviceId: "n1", updatedAt: Date.now() - 50_000, telemetry: { battery: { remaining: 64 } } },
+      },
+    } as never);
+    wrap(<NodeMetaLine node={node({ lastSeen: Date.now() })} effProfile="drone" />);
     expect(screen.queryByTestId("node-meta-battery")).toBeNull();
   });
 });

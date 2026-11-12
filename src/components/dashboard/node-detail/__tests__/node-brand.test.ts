@@ -35,7 +35,7 @@ describe("useNodeBrand flight-controller status", () => {
   it("reads online for a live FC session with no agent", () => {
     useDroneStore.setState({ lastHeartbeat: NOW - 1_000 });
     const { result } = renderHook(() =>
-      useNodeBrand({ profile: "flight-controller", title: "FC", fcConnected: true }),
+      useNodeBrand({ profile: "flight-controller", title: "FC", fcConnected: true, nodeDeviceId: null }),
     );
     expect(result.current.statusLine).toBe("hero.online");
   });
@@ -43,7 +43,7 @@ describe("useNodeBrand flight-controller status", () => {
   it("reads reconnecting when the session's heartbeat has gone silent", () => {
     useDroneStore.setState({ lastHeartbeat: NOW - 30_000 });
     const { result } = renderHook(() =>
-      useNodeBrand({ profile: "flight-controller", title: "FC", fcConnected: true }),
+      useNodeBrand({ profile: "flight-controller", title: "FC", fcConnected: true, nodeDeviceId: null }),
     );
     expect(result.current.statusLine).toBe("hero.reconnecting");
   });
@@ -51,7 +51,7 @@ describe("useNodeBrand flight-controller status", () => {
   it("reads offline with no FC session", () => {
     useDroneStore.setState({ lastHeartbeat: NOW });
     const { result } = renderHook(() =>
-      useNodeBrand({ profile: "flight-controller", title: "FC", fcConnected: false }),
+      useNodeBrand({ profile: "flight-controller", title: "FC", fcConnected: false, nodeDeviceId: null }),
     );
     expect(result.current.statusLine).toBe("hero.offline");
   });

@@ -13,7 +13,7 @@ import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { FlightRecord } from "@/lib/types";
-import { TILE_PROVIDERS } from "@/lib/tile-math";
+import { TILE_PROVIDERS, rasterZoomOptions } from "@/lib/tile-math";
 
 const COLORS = [
   "#3a82ff", "#eab308", "#22c55e", "#ef4444", "#a855f7",
@@ -59,8 +59,7 @@ export default function OverlayMapInner({ records }: OverlayMapInnerProps) {
         <TileLayer
           url={TILE_PROVIDERS.dark.url}
           attribution={TILE_PROVIDERS.dark.attribution}
-          maxNativeZoom={TILE_PROVIDERS.dark.maxZoom}
-          maxZoom={20}
+          {...rasterZoomOptions(TILE_PROVIDERS.dark.maxZoom)}
         />
         {records.map((r, i) => {
           const color = COLORS[i % COLORS.length];

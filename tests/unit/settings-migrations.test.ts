@@ -12,6 +12,7 @@ import {
   DEFAULT_PARAM_COLUMNS,
   DEFAULT_TELEMETRY_DECK_PAGES,
   type ParamColumnVisibility,
+  useSettingsStore,
 } from "@/stores/settings-store";
 import {
   cloneDefaultLoadout,
@@ -270,5 +271,21 @@ describe("migrateSettings", () => {
       52,
     ) as unknown as Record<string, unknown>;
     expect(result.themeMode).toBe("dark");
+  });
+
+  it("v57 clears a pad binding saved on a button the cockpit owns", () => {
+    const slots = cloneDefaultLoadout().slots.map((slot) =>
+      slot.skillId === "arm" ? { ...slot, gamepadButton: 0 } : slot.skillId === "rth" ? { ...slot, gamepadButton: 18 } : slot,
+    );
+    const incoming = {
+      activeLoadoutId: DEFAULT_LOADOUT_ID,
+      loadouts: { [DEFAULT_LOADOUT_ID]: { ...cloneDefaultLoadout(), slots } },
+    };
+    const result = migrateSettings(incoming, 56);
+    const migrated = result.loadouts?.[DEFAULT_LOADOUT_ID].slots ?? [];
+    expect(migrated.find((s) => s.skillId === "arm")?.gamepadButton).toBeNull();
+    // A button past the standard mapping is the operator's and stays bound.
+    expect(migrated.find((s) => s.skillId === "rth")?.gamepadButton).toBe(18);
+    expect(useSettingsStore.persist.getOptions().version).toBe(57);
   });
 });

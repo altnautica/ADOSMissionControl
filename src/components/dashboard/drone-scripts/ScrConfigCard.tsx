@@ -31,6 +31,7 @@ import {
   SCR_DEBUG_OPTS_BITS,
 } from "./scripts-constants";
 import { SaveBarLabel } from "@/components/fc/shared/SaveBarLabel";
+import { RebootFcButton } from "@/components/fc/shared/RebootFcButton";
 
 const ENABLE_OPTIONS: SelectOption[] = [...SCR_ENABLE_VALUES.entries()].map(
   ([code, label]) => ({ value: String(code), label: `${code}: ${label}` }),
@@ -85,7 +86,7 @@ export function ScrConfigCard() {
       if (result.success) {
         toast(tk("rebootCommandSentToThe"), "info");
       } else {
-        toast(result.message || "The flight controller refused the reboot command", "error");
+        toast(result.message || tk("rebootRefused"), "error");
       }
     } catch {
       toast(tk("failedToSendRebootCommand"), "error");
@@ -175,16 +176,15 @@ export function ScrConfigCard() {
               <SaveBarLabel k="writeToFlash" />
             </Button>
           )}
-          <Button
+          <RebootFcButton
             variant="secondary"
             size="md"
             icon={<RotateCw size={14} />}
             disabled={!connected}
             loading={rebooting}
-            onClick={handleReboot}
-          >
-            {tk("rebootFC")}
-          </Button>
+            onReboot={handleReboot}
+            label={tk("rebootFC")}
+          />
           {hasDirty && connected && (
             <span className="text-[10px] text-status-warning"><SaveBarLabel k="unsavedChanges" /></span>
           )}

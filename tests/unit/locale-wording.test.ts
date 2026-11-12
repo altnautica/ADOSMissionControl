@@ -46,8 +46,7 @@ describe("locale wording", () => {
   });
 
   it.each(["en", ...others])("%s carries no dead status-pill keys", (code) => {
-    const pill = get(load(code), "flightScreen.pill") as Tree;
-    expect(Object.keys(pill)).toEqual(["navSource"]);
+    expect(get(load(code), "flightScreen.pill")).toBeUndefined();
   });
 
   it("keeps the German flight-screen backfill uniformly English", () => {

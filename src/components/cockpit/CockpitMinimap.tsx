@@ -103,7 +103,7 @@ export const CockpitMinimap = memo(function CockpitMinimap({ droneId }: { droneI
                 data-testid="minimap-open-map"
                 title={t("openMapView")}
                 aria-label={t("openMapView")}
-                className="mmap-hit flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+                className="mmap-hit mmap-hit-end flex h-6 w-6 items-center justify-center rounded-md bg-bg-primary/70 text-on-media/80 backdrop-blur-sm transition-colors hover:text-on-media focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
               >
                 <Maximize2 size={13} aria-hidden="true" />
               </button>

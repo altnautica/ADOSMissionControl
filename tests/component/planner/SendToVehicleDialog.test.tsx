@@ -303,7 +303,7 @@ describe("SendToVehicleDialog fence row", () => {
   });
 
   it("leaves the fence sendable for other mission errors", () => {
-    mocks.errors = [{ code: "ALTITUDE_EXCEEDED", severity: "blocking" }];
+    mocks.errors = [{ code: "EXCESSIVE_DISTANCE", severity: "blocking" }];
     renderDialog();
     expect(screen.getByLabelText("Geofence")).toBeChecked();
   });

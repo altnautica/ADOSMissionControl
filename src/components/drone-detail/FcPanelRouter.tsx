@@ -124,7 +124,6 @@ export function FcPanelRouter({ activePanel, firmwareType, droneId, droneName }:
   if (activePanel === "calibrate") return <CalibrationPanel />;
   if (activePanel === "outputs") {
     if (firmwareType === "px4") return <ActuatorPanel />;
-    if (firmwareType === "betaflight") return <BfMotorsPanel />;
     return <OutputsPanel />;
   }
   if (activePanel === "frame") {

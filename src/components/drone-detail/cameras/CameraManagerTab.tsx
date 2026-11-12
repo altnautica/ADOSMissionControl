@@ -67,11 +67,16 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
   const nodeDeviceId = useFleetDrones(
     (drones) => drones.find((d) => d.id === droneId)?.cloudDeviceId ?? null,
   );
-  // Every roster write restarts the video pipeline; while armed each one asks
-  // first so the operator does not lose video by surprise.
-  const armed = useFleetDrones(
-    (drones) => drones.find((d) => d.id === droneId)?.armState === "armed",
+  // Every roster write restarts the video pipeline; while the drone may be
+  // armed each one asks first so the operator does not lose video by surprise.
+  // An unknown arm state (lost or stale FC link) may be airborne, so only a
+  // reported disarm skips the confirm.
+  const armState = useFleetDrones(
+    (drones) => drones.find((d) => d.id === droneId)?.armState,
   );
+  const mayBeArmed = armState !== "disarmed";
+  const armedMessage =
+    armState === "armed" ? t("confirm.armedMessage") : t("confirm.armedUnknownMessage");
   const direct = useNodeDirectAgent(nodeDeviceId);
   const client = direct?.client ?? null;
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
@@ -169,10 +174,10 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
   /** Runs a roster write now, or holds it for confirmation while armed. */
   const guarded = useCallback(
     (apply: () => void) => {
-      if (armed) setPending({ kind: "armed", apply });
+      if (mayBeArmed) setPending({ kind: "armed", apply });
       else apply();
     },
-    [armed],
+    [mayBeArmed],
   );
 
   const onToggle = useCallback(
@@ -316,9 +321,9 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
           </div>
         ) : null}
 
-        {!client && !cloudMode ? (
-          // No path to this node's agent: nothing was read, so "no cameras"
-          // would be a false report.
+        {!client ? (
+          // No path to this node's agent (a cloud session builds no client):
+          // nothing was read, so "no cameras" would be a false report.
           <p className="rounded border border-border-default bg-bg-tertiary/40 px-3 py-2 text-xs text-text-secondary">
             {t("unavailable")}
           </p>
@@ -383,12 +388,18 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
       <ConfirmDialog
         open={pending !== null}
         variant="danger"
-        title={pending?.kind === "remove" ? t("confirm.removeTitle") : t("confirm.armedTitle")}
+        title={
+          pending?.kind === "remove"
+            ? t("confirm.removeTitle")
+            : armState === "armed"
+              ? t("confirm.armedTitle")
+              : t("confirm.armedUnknownTitle")
+        }
         message={
           pending?.kind === "remove"
             ? t("confirm.removeMessage", { name: pending.name }) +
-              (armed ? ` ${t("confirm.armedMessage")}` : "")
-            : t("confirm.armedMessage")
+              (mayBeArmed ? ` ${armedMessage}` : "")
+            : armedMessage
         }
         confirmLabel={pending?.kind === "remove" ? t("confirm.removeAction") : t("confirm.armedAction")}
         onCancel={() => setPending(null)}

@@ -43,19 +43,26 @@ const APP = `http://127.0.0.1:${PORT}`;
 type OpenHandler = (details: { url: string }) => { action: "allow" | "deny" };
 type NavListener = (event: { preventDefault: () => void }, url?: string) => void;
 
-/** A WebContents stand-in that records what the policy registers. */
-function fakeContents() {
+/**
+ * A WebContents stand-in that records what the policy registers. Like a real
+ * EventEmitter it keeps every listener, duplicates included, and fires them
+ * all. `applications` applies the policy that many times, as the main window
+ * receives it both from `web-contents-created` and from its own setup.
+ */
+function fakeContents(applications = 1) {
   let openHandler: OpenHandler | null = null;
-  const listeners = new Map<string, NavListener>();
+  const listeners = new Map<string, NavListener[]>();
   const contents = {
     setWindowOpenHandler: (h: OpenHandler) => {
       openHandler = h;
     },
     on: (event: string, listener: NavListener) => {
-      listeners.set(event, listener);
+      listeners.set(event, [...(listeners.get(event) ?? []), listener]);
     },
   };
-  applyNavigationPolicy(contents as unknown as Electron.WebContents, PORT);
+  for (let i = 0; i < applications; i += 1) {
+    applyNavigationPolicy(contents as unknown as Electron.WebContents, PORT);
+  }
 
   return {
     open(url: string): "allow" | "deny" {
@@ -64,10 +71,10 @@ function fakeContents() {
     },
     /** Fire a navigation event; resolves whether the policy blocked it. */
     navigate(event: "will-navigate" | "will-redirect" | "will-prevent-unload", url?: string): boolean {
-      const listener = listeners.get(event);
-      if (!listener) throw new Error(`${event} was never registered`);
+      const registered = listeners.get(event);
+      if (!registered) throw new Error(`${event} was never registered`);
       let prevented = false;
-      listener({ preventDefault: () => (prevented = true) }, url);
+      for (const listener of registered) listener({ preventDefault: () => (prevented = true) }, url);
       return prevented;
     },
   };
@@ -158,5 +165,12 @@ describe("unload prompt", () => {
   it("keeps the page when the operator picks Stay", () => {
     showMessageBoxSync.mockReturnValue(1);
     expect(fakeContents().navigate("will-prevent-unload")).toBe(false);
+  });
+
+  it("asks once, and Stay holds, when the policy reaches a window twice", () => {
+    // Stay on the first box, Leave on a second one if it were shown.
+    showMessageBoxSync.mockReturnValueOnce(1).mockReturnValueOnce(0);
+    expect(fakeContents(2).navigate("will-prevent-unload")).toBe(false);
+    expect(showMessageBoxSync).toHaveBeenCalledTimes(1);
   });
 });

@@ -270,6 +270,8 @@
       "flashUnacknowledged": "Flash commit sent — the vehicle did not acknowledge it",
       "armedTitle": "Disconnect an armed drone?",
       "armedMessage": "{name} is armed. Disconnecting stops telemetry and may trigger its GCS failsafe.",
+      "armedUnknownTitle": "Disconnect a drone that may be armed?",
+      "armedUnknownMessage": "{name}'s arm state is unknown, so it may still be flying. Disconnecting stops telemetry and may trigger its GCS failsafe.",
       "armedConfirm": "Disconnect"
     }
   },
@@ -1102,7 +1104,8 @@
       "rebootCommandSentToThe": "Reboot command sent to the flight controller",
       "failedToSendRebootCommand": "Failed to send reboot command",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
-      "rebootFC": "Reboot flight controller"
+      "rebootFC": "Reboot flight controller",
+      "rebootRefused": "The flight controller refused the reboot command"
     },
     "appletCatalog": {
       "starterScripts": "Starter Scripts",
@@ -1860,7 +1863,6 @@
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
     "surfaceErrorRetry": "Try again",
-    "openCockpit": "Open cockpit",
     "nodeDetailTabs": "Node detail tabs",
     "scrollTabsLeft": "Scroll tabs left",
     "scrollTabsRight": "Scroll tabs right",
@@ -1945,6 +1947,7 @@
     "inputs": "Inputs",
     "inputsSubtitle": "Cameras feeding perception pipelines on this node.",
     "noInputs": "No camera inputs detected.",
+    "inputsNotReported": "Cameras not reported yet — waiting for the node to report its capabilities.",
     "cameraStreaming": "streaming",
     "cameraIdle": "idle",
     "inputFeeds": "feeds {models}",
@@ -1956,6 +1959,7 @@
     "tier_none": "None",
     "tier_unknown": "Unknown",
     "tierHint_local": "The detector runs on this node's own NPU — the ideal, lowest-latency path.",
+    "tierHint_cpu": "The detector runs on this node's CPU. It has no accelerator, so expect a lower frame rate.",
     "tierHint_offload": "This node streams frames to a workstation that runs the detector and returns the results.",
     "tierHint_hybrid": "A mix of on-node and offloaded pipelines.",
     "tierHint_none": "No perception pipeline is running on this node.",
@@ -2636,6 +2640,7 @@
     "disableConfirmTitle": "Disable {name}?",
     "disableConfirmMessage": "The extension will stop processing immediately. Any background work is killed.",
     "disableArmedNote": "This aircraft is armed.",
+    "disableArmedUnknownNote": "This aircraft may be armed: its arm state is unknown.",
     "waitingForNode": "Waiting for the drone to pick this up…",
     "cancelCommand": "Cancel",
     "commandCancelled": "Cancelled the command for {name}",
@@ -3222,6 +3227,10 @@
     "chip": "Chip",
     "cores": "Cores",
     "groundStationFallbackTitle": "Ground station",
+    "notAttached": {
+      "title": "No direct connection to this node",
+      "body": "Its status, services, logs and restart controls come from a direct connection to this node's agent. They appear once this browser connects to it."
+    },
     "logsSnapshotAge": "Snapshot · updated {age}",
     "sparklinePaused": "Paused",
     "restartConfirmTitle": "Restart {name}?",
@@ -3631,7 +3640,8 @@
         "verifyMismatch": "The flight controller acknowledged the mission, but the copy read back differs from what was sent. Upload again.",
         "verifyFailed": "The flight controller acknowledged the mission, but reading it back to check it failed. Check the link and upload again."
       },
-      "fenceCrossed": "The mission crosses this fence. Fix the mission before sending the fence."
+      "fenceCrossed": "The mission crosses this fence. Fix the mission before sending the fence.",
+      "rallyOutsideFence": "A rally point is outside the geofence or inside an exclusion zone. Move it before sending the rally points."
     },
     "shortcuts": {
       "select": "Select tool",
@@ -5428,7 +5438,8 @@
     "writeToFcCount": "Write {n} to flight controller",
     "writingProgress": "Writing {current}/{total}…",
     "writeToFcHint": "Send changed parameters to the flight controller",
-    "notPresent": "not present on this board"
+    "notPresent": "not present on this board",
+    "notRead": "not read"
   },
   "calibration": {
     "title": "Calibration",
@@ -5948,7 +5959,7 @@
     "empty": "No commands available for this drone",
     "goToSimulate": "Go to Simulate",
     "goToMcp": "Go to MCP",
-    "openCockpit": "Open Cockpit",
+    "openCockpit": "Open Flight",
     "flight": "Flight",
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
@@ -9267,6 +9278,8 @@
       "removeAction": "Remove",
       "armedTitle": "Restart video while armed?",
       "armedMessage": "This drone is armed. Saving the camera change restarts its video for a few seconds.",
+      "armedUnknownTitle": "Restart video? The drone may be armed",
+      "armedUnknownMessage": "This drone's arm state is unknown, so it may be flying. Saving the camera change restarts its video for a few seconds.",
       "armedAction": "Save and restart"
     }
   },
@@ -10185,9 +10198,6 @@
     "noDronesWithAgent": "No drone in the fleet has an agent"
   },
   "flightScreen": {
-    "pill": {
-      "navSource": "Navigation source degraded ({kind})"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
@@ -10197,6 +10207,7 @@
     },
     "fly": "Fly",
     "flyTitle": "Open the flight screen",
+    "flyMissionNoPilot": "The Launch sheet needs the drone's onboard agent on this network, so it did not open. To fly the mission on the flight controller alone: Take off, then Mode › AUTO.",
     "planBanner": {
       "differs": "Plan on drone differs from this device's plan",
       "load": "Download from drone",
@@ -10670,7 +10681,9 @@
       "copyAgain": "Copy again",
       "tryAgain": "Try again",
       "iClearedIt": "I cleared it",
-      "typeToContinue": "Type <word>EXPORT</word> to continue."
+      "typeToContinue": "Type <word>EXPORT</word> to continue.",
+      "pasteWithin": "Paste into the other browser or backup store within {seconds} s.",
+      "autoClearsIn": "Clipboard auto-clears in {seconds} s"
     },
     "framePanel": {
       "frameConfiguration": "Frame Configuration",
@@ -10740,7 +10753,8 @@
       "notes": "Notes",
       "noActiveFlags": "No active flags.",
       "gps": "GPS",
-      "sensorStatusEKFVibrationGPS": "Sensor status, EKF, vibration, GPS, and pre-arm checks"
+      "sensorStatusEKFVibrationGPS": "Sensor status, EKF, vibration, GPS, and pre-arm checks",
+      "sensorsHealthy": "{healthy}/{total} sensors healthy"
     },
     "ledPanel": {
       "ledConfiguration": "LED Configuration",
@@ -10761,7 +10775,15 @@
       "useLedCommand": "Use the <cmd>led</cmd> command in the FC Console panel to configure LED strip assignments.",
       "ledCmdShow": "Show current LED strip configuration",
       "ledCmdExample": "Example: set LED 0",
-      "colorCmd": "Show/set LED colors"
+      "colorCmd": "Show/set LED colors",
+      "brightness": "Brightness",
+      "brightnessOff": "Off",
+      "brightnessLow": "Low",
+      "brightnessMedium": "Medium",
+      "brightnessHigh": "High",
+      "bitmaskValue": "Bitmask: {value} (0x{hex})",
+      "unitLeds": "LEDs",
+      "moreLeds": "+{n} more"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "Mixer Profiles",
@@ -11002,7 +11024,16 @@
       "setARotorCountTo": "Set a rotor count to configure rotor coefficients.",
       "controlSurfaces": "Control Surfaces",
       "tiltServos": "Tilt Servos",
-      "reversibleMotorsCARREV": "Reversible motors (CA_R_REV)"
+      "reversibleMotorsCARREV": "Reversible motors (CA_R_REV)",
+      "allocationMethod": "Allocation method",
+      "reversibleNone": "None",
+      "reversibleBits": "{value} — set bits…",
+      "rotorCount": "Rotor count",
+      "surfaceCount": "Surface count",
+      "tiltServoCount": "Tilt-servo count",
+      "rotorN": "Rotor {n}",
+      "surfaceN": "Surface {n}",
+      "tiltN": "Tilt {n}"
     },
     "bfMotorTest": {
       "iConfirmAllPropellersHave": "I confirm all propellers have been removed",
@@ -11469,7 +11500,10 @@
     "flightModesPanel": {
       "flightModes": "Flight Modes",
       "connectToADroneTo": "Connect to a drone to configure flight modes.",
-      "currentMode": "Current Mode:"
+      "currentMode": "Current Mode:",
+      "notRead": "Flight modes not read from the vehicle yet.",
+      "readingModes": "Reading flight modes…",
+      "readFailed": "Flight modes could not be read. Read again before editing them."
     },
     "flightModesHeader": {
       "flightModes": "Flight Modes",
@@ -11633,7 +11667,12 @@
       "selectNone": "Select None",
       "noParametersMatchTheCurrent": "No parameters match the current filter.",
       "applyN": "{count, plural, one {Apply # parameter} other {Apply # parameters}}",
-      "selectedOf": "{selected} of {total} selectable params selected"
+      "selectedOf": "{selected} of {total} selectable params selected",
+      "fileParamCount": "{count, plural, one {(# param)} other {(# params)}}",
+      "changedCount": "{count} changed",
+      "addedCount": "{count} new",
+      "unchangedCount": "{count} unchanged",
+      "applyingProgress": "Applying {current}/{total}…"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Confirm Parameter Write",
@@ -11675,7 +11714,8 @@
       "name": "Name",
       "now": "Now",
       "restore": "Restore",
-      "readingCurrentParameters": "Reading current parameters…"
+      "readingCurrentParameters": "Reading current parameters…",
+      "title": "Restore parameters to {target}"
     },
     "inboundSigningSection": {
       "inboundVerification": "Inbound verification",
@@ -12050,7 +12090,10 @@
       "favorites": "Favorites"
     },
     "firmwareFcWizard": {
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "postFlashSaved": "{count, plural, one {# parameter was saved before flashing ({createdAt}).} other {# parameters were saved before flashing ({createdAt}).}} Reconnect the flight controller, then review what changed.",
+      "postFlashRestore": "{count, plural, one {Restore # parameter} other {Restore # parameters}}",
+      "postFlashSource": "the backup from {createdAt}"
     },
     "bfFailsafe": {
       "title": "Failsafe",
@@ -12061,7 +12104,13 @@
       "offDelay": "Motor off delay (0.1 s)",
       "throttle": "Landing throttle (µs)",
       "throttleLowDelay": "Throttle low delay (0.1 s)",
-      "switchMode": "Failsafe switch (0 stage 1, 1 kill, 2 stage 2)"
+      "switchMode": "Failsafe switch (0 stage 1, 1 kill, 2 stage 2)",
+      "procedureDrop": "Drop",
+      "procedureLand": "Land",
+      "procedureGpsRescue": "GPS rescue",
+      "switchStage1": "Stage 1",
+      "switchKill": "Kill",
+      "switchStage2": "Stage 2"
     },
     "px4Safety": {
       "title": "Failure detector and return",

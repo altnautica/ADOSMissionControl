@@ -108,7 +108,7 @@ describe("ground-station overview cards", () => {
 
 describe("ground-station overview poll", () => {
   it("refreshes the status, role, mesh and uplink slices the cards read", async () => {
-    renderWithIntl(<GroundStationOverview />);
+    renderWithIntl(<GroundStationOverview nodeDeviceId="gs-1" />);
     expect(poll.run).not.toBeNull();
     // Response bodies as the agent's ground-station routes return them.
     const api = {

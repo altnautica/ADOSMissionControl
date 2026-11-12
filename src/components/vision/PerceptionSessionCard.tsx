@@ -30,7 +30,10 @@ import {
   THROUGHPUT_WINDOW_MS,
   type PerceptionSessionState,
 } from "@/lib/vision/perception-health";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 
 const SESSION_STYLE: Record<PerceptionSessionState, string> = {
@@ -40,11 +43,20 @@ const SESSION_STYLE: Record<PerceptionSessionState, string> = {
   closed: "border-border-default bg-bg-tertiary text-text-tertiary",
 };
 
-export function PerceptionSessionCard({ droneId }: { droneId: string }) {
+export function PerceptionSessionCard({
+  droneId,
+  nodeDeviceId,
+}: {
+  droneId: string;
+  /** The node's agent device id. Every reading comes from this node's
+   * capability slice, never from whichever node is attached. */
+  nodeDeviceId: string | null;
+}) {
   const t = useTranslations("vision");
   const batch = useVisionDetectionsStore((s) => s.batches[droneId]);
-  const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
-  const target = useAgentCapabilitiesStore((s) => s.perceptionOffloadTarget);
+  const caps = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId));
+  const tier = caps?.perceptionTier;
+  const target = caps?.perceptionOffloadTarget;
 
   const [clock, setClock] = useState<{ now: number; rate: number | null }>(() => ({
     now: Date.now(),

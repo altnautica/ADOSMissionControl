@@ -270,7 +270,9 @@
       "flashUnacknowledged": "फ़्लैश कमिट भेजा गया — वाहन ने इसकी पुष्टि नहीं की",
       "armedTitle": "आर्म्ड ड्रोन को डिस्कनेक्ट करें?",
       "armedMessage": "{name} आर्म्ड है। डिस्कनेक्ट करने से टेलीमेट्री बंद हो जाएगी और इसका GCS फेलसेफ ट्रिगर हो सकता है।",
-      "armedConfirm": "डिस्कनेक्ट करें"
+      "armedConfirm": "डिस्कनेक्ट करें",
+      "armedUnknownTitle": "आर्म्ड हो सकने वाले ड्रोन को डिस्कनेक्ट करें?",
+      "armedUnknownMessage": "{name} की आर्म स्थिति अज्ञात है, इसलिए यह अभी भी उड़ रहा हो सकता है। डिस्कनेक्ट करने से टेलीमेट्री रुक जाती है और इसका GCS failsafe चालू हो सकता है।"
     }
   },
   "nodeConsole": {
@@ -1102,7 +1104,8 @@
       "rebootCommandSentToThe": "फ़्लाइट कंट्रोलर को रीबूट कमांड भेजा गया",
       "failedToSendRebootCommand": "रीबूट कमांड भेजने में विफल",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
-      "rebootFC": "फ़्लाइट कंट्रोलर रीबूट करें"
+      "rebootFC": "फ़्लाइट कंट्रोलर रीबूट करें",
+      "rebootRefused": "फ़्लाइट कंट्रोलर ने रीबूट कमांड अस्वीकार कर दी"
     },
     "appletCatalog": {
       "starterScripts": "स्टार्टर स्क्रिप्ट",
@@ -1855,7 +1858,6 @@
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
     "surfaceErrorRetry": "Try again",
-    "openCockpit": "कॉकपिट खोलें",
     "nodeDetailTabs": "नोड विवरण टैब",
     "nodeNotFound": "Drone \"{id}\" नहीं मिला",
     "retryConnect": "पुनः प्रयास",
@@ -2011,7 +2013,9 @@
     "backendMock": "Detector backend is a test stand-in; detections are not from a real model.",
     "benchmarkOnly": "Benchmark only",
     "benchmarkOnlyHint": "Weights carry research-use terms. Never installed by default; install explicitly for benchmarks.",
-    "notDetector": "Not a detector"
+    "notDetector": "Not a detector",
+    "inputsNotReported": "कैमरे अभी रिपोर्ट नहीं हुए — नोड की क्षमताओं की रिपोर्ट की प्रतीक्षा है।",
+    "tierHint_cpu": "डिटेक्टर इस नोड के CPU पर चलता है। इसमें कोई एक्सेलरेटर नहीं है, इसलिए कम फ़्रेम रेट की अपेक्षा करें।"
   },
   "nodeSettings": {
     "subtitle": "इस नोड के कंपैनियन कंप्यूटर को कॉन्फ़िगर करें। बदलाव LAN पर सीधे एजेंट में लिखे जाते हैं।",
@@ -2641,7 +2645,8 @@
     "commandCancelled": "{name} के लिए कमांड रद्द कर दी गई",
     "cancelTooLate": "ड्रोन को {name} के लिए कमांड पहले ही मिल चुकी है। इसके उत्तर की प्रतीक्षा की जा रही है।",
     "notPickedUp": "ड्रोन ने 30 सेकंड के भीतर कमांड प्राप्त नहीं की",
-    "nodeUnreachable": "इस नेटवर्क पर ड्रोन तक नहीं पहुंचा जा सकता"
+    "nodeUnreachable": "इस नेटवर्क पर ड्रोन तक नहीं पहुंचा जा सकता",
+    "disableArmedUnknownNote": "यह विमान आर्म्ड हो सकता है: इसकी आर्म स्थिति अज्ञात है।"
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -3232,7 +3237,11 @@
     "restartConfirmLabel": "Restart",
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
-    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller."
+    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "notAttached": {
+      "title": "इस नोड से कोई सीधा कनेक्शन नहीं",
+      "body": "इसकी स्थिति, सेवाएँ, लॉग और रीस्टार्ट नियंत्रण इस नोड के एजेंट से सीधे कनेक्शन से आते हैं। यह ब्राउज़र उससे जुड़ते ही वे दिखेंगे।"
+    }
   },
   "fleetNetwork": {
     "title": "फ़्लीट नेटवर्क",
@@ -4211,7 +4220,8 @@
         "verifyMismatch": "फ़्लाइट कंट्रोलर ने मिशन स्वीकारा, पर वापस पढ़ी गई प्रति अलग है। फिर से अपलोड करें।",
         "verifyFailed": "फ़्लाइट कंट्रोलर ने मिशन स्वीकारा, पर जाँच के लिए वापस पढ़ना विफल रहा। लिंक जाँचें और फिर अपलोड करें।"
       },
-      "fenceCrossed": "मिशन इस फ़ेंस को पार करता है। फ़ेंस भेजने से पहले मिशन ठीक करें।"
+      "fenceCrossed": "मिशन इस फ़ेंस को पार करता है। फ़ेंस भेजने से पहले मिशन ठीक करें।",
+      "rallyOutsideFence": "एक रैली पॉइंट जियोफ़ेंस से बाहर या किसी वर्जित क्षेत्र के अंदर है। रैली पॉइंट भेजने से पहले उसे हटाएँ।"
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -5423,7 +5433,8 @@
     "writeToFcCount": "फ़्लाइट कंट्रोलर पर {n} लिखें",
     "writingProgress": "लिखा जा रहा है {current}/{total}…",
     "writeToFcHint": "बदले गए पैरामीटर फ़्लाइट कंट्रोलर को भेजें",
-    "notPresent": "इस बोर्ड पर मौजूद नहीं"
+    "notPresent": "इस बोर्ड पर मौजूद नहीं",
+    "notRead": "पढ़ा नहीं गया"
   },
   "calibration": {
     "title": "कैलिब्रेशन",
@@ -5943,7 +5954,7 @@
     "empty": "No commands available for this drone",
     "goToSimulate": "Go to Simulate",
     "goToMcp": "Go to MCP",
-    "openCockpit": "Open Cockpit",
+    "openCockpit": "Flight खोलें",
     "flight": "Flight",
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
@@ -9139,7 +9150,7 @@
     "addIp": "Add IP camera",
     "loading": "Loading cameras…",
     "empty": "No cameras detected on this node.",
-    "unavailable": "Cameras are read from this node's agent, and this session has no connection to it.",
+    "unavailable": "कैमरे इस नोड के एजेंट से पढ़े जाते हैं, और इस सत्र का उससे कोई कनेक्शन नहीं है।",
     "readOnlyNotice": "Camera editing runs on the local network. Connect directly to change the roster.",
     "errorTitle": "Couldn’t load cameras",
     "saveError": "Couldn’t save cameras",
@@ -9262,7 +9273,9 @@
       "removeAction": "हटाएँ",
       "armedTitle": "आर्म्ड रहते हुए वीडियो रीस्टार्ट करें?",
       "armedMessage": "यह ड्रोन आर्म्ड है। कैमरा बदलाव सेव करने पर इसका वीडियो कुछ सेकंड के लिए रीस्टार्ट होगा।",
-      "armedAction": "सेव करें और रीस्टार्ट करें"
+      "armedAction": "सेव करें और रीस्टार्ट करें",
+      "armedUnknownTitle": "वीडियो फिर से शुरू करें? ड्रोन आर्म्ड हो सकता है",
+      "armedUnknownMessage": "इस ड्रोन की आर्म स्थिति अज्ञात है, इसलिए यह उड़ रहा हो सकता है। कैमरा बदलाव सहेजने से इसका वीडियो कुछ सेकंड के लिए फिर से शुरू होता है।"
     }
   },
   "nodesView": {
@@ -10185,9 +10198,6 @@
     "noDronesWithAgent": "फ़्लीट के किसी भी ड्रोन में एजेंट नहीं है"
   },
   "flightScreen": {
-    "pill": {
-      "navSource": "Navigation source degraded ({kind})"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
@@ -10201,7 +10211,8 @@
       "differs": "ड्रोन पर मौजूद प्लान इस डिवाइस के प्लान से अलग है",
       "load": "ड्रोन से डाउनलोड करें",
       "loading": "लोड हो रहा है…"
-    }
+    },
+    "flyMissionNoPilot": "The Launch sheet needs the drone's onboard agent on this network, so it did not open. To fly the mission on the flight controller alone: Take off, then Mode › AUTO."
   },
   "operatorRegistry": {
     "profile": {
@@ -10670,7 +10681,9 @@
       "copyAgain": "फिर से कॉपी करें",
       "tryAgain": "फिर से प्रयास करें",
       "iClearedIt": "मैंने इसे साफ़ कर दिया",
-      "typeToContinue": "जारी रखने के लिए <word>EXPORT</word> टाइप करें।"
+      "typeToContinue": "जारी रखने के लिए <word>EXPORT</word> टाइप करें।",
+      "pasteWithin": "{seconds} s के भीतर दूसरे ब्राउज़र या बैकअप स्टोर में पेस्ट करें।",
+      "autoClearsIn": "क्लिपबोर्ड {seconds} s में अपने-आप साफ़ होगा"
     },
     "framePanel": {
       "frameConfiguration": "फ़्रेम कॉन्फ़िगरेशन",
@@ -10740,7 +10753,8 @@
       "notes": "नोट्स",
       "noActiveFlags": "कोई सक्रिय फ़्लैग नहीं।",
       "gps": "GPS",
-      "sensorStatusEKFVibrationGPS": "सेंसर स्थिति, EKF, कंपन, GPS और प्री-आर्म जाँच"
+      "sensorStatusEKFVibrationGPS": "सेंसर स्थिति, EKF, कंपन, GPS और प्री-आर्म जाँच",
+      "sensorsHealthy": "{healthy}/{total} सेंसर स्वस्थ"
     },
     "ledPanel": {
       "ledConfiguration": "LED कॉन्फ़िगरेशन",
@@ -10761,7 +10775,15 @@
       "useLedCommand": "LED स्ट्रिप असाइनमेंट कॉन्फ़िगर करने के लिए FC कंसोल पैनल में <cmd>led</cmd> कमांड का उपयोग करें।",
       "ledCmdShow": "वर्तमान LED स्ट्रिप कॉन्फ़िगरेशन दिखाएँ",
       "ledCmdExample": "उदाहरण: LED 0 सेट करें",
-      "colorCmd": "LED रंग दिखाएँ/सेट करें"
+      "colorCmd": "LED रंग दिखाएँ/सेट करें",
+      "brightness": "चमक",
+      "brightnessOff": "बंद",
+      "brightnessLow": "कम",
+      "brightnessMedium": "मध्यम",
+      "brightnessHigh": "अधिक",
+      "bitmaskValue": "बिटमास्क: {value} (0x{hex})",
+      "unitLeds": "LED",
+      "moreLeds": "+{n} और"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "मिक्सर प्रोफ़ाइल",
@@ -11002,7 +11024,16 @@
       "setARotorCountTo": "रोटर गुणांक कॉन्फ़िगर करने के लिए रोटर संख्या सेट करें।",
       "controlSurfaces": "कंट्रोल सरफ़ेस",
       "tiltServos": "टिल्ट सर्वो",
-      "reversibleMotorsCARREV": "रिवर्सिबल मोटर (CA_R_REV)"
+      "reversibleMotorsCARREV": "रिवर्सिबल मोटर (CA_R_REV)",
+      "allocationMethod": "आवंटन विधि",
+      "reversibleNone": "कोई नहीं",
+      "reversibleBits": "{value} — सेट बिट…",
+      "rotorCount": "रोटर संख्या",
+      "surfaceCount": "सतह संख्या",
+      "tiltServoCount": "टिल्ट-सर्वो संख्या",
+      "rotorN": "रोटर {n}",
+      "surfaceN": "सतह {n}",
+      "tiltN": "टिल्ट {n}"
     },
     "bfMotorTest": {
       "iConfirmAllPropellersHave": "मैं पुष्टि करता/करती हूँ कि सभी प्रोपेलर हटा दिए गए हैं",
@@ -11469,7 +11500,10 @@
     "flightModesPanel": {
       "flightModes": "फ़्लाइट मोड",
       "connectToADroneTo": "फ़्लाइट मोड कॉन्फ़िगर करने के लिए ड्रोन से कनेक्ट करें।",
-      "currentMode": "वर्तमान मोड:"
+      "currentMode": "वर्तमान मोड:",
+      "notRead": "फ़्लाइट मोड अभी वाहन से नहीं पढ़े गए।",
+      "readingModes": "फ़्लाइट मोड पढ़े जा रहे हैं…",
+      "readFailed": "फ़्लाइट मोड पढ़े नहीं जा सके। संपादित करने से पहले फिर से पढ़ें।"
     },
     "flightModesHeader": {
       "flightModes": "फ़्लाइट मोड",
@@ -11633,7 +11667,12 @@
       "selectNone": "कोई नहीं चुनें",
       "noParametersMatchTheCurrent": "वर्तमान फ़िल्टर से कोई पैरामीटर मेल नहीं खाता।",
       "applyN": "{count} पैरामीटर लागू करें",
-      "selectedOf": "{total} में से {selected} पैरामीटर चुने गए"
+      "selectedOf": "{total} में से {selected} पैरामीटर चुने गए",
+      "fileParamCount": "{count, plural, one {(# पैरामीटर)} other {(# पैरामीटर)}}",
+      "changedCount": "{count} बदले",
+      "addedCount": "{count} नए",
+      "unchangedCount": "{count} अपरिवर्तित",
+      "applyingProgress": "लागू किया जा रहा है {current}/{total}…"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "पैरामीटर लिखने की पुष्टि करें",
@@ -11675,7 +11714,8 @@
       "name": "नाम",
       "now": "अभी",
       "restore": "पुनर्स्थापित करें",
-      "readingCurrentParameters": "वर्तमान पैरामीटर पढ़े जा रहे हैं…"
+      "readingCurrentParameters": "वर्तमान पैरामीटर पढ़े जा रहे हैं…",
+      "title": "पैरामीटर {target} पर पुनर्स्थापित करें"
     },
     "inboundSigningSection": {
       "inboundVerification": "इनबाउंड सत्यापन",
@@ -12050,7 +12090,10 @@
       "favorites": "पसंदीदा"
     },
     "firmwareFcWizard": {
-      "dismiss": "खारिज करें"
+      "dismiss": "खारिज करें",
+      "postFlashSaved": "{count, plural, one {फ़्लैश करने से पहले # पैरामीटर सहेजा गया ({createdAt})।} other {फ़्लैश करने से पहले # पैरामीटर सहेजे गए ({createdAt})।}} फ़्लाइट कंट्रोलर फिर से कनेक्ट करें, फिर बदलावों की समीक्षा करें।",
+      "postFlashRestore": "{count, plural, one {# पैरामीटर पुनर्स्थापित करें} other {# पैरामीटर पुनर्स्थापित करें}}",
+      "postFlashSource": "{createdAt} का बैकअप"
     },
     "bfFailsafe": {
       "title": "फ़ेलसेफ़",
@@ -12061,7 +12104,13 @@
       "offDelay": "मोटर बंद देरी (0.1 से)",
       "throttle": "लैंडिंग थ्रॉटल (µs)",
       "throttleLowDelay": "कम थ्रॉटल देरी (0.1 से)",
-      "switchMode": "फ़ेलसेफ़ स्विच (0 चरण 1, 1 बंद, 2 चरण 2)"
+      "switchMode": "फ़ेलसेफ़ स्विच (0 चरण 1, 1 बंद, 2 चरण 2)",
+      "procedureDrop": "ड्रॉप",
+      "procedureLand": "लैंड",
+      "procedureGpsRescue": "GPS रेस्क्यू",
+      "switchStage1": "चरण 1",
+      "switchKill": "किल",
+      "switchStage2": "चरण 2"
     },
     "px4Safety": {
       "title": "विफलता डिटेक्टर और वापसी",

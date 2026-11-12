@@ -16,12 +16,18 @@ export function BfFailsafePanel() {
       {
         title: tr("stage2"),
         fields: [
-          { param: "BF_FS_PROCEDURE", label: tr("procedure"), kind: "number", min: 0, max: 2, step: 1 },
+          {
+            param: "BF_FS_PROCEDURE", label: tr("procedure"), kind: "enum",
+            values: new Map([[0, tr("procedureDrop")], [1, tr("procedureLand")], [2, tr("procedureGpsRescue")]]),
+          },
           { param: "BF_FS_DELAY", label: tr("delay"), kind: "number", min: 0, max: 200, step: 1 },
           { param: "BF_FS_OFF_DELAY", label: tr("offDelay"), kind: "number", min: 0, max: 200, step: 1 },
           { param: "BF_FS_THROTTLE", label: tr("throttle"), kind: "number", min: 1000, max: 2000, step: 1 },
           { param: "BF_FS_THROTTLE_LOW_DELAY", label: tr("throttleLowDelay"), kind: "number", min: 0, max: 300, step: 1 },
-          { param: "BF_FS_SWITCH_MODE", label: tr("switchMode"), kind: "number", min: 0, max: 2, step: 1 },
+          {
+            param: "BF_FS_SWITCH_MODE", label: tr("switchMode"), kind: "enum",
+            values: new Map([[0, tr("switchStage1")], [1, tr("switchKill")], [2, tr("switchStage2")]]),
+          },
         ],
       },
     ],

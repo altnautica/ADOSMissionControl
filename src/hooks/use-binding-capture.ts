@@ -95,7 +95,7 @@ export interface ButtonCaptureResult {
 }
 
 interface ButtonCaptureOptions {
-  /** Called with the 0..15 button index for the first off->on edge. */
+  /** Called with the button index (input-store buttons[]) for the first off->on edge. */
   onCapture: (button: number) => void;
   /** Called when the pressed button is owned by the cockpit (refused). */
   onReserved?: (button: number) => void;

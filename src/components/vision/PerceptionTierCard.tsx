@@ -15,7 +15,10 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Cpu, Layers } from "lucide-react";
 
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import { perceptionFeedState } from "@/lib/vision/perception-health";
 
@@ -32,15 +35,19 @@ const TIER_STYLE: Record<Tier, string> = {
 
 interface PerceptionTierCardProps {
   droneId: string;
+  /** The node's agent device id. Every reading comes from this node's
+   * capability slice, never from whichever node is attached. */
+  nodeDeviceId: string | null;
 }
 
-export function PerceptionTierCard({ droneId }: PerceptionTierCardProps) {
+export function PerceptionTierCard({ droneId, nodeDeviceId }: PerceptionTierCardProps) {
   const t = useTranslations("vision");
 
-  const perceptionTier = useAgentCapabilitiesStore((s) => s.perceptionTier);
-  const offloadTarget = useAgentCapabilitiesStore(
-    (s) => s.perceptionOffloadTarget,
-  );
+  // This node's slice, or null when it has never described itself: then the
+  // tier and accelerator read as unknown, not as another node's.
+  const caps = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId));
+  const perceptionTier = caps?.perceptionTier;
+  const offloadTarget = caps?.perceptionOffloadTarget;
   // Live return-stream health for the offload path — the same freshness the
   // cockpit chip and session card read, surfaced here on the tier card too.
   const batch = useVisionDetectionsStore((s) => s.batches[droneId]);
@@ -55,10 +62,9 @@ export function PerceptionTierCard({ droneId }: PerceptionTierCardProps) {
     return () => clearInterval(id);
   }, [hasFeed]);
   const feed = perceptionFeedState(batch, now);
-  const npuTops = useAgentCapabilitiesStore((s) => s.npuTops);
-  const hasAccelerator = useAgentCapabilitiesStore((s) => s.hasAccelerator);
-  const compute = useAgentCapabilitiesStore((s) => s.compute);
-  const capsLoaded = useAgentCapabilitiesStore((s) => s.loaded);
+  const npuTops = caps?.npuTops;
+  const hasAccelerator = caps?.hasAccelerator;
+  const compute = caps?.compute;
 
   const tier: Tier = perceptionTier ?? "unknown";
   // Fall back to the compute block when the top-level mirrors are absent. Until
@@ -66,8 +72,8 @@ export function PerceptionTierCard({ droneId }: PerceptionTierCardProps) {
   // default, which is not a report of "no accelerator".
   const acceleratorPresent: boolean | null =
     hasAccelerator ??
-    (capsLoaded ? compute.npu_available || compute.gpu_available : null);
-  const tops = npuTops ?? compute.npu_tops;
+    (compute ? compute.npu_available || compute.gpu_available : null);
+  const tops = npuTops ?? compute?.npu_tops ?? 0;
   let acceleratorLine: string;
   if (acceleratorPresent === null) acceleratorLine = t("acceleratorNotReported");
   else if (!acceleratorPresent) acceleratorLine = t("acceleratorNone");

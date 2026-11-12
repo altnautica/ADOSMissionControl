@@ -20,6 +20,7 @@ import {
   BASEMAP_ORDER,
   basemapLabel,
   fieldPackProvider,
+  rasterZoomOptions,
   resolveBasemap,
   validateTileUrlTemplate,
 } from "@/lib/tile-math";
@@ -62,7 +63,8 @@ function ManagedTileLayer({ url, attribution, maxZoom, subdomains, crossOrigin }
     useTileHealthStore.getState().observe(url);
     const layer = L.tileLayer(url, {
       attribution,
-      maxZoom,
+      // `maxZoom` is the server's depth: deeper zooms stretch its last tiles.
+      ...rasterZoomOptions(maxZoom),
       crossOrigin,
       // Leaflet's default `abc` would leave a four-shard CDN's `d` unused.
       ...(subdomainKey ? { subdomains: subdomainKey } : {}),

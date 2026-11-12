@@ -13,6 +13,8 @@
  *
  * The column believes only a fresh pilot frame (`pilotFresh`, re-read on a
  * 500 ms tick): armed comes from the fresh pilot, else the FC heartbeat. An
+ * unknown arm state (pilot `null`, or the FC's `"unknown"` after link loss)
+ * may be a vehicle in the air, so the column offers Land, not Take off. An
  * armed aircraft counts as on the ground only when `vehicleLanded` says so;
  * with its landed state unknown the column offers Land, which is harmless on
  * the ground. A frozen frame never routes Take off or
@@ -41,6 +43,7 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useFlightGrid } from "@/components/cockpit/flight/flight-context";
 import { rectStyle, type FlightGridClass } from "@/components/cockpit/flight/flight-grid";
 import { useFlightSheet } from "@/components/cockpit/flight/flight-sheet";
+import { useToast } from "@/components/ui/toast";
 import { liveLaunchRequest, useLaunchRequestStore } from "@/stores/launch-request-store";
 
 /** How often the column re-reads the pilot frame's age (ms). */
@@ -107,7 +110,9 @@ function ColumnButton({
 }
 
 export function LeftColumn({ droneId }: { droneId: string }) {
-  const fcArmed = useDroneStore((s) => s.armState === "armed");
+  const fcArmed = useDroneStore((s) => (s.armState === "armed" ? true : s.armState === "disarmed" ? false : null));
+  const tFlight = useTranslations("flightScreen");
+  const { toast } = useToast();
   const { pilot: frame, receivedAt } = usePilotState(droneId);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -132,13 +137,19 @@ export function LeftColumn({ droneId }: { droneId: string }) {
   }, [onGround, setLaunchOpen]);
   // "Launch here" on a map: open the sheet, which takes the point. A request
   // the sheet cannot use (flying, no pilot, or picked too long ago) is dropped.
+  // A planner "Fly this mission" dropped for want of the pilot says why and
+  // names the flight-controller path instead.
   const launchRequested = useLaunchRequestStore((s) => s.pending?.droneId === droneId);
   useEffect(() => {
     if (!launchRequested) return;
-    const live = liveLaunchRequest(useLaunchRequestStore.getState().pending, droneId) !== null;
-    if (live && onGround && viaPilot) setLaunchOpen(true);
-    else useLaunchRequestStore.getState().consume();
-  }, [launchRequested, droneId, onGround, viaPilot, setLaunchOpen]);
+    const request = liveLaunchRequest(useLaunchRequestStore.getState().pending, droneId);
+    if (request && onGround && viaPilot) {
+      setLaunchOpen(true);
+      return;
+    }
+    useLaunchRequestStore.getState().consume();
+    if (request?.after === "mission" && !viaPilot) toast(tFlight("flyMissionNoPilot"), "warning");
+  }, [launchRequested, droneId, onGround, viaPilot, setLaunchOpen, toast, tFlight]);
   const sequence = pilot?.sequence ?? null;
   const sequenceRunning = sequence !== null && sequence.step !== "done";
   const grid = useFlightGrid();

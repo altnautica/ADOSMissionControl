@@ -37,10 +37,11 @@ const LED_TYPE_BITS = [
   { bit: 10, label: "Scripting" },
 ];
 
-const BRIGHTNESS_OPTIONS = ["Off", "Low", "Medium", "High"];
+const BRIGHTNESS_KEYS = ["brightnessOff", "brightnessLow", "brightnessMedium", "brightnessHigh"] as const;
 
 export function LedPanel() {
   const tr = useTranslations("fcPanels.ledPanel");
+  const tShared = useTranslations("fcShared");
   const panelState = useFcPanelState({ paramNames: LED_PARAMS, panelId: "led", autoLoad: true });
   const {
     params, loading, error, dirtyParams, hasRamWrites,
@@ -57,14 +58,22 @@ export function LedPanel() {
   const { isArmed, lockMessage } = useArmedLock();
   const hasDirty = dirtyParams.size > 0;
 
-  const ledTypes = params.get("NTF_LED_TYPES") ?? 0;
-  const ledLen = params.get("NTF_LED_LEN") ?? 1;
-  const brightness = params.get("NTF_LED_BRIGHT") ?? 3;
-  const override = params.get("NTF_LED_OVERRIDE");
+  // Controls are built only from values read from the vehicle. A default here
+  // would be written back on Save: one ticked bit over an unread mask clears
+  // every other LED type the vehicle had.
+  const readValue = (name: string) => (hasLoaded ? params.get(name) : undefined);
+  const ledTypes = readValue("NTF_LED_TYPES");
+  const ledLen = readValue("NTF_LED_LEN");
+  const brightness = readValue("NTF_LED_BRIGHT");
+  const override = readValue("NTF_LED_OVERRIDE");
   const overrideMeta = metadata.get("NTF_LED_OVERRIDE");
+  const unread = (
+    <span className="text-xs font-mono text-text-tertiary">{hasLoaded ? tShared("notPresent") : tShared("notRead")}</span>
+  );
 
   const toggleBit = useCallback((bit: number) => {
-    const current = params.get("NTF_LED_TYPES") ?? 0;
+    const current = params.get("NTF_LED_TYPES");
+    if (current === undefined) return;
     const mask = 1 << bit;
     const next = current & mask ? current & ~mask : current | mask;
     setLocalValue("NTF_LED_TYPES", next);
@@ -107,58 +116,71 @@ export function LedPanel() {
           {firmwareType !== 'betaflight' && (
             <>
               <FcSection icon={<Lightbulb size={14} />} title={tr("ledTypes")} description={tr("selectEnabledLEDHardwareBitmask")}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {LED_TYPE_BITS.map(({ bit, label }) => {
-                    const checked = (ledTypes & (1 << bit)) !== 0;
-                    return (
-                      <label key={bit} className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleBit(bit)}
-                          className="w-3.5 h-3.5 rounded border-border-default bg-bg-tertiary accent-accent-primary"
-                        />
-                        <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors">
-                          {label}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <div className="mt-2 text-[10px] text-text-tertiary font-mono">
-                  Bitmask: {ledTypes} (0x{ledTypes.toString(16).toUpperCase()})
-                </div>
+                {ledTypes === undefined ? unread : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {LED_TYPE_BITS.map(({ bit, label }) => {
+                        const checked = (ledTypes & (1 << bit)) !== 0;
+                        return (
+                          <label key={bit} className="flex items-center gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleBit(bit)}
+                              className="w-3.5 h-3.5 rounded border-border-default bg-bg-tertiary accent-accent-primary"
+                            />
+                            <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors">
+                              {label}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 text-[10px] text-text-tertiary font-mono">
+                      {tr("bitmaskValue", { value: ledTypes, hex: ledTypes.toString(16).toUpperCase() })}
+                    </div>
+                  </>
+                )}
               </FcSection>
 
               {/* Strip Length & Brightness */}
               <FcSection icon={<Lightbulb size={14} />} title={tr("stripSettings")} description={tr("ledCountAndBrightnessLevel")}>
-                <Input
-                  label={lbl(`NTF_LED_LEN — ${tr("stripLength")}`)}
-                  type="number"
-                  step="1"
-                  min="1"
-                  max="64"
-                  unit="LEDs"
-                  value={String(ledLen)}
-                  onChange={(e) => setLocalValue("NTF_LED_LEN", Number(e.target.value) || 1)}
-                />
-                <div>
-                  <label className="text-xs text-text-secondary block mb-2">{pl("NTF_LED_BRIGHT — Brightness")}</label>
-                  <div className="flex gap-2">
-                    {BRIGHTNESS_OPTIONS.map((label, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setLocalValue("NTF_LED_BRIGHT", i)}
-                        className={`flex-1 py-1.5 text-xs rounded border transition-colors ${
-                          brightness === i
-                            ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
-                            : "border-border-default bg-bg-tertiary text-text-secondary hover:text-text-primary"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                {ledLen === undefined ? (
+                  <div>
+                    <label className="text-xs text-text-secondary block mb-1">{lbl(`NTF_LED_LEN — ${tr("stripLength")}`)}</label>
+                    {unread}
                   </div>
+                ) : (
+                  <Input
+                    label={lbl(`NTF_LED_LEN — ${tr("stripLength")}`)}
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="64"
+                    unit={tr("unitLeds")}
+                    value={String(ledLen)}
+                    onChange={(e) => setLocalValue("NTF_LED_LEN", Number(e.target.value) || 1)}
+                  />
+                )}
+                <div>
+                  <label className="text-xs text-text-secondary block mb-2">{pl(`NTF_LED_BRIGHT — ${tr("brightness")}`)}</label>
+                  {brightness === undefined ? unread : (
+                    <div className="flex gap-2">
+                      {BRIGHTNESS_KEYS.map((key, i) => (
+                        <button
+                          key={key}
+                          onClick={() => setLocalValue("NTF_LED_BRIGHT", i)}
+                          className={`flex-1 py-1.5 text-xs rounded border transition-colors ${
+                            brightness === i
+                              ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
+                              : "border-border-default bg-bg-tertiary text-text-secondary hover:text-text-primary"
+                          }`}
+                        >
+                          {tr(key)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </FcSection>
 
@@ -185,24 +207,26 @@ export function LedPanel() {
               )}
 
               {/* LED Preview */}
-              <FcSection icon={<Lightbulb size={14} />} title={tr("patternPreview")} description={tr("visualRepresentationOfLEDStrip")}>
-                <div className="flex gap-1.5 flex-wrap py-2">
-                  {Array.from({ length: Math.min(ledLen, 32) }, (_, i) => (
-                    <div
-                      key={i}
-                      className="w-4 h-4 rounded-full border border-border-default transition-colors"
-                      style={{
-                        backgroundColor: brightness === 0 ? "var(--alt-bg-tertiary)" : "var(--alt-accent-primary)",
-                        opacity: brightness === 0 ? 0.2 : brightness === 1 ? 0.4 : brightness === 2 ? 0.7 : 1,
-                        boxShadow: brightness > 0 ? `0 0 ${brightness * 3}px var(--alt-accent-primary)` : "none",
-                      }}
-                    />
-                  ))}
-                  {ledLen > 32 && (
-                    <span className="text-[10px] text-text-tertiary self-center ml-1">+{ledLen - 32} more</span>
-                  )}
-                </div>
-              </FcSection>
+              {ledLen !== undefined && brightness !== undefined && (
+                <FcSection icon={<Lightbulb size={14} />} title={tr("patternPreview")} description={tr("visualRepresentationOfLEDStrip")}>
+                  <div className="flex gap-1.5 flex-wrap py-2">
+                    {Array.from({ length: Math.min(ledLen, 32) }, (_, i) => (
+                      <div
+                        key={i}
+                        className="w-4 h-4 rounded-full border border-border-default transition-colors"
+                        style={{
+                          backgroundColor: brightness === 0 ? "var(--alt-bg-tertiary)" : "var(--alt-accent-primary)",
+                          opacity: brightness === 0 ? 0.2 : brightness === 1 ? 0.4 : brightness === 2 ? 0.7 : 1,
+                          boxShadow: brightness > 0 ? `0 0 ${brightness * 3}px var(--alt-accent-primary)` : "none",
+                        }}
+                      />
+                    ))}
+                    {ledLen > 32 && (
+                      <span className="text-[10px] text-text-tertiary self-center ml-1">{tr("moreLeds", { n: ledLen - 32 })}</span>
+                    )}
+                  </div>
+                </FcSection>
+              )}
             </>
           )}
 
@@ -210,11 +234,11 @@ export function LedPanel() {
           <PanelSaveBar
             onSave={handleSave}
             saving={saving}
-            saveDisabled={!hasDirty || !connected || isArmed}
+            saveDisabled={!hasLoaded || !hasDirty || !connected || isArmed}
             saveTitle={isArmed ? lockMessage : undefined}
             showFlash={hasRamWrites}
             onFlash={handleFlash}
-          flashing={flashing}
+            flashing={flashing}
             flashDisabled={isArmed}
             flashTitle={isArmed ? lockMessage : undefined}
             showConnectHint={!connected}

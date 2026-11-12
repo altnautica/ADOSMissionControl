@@ -25,7 +25,10 @@ import {
 import { useVisionEngineStatus } from "@/hooks/use-vision-engine-models";
 import type { EngineModel } from "@/lib/agent/vision-client";
 import { detectionVersionNotice } from "@/lib/agent/vision-detections-ws";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import {
   executionTarget,
@@ -207,10 +210,14 @@ function IdleModelRow({
 
 export function VisionPipelinesPanel({
   droneId,
+  nodeDeviceId,
   selectedKey,
   onSelect,
 }: {
   droneId: string;
+  /** The node's agent device id. Every reading comes from this node's
+   * capability slice, never from whichever node is attached. */
+  nodeDeviceId: string | null;
   /** The pipeline stream (`modelId::cameraId`) currently pinned in the preview,
    * or null when the preview follows the latest batch. */
   selectedKey?: string | null;
@@ -226,10 +233,9 @@ export function VisionPipelinesPanel({
   const outdated = useVisionDetectionsStore((s) => s.outdatedDetectionVersion[droneId]);
 
   // Where detection runs for this node (tier-derived), stamped onto every row.
-  const tier = useAgentCapabilitiesStore((s) => s.perceptionTier);
-  const offloadTarget = useAgentCapabilitiesStore(
-    (s) => s.perceptionOffloadTarget,
-  );
+  const caps = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId));
+  const tier = caps?.perceptionTier;
+  const offloadTarget = caps?.perceptionOffloadTarget;
   const exec = useMemo(
     () => executionTarget(tier, offloadTarget),
     [tier, offloadTarget],

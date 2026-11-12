@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/toast";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { cn, isDemoMode } from "@/lib/utils";
 import { useArmedLock } from "@/hooks/use-armed-lock";
+import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import { resolveLanAgent } from "@/lib/agent/resolve-agent";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -53,7 +54,15 @@ export function useDronePluginActions(install: DronePluginCardData) {
   const t = useTranslations("dronePlugins");
   const { toast } = useToast();
   const router = useRouter();
-  const { isArmed } = useArmedLock(install.deviceId);
+  // The arm lock reads the registry and drone maps, which are keyed by node id.
+  const { isArmed, isHardBlocked } = useArmedLock(nodeIdForDevice(install.deviceId));
+  // What the disable confirm says about the aircraft: positively armed, or
+  // connected with an arm state not yet known to be disarmed.
+  const armedNote: "armed" | "unknown" | null = isArmed
+    ? "armed"
+    : isHardBlocked
+      ? "unknown"
+      : null;
 
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);
@@ -354,7 +363,7 @@ export function useDronePluginActions(install: DronePluginCardData) {
     setUpdateSettingsOpen,
     busy,
     waiting,
-    isArmed,
+    armedNote,
     agentOnly,
     pendingUpdate,
     statusLabel,

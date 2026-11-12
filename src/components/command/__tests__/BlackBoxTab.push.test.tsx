@@ -14,14 +14,6 @@ import { act, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../locales/en.json";
 
-// Gate always passes so the body (and the toolbar) renders.
-vi.mock("@/hooks/use-surface-gate", () => ({
-  useSurfaceGate: () => ({ mode: "ok", requirement: "agent-online" }),
-}));
-vi.mock("./shared/agent-gate-fallback", () => ({
-  agentGateFallback: () => null,
-}));
-
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));

@@ -39,12 +39,14 @@ const client = {
 const attached = { nodeDeviceId: "dev-1" };
 // The node's arm state as the fleet reports it.
 const fleet = { armState: "disarmed" };
+// Whether the session is a cloud session (which builds no agent client).
+const session = { cloudMode: false };
 
 vi.mock("@/stores/agent-connection-store", () => ({
   useAgentConnectionStore: (sel: (s: unknown) => unknown) =>
     sel({
-      client,
-      cloudMode: false,
+      client: session.cloudMode ? null : client,
+      cloudMode: session.cloudMode,
       agentUrl: "http://192.168.1.50:8080",
       apiKey: "k",
       nodeDeviceId: attached.nodeDeviceId,
@@ -89,6 +91,7 @@ describe("CameraManagerTab · restart timer lifecycle", () => {
     useCameraManagerStore.setState({ byDrone: {} });
     attached.nodeDeviceId = "dev-1";
     fleet.armState = "disarmed";
+    session.cloudMode = false;
   });
 
   afterEach(() => {
@@ -129,6 +132,15 @@ describe("CameraManagerTab · restart timer lifecycle", () => {
     expect(screen.getByText(messages.cameras.unavailable)).toBeTruthy();
     expect(screen.queryByText(messages.cameras.empty)).toBeNull();
   });
+
+  it("in a cloud session says the node is unreachable, not that it has no cameras", async () => {
+    session.cloudMode = true;
+    render(wrap(<CameraManagerTab droneId="d1" />));
+    await flush();
+    expect(client.getCameraRoster).not.toHaveBeenCalled();
+    expect(screen.getByText(messages.cameras.unavailable)).toBeTruthy();
+    expect(screen.queryByText(messages.cameras.empty)).toBeNull();
+  });
 });
 
 describe("CameraManagerTab · writes that restart video", () => {
@@ -138,6 +150,7 @@ describe("CameraManagerTab · writes that restart video", () => {
     useCameraManagerStore.setState({ byDrone: {} });
     attached.nodeDeviceId = "dev-1";
     fleet.armState = "disarmed";
+    session.cloudMode = false;
   });
 
   it("asks before removing a camera and writes only on confirm", async () => {
@@ -177,5 +190,63 @@ describe("CameraManagerTab · writes that restart video", () => {
     );
     await flush();
     expect(client.setCameraRoster).toHaveBeenCalledTimes(1);
+  });
+
+  describe("when the arm state is unknown (the drone may be flying)", () => {
+    beforeEach(() => {
+      fleet.armState = "unknown";
+    });
+
+    async function expectHeldForConfirm() {
+      await flush();
+      expect(client.setCameraRoster).not.toHaveBeenCalled();
+      expect(screen.getByText(messages.cameras.confirm.armedUnknownMessage)).toBeTruthy();
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: messages.cameras.confirm.armedAction }),
+      );
+      await flush();
+      expect(client.setCameraRoster).toHaveBeenCalledTimes(1);
+    }
+
+    it("holds a toggle for confirmation", async () => {
+      render(wrap(<CameraManagerTab droneId="d1" />));
+      await flush();
+      fireEvent.click(screen.getByRole("switch"));
+      await expectHeldForConfirm();
+    });
+
+    it("holds an edit for confirmation", async () => {
+      render(wrap(<CameraManagerTab droneId="d1" />));
+      await flush();
+      fireEvent.click(screen.getByRole("button", { name: messages.cameras.card.edit }));
+      fireEvent.click(screen.getByRole("button", { name: messages.cameras.editor.save }));
+      await expectHeldForConfirm();
+    });
+
+    it("holds an added camera for confirmation", async () => {
+      render(wrap(<CameraManagerTab droneId="d1" />));
+      await flush();
+      fireEvent.click(screen.getByRole("button", { name: messages.cameras.addIp }));
+      fireEvent.change(screen.getByPlaceholderText(messages.cameras.addDialog.namePlaceholder), {
+        target: { value: "Dome" },
+      });
+      fireEvent.change(screen.getByPlaceholderText(messages.cameras.addDialog.urlPlaceholder), {
+        target: { value: "rtsp://192.0.2.10:554/stream" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: messages.cameras.addDialog.add }));
+      await expectHeldForConfirm();
+    });
+
+    it("names the possible arm in the removal confirm", async () => {
+      render(wrap(<CameraManagerTab droneId="d1" />));
+      await flush();
+      fireEvent.click(screen.getByRole("button", { name: messages.cameras.card.remove }));
+      await flush();
+      expect(
+        screen.getByText(
+          `${messages.cameras.confirm.removeMessage.replace("{name}", "Belly cam")} ${messages.cameras.confirm.armedUnknownMessage}`,
+        ),
+      ).toBeTruthy();
+    });
   });
 });

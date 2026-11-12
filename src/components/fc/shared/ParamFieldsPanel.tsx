@@ -38,6 +38,9 @@ export interface ParamField {
   min?: number;
   max?: number;
   step?: number;
+  /** Enum labels for a parameter with no metadata of its own (an MSP
+   *  virtual parameter, for one). Metadata labels win when present. */
+  values?: Map<number, string>;
 }
 
 export interface ParamSection {
@@ -111,6 +114,7 @@ export function ParamFieldsPanel({
     const value = params.get(f.param);
     const isDirty = dirtyParams.has(f.param);
     const meta = paramMeta.get(f.param);
+    const enumValues = meta?.values && meta.values.size > 0 ? meta.values : f.values;
     if (value === undefined) {
       // Not read yet, the read failed, or the vehicle has no such param:
       // never present a stand-in 0 as the vehicle's value.
@@ -124,8 +128,8 @@ export function ParamFieldsPanel({
     return (
       <div key={f.param} className="grid grid-cols-[200px_1fr] items-center gap-3">
         <ParamFieldLabel label={f.label} param={pn(f.param)} meta={meta} />
-        {f.kind === "enum" && meta?.values && meta.values.size > 0 ? (
-          <EnumSelect values={meta.values} value={value} onChange={(v) => setLocalValue(f.param, v)} />
+        {f.kind === "enum" && enumValues && enumValues.size > 0 ? (
+          <EnumSelect values={enumValues} value={value} onChange={(v) => setLocalValue(f.param, v)} />
         ) : f.kind === "bitmask" && meta?.bitmask && meta.bitmask.size > 0 ? (
           <button
             onClick={() => setBitmaskEdit(f.param)}

@@ -104,4 +104,31 @@ describe("skill input while the controller tour shows", () => {
     pressPad(FREE_BUTTON);
     expect(activateSpy).not.toHaveBeenCalled();
   });
+
+  it("does not re-fire a button still held when the tab comes back", () => {
+    mount();
+    pressPad(FREE_BUTTON);
+    expect(activateSpy).toHaveBeenCalledTimes(1);
+    const held = Array.from({ length: 20 }, (_, i) => i === FREE_BUTTON);
+    const setHidden = (hidden: boolean) =>
+      act(() => {
+        Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+    // Hidden: the pad dispatcher clears the store's buttons, and the pad
+    // listener restarts meanwhile (here the tour opens and closes), seeding
+    // from the cleared buttons.
+    setHidden(true);
+    act(() => useInputStore.setState({ buttons: [] }));
+    act(() => useControlsStore.setState({ tourVisible: true }));
+    act(() => useControlsStore.setState({ tourVisible: false }));
+    // Back: the poll republishes the button still held.
+    setHidden(false);
+    act(() => useInputStore.setState({ buttons: [...held] }));
+    expect(activateSpy).toHaveBeenCalledTimes(1);
+    // A release and a fresh press fire again.
+    pressPad(FREE_BUTTON);
+    expect(activateSpy).toHaveBeenCalledTimes(2);
+    Reflect.deleteProperty(document, "hidden");
+  });
 });

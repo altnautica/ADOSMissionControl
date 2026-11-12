@@ -270,7 +270,9 @@
       "flashUnacknowledged": "플래시 커밋을 보냈지만 기체가 응답하지 않았습니다",
       "armedTitle": "시동 상태인 드론의 연결을 해제할까요?",
       "armedMessage": "{name}이(가) 시동 상태입니다. 연결을 해제하면 텔레메트리가 중단되고 GCS 페일세이프가 작동할 수 있습니다.",
-      "armedConfirm": "연결 해제"
+      "armedConfirm": "연결 해제",
+      "armedUnknownTitle": "시동 상태일 수 있는 드론의 연결을 끊을까요?",
+      "armedUnknownMessage": "{name}의 시동 상태를 알 수 없어 아직 비행 중일 수 있습니다. 연결을 끊으면 텔레메트리가 멈추고 GCS 페일세이프가 작동할 수 있습니다."
     }
   },
   "nodeConsole": {
@@ -1102,7 +1104,8 @@
       "rebootCommandSentToThe": "비행 컨트롤러에 재부팅 명령을 보냈습니다",
       "failedToSendRebootCommand": "재부팅 명령을 보내지 못했습니다",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
-      "rebootFC": "비행 컨트롤러 재부팅"
+      "rebootFC": "비행 컨트롤러 재부팅",
+      "rebootRefused": "비행 컨트롤러가 재부팅 명령을 거부했습니다"
     },
     "appletCatalog": {
       "starterScripts": "기본 제공 스크립트",
@@ -1855,7 +1858,6 @@
     "cameras": "Cameras",
     "surfaceError": "This view failed to render. The rest of the console is unaffected.",
     "surfaceErrorRetry": "Try again",
-    "openCockpit": "조종석 열기",
     "nodeDetailTabs": "노드 상세 탭",
     "nodeNotFound": "드론 ‘{id}’을(를) 찾을 수 없습니다",
     "retryConnect": "다시 시도",
@@ -2011,7 +2013,9 @@
     "backendMock": "Detector backend is a test stand-in; detections are not from a real model.",
     "benchmarkOnly": "Benchmark only",
     "benchmarkOnlyHint": "Weights carry research-use terms. Never installed by default; install explicitly for benchmarks.",
-    "notDetector": "Not a detector"
+    "notDetector": "Not a detector",
+    "inputsNotReported": "카메라가 아직 보고되지 않았습니다 — 노드가 기능을 보고하기를 기다리는 중입니다.",
+    "tierHint_cpu": "검출기가 이 노드의 CPU에서 실행됩니다. 가속기가 없어 프레임 속도가 낮을 수 있습니다."
   },
   "nodeSettings": {
     "subtitle": "이 노드의 컴패니언 컴퓨터를 설정합니다. 변경 사항은 LAN을 통해 에이전트에 바로 기록됩니다.",
@@ -2641,7 +2645,8 @@
     "commandCancelled": "{name}에 대한 명령을 취소했습니다",
     "cancelTooLate": "드론이 이미 {name}에 대한 명령을 받았습니다. 응답을 기다리는 중입니다.",
     "notPickedUp": "드론이 30초 안에 명령을 수신하지 않았습니다",
-    "nodeUnreachable": "이 네트워크에서 드론에 연결할 수 없습니다"
+    "nodeUnreachable": "이 네트워크에서 드론에 연결할 수 없습니다",
+    "disableArmedUnknownNote": "이 기체는 시동 상태일 수 있습니다. 시동 상태를 알 수 없습니다."
   },
   "droneRadio": {
     "airSideBadge": "Air side",
@@ -3232,7 +3237,11 @@
     "restartConfirmLabel": "Restart",
     "restartQueued": "Restart of {name} sent over the cloud relay. Watch its status here for the result.",
     "restartAllServices": "Restart all services",
-    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller."
+    "fcCommandGated": "Flight controller telemetry is arriving, but commands to it are held behind a safety gate on this link. Arm, mode and mission commands will not reach the flight controller.",
+    "notAttached": {
+      "title": "이 노드에 직접 연결되어 있지 않음",
+      "body": "상태, 서비스, 로그, 재시작 제어는 이 노드 에이전트와의 직접 연결에서 가져옵니다. 이 브라우저가 연결되면 표시됩니다."
+    }
   },
   "fleetNetwork": {
     "title": "편대 네트워크",
@@ -4211,7 +4220,8 @@
         "verifyMismatch": "비행 컨트롤러가 미션을 수신했지만 다시 읽은 내용이 다릅니다. 다시 업로드하세요.",
         "verifyFailed": "비행 컨트롤러가 미션을 수신했지만 확인용 읽기에 실패했습니다. 링크를 확인하고 다시 업로드하세요."
       },
-      "fenceCrossed": "미션이 이 펜스를 넘습니다. 펜스를 보내기 전에 미션을 수정하세요."
+      "fenceCrossed": "미션이 이 펜스를 넘습니다. 펜스를 보내기 전에 미션을 수정하세요.",
+      "rallyOutsideFence": "랠리 포인트가 지오펜스 밖이나 제외 구역 안에 있습니다. 랠리 포인트를 보내기 전에 옮기세요."
     },
     "dock": {
       "ariaLabel": "Mission review",
@@ -5423,7 +5433,8 @@
     "writeToFcCount": "비행 컨트롤러에 {n}개 쓰기",
     "writingProgress": "쓰는 중 {current}/{total}…",
     "writeToFcHint": "변경된 파라미터를 비행 컨트롤러로 전송",
-    "notPresent": "이 보드에 없음"
+    "notPresent": "이 보드에 없음",
+    "notRead": "읽지 않음"
   },
   "calibration": {
     "title": "캘리브레이션",
@@ -5943,7 +5954,7 @@
     "empty": "No commands available for this drone",
     "goToSimulate": "Go to Simulate",
     "goToMcp": "Go to MCP",
-    "openCockpit": "Open Cockpit",
+    "openCockpit": "Flight 열기",
     "flight": "Flight",
     "noDroneSelected": "No drone selected",
     "noDronesInFleet": "No drones in fleet",
@@ -9139,7 +9150,7 @@
     "addIp": "Add IP camera",
     "loading": "Loading cameras…",
     "empty": "No cameras detected on this node.",
-    "unavailable": "Cameras are read from this node's agent, and this session has no connection to it.",
+    "unavailable": "카메라는 이 노드의 에이전트에서 읽어 오며, 이 세션은 해당 에이전트에 연결되어 있지 않습니다.",
     "readOnlyNotice": "Camera editing runs on the local network. Connect directly to change the roster.",
     "errorTitle": "Couldn’t load cameras",
     "saveError": "Couldn’t save cameras",
@@ -9262,7 +9273,9 @@
       "removeAction": "제거",
       "armedTitle": "시동 상태에서 영상을 재시작할까요?",
       "armedMessage": "이 드론은 시동이 걸린 상태입니다. 카메라 변경 사항을 저장하면 영상이 몇 초간 재시작됩니다.",
-      "armedAction": "저장 후 재시작"
+      "armedAction": "저장 후 재시작",
+      "armedUnknownTitle": "영상을 다시 시작할까요? 드론이 시동 상태일 수 있습니다",
+      "armedUnknownMessage": "이 드론의 시동 상태를 알 수 없어 비행 중일 수 있습니다. 카메라 변경을 저장하면 영상이 몇 초 동안 다시 시작됩니다."
     }
   },
   "nodesView": {
@@ -10185,9 +10198,6 @@
     "noDronesWithAgent": "에이전트가 있는 드론이 기체 목록에 없습니다"
   },
   "flightScreen": {
-    "pill": {
-      "navSource": "Navigation source degraded ({kind})"
-    },
     "row": {
       "d": "Distance from home",
       "h": "Height above home",
@@ -10201,7 +10211,8 @@
       "differs": "드론의 계획이 이 기기의 계획과 다릅니다",
       "load": "드론에서 다운로드",
       "loading": "불러오는 중…"
-    }
+    },
+    "flyMissionNoPilot": "The Launch sheet needs the drone's onboard agent on this network, so it did not open. To fly the mission on the flight controller alone: Take off, then Mode › AUTO."
   },
   "operatorRegistry": {
     "profile": {
@@ -10670,7 +10681,9 @@
       "copyAgain": "다시 복사",
       "tryAgain": "다시 시도",
       "iClearedIt": "지웠습니다",
-      "typeToContinue": "계속하려면 <word>EXPORT</word>를 입력하세요."
+      "typeToContinue": "계속하려면 <word>EXPORT</word>를 입력하세요.",
+      "pasteWithin": "{seconds} s 안에 다른 브라우저나 백업 저장소에 붙여 넣으세요.",
+      "autoClearsIn": "클립보드가 {seconds} s 후 자동으로 지워집니다"
     },
     "framePanel": {
       "frameConfiguration": "프레임 구성",
@@ -10740,7 +10753,8 @@
       "notes": "참고",
       "noActiveFlags": "활성 플래그가 없습니다.",
       "gps": "GPS",
-      "sensorStatusEKFVibrationGPS": "센서 상태, EKF, 진동, GPS 및 시동 전 점검"
+      "sensorStatusEKFVibrationGPS": "센서 상태, EKF, 진동, GPS 및 시동 전 점검",
+      "sensorsHealthy": "{healthy}/{total} 센서 정상"
     },
     "ledPanel": {
       "ledConfiguration": "LED 설정",
@@ -10761,7 +10775,15 @@
       "useLedCommand": "LED 스트립 할당은 FC 콘솔 패널의 <cmd>led</cmd> 명령으로 설정하세요.",
       "ledCmdShow": "현재 LED 스트립 설정 표시",
       "ledCmdExample": "예: LED 0 설정",
-      "colorCmd": "LED 색상 표시/설정"
+      "colorCmd": "LED 색상 표시/설정",
+      "brightness": "밝기",
+      "brightnessOff": "끔",
+      "brightnessLow": "낮음",
+      "brightnessMedium": "중간",
+      "brightnessHigh": "높음",
+      "bitmaskValue": "비트마스크: {value} (0x{hex})",
+      "unitLeds": "LED",
+      "moreLeds": "+{n}개 더"
     },
     "mixerProfilePanel": {
       "mixerProfiles": "믹서 프로필",
@@ -11002,7 +11024,16 @@
       "setARotorCountTo": "로터 계수를 구성하려면 로터 수를 설정하세요.",
       "controlSurfaces": "조종면",
       "tiltServos": "틸트 서보",
-      "reversibleMotorsCARREV": "역회전 가능 모터 (CA_R_REV)"
+      "reversibleMotorsCARREV": "역회전 가능 모터 (CA_R_REV)",
+      "allocationMethod": "할당 방식",
+      "reversibleNone": "없음",
+      "reversibleBits": "{value} — 설정된 비트…",
+      "rotorCount": "로터 수",
+      "surfaceCount": "조종면 수",
+      "tiltServoCount": "틸트 서보 수",
+      "rotorN": "로터 {n}",
+      "surfaceN": "조종면 {n}",
+      "tiltN": "틸트 {n}"
     },
     "bfMotorTest": {
       "iConfirmAllPropellersHave": "모든 프로펠러를 제거했음을 확인합니다",
@@ -11469,7 +11500,10 @@
     "flightModesPanel": {
       "flightModes": "비행 모드",
       "connectToADroneTo": "비행 모드를 구성하려면 드론에 연결하세요.",
-      "currentMode": "현재 모드:"
+      "currentMode": "현재 모드:",
+      "notRead": "비행 모드를 아직 기체에서 읽지 않았습니다.",
+      "readingModes": "비행 모드 읽는 중…",
+      "readFailed": "비행 모드를 읽을 수 없습니다. 편집하기 전에 다시 읽으세요."
     },
     "flightModesHeader": {
       "flightModes": "비행 모드",
@@ -11633,7 +11667,12 @@
       "selectNone": "선택 해제",
       "noParametersMatchTheCurrent": "현재 필터와 일치하는 파라미터가 없습니다.",
       "applyN": "매개변수 {count}개 적용",
-      "selectedOf": "선택 가능한 {total}개 중 {selected}개 선택됨"
+      "selectedOf": "선택 가능한 {total}개 중 {selected}개 선택됨",
+      "fileParamCount": "{count, plural, one {(파라미터 #개)} other {(파라미터 #개)}}",
+      "changedCount": "{count}개 변경됨",
+      "addedCount": "{count}개 새 항목",
+      "unchangedCount": "{count}개 변경 없음",
+      "applyingProgress": "적용 중 {current}/{total}…"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "파라미터 쓰기 확인",
@@ -11675,7 +11714,8 @@
       "name": "이름",
       "now": "현재",
       "restore": "복원",
-      "readingCurrentParameters": "현재 파라미터 읽는 중…"
+      "readingCurrentParameters": "현재 파라미터 읽는 중…",
+      "title": "파라미터를 {target}(으)로 복원"
     },
     "inboundSigningSection": {
       "inboundVerification": "수신 검증",
@@ -12050,7 +12090,10 @@
       "favorites": "즐겨찾기"
     },
     "firmwareFcWizard": {
-      "dismiss": "닫기"
+      "dismiss": "닫기",
+      "postFlashSaved": "{count, plural, one {플래시 전에 파라미터 #개를 저장했습니다({createdAt}).} other {플래시 전에 파라미터 #개를 저장했습니다({createdAt}).}} 비행 컨트롤러를 다시 연결한 후 변경 사항을 검토하세요.",
+      "postFlashRestore": "{count, plural, one {파라미터 #개 복원} other {파라미터 #개 복원}}",
+      "postFlashSource": "{createdAt}의 백업"
     },
     "bfFailsafe": {
       "title": "페일세이프",
@@ -12061,7 +12104,13 @@
       "offDelay": "모터 정지 지연 (0.1초)",
       "throttle": "착륙 스로틀 (µs)",
       "throttleLowDelay": "저스로틀 지연 (0.1초)",
-      "switchMode": "페일세이프 스위치 (0 1단계, 1 정지, 2 2단계)"
+      "switchMode": "페일세이프 스위치 (0 1단계, 1 정지, 2 2단계)",
+      "procedureDrop": "드롭",
+      "procedureLand": "착륙",
+      "procedureGpsRescue": "GPS 구조",
+      "switchStage1": "1단계",
+      "switchKill": "킬",
+      "switchStage2": "2단계"
     },
     "px4Safety": {
       "title": "고장 감지 및 귀환",

@@ -10,7 +10,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   downloadLog,
+  getLogList,
   handleLogData,
+  handleLogEntry,
   cancelLogDownload,
   eraseAllLogs,
   type LogContext,
@@ -187,5 +189,70 @@ describe("onboard log download", () => {
     cancelLogDownload(ctx);
     await vi.advanceTimersByTimeAsync(0);
     expect(second.error?.message).toMatch(/cancelled/);
+  });
+
+  /** List the vehicle's logs: one LOG_ENTRY per [id, size, timeUtc], ids 1..n. */
+  async function listLogs(ctx: LogContext, logs: Array<[number, number, number]>): Promise<void> {
+    const listed = getLogList(ctx);
+    for (const [id, size, timeUtc] of logs) {
+      const p = new DataView(new ArrayBuffer(14));
+      p.setUint32(0, timeUtc, true);
+      p.setUint32(4, size, true);
+      p.setUint16(8, id, true);
+      p.setUint16(10, logs.length, true);
+      p.setUint16(12, logs.length, true);
+      handleLogEntry(ctx, { msgId: 118, systemId: 1, componentId: 1, sequence: 0, payload: p, timestamp: 0 });
+    }
+    await listed;
+  }
+
+  /** Download LOG_ID, keep 180 bytes, and cancel. */
+  async function keepPartial(ctx: LogContext): Promise<void> {
+    const first = downloadLog(ctx, LOG_ID);
+    handleLogData(ctx, logData(0, 90));
+    handleLogData(ctx, logData(90, 90));
+    cancelLogDownload(ctx);
+    await expect(first).rejects.toThrow(/cancelled/);
+  }
+
+  const logs = (sizeOf7: number, timeOf7: number): Array<[number, number, number]> =>
+    Array.from({ length: LOG_ID }, (_, i) => (i + 1 === LOG_ID ? [LOG_ID, sizeOf7, timeOf7] : [i + 1, 1000, 1_700_000_000]));
+
+  it("resumes a listed log while the list still describes the same file", async () => {
+    const { ctx, sent } = makeCtx();
+    await listLogs(ctx, logs(5000, 1_700_000_500));
+    await keepPartial(ctx);
+    await listLogs(ctx, logs(5000, 1_700_000_500));
+
+    const second = track(downloadLog(ctx, LOG_ID));
+    expect(dataRequests(sent).at(-1)?.ofs).toBe(180);
+    cancelLogDownload(ctx);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(second.error?.message).toMatch(/cancelled/);
+  });
+
+  it("starts again from byte 0 when the same id now names another log", async () => {
+    const { ctx, sent } = makeCtx();
+    await listLogs(ctx, logs(5000, 1_700_000_500));
+    await keepPartial(ctx);
+    // Logs deleted elsewhere: id 7 is now a different, later file.
+    await listLogs(ctx, logs(8000, 1_700_009_000));
+
+    const second = downloadLog(ctx, LOG_ID);
+    expect(dataRequests(sent).at(-1)?.ofs).toBe(0);
+    handleLogData(ctx, logData(0, 40));
+    expect(await second).toEqual(expectedLog(40));
+  });
+
+  it("drops kept bytes of a log the new list no longer has", async () => {
+    const { ctx, sent } = makeCtx();
+    await listLogs(ctx, logs(5000, 1_700_000_500));
+    await keepPartial(ctx);
+    await listLogs(ctx, logs(5000, 1_700_000_500).slice(0, LOG_ID - 1));
+    await listLogs(ctx, logs(5000, 1_700_000_500));
+
+    track(downloadLog(ctx, LOG_ID));
+    expect(dataRequests(sent).at(-1)?.ofs).toBe(0);
+    cancelLogDownload(ctx);
   });
 });

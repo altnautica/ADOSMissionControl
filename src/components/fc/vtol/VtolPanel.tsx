@@ -84,6 +84,10 @@ export function VtolPanel() {
   const hasDirty = dirtyParams.size > 0;
 
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
+
+  // Staged geometry edits stay unsaved while the vehicle may be armed.
+
+  const geometryBlocked = isHardBlocked && [...dirtyParams].some(isFrameGeometryParam);
   const tShared = useTranslations("fcShared");
   const renderField = (f: Field) => {
     const read = params.get(f.param);
@@ -144,7 +148,8 @@ export function VtolPanel() {
         <PanelSaveBar
           onSave={handleSave}
           saving={saving}
-          saveDisabled={!hasDirty || !connected}
+          saveDisabled={!hasDirty || !connected || geometryBlocked}
+          saveTitle={geometryBlocked ? hardBlockMessage : undefined}
           onRevert={handleRevert}
           revertDisabled={!hasDirty}
           showFlash={hasRamWrites}

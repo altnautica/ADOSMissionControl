@@ -101,7 +101,7 @@ export function ParamRestoreDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={`Restore parameters to ${targetLabel}`}
+      title={tl("title", { target: targetLabel })}
       role="alertdialog"
       size="md"
       closeBlocked={writing}

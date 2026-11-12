@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useValidationOptions } from "@/hooks/use-validation-options";
 import { validateMission } from "@/lib/validation/mission-validator";
+import { fenceAndRallyIssues } from "@/lib/validation/fence-rules";
 import { buildFenceElements } from "@/lib/geofence-elements";
 import { useGeofenceStore } from "@/stores/geofence-store";
 import { useRallyStore } from "@/stores/rally-store";
@@ -48,6 +49,13 @@ const FENCE_BREACH_CODES: Record<string, true> = {
   OUTSIDE_GEOFENCE: true,
   LEG_OUTSIDE_GEOFENCE: true,
   INSIDE_EXCLUSION_ZONE: true,
+  LEG_CROSSES_EXCLUSION_ZONE: true,
+};
+
+/** Errors that mean a rally point lies where the plan's own fence forbids flight. */
+const RALLY_FENCE_CODES: Record<string, true> = {
+  RALLY_OUTSIDE_GEOFENCE: true,
+  RALLY_INSIDE_EXCLUSION_ZONE: true,
 };
 
 interface TransferResult {
@@ -95,13 +103,21 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
 
   const validationOptions = useValidationOptions();
   const describeUploadFailure = useDescribeUploadFailure();
-  const { errorCount, crossesFence } = useMemo(() => {
+  const { errorCount, crossesFence, rallyOutsideFence } = useMemo(() => {
     const errors = p.waypoints.length > 0 ? validateMission(p.waypoints, validationOptions).errors : [];
+    // With no separate hard ceiling, an altitude over the limit is over the fence ceiling.
+    const ceilingIsFence = validationOptions.maxAltitude === undefined;
     return {
       errorCount: errors.length,
       // A fence the plan's own mission breaks: sending it would leave the
       // vehicle holding a fence that its mission flies through.
-      crossesFence: errors.some((e) => FENCE_BREACH_CODES[e.code] === true),
+      crossesFence: errors.some(
+        (e) => FENCE_BREACH_CODES[e.code] === true || (ceilingIsFence && e.code === "ALTITUDE_EXCEEDED"),
+      ),
+      // A rally point the fence forbids: checked with or without a mission.
+      rallyOutsideFence: fenceAndRallyIssues(validationOptions.geofence, validationOptions.rally ?? []).errors.some(
+        (e) => RALLY_FENCE_CODES[e.code] === true,
+      ),
     };
   }, [p.waypoints, validationOptions]);
 
@@ -127,7 +143,7 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
   const blocked: Record<SendItem, boolean> = {
     mission: errorCount > 0 || flyingMission,
     geofence: crossesFence || flyingMission,
-    rally: flyingMission,
+    rally: rallyOutsideFence || flyingMission,
   };
   const items = ORDER.filter((item) => available[item]);
 
@@ -314,6 +330,11 @@ export function SendToVehicleDialog({ open, onClose, p, showGeofence, showRally,
                     {item === "geofence" && crossesFence && (
                       <p className="pl-6 text-[11px] text-status-error" data-testid="send-geofence-crossed">
                         {t("fenceCrossed")}
+                      </p>
+                    )}
+                    {item === "rally" && rallyOutsideFence && (
+                      <p className="pl-6 text-[11px] text-status-error" data-testid="send-rally-outside-fence">
+                        {t("rallyOutsideFence")}
                       </p>
                     )}
                     {item === "mission" && errorCount > 0 && (

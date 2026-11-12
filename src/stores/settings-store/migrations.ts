@@ -20,6 +20,7 @@ import {
   type Loadout,
 } from "@/stores/settings/keybindings-slice";
 import { DEFAULT_DENSITY } from "@/lib/cockpit/density";
+import { isReservedGamepadButton } from "@/lib/skills/chord";
 import {
   DEFAULT_PARAM_COLUMNS,
   cloneDefaultTelemetryDeckPages,
@@ -351,6 +352,23 @@ export function migrateSettings(
     }
     if (typeof state.selectedBatteryProfileId !== "string") {
       state.selectedBatteryProfileId = DEFAULT_BATTERY_PROFILE_ID;
+    }
+  }
+  if (version < 57) {
+    // v57: every button the controller spec binds belongs to the cockpit, and
+    // a skill bound to one never fires. A pad binding saved on such a button
+    // (the old "Apply controller defaults" put arm, return, land and pause on
+    // 0-3) is cleared, so Settings no longer shows a binding that does nothing.
+    const loadouts = state.loadouts as Record<string, Partial<Loadout>> | undefined;
+    if (loadouts) {
+      for (const loadout of Object.values(loadouts)) {
+        if (!loadout || !Array.isArray(loadout.slots)) continue;
+        loadout.slots = loadout.slots.map((slot) =>
+          typeof slot.gamepadButton === "number" && isReservedGamepadButton(slot.gamepadButton)
+            ? { ...slot, gamepadButton: null }
+            : slot,
+        );
+      }
     }
   }
   return state as Partial<SettingsStoreState>;

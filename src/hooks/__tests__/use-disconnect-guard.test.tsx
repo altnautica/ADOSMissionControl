@@ -30,7 +30,8 @@ describe("useDisconnectGuard commit and disconnect", () => {
     } as Partial<DroneProtocol> as DroneProtocol;
     const drone = { id: "fc:1", name: "D", protocol } as Partial<ManagedDrone> as ManagedDrone;
     const disconnectDrone = vi.fn();
-    useDroneManager.setState({ drones: new Map([["fc:1", drone]]), disconnectDrone });
+    useDroneManager.setState({ drones: new Map([["fc:1", drone]]), selectedDroneId: "fc:1", disconnectDrone });
+    useDroneStore.setState({ armState: "disarmed" });
     useParamSafetyStore.getState().clear();
     useParamSafetyStore.getState().trackWrite("ATC_RAT_RLL_P", 0.1, 0.2, "pid");
 
@@ -61,7 +62,7 @@ describe("useDisconnectGuard armed drone", () => {
     const { result } = renderHook(() => useDisconnectGuard());
     act(() => result.current.requestDisconnect("fc:2"));
     expect(disconnectDrone).not.toHaveBeenCalled();
-    expect(result.current.armedDrone).toEqual({ id: "fc:2", name: "Alpha" });
+    expect(result.current.armedDrone).toEqual({ id: "fc:2", name: "Alpha", armState: "armed" });
 
     act(() => result.current.confirmArmedDisconnect());
     expect(disconnectDrone).toHaveBeenCalledWith("fc:2");

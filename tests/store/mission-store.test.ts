@@ -355,8 +355,8 @@ describe('mission-store', () => {
       sent = items;
       return { success: true };
     };
-    // The vehicle kept a different altitude for the last item.
-    mockProtocol!.downloadMission = async () => sent.map((it, i) => (i === sent.length - 1 ? { ...it, z: it.z + 5 } : it));
+    // The vehicle kept a different altitude for a waypoint (RTL keeps none).
+    mockProtocol!.downloadMission = async () => sent.map((it) => (it.command === 16 ? { ...it, z: it.z + 5 } : it));
     useMissionStore.setState({ waypoints: arduPilotPlan() });
     expect(await useMissionStore.getState().uploadMission()).toBe(false);
     expect(useMissionStore.getState().uploadErrorCode).toBe(-4);

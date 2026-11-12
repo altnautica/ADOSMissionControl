@@ -15,6 +15,7 @@
 import { ModelPicker } from "@/components/vision/ModelPicker";
 import { VisionSummaryCard } from "@/components/vision/VisionSummaryCard";
 import { useDisplayedDetectionBatch } from "@/hooks/use-detection-batch";
+import { useFleetDrones } from "@/stores/node-registry/use-fleet-drones";
 import { specString } from "@/lib/cockpit/spec-strings";
 import { cn } from "@/lib/utils";
 import { depthRangeText } from "./LayerLevelButton";
@@ -32,6 +33,10 @@ const MAX_ROWS = 12;
 
 export function VisionViewPanel({ droneId }: { droneId: string }) {
   const batch = useDisplayedDetectionBatch(droneId);
+  // The engine summary is this drone's agent's, never the attached node's.
+  const nodeDeviceId = useFleetDrones(
+    (drones) => drones.find((d) => d.id === droneId)?.cloudDeviceId ?? null,
+  );
   const vl = useVehicleLayers(droneId);
   const setDepth = useCockpitLayersStore((s) => s.setDepth);
   const detections = batch?.detections ?? [];
@@ -84,7 +89,7 @@ export function VisionViewPanel({ droneId }: { droneId: string }) {
 
       <section>
         <h3 className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">{specString("vision.engine")}</h3>
-        <VisionSummaryCard droneId={droneId} />
+        <VisionSummaryCard droneId={droneId} nodeDeviceId={nodeDeviceId} />
       </section>
     </aside>
   );

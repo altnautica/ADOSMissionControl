@@ -9,7 +9,7 @@ import type { ParamMetadata } from "@/lib/protocol/param-metadata";
 import { decodeBitmaskFlags, summarizeBitmask } from "@/lib/protocol/param-display";
 import { isCriticalParam } from "@/lib/protocol/critical-params";
 
-function isValueOutOfRange(value: number, meta: ParamMetadata | undefined): boolean {
+export function isValueOutOfRange(value: number, meta: ParamMetadata | undefined): boolean {
   if (!meta?.range) return false;
   return value < meta.range.min || value > meta.range.max;
 }

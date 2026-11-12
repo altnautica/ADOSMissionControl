@@ -14,12 +14,28 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Camera, Video } from "lucide-react";
 
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
 import { useVisionPipelines } from "@/hooks/use-vision-pipelines";
 
-export function VisionInputsPanel({ droneId }: { droneId: string }) {
+const NO_CAMERAS: never[] = [];
+
+export function VisionInputsPanel({
+  droneId,
+  nodeDeviceId,
+}: {
+  droneId: string;
+  /** The node's agent device id. Every reading comes from this node's
+   * capability slice, never from whichever node is attached. */
+  nodeDeviceId: string | null;
+}) {
   const t = useTranslations("vision");
-  const cameras = useAgentCapabilitiesStore((s) => s.cameras);
+  // Null when this node has never reported its cameras: that is "not
+  // reported", not "no cameras".
+  const caps = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId));
+  const cameras = caps?.cameras ?? NO_CAMERAS;
   const pipelines = useVisionPipelines(droneId);
 
   // Group active pipeline streams by the camera id they read from.
@@ -46,7 +62,7 @@ export function VisionInputsPanel({ droneId }: { droneId: string }) {
 
       {isEmpty ? (
         <p className="py-3 text-center text-[11px] text-text-tertiary">
-          {t("noInputs")}
+          {caps === null ? t("inputsNotReported") : t("noInputs")}
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">

@@ -56,8 +56,6 @@ export function DisconnectGuard({
     <Modal
       open={open}
       onClose={onCancel}
-      // Hardcoded English title: no locale key exists for it, so the literal
-      // is passed through unchanged rather than pointing at an invented key.
       title={tl("uncommittedParameterChanges")}
       role="alertdialog"
       initialFocusRef={cancelRef}

@@ -14,8 +14,6 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 import { useAgentSystemStore } from "@/stores/agent-system-store";
-import { usePairingStore } from "@/stores/pairing-store";
-import { deviceIdFromNodeId } from "@/lib/agent/node-id";
 import { AgentStatusCard } from "../shared/AgentStatusCard";
 import { SystemResourceGauges } from "../shared/SystemResourceGauges";
 import { ServiceTable } from "../shared/ServiceTable";
@@ -24,6 +22,8 @@ import { StaleBanner } from "../shared/StaleBanner";
 import { NodeReachBlock } from "../shared/NodeReachBlock";
 import { AgentDisconnectedPage } from "../AgentDisconnectedPage";
 import { NodeBrandHeader } from "./NodeBrandHeader";
+import { NodeNotAttachedNotice } from "./NodeNotAttachedNotice";
+import { useNodeDirectAgent } from "../settings/use-node-direct-agent";
 import { OverviewGrid, OverviewTile } from "./OverviewGrid";
 import { useNodeSensors } from "../nodes/visor/use-node-sensors";
 import { CloudModeLimitedNotice } from "../shared/CloudModeLimitedNotice";
@@ -42,8 +42,13 @@ export interface VisorOverviewProps {
 
 export function VisorOverview({ name, nodeDeviceId }: VisorOverviewProps) {
   const t = useTranslations("visor.overview");
-  const connected = useAgentConnectionStore((s) => s.connected);
-  const status = useAgentSystemStore((s) => s.status);
+  // The agent stores and Restart ride the one attached connection; on another
+  // node's page it is not this node's.
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const attachedConnected = useAgentConnectionStore((s) => s.connected);
+  const connected = direct !== null && attachedConnected;
+  const attachedStatus = useAgentSystemStore((s) => s.status);
+  const status = direct !== null ? attachedStatus : null;
   const services = useAgentSystemStore((s) => s.services);
   const resources = useAgentSystemStore((s) => s.resources);
   const logs = useAgentSystemStore((s) => s.logs);
@@ -52,7 +57,6 @@ export function VisorOverview({ name, nodeDeviceId }: VisorOverviewProps) {
   const fetchLogs = useAgentSystemStore((s) => s.fetchLogs);
   const restartService = useAgentSystemStore((s) => s.restartService);
   const restartAll = useAgentSystemStore((s) => s.restartAll);
-  const selectedNodeId = usePairingStore((s) => s.selectedPairedId);
   const { reachable, readings, staleAt } = useNodeSensors(nodeDeviceId);
 
   useEffect(() => {
@@ -63,12 +67,22 @@ export function VisorOverview({ name, nodeDeviceId }: VisorOverviewProps) {
     }
   }, [connected, fetchServices, fetchResources, fetchLogs]);
 
+  if (!direct) {
+    return (
+      <div className="space-y-4 p-4">
+        <NodeBrandHeader profile="visor" title={name || t("fallbackTitle")} nodeDeviceId={nodeDeviceId} />
+        <NodeReachBlock deviceId={nodeDeviceId} />
+        <NodeNotAttachedNotice />
+      </div>
+    );
+  }
+
   if (!status) {
     if (!connected) {
       return (
         <>
           <div className="px-4 pt-4">
-            <NodeReachBlock deviceId={deviceIdFromNodeId(selectedNodeId)} />
+            <NodeReachBlock deviceId={nodeDeviceId} />
           </div>
           <AgentDisconnectedPage />
         </>
@@ -85,7 +99,7 @@ export function VisorOverview({ name, nodeDeviceId }: VisorOverviewProps) {
   const title = name || status.board?.name || status.board?.model || t("fallbackTitle");
   return (
     <div className="space-y-4 p-4">
-      <NodeBrandHeader profile="visor" title={title} />
+      <NodeBrandHeader profile="visor" title={title} nodeDeviceId={nodeDeviceId} />
       <StaleBanner />
       {/* Cloud-only reach: the sensor routes are LAN-only, so say so instead
           of leaving every reading card at "Not read yet". */}

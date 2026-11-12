@@ -15,11 +15,13 @@ import { renderWithIntl } from "../../../../tests/helpers/intl-wrapper";
 import { CockpitView } from "@/components/cockpit/CockpitView";
 import { useCockpitStore } from "@/stores/cockpit-store";
 import { useUiStore } from "@/stores/ui-store";
+import { useDroneStore } from "@/stores/drone-store";
 
 afterEach(() => {
   cleanup();
   useCockpitStore.getState().setEnabled(true);
   useUiStore.setState({ immersiveMode: false });
+  useDroneStore.setState({ armState: "unknown" } as never);
 });
 
 /** Full screen without the browser's own fullscreen request. */
@@ -29,6 +31,8 @@ function fullScreen(): void {
 
 describe("flight screen shell", () => {
   it("keeps Pause, RTH and Take off on screen with the skill layer off", () => {
+    // A known disarm: an unknown arm state may be airborne and shows Land.
+    useDroneStore.setState({ armState: "disarmed" } as never);
     useCockpitStore.getState().setEnabled(false);
     renderWithIntl(<CockpitView droneId="shell-drone" />);
     const col = screen.getByTestId("left-column");

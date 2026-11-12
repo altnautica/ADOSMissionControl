@@ -7,16 +7,18 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
+import type { DroneProtocol } from "@/lib/protocol/types";
+import { useDroneManager, type ManagedDrone } from "@/stores/drone-manager";
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 
-const state = { params: new Map<string, number>() };
+const state = { params: new Map<string, number>(), dirty: new Set<string>() };
 vi.mock("@/hooks/use-armed-lock", () => ({
   useArmedLock: () => ({ isArmed: true, isHardBlocked: true, lockMessage: "", hardBlockMessage: "Disarm first" }),
 }));
 vi.mock("@/hooks/use-panel-params", () => ({
   usePanelParams: () => ({
-    params: state.params, loading: false, error: null, dirtyParams: new Set(), hasRamWrites: false,
+    params: state.params, loading: false, error: null, dirtyParams: state.dirty, hasRamWrites: false,
     loadProgress: null, hasLoaded: true, missingOptional: new Set(),
     refresh: vi.fn(), setLocalValue: vi.fn(), saveAllToRam: vi.fn(), commitToFlash: vi.fn(), revertAll: vi.fn(),
   }),
@@ -63,5 +65,34 @@ describe("frame geometry while armed", () => {
     for (const p of ["H_COL_MIN", "Q_TRANSITION_MS", "VT_F_TRANS_DUR", "Q_TAILSIT_ANGLE"]) {
       expect(isFrameGeometryParam(p), p).toBe(false);
     }
+  });
+
+  it("Save stays disabled while a geometry edit is staged, enabled for other edits", () => {
+    const protocol = { isConnected: true, getFirmwareHandler: () => null } as Partial<DroneProtocol> as DroneProtocol;
+    useDroneManager.setState({
+      drones: new Map([["d1", { id: "d1", name: "d1", protocol } as Partial<ManagedDrone> as ManagedDrone]]),
+      selectedDroneId: "d1",
+    });
+    // Every CA_* parameter is geometry, so that panel has no "other" edit.
+    const cases: [() => React.ReactElement, string, string | null][] = [
+      [() => <Px4VtolPanel />, "VT_TYPE", "VT_F_TRANS_DUR"],
+      [() => <Px4ControlAllocationPanel />, "CA_ROTOR_COUNT", null],
+      [() => <VtolPanel />, "Q_ENABLE", "Q_TRANSITION_MS"],
+    ];
+    const saveButton = () => screen.getByRole("button", { name: /save to flight controller/i }) as HTMLButtonElement;
+    for (const [panel, geometry, other] of cases) {
+      state.params = new Map([[geometry, 1], ...(other ? [[other, 1] as [string, number]] : [])]);
+      state.dirty = new Set(other ? [geometry, other] : [geometry]);
+      render(panel(), { wrapper: IntlWrapper });
+      expect(saveButton().disabled, geometry).toBe(true);
+      cleanup();
+      if (!other) continue;
+      state.dirty = new Set([other]);
+      render(panel(), { wrapper: IntlWrapper });
+      expect(saveButton().disabled, other).toBe(false);
+      cleanup();
+    }
+    state.dirty = new Set();
+    useDroneManager.setState({ drones: new Map(), selectedDroneId: null });
   });
 });

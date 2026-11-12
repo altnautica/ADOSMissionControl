@@ -17,7 +17,7 @@ import { MapControl } from "@/components/map/MapControl";
 import type { FlightRecord } from "@/lib/types";
 import { DEFAULT_CENTER } from "@/lib/map-constants";
 import { pointInPolygon } from "@/lib/geo/distance";
-import { TILE_PROVIDERS } from "@/lib/tile-math";
+import { TILE_PROVIDERS, rasterZoomOptions } from "@/lib/tile-math";
 
 // leaflet.heat adds heatLayer to the L namespace at import time and ships no
 // type declarations of its own.
@@ -406,8 +406,7 @@ export default function FleetCoverageMapInner({
         <TileLayer
           url={TILE_PROVIDERS.dark.url}
           attribution={TILE_PROVIDERS.dark.attribution}
-          maxNativeZoom={TILE_PROVIDERS.dark.maxZoom}
-          maxZoom={20}
+          {...rasterZoomOptions(TILE_PROVIDERS.dark.maxZoom)}
         />
         <HeatLayer points={heatPoints} show={showHeat} />
         {showPaths &&

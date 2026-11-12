@@ -5,8 +5,8 @@
  * and the `V` key cycle the spec's order; the stream choice (EO, IR, down) is
  * separate and lives in the video streams store.
  *
- * The view is kept for the session only: a cockpit always opens on the spec
- * default so the operator sees the video first.
+ * The view and the Split divider per vehicle persist across reloads; a
+ * vehicle with none stored opens on the spec default.
  *
  * @license GPL-3.0-only
  */
@@ -112,6 +112,25 @@ interface CockpitViewState {
   setSplit: (droneId: string, ratio: number) => void;
 }
 
+type PersistedCockpitViews = Pick<CockpitViewState, "byDrone" | "splitByDrone">;
+
+/** Stored views read back: an id the spec no longer names is dropped and a
+ * ratio is clamped again, since the spec range may have changed. */
+export function migrateCockpitViews(persisted: unknown): PersistedCockpitViews {
+  const p = (persisted && typeof persisted === "object" ? persisted : {}) as Partial<Record<keyof PersistedCockpitViews, unknown>>;
+  const byDrone: Record<string, CockpitViewId> = {};
+  if (p.byDrone && typeof p.byDrone === "object") {
+    for (const [id, v] of Object.entries(p.byDrone)) if (isViewId(v)) byDrone[id] = v;
+  }
+  const splitByDrone: Record<string, number> = {};
+  if (p.splitByDrone && typeof p.splitByDrone === "object") {
+    for (const [id, r] of Object.entries(p.splitByDrone)) {
+      if (typeof r === "number") splitByDrone[id] = clampSplit(r);
+    }
+  }
+  return { byDrone, splitByDrone };
+}
+
 /** The view and the Split divider per vehicle persist across reloads. */
 export const useCockpitViewStore = create<CockpitViewState>()(
   persist(
@@ -126,15 +145,12 @@ export const useCockpitViewStore = create<CockpitViewState>()(
     }),
     {
       name: "altcmd:cockpit-views",
+      version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ byDrone: s.byDrone, splitByDrone: s.splitByDrone }),
-      // A stored ratio is clamped again: the spec range may have changed.
-      merge: (stored, current) => {
-        const p = (stored ?? {}) as Partial<Pick<CockpitViewState, "byDrone" | "splitByDrone">>;
-        const split: Record<string, number> = {};
-        for (const [id, r] of Object.entries(p.splitByDrone ?? {})) split[id] = clampSplit(r);
-        return { ...current, byDrone: { ...(p.byDrone ?? {}) }, splitByDrone: split };
-      },
+      migrate: (persisted) => migrateCockpitViews(persisted) as CockpitViewState,
+      // Stored state of the current version is checked the same way.
+      merge: (stored, current) => ({ ...current, ...migrateCockpitViews(stored) }),
     },
   ),
 );

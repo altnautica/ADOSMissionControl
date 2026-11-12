@@ -158,7 +158,7 @@ export async function uploadPlanMission(
   if (success && mavlink) {
     try {
       const readBack = await protocol.downloadMission();
-      if (!missionReadBackMatches(items, readBack, isArduPilot)) {
+      if (!missionReadBackMatches(items, readBack, info?.firmwareType)) {
         success = false;
         failure = "The mission read back from the flight controller differs from the one sent";
         failureCode = MISSION_TRANSFER_VERIFY_MISMATCH;

@@ -15,6 +15,7 @@ import { useDroneManager } from "@/stores/drone-manager";
 import { confirmArmedParamWrite, describeParamBatch, writeParamBatch } from "@/lib/protocol/param-write";
 import type { ParameterValue } from "@/lib/protocol/types";
 import { exportParamFile } from "./param-file-io";
+import { vehicleMayBeArmed } from "../shared/RebootFcButton";
 import { useParameterList, type ParameterListState } from "./use-parameter-list";
 
 /**
@@ -147,6 +148,8 @@ export function useParameterEdits(): ParameterEditsState {
    * refuse the command (wrong mode, armed, unsupported); closing the dialog on
    * a refusal reads as a reboot that happened, so report the refusal. */
   const reboot = useCallback(async () => {
+    // The prompt can sit open while the vehicle arms; never reboot then.
+    if (vehicleMayBeArmed()) return;
     const protocol = useDroneManager.getState().getSelectedProtocol();
     if (!protocol) { setShowRebootPrompt(false); return; }
     try {

@@ -27,8 +27,9 @@ import {
 import { cn, isDemoMode } from "@/lib/utils";
 import { AgentClient } from "@/lib/agent/client";
 import { relayProxyBaseUrl, type RelayReach } from "@/lib/nodes/relay-reach";
-import { useSurfaceGate } from "@/hooks/use-surface-gate";
-import { agentGateFallback } from "./shared/agent-gate-fallback";
+import { getFreshness, useFreshness } from "@/lib/agent/freshness";
+import { useNodeLastSeen } from "@/hooks/use-node-last-seen";
+import { LinkUpPlaceholder } from "@/components/shared/link-up/LinkUpPlaceholder";
 import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
@@ -83,7 +84,6 @@ export function BlackBoxTab({
 }) {
   const t = useTranslations("blackbox");
   const tAgent = useTranslations("agent");
-  const gate = useSurfaceGate("agent-online");
   const { toast } = useToast();
   const cloudMode = useAgentConnectionStore((s) => s.cloudMode);
   // The rendered node's own connection; null until focus reaches it.
@@ -100,6 +100,17 @@ export function BlackBoxTab({
   const client = direct?.client ?? relayClient;
   // No direct connection, none coming, and no relay: nothing can reach it.
   const unreachable = !direct && !relayClient && !directReach;
+  // This node's own freshness: the attached connection's heartbeat clock only
+  // while that connection is this node's, else how recently the node itself
+  // was heard from. On another node's page the attached link may be down or
+  // stale and says nothing about this one.
+  const attachedFreshness = useFreshness();
+  const ownFreshness = getFreshness(useNodeLastSeen(nodeDeviceId));
+  const freshness = direct ? attachedFreshness : ownFreshness;
+  // Gone quiet with no relay path to try: say so, with when it was last
+  // heard from, rather than waiting on a connection that is not answering.
+  const offline =
+    !isDemoMode() && !unreachable && !relayClient && freshness.state === "offline";
   // The node's cloud identity is its cloud pairing row, whichever transport
   // the session currently uses.
   const cloudPaired = usePairingStore((s) =>
@@ -173,8 +184,9 @@ export function BlackBoxTab({
     [tAgent],
   );
 
-  const blocked = agentGateFallback(gate);
-  if (blocked) return blocked;
+  if (offline) {
+    return <LinkUpPlaceholder variant="agent-offline" lastSeenLabel={freshness.label} />;
+  }
 
   async function handleExport() {
     const result = await exportWindow();

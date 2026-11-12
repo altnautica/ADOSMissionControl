@@ -33,6 +33,7 @@ vi.mock("@/components/ui/toast", async (orig) => ({
 }));
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
+import messages from "../../../../../locales/en.json";
 import { parsePilotState } from "@/lib/hud/cockpit-frames";
 import { refusalText } from "@/lib/hud/refusal";
 import { specBuiltin } from "@/lib/cockpit/spec-builtins";
@@ -112,6 +113,21 @@ describe("left column and a stale pilot frame", () => {
     expect(button("takeoff")).toBeNull();
   });
 
+  it("an unknown FC arm state with a stale frame may be airborne: Land, not Take off", () => {
+    useDroneStore.setState({ armState: "unknown" } as never);
+    setPilot({ armed: false, landed: true }, 3000);
+    mount();
+    expect(button("land")).not.toBeNull();
+    expect(button("takeoff")).toBeNull();
+  });
+
+  it("an unknown FC arm state with no pilot may be airborne: Land, not Take off", () => {
+    useDroneStore.setState({ armState: "unknown" } as never);
+    mount();
+    expect(button("land")).not.toBeNull();
+    expect(button("takeoff")).toBeNull();
+  });
+
   it("sends Take off to the built-in, not the Launch sheet, once the frame is stale", () => {
     setPilot({ armed: false, landed: true }, 3000);
     mount();
@@ -165,5 +181,33 @@ describe("Launch here", () => {
     });
     expect(useLaunchRequestStore.getState().consume()).toBeNull();
     expect(useLaunchRequestStore.getState().pending).toBeNull();
+  });
+});
+
+describe("Fly this mission", () => {
+  const NO_PILOT_TEXT = messages.flightScreen.flyMissionNoPilot;
+
+  it("opens Launch when the drone's pilot is reachable", () => {
+    setPilot({ armed: false, landed: true }, 0);
+    useLaunchRequestStore.getState().requestLaunch({ droneId: DRONE, after: "mission" });
+    mount();
+    expect(screen.queryByTestId("launch-sheet")).not.toBeNull();
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("says why Launch did not open on a drone with no pilot stream", () => {
+    stream.open = false;
+    useLaunchRequestStore.getState().requestLaunch({ droneId: DRONE, after: "mission" });
+    mount();
+    expect(screen.queryByTestId("launch-sheet")).toBeNull();
+    expect(useLaunchRequestStore.getState().pending).toBeNull();
+    expect(toast).toHaveBeenCalledWith(NO_PILOT_TEXT, "warning");
+  });
+
+  it("stays quiet when a map point is dropped for want of the pilot", () => {
+    stream.open = false;
+    useLaunchRequestStore.getState().requestLaunch({ droneId: DRONE, lat: 1, lon: 1 });
+    mount();
+    expect(toast).not.toHaveBeenCalled();
   });
 });

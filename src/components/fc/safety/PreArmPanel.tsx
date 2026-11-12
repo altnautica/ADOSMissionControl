@@ -93,7 +93,7 @@ export function PreArmPanel() {
         </div>
 
         {/* Sensor Status */}
-        <FcSection icon={<Activity size={14} />} title={tk("sensorStatus")} description={`${healthyCount}/${totalPresent} sensors healthy`}>
+        <FcSection icon={<Activity size={14} />} title={tk("sensorStatus")} description={tk("sensorsHealthy", { healthy: healthyCount, total: totalPresent })}>
           <SensorHealthGrid showAll={showAllSensors} />
           <button
             onClick={() => setShowAllSensors(!showAllSensors)}

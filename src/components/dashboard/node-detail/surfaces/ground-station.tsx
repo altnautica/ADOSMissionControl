@@ -77,7 +77,7 @@ export const GROUND_STATION_SURFACES: SurfaceSpec[] = [
     render: (ctx) => (
       <>
         <DashboardPinUnlockCard nodeDeviceId={surfaceNodeDeviceId(ctx)} />
-        <GroundStationOverview name={ctx.displayName} />
+        <GroundStationOverview name={ctx.displayName} nodeDeviceId={surfaceNodeDeviceId(ctx)} />
       </>
     ),
   },

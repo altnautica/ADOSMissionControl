@@ -45,9 +45,9 @@ describe("node page subject", () => {
   });
 
   it("labels whose state the hero shows", () => {
-    const fc = renderHook(() => useNodeBrand({ profile: "flight-controller", title: "x" }), { wrapper });
+    const fc = renderHook(() => useNodeBrand({ profile: "flight-controller", title: "x", nodeDeviceId: null }), { wrapper });
     expect(fc.result.current.statusSubject).toBe(messages.nodeConsole.hero.subjectFc);
-    const agent = renderHook(() => useNodeBrand({ profile: "drone", title: "x" }), { wrapper });
+    const agent = renderHook(() => useNodeBrand({ profile: "drone", title: "x", nodeDeviceId: null }), { wrapper });
     expect(agent.result.current.statusSubject).toBe(messages.nodeConsole.hero.subjectAgent);
   });
 });

@@ -23,18 +23,18 @@ describe("missionReadBackMatches", () => {
 
   it("matches an echo with a new home slot, an INT twin frame and float32 rounding", () => {
     const echo = [item(0, { frame: 0, z: 912, x: 1 }), item(1, { frame: 3 }), item(2, { param1: Math.fround(0.1) })];
-    expect(missionReadBackMatches(sent, echo, true)).toBe(true);
+    expect(missionReadBackMatches(sent, echo, "ardupilot-copter")).toBe(true);
   });
 
   it("checks the home slot when the firmware has none", () => {
     const echo = [item(0, { frame: 0, z: 912 }), item(1), item(2, { param1: 0.1 })];
-    expect(missionReadBackMatches(sent, echo, false)).toBe(false);
+    expect(missionReadBackMatches(sent, echo, "px4")).toBe(false);
   });
 
   it("rejects a different count, command, position or altitude", () => {
-    expect(missionReadBackMatches(sent, sent.slice(0, 2), true)).toBe(false);
-    expect(missionReadBackMatches(sent, [sent[0], item(1, { command: 21 }), sent[2]], true)).toBe(false);
-    expect(missionReadBackMatches(sent, [sent[0], item(1, { x: sent[1].x + 5 }), sent[2]], true)).toBe(false);
-    expect(missionReadBackMatches(sent, [sent[0], item(1, { z: 30.5 }), sent[2]], true)).toBe(false);
+    expect(missionReadBackMatches(sent, sent.slice(0, 2), "ardupilot-copter")).toBe(false);
+    expect(missionReadBackMatches(sent, [sent[0], item(1, { command: 21 }), sent[2]], "ardupilot-copter")).toBe(false);
+    expect(missionReadBackMatches(sent, [sent[0], item(1, { x: sent[1].x + 5 }), sent[2]], "ardupilot-copter")).toBe(false);
+    expect(missionReadBackMatches(sent, [sent[0], item(1, { z: 30.5 }), sent[2]], "ardupilot-copter")).toBe(false);
   });
 });

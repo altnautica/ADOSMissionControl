@@ -50,6 +50,9 @@ export function NodeRail({
       onContextMenu={(e) => {
         if (!onContext) return;
         e.preventDefault();
+        // A right-click does not move focus; focus the tile first so the menu,
+        // which records the focused element as its opener, returns here on close.
+        (e.currentTarget as HTMLElement).focus();
         onContext(node._id, e.clientX, e.clientY);
       }}
       title={effectiveTitle}

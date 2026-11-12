@@ -31,13 +31,16 @@ interface ParameterGridProps {
   /** Exact parameter name to highlight, scroll to and focus (e.g. from the
    *  command palette), so "RTL_ALT" lands on RTL_ALT, not RTL_ALT_FINAL. */
   focusParam?: string | null;
+  /** Called once the focus target has been focused. The owner clears
+   *  `focusParam` so later filter edits do not pull focus back to the row. */
+  onFocusParamDone?: () => void;
 }
 
 const ROW_HEIGHT = 32;
 
 const HEADER_CLASS = "px-3 py-2 text-left font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap text-xs";
 
-export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility, docContext = null, docsLinkLabel, focusParam = null }: ParameterGridProps) {
+export function ParameterGrid({ parameters, modified, onModify, filter, showModifiedOnly, metadata, columnVisibility, docContext = null, docsLinkLabel, focusParam = null, onFocusParamDone }: ParameterGridProps) {
   const tr = useTranslations("fcPanels.parameterGrid");
   const t = useTranslations("parameters");
   const [editingParam, setEditingParam] = useState<string | null>(null);
@@ -95,10 +98,12 @@ export function ParameterGrid({ parameters, modified, onModify, filter, showModi
   useEffect(() => {
     if (focusIndex < 0) return;
     rowVirtualizer.scrollToIndex(focusIndex, { align: "center" });
-    requestAnimationFrame(() => {
+    const frame = requestAnimationFrame(() => {
       parentRef.current?.querySelector<HTMLElement>('[data-param-focus="true"]')?.focus();
+      onFocusParamDone?.();
     });
-  }, [focusIndex, rowVirtualizer]);
+    return () => cancelAnimationFrame(frame);
+  }, [focusIndex, rowVirtualizer, onFocusParamDone]);
 
   const startEdit = useCallback((param: ParameterValue) => {
     const meta = metadata?.get(param.name);

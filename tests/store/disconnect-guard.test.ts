@@ -16,9 +16,12 @@ vi.mock("@/stores/drone-manager-bridge", () => ({ bridgeTelemetry: vi.fn(() => [
 vi.mock("@/stores/telemetry-store", () => ({
   useTelemetryStore: { getState: () => ({ clear: vi.fn() }), setState: vi.fn() },
 }));
+// The selected drone's live arm state, set per test.
+const arm = vi.hoisted(() => ({ state: "disarmed" as string }));
 vi.mock("@/stores/drone-store", () => ({
   useDroneStore: {
     getState: () => ({
+      armState: arm.state,
       selectDrone: vi.fn(),
       setConnectionState: vi.fn(),
       setFlightMode: vi.fn(),
@@ -80,6 +83,7 @@ function addWebSocketDrone(id: string, commit?: () => Promise<unknown>) {
 }
 
 afterEach(() => {
+  arm.state = "disarmed";
   for (const id of [...useDroneManager.getState().drones.keys()]) {
     useDroneManager.getState().disconnectDrone(id);
   }
@@ -117,5 +121,17 @@ describe("operator disconnect", () => {
       await done;
     });
     expect(events).toEqual(["commit-sent", "commit-answered", "disconnect"]);
+  });
+
+  it("asks first when the drone's arm state is unknown after a link drop", () => {
+    addWebSocketDrone("ws-3");
+    useDroneManager.getState().selectDrone("ws-3");
+    arm.state = "unknown";
+    const { result } = renderHook(() => useDisconnectGuard(), { wrapper: IntlWrapper });
+
+    act(() => result.current.requestDisconnect("ws-3"));
+
+    expect(result.current.armedDrone).toEqual({ id: "ws-3", name: "Drone 1", armState: "unknown" });
+    expect(useDroneManager.getState().drones.has("ws-3")).toBe(true);
   });
 });

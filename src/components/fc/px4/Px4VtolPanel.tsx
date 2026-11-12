@@ -82,6 +82,10 @@ export function Px4VtolPanel() {
   const { saving, save: handleSave, flashing, flash: handleFlash, revert: handleRevert } = usePanelCommit({ saveAllToRam, commitToFlash, revertAll });
 
   const { isHardBlocked, hardBlockMessage } = useArmedLock();
+
+  // Staged geometry edits stay unsaved while the vehicle may be armed.
+
+  const geometryBlocked = isHardBlocked && [...dirtyParams].some(isFrameGeometryParam);
   const tShared = useTranslations("fcShared");
   const renderField = (f: Field) => {
     const read = params.get(f.param);
@@ -135,7 +139,8 @@ export function Px4VtolPanel() {
         <PanelSaveBar
           onSave={handleSave}
           saving={saving}
-          saveDisabled={!hasDirty || !connected}
+          saveDisabled={!hasDirty || !connected || geometryBlocked}
+          saveTitle={geometryBlocked ? hardBlockMessage : undefined}
           onRevert={handleRevert}
           revertDisabled={!hasDirty}
           showFlash={hasRamWrites}

@@ -17,11 +17,17 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Eye } from "lucide-react";
-import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
+import {
+  useAgentCapabilitiesStore,
+  selectDeviceCapabilities,
+} from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 
 interface VisionSummaryCardProps {
   droneId: string;
+  /** The node's agent device id. Every reading comes from this node's
+   * capability slice, never from whichever node is attached. */
+  nodeDeviceId: string | null;
 }
 
 const EMPTY = "…";
@@ -36,9 +42,13 @@ function backendLabel(backend: string | null | undefined): string | null {
   return backend;
 }
 
-export function VisionSummaryCard({ droneId }: VisionSummaryCardProps) {
+export function VisionSummaryCard({ droneId, nodeDeviceId }: VisionSummaryCardProps) {
   const t = useTranslations("vision");
-  const summary = useAgentCapabilitiesStore((s) => s.visionSummary);
+  // Null when this node has never described itself: the engine state is then
+  // unknown, which is not "idle".
+  const caps = useAgentCapabilitiesStore((s) => selectDeviceCapabilities(s, nodeDeviceId));
+  const summary = caps?.visionSummary;
+  const known = caps !== null;
   const batch = useVisionDetectionsStore((s) => s.batches[droneId]);
 
   const activeModel = summary?.activeModel ?? null;
@@ -80,7 +90,7 @@ export function VisionSummaryCard({ droneId }: VisionSummaryCardProps) {
           }`}
         >
           <Eye size={12} />
-          {isActive ? t("engineActive") : t("engineIdle")}
+          {!known ? t("stateUnknownTitle") : isActive ? t("engineActive") : t("engineIdle")}
         </span>
         {backend ? (
           <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-bg-tertiary px-2.5 py-1 text-xs text-text-tertiary">

@@ -219,6 +219,12 @@ describe("keybindings slice", () => {
       expect(slotOf()?.gamepadButton).toBeNull();
     });
 
+    it("binds a suggested button past the standard mapping on a larger pad", () => {
+      emptyFirst();
+      expect(seed(null, 18)).toBe("bound");
+      expect(slotOf()?.gamepadButton).toBe(18);
+    });
+
     it("does not re-seed a skill the operator cleared", () => {
       emptyFirst();
       seed("g", 6);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,11 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
   const [testThrottle, setTestThrottle] = useState(5);
   const [testDuration, setTestDuration] = useState(3);
   const [motorTesting, setMotorTesting] = useState(false);
+  // The motor a test was started on, until its duration runs out or Stop is
+  // pressed. Stop targets this motor, not whatever the select shows now.
+  const [runningMotor, setRunningMotor] = useState<number | null>(null);
+  const runningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(runningTimer.current), []);
 
   useEffect(() => {
     if (isHardBlocked) {
@@ -44,19 +49,25 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
 
   const runMotorTest = useCallback(async () => {
     if (!protocol || !motorTestEnabled || !propsOff) return;
+    const motor = Number(testMotor);
     setMotorTesting(true);
+    setRunningMotor(motor);
+    clearTimeout(runningTimer.current);
+    runningTimer.current = setTimeout(() => setRunningMotor(null), testDuration * 1000);
     try {
       // The FC can refuse (armed, wrong mode, safety switch) or never answer;
       // both resolve with success=false rather than throwing.
       const result = await protocol.motorTest(
-        Number(testMotor),
+        motor,
         Math.min(testThrottle, MOTOR_TEST_MAX_THROTTLE),
         testDuration,
       );
       if (result.success) {
-        toast(t("motorTestRunning", { motor: testMotor }), "info");
+        toast(t("motorTestRunning", { motor }), "info");
       } else {
-        toast(t("motorTestNotRun", { motor: testMotor, reason: result.message || t("motorTestNoReason") }), "error");
+        clearTimeout(runningTimer.current);
+        setRunningMotor(null);
+        toast(t("motorTestNotRun", { motor, reason: result.message || t("motorTestNoReason") }), "error");
       }
     } catch {
       toast(t("motorTestFailed"), "error");
@@ -68,8 +79,11 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
   // Zero throttle with a one-second hold ends any test still spinning.
   const stopMotorTest = useCallback(() => {
     if (!protocol) return;
-    void protocol.motorTest(Number(testMotor), 0, 1).catch(() => undefined);
-  }, [protocol, testMotor]);
+    void protocol.motorTest(runningMotor ?? Number(testMotor), 0, 1).catch(() => undefined);
+    clearTimeout(runningTimer.current);
+    setRunningMotor(null);
+  }, [protocol, runningMotor, testMotor]);
+  const testRunning = motorTesting || runningMotor !== null;
 
   const motorOptions = useMemo(
     () => Array.from({ length: 8 }, (_, i) => ({ value: String(i + 1), label: tr("motorN", { n: i + 1 }) })),
@@ -101,7 +115,7 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
               <input type="checkbox" checked={propsOff} onChange={(e) => setPropsOff(e.target.checked)} />
               {tBf("iConfirmAllPropellersHave")}
             </label>
-            <Select label={tr("motor")} options={motorOptions} value={testMotor} onChange={setTestMotor} />
+            <Select label={tr("motor")} options={motorOptions} value={testMotor} onChange={setTestMotor} disabled={testRunning} />
             <div className="flex flex-col gap-1">
               <label className="text-xs text-text-secondary">
                 {tr("throttleLabel", { value: testThrottle, max: MOTOR_TEST_MAX_THROTTLE })}
@@ -112,7 +126,14 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
               <label className="text-xs text-text-secondary">{tr("durationLabel", { value: testDuration })}</label>
               <input type="range" min={1} max={10} value={testDuration} onChange={(e) => setTestDuration(Number(e.target.value))} className="w-full accent-accent-primary" />
             </div>
-            <div className="flex gap-2">
+          </div>
+        )}
+
+        {/* Stop stays reachable while a test may be spinning, even after the
+            safety toggle goes off. */}
+        {(motorTestEnabled || runningMotor !== null) && (
+          <div className="flex gap-2">
+            {motorTestEnabled && (
               <Button
                 variant="danger"
                 size="sm"
@@ -123,10 +144,10 @@ export function MotorTestSection({ protocol, isHardBlocked, hardBlockMessage }: 
               >
                 {tr("testMotorN", { n: testMotor })}
               </Button>
-              <Button variant="secondary" size="sm" icon={<Square size={12} />} onClick={stopMotorTest}>
-                {tr("stop")}
-              </Button>
-            </div>
+            )}
+            <Button variant="secondary" size="sm" icon={<Square size={12} />} onClick={stopMotorTest}>
+              {tr("stop")}
+            </Button>
           </div>
         )}
       </div>

@@ -16,7 +16,7 @@ import { GEOZONE_VERTEX_MAX } from "@/stores/geozone-store";
 import { Button } from "@/components/ui/button";
 import { MapPin, Trash2, Check, X, RotateCcw } from "lucide-react";
 import L from "leaflet";
-import { TILE_PROVIDERS } from "@/lib/tile-math";
+import { TILE_PROVIDERS, rasterZoomOptions } from "@/lib/tile-math";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -125,8 +125,7 @@ function PolygonGeozoneMapEditor({
 
     L.tileLayer(TILE_PROVIDERS.dark.url, {
       attribution: TILE_PROVIDERS.dark.attribution,
-      maxNativeZoom: TILE_PROVIDERS.dark.maxZoom,
-      maxZoom: 20,
+      ...rasterZoomOptions(TILE_PROVIDERS.dark.maxZoom),
     }).addTo(map);
 
     const manager = new DrawingManager(map, {

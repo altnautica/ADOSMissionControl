@@ -112,6 +112,18 @@ export const TILE_PROVIDERS: Record<BuiltInTileSource, TileProvider> = {
   },
 };
 
+/** How far in every map may zoom, whatever its basemap's native depth. */
+export const MAP_MAX_ZOOM = 20;
+
+/**
+ * Leaflet zoom options for a raster basemap whose server stops at
+ * `nativeMaxZoom`: tiles are requested up to that zoom and stretched past it,
+ * so a shallow basemap never caps the map's own zoom range.
+ */
+export function rasterZoomOptions(nativeMaxZoom: number): { maxNativeZoom: number; maxZoom: number } {
+  return { maxNativeZoom: nativeMaxZoom, maxZoom: Math.max(nativeMaxZoom, MAP_MAX_ZOOM) };
+}
+
 /** Latitude limit of the Web-Mercator tile grid. */
 const MAX_MERCATOR_LAT = 85.0511287798066;
 

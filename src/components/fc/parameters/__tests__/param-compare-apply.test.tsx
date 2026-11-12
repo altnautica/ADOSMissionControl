@@ -126,4 +126,22 @@ describe("ParamCompare apply", () => {
     // The failure stays selected for a retry; the landed one is no longer offered.
     expect(await screen.findByRole("button", { name: /Apply 1 parameter$/ })).toBeTruthy();
   });
+
+  it("never offers or writes a file value outside the parameter's range", async () => {
+    const meta = new Map<string, ParamMetadata>([
+      ["WPNAV_SPEED", { range: { min: 20, max: 2000 } } as ParamMetadata],
+    ]);
+    const { container } = render(
+      <ParamCompare fcParams={FC} metadata={meta} onApplied={vi.fn()} />,
+      { wrapper: IntlWrapper },
+    );
+    const input = container.querySelector("input[type=file]") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["ATC_RAT_PIT_P,11\nWPNAV_SPEED,5000\n"], "other.param")] } });
+    const apply = await screen.findByRole("button", { name: /^Apply \d+ parameters?$/ });
+    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    fireEvent.click(apply);
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    expect(written).toEqual([["ATC_RAT_PIT_P", 11]]);
+    expect(screen.getByText("Outside the allowed range (20 .. 2000)")).toBeTruthy();
+  });
 });

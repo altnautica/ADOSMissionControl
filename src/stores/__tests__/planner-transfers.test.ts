@@ -26,8 +26,26 @@ function selectProtocol(protocol: DroneProtocol): void {
   useDroneManager.setState({ drones: new Map([[DRONE, drone]]), selectedDroneId: DRONE });
 }
 
+/**
+ * The copy an ArduPilot vehicle returns: rebuilt from what each command
+ * stores, so an unset (NaN) slot comes back 0, `MAV_FRAME_MISSION` comes back
+ * as `GLOBAL`, and RTL keeps no position or altitude.
+ */
+function arduPilotEcho(item: MissionItem): MissionItem {
+  const zeroNaN = (v: number) => (Number.isNaN(v) ? 0 : v);
+  return {
+    ...item,
+    frame: item.frame === 2 ? 0 : item.frame,
+    param1: zeroNaN(item.param1),
+    param2: zeroNaN(item.param2),
+    param3: zeroNaN(item.param3),
+    param4: zeroNaN(item.param4),
+    ...(item.command === 20 ? { x: 0, y: 0, z: 0 } : {}),
+  };
+}
+
 function baseProtocol(extra: Partial<DroneProtocol>): DroneProtocol {
-  // The vehicle echoes the mission it accepted, as the read-back check expects.
+  // The vehicle echoes the mission it accepted, the way ArduPilot stores it.
   let onVehicle: MissionItem[] = [];
   const upload = extra.uploadMission;
   return {
@@ -46,7 +64,7 @@ function baseProtocol(extra: Partial<DroneProtocol>): DroneProtocol {
       ? {
           uploadMission: async (items: MissionItem[], onProgress?: Parameters<DroneProtocol["uploadMission"]>[1]) => {
             const result = await upload(items, onProgress);
-            if (result.success) onVehicle = items;
+            if (result.success) onVehicle = items.map(arduPilotEcho);
             return result;
           },
         }
@@ -170,6 +188,7 @@ describe("uploads while the vehicle flies its mission", () => {
   const plan: Waypoint[] = [
     { id: "a", lat: 47, lon: 8, alt: 30, command: "TAKEOFF" } as Waypoint,
     { id: "b", lat: 47.001, lon: 8, alt: 30, command: "WAYPOINT" } as Waypoint,
+    { id: "c", lat: 47.001, lon: 8, alt: 30, command: "RTL" } as Waypoint,
   ];
 
   /** The mission state the link computes for `id`. */
@@ -225,6 +244,29 @@ describe("uploads while the vehicle flies its mission", () => {
 
     await expect(useMissionStore.getState().uploadMission(protocol)).resolves.toBe(true);
     expect(uploadMission).toHaveBeenCalledTimes(1);
+  });
+
+  it("vouches for an upload whose read-back is the vehicle's stored copy", async () => {
+    const { protocol } = missionProtocol();
+    selectProtocol(protocol);
+    report(DRONE, "none");
+
+    await expect(useMissionStore.getState().uploadMission(protocol)).resolves.toBe(true);
+    expect(useMissionStore.getState()).toMatchObject({ uploadState: "uploaded", uploadError: null });
+    expect(useUploadReceiptsStore.getState().receipts[DRONE]?.mission).toBeDefined();
+  });
+
+  it("reports a read-back that holds a different waypoint", async () => {
+    const uploadMission = vi.fn(async (_items: MissionItem[]) => ({ success: true, resultCode: 0, message: "ok" }));
+    const protocol = baseProtocol({ uploadMission });
+    const downloadMission = protocol.downloadMission;
+    protocol.downloadMission = async () =>
+      (await downloadMission()).map((item) => (item.command === 16 && item.seq > 0 ? { ...item, x: item.x + 100 } : item));
+    selectProtocol(protocol);
+    report(DRONE, "none");
+
+    await expect(useMissionStore.getState().uploadMission(protocol)).resolves.toBe(false);
+    expect(useMissionStore.getState().uploadError).toMatch(/differs/);
   });
 
   it("tracks items sent during the upload and keeps a refusal's result code", async () => {

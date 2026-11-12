@@ -11,6 +11,8 @@ interface FlightModesHeaderProps {
   dirtySlotCount: number;
   loading: boolean;
   saving: boolean;
+  /** False until the vehicle's flight modes have been read: nothing to save over. */
+  canSave?: boolean;
   /** True while Write to Flash runs: the button shows busy and is disabled. */
   flashing?: boolean;
   showCommitButton: boolean;
@@ -25,6 +27,7 @@ export function FlightModesHeader({
   dirtySlotCount,
   loading,
   saving,
+  canSave = true,
   flashing = false,
   showCommitButton,
   onRead,
@@ -58,7 +61,7 @@ export function FlightModesHeader({
           size="sm"
           icon={<Save size={12} />}
           loading={saving}
-          disabled={!isDirty}
+          disabled={!isDirty || !canSave}
           onClick={onSave}
         >
           {dirtySlotCount > 0 ? tr("saveCount", { count: dirtySlotCount }) : tr("save")}

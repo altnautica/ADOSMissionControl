@@ -54,6 +54,8 @@ interface LogDataGap {
 
 export interface LogDataState {
   logId: number
+  /** The log as the last complete list described it; null when no list named it. */
+  identity: LogIdentity | null
   data: Uint8Array
   /** Highest byte offset seen (end of the furthest packet). */
   receivedBytes: number
@@ -86,6 +88,23 @@ export interface LogContext {
    * id: downloading the same log again resumes from them instead of byte 0.
    */
   partialLogs?: Map<number, LogPartial>
+  /**
+   * Each log of the last complete list, by id. A list id names a position, not
+   * a file: after logs are deleted the same id can name another log.
+   */
+  listedLogs?: Map<number, LogIdentity>
+}
+
+/** What LOG_ENTRY says about one log; the same id with a different one is another file. */
+export interface LogIdentity {
+  size: number
+  timeUtc: number
+}
+
+/** Same file: both described by matching list entries, or neither ever listed. */
+function sameLog(a: LogIdentity | null, b: LogIdentity | null): boolean {
+  if (a === null || b === null) return a === b
+  return a.size === b.size && a.timeUtc === b.timeUtc
 }
 
 /** What a stopped download had received, kept so a retry can resume. */
@@ -94,6 +113,8 @@ export interface LogPartial {
   receivedBytes: number
   gaps: LogDataGap[]
   endBytes: number | null
+  /** The log these bytes came from, as listed when the download started. */
+  identity: LogIdentity | null
 }
 
 /**
@@ -157,8 +178,17 @@ function settleLogList(ctx: LogContext, state: LogListState, error: Error | null
   state.settled = true
   clearTimeout(state.timer)
   if (ctx.logListDownload === state) ctx.logListDownload = null
-  if (error) state.reject(error)
-  else state.resolve(Array.from(state.entries.values()).sort((a, b) => a.id - b.id))
+  if (error) {
+    state.reject(error)
+    return
+  }
+  const entries = Array.from(state.entries.values()).sort((a, b) => a.id - b.id)
+  ctx.listedLogs = new Map(entries.map((e) => [e.id, { size: e.size, timeUtc: e.timeUtc }]))
+  // Bytes kept from a log this list no longer describes belong to another file.
+  for (const [id, partial] of ctx.partialLogs ?? []) {
+    if (!sameLog(partial.identity, ctx.listedLogs.get(id) ?? null)) ctx.partialLogs?.delete(id)
+  }
+  state.resolve(entries)
 }
 
 /** Abort a pending log list; its promise rejects with `reason`. */
@@ -185,10 +215,12 @@ export async function downloadLog(ctx: LogContext, logId: number, onProgress?: L
   }
 
   const { promise, resolve, reject } = Promise.withResolvers<Uint8Array>()
-  const partial = ctx.partialLogs?.get(logId)
+  const identity = ctx.listedLogs?.get(logId) ?? null
+  const kept = ctx.partialLogs?.get(logId)
   ctx.partialLogs?.delete(logId)
+  const partial = kept && sameLog(kept.identity, identity) ? kept : undefined
   const dl: LogDataState = {
-    logId, data: partial?.data ?? new Uint8Array(0),
+    logId, identity, data: partial?.data ?? new Uint8Array(0),
     receivedBytes: partial?.receivedBytes ?? 0,
     gaps: partial ? partial.gaps.map((g) => ({ ...g })) : [],
     endBytes: partial?.endBytes ?? null,
@@ -271,7 +303,7 @@ function settleLogDataDownload(ctx: LogContext, dl: LogDataState, error: Error |
     if (dl.receivedBytes > 0) {
       ctx.partialLogs ??= new Map()
       ctx.partialLogs.set(dl.logId, {
-        data: dl.data, receivedBytes: dl.receivedBytes, gaps: dl.gaps, endBytes: dl.endBytes,
+        data: dl.data, receivedBytes: dl.receivedBytes, gaps: dl.gaps, endBytes: dl.endBytes, identity: dl.identity,
       })
     }
     dl.reject(error)
@@ -291,6 +323,7 @@ export async function eraseAllLogs(ctx: LogContext): Promise<CommandResult> {
   ctx.transport.send(encodeLogErase(ctx.targetSysId, ctx.targetCompId, ctx.sysId, ctx.compId))
   // Erased logs are gone; a later log may reuse an id.
   ctx.partialLogs?.clear()
+  ctx.listedLogs = undefined
   return { success: true, resultCode: 0, acknowledged: false, message: 'Erase command sent, unacknowledged' }
 }
 

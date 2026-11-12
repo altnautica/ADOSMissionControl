@@ -165,15 +165,23 @@ export function createMainWindow(port: number): BrowserWindow {
   return win;
 }
 
+/** WebContents that already carry the policy. */
+const policed = new WeakSet<Electron.WebContents>();
+
 /**
  * Deny every navigation and popup that leaves the local app origin, on one
  * WebContents. Registered for the main window and, via
- * `app.on("web-contents-created")`, for every child it opens.
+ * `app.on("web-contents-created")`, for every child it opens. The main window
+ * reaches it through both, so a second call on the same WebContents is a
+ * no-op: doubled listeners would show the unload prompt twice, and Leave on
+ * either box would overrule Stay on the other.
  */
 export function applyNavigationPolicy(
   contents: Electron.WebContents,
   port: number,
 ): void {
+  if (policed.has(contents)) return;
+  policed.add(contents);
   contents.setWindowOpenHandler(({ url }) => {
     // `window.open("", name)` (the detached HUD and telemetry deck) opens an
     // about:blank popup that the opener renders into through a portal. It

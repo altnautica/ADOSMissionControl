@@ -82,6 +82,12 @@ export function useFlightModeParams({
   const [globalDirty, setGlobalDirty] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  // The protocol whose read last succeeded. Until a read of this vehicle
+  // succeeds, the slots and channel are defaults, not the vehicle's values:
+  // the panel shows them as not read and Save stays off.
+  const [loadedFor, setLoadedFor] = useState<DroneProtocol | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const loaded = protocol !== null && loadedFor === protocol;
   const [saving, setSaving] = useState(false);
   const [flashing, setFlashing] = useState(false);
   const [showCommitButton, setShowCommitButton] = useState(false);
@@ -102,10 +108,6 @@ export function useFlightModeParams({
         const initialModeParam = await protocol.getParameter("INITIAL_MODE");
         g.initialMode = String(initialModeParam.value);
       }
-      setGlobalConfig(g);
-      globalBaselineRef.current = { ...g };
-      setGlobalDirty(false);
-
       const modeParams = await Promise.all(
         Array.from({ length: MODE_SLOT_COUNT }, (_, i) =>
           protocol.getParameter(`${slotPrefix}${i + 1}`),
@@ -133,12 +135,19 @@ export function useFlightModeParams({
         superSimple: superSimpleSet.has(i),
       }));
 
+      setGlobalConfig(g);
+      globalBaselineRef.current = { ...g };
+      setGlobalDirty(false);
       setSlots(newSlots);
       baselineRef.current = newSlots.map((s) => ({ ...s }));
       setDirtySlots(new Set());
       setShowCommitButton(false);
+      setLoadedFor(protocol);
+      setLoadError(false);
       toast(t("loaded"), "success");
     } catch {
+      setLoadedFor(null);
+      setLoadError(true);
       toast(t("loadFailed"), "error");
     } finally {
       setLoading(false);
@@ -149,7 +158,7 @@ export function useFlightModeParams({
   const isDirty = totalDirtyCount > 0;
 
   const saveParams = useCallback(async () => {
-    if (!protocol) return;
+    if (!protocol || !loaded) return;
     if (!isDirty) return;
     setSaving(true);
     try {
@@ -236,7 +245,7 @@ export function useFlightModeParams({
     } finally {
       setSaving(false);
     }
-  }, [protocol, firmwareHandler, isPx4, isCopter, channelParam, slotPrefix, slots, globalConfig, isDirty, globalDirty, dirtySlots, toast, t, tCommit]);
+  }, [protocol, loaded, firmwareHandler, isPx4, isCopter, channelParam, slotPrefix, slots, globalConfig, isDirty, globalDirty, dirtySlots, toast, t, tCommit]);
 
   const commitToFlash = useCallback(async () => {
     if (!protocol) return;
@@ -289,6 +298,8 @@ export function useFlightModeParams({
     globalConfig,
     globalDirty,
     loading,
+    loaded,
+    loadError,
     saving,
     flashing,
     showCommitButton,

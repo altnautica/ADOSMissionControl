@@ -14,7 +14,7 @@ import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { FlightRecord } from "@/lib/types";
-import { TILE_PROVIDERS } from "@/lib/tile-math";
+import { TILE_PROVIDERS, rasterZoomOptions } from "@/lib/tile-math";
 
 const ICONS = {
   takeoffA: L.divIcon({
@@ -80,8 +80,7 @@ export default function CompareMapInner({ recordA, recordB }: CompareMapInnerPro
         <TileLayer
           url={TILE_PROVIDERS.dark.url}
           attribution={TILE_PROVIDERS.dark.attribution}
-          maxNativeZoom={TILE_PROVIDERS.dark.maxZoom}
-          maxZoom={20}
+          {...rasterZoomOptions(TILE_PROVIDERS.dark.maxZoom)}
         />
         {pathA.length >= 2 && (
           <Polyline positions={pathA} pathOptions={{ color: "#3a82ff", weight: 3, opacity: 0.9 }} />

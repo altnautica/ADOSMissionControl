@@ -32,8 +32,8 @@ import { PairedDroneCard } from "../shared/PairedDroneCard";
 import { NodeBrandHeader } from "./NodeBrandHeader";
 import { OverviewGrid, OverviewTile } from "./OverviewGrid";
 import { NodeReachBlock } from "../shared/NodeReachBlock";
-import { usePairingStore } from "@/stores/pairing-store";
-import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import { useNodeDirectAgent } from "../settings/use-node-direct-agent";
+import { NodeNotAttachedNotice } from "./NodeNotAttachedNotice";
 import { selectDeviceCapabilities, useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useLoraStore } from "@/stores/ground-station/lora-store";
 import { GroundStationLoraChip } from "../nodes/ground-station/lora/LoraOverviewChip";
@@ -41,10 +41,21 @@ import { GroundStationLoraChip } from "../nodes/ground-station/lora/LoraOverview
 /** Cadence of the summary poll; the cards age out after a few misses. */
 const GS_SUMMARY_POLL_MS = 3000;
 
-export function GroundStationOverview({ name }: { name?: string }) {
+export interface GroundStationOverviewProps {
+  name?: string;
+  /** The device id of the ground station the page shows. */
+  nodeDeviceId: string | null;
+}
+
+export function GroundStationOverview({ name, nodeDeviceId }: GroundStationOverviewProps) {
   const t = useTranslations("agent");
-  const connected = useAgentConnectionStore((s) => s.connected);
-  const status = useAgentSystemStore((s) => s.status);
+  // The agent stores, the summary poll and Restart all ride the one attached
+  // connection; on another node's page it is not this node's.
+  const direct = useNodeDirectAgent(nodeDeviceId);
+  const attachedConnected = useAgentConnectionStore((s) => s.connected);
+  const connected = direct !== null && attachedConnected;
+  const attachedStatus = useAgentSystemStore((s) => s.status);
+  const status = direct !== null ? attachedStatus : null;
   const services = useAgentSystemStore((s) => s.services);
   const resources = useAgentSystemStore((s) => s.resources);
   const logs = useAgentSystemStore((s) => s.logs);
@@ -53,7 +64,6 @@ export function GroundStationOverview({ name }: { name?: string }) {
   const fetchLogs = useAgentSystemStore((s) => s.fetchLogs);
   const restartService = useAgentSystemStore((s) => s.restartService);
   const restartAll = useAgentSystemStore((s) => s.restartAll);
-  const selectedNodeId = usePairingStore((s) => s.selectedPairedId);
 
   useEffect(() => {
     if (connected) {
@@ -68,8 +78,8 @@ export function GroundStationOverview({ name }: { name?: string }) {
   // the Radio, Mesh and Network tabs), so poll them here. A failed status read
   // drops the link snapshot rather than leaving the last one standing; every
   // other slice keeps its refresh stamp and ages out on its own.
-  const agentUrl = useAgentConnectionStore((s) => s.agentUrl);
-  const apiKey = useAgentConnectionStore((s) => s.apiKey);
+  const agentUrl = direct?.agentUrl ?? null;
+  const apiKey = direct?.apiKey ?? null;
   const loadStatus = useGroundStationStore((s) => s.loadStatus);
   const invalidateLinkHealth = useGroundStationStore((s) => s.invalidateLinkHealth);
   const loadRole = useGroundStationStore((s) => s.loadRole);
@@ -79,7 +89,7 @@ export function GroundStationOverview({ name }: { name?: string }) {
   // This node's own remembered capability slice, never the shared
   // last-writer field, so another node's LoRa flag cannot gate this one.
   const loraAdvertised = useAgentCapabilitiesStore(
-    (s) => selectDeviceCapabilities(s, deviceIdFromNodeId(selectedNodeId))?.lora === true,
+    (s) => selectDeviceCapabilities(s, nodeDeviceId)?.lora === true,
   );
   useGroundStationPoll(agentUrl, apiKey, GS_SUMMARY_POLL_MS, async (api) => {
     try {
@@ -113,6 +123,20 @@ export function GroundStationOverview({ name }: { name?: string }) {
     return subscribeUplinkWs(api);
   }, [agentUrl, apiKey, subscribeUplinkWs]);
 
+  if (!direct) {
+    return (
+      <div className="p-4 space-y-4">
+        <NodeBrandHeader
+          profile="ground-station"
+          title={name || t("groundStationFallbackTitle")}
+          nodeDeviceId={nodeDeviceId}
+        />
+        <NodeReachBlock deviceId={nodeDeviceId} />
+        <NodeNotAttachedNotice />
+      </div>
+    );
+  }
+
   if (!status) {
     if (!connected) {
       return (
@@ -120,7 +144,7 @@ export function GroundStationOverview({ name }: { name?: string }) {
           {/* Why this browser cannot use the node, when the reason is known
               (secure page, refused key, address taken by another agent). */}
           <div className="px-4 pt-4">
-            <NodeReachBlock deviceId={deviceIdFromNodeId(selectedNodeId)} />
+            <NodeReachBlock deviceId={nodeDeviceId} />
           </div>
           <AgentDisconnectedPage />
         </>
@@ -141,7 +165,7 @@ export function GroundStationOverview({ name }: { name?: string }) {
     t("groundStationFallbackTitle");
   return (
     <div className="p-4 space-y-4">
-      <NodeBrandHeader profile="ground-station" title={title} />
+      <NodeBrandHeader profile="ground-station" title={title} nodeDeviceId={nodeDeviceId} />
       {loraAdvertised ? (
         <div className="flex flex-wrap gap-2">
           <GroundStationLoraChip agentUrl={agentUrl} apiKey={apiKey} />

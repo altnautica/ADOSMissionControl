@@ -1185,6 +1185,9 @@ html[data-power="low"] .tgt-layer .tgt-ghost,
 /* The card's 24 px corner buttons keep a 48 px hit area (spec touch_target.min). */
 .ados-cockpit .mmap .mmap-hit { position: relative; }
 .ados-cockpit .mmap .mmap-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; }
+/* The expand button sits 4 px right of the frame toggle: its hit area grows
+   only right, toward the card edge, never over the toggle's MAP segment. */
+.ados-cockpit .mmap .mmap-hit-end::after { left: 0; width: 36px; margin: -24px 0 0 0; }
 /* Compact minimap toggle, shown in place of the map on narrow cockpits. */
 .ados-cockpit .mmap-chip { display: none; }
 /* Follow target on the tile minimap: outlined diamond + 1 s velocity tick,

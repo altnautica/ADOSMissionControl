@@ -418,13 +418,15 @@ export function CommandShell({ children }: { children: React.ReactNode }) {
         onCancel={cancelDisconnect}
       />
 
-      {/* Disconnecting an armed drone asks first. */}
+      {/* Disconnecting a possibly armed drone asks first. */}
       <ConfirmDialog
         open={armedDrone !== null}
         onConfirm={confirmArmedDisconnect}
         onCancel={cancelArmedDisconnect}
-        title={tGuard("armedTitle")}
-        message={tGuard("armedMessage", { name: armedDrone?.name ?? "" })}
+        title={tGuard(armedDrone?.armState === "unknown" ? "armedUnknownTitle" : "armedTitle")}
+        message={tGuard(armedDrone?.armState === "unknown" ? "armedUnknownMessage" : "armedMessage", {
+          name: armedDrone?.name ?? "",
+        })}
         confirmLabel={tGuard("armedConfirm")}
         variant="danger"
       />

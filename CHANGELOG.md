@@ -70,6 +70,41 @@ the project follows [Semantic Versioning](https://semver.org/).
   demo drones with a companion take gimbal rates.
 - **Relayed commands.** Cancel leaves a pending extension install to its own
   cancel instead of failing the install.
+- **Unknown arm state counts as possibly flying** in the Flight tab (Land,
+  not Take off), Disconnect, camera changes, extension Disable and every
+  flight-controller reboot control, which now share one confirm that is off
+  while the vehicle may be armed.
+- **Fly this mission** on a drone without its onboard agent on this network
+  says why the Launch sheet did not open and how to fly it on the flight
+  controller alone.
+- **Mission read-back.** A normal upload to an ArduPilot vehicle is no
+  longer reported as differing, so "Fly this mission" appears again. The
+  upload dialog holds the geofence when a leg crosses an exclusion zone or a
+  waypoint is above the fence ceiling, and holds rally points outside the
+  fence with a reason.
+- **Log download** starts a resumed log again from the beginning when the
+  vehicle's list shows that id now names a different file.
+- **Node pages** show the viewed node's own header status, Perception tier,
+  cameras, Recorder reach, and ground station or Visor overview, never those
+  of the attached node. In a cloud session Cameras says it cannot reach the
+  node instead of reporting no cameras. The sidebar battery hides when the
+  node stops sending new status, and the role badge follows the selected
+  ground station.
+- **Configure.** Frame geometry staged before arming cannot be saved once
+  the vehicle may be armed. The LED panel shows controls only from values
+  read from the vehicle. Flight Modes shows "not read" after a failed read
+  and keeps Save off. Compare › Apply skips values outside a parameter's
+  range. Motor test Stop stops the motor that was started. Betaflight
+  failsafe procedure and switch mode are named choices.
+- **Controller and maps.** A button still held when the tab returns does
+  not fire again, old pad bindings on reserved buttons are cleared, plugins
+  can suggest bindings on extra buttons, the minimap hit area no longer
+  reaches the frame toggle, and the dark basemap zooms to 20 again.
+- **Desktop.** The "Leave this page?" prompt shows once, and Stay keeps the
+  page.
+- A plugin's agent state never steps back to an older cloud report, the
+  planner inspector stays closed on a narrow window, unknown saved Flight
+  views are dropped, and more panel text follows the selected language.
 - **Emergency stop.** Kill goes out in any arm state, including after a link
   loss left the arm state unknown. A completed pad stop hold sends kill with no
   second hold, the PS button reaches its binding, and releasing a chord

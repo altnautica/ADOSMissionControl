@@ -3,9 +3,9 @@
 /**
  * @module RoleBadge
  * @description Top-bar pill showing the ground-station role and mesh id.
- * Visible while the selected node is a ground station whose agent profile is
- * `ground_station`; hidden for any other selection, so another node never
- * wears the ground station's role. Tooltip on hover surfaces mesh_id and peer
+ * Visible while the selected node is the attached ground station (its agent
+ * profile is `ground_station`); hidden for any other selection, including a
+ * second ground station, so no node wears another node's role. Tooltip on hover surfaces mesh_id and peer
  * count when the node is on a mesh.
  * @license GPL-3.0-only
  */
@@ -14,6 +14,8 @@ import { useTranslations } from "next-intl";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
+import { deviceIdFromNodeId } from "@/lib/agent/node-id";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -34,9 +36,13 @@ export function RoleBadge() {
   const selectedProfile = useNodeRegistryStore((s) =>
     selectedId ? (s.nodes[selectedId]?.presence.profile ?? null) : null,
   );
+  // The ground-station store describes the attached node only, so the role
+  // shows only while that connection is the selected node's.
+  const directAgent = useNodeDirectAgent(deviceIdFromNodeId(selectedId));
 
   if (profile !== "ground_station") return null;
   if (!selectedId || selectedProfile !== "ground-station") return null;
+  if (!directAgent) return null;
 
   const role = roleInfo?.current ?? "unset";
 

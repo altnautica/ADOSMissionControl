@@ -52,7 +52,7 @@ describe("VisionPipelinesPanel", () => {
       },
     ]);
     seed("depth", "uvc-1", []);
-    renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
+    renderPanel(<VisionPipelinesPanel droneId={DRONE} nodeDeviceId={null} />);
     expect(screen.getAllByTestId("vision-pipeline-row")).toHaveLength(2);
   });
 
@@ -62,6 +62,7 @@ describe("VisionPipelinesPanel", () => {
     renderPanel(
       <VisionPipelinesPanel
         droneId={DRONE}
+        nodeDeviceId={null}
         selectedKey={null}
         onSelect={onSelect}
       />,
@@ -76,6 +77,7 @@ describe("VisionPipelinesPanel", () => {
     renderPanel(
       <VisionPipelinesPanel
         droneId={DRONE}
+        nodeDeviceId={null}
         selectedKey="depth::uvc-1"
         onSelect={vi.fn()}
       />,
@@ -90,7 +92,7 @@ describe("VisionPipelinesPanel", () => {
 
   it("rows are read-only when no onSelect is given", () => {
     seed("person", "uvc-0");
-    renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
+    renderPanel(<VisionPipelinesPanel droneId={DRONE} nodeDeviceId={null} />);
     const row = screen.getByTestId("vision-pipeline-row");
     expect(row.getAttribute("role")).toBeNull();
   });
@@ -99,7 +101,7 @@ describe("VisionPipelinesPanel", () => {
     try {
       seed("person", "uvc-0");
       seed("person", "uvc-1");
-      renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
+      renderPanel(<VisionPipelinesPanel droneId={DRONE} nodeDeviceId={null} />);
       // Only uvc-0 keeps publishing, at 10 Hz, for 3 s.
       for (let i = 0; i < 30; i++) {
         act(() => {
@@ -116,14 +118,14 @@ describe("VisionPipelinesPanel", () => {
   });
 
   it("says the engine status is unavailable, not 'no pipelines', with no read-back", () => {
-    renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
+    renderPanel(<VisionPipelinesPanel droneId={DRONE} nodeDeviceId={null} />);
     expect(screen.queryByText(messages.vision.noPipelines)).toBeNull();
     expect(screen.getByText(messages.vision.engineStatusUnavailable)).toBeTruthy();
   });
 
   it("says vision is not running when the agent reports the engine unavailable, and clears on resume", () => {
     useVisionDetectionsStore.getState().setVisionAvailable(DRONE, false);
-    renderPanel(<VisionPipelinesPanel droneId={DRONE} />);
+    renderPanel(<VisionPipelinesPanel droneId={DRONE} nodeDeviceId={null} />);
     expect(screen.getByText(messages.vision.visionNotRunning)).toBeTruthy();
     expect(screen.queryByText(messages.vision.engineStatusUnavailable)).toBeNull();
     expect(screen.queryByText(messages.vision.noPipelines)).toBeNull();

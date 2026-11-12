@@ -21,6 +21,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { ParameterGrid } from "./ParameterGrid";
 import { WriteConfirmDialog } from "../shared/WriteConfirmDialog";
+import { RebootFcDialog } from "../shared/RebootFcButton";
 import { ParameterSearchFilter } from "./ParameterSearchFilter";
 import { ParamCompare, type ParamCompareApplied } from "./ParamCompare";
 import { ParamDefaultsDiff } from "./ParamDefaultsDiff";
@@ -118,6 +119,7 @@ export function ParametersPanel() {
 
   // The palette passes an exact name: filter to it and focus that row.
   const [focusParam, setFocusParam] = useState<string | null>(null);
+  const clearFocusParam = useCallback(() => setFocusParam(null), []);
   useEffect(() => {
     if (pendingParamSearch) {
       setFilter(pendingParamSearch); setCategory(null);
@@ -252,7 +254,7 @@ export function ParametersPanel() {
               )}
               <ParameterGrid parameters={filteredParams} modified={modified} onModify={handleModify}
                 filter={debouncedFilter} showModifiedOnly={showModifiedOnly} metadata={metadata} columnVisibility={columnVisibility}
-                docContext={docContext} docsLinkLabel={t("docsLink")} focusParam={focusParam} />
+                docContext={docContext} docsLinkLabel={t("docsLink")} focusParam={focusParam} onFocusParamDone={clearFocusParam} />
             </div>
           </>
         )}
@@ -268,8 +270,8 @@ export function ParametersPanel() {
       <Modal open={showDefaultsDiff} onClose={() => setShowDefaultsDiff(false)} title={t("compareDefaults")} className="max-w-3xl">
         <ParamDefaultsDiff parameters={parameters} modified={modified} metadata={metadata} />
       </Modal>
-      <ConfirmDialog open={showRebootPrompt} onCancel={() => setShowRebootPrompt(false)}
-        onConfirm={handleReboot}
+      <RebootFcDialog open={showRebootPrompt} onCancel={() => setShowRebootPrompt(false)}
+        onReboot={handleReboot}
         title={t("rebootTitle")} message={t("rebootMessage")}
         confirmLabel={t("rebootConfirmLabel")} variant="primary" />
     </ArmedWarningBanner>

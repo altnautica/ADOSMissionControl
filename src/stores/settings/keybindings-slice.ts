@@ -25,7 +25,8 @@ export interface HotbarSlot {
   skillId: string | null;
   /** Canonical keyboard chord ("shift+a" | "f1" | "g" | "1"), or null. */
   key: string | null;
-  /** Gamepad button index (0..15, input-store buttons[]), or null. */
+  /** Gamepad button index (input-store buttons[]; never one the controller
+   *  spec reserves), or null. */
   gamepadButton: number | null;
 }
 
@@ -79,9 +80,6 @@ export interface SuggestedBinding {
   key?: string | null;
   gamepadButton?: number | null;
 }
-
-/** Highest standard-mapping gamepad button index a slot can bind. */
-const MAX_GAMEPAD_BUTTON = 15;
 
 /** Slots on a loadout's bar. The factory loadout fills the first ten with
  * built-ins and leaves the rest free for extension skills. */
@@ -398,7 +396,6 @@ export const createKeybindingsActions: SettingsSliceFactory<
       typeof button === "number" &&
       Number.isInteger(button) &&
       button >= 0 &&
-      button <= MAX_GAMEPAD_BUTTON &&
       !isReservedGamepadButton(button) &&
       !BUILTIN_GAMEPAD_BUTTONS.has(button) &&
       !slots.some((slot) => slot.gamepadButton === button)

@@ -120,7 +120,7 @@ export function ReceiverPanel() {
         >
           {hasDirty && (
             <span className="text-[10px] font-mono text-status-warning px-1.5 py-0.5 bg-status-warning/10 border border-status-warning/20">
-              UNSAVED
+              <SaveBarLabel k="unsavedChanges" />
             </span>
           )}
           <Button

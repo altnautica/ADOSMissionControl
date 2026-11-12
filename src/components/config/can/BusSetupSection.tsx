@@ -29,6 +29,7 @@ import { HardDrive, Power, Save, Network, ShieldAlert, Terminal } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { RebootFcDialog } from "@/components/fc/shared/RebootFcButton";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useFcPanelState } from "@/hooks/use-fc-panel-state";
@@ -157,8 +158,8 @@ export function BusSetupSection() {
     if (!protocol || !drone) return;
     // Entering SLCAN drops the MAVLink link to the FC; never do that to an
     // armed vehicle. Re-read the arm state here in case it changed while
-    // the confirm dialog was open.
-    if (useDroneStore.getState().armState === "armed") return;
+    // the confirm dialog was open. An unknown arm state may be airborne.
+    if (useDroneStore.getState().armState !== "disarmed") return;
     if (drone.transport?.type !== "webserial") {
       setSlcanNeedsUsb(true);
       return;
@@ -187,7 +188,8 @@ export function BusSetupSection() {
   const rebootFc = async () => {
     const protocol = getProtocol();
     if (!protocol?.sendCommand) return;
-    if (useDroneStore.getState().armState === "armed") return;
+    // Read again at send time; an unknown arm state may be airborne.
+    if (useDroneStore.getState().armState !== "disarmed") return;
     setRebootStatus("sending");
     setRebootError(null);
     try {
@@ -452,13 +454,14 @@ export function BusSetupSection() {
         open={slcanConfirmOpen}
         onConfirm={enterSlcan}
         onCancel={() => setSlcanConfirmOpen(false)}
+        confirmDisabled={isHardBlocked}
         title={t("enterSlcan")}
         message={t("enterSlcanConfirm")}
         variant="danger"
       />
-      <ConfirmDialog
+      <RebootFcDialog
         open={rebootConfirmOpen}
-        onConfirm={() => { setRebootConfirmOpen(false); void rebootFc(); }}
+        onReboot={() => { setRebootConfirmOpen(false); void rebootFc(); }}
         onCancel={() => setRebootConfirmOpen(false)}
         title={tReboot("rebootTitle")}
         message={tReboot("rebootMessage")}

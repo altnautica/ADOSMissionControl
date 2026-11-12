@@ -1,7 +1,8 @@
 /**
  * @module command/role-badge-selection.test
  * @description The top-bar ground-station role badge follows the selection: it
- * shows while a ground station is selected and hides over any other node.
+ * shows while the attached ground station is selected and hides over any other
+ * node, including a second ground station.
  * @license GPL-3.0-only
  */
 
@@ -15,15 +16,17 @@ import { RoleBadge } from "../RoleBadge";
 import { useGroundStationStore } from "@/stores/ground-station-store";
 import { useDroneManager } from "@/stores/drone-manager";
 import { useNodeRegistryStore } from "@/stores/node-registry";
+import { useAgentConnectionStore } from "@/stores/agent-connection-store";
 
-function selectProfile(profile: string) {
-  useDroneManager.setState({ selectedDroneId: "node:n1" });
+function selectProfile(profile: string, nodeId = "node:n1") {
+  useDroneManager.setState({ selectedDroneId: nodeId });
   useNodeRegistryStore.setState({
-    nodes: { "node:n1": { presence: { profile } } } as never,
+    nodes: { [nodeId]: { presence: { profile, sources: ["local"] }, fc: {} } } as never,
   });
 }
 
 beforeEach(() => {
+  useAgentConnectionStore.setState({ nodeDeviceId: "n1", agentUrl: "http://192.0.2.10:8080" });
   useGroundStationStore.setState((s) => ({
     status: { ...s.status, profile: "ground_station" },
     role: { ...s.role, info: { current: "receiver" } as never },
@@ -34,6 +37,7 @@ afterEach(() => {
   cleanup();
   useDroneManager.setState({ selectedDroneId: null });
   useNodeRegistryStore.setState({ nodes: {} });
+  useAgentConnectionStore.setState({ nodeDeviceId: null, agentUrl: null });
 });
 
 describe("RoleBadge", () => {
@@ -49,6 +53,18 @@ describe("RoleBadge", () => {
 
   it("hides over a compute node selection", () => {
     selectProfile("workstation");
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <RoleBadge />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    act(() => selectProfile("ground-station"));
+    expect(screen.queryByRole("status")).not.toBeNull();
+  });
+
+  it("hides over a second ground station while the first is attached", () => {
+    selectProfile("ground-station", "node:n2");
     render(
       <NextIntlClientProvider locale="en" messages={messages}>
         <RoleBadge />

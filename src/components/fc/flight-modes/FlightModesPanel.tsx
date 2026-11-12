@@ -35,6 +35,8 @@ export function FlightModesPanel() {
     dirtySlots,
     globalConfig,
     loading,
+    loaded,
+    loadError,
     saving,
     flashing,
     showCommitButton,
@@ -65,7 +67,8 @@ export function FlightModesPanel() {
   );
 
   const modeChIdx = Number(globalConfig.modeChannel) - 1;
-  const currentPwm = latestRc?.channels[modeChIdx] ?? 0;
+  // The default channel is not the vehicle's: no live slot until a read lands.
+  const currentPwm = loaded ? (latestRc?.channels[modeChIdx] ?? 0) : 0;
 
   const activeSlot = useMemo(() => {
     if (currentPwm === 0) return -1;
@@ -120,6 +123,7 @@ export function FlightModesPanel() {
           dirtySlotCount={dirtySlots.size}
           loading={loading}
           saving={saving}
+          canSave={loaded}
           flashing={flashing}
           showCommitButton={showCommitButton}
           onRead={fetchParams}
@@ -150,47 +154,57 @@ export function FlightModesPanel() {
           </div>
         </div>
 
-        <FlightModeChannelControls
-          globalConfig={globalConfig}
-          channelOptions={channelOptions}
-          availableModes={availableModes}
-          firmwareHandler={firmwareHandler}
-          currentPwm={currentPwm}
-          activeSlot={activeSlot}
-          onUpdate={updateGlobal}
-        />
-
-        {hasDuplicates && (
-          <div className="flex items-center gap-2 p-2 bg-accent-primary/5 border border-accent-primary/20">
-            <Info size={14} className="text-accent-primary shrink-0" />
-            <span className="text-[10px] text-accent-primary">
-              Same mode in multiple slots: {[...duplicateModes].join(", ")}. This is valid but unusual.
-            </span>
-          </div>
-        )}
-
         {isHardBlocked && (
           <div className="flex items-center gap-2 p-2 bg-status-warning/10 border border-status-warning/50">
             <span className="text-[10px] text-status-warning">{lockMessage}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-2">
-          {slots.map((slot, i) => (
-            <ModeSlotRow
-              key={i}
-              index={i}
-              slot={slot}
-              isActive={activeSlot === i}
-              isDirty={dirtySlots.has(i)}
-              isCopter={isCopter}
+        {!loaded ? (
+          <Card>
+            <p className="text-xs text-text-tertiary">
+              {loading ? tr("readingModes") : loadError ? tr("readFailed") : tr("notRead")}
+            </p>
+          </Card>
+        ) : (
+          <>
+            <FlightModeChannelControls
+              globalConfig={globalConfig}
+              channelOptions={channelOptions}
               availableModes={availableModes}
-              range={MODE_PWM_RANGES[i]}
-              onUpdate={updateSlot}
-              onReset={resetSlot}
+              firmwareHandler={firmwareHandler}
+              currentPwm={currentPwm}
+              activeSlot={activeSlot}
+              onUpdate={updateGlobal}
             />
-          ))}
-        </div>
+
+            {hasDuplicates && (
+              <div className="flex items-center gap-2 p-2 bg-accent-primary/5 border border-accent-primary/20">
+                <Info size={14} className="text-accent-primary shrink-0" />
+                <span className="text-[10px] text-accent-primary">
+                  Same mode in multiple slots: {[...duplicateModes].join(", ")}. This is valid but unusual.
+                </span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-2">
+              {slots.map((slot, i) => (
+                <ModeSlotRow
+                  key={i}
+                  index={i}
+                  slot={slot}
+                  isActive={activeSlot === i}
+                  isDirty={dirtySlots.has(i)}
+                  isCopter={isCopter}
+                  availableModes={availableModes}
+                  range={MODE_PWM_RANGES[i]}
+                  onUpdate={updateSlot}
+                  onReset={resetSlot}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

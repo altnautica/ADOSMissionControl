@@ -21,6 +21,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { render, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import { getFunctionName } from "convex/server";
 import messages from "../../../../../locales/en.json";
+import { useNodeRegistryStore } from "@/stores/node-registry";
+import { useDroneManager } from "@/stores/drone-manager";
 
 vi.mock("lucide-react", () => {
   const stub = (name: string) =>
@@ -77,7 +79,6 @@ const removeInstall = vi.fn(async (_args: { installId: string }) => null);
 const toast = vi.fn();
 const cancelCommand = vi.fn(async (_args: { commandId: string }) => ({ cancelled: true }));
 const lanEnable = vi.fn(async (_id: string) => undefined);
-let armed = false;
 let lanAgent: { agentUrl: string; apiKey: string } | null = null;
 
 // The card builds three mutations; route each to its recorder by the
@@ -100,10 +101,6 @@ vi.mock("convex/react", () => ({
 
 vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({ toast }),
-}));
-
-vi.mock("@/hooks/use-armed-lock", () => ({
-  useArmedLock: () => ({ isArmed: armed }),
 }));
 
 vi.mock("@/lib/agent/resolve-agent", () => ({
@@ -159,7 +156,8 @@ describe("DronePluginCard cloud command ACK", () => {
     toast.mockClear();
     cancelCommand.mockClear();
     lanEnable.mockClear();
-    armed = false;
+    useNodeRegistryStore.setState({ nodes: {} });
+    useDroneManager.setState({ drones: new Map() });
     lanAgent = null;
     cleanup();
   });
@@ -282,13 +280,31 @@ describe("DronePluginCard cloud command ACK", () => {
   });
 
   it("asks before disabling, and notes an armed drone", async () => {
-    armed = true;
+    // The registry is keyed by node id, the install by its bare device id.
+    useNodeRegistryStore.setState({
+      nodes: { "node:device-1": { fc: { armState: "armed" } } } as never,
+    });
     const { getByText, getByRole } = renderCard(makeInstall({ status: "running" }));
 
     fireEvent.click(getByText("Disable"));
     const dialog = getByRole("alertdialog");
     expect(dialog.textContent).toContain(messages.dronePlugins.disableArmedNote);
     expect(enqueueCommand).not.toHaveBeenCalled();
+  });
+
+  it("notes a connected drone whose arm state is unknown", async () => {
+    useNodeRegistryStore.setState({
+      nodes: { "node:device-1": { fc: { armState: "unknown" } } } as never,
+    });
+    useDroneManager.setState({
+      drones: new Map([["node:device-1", { protocol: { isConnected: true } }]]) as never,
+    });
+    const { getByText, getByRole } = renderCard(makeInstall({ status: "running" }));
+
+    fireEvent.click(getByText("Disable"));
+    expect(getByRole("alertdialog").textContent).toContain(
+      messages.dronePlugins.disableArmedUnknownNote,
+    );
   });
 
   it("says it is waiting for the node, and cancels the untaken command", async () => {

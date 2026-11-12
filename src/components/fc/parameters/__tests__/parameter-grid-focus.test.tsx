@@ -2,11 +2,13 @@
  * @license GPL-3.0-only
  *
  * A parameter opened from the command palette lands on its exact row:
- * "RTL_ALT" highlights and scrolls to RTL_ALT, not RTL_ALT_FINAL.
+ * "RTL_ALT" highlights and scrolls to RTL_ALT, not RTL_ALT_FINAL. It does so
+ * once: editing the filter afterwards leaves focus where the operator is.
  */
 
+import { useCallback, useState } from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
 
 const scrollToIndex = vi.fn();
@@ -45,5 +47,45 @@ describe("ParameterGrid focusParam", () => {
     const rows = screen.getAllByText(/^RTL_ALT/);
     expect(rows.length).toBe(2);
     expect(scrollToIndex).toHaveBeenCalled();
+  });
+
+  it("does not take focus back when the filter changes after the first focus", async () => {
+    const PARAMS = [
+      { name: "RTL_ALT", value: 1500, type: 9, index: 0, count: 3 },
+      { name: "RTL_ALT_FINAL", value: 0, type: 9, index: 1, count: 3 },
+      { name: "RTL_CLIMB_MIN", value: 0, type: 9, index: 2, count: 3 },
+    ];
+    // Owns the focus target the way the Parameters panel does.
+    function Harness({ filter }: { filter: string }) {
+      const [focusParam, setFocusParam] = useState<string | null>("RTL_CLIMB_MIN");
+      const done = useCallback(() => setFocusParam(null), []);
+      return (
+        <>
+          <input aria-label="search" />
+          <ParameterGrid
+            parameters={PARAMS}
+            modified={new Map()}
+            onModify={vi.fn()}
+            filter={filter}
+            showModifiedOnly={false}
+            focusParam={focusParam}
+            onFocusParamDone={done}
+            columnVisibility={{ index: true, name: true, description: true, value: true, options: true, range: true, units: true, type: true } as never}
+          />
+        </>
+      );
+    }
+    const frame = () => act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+    scrollToIndex.mockClear();
+    const { rerender } = render(<Harness filter="RTL" />, { wrapper: IntlWrapper });
+    await frame();
+    expect(scrollToIndex).toHaveBeenCalledTimes(1);
+
+    const search = screen.getByLabelText("search");
+    search.focus();
+    rerender(<Harness filter="RTL_C" />);
+    await frame();
+    expect(scrollToIndex).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(search);
   });
 });

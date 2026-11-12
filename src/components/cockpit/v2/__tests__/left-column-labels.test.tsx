@@ -7,7 +7,7 @@
  * spec's `label_min_px`.
  */
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 
 import { renderWithIntl } from "../../../../../tests/helpers/intl-wrapper";
@@ -32,6 +32,11 @@ function mount(w: number, h: number) {
   );
   return grid;
 }
+
+// A known disarm: an unknown arm state may be airborne and shows Land.
+beforeEach(() => {
+  useDroneStore.setState({ armState: "disarmed" } as never);
+});
 
 afterEach(() => {
   cleanup();

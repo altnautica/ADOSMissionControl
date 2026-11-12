@@ -26,6 +26,9 @@ import { useDroneStore } from "@/stores/drone-store";
 import { useClockStore } from "@/stores/clock-store";
 import { useClockTick } from "@/lib/agent/freshness";
 import { isFresh } from "@/lib/telemetry/freshness";
+import { livenessFromTimestamp } from "@/lib/nodes/presence";
+import { useNodeLastSeen } from "@/hooks/use-node-last-seen";
+import { useNodeDirectAgent } from "@/components/command/settings/use-node-direct-agent";
 
 export type { EffProfile };
 
@@ -92,11 +95,17 @@ export function useNodeBrand(args: {
    * (`SurfaceContext.isConnected`). A bare flight controller has no agent,
    * so its status comes from this session, never the agent connection. */
   fcConnected?: boolean;
+  /** The device id of the node the page shows. The attached agent connection
+   * describes this node only when it is this node's; otherwise the status is
+   * the node's own liveness. */
+  nodeDeviceId: string | null;
 }): NodeBrandDescriptor {
-  const { profile, title, reachedViaName, fcConnected = false } = args;
+  const { profile, title, reachedViaName, fcConnected = false, nodeDeviceId } = args;
   const t = useTranslations("nodeConsole");
   const connected = useAgentConnectionStore((s) => s.connected);
   const stale = useAgentSystemStore((s) => s.stale);
+  const directAgent = useNodeDirectAgent(nodeDeviceId);
+  const nodeLiveness = livenessFromTimestamp(useNodeLastSeen(nodeDeviceId));
   // The open node's FC heartbeat, aged on the shared clock so a silent link
   // reads as reconnecting.
   const fcFresh = useFcHeartbeatFresh(fcConnected);
@@ -116,11 +125,14 @@ export function useNodeBrand(args: {
       statusLevel = "offline";
     }
   } else {
-    // Every agent-backed profile: the node's agent connection.
-    if (connected) {
+    // Every agent-backed profile: the node's agent connection when the
+    // attached one is this node's, else how recently this node was heard from.
+    const online = directAgent ? connected : nodeLiveness === "live";
+    const reconnecting = directAgent ? stale : nodeLiveness === "stale";
+    if (online) {
       statusLine = t("hero.online");
       statusLevel = "good";
-    } else if (stale) {
+    } else if (reconnecting) {
       statusLine = t("hero.reconnecting");
       statusLevel = "serious";
     } else {

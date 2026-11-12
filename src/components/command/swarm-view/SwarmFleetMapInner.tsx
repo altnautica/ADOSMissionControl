@@ -25,7 +25,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import { DEFAULT_CENTER } from "@/lib/map-constants";
-import { TILE_PROVIDERS } from "@/lib/tile-math";
+import { TILE_PROVIDERS, rasterZoomOptions } from "@/lib/tile-math";
 import {
   SWARM_SEVERITY_ORDER,
   swarmBeaconPosition,
@@ -135,7 +135,11 @@ export default function SwarmFleetMapInner({
       style={{ width: "100%", height: "100%" }}
       zoomControl={false}
     >
-      <TileLayer url={TILE_PROVIDERS.dark.url} attribution={TILE_PROVIDERS.dark.attribution} />
+      <TileLayer
+        url={TILE_PROVIDERS.dark.url}
+        attribution={TILE_PROVIDERS.dark.attribution}
+        {...rasterZoomOptions(TILE_PROVIDERS.dark.maxZoom)}
+      />
       <MapResizer />
       <FitFleetOnce positions={positions} />
 
