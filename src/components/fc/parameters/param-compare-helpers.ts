@@ -6,21 +6,21 @@ export const STATUS_STYLES: Record<string, string> = {
   unchanged: "text-text-tertiary",
 };
 
-export const STATUS_LABELS: Record<string, string> = {
-  changed: "Changed",
-  added: "New",
-  unchanged: "Same",
-};
+/** `fcPanels.paramCompare` key of each row status. */
+export const STATUS_KEYS = {
+  changed: "statusChanged",
+  added: "statusAdded",
+  unchanged: "statusUnchanged",
+} as const;
+
+/** `fcPanels.paramCompare` key of each filter, given its `{count}`. */
+export const FILTER_KEYS = {
+  all: "filterAll",
+  changed: "filterChanged",
+  added: "filterAdded",
+  unchanged: "filterUnchanged",
+} as const satisfies Record<FilterMode, string>;
 
 export const FILTER_MODES: FilterMode[] = ["all", "changed", "added", "unchanged"];
 
 export const TH = "px-2 py-1.5 text-text-tertiary font-semibold uppercase tracking-wider text-[10px]";
-
-export function filterLabel(mode: FilterMode, stats: { total: number; changed: number; added: number; unchanged: number }): string {
-  switch (mode) {
-    case "all": return `All (${stats.total})`;
-    case "changed": return `Changed (${stats.changed})`;
-    case "added": return `New (${stats.added})`;
-    case "unchanged": return `Same (${stats.unchanged})`;
-  }
-}

@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "மறுதொடக்கக் கட்டளையை அனுப்ப முடியவில்லை",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "ஃப்ளைட் கன்ட்ரோலரை மறுதொடக்கம் செய்",
-      "rebootRefused": "ஃப்ளைட் கன்ட்ரோலர் மறுதொடக்கக் கட்டளையை மறுத்தது"
+      "rebootRefused": "ஃப்ளைட் கன்ட்ரோலர் மறுதொடக்கக் கட்டளையை மறுத்தது",
+      "debugOptions": "பிழைத்திருத்த விருப்பங்கள் ({value})"
     },
     "appletCatalog": {
       "starterScripts": "தொடக்க ஸ்கிரிப்டுகள்",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} மாற்றப்பட்டன",
       "addedCount": "{count} புதியவை",
       "unchangedCount": "{count} மாற்றமில்லை",
-      "applyingProgress": "பயன்படுத்துகிறது {current}/{total}…"
+      "applyingProgress": "பயன்படுத்துகிறது {current}/{total}…",
+      "statusChanged": "மாற்றப்பட்டது",
+      "statusAdded": "புதியது",
+      "statusUnchanged": "அதே",
+      "filterAll": "அனைத்தும் ({count})",
+      "filterChanged": "மாற்றப்பட்டது ({count})",
+      "filterAdded": "புதியது ({count})",
+      "filterUnchanged": "அதே ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "அளவுரு எழுதுதலை உறுதிப்படுத்து",
@@ -11715,7 +11723,9 @@
       "now": "இப்போது",
       "restore": "மீட்டமை",
       "readingCurrentParameters": "தற்போதைய அளவுருக்களைப் படிக்கிறது…",
-      "title": "அளவுருக்களை {target} க்கு மீட்டமை"
+      "title": "அளவுருக்களை {target} க்கு மீட்டமை",
+      "restoreParam": "{name} மீட்டமை",
+      "notOnVehicle": "வாகனத்தில் இல்லை"
     },
     "inboundSigningSection": {
       "inboundVerification": "உள்வரும் சரிபார்ப்பு",

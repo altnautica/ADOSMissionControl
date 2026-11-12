@@ -31,7 +31,8 @@ const REMOVED: Record<string, string[]> = {
   "parameters/ParamCompare.tsx": ["changed</Badge>", "new</Badge>", "params)</span>", "Applying {"],
   "safety/PreArmPanel.tsx": ["sensors healthy`"],
   "firmware/FirmwareFcWizard.tsx": ["parameters were saved before flashing", "`Restore ${", "the backup from"],
-  "firmware/ParamRestoreDialog.tsx": ["`Restore parameters to"],
+  "firmware/ParamRestoreDialog.tsx": ["`Restore parameters to", "\"not on vehicle\"", "`Restore ${d.name}`"],
+  "parameters/param-compare-helpers.ts": ["\"Changed\"", "\"Same\"", "`All ("],
   "motors/BfMotorTest.tsx": ["REMOVE ALL PROPELLERS"],
   "px4/Px4ActuatorTest.tsx": ["REMOVE ALL PROPELLERS", "The selected motor spins"],
   "motors/OutputsPanel.tsx": [">UNSAVED<"],
@@ -62,6 +63,10 @@ const KEYS = [
   "fcPanels.firmwarePanel.subtitle",
   "fcPanels.firmwareBackupRestore.flashFirmware",
   "fcPanels.pidTuningPanel.subtitleCopterPx4",
+  "fcPanels.paramCompare.statusChanged",
+  "fcPanels.paramCompare.filterUnchanged",
+  "fcPanels.paramRestoreDialog.notOnVehicle",
+  "fcPanels.paramRestoreDialog.restoreParam",
 ];
 
 // Added in English; the other locales are filled in from it.

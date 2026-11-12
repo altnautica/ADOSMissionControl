@@ -126,7 +126,7 @@ export function ScrConfigCard() {
               onClick={() => setDebugOpen(true)}
               className="w-full"
             >
-              Debug Options ({debugValue})
+              {tk("debugOptions", { value: debugValue })}
             </Button>
           </div>
           <Input

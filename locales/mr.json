@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "रीबूट कमांड पाठवण्यात अयशस्वी",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "फ्लाइट कंट्रोलर रीबूट करा",
-      "rebootRefused": "फ्लाइट कंट्रोलरने रीबूट आदेश नाकारला"
+      "rebootRefused": "फ्लाइट कंट्रोलरने रीबूट आदेश नाकारला",
+      "debugOptions": "डीबग पर्याय ({value})"
     },
     "appletCatalog": {
       "starterScripts": "स्टार्टर स्क्रिप्ट्स",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} बदलले",
       "addedCount": "{count} नवीन",
       "unchangedCount": "{count} अपरिवर्तित",
-      "applyingProgress": "लागू करत आहे {current}/{total}…"
+      "applyingProgress": "लागू करत आहे {current}/{total}…",
+      "statusChanged": "बदललेले",
+      "statusAdded": "नवीन",
+      "statusUnchanged": "सारखे",
+      "filterAll": "सर्व ({count})",
+      "filterChanged": "बदललेले ({count})",
+      "filterAdded": "नवीन ({count})",
+      "filterUnchanged": "सारखे ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "पॅरामीटर लेखनाची पुष्टी करा",
@@ -11715,7 +11723,9 @@
       "now": "आता",
       "restore": "पुनर्संचयित करा",
       "readingCurrentParameters": "सध्याचे पॅरामीटर्स वाचत आहे…",
-      "title": "पॅरामीटर {target} वर पुनर्संचयित करा"
+      "title": "पॅरामीटर {target} वर पुनर्संचयित करा",
+      "restoreParam": "{name} पुनर्संचयित करा",
+      "notOnVehicle": "वाहनावर नाही"
     },
     "inboundSigningSection": {
       "inboundVerification": "इनबाउंड पडताळणी",

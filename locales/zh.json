@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "发送重启命令失败",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "重启飞控",
-      "rebootRefused": "飞控拒绝了重启命令"
+      "rebootRefused": "飞控拒绝了重启命令",
+      "debugOptions": "调试选项（{value}）"
     },
     "appletCatalog": {
       "starterScripts": "入门脚本",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} 个已更改",
       "addedCount": "{count} 个新增",
       "unchangedCount": "{count} 个未更改",
-      "applyingProgress": "正在应用 {current}/{total}…"
+      "applyingProgress": "正在应用 {current}/{total}…",
+      "statusChanged": "已更改",
+      "statusAdded": "新增",
+      "statusUnchanged": "相同",
+      "filterAll": "全部 ({count})",
+      "filterChanged": "已更改 ({count})",
+      "filterAdded": "新增 ({count})",
+      "filterUnchanged": "相同 ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "确认写入参数",
@@ -11715,7 +11723,9 @@
       "now": "当前",
       "restore": "恢复",
       "readingCurrentParameters": "正在读取当前参数…",
-      "title": "将参数恢复到 {target}"
+      "title": "将参数恢复到 {target}",
+      "restoreParam": "恢复 {name}",
+      "notOnVehicle": "飞行器上没有"
     },
     "inboundSigningSection": {
       "inboundVerification": "入站验证",

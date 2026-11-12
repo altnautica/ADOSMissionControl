@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "ರೀಬೂಟ್ ಆದೇಶ ಕಳುಹಿಸಲು ವಿಫಲವಾಗಿದೆ",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ಅನ್ನು ರೀಬೂಟ್ ಮಾಡಿ",
-      "rebootRefused": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ರೀಬೂಟ್ ಆಜ್ಞೆಯನ್ನು ನಿರಾಕರಿಸಿತು"
+      "rebootRefused": "ಫ್ಲೈಟ್ ಕಂಟ್ರೋಲರ್ ರೀಬೂಟ್ ಆಜ್ಞೆಯನ್ನು ನಿರಾಕರಿಸಿತು",
+      "debugOptions": "ಡೀಬಗ್ ಆಯ್ಕೆಗಳು ({value})"
     },
     "appletCatalog": {
       "starterScripts": "ಆರಂಭಿಕ ಸ್ಕ್ರಿಪ್ಟ್‌ಗಳು",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} ಬದಲಾಗಿವೆ",
       "addedCount": "{count} ಹೊಸದು",
       "unchangedCount": "{count} ಬದಲಾಗಿಲ್ಲ",
-      "applyingProgress": "ಅನ್ವಯಿಸಲಾಗುತ್ತಿದೆ {current}/{total}…"
+      "applyingProgress": "ಅನ್ವಯಿಸಲಾಗುತ್ತಿದೆ {current}/{total}…",
+      "statusChanged": "ಬದಲಾಗಿದೆ",
+      "statusAdded": "ಹೊಸದು",
+      "statusUnchanged": "ಅದೇ",
+      "filterAll": "ಎಲ್ಲಾ ({count})",
+      "filterChanged": "ಬದಲಾಗಿದೆ ({count})",
+      "filterAdded": "ಹೊಸದು ({count})",
+      "filterUnchanged": "ಅದೇ ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "ಪ್ಯಾರಾಮೀಟರ್ ಬರೆಯುವುದನ್ನು ದೃಢೀಕರಿಸಿ",
@@ -11715,7 +11723,9 @@
       "now": "ಈಗ",
       "restore": "ಮರುಸ್ಥಾಪಿಸಿ",
       "readingCurrentParameters": "ಪ್ರಸ್ತುತ ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು ಓದಲಾಗುತ್ತಿದೆ…",
-      "title": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು {target} ಗೆ ಮರುಸ್ಥಾಪಿಸಿ"
+      "title": "ಪ್ಯಾರಾಮೀಟರ್‌ಗಳನ್ನು {target} ಗೆ ಮರುಸ್ಥಾಪಿಸಿ",
+      "restoreParam": "{name} ಮರುಸ್ಥಾಪಿಸಿ",
+      "notOnVehicle": "ವಾಹನದಲ್ಲಿ ಇಲ್ಲ"
     },
     "inboundSigningSection": {
       "inboundVerification": "ಒಳಬರುವ ಪರಿಶೀಲನೆ",

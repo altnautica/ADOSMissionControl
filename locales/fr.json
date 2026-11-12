@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "Échec de l'envoi de la commande de redémarrage",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "Redémarrer le contrôleur de vol",
-      "rebootRefused": "Le contrôleur de vol a refusé la commande de redémarrage"
+      "rebootRefused": "Le contrôleur de vol a refusé la commande de redémarrage",
+      "debugOptions": "Options de débogage ({value})"
     },
     "appletCatalog": {
       "starterScripts": "Scripts de démarrage",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} modifiés",
       "addedCount": "{count} nouveaux",
       "unchangedCount": "{count} inchangés",
-      "applyingProgress": "Application {current}/{total}…"
+      "applyingProgress": "Application {current}/{total}…",
+      "statusChanged": "Modifié",
+      "statusAdded": "Nouveau",
+      "statusUnchanged": "Identique",
+      "filterAll": "Tous ({count})",
+      "filterChanged": "Modifié ({count})",
+      "filterAdded": "Nouveau ({count})",
+      "filterUnchanged": "Identique ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Confirmer l'écriture des paramètres",
@@ -11715,7 +11723,9 @@
       "now": "Maintenant",
       "restore": "Restaurer",
       "readingCurrentParameters": "Lecture des paramètres actuels…",
-      "title": "Restaurer les paramètres vers {target}"
+      "title": "Restaurer les paramètres vers {target}",
+      "restoreParam": "Restaurer {name}",
+      "notOnVehicle": "absent du véhicule"
     },
     "inboundSigningSection": {
       "inboundVerification": "Vérification entrante",

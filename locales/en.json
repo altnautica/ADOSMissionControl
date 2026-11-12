@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "Failed to send reboot command",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "Reboot flight controller",
-      "rebootRefused": "The flight controller refused the reboot command"
+      "rebootRefused": "The flight controller refused the reboot command",
+      "debugOptions": "Debug options ({value})"
     },
     "appletCatalog": {
       "starterScripts": "Starter Scripts",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} changed",
       "addedCount": "{count} new",
       "unchangedCount": "{count} unchanged",
-      "applyingProgress": "Applying {current}/{total}…"
+      "applyingProgress": "Applying {current}/{total}…",
+      "statusChanged": "Changed",
+      "statusAdded": "New",
+      "statusUnchanged": "Same",
+      "filterAll": "All ({count})",
+      "filterChanged": "Changed ({count})",
+      "filterAdded": "New ({count})",
+      "filterUnchanged": "Same ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Confirm Parameter Write",
@@ -11715,7 +11723,9 @@
       "now": "Now",
       "restore": "Restore",
       "readingCurrentParameters": "Reading current parameters…",
-      "title": "Restore parameters to {target}"
+      "title": "Restore parameters to {target}",
+      "restoreParam": "Restore {name}",
+      "notOnVehicle": "not on vehicle"
     },
     "inboundSigningSection": {
       "inboundVerification": "Inbound verification",

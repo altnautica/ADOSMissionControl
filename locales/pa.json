@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "ਰੀਬੂਟ ਕਮਾਂਡ ਭੇਜਣ ਵਿੱਚ ਅਸਫਲ",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਰੀਬੂਟ ਕਰੋ",
-      "rebootRefused": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਰੀਬੂਟ ਕਮਾਂਡ ਰੱਦ ਕਰ ਦਿੱਤੀ"
+      "rebootRefused": "ਫਲਾਈਟ ਕੰਟਰੋਲਰ ਨੇ ਰੀਬੂਟ ਕਮਾਂਡ ਰੱਦ ਕਰ ਦਿੱਤੀ",
+      "debugOptions": "ਡੀਬੱਗ ਵਿਕਲਪ ({value})"
     },
     "appletCatalog": {
       "starterScripts": "ਸ਼ੁਰੂਆਤੀ ਸਕ੍ਰਿਪਟਾਂ",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} ਬਦਲੇ",
       "addedCount": "{count} ਨਵੇਂ",
       "unchangedCount": "{count} ਬਿਨਾਂ ਬਦਲਾਅ",
-      "applyingProgress": "ਲਾਗੂ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ {current}/{total}…"
+      "applyingProgress": "ਲਾਗੂ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ {current}/{total}…",
+      "statusChanged": "ਬਦਲਿਆ",
+      "statusAdded": "ਨਵਾਂ",
+      "statusUnchanged": "ਇੱਕੋ ਜਿਹਾ",
+      "filterAll": "ਸਾਰੇ ({count})",
+      "filterChanged": "ਬਦਲਿਆ ({count})",
+      "filterAdded": "ਨਵਾਂ ({count})",
+      "filterUnchanged": "ਇੱਕੋ ਜਿਹਾ ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "ਪੈਰਾਮੀਟਰ ਲਿਖਣ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ",
@@ -11715,7 +11723,9 @@
       "now": "ਹੁਣ",
       "restore": "ਰੀਸਟੋਰ ਕਰੋ",
       "readingCurrentParameters": "ਮੌਜੂਦਾ ਪੈਰਾਮੀਟਰ ਪੜ੍ਹੇ ਜਾ ਰਹੇ ਹਨ…",
-      "title": "ਪੈਰਾਮੀਟਰ {target} ਤੇ ਬਹਾਲ ਕਰੋ"
+      "title": "ਪੈਰਾਮੀਟਰ {target} ਤੇ ਬਹਾਲ ਕਰੋ",
+      "restoreParam": "{name} ਮੁੜ-ਬਹਾਲ ਕਰੋ",
+      "notOnVehicle": "ਵਾਹਨ 'ਤੇ ਨਹੀਂ"
     },
     "inboundSigningSection": {
       "inboundVerification": "ਆਉਣ ਵਾਲੀ ਤਸਦੀਕ",

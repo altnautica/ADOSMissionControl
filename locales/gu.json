@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "રીબૂટ કમાન્ડ મોકલવામાં નિષ્ફળ",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "ફ્લાઇટ કંટ્રોલર રીબૂટ કરો",
-      "rebootRefused": "ફ્લાઇટ કંટ્રોલરે રીબૂટ આદેશ નકાર્યો"
+      "rebootRefused": "ફ્લાઇટ કંટ્રોલરે રીબૂટ આદેશ નકાર્યો",
+      "debugOptions": "ડિબગ વિકલ્પો ({value})"
     },
     "appletCatalog": {
       "starterScripts": "સ્ટાર્ટર સ્ક્રિપ્ટો",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} બદલાયા",
       "addedCount": "{count} નવા",
       "unchangedCount": "{count} અપરિવર્તિત",
-      "applyingProgress": "લાગુ કરી રહ્યા છીએ {current}/{total}…"
+      "applyingProgress": "લાગુ કરી રહ્યા છીએ {current}/{total}…",
+      "statusChanged": "બદલાયેલ",
+      "statusAdded": "નવું",
+      "statusUnchanged": "સમાન",
+      "filterAll": "બધા ({count})",
+      "filterChanged": "બદલાયેલ ({count})",
+      "filterAdded": "નવું ({count})",
+      "filterUnchanged": "સમાન ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "પેરામીટર લખવાની પુષ્ટિ કરો",
@@ -11715,7 +11723,9 @@
       "now": "હાલ",
       "restore": "પુનઃસ્થાપિત કરો",
       "readingCurrentParameters": "વર્તમાન પેરામીટર્સ વાંચી રહ્યાં છીએ…",
-      "title": "પેરામીટર {target} પર પુનઃસ્થાપિત કરો"
+      "title": "પેરામીટર {target} પર પુનઃસ્થાપિત કરો",
+      "restoreParam": "{name} પુનઃસ્થાપિત કરો",
+      "notOnVehicle": "વાહન પર નથી"
     },
     "inboundSigningSection": {
       "inboundVerification": "આવનારી ચકાસણી",

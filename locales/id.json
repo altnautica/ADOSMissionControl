@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "Gagal mengirim perintah reboot",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "Mulai ulang flight controller",
-      "rebootRefused": "Pengendali penerbangan menolak perintah mulai ulang"
+      "rebootRefused": "Pengendali penerbangan menolak perintah mulai ulang",
+      "debugOptions": "Opsi debug ({value})"
     },
     "appletCatalog": {
       "starterScripts": "Skrip Awal",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} berubah",
       "addedCount": "{count} baru",
       "unchangedCount": "{count} tidak berubah",
-      "applyingProgress": "Menerapkan {current}/{total}…"
+      "applyingProgress": "Menerapkan {current}/{total}…",
+      "statusChanged": "Berubah",
+      "statusAdded": "Baru",
+      "statusUnchanged": "Sama",
+      "filterAll": "Semua ({count})",
+      "filterChanged": "Berubah ({count})",
+      "filterAdded": "Baru ({count})",
+      "filterUnchanged": "Sama ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Konfirmasi Penulisan Parameter",
@@ -11715,7 +11723,9 @@
       "now": "Sekarang",
       "restore": "Pulihkan",
       "readingCurrentParameters": "Membaca parameter saat ini…",
-      "title": "Pulihkan parameter ke {target}"
+      "title": "Pulihkan parameter ke {target}",
+      "restoreParam": "Pulihkan {name}",
+      "notOnVehicle": "tidak ada di wahana"
     },
     "inboundSigningSection": {
       "inboundVerification": "Verifikasi masuk",

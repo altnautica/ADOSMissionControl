@@ -147,11 +147,11 @@ export function ParamRestoreDialog({
                         type="checkbox"
                         checked={selected.has(d.name)}
                         onChange={() => toggle(d.name)}
-                        aria-label={`Restore ${d.name}`}
+                        aria-label={tl("restoreParam", { name: d.name })}
                       />
                     </td>
                     <td className="px-2 py-1 text-text-primary">{d.name}</td>
-                    <td className="px-2 py-1 text-right text-text-tertiary">{d.fcValue ?? "not on vehicle"}</td>
+                    <td className="px-2 py-1 text-right text-text-tertiary">{d.fcValue ?? tl("notOnVehicle")}</td>
                     <td className="px-2 py-1 text-right text-text-primary">{d.fileValue}</td>
                   </tr>
                 ))}

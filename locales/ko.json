@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "재부팅 명령을 보내지 못했습니다",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "비행 컨트롤러 재부팅",
-      "rebootRefused": "비행 컨트롤러가 재부팅 명령을 거부했습니다"
+      "rebootRefused": "비행 컨트롤러가 재부팅 명령을 거부했습니다",
+      "debugOptions": "디버그 옵션 ({value})"
     },
     "appletCatalog": {
       "starterScripts": "기본 제공 스크립트",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count}개 변경됨",
       "addedCount": "{count}개 새 항목",
       "unchangedCount": "{count}개 변경 없음",
-      "applyingProgress": "적용 중 {current}/{total}…"
+      "applyingProgress": "적용 중 {current}/{total}…",
+      "statusChanged": "변경됨",
+      "statusAdded": "새 항목",
+      "statusUnchanged": "동일",
+      "filterAll": "전체 ({count})",
+      "filterChanged": "변경됨 ({count})",
+      "filterAdded": "새 항목 ({count})",
+      "filterUnchanged": "동일 ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "파라미터 쓰기 확인",
@@ -11715,7 +11723,9 @@
       "now": "현재",
       "restore": "복원",
       "readingCurrentParameters": "현재 파라미터 읽는 중…",
-      "title": "파라미터를 {target}(으)로 복원"
+      "title": "파라미터를 {target}(으)로 복원",
+      "restoreParam": "{name} 복원",
+      "notOnVehicle": "기체에 없음"
     },
     "inboundSigningSection": {
       "inboundVerification": "수신 검증",

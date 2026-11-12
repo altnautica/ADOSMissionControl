@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "No se pudo enviar el comando de reinicio",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "Reiniciar controladora de vuelo",
-      "rebootRefused": "El controlador de vuelo rechazó la orden de reinicio"
+      "rebootRefused": "El controlador de vuelo rechazó la orden de reinicio",
+      "debugOptions": "Opciones de depuración ({value})"
     },
     "appletCatalog": {
       "starterScripts": "Scripts de inicio",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} cambiados",
       "addedCount": "{count} nuevos",
       "unchangedCount": "{count} sin cambios",
-      "applyingProgress": "Aplicando {current}/{total}…"
+      "applyingProgress": "Aplicando {current}/{total}…",
+      "statusChanged": "Cambiado",
+      "statusAdded": "Nuevo",
+      "statusUnchanged": "Igual",
+      "filterAll": "Todos ({count})",
+      "filterChanged": "Cambiado ({count})",
+      "filterAdded": "Nuevo ({count})",
+      "filterUnchanged": "Igual ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Confirmar escritura de parámetros",
@@ -11715,7 +11723,9 @@
       "now": "Ahora",
       "restore": "Restaurar",
       "readingCurrentParameters": "Leyendo parámetros actuales…",
-      "title": "Restaurar parámetros a {target}"
+      "title": "Restaurar parámetros a {target}",
+      "restoreParam": "Restaurar {name}",
+      "notOnVehicle": "no está en el vehículo"
     },
     "inboundSigningSection": {
       "inboundVerification": "Verificación entrante",

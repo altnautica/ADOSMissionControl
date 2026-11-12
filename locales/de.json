@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "Neustartbefehl konnte nicht gesendet werden",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "Flugcontroller neu starten",
-      "rebootRefused": "Der Flugcontroller hat den Neustartbefehl abgelehnt"
+      "rebootRefused": "Der Flugcontroller hat den Neustartbefehl abgelehnt",
+      "debugOptions": "Debug-Optionen ({value})"
     },
     "appletCatalog": {
       "starterScripts": "Starter-Skripte",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} geändert",
       "addedCount": "{count} neu",
       "unchangedCount": "{count} unverändert",
-      "applyingProgress": "Wird angewendet {current}/{total}…"
+      "applyingProgress": "Wird angewendet {current}/{total}…",
+      "statusChanged": "Geändert",
+      "statusAdded": "Neu",
+      "statusUnchanged": "Gleich",
+      "filterAll": "Alle ({count})",
+      "filterChanged": "Geändert ({count})",
+      "filterAdded": "Neu ({count})",
+      "filterUnchanged": "Gleich ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "Parameter schreiben bestätigen",
@@ -11715,7 +11723,9 @@
       "now": "Jetzt",
       "restore": "Wiederherstellen",
       "readingCurrentParameters": "Aktuelle Parameter werden gelesen…",
-      "title": "Parameter wiederherstellen: {target}"
+      "title": "Parameter wiederherstellen: {target}",
+      "restoreParam": "{name} wiederherstellen",
+      "notOnVehicle": "nicht am Fahrzeug"
     },
     "inboundSigningSection": {
       "inboundVerification": "Eingangsprüfung",

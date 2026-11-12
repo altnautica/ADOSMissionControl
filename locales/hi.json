@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "रीबूट कमांड भेजने में विफल",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "फ़्लाइट कंट्रोलर रीबूट करें",
-      "rebootRefused": "फ़्लाइट कंट्रोलर ने रीबूट कमांड अस्वीकार कर दी"
+      "rebootRefused": "फ़्लाइट कंट्रोलर ने रीबूट कमांड अस्वीकार कर दी",
+      "debugOptions": "डिबग विकल्प ({value})"
     },
     "appletCatalog": {
       "starterScripts": "स्टार्टर स्क्रिप्ट",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} बदले",
       "addedCount": "{count} नए",
       "unchangedCount": "{count} अपरिवर्तित",
-      "applyingProgress": "लागू किया जा रहा है {current}/{total}…"
+      "applyingProgress": "लागू किया जा रहा है {current}/{total}…",
+      "statusChanged": "बदला गया",
+      "statusAdded": "नया",
+      "statusUnchanged": "समान",
+      "filterAll": "सभी ({count})",
+      "filterChanged": "बदला गया ({count})",
+      "filterAdded": "नया ({count})",
+      "filterUnchanged": "समान ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "पैरामीटर लिखने की पुष्टि करें",
@@ -11715,7 +11723,9 @@
       "now": "अभी",
       "restore": "पुनर्स्थापित करें",
       "readingCurrentParameters": "वर्तमान पैरामीटर पढ़े जा रहे हैं…",
-      "title": "पैरामीटर {target} पर पुनर्स्थापित करें"
+      "title": "पैरामीटर {target} पर पुनर्स्थापित करें",
+      "restoreParam": "{name} पुनर्स्थापित करें",
+      "notOnVehicle": "वाहन पर नहीं"
     },
     "inboundSigningSection": {
       "inboundVerification": "इनबाउंड सत्यापन",

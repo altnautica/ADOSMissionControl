@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "再起動コマンドの送信に失敗しました",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "フライトコントローラーを再起動",
-      "rebootRefused": "フライトコントローラーが再起動コマンドを拒否しました"
+      "rebootRefused": "フライトコントローラーが再起動コマンドを拒否しました",
+      "debugOptions": "デバッグオプション ({value})"
     },
     "appletCatalog": {
       "starterScripts": "スタータースクリプト",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} 件変更",
       "addedCount": "{count} 件新規",
       "unchangedCount": "{count} 件変更なし",
-      "applyingProgress": "適用中 {current}/{total}…"
+      "applyingProgress": "適用中 {current}/{total}…",
+      "statusChanged": "変更",
+      "statusAdded": "新規",
+      "statusUnchanged": "同じ",
+      "filterAll": "すべて ({count})",
+      "filterChanged": "変更 ({count})",
+      "filterAdded": "新規 ({count})",
+      "filterUnchanged": "同じ ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "パラメータ書き込みの確認",
@@ -11715,7 +11723,9 @@
       "now": "現在",
       "restore": "復元",
       "readingCurrentParameters": "現在のパラメータを読み込み中…",
-      "title": "パラメーターを {target} に復元"
+      "title": "パラメーターを {target} に復元",
+      "restoreParam": "{name} を復元",
+      "notOnVehicle": "機体にありません"
     },
     "inboundSigningSection": {
       "inboundVerification": "受信検証",

@@ -1105,7 +1105,8 @@
       "failedToSendRebootCommand": "రీబూట్ కమాండ్ పంపడం విఫలమైంది",
       "scrDEBUGOPTS": "SCR_DEBUG_OPTS",
       "rebootFC": "ఫ్లైట్ కంట్రోలర్‌ను రీబూట్ చేయండి",
-      "rebootRefused": "ఫ్లైట్ కంట్రోలర్ రీబూట్ ఆదేశాన్ని తిరస్కరించింది"
+      "rebootRefused": "ఫ్లైట్ కంట్రోలర్ రీబూట్ ఆదేశాన్ని తిరస్కరించింది",
+      "debugOptions": "డీబగ్ ఎంపికలు ({value})"
     },
     "appletCatalog": {
       "starterScripts": "స్టార్టర్ స్క్రిప్ట్‌లు",
@@ -11672,7 +11673,14 @@
       "changedCount": "{count} మార్చబడ్డాయి",
       "addedCount": "{count} కొత్తవి",
       "unchangedCount": "{count} మారలేదు",
-      "applyingProgress": "వర్తింపజేస్తోంది {current}/{total}…"
+      "applyingProgress": "వర్తింపజేస్తోంది {current}/{total}…",
+      "statusChanged": "మార్చబడింది",
+      "statusAdded": "కొత్తది",
+      "statusUnchanged": "అదే",
+      "filterAll": "అన్నీ ({count})",
+      "filterChanged": "మార్చబడింది ({count})",
+      "filterAdded": "కొత్తది ({count})",
+      "filterUnchanged": "అదే ({count})"
     },
     "writeConfirmDialog": {
       "confirmParameterWrite": "పారామీటర్ రైట్‌ను నిర్ధారించండి",
@@ -11715,7 +11723,9 @@
       "now": "ఇప్పుడు",
       "restore": "పునరుద్ధరించు",
       "readingCurrentParameters": "ప్రస్తుత పారామీటర్‌లను చదువుతోంది…",
-      "title": "పారామీటర్లను {target} కు పునరుద్ధరించండి"
+      "title": "పారామీటర్లను {target} కు పునరుద్ధరించండి",
+      "restoreParam": "{name} పునరుద్ధరించు",
+      "notOnVehicle": "వాహనంలో లేదు"
     },
     "inboundSigningSection": {
       "inboundVerification": "ఇన్‌బౌండ్ ధృవీకరణ",

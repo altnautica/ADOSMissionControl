@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   Upload, Search, CheckSquare, Square, FileText, PenLine, HardDrive,
 } from "lucide-react";
-import { STATUS_STYLES, STATUS_LABELS, FILTER_MODES, TH, filterLabel, type FilterMode } from "./param-compare-helpers";
+import { STATUS_STYLES, STATUS_KEYS, FILTER_KEYS, FILTER_MODES, TH, type FilterMode } from "./param-compare-helpers";
 import { isValueOutOfRange } from "../shared/WriteConfirmDialog";
 
 /** Pending-write records from this surface are attributed to the grid it opens from. */
@@ -251,7 +251,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
                     : "text-text-tertiary hover:text-text-secondary"
                 )}
               >
-                {filterLabel(mode, stats)}
+                {tl(FILTER_KEYS[mode], { count: mode === "all" ? stats.total : stats[mode] })}
               </button>
             ))}
           </div>
@@ -308,7 +308,7 @@ export function ParamCompare({ fcParams, metadata, onApplied }: ParamCompareProp
                       </td>
                       <td className="px-2 py-1.5 text-center">
                         <span className={cn("text-[10px] font-semibold uppercase", STATUS_STYLES[d.status])}>
-                          {STATUS_LABELS[d.status]}
+                          {tl(STATUS_KEYS[d.status])}
                         </span>
                       </td>
                     </tr>
