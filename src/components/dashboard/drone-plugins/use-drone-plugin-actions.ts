@@ -17,7 +17,6 @@ import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/toast";
 import { useConvexSkipQuery } from "@/hooks/use-convex-skip-query";
 import { cn, isDemoMode } from "@/lib/utils";
-import { useArmedLock } from "@/hooks/use-armed-lock";
 import { nodeIdForDevice } from "@/lib/agent/node-id";
 import { PluginAgentClient } from "@/lib/agent/plugin-client";
 import { resolveLanAgent } from "@/lib/agent/resolve-agent";
@@ -27,6 +26,7 @@ import type {
   PluginModelStatusEntry,
   PluginServiceStatusEntry,
 } from "@/stores/agent-plugin-inventory-store";
+import { useNodeRegistryStore } from "@/stores/node-registry";
 import { usePluginUpdateStore } from "@/stores/plugin-update-store";
 import { api } from "../../../../convex/_generated/api";
 import type { DronePluginStatusLabel } from "./DronePluginStatusPill";
@@ -54,15 +54,14 @@ export function useDronePluginActions(install: DronePluginCardData) {
   const t = useTranslations("dronePlugins");
   const { toast } = useToast();
   const router = useRouter();
-  // The arm lock reads the registry and drone maps, which are keyed by node id.
-  const { isArmed, isHardBlocked } = useArmedLock(nodeIdForDevice(install.deviceId));
-  // What the disable confirm says about the aircraft: positively armed, or
-  // connected with an arm state not yet known to be disarmed.
-  const armedNote: "armed" | "unknown" | null = isArmed
-    ? "armed"
-    : isHardBlocked
-      ? "unknown"
-      : null;
+  // What the disable confirm says about the aircraft, from the node's own
+  // registry arm state: a cloud- or relay-only drone has no managed
+  // connection, and an arm state not known to be disarmed may still be armed.
+  const nodeArm = useNodeRegistryStore(
+    (s) => s.getEntry(nodeIdForDevice(install.deviceId))?.fc.armState ?? "unknown",
+  );
+  const armedNote: "armed" | "unknown" | null =
+    nodeArm === "armed" ? "armed" : nodeArm !== "disarmed" ? "unknown" : null;
 
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);

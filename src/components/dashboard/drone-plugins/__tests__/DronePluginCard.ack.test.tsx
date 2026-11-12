@@ -307,6 +307,31 @@ describe("DronePluginCard cloud command ACK", () => {
     );
   });
 
+  it("notes a cloud-only drone whose arm state is unknown", async () => {
+    useNodeRegistryStore.setState({
+      nodes: { "node:device-1": { fc: { armState: "unknown" } } } as never,
+    });
+    useDroneManager.setState({ drones: new Map() });
+    const { getByText, getByRole } = renderCard(makeInstall({ status: "running" }));
+
+    fireEvent.click(getByText("Disable"));
+    expect(getByRole("alertdialog").textContent).toContain(
+      messages.dronePlugins.disableArmedUnknownNote,
+    );
+  });
+
+  it("adds no note for a drone known to be disarmed", async () => {
+    useNodeRegistryStore.setState({
+      nodes: { "node:device-1": { fc: { armState: "disarmed" } } } as never,
+    });
+    const { getByText, getByRole } = renderCard(makeInstall({ status: "running" }));
+
+    fireEvent.click(getByText("Disable"));
+    const text = getByRole("alertdialog").textContent ?? "";
+    expect(text).not.toContain(messages.dronePlugins.disableArmedUnknownNote);
+    expect(text).not.toContain(messages.dronePlugins.disableArmedNote);
+  });
+
   it("says it is waiting for the node, and cancels the untaken command", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

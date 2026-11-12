@@ -308,7 +308,7 @@ export function CameraManagerTab({ droneId }: { droneId: string }) {
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto p-4">
-        {cloudMode ? (
+        {cloudMode && client ? (
           <p className="rounded border border-border-default bg-bg-tertiary/40 px-3 py-2 text-[11px] text-text-tertiary">
             {t("readOnlyNotice")}
           </p>

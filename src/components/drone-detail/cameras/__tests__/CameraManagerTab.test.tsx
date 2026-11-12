@@ -140,6 +140,8 @@ describe("CameraManagerTab · restart timer lifecycle", () => {
     expect(client.getCameraRoster).not.toHaveBeenCalled();
     expect(screen.getByText(messages.cameras.unavailable)).toBeTruthy();
     expect(screen.queryByText(messages.cameras.empty)).toBeNull();
+    // One notice: the read-only note would stack on "unreachable".
+    expect(screen.queryByText(messages.cameras.readOnlyNotice)).toBeNull();
   });
 });
 

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { RotateCcw, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { RebootFcDialog } from "@/components/fc/shared/RebootFcButton";
 
 /**
  * The FC's boot clock (SYSTEM_TIME.time_boot_ms) going back by more than this
@@ -128,14 +128,13 @@ export function RebootRequiredBanner({
       {rebootResult && (
         <div className="mt-1 text-[10px] text-text-secondary">{rebootResult}</div>
       )}
-      <ConfirmDialog
+      <RebootFcDialog
         open={confirmOpen}
-        onConfirm={() => { void handleReboot(); }}
+        onReboot={() => { void handleReboot(); }}
         onCancel={() => setConfirmOpen(false)}
         title={tk("rebootFlightController")}
         message={tk("theFlightControllerRestartsAnd")}
         confirmLabel={tk("reboot")}
-        variant="danger"
       />
     </div>
   );
