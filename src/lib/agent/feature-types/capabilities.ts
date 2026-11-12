@@ -219,12 +219,13 @@ export interface AgentCapabilities extends NodeFlags {
   /** The perception execution tier the agent resolved for this node:
    *   - "local"  — the model runs on the node's own NPU (on-edge).
    *   - "offload"— the node streams frames to a workstation that runs it.
+   *   - "cpu"    — the detector runs on the node's own CPU (no accelerator).
    *   - "hybrid" — a mix of local and offloaded pipelines.
    *   - "none"   — no perception is running / no path available.
    * Undefined on agents that predate the tier signal; an unrecognized value
    * normalizes to undefined so the surface reads "unknown" rather than a
    * fabricated tier. */
-  perceptionTier?: "local" | "offload" | "hybrid" | "none";
+  perceptionTier?: "local" | "cpu" | "offload" | "hybrid" | "none";
   /** The workstation node the agent offloads perception to (a device id /
    * host), or null when it runs locally or has no target. Undefined on agents
    * that predate the field. */

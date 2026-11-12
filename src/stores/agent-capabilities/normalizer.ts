@@ -401,6 +401,7 @@ export function normalizeCapabilities(raw: unknown): AgentCapabilities {
   const perceptionTierRaw = (data as Record<string, unknown>).perceptionTier;
   const perceptionTier: AgentCapabilities["perceptionTier"] =
     perceptionTierRaw === "local" ||
+    perceptionTierRaw === "cpu" ||
     perceptionTierRaw === "offload" ||
     perceptionTierRaw === "hybrid" ||
     perceptionTierRaw === "none"

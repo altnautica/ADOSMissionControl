@@ -55,6 +55,8 @@ export function tierLabel(
   switch (tier) {
     case "local":
       return "LOCAL";
+    case "cpu":
+      return "CPU";
     case "offload":
       return "OFFLOAD";
     case "hybrid":
@@ -97,7 +99,7 @@ export function perceptionSessionState(
   if (feed === "fresh") return "live";
   if (feed === "stale") return "stalled";
   // idle: expecting a session (a real tier set) vs nothing running at all.
-  return tier === "local" || tier === "offload" || tier === "hybrid"
+  return tier === "local" || tier === "cpu" || tier === "offload" || tier === "hybrid"
     ? "opening"
     : "closed";
 }
@@ -153,6 +155,7 @@ export function executionTarget(
     case "offload":
       return { kind: "offload", detail: offloadTarget ?? undefined };
     case "local":
+    case "cpu":
       return { kind: "local" };
     case "hybrid":
       return { kind: "auto" };

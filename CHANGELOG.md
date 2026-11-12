@@ -71,6 +71,8 @@ the project follows [Semantic Versioning](https://semver.org/).
   scrolls on short windows.
 - **Demo.** Copters and plain planes no longer report the quadplane group.
 - The model registry no longer lists models whose download does not exist.
+- **Perception** names the CPU tier ("CPU — on-node, no accelerator") when the
+  agent runs its detector on the CPU, instead of reading it as unknown.
 - **Cockpit safety.** An unknown arm state counts as possibly airborne: no
   tips, pre-flight items hidden, Land instead of Take off. Fly Here is not
   offered through the flight controller during a pilot failsafe, and a refused

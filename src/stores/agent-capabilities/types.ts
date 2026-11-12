@@ -209,7 +209,7 @@ export interface AgentCapabilitiesState {
    * params but reports both ports as disabled. Latest heartbeat wins
    * on merge so a sparse tick keeps the prior view. */
   canBuses: CanBusInfo[] | undefined;
-  /** Resolved perception execution tier ("local" | "offload" | "hybrid" |
+  /** Resolved perception execution tier ("local" | "cpu" | "offload" | "hybrid" |
    * "none"). Undefined on agents that predate the tier signal — the
    * Perception hub then reads it as "unknown" rather than a fabricated tier. */
   perceptionTier?: AgentCapabilities["perceptionTier"];

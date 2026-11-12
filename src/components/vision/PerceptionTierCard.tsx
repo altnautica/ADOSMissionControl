@@ -19,10 +19,11 @@ import { useAgentCapabilitiesStore } from "@/stores/agent-capabilities-store";
 import { useVisionDetectionsStore } from "@/stores/vision-detections-store";
 import { perceptionFeedState } from "@/lib/vision/perception-health";
 
-type Tier = "local" | "offload" | "hybrid" | "none" | "unknown";
+type Tier = "local" | "cpu" | "offload" | "hybrid" | "none" | "unknown";
 
 const TIER_STYLE: Record<Tier, string> = {
   local: "border-status-success/40 bg-status-success/10 text-status-success",
+  cpu: "border-status-warning/40 bg-status-warning/10 text-status-warning",
   offload: "border-accent-primary/40 bg-accent-primary/10 text-accent-primary",
   hybrid: "border-accent-primary/40 bg-accent-primary/10 text-accent-primary",
   none: "border-border-default bg-bg-tertiary text-text-tertiary",

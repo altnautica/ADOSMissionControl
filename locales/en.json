@@ -1950,6 +1950,7 @@
     "inputFeeds": "feeds {models}",
     "perceptionTier": "Execution tier",
     "tier_local": "Local — on-NPU",
+    "tier_cpu": "CPU — on-node, no accelerator",
     "tier_offload": "Offload — workstation",
     "tier_hybrid": "Hybrid",
     "tier_none": "None",

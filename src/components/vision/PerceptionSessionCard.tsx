@@ -86,7 +86,7 @@ export function PerceptionSessionCard({ droneId }: { droneId: string }) {
   const boundNode =
     tier === "offload"
       ? (target ?? t("sessionBoundNone"))
-      : tier === "local" || tier === "hybrid"
+      : tier === "local" || tier === "cpu" || tier === "hybrid"
         ? t("sessionBoundLocal")
         : t("sessionBoundNone");
   const boundMono = tier === "offload" && !!target;
