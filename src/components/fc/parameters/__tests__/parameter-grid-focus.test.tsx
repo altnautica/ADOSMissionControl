@@ -6,7 +6,7 @@
  * once: editing the filter afterwards leaves focus where the operator is.
  */
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import { IntlWrapper } from "../../../../../tests/helpers/intl-wrapper";
@@ -55,10 +55,10 @@ describe("ParameterGrid focusParam", () => {
       { name: "RTL_ALT_FINAL", value: 0, type: 9, index: 1, count: 3 },
       { name: "RTL_CLIMB_MIN", value: 0, type: 9, index: 2, count: 3 },
     ];
-    // Owns the focus target the way the Parameters panel does.
+    // Holds the focus target the way the Parameters panel does until the
+    // operator edits the filter.
     function Harness({ filter }: { filter: string }) {
-      const [focusParam, setFocusParam] = useState<string | null>("RTL_CLIMB_MIN");
-      const done = useCallback(() => setFocusParam(null), []);
+      const [focusParam] = useState<string | null>("RTL_CLIMB_MIN");
       return (
         <>
           <input aria-label="search" />
@@ -69,7 +69,6 @@ describe("ParameterGrid focusParam", () => {
             filter={filter}
             showModifiedOnly={false}
             focusParam={focusParam}
-            onFocusParamDone={done}
             columnVisibility={{ index: true, name: true, description: true, value: true, options: true, range: true, units: true, type: true } as never}
           />
         </>
@@ -80,6 +79,11 @@ describe("ParameterGrid focusParam", () => {
     const { rerender } = render(<Harness filter="RTL" />, { wrapper: IntlWrapper });
     await frame();
     expect(scrollToIndex).toHaveBeenCalledTimes(1);
+    // The jump keeps both the focus and the highlight on the row.
+    await frame();
+    const current = document.querySelector('[aria-current="true"]');
+    expect(current?.textContent).toContain("RTL_CLIMB_MIN");
+    expect(document.activeElement).toBe(current);
 
     const search = screen.getByLabelText("search");
     search.focus();

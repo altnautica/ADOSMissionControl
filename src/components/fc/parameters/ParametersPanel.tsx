@@ -119,7 +119,8 @@ export function ParametersPanel() {
 
   // The palette passes an exact name: filter to it and focus that row.
   const [focusParam, setFocusParam] = useState<string | null>(null);
-  const clearFocusParam = useCallback(() => setFocusParam(null), []);
+  // Editing the filter ends the palette jump: the row stops being the target.
+  const changeFilter = useCallback((next: string) => { setFilter(next); setFocusParam(null); }, []);
   useEffect(() => {
     if (pendingParamSearch) {
       setFilter(pendingParamSearch); setCategory(null);
@@ -205,7 +206,7 @@ export function ParametersPanel() {
         )}
       </div>
 
-      <ParameterSearchFilter filter={filter} onFilterChange={setFilter}
+      <ParameterSearchFilter filter={filter} onFilterChange={changeFilter}
         showModifiedOnly={showModifiedOnly} onToggleModified={() => setShowModifiedOnly(!showModifiedOnly)}
         showNonDefault={showNonDefault} onToggleNonDefault={() => setShowNonDefault(!showNonDefault)}
         showFavorites={showFavorites} onToggleFavorites={() => setShowFavorites(!showFavorites)}
@@ -254,7 +255,7 @@ export function ParametersPanel() {
               )}
               <ParameterGrid parameters={filteredParams} modified={modified} onModify={handleModify}
                 filter={debouncedFilter} showModifiedOnly={showModifiedOnly} metadata={metadata} columnVisibility={columnVisibility}
-                docContext={docContext} docsLinkLabel={t("docsLink")} focusParam={focusParam} onFocusParamDone={clearFocusParam} />
+                docContext={docContext} docsLinkLabel={t("docsLink")} focusParam={focusParam} />
             </div>
           </>
         )}
