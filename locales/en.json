@@ -12099,7 +12099,7 @@
       "title": "Failsafe",
       "subtitle": "What the craft does when the radio link is lost",
       "stage2": "Stage 2 failsafe",
-      "procedure": "Procedure (0 drop, 1 land, 2 GPS rescue)",
+      "procedure": "Procedure",
       "delay": "Guard time (0.1 s)",
       "offDelay": "Motor off delay (0.1 s)",
       "throttle": "Landing throttle (µs)",

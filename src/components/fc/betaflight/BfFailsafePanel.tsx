@@ -18,7 +18,7 @@ export function BfFailsafePanel() {
         fields: [
           {
             param: "BF_FS_PROCEDURE", label: tr("procedure"), kind: "enum",
-            values: new Map([[0, tr("procedureDrop")], [1, tr("procedureLand")], [2, tr("procedureGpsRescue")]]),
+            values: new Map([[0, tr("procedureLand")], [1, tr("procedureDrop")], [2, tr("procedureGpsRescue")]]),
           },
           { param: "BF_FS_DELAY", label: tr("delay"), kind: "number", min: 0, max: 200, step: 1 },
           { param: "BF_FS_OFF_DELAY", label: tr("offDelay"), kind: "number", min: 0, max: 200, step: 1 },

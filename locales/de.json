@@ -12099,7 +12099,7 @@
       "title": "Failsafe",
       "subtitle": "Was das Fluggerät bei Funkverlust tut",
       "stage2": "Failsafe Stufe 2",
-      "procedure": "Ablauf (0 Abschalten, 1 Landen, 2 GPS-Rettung)",
+      "procedure": "Ablauf",
       "delay": "Wartezeit (0,1 s)",
       "offDelay": "Motor-aus-Verzögerung (0,1 s)",
       "throttle": "Landegas (µs)",

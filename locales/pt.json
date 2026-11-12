@@ -12099,7 +12099,7 @@
       "title": "Failsafe",
       "subtitle": "O que a aeronave faz ao perder o link de rádio",
       "stage2": "Failsafe estágio 2",
-      "procedure": "Procedimento (0 cair, 1 pousar, 2 resgate GPS)",
+      "procedure": "Procedimento",
       "delay": "Tempo de guarda (0,1 s)",
       "offDelay": "Atraso de desligar motores (0,1 s)",
       "throttle": "Acelerador de pouso (µs)",

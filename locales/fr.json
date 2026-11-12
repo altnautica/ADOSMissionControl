@@ -12099,7 +12099,7 @@
       "title": "Failsafe",
       "subtitle": "Ce que fait l'appareil quand la liaison radio est perdue",
       "stage2": "Failsafe étape 2",
-      "procedure": "Procédure (0 coupure, 1 atterrissage, 2 secours GPS)",
+      "procedure": "Procédure",
       "delay": "Délai de garde (0,1 s)",
       "offDelay": "Délai d'arrêt moteurs (0,1 s)",
       "throttle": "Gaz d'atterrissage (µs)",

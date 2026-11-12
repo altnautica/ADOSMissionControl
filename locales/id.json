@@ -12099,7 +12099,7 @@
       "title": "Failsafe",
       "subtitle": "Tindakan pesawat saat link radio hilang",
       "stage2": "Failsafe tahap 2",
-      "procedure": "Prosedur (0 jatuh, 1 mendarat, 2 penyelamatan GPS)",
+      "procedure": "Prosedur",
       "delay": "Waktu jaga (0,1 dtk)",
       "offDelay": "Jeda motor mati (0,1 dtk)",
       "throttle": "Throttle pendaratan (µs)",
