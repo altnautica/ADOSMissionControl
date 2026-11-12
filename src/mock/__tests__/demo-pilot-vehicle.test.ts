@@ -138,7 +138,7 @@ describe("demo pilot mirrors the demo vehicle", () => {
 });
 
 describe("demo link faults", () => {
-  it("freezeTelemetry stops the pilot kind, so the chip dims to LINK", () => {
+  it("freezeTelemetry stops the pilot kind, so the chip dims to Link", () => {
     const frames: number[] = [];
     const off = onPilotState(() => frames.push(Date.now()));
     const before = pilotFeed().receivedAt;
@@ -146,7 +146,7 @@ describe("demo link faults", () => {
     vi.advanceTimersByTime(2500);
     expect(frames).toHaveLength(0);
     expect(pilotFeed().receivedAt).toBe(before);
-    expect(chip()).toMatchObject({ ruleId: "link_stale", text: "LINK", dim: true });
+    expect(chip()).toMatchObject({ ruleId: "link_stale", text: "Link", dim: true });
 
     mockEngine.resumeTelemetry();
     vi.advanceTimersByTime(200);

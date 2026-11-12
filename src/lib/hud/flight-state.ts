@@ -35,6 +35,7 @@ const CHIP_SECONDARY = flightStateJson.secondary as {
   hold_reason: { text: string; color: string };
   control_mode: Record<string, string>;
 };
+const PROFILE_SHEET: { values: string[]; labels: string[] } = flightStateJson.mode_sheet.profile;
 const STATE_COLORS: Readonly<Record<string, string>> = tokensJson.state as Record<string, string>;
 
 /** The values a rule can match on and fill its placeholders from. */
@@ -138,13 +139,27 @@ function matches(match: ChipRule["match"], f: ChipFacts): boolean {
   return true;
 }
 
-/** A launch step's name, upper case (`flow.launch.step.*`, `after` as its
- *  label). The take-off step reads as its action (`chip.launch_step.takeoff`,
- *  "Climb"), so the chip never says "Taking off · Take off". */
-function launchStepUpper(step: string | null): string {
+/** A launch step's name as the spec words it (`flow.launch.step.*`, `after`
+ *  as its label). The take-off step reads as its action
+ *  (`chip.launch_step.takeoff`, "Climb"), so the chip never says
+ *  "Taking off · Take off". */
+function launchStepName(step: string | null): string {
   if (step === null) return "";
   const key = step === "after" ? "flow.launch.step.after_label" : step === "takeoff" ? "chip.launch_step.takeoff" : `flow.launch.step.${step}`;
-  return specText(key).toUpperCase();
+  return specText(key);
+}
+
+/** A word that starts a chip part, with a capital first letter. */
+function capitalFirst(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** A profile as the mode sheet labels it (`mode_sheet.profile`), "Normal"
+ *  when none is reported; an unknown value reads with a capital first letter. */
+function profileLabel(profile: string | null): string {
+  const value = profile ?? "normal";
+  const i = PROFILE_SHEET.values.indexOf(value);
+  return i >= 0 ? PROFILE_SHEET.labels[i] : capitalFirst(value);
 }
 
 function num(v: number | null): string {
@@ -154,9 +169,9 @@ function num(v: number | null): string {
 function fill(template: string, f: ChipFacts): string {
   const values: Record<string, string> = {
     first_block_msg: f.firstBlockMsg ?? "",
-    profile_upper: (f.profile ?? "normal").toUpperCase(),
-    skill_label_upper: (f.skillLabel ?? "SKILL").toUpperCase(),
-    mode_detail: f.modeDetail ?? "ACTIVE",
+    profile: profileLabel(f.profile),
+    skill_label: capitalFirst(f.skillLabel ?? "Skill"),
+    mode_detail: f.modeDetail ?? "Active",
     dist_m: num(f.distM),
     home_dist_m: num(f.homeDistM),
     setup_step: (f.setupStep ?? "").toUpperCase(),
@@ -164,7 +179,7 @@ function fill(template: string, f: ChipFacts): string {
     total: num(f.total),
     eta: fmtEta(f.etaS),
     fc_mode_name_upper: (f.fcModeName ?? "—").toUpperCase(),
-    step: launchStepUpper(f.launchStep),
+    step: launchStepName(f.launchStep),
   };
   return template.replace(/\{([a-z_]+)\}/g, (_, k: string) => values[k] ?? "").replace(/ · $/, "");
 }

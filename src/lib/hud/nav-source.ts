@@ -126,7 +126,7 @@ function flowRow(flags: number, activeSet: 1 | 2 | 3): NavSourceResult {
 export function resolveNavSource(input: NavSourceInput): NavSourceResult {
   const activeSet = activeSourceSet(input.nav, input.lastCommandedSet);
   const { ekf } = input;
-  if (!ekf || ekf.ageMs > EKF_STALE_MS) {
+  if (!ekf || ekf.ageMs >= EKF_STALE_MS) {
     return { kind: "stale", quality: null, tone: "muted", activeSet };
   }
   const f = ekf.flags;

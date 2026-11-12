@@ -13,7 +13,8 @@
 //
 // Neither: `reason` says why, worded by `refusal.<reason>`, so a long-press
 // on the map can say it in a toast instead of opening a dialog. An unknown
-// arm state (the pilot has no FC link) is possibly airborne: never `landed`.
+// arm state (the pilot has no FC link) is possibly airborne: never `landed`;
+// without the surface's own FC facts it is `no_fc_link`.
 
 import type { PilotState } from "./cockpit-frames";
 import { CHIP_STALE_AFTER_MS } from "./flight-state";
@@ -30,7 +31,7 @@ export interface FlyHereFc {
   landed: boolean;
 }
 
-export type FlyHereReason = "failsafe" | "landed" | "pilot_stale" | "control_mode" | "not_guided";
+export type FlyHereReason = "failsafe" | "landed" | "pilot_stale" | "control_mode" | "not_guided" | "no_fc_link";
 
 export interface FlyHereOffer {
   /** `pilot`: send the pilot's `goto`; `fc`: reposition the FC in GUIDED;
@@ -53,6 +54,7 @@ export function flyHereOffered(p: PilotState | null, pilotAgeMs: number, fc?: Fl
   if (p !== null) {
     if (p.fcFailsafe) return { route: null, reason: "failsafe" };
     if (p.armed === false || p.landed === true) return { route: null, reason: "landed" };
+    if (!fc && p.armed === null) return { route: null, reason: "no_fc_link" };
     if (!fc && gotoAdvertised(p) && p.controlMode !== "ados") return { route: null, reason: "control_mode" };
   }
   if (fc) {

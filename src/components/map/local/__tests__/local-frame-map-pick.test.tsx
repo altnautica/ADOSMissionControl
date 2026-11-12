@@ -184,4 +184,13 @@ describe("LocalFrameMap point pick", () => {
     fireEvent.contextMenu(canvasOf(container), { clientX: CLICK.x, clientY: CLICK.y, button: 2 });
     expect(useLaunchRequestStore.getState().pending).toBeNull();
   });
+
+  it("a fresh pilot with no FC link refuses Fly here and says so", () => {
+    toastSpy.mockClear();
+    setPilot({ ...flying, armed: null, landed: null });
+    const { container } = render(<LocalFrameMap droneId={DRONE} compact />);
+    fireEvent.contextMenu(canvasOf(container), { clientX: CLICK.x, clientY: CLICK.y, button: 2 });
+    expect(toastSpy).toHaveBeenCalledWith(specString("refusal.no_fc_link"), "warning");
+    expect(useGuidedStore.getState().confirmPending).toBeNull();
+  });
 });

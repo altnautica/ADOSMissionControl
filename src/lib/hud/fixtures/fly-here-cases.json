@@ -1929,7 +1929,8 @@
       "fc": null
     },
     "expected": {
-      "route": null
+      "route": null,
+      "reason": "no_fc_link"
     }
   },
   {

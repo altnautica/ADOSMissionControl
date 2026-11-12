@@ -3,7 +3,8 @@
 // (`pilot.banner.fc_control {mode}`), the flow screens (`flow.*`), the voice
 // prompts (`voice.*`), refusals, alerts and tips. Enumerated arg values resolve
 // through their own keys (`pilot.banner.source.rc`,
-// `pilot.link_loss_action.rth`). Pure: imports only the spec.
+// `pilot.link_loss_action.rth`, `pilot.profile.normal`). Pure: imports only
+// the spec.
 
 import stringsJson from "../cockpit-spec/setup-strings.json";
 
@@ -13,7 +14,12 @@ const STRINGS: Readonly<Record<string, string>> = stringsJson.strings as Record<
 const ARG_KEYS: Readonly<Record<string, string>> = {
   source: "pilot.banner.source.",
   action: "pilot.link_loss_action.",
+  profile: "pilot.profile.",
 };
+
+/** Arg names whose key lookup ignores case: the pilot sends the profile in
+ *  upper case (`NORMAL`) while its keys are the lower-case wire values. */
+const CASELESS_ARGS: ReadonlySet<string> = new Set(["profile"]);
 
 /** Whether the spec carries `key`. */
 export function hasSpecText(key: string): boolean {
@@ -26,7 +32,7 @@ export function specTakesArgs(key: string): boolean {
 }
 
 /** A string by key with `{arg}` filled; an unknown key reads as itself. A
- *  missing arg fills as empty; `profile` and `mode` read upper case. */
+ *  missing arg fills as empty; `mode` (an FC mode name) reads upper case. */
 export function specText(key: string, args: Readonly<Record<string, unknown>> = {}): string {
   const template = STRINGS[key];
   if (template === undefined) return key;
@@ -35,8 +41,9 @@ export function specText(key: string, args: Readonly<Record<string, unknown>> = 
     if (v === null || v === undefined) return "";
     const s = String(v);
     const prefix = ARG_KEYS[name];
-    if (prefix && STRINGS[prefix + s] !== undefined) return STRINGS[prefix + s];
-    if (name === "profile" || name === "mode") return s.toUpperCase();
+    const lookup = CASELESS_ARGS.has(name) ? s.toLowerCase() : s;
+    if (prefix && STRINGS[prefix + lookup] !== undefined) return STRINGS[prefix + lookup];
+    if (name === "mode") return s.toUpperCase();
     return s;
   });
 }

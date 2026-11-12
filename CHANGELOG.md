@@ -6,6 +6,12 @@ the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Cockpit spec sync.** Flight-state chips read in sentence case, an unknown
+  arm state with no flight controller link refuses Fly here with "No flight
+  controller link", and the plugin contract mirror tracks pilot contract v2.
+
 ### Added
 
 - **Flight tab.** The drone's cockpit is its Flight tab, beside the other
